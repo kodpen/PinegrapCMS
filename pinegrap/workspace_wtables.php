@@ -1352,9 +1352,8 @@ $shell = pg_page_shell(array(
     'breadcrumb'          => $breadcrumb,
 ));
 
-// After the shell, which defines PG_PANEL_OUTPUT: the messages then come in
-// the panel's alert markup, not the site's.
-$liveform_messages = $liveform->output_errors() . $liveform->output_notices();
+// The operation's result shows as corner toasts, not the panel's alert boxes.
+$liveform_messages = ws_screen_messages($liveform);
 
 $liveform->remove_form();
 
