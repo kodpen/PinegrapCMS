@@ -86,6 +86,10 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
             // charge its shipping), and a gift is not put straight back.
             pg_cart_remove_line($iid);
             $applied++;
+        } elseif (!pg_order_item_quantity_allowed($iid, $q)) {
+            // A gift card line over its unit limit keeps its quantity: it
+            // would be charged for cards it never issues.
+            $lf->mark_error('quantities[' . $iid . ']', pg_gift_card_line_quantity_error());
         } else {
             db("UPDATE order_items SET quantity = '$q' WHERE id = '$iid' AND order_id = '$oid'");
             // A recipient that already has an address and a shipping method
@@ -566,6 +570,12 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
                 default:
                     add_order_item($qa_pid, pg_product_default_quantity($qa_product['default_quantity']), 0, $qa_ship_to, $qa_add_name);
                     $qa_added = true;
+            }
+
+            // A gift card line over its unit limit was refused by add_order_item().
+            if (pg_gift_card_quantity_refusal_take()) {
+                $qa_added = false;
+                $lf->mark_error('quick_add_quantity', pg_gift_card_line_quantity_error());
             }
 
             if ($qa_added) {

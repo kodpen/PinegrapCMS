@@ -130,7 +130,7 @@ description: Generated from the module field of the memory files: each includes/
 - `notify_channels`: [[notification-channels]], [[notification-channels-delivery]]
 - `object_storage`: [[object-storage-client]]
 - `object_storage_health`: [[object-storage-health]]
-- `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]], [[order-completion-shipping-less]]
+- `order_completion`: [[gift-card-line-quantity-limit]], [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]], [[order-completion-shipping-less]]
 - `order_list`: [[orders-list-amount-column]], [[orders-list-bulk-actions]]
 - `order_report`: [[order-report-screen]], [[order-report-totals]]
 - `order_view`: [[order-screen-shipping-input]], [[order-view-screen-rows]], [[print-order-shipping-card]]
