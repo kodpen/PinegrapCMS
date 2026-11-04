@@ -9,7 +9,7 @@ description: The arrival date create and edit screens share includes/forms/arriv
 - `…_shipping_method_options_js()` builds the `shipping_method_id_options` lines.
 
 ## How is the screen laid out?
-- The product_builder pattern (`ui/edit-screen-wide-layout.md`, B11, PR #PRNUM): form column with Preview Options (name, code, description, sort order), Dates (start, end, arrival date, the customer-entered switch with its latest allowed date) and Shipping Cut-offs (the whole card hidden for a custom date); status column with Availability (Enabled, Selected by Default) and a Summary (name, arrival date or "Chosen by the customer", start, end, cut-off count) that follows the fields; the count follows the table rows through a `MutationObserver`. Edit's Delete is `formnovalidate`.
+- The product_builder pattern (`ui/edit-screen-wide-layout.md`, B11, PR #6704): form column with Preview Options (name, code, description, sort order), Dates (start, end, arrival date, the customer-entered switch with its latest allowed date) and Shipping Cut-offs (the whole card hidden for a custom date); status column with Availability (Enabled, Selected by Default) and a Summary (name, arrival date or "Chosen by the customer", start, end, cut-off count) that follows the fields; the count follows the table rows through a `MutationObserver`. Edit's Delete is `formnovalidate`.
 - `show_or_hide_custom()` (`backend.src.js`) toggles `custom_maximum_arrival_date_row`, `shipping_cutoff_heading_row` and `shipping_cutoff_row` through `style.display`, so they keep an inline display, not `d-none`.
 
 ## What does a save share?
