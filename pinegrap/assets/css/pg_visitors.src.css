@@ -194,6 +194,30 @@
 
   /* ── Section: conversions ───────────────────────────────────────────── */
 
+  .pg-visitors-conversions-detail {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+  }
+
+  .pg-visitors-conversions-detail.is-single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (max-width: 767.98px) {
+    .pg-visitors-conversions-detail {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .pg-visitors-conversions-subtitle {
+    margin: 0 0 .5rem;
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--pg-fg-2);
+  }
+
   /* ── Section: sources ───────────────────────────────────────────────── */
 
   /* ── Section: content ───────────────────────────────────────────────── */
