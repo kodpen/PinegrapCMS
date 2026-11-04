@@ -307,6 +307,13 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         $days = ws_personal_ical_place($days, $layer);
     }
 
+    // ── The person's own confirmed bookings, read from the bookings table ──
+
+    if (($person_id === 0) || ($person_id === (int) $viewer['id'])) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+        $days = ws_booking_calendar_place($days, ws_booking_calendar_events(pg_booking_calendar_items((int) $viewer['id'], $from_ts, $to_ts + 1)));
+    }
+
     // ── Conversations: channels opened, and how much was said each day ──
 
     $readable = array();
@@ -512,4 +519,69 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         'person_id'    => $person_id,
         'scope'        => ($scope === true) ? 'all' : 'limited',
     );
+}
+
+/**
+ * Bookings (pg_booking_calendar_items()) as calendar events of kind
+ * booking: read-only here, opened on the agenda.
+ *
+ * @param array[] $bookings
+ * @return array[] id, kind, title, starts_at, ends_at, all_day, layer, url
+ */
+function ws_booking_calendar_events($bookings)
+{
+    $events = array();
+
+    foreach ($bookings as $booking) {
+        $events[] = array(
+            'id'        => (int) $booking['id'],
+            'kind'      => 'booking',
+            'title'     => (string) $booking['title'],
+            'starts_at' => (int) $booking['starts_at'],
+            'ends_at'   => (int) $booking['ends_at'],
+            'all_day'   => 0,
+            'layer'     => lang('Booking'),
+            'url'       => (string) $booking['url'],
+        );
+    }
+
+    return $events;
+}
+
+/**
+ * Puts booking events on the days of the calendar grid they touch, the way
+ * the reader's own calendars are placed: read-only, with the agenda's
+ * address to open them.
+ *
+ * @param array   $days   ws_calendar()'s days
+ * @param array[] $events ws_booking_calendar_events()
+ * @return array
+ */
+function ws_booking_calendar_place($days, $events)
+{
+    foreach ($events as $event) {
+        foreach (array_keys($days) as $date) {
+            $day_start = strtotime($date . ' 00:00:00');
+            $day_end = strtotime($date . ' 00:00:00 +1 day');
+
+            if (((int) $event['starts_at'] >= $day_end) || ((int) $event['ends_at'] <= $day_start)) {
+                continue;
+            }
+
+            $days[$date]['events'][] = array(
+                'id'          => (int) $event['id'],
+                'kind'        => 'booking',
+                'title'       => (string) $event['title'],
+                'time'        => date('H:i', max((int) $event['starts_at'], $day_start)),
+                'scope'       => 'people',
+                'people'      => array(),
+                'meeting_url' => '',
+                'layer'       => (string) $event['layer'],
+                'readonly'    => true,
+                'url'         => (string) $event['url'],
+            );
+        }
+    }
+
+    return $days;
 }

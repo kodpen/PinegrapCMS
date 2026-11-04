@@ -112,6 +112,12 @@ function pg_notification_visible($notification, $rights)
 		return ((FORMS === true) && $rights['manage_forms'] && pg_notification_form_visible($notification, $rights));
 	}
 
+	// A booking's move in a staff member's own calendar that was written back
+	// (includes/fn/booking_agenda.php): always addressed to them.
+	if ($action == 'booking_refused') {
+		return ($target > 0);
+	}
+
 	if ($action == 'software_update') {
 		return ($rights['role'] < 3);
 	}
@@ -467,6 +473,16 @@ function pg_notification_display($notification, $reader_role = null)
 				$display['fold']        = (string) ($described['fold'] ?? '');
 			}
 		}
+
+	} elseif ($action == 'booking_refused') {
+
+		// The row's title names the booking; reference_id is its id, opened on
+		// the agenda.
+		$display['description'] = h(lang('A booking keeps the time set on the agenda; the event was written back.'));
+		$display['url']         = 'edit_booking.php?id=' . (int) ($notification['reference_id'] ?? 0);
+		$display['icon']        = 'assets/images/notification-general.png';
+		$display['badge']       = 'assets/images/notification-general-badge.png';
+		$display['action']      = $action;
 
 	} elseif ($action == 'erp_overdue') {
 

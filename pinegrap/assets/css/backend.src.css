@@ -17045,6 +17045,14 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 .ws-cal-event-dot.ws-kind-visit {
   background: var(--pg-warning);
 }
+/* A booking from the agenda (includes/workspace/calendar.php). */
+.ws-cal-event.ws-kind-booking {
+  background: color-mix(in srgb, var(--pg-success) 14%, transparent);
+  color: var(--pg-success-fg-emphasis);
+}
+.ws-cal-event-dot.ws-kind-booking {
+  background: var(--pg-success);
+}
 .ws-cal-channel {
   color: var(--ws-accent);
   background: transparent;

@@ -567,6 +567,25 @@ function pg_booking_changed($id, $event)
 }
 
 /**
+ * The event a status change announces (pure): a booking that becomes
+ * confirmed or cancelled; '' for any other move (done, no-show, an
+ * unchanged status). A hold confirmed goes through pg_booking_confirm(),
+ * which announces it itself.
+ *
+ * @param string $from
+ * @param string $to
+ * @return string confirmed, cancelled or ''
+ */
+function pg_booking_status_event($from, $to)
+{
+    if (($from === $to) || ($from === 'held')) {
+        return '';
+    }
+
+    return in_array($to, array('confirmed', 'cancelled'), true) ? $to : '';
+}
+
+/**
  * A new booking (not a hold): booking.created, and booking.confirmed with its
  * mail when it was confirmed at once.
  *

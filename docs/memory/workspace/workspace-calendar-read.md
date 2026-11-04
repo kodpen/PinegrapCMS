@@ -10,6 +10,7 @@ description: Reading a person's Google/Outlook calendar back (calendar_sync.php,
 
 ## What counts as a move?
 - `ws_calsync_moves()` (pure, tested): an event of a task (`ws-task-<id>`, not a `ws-series-…` copy) whose written hash still equals the body the task gives now, and whose start (`ws_calsync_google_when()` / `ws_calsync_graph_when()`, in the site's zone) differs from that body's start. So the site's own writes read back are no move, and a task changed on the site since the last write wins: the write that follows puts it over the calendar's.
+- A booking's event (`ws-booking-<id>`) is never taken: its move is refused, written back, and told by a panel bell row (`workspace-bookings.md`).
 - A deleted event (Google `cancelled`, Graph `@removed`) or a new title is ignored; the next write of that event restores it (a Google PUT revives a cancelled event, a Graph PATCH 404 creates it again).
 
 ## How is a move written to the task?

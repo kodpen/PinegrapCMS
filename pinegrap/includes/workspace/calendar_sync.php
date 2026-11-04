@@ -8,8 +8,10 @@
  *
  * The site makes one calendar of its own in the person's account and keeps
  * there the same tasks the calendar subscription carries
- * (ws_calendar_feed_task_items() and the coming copies of repeating tasks),
- * titles, dates and a link only. Google's scope calendar.app.created reaches
+ * (ws_calendar_feed_task_items() and the coming copies of repeating tasks)
+ * and their confirmed bookings when they are a booking staff member
+ * (pg_booking_calendar_items()), titles, dates and a link only. A booking
+ * moved in the calendar is never taken: its time is the booking row's. Google's scope calendar.app.created reaches
  * only calendars the site made; Microsoft has no narrower scope than
  * Calendars.ReadWrite, so the site keeps to the calendar it made by its id.
  *
@@ -364,7 +366,8 @@ function ws_calsync_body_when($provider, $body, $timezone)
  * @param array  $changes  derived id => when (ws_calsync_google_when()), null for a deleted event
  * @param array  $bodies   derived id => body, what the calendar should carry
  * @param array  $written  derived id => body hash, what was written before
- * @param array  $tasks    derived id => task id, the tasks among the bodies
+ * @param array  $tasks    derived id => task id, the tasks among the bodies (or
+ *                         booking id, the bookings, whose moves are refused)
  * @param string $provider
  * @param string $timezone
  * @return array derived id => task_id, when
@@ -760,38 +763,100 @@ function ws_calsync_apply_move($viewer, $user, $task_id, $when)
 }
 
 /**
+ * Calendar feed items of a staff member's confirmed bookings
+ * (pg_booking_calendar_items()): timed and busy, uid ws-booking-<id>. A
+ * booking cancelled, done or marked no-show is no longer among them, so the
+ * sync deletes its event.
+ *
+ * @param array[] $bookings pg_booking_calendar_item_rows()'s rows
+ * @param string  $base     the panel's address, ending in a slash
+ * @return array[]
+ */
+function ws_calsync_booking_feed_items($bookings, $base)
+{
+    $items = array();
+
+    foreach ($bookings as $booking) {
+        $url = $base . (string) $booking['url'];
+        $lines = array(lang(array('string' => 'Booking #{var:1}', 'vars' => (int) $booking['id'])));
+
+        if ((string) $booking['service'] !== '') {
+            $lines[] = lang(array('string' => 'Service: {var:1}', 'vars' => (string) $booking['service']));
+        }
+
+        if ((string) $booking['customer'] !== '') {
+            $lines[] = lang(array('string' => 'Customer: {var:1}', 'vars' => (string) $booking['customer']));
+        }
+
+        $lines[] = '';
+        $lines[] = $url;
+
+        $items[] = array(
+            'uid'         => 'ws-booking-' . (int) $booking['id'],
+            'summary'     => (string) $booking['title'],
+            'description' => implode("\n", $lines),
+            'url'         => $url,
+            'all_day'     => false,
+            'start'       => (int) $booking['starts_at'],
+            'end'         => (int) $booking['ends_at'],
+            'rrule'       => '',
+            'categories'  => array(lang('Booking')),
+            'status'      => 'CONFIRMED',
+            'transparent' => false,
+            'stamp'       => (int) $booking['starts_at'],
+        );
+    }
+
+    return $items;
+}
+
+/**
  * What the person's calendar should carry, as event bodies, and which of
- * them are tasks.
+ * them are tasks and which bookings.
  *
  * @param array  $viewer
  * @param string $provider
  * @param string $since    Y-m-d
  * @param string $until    Y-m-d
  * @param string $timezone
- * @return array bodies (derived id => body), tasks (derived id => task id)
+ * @return array bodies (derived id => body), tasks (derived id => task id),
+ *               bookings (derived id => pg_booking_calendar_items() row)
  */
 function ws_calsync_bodies($viewer, $provider, $since, $until, $timezone)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+    $booked = array();
+
+    foreach (pg_booking_calendar_items((int) $viewer['id'], strtotime($since . ' 00:00:00'), strtotime($until . ' 23:59:59')) as $booking) {
+        $booked['ws-booking-' . (int) $booking['id']] = $booking;
+    }
+
     $items = array_merge(
+        ws_calsync_booking_feed_items(array_values($booked), ws_calendar_feed_panel_url('')),
         ws_calendar_feed_task_items($viewer, false, $since, $until),
         ws_calendar_feed_copy_items($viewer, date('Y-m-d'))
     );
 
     $bodies = array();
     $tasks = array();
+    $bookings = array();
 
     foreach (array_slice($items, 0, WS_CALENDAR_FEED_LIMIT) as $item) {
-        $id = ws_calsync_event_id(HOSTNAME_SETTING, (string) $item['uid']);
+        $uid = (string) $item['uid'];
+        $id = ws_calsync_event_id(HOSTNAME_SETTING, $uid);
         $bodies[$id] = ($provider === 'microsoft')
             ? ws_calsync_graph_body($item)
             : ws_calsync_google_body($item, $timezone);
 
-        if (preg_match('/^ws-task-([0-9]+)$/', (string) $item['uid'], $match)) {
+        if (preg_match('/^ws-task-([0-9]+)$/', $uid, $match)) {
             $tasks[$id] = (int) $match[1];
+        } elseif (isset($booked[$uid])) {
+            $bookings[$id] = $booked[$uid];
         }
     }
 
-    return array('bodies' => $bodies, 'tasks' => $tasks);
+    return array('bodies' => $bodies, 'tasks' => $tasks, 'bookings' => $bookings);
 }
 
 
@@ -996,6 +1061,19 @@ function ws_calsync_sync($user_id)
             } else {
                 unset($state['written'][$id]);
             }
+        }
+    }
+
+    // A booking owns its time: a move made in the calendar is refused and
+    // the event written back, with one bell line naming the booking.
+    if ($read['ok']) {
+        $booked = array_map(function ($booking) {
+            return (int) $booking['id'];
+        }, $wanted['bookings']);
+
+        foreach (ws_calsync_moves($read['changes'], $wanted['bodies'], $state['written'], $booked, $provider, $timezone) as $id => $move) {
+            unset($state['written'][$id]);
+            pg_booking_calendar_refused($user_id, $wanted['bookings'][$id]);
         }
     }
 

@@ -4,7 +4,7 @@ description: A person's Workspace tasks written to their own Google or Outlook c
 ---
 
 ## What does the person get?
-- On Calendar subscription (`workspace_calendar_feed.php`, card `#ws-calendar-sync`) a person connects their own Google or Microsoft account (purpose `calendar_sync`, owner `person`) and turns writing on for one of them. The site makes a calendar "Workspace tasks (host)" there and keeps their tasks in it: the tasks the outgoing subscription carries (`ws_calendar_feed_task_items()` without descriptions, `ws_calendar_feed_copy_items()` as tentative). Write now, Stop writing (deletes that calendar, best effort). Only providers whose application is set up are offered, and only when tokens can be sealed (`ws_calsync_offered()`).
+- On Calendar subscription (`workspace_calendar_feed.php`, card `#ws-calendar-sync`) a person connects their own Google or Microsoft account (purpose `calendar_sync`, owner `person`) and turns writing on for one of them. The site makes a calendar "Workspace tasks (host)" there and keeps their tasks in it: the tasks the outgoing subscription carries (`ws_calendar_feed_task_items()` without descriptions, `ws_calendar_feed_copy_items()` as tentative), and their confirmed bookings when they are staff (`workspace-bookings.md`). Write now, Stop writing (deletes that calendar, best effort). Only providers whose application is set up are offered, and only when tokens can be sealed (`ws_calsync_offered()`).
 
 ## Which scopes, and why?
 - Google `calendar.app.created`: only calendars the site made. Microsoft has nothing narrower than `Calendars.ReadWrite`; the code touches only the calendar id it made and events it wrote. Graph calls pass that scope (tokens are per resource).

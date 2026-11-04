@@ -480,6 +480,7 @@
     "Bookable services": "Hizmetler",
     "Booked in three steps": "Üç adımda randevu",
     "Booking": "Randevu",
+    "Booking #{var:1}": "Randevu #{var:1}",
     "Booking (Call to Action)": "Randevu (Eylem Çağrısı)",
     "Booking (Split)": "Randevu (İkiye Bölünmüş)",
     "Booking Actions": "Randevu Eylemleri",

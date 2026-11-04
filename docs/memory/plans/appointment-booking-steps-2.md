@@ -6,8 +6,8 @@ description: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar 
 ## Which steps are there?
 - Sizes, tests and memory rules as in `appointment-booking-steps.md`; BK6, BK7 and BK8 run at once after BK3 and BK4.
 
-- BK6 (S) Workspace calendar. After BK3 and BK5.
-  - A confirmed booking writes a `ws_events` row on the staff member's calendar (kind `booking`, linked by id, moved and removed with the booking), so `calendar_sync.php` carries it to their Google or Outlook calendar as it carries tasks; the slot engine's busy ranges read that person's `ws_events` (their synced events included) through one function in `includes/workspace/calendar.php`; the Workspace Today screen lists the day's bookings. A move made in Google is read back as a refused move (the booking owns the time), as `workspace-calendar-read.md` handles refused moves. Memory: `workspace/workspace-bookings.md`.
+- BK6 (S) Workspace calendar. Done in #6305 (decided in #6302, option B: read from `bookings`, no `ws_events` row; `workspace/workspace-bookings.md`). The agenda's status changes call `pg_booking_changed()`.
+- BK6b (S) The four `booking.*` events in `ws_events_catalog()` (record kind `booking`, its right, `workspace_flows_parity_table()`). After BK6.
 
 - BK7 (S) My bookings and the manage page. After BK4 and BK5.
   - The account widgets (`designer/account-widget-forms.md`) gain "My bookings" (upcoming and past, reschedule and cancel within the policy); `booking_manage.php` (root) opens from the mail's signed link for a visitor without an account: the same two actions and the `.ics` download; both call the slot engine again for a reschedule. Memory: `designer/booking-widget.md` grows.
