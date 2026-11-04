@@ -1222,6 +1222,7 @@ if (!$_POST) {
                                         <div class="col-12 sm:col-6 lg:col-4">
                                             <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
                                             <input value="' . h($reward_points) . '" type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
+                                            <input type="hidden" name="reward_points_original" value="' . h($reward_points) . '"/>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-field">

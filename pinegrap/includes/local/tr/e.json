@@ -719,6 +719,7 @@
     "Enter a whole number greater than the last order number ({var:1}).": "Son sipariş numarasından ({var:1}) büyük bir tam sayı girin.",
     "Enter a whole number of days from 1 to 3650.": "1 ile 3650 arasında tam bir gün sayısı girin.",
     "Enter a whole number of days, 0 or more.": "0 veya daha büyük bir tam gün sayısı girin.",
+    "Enter a whole number of points.": "Tam sayı olarak bir puan girin.",
     "Enter a whole number of units, 1 or more.": "1 veya daha fazla, tam sayı bir adet girin.",
     "Enter a whole number of {var:1} or more.": "{var:1} veya daha büyük bir tam sayı girin.",
     "Enter a whole number on each line.": "Her satıra bir tam sayı girin.",

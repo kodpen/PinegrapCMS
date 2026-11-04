@@ -422,6 +422,21 @@ $pg_settings_cards[] = '
                                                                                 <input value="' . $ecommerce_reward_program_points . '" type="text" name="ecommerce_reward_program_points" id="ecommerce_reward_program_points" class="form-ghost" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
                                                                             </label>
                                                                         </div>
+                                                                        <div class="pg-f-xs">
+                                                                            <label for="credit_points_per_unit" class="form-label">' . lang('Points per unit of store credit') . '</label>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('point(s)') . '</span>
+                                                                                <input value="' . h($credit_points_per_unit) . '" type="text" name="credit_points_per_unit" id="credit_points_per_unit" class="form-ghost" size="8" maxlength="12" inputmode="decimal" style="text-align: right;" />
+                                                                            </label>
+                                                                            <div class="form-text text-end">(' . lang('leave blank to keep points from turning into store credit') . ')</div>
+                                                                        </div>
+                                                                        <div class="pg-f-xs">
+                                                                            <label for="credit_points_smallest" class="form-label">' . lang('Smallest conversion') . '</label>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . h(BASE_CURRENCY_CODE) . '</span>
+                                                                                <input value="' . h($credit_points_smallest) . '" type="text" name="credit_points_smallest" id="credit_points_smallest" class="form-ghost" size="8" maxlength="14" inputmode="decimal" style="text-align: right;" />
+                                                                            </label>
+                                                                        </div>
                                                                         <div class="col-12 ">
                                                                             <div class="form-field">
                                                                                 <div class="switch"><input value="1"' . $ecommerce_reward_program_membership_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program_membership" name="ecommerce_reward_program_membership" data-bs-target="#ecommerce_reward_program_membership_row"/></div>

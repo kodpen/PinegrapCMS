@@ -454,7 +454,7 @@ function pg_user_update($user_id, $fields, $editor, $save_access = true)
             user_home = '" . escape($fields['home_page'] ?? '') . "',
             user_badge = '" . escape($fields['badge'] ?? '') . "',
             user_badge_label = '" . escape($fields['badge_label'] ?? '') . "',
-            user_reward_points = '" . escape($fields['reward_points'] ?? '') . "',
+            " . pg_credit_points_staff_sql($fields['reward_points'] ?? null, $fields['reward_points_original'] ?? null) . "
             user_manage_contacts = '" . escape($fields['manage_contacts'] ?? '') . "',
             user_manage_visitors = '" . escape($fields['manage_visitors'] ?? '') . "',
             user_create_pages = '" . escape($fields['create_pages'] ?? '') . "',

@@ -369,6 +369,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_reward_program_email_bcc_email_address = $row['ecommerce_reward_program_email_bcc_email_address'];
     $ecommerce_reward_program_email_subject = $row['ecommerce_reward_program_email_subject'];
     $ecommerce_reward_program_email_page_id = $row['ecommerce_reward_program_email_page_id'];
+    // Points to store credit: config_text rows, not config columns.
+    $credit_points_per_unit = pg_credit_points_rate_for_input(pg_config_text('credit_points_per_unit'));
+    $credit_points_smallest_minor = (int) pg_config_text('credit_points_smallest');
+    $credit_points_smallest = ($credit_points_smallest_minor > 0) ? pg_format_number($credit_points_smallest_minor / 100, 2) : '';
     $ecommerce_custom_product_field_1_label = $row['ecommerce_custom_product_field_1_label'];
     $ecommerce_custom_product_field_2_label = $row['ecommerce_custom_product_field_2_label'];
     $ecommerce_custom_product_field_3_label = $row['ecommerce_custom_product_field_3_label'];
