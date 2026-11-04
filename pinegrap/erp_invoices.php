@@ -441,9 +441,9 @@ if ($edoc_bulk) {
                 <div class="pg-menu-wrap enable-on-selected">
                     <button class="btn btn-sm btn-text theme-secondary pg-menu-caret disabled" type="button" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" disabled><i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Selected invoices') . '</button>
                     <ul class="menu">
-                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-3" aria-hidden="true"></i>' . lang('Send selected') . '</button></li>
-                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-3" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button></li>
-                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="menu-item pg-link-body-emphasis"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . lang('Ask status') . '</button></li>
+                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="menu-item pg-link-body-emphasis" disabled data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-3" aria-hidden="true"></i>' . lang('Send selected') . '</button></li>
+                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="menu-item pg-link-body-emphasis" disabled data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-3" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button></li>
+                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="menu-item pg-link-body-emphasis" disabled><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . lang('Ask status') . '</button></li>
                     </ul>
                 </div>';
 }
