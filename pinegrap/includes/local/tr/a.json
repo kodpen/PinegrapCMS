@@ -3050,6 +3050,8 @@
     "An app in development can connect up to 50 accounts without Dropbox's approval; a site's own accounts stay well below that.": "Geliştirme aşamasındaki bir uygulama Dropbox onayı olmadan 50 hesaba kadar bağlanabilir; bir sitenin kendi hesapları bunun çok altında kalır.",
     "An app, through the API": "Bir uygulama, API üzerinden",
     "An application can never do more than the account that owns it. Narrowing the owner narrows the application immediately.": "Bir uygulama, sahibi olan hesaptan fazlasını yapamaz. Sahibin yetkisi daraltılırsa uygulama da anında daralır.",
+    "An application cannot give an account this role.": "Bir uygulama bir hesaba bu rolü veremez.",
+    "An application does not change or delete an administrator or its owner's own account.": "Bir uygulama bir yöneticinin ya da kendi sahibinin hesabını değiştiremez veya silemez.",
     "An application for Claude": "Claude için bir uygulama",
     "An application for Pinegrap AI": "Pinegrap AI için bir uygulama",
     "An application is mentioned in a public channel": "Herkese açık bir kanalda bir uygulamadan bahsedildi",

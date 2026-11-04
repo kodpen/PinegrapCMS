@@ -362,16 +362,18 @@ function pg_user_new_account_mail($user_id, $fields)
  * left as stored. The "Account enabled" switch is written only when
  * account_enabled_drawn is set and pg_user_form_may_disable() allows it;
  * an account switched off loses its remembered devices. The access records
- * are replaced. The caller has checked that the editor reaches the account,
+ * are replaced unless $save_access is false (the API, whose fields carry no
+ * folder or item boxes). The caller has checked that the editor reaches the account,
  * the role (pg_user_role_writable()) and the username and e-mail address
  * (pg_user_write_problem()).
  *
  * @param int $user_id
  * @param array $fields
  * @param array $editor  'id' and 'role' of the account that saves
+ * @param bool $save_access  Replace the folder and item access records
  * @return int  The role the account is saved with
  */
-function pg_user_update($user_id, $fields, $editor)
+function pg_user_update($user_id, $fields, $editor, $save_access = true)
 {
     $user_id = (int) $user_id;
 
@@ -475,7 +477,9 @@ function pg_user_update($user_id, $fields, $editor)
         pg_auth_token_revoke_user($user_id);
     }
 
-    pg_user_form_save_access($user_id, $saved_role, $fields, true);
+    if ($save_access) {
+        pg_user_form_save_access($user_id, $saved_role, $fields, true);
+    }
 
     return $saved_role;
 }

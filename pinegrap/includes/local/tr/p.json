@@ -2104,6 +2104,8 @@
     "percentage must be a whole number from 0 to 100.": "percentage, 0 ile 100 arasında bir tam sayı olmalıdır.",
     "performance monitoring was turned off and its records were cleared": "performans izleme kapatıldı ve kayıtları temizlendi",
     "permissions were changed for {var:1}": "{var:1} için izinler değiştirildi",
+    "permissions.page_types must be a list.": "permissions.page_types bir liste olmalıdır.",
+    "permissions.{var:1} must be true or false.": "permissions.{var:1} true ya da false olmalıdır.",
     "person": "kişi",
     "personal data of a person was erased": "bir kişinin kişisel verileri silindi",
     "personal data, KVKK, GDPR, data we collect": "kişisel veriler, KVKK, GDPR, topladığımız veriler",
