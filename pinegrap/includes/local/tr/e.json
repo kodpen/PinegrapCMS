@@ -1020,6 +1020,8 @@
     "Every day 08:00–23:00": "Her gün 08:00–23:00",
     "Every day at this hour Claude writes three lines on what is waiting into the channel, and the dashboard's Assistant card shows them. Each summary is one of the routine's daily runs.": "Claude her gün bu saatte bekleyen işler hakkında kanala üç satır yazar; panodaki Asistan kartı bunları gösterir. Her özet, rutinin günlük çalıştırmalarından birini kullanır.",
     "Every day at {var:1}, from {var:2}": "{var:2} itibarıyla her gün saat {var:1}",
+    "Every day of this period came from the daily summary, the last one {var:1}.": "Bu dönemin her günü günlük özetten geldi, sonuncusu {var:1}.",
+    "Every day of this period was counted from the visit records.": "Bu dönemin her günü ziyaret kayıtlarından sayıldı.",
     "Every day the showroom is open": "Showroomun açık olduğu her gün",
     "Every day through yesterday is added up by source, landing page, campaign, place and device, whatever the period above, so the visitor overview reads it quickly and the visitor report and the API still count a day once its records are removed. Turned off, removed days are gone from the visitor report; the dashboard charts keep them either way.": "Dününe kadar her gün, yukarıdaki süreden bağımsız olarak kaynağa, giriş sayfasına, kampanyaya, konuma ve cihaza göre toplanır; böylece ziyaretçi özeti onu hızla okur, ziyaretçi raporu ve API de kayıtları silinen bir günü saymaya devam eder. Kapalıysa silinen günler ziyaretçi raporundan çıkar; pano grafikleri her durumda onları korur.",
     "Every day {var:1}": "Her gün {var:1}",

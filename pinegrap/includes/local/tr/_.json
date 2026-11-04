@@ -661,6 +661,7 @@
     "{var:1} days left": "{var:1} gün kaldı",
     "{var:1} days off": "{var:1} tatil günü",
     "{var:1} days overdue": "{var:1} gün gecikmiş",
+    "{var:1} days up to {var:2} came from the daily summary, {var:3} from the visit records.": "{var:2} tarihine kadar {var:1} gün günlük özetten, {var:3} gün ziyaret kayıtlarından geldi.",
     "{var:1} day{suffix:1}": "{var:1} gün",
     "{var:1} day{suffix:1} ago": "{var:1} gün önce",
     "{var:1} day{suffix:1} left": "{var:1} gün kaldı",

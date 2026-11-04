@@ -12,7 +12,7 @@ description: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, 
 - V6 (M) Conversions section. After V1 and V2. Done (#6469).
   - `includes/visitors/conversions.php`: forms submitted, orders created, checked out and completed, revenue, conversion rate (completed over visits), each with its change; the funnel as bars; the figures by day from `pg_visitor_totals()` per day. Order tiles only with `ECOMMERCE`; with commerce off the section is forms alone.
 
-- V7 (M) Sources section. After V1, V2 and V4.
+- V7 (M) Sources section. After V1, V2 and V4. Done (#6476).
   - `includes/visitors/sources.php`: the channel split as one stacked bar and a list with shares and changes; referring hosts, search engines with their terms, UTM source, medium and campaign, tracking and affiliate codes as top lists from `pg_visitor_breakdown()`, each with the previous period's figure; a line saying which days came from the summary.
 
 - V8 (M) Content section. After V1 and V2.

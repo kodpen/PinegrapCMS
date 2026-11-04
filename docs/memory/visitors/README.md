@@ -64,5 +64,6 @@ Visitor statistics, page and article views, search engine index flags.
 - visitors-conversions.md: The conversions section of the Visitors overview (includes/visitors/conversions.php): which tiles, the conversion rate, the funnel, the chart by grain, commerce off, the empty state
 - visitors-google.md: The Google search section of visitors.php: its window ending on the latest day with figures, tiles, top lists, the two opportunity rules, the unlinked card
 - visitors-places.md: The places and devices section of the Visitors overview (includes/visitors/places.php): country and city top lists, device and first/return split bars, where a place comes from
+- visitors-sources.md: The sources section of visitors.php: channel bar and list, the eight top lists with the earlier figure, the summary days line; what it reads and what it leaves out
 - visitors-traffic.md: The traffic section of visitors.php (includes/visitors/traffic.php): headline tiles, the line by the period's grain with the earlier period dashed, the busiest content in the tooltip, the empty states
 - web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go
