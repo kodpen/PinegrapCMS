@@ -11,7 +11,7 @@ description: An application, or Claude in a channel answer, proposes a flow as a
 - Shape first (`ws_flow_draft_proposal_input()`, pure, includes/workspace/flow_draft.php): action draft, data an object, nodes/edges/notes lists, template a string and never beside boxes, answers an object. Boxes all in one place (`ws_flow_draft_unplaced()`: none sent, or the same x and y, more than one box) are laid out with `ws_flow_auto_layout()`; boxes with places keep them.
 
 ## What is checked?
-- `ws_flow_draft_proposal_row()` for the person (`ws_ai_viewer()`): `ws_can_schedule()`, a template filled for them (`ws_api_flow_from_template()`), then `ws_flow_save_check()`, the check of `POST /workspace/flows` (flow limit, name, home readable). Any refusal is 422 on `changes[i]`, dry run included. Problems that stop publishing are not refused: the card names up to three.
+- `ws_flow_draft_proposal_row()` for the person (`ws_ai_viewer()`): `ws_can_schedule()`, a template filled for them (`ws_api_flow_from_template()`), then `ws_flow_save_check()`, the check of `POST /workspace/flows` (flow limit, name, home readable). Any refusal is 422 on `changes[i]`, dry run included. An application's draft that cannot be published is kept (Claude's is refused, above): the card names up to three problems.
 - Home: channel_id sent, else the channel it is proposed in when public or private and read, else none.
 
 ## How is it kept and opened?
