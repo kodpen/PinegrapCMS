@@ -14,7 +14,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - Tests: sample tables of small MP4 and WebM fixtures under Node; the seek point for a time.
 
 - V2 (M) The video layer.
-  - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer.
+  - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`image-editor-steps-5.md`).
 
 - V3 (M) Timeline editing.
   - Clip rows on the tracks (AN2): trim the ends, split at the playhead (two layers on one source), move, snap; the document's length follows its clips.
