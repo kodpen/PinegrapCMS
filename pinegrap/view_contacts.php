@@ -28,6 +28,7 @@ $liveform = new liveform('view_contacts');
 $output = '';
 $show_hide_contact_group_select = '';
 $output_merge_contacts_button = '';
+$output_affiliate = '';
 
 // if user has a user role and if the all duplicate contacts filter is on, then user does not have access to this filter so output error
 if (($user['role'] == 3) && (($_GET['filter'] ?? '') == 'all_duplicate_contacts')) {
@@ -77,10 +78,133 @@ if (($_GET['show_contact_groups'] ?? '') == 'true') {
 }
 
 $output_organize_selected_button = '';
+$output_organize_dialog = '';
 
-// if this is not the all duplicates view and if the user has selected to show contact groups, then output the organize selected button
-if (($filter != 'all_duplicate_contacts') && (($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true)) {
-    $output_organize_selected_button = '<button type="button" value="Organize Selected" class="btn btn-sm btn-solid theme-primary" onclick="window.open(\'organize_contacts.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'organize\',\'contact\')"><i class="bi bi-collection me-1" aria-hidden="true"></i>' . lang('Organize Selected') . '</button>';
+// Every view but the duplicates one can add the selected contacts to
+// contact groups or take them out, whether or not the groups column shows.
+// The groups are picked in a dialog of this page; its Save fills the list
+// form's two group fields and posts the selection (edit_contacts.php).
+if ($filter != 'all_duplicate_contacts') {
+    $output_organize_selected_button = '<button type="button" class="btn btn-sm btn-solid theme-primary no-submit" data-bs-toggle="dialog" data-bs-target="#organize_contacts_dialog"><i class="bi bi-collection me-1" aria-hidden="true"></i>' . lang('Organize Selected') . '</button>';
+
+    $output_add_to_contact_groups = '';
+    $output_remove_from_contact_groups = '';
+
+    foreach (pg_contact_list_organize_groups($user) as $organize_group) {
+        $id = (int) $organize_group['id'];
+        $label = h($organize_group['name']) . ' (' . pg_format_number($organize_group['contacts'], 0) . ')';
+
+        $output_add_to_contact_groups .= '
+            <div class="form-field">
+                <input type="checkbox" name="add_to_contact_groups" id="add_to_contact_group_' . $id . '" value="' . $id . '" class="checkbox check multiselect-checkbox" />
+                <label for="add_to_contact_group_' . $id . '">' . $label . '</label>
+            </div>';
+        $output_remove_from_contact_groups .= '
+            <div class="form-field">
+                <input type="checkbox" name="remove_from_contact_groups" id="remove_from_contact_group_' . $id . '" value="' . $id . '" class="checkbox check multiselect-checkbox" />
+                <label for="remove_from_contact_group_' . $id . '">' . $label . '</label>
+            </div>';
+    }
+
+    if ($output_add_to_contact_groups === '') {
+        $output_organize_body = '<p class="mb-0">' . lang('There are no contact groups you can change by hand.') . '</p>';
+    } else {
+        $output_organize_body = '';
+
+        foreach (array(
+            array('0', lang('Add to Contact Groups'), $output_add_to_contact_groups),
+            array('1', lang('Remove from Contact Groups'), $output_remove_from_contact_groups),
+        ) as $organize_list) {
+            $checker = 'multiselect-checkbox-checker-' . $organize_list[0];
+            $output_organize_body .= '
+                <div class="card mb-3 multiselect-checkbox-container">
+                    <div class="card-header bg-reset border-0" id="' . $checker . '_title">' . $organize_list[1] . '</div>
+                    <div class="card-header border-0 bg-reset">
+                        <div class="form-field">
+                            <div class="switch"><input id="' . $checker . '" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="' . $checker . '_label ' . $checker . '_title"></div>
+                            <label for="' . $checker . '" class="" id="' . $checker . '_label">' . lang('Select All') . '</label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        ' . $organize_list[2] . '
+                    </div>
+                </div>';
+        }
+    }
+
+    $output_organize_dialog = '
+<dialog class="dialog pg-dialog-centered" id="organize_contacts_dialog" aria-labelledby="organize_contacts_dialog_label">
+    <div class="dialog-header">
+        <h5 class="dialog-title" id="organize_contacts_dialog_label"><i class="bi bi-collection me-3" aria-hidden="true"></i>' . lang('Organize Contacts') . '</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+    </div>
+    <div class="dialog-body">
+        ' . $output_organize_body . '
+    </div>
+    <div class="dialog-footer">
+        <button type="button" class="btn btn-solid theme-secondary no-submit" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
+        <button type="button" class="btn btn-solid theme-primary no-submit" id="organize_contacts_save" disabled>' . lang('Organize Contact(s)') . '</button>
+    </div>
+</dialog>
+<script>
+    // Organize Selected: a group ticked in one list is unticked in the other,
+    // Save stays off until a group is ticked, and the choice is handed to the
+    // list form only once the dialog has closed.
+    (function () {
+        var dialog = document.getElementById(\'organize_contacts_dialog\');
+        var save = document.getElementById(\'organize_contacts_save\');
+        var other = { add_to_contact_groups: \'remove_from_contact_group_\', remove_from_contact_groups: \'add_to_contact_group_\' };
+
+        if (!dialog || !save) {
+            return;
+        }
+
+        function ticked(name) {
+            return Array.prototype.map.call(
+                dialog.querySelectorAll(\'input[name="\' + name + \'"]:checked\'),
+                function (box) { return box.value; }
+            );
+        }
+
+        dialog.addEventListener(\'change\', function (event) {
+            var target = event.target;
+            var boxes = [target];
+
+            // The Select All switch ticks its whole list.
+            if (target.classList.contains(\'multiselect-checkbox-checker\')) {
+                var list = target.closest(\'.multiselect-checkbox-container\');
+                boxes = list ? Array.prototype.slice.call(list.querySelectorAll(\'.multiselect-checkbox\')) : [];
+            }
+
+            boxes.forEach(function (box) {
+                if (box.checked && other[box.name]) {
+                    var twin = document.getElementById(other[box.name] + box.value);
+
+                    if (twin && twin.checked) {
+                        twin.checked = false;
+
+                        if (typeof pgSyncCheckboxList === \'function\') {
+                            pgSyncCheckboxList(twin.closest(\'.multiselect-checkbox-container\'));
+                        }
+                    }
+                }
+            });
+
+            save.disabled = !(ticked(\'add_to_contact_groups\').length || ticked(\'remove_from_contact_groups\').length);
+        });
+
+        save.addEventListener(\'click\', function () {
+            document.form.add_to_contact_groups.value = ticked(\'add_to_contact_groups\').join(\',\');
+            document.form.remove_from_contact_groups.value = ticked(\'remove_from_contact_groups\').join(\',\');
+            document.form.action.value = \'organize\';
+            save.disabled = true;
+
+            pgUI.dialog.hide(dialog).then(function () {
+                document.form.submit();
+            });
+        });
+    }());
+</script>';
 }
 
 // if advanced filters value was passed in the query string, turn them on or
@@ -980,10 +1104,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 ' . get_token_field() . '
                                 <input type="hidden" name="filter" value="' . h($filter) . '">
-                                <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_contact.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
+                                <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_contact.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-plus-circle me-1"></span>' . lang(array('string'=>'Create') ) . '</a>
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_contacts.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
-                                    <button type="submit" name="submit_data" value="Export Contacts" class="btn btn-link pg-link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang(array('string'=>'Export') ) . '</button>
+                                    <button type="submit" name="submit_data" value="Export Contacts" class="btn btn-link pg-link-secondary py-0 m-1"><span class="bi bi-file-earmark-arrow-down me-1"></span>' . lang(array('string'=>'Export') ) . '</button>
                                 </div>
                                 ' . $output_merge_contacts_button . $output_delete_contacts_button . '
                             </form>
@@ -995,7 +1119,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             ' . $output_contact_groups_toggle . '
                             ' . (($filter != 'all_duplicate_contacts') ? pg_list_sort_menu('view_contacts.php', $sort_columns, $sort_levels, $sort_default, array('filter' => $filter)) : '') . '
                             <form id="search_form" action="view_contacts.php" method="get" class="search_form disable_shortcut">
-                                <input type="hidden" name="filter" value="' . h($filter) . '">
                                 <div class="input-group input-group-sm w-auto">
                                     <label class="input-group-text material-icons" title="' . lang('Content that viewed') . '" for="filter">visibility</label>
                                     <select id="filter" name="filter" aria-label="' . h(lang('Content that viewed')) . '" class="form-control" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')">' . get_filter_options($filters_in_array, $filter) . '</select>
@@ -1024,6 +1147,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             </div>
         </div>
 </main>
+' . $output_organize_dialog . '
 <script>
     // The selected-row actions post what the list has selected
     // (edit_contacts.php resolves it with the list\'s own query and the

@@ -440,7 +440,8 @@ function pg_site_search_sweep($seconds = 5)
 }
 
 /**
- * The periods the report offers, in days.
+ * The periods the former report screen offered, in days; its old links are
+ * sent on to the overview (pg_site_search_overview_query()).
  *
  * @return array
  */
@@ -450,8 +451,8 @@ function pg_site_search_periods()
 }
 
 /**
- * The report's period from the request: one of pg_site_search_periods(),
- * else 30. Pure.
+ * The former report's period from the request: one of
+ * pg_site_search_periods(), else 30. Pure.
  *
  * @param mixed $raw
  * @return int
@@ -479,8 +480,32 @@ function pg_site_search_period_start($days, $now = 0)
 }
 
 /**
+ * The Visitors overview query that shows the period of an old report link
+ * (`days`): a preset where the overview has one, else the same days as a
+ * custom range ending today. Pure.
+ *
+ * @param mixed $raw the old `days` value
+ * @param int   $now
+ * @return array query parameters for visitors.php
+ */
+function pg_site_search_overview_query($raw, $now = 0)
+{
+    $days = pg_site_search_period($raw);
+    $presets = array(7 => '7d', 30 => '30d', 90 => '90d');
+
+    if (isset($presets[$days])) {
+        return array('p' => $presets[$days]);
+    }
+
+    $now = ((int) $now > 0) ? (int) $now : time();
+
+    return array('p' => 'custom', 'from' => pg_site_search_period_start($days, $now), 'to' => date('Y-m-d', $now));
+}
+
+/**
  * The totals of a period: searches, zero_results, clicks and the number of
- * terms. Rows are summed, never counted as searches. Pure; the day is bound.
+ * terms. Rows are summed, never counted as searches. Pure; the first and the
+ * last day (Y-m-d, both included) are bound.
  *
  * @return string
  */
@@ -488,12 +513,13 @@ function pg_site_search_summary_sql()
 {
     return "SELECT COALESCE(SUM(searches), 0) AS searches, COALESCE(SUM(zero_results), 0) AS zero_results,"
         . " COALESCE(SUM(clicks), 0) AS clicks, COUNT(DISTINCT term) AS terms"
-        . " FROM site_search_daily WHERE day >= ?";
+        . " FROM site_search_daily WHERE day >= ? AND day <= ?";
 }
 
 /**
  * The terms of a period, summed: 'top' by searches, 'zero' only those that
- * found nothing at least once, by those searches. Pure; the day is bound.
+ * found nothing at least once, by those searches. Pure; the first and the
+ * last day are bound.
  *
  * @param string $kind 'top' or 'zero'
  * @param int    $limit
@@ -504,7 +530,7 @@ function pg_site_search_terms_sql($kind, $limit = 100)
     $order = ($kind === 'zero') ? 'zero_results' : 'searches';
 
     return "SELECT term, SUM(searches) AS searches, SUM(zero_results) AS zero_results, SUM(clicks) AS clicks"
-        . " FROM site_search_daily WHERE day >= ?"
+        . " FROM site_search_daily WHERE day >= ? AND day <= ?"
         . " GROUP BY term"
         . (($kind === 'zero') ? " HAVING SUM(zero_results) > 0" : "")
         . " ORDER BY " . $order . " DESC, term ASC"
@@ -525,4 +551,129 @@ function pg_site_search_click_rate($clicks, $searches)
     $searches = (int) $searches;
 
     return ($searches > 0) ? round(100 * max(0, (int) $clicks) / $searches, 1) : null;
+}
+
+/**
+ * The figures of a period: the totals, the 100 most searched terms and the
+ * 100 terms that found nothing most often.
+ *
+ * @param string $from first day, Y-m-d
+ * @param string $to   last day, Y-m-d, included
+ * @return array summary, top, zero
+ */
+function pg_site_search_figures($from, $to)
+{
+    $read = function ($sql) use ($from, $to) {
+        $rows = array();
+        $result = db_q($sql, array((string) $from, (string) $to));
+
+        while ($result && ($row = mysqli_fetch_assoc($result))) {
+            $rows[] = $row;
+        }
+
+        return $rows;
+    };
+
+    $summary = $read(pg_site_search_summary_sql());
+
+    return array(
+        'summary' => $summary ? $summary[0] : array('searches' => 0, 'zero_results' => 0, 'clicks' => 0, 'terms' => 0),
+        'top'     => $read(pg_site_search_terms_sql('top', 100)),
+        'zero'    => $read(pg_site_search_terms_sql('zero', 100)),
+    );
+}
+
+/**
+ * The site search report: the period's tiles (searches, terms, no results,
+ * result clicks, clicks per search), the top terms and the terms that found
+ * nothing, each of these with a button that opens the Search Tuning card
+ * with a line for it when $may_tune. Pure.
+ *
+ * @param array $figures  pg_site_search_figures()
+ * @param bool  $may_tune the viewer may change site settings (role < 3)
+ * @return string HTML
+ */
+function pg_site_search_report(array $figures, $may_tune)
+{
+    $summary = isset($figures['summary']) ? $figures['summary'] : array();
+    $searches_total = isset($summary['searches']) ? (int) $summary['searches'] : 0;
+
+    $rate_text = function ($clicks, $searches) {
+        $rate = pg_site_search_click_rate($clicks, $searches);
+
+        return ($rate === null) ? '-' : lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($rate, 1))));
+    };
+
+    $tiles = '';
+
+    foreach (array(
+        array(lang('Searches'), pg_format_number($searches_total, 0)),
+        array(lang('Search terms'), pg_format_number(isset($summary['terms']) ? (int) $summary['terms'] : 0, 0)),
+        array(lang('No results'), pg_format_number(isset($summary['zero_results']) ? (int) $summary['zero_results'] : 0, 0)),
+        array(lang('Result clicks'), pg_format_number(isset($summary['clicks']) ? (int) $summary['clicks'] : 0, 0)),
+        array(lang('Clicks per search'), $rate_text(isset($summary['clicks']) ? $summary['clicks'] : 0, $searches_total)),
+    ) as $tile) {
+        $tiles .= '<div class="col-6 md:col">
+            <div class="card h-100"><div class="card-body">
+                <div class="small fg-secondary">' . h($tile[0]) . '</div>
+                <div class="h3 mb-0">' . h($tile[1]) . '</div>
+            </div></div>
+        </div>';
+    }
+
+    $top_rows = '';
+
+    foreach (isset($figures['top']) ? $figures['top'] : array() as $row) {
+        $searches = (int) $row['searches'];
+        $top_rows .= '<tr>
+            <td class="align-middle text-break">' . h($row['term']) . '</td>
+            <td class="align-middle" data-order="' . $searches . '">' . pg_format_number($searches, 0) . '</td>
+            <td class="align-middle" data-order="' . (int) $row['zero_results'] . '">' . pg_format_number((int) $row['zero_results'], 0) . '</td>
+            <td class="align-middle" data-order="' . (int) $row['clicks'] . '">' . pg_format_number((int) $row['clicks'], 0) . '</td>
+            <td class="align-middle text-nowrap">' . h($rate_text($row['clicks'], $searches)) . '</td>
+        </tr>';
+    }
+
+    $zero_rows = '';
+
+    foreach (isset($figures['zero']) ? $figures['zero'] : array() as $row) {
+        $action = '';
+
+        if ($may_tune) {
+            $url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_features.php?search_promote=' . rawurlencode((string) $row['term']) . '#pgset-search-tuning';
+            $action = '<td class="align-middle text-end"><a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="' . h($url) . '" title="' . h(lang('Promote a result')) . '" aria-label="' . h(lang('Promote a result')) . '"><i class="bi bi-pin-angle" aria-hidden="true"></i></a></td>';
+        }
+
+        $zero_rows .= '<tr>
+            <td class="align-middle text-break">' . h($row['term']) . '</td>
+            <td class="align-middle" data-order="' . (int) $row['zero_results'] . '">' . pg_format_number((int) $row['zero_results'], 0) . '</td>
+            <td class="align-middle" data-order="' . (int) $row['searches'] . '">' . pg_format_number((int) $row['searches'], 0) . '</td>
+            ' . $action . '
+        </tr>';
+    }
+
+    $card = function ($title, $head, $rows, $empty) {
+        return '<div class="card my-7">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($title) . '</div>
+            <div class="card-body p-0">'
+            . (($rows === '')
+                ? '<p class="fg-secondary m-7">' . h($empty) . '</p>'
+                : '<div class="table-responsive"><table class="table table-hover mb-0"><thead><tr>' . $head . '</tr></thead><tbody>' . $rows . '</tbody></table></div>')
+            . '</div>
+        </div>';
+    };
+
+    return '<div class="row g-7">' . $tiles . '</div>
+    <div class="row">
+        <div class="col-12 xl:col-7">
+            ' . $card(lang('Top Searches'),
+                '<th>' . h(lang('Term')) . '</th><th>' . h(lang('Searches')) . '</th><th>' . h(lang('No results')) . '</th><th>' . h(lang('Result clicks')) . '</th><th>' . h(lang('Clicks per search')) . '</th>',
+                $top_rows, lang('Nothing was searched for in this period.')) . '
+        </div>
+        <div class="col-12 xl:col-5">
+            ' . $card(lang('Searches Without Results'),
+                '<th>' . h(lang('Term')) . '</th><th>' . h(lang('No results')) . '</th><th>' . h(lang('Searches')) . '</th>' . ($may_tune ? '<th class="text-end">' . h(lang('Action')) . '</th>' : ''),
+                $zero_rows, lang('Every search in this period found something.')) . '
+        </div>
+    </div>';
 }

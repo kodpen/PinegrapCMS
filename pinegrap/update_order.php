@@ -61,6 +61,52 @@ function update_order($request) {
         return error_response('There are no recipients in the request.');
     }
 
+    // Everything is checked before anything is written: a refusal after the
+    // dates and tracking numbers were stored would keep them, and the next
+    // save would no longer see those numbers as new (no shipped event,
+    // e-mail, text message or invoice on shipment).
+    $check_ship_tos = array();
+    $check_items = array();
+
+    foreach ($request['order']['recipients'] as $recipient_request) {
+
+        if (!is_array($recipient_request) || !isset($recipient_request['id']) || !is_scalar($recipient_request['id'])) {
+            continue;
+        }
+
+        $check_ship_to = db_item(
+            "SELECT id, order_id FROM ship_tos WHERE id = '" . e($recipient_request['id']) . "'");
+
+        if ($check_ship_to) {
+            $check_ship_tos[(string) $recipient_request['id']] = $check_ship_to;
+        }
+
+        if (!isset($recipient_request['items']) || !is_array($recipient_request['items'])) {
+            continue;
+        }
+
+        foreach ($recipient_request['items'] as $item_request) {
+
+            if (!is_array($item_request) || !isset($item_request['id']) || !is_scalar($item_request['id'])) {
+                continue;
+            }
+
+            $check_item = db_item(
+                "SELECT id, ship_to_id AS recipient_id, quantity FROM order_items
+                WHERE id = '" . e($item_request['id']) . "'");
+
+            if ($check_item) {
+                $check_items[(string) $item_request['id']] = $check_item;
+            }
+        }
+    }
+
+    $refusal = pg_order_update_request_error($request['order']['recipients'], $order['id'], $check_ship_tos, $check_items);
+
+    if ($refusal !== '') {
+        return error_response($refusal);
+    }
+
     $order['recipients'] = array();
 
     foreach ($request['order']['recipients'] as $recipient_request) {
@@ -312,7 +358,9 @@ function update_order($request) {
             }
         }
 
-        $fields = array_merge($fields, pg_shipment_mail_fields($shipped_ids));
+        // ^^pickup_place^^: where a pickup order is collected; the shipped
+        // mail is also the one a pickup order gets when it is ready.
+        $fields = array_merge($fields, pg_shipment_mail_fields($shipped_ids), pg_stock_pickup_mail_fields($shipped_ids));
 
         create_auto_email_campaigns(array(
             'action' => 'order_shipped',

@@ -17,23 +17,35 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// Every path that deletes a forms row clears the record's thread right after
-// its signature and view rows.
+// Every screen that deletes a forms row does it through
+// pg_submitted_form_delete(), which clears the record's thread right after its
+// signature and view rows.
 function test_submitted_form_delete_comments_every_path()
 {
 	$paths = array(
-		'edit_submitted_form.php' => 'pg_comment_delete_record_thread($id);',
-		'delete_submitted_forms.php' => 'pg_comment_delete_record_thread($form_id);',
-		'view_submitted_forms.php' => "pg_comment_delete_record_thread(\$form['id']);",
+		'edit_submitted_form.php' => 'pg_submitted_form_delete($id)',
+		'delete_submitted_forms.php' => 'pg_submitted_form_delete($form_id)',
+		'view_submitted_forms.php' => "pg_submitted_form_delete(\$form['id'])",
 	);
 
 	foreach ($paths as $file => $call) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-		$delete = strpos($source, 'DELETE FROM forms WHERE id = ?');
 
-		pg_assert_true($delete !== false, $file . ' deletes a form');
-		pg_assert_same(1, substr_count($source, $call), $file . ' clears the thread');
-		pg_assert_true(strpos($source, $call) > $delete, $file . ' clears it after the form row');
+		pg_assert_same(1, substr_count($source, $call), $file . ' deletes through the shared path');
+		pg_assert_same(0, substr_count($source, 'DELETE FROM forms WHERE'), $file . ' keeps no delete of its own');
+	}
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
+	$start = strpos($source, 'function pg_submitted_form_delete(');
+	pg_assert_true($start !== false, 'shared delete exists');
+
+	$body = substr($source, $start);
+	$delete = strpos($body, 'DELETE FROM forms WHERE id = ?');
+
+	pg_assert_true($delete !== false, 'the shared path deletes the form');
+
+	foreach (array('DELETE FROM form_data WHERE', 'pg_signature_delete($form_id);', "pg_sfv_delete_views('submitted_form_id', \$form_id);", 'pg_comment_delete_record_thread($form_id);') as $call) {
+		pg_assert_true(strpos($body, $call) > $delete, $call . ' after the form row');
 	}
 }
 

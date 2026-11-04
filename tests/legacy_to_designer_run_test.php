@@ -100,3 +100,15 @@ function test_ltdr_wiring()
 	$run = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legacy_to_designer_run.php');
 	pg_assert_same(true, strpos($run, "GET_LOCK('pg_ltd', 0)") !== false);
 }
+
+function test_ltdr_dry_run_in_toolbar()
+{
+	$screen = (string)file_get_contents(PG_FUNCTIONS_DIR . '/legacy_to_designer.php');
+	$bar = strpos($screen, 'pg_screen_toolbar(');
+	pg_assert_same(true, $bar !== false);
+	$button = strpos($screen, '<button type="submit" form="ltd_dry_run"');
+	pg_assert_same(true, $button !== false, 'Dry run submits the form from outside it');
+	pg_assert_same(true, strpos($screen, "'primary' => \$toolbar_primary") > $bar, 'Dry run is the primary slot of the toolbar');
+	pg_assert_same(1, preg_match('/<form id="ltd_dry_run"[^>]* hidden>/', $screen), 'the token form is hidden, not a second bar');
+	pg_assert_same(1, preg_match('/if \(\$report && \$running === null\) \{\s*\$toolbar_primary/', $screen), 'no Dry run while a move runs');
+}

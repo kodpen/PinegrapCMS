@@ -102,7 +102,7 @@ print
         'heading_description' => lang('The PHP view template that draws this page\'s system region.'),
         'cancel' => array('enable' => 'true', 'url' => $back_url),
         'breadcrumb' => array(
-            array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
+            array('label' => lang('Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
             array('label' => $page['name'], 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $page['id']),
             array('label' => lang('Edit Layout')),
         ),

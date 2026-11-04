@@ -222,7 +222,7 @@ function test_form_payment_wiring()
 	$return = strpos($form, 'pg_form_payment_return(');
 	pg_assert_true(($return !== false) && ($return < strpos($form, 'validate_token_field();')), 'the return is taken before the token check');
 	pg_assert_contains('pg_form_payment_retry(', $form, 'the payment alone posts back here');
-	pg_assert_contains('&& ($form_fee === null)', $form, 'no e-mail for a record that owes a fee');
+	pg_assert_contains("'fee_owed'                      => (\$form_fee !== null),", $form, 'no e-mail for a record that owes a fee');
 	pg_assert_true(strpos($form, 'pg_form_payment_start(') < strpos($form, 'if ($quiz == 1) {' . "\n" . '        // if quiz score'), 'charged before the confirmation');
 
 	$widgets = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');

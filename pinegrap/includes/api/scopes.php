@@ -24,7 +24,8 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 // Resource groups, in the order the permission screen shows them. 'read' or
 // 'write' set to '' means the resource does not offer that half at all:
-// inventory is write-only (stock is read through products), meta is read-only.
+// inventory is write-only (stock, its locations and levels per location are
+// read under products:read), meta is read-only.
 // offers:write covers the offer's own row - switched on or off, its message,
 // its dates - and its removal; building one cannot be done from outside: an
 // offer is a rule with a condition tree and a result set behind it, and the

@@ -40,7 +40,7 @@
     }
 
     Editor.prototype.keyNow = function () {
-        return (this.time === null) ? 0 : this.time;
+        return (this.time === null) ? 0 : Math.max(0, Math.min(this.motionEnd(), this.motionNow()));
     };
 
     // ---- changes ----
@@ -102,7 +102,7 @@
 
             keys.forEach(function (k, n) {
                 list.appendChild(el('button', { type: 'button', class: 'pgie-chip' + ((n === i) ? ' on' : ''), 'aria-pressed': (n === i) ? 'true' : 'false', text: seconds(k.t), onclick: function () {
-                    self.seek(k.t);
+                    self.seek(self.motionStart() + k.t);
                     self.renderPanel();
                 } }));
             });
@@ -116,7 +116,7 @@
             body.appendChild(el('div', { class: 'pgie-actions' }, [button('pgie-btn', t('keysAdd').replace('{time}', seconds(now)), 'plus', function () {
                 var at = self.keyNow();
 
-                self.time = at;
+                self.time = self.motionStart() + at;
                 self.setKey(l.id, at, {});
             }, true)]));
         } else {
@@ -213,7 +213,7 @@
     // The movable layer drawn under p at the playhead: its keyed place, not
     // its rest, is where it shows.
     Editor.prototype.keyHit = function (p, inset) {
-        var end = this.motionEnd(), now = this.time, slack = (inset || 4) / this.view.k, layers = this.doc.layers;
+        var end = this.motionEnd(), now = this.motionNow(), slack = (inset || 4) / this.view.k, layers = this.doc.layers;
 
         for (var i = layers.length - 1; i >= 0; i--) {
             var l = layers[i];
@@ -240,7 +240,7 @@
     Editor.prototype.keyDown = function (e) {
         var p = this.toDoc(e.clientX, e.clientY), h = e.target.getAttribute && e.target.getAttribute('data-h'), hit, k;
 
-        if ((this.time === null) || !(this.time > 0) || this.playing || (h === 'rot') || e.shiftKey || (e.button > 0)) {
+        if ((this.time === null) || !(this.motionNow() > 0) || (this.motionNow() > this.motionEnd()) || this.playing || (h === 'rot') || e.shiftKey || (e.button > 0)) {
             return this.motionDown(e);
         }
 
@@ -257,8 +257,8 @@
             this.renderPanel();
         }
 
-        k = M.keyAt(hit, this.time) || { x: 0, y: 0 };
-        this.drag = { kind: 'key', at: p, start: M.clone(hit), t: this.time, x: k.x, y: k.y };
+        k = M.keyAt(hit, this.motionNow()) || { x: 0, y: 0 };
+        this.drag = { kind: 'key', at: p, start: M.clone(hit), t: this.motionNow(), x: k.x, y: k.y };
         e.preventDefault();
 
         try {
@@ -340,7 +340,7 @@
         }
 
         this.motionTab = 'keys';
-        this.seek(k.t);
+        this.seek(this.motionStart() + k.t);
         this.trackDragging = true;
 
         try {
@@ -361,7 +361,7 @@
             to = Math.max(0, Math.min(end, Math.round((k.t + (ev.clientX - x0) / width * end) / step) * step));
             d.style.left = pct(to, end);
             d.title = t('keysDiamond').replace('{time}', seconds(to));
-            self.seek(to);
+            self.seek(self.motionStart() + to);
         };
 
         var up = function () {
@@ -453,7 +453,7 @@
         var self = this, boxes = this.selEl ? this.selEl.querySelectorAll('.pgie-selbox') : [], picked = this.selected(), end = this.motionEnd();
 
         Array.prototype.forEach.call(boxes, function (b, i) {
-            var l = picked[i], st = (l && (self.time !== null)) ? M.motionAt(l, self.time, end) : null;
+            var l = picked[i], st = (l && (self.time !== null)) ? M.motionAt(l, self.motionNow(), end) : null;
 
             var moved = !!(st && (st.x || st.y));
 

@@ -76,6 +76,11 @@
         return M.textLayout(l, measure, metrics);
     }
 
+    // The layout the stage draws, for other parts (outlines).
+    Editor.prototype.textLayout = function (l) {
+        return layout(l);
+    };
+
     function same(a, b) {
         return String(a || '').replace(/\s/g, '').toLowerCase() === String(b || '').replace(/\s/g, '').toLowerCase();
     }

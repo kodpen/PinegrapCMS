@@ -83,7 +83,7 @@ function test_page_folder_left_out_verdict()
 
 function test_page_folder_pickers_use_the_page_picker()
 {
-	foreach (array('add_page.php' => 'select_folder($page_folder)', 'edit_page.php' => "select_folder(\$form_values['folder'])", 'edit_pages.php' => 'select_folder()') as $file => $old) {
+	foreach (array('add_page.php' => 'select_folder($page_folder)', 'edit_page.php' => "select_folder(\$form_values['folder'])", 'includes/fn/page_bulk.php' => 'select_folder()') as $file => $old) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('pg_page_select_folder(', $source, $file . ': page picker');

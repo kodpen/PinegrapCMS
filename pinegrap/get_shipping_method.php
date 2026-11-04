@@ -557,6 +557,9 @@ function get_shipping_method($properties) {
             }
         }
 
+        // A pickup method is offered only while its location holds the cart.
+        $shipping_methods = pg_stock_pickup_methods_filter($shipping_methods, (int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
         /* end: find all valid shipping methods for this recipient's shipping address and requested arrival date */
 
         // if form has not been filled out yet, get recipient data in order to populate fields
@@ -606,7 +609,7 @@ function get_shipping_method($properties) {
                 $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $shipping_method_name = $row['name'];
-                $shipping_method_description = $row['description'];
+                $shipping_method_description = pg_stock_pickup_describe($shipping_method_id, $row['description'], true);
                 $shipping_method_service = $row['service'];
                 $shipping_method_realtime_rate = $row['realtime_rate'];
                 $shipping_method_base_rate = $row['base_rate'];
@@ -1257,6 +1260,9 @@ function get_shipping_method($properties) {
             }
         }
 
+        // A pickup method is offered only while its location holds the cart.
+        $shipping_methods = pg_stock_pickup_methods_filter($shipping_methods, (int) ($_SESSION['ecommerce']['order_id'] ?? 0));
+
         /* end: find all valid shipping methods for this recipient's shipping address and requested arrival date */
 
         // if form has not been filled out yet, get selected shipping method.
@@ -1307,7 +1313,7 @@ function get_shipping_method($properties) {
                 $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $shipping_method_name = $row['name'];
-                $shipping_method_description = $row['description'];
+                $shipping_method_description = pg_stock_pickup_describe($shipping_method_id, $row['description']);
                 $shipping_method_service = $row['service'];
                 $shipping_method_realtime_rate = $row['realtime_rate'];
                 $shipping_method_base_rate = $row['base_rate'];

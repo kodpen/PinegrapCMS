@@ -1,6 +1,6 @@
 ---
 name: eu-vat-checkout
-description: The EU VAT check at checkout (SF6b1): when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer sees it, what SF6b2 adds
+description: The EU VAT check at checkout: when it runs, what each VIES answer does to tax_exempt and the three orders.vat_* columns, where the customer, the order screen, the API and the ERP invoice show it
 module: vat_checkout
 ---
 
@@ -18,13 +18,21 @@ module: vat_checkout
 - Billing information page: the notice goes to the `order_preview` liveform, which keeps its notices until the order is placed, so an earlier VAT notice is removed before a new one is added (`pg_vat_checkout_notices()`).
 - Express order: on the same form. A submit whose answer changes the tax is sent back by submit_order.php's "the total has changed" check, so nobody pays a total not seen.
 
-## What else changed?
-- The billing page's tax number box is 20 wide (`pg_vat_tax_number_width()`), 11 on a Turkish store. The express order starter widget (`widgets_express_order.php`) still has a 10-11 digit pattern for Turkish ids; widening it is left to SF6b2.
-- Migration step `upgrade_2026_11_0_order_vat_id()` adds the three columns (#5559, `workflow/decisions-made-schema-8.md`). There is no install dump: install runs the migrations.
-- No requester id is sent to VIES (no setting holds the site's own VAT id), so `vat_request_id` stays empty until one exists.
+## Where do the order screen, the printout, the API and the invoice show it?
+- `pg_vat_order_note($order)` (pure) gives the line: reverse charge, the id, the check time and the VIES consultation number; '' for an order without a confirmed id.
+- `view_order.php`: an "EU VAT ID" row under Tax-Exempt with the note; `print_order.php`: the note under the billing block.
+- API `orders` (list and get): `vat_id`, `vat_checked_at` (ISO, null when never), `vat_request_id`, read through `api_order_state_columns()`, so a site without the columns answers null.
+- ERP: an order's invoice is issued with the note in `erp_invoices.notes` (`erp_order_invoice_notes()` in `order_bridge.php`); the invoice template prints it.
 
-## What is left for SF6b2?
-- The ERP invoice's reverse-charge note with the id and check time, the account card's tax number check, the order screen / print view / API `orders` resource showing the three columns.
+## What about the tax number box?
+- The billing page's box is 20 wide (`pg_vat_tax_number_width()`), 11 on a Turkish store.
+- The express order form's box was drawn for Turkish ids (pattern `[0-9]{10,11}`). At render `_eo_fit_tax_number_field()` (`widgets_express_order.php`, called in `widgets_cart.php`) drops the pattern on a store outside Turkey, widens it to 20, makes it a text box and swaps the digits hint beside it for the VAT id hint (`pg_vat_tax_number_attrs_fit()`, `pg_vat_tax_number_hint()`).
+
+## What else?
+- Migration step `upgrade_2026_11_0_order_vat_id()` adds the three columns (#5559).
+- No requester id is sent to VIES (no setting holds the site's own VAT id): `vat_request_id` stays empty.
+- Still open: the ERP account card's tax number checked against VIES (plan step SF6b2b).
 
 ## Which tests cover it?
-- `tests/vat_checkout_test.php`: when the check applies, every outcome's flag, columns, error and notice, column widths, the box width.
+- `tests/vat_checkout_test.php`: when the check applies, every outcome's flag, columns, error and notice, column widths, the box width, the order note, the express box fit.
+- `tests/api_order_present_test.php`: the three API fields; `tests/erp_order_invoice_writer_test.php`: the invoice note.

@@ -565,6 +565,7 @@ function ws_editor_js_strings()
         'table_formula_hint'        => lang('A cell that starts with = is worked out: =B2*C2, =SUM(D2:D5) (TOPLA), + - * / and %, IF and comparisons; the names of the calculations in the same text work too (=B2*Rate). The header is row 1.'),
         'table_formula_bar'         => lang('The formula or the value of the cell'),
         'insert_to_note'            => lang('Add to the note'),
+        'insert_to_text'            => lang('Add to the text'),
         'block_calc'                => ws_js_template('Calculation · {var:1} line(s)', 1),
         'designer_calc'             => lang('Calculation'),
         'calc_placeholder'          => lang('Total = Rent + Dues'),
@@ -1180,4 +1181,53 @@ function ws_record_drawer_assets($user, $type)
     }
 
     return ws_screen_assets($viewer, 'record');
+}
+
+/**
+ * A refused Workspace Settings card form as the field names and values it
+ * posted, so the page can fill that form again: a list as name[] with its
+ * values in order, a keyed row as name[key]. The CSRF token, passwords,
+ * secrets and keys are left out (never kept in the session); ws_action and
+ * the record ids stay, they find the form.
+ *
+ * @param array  $post
+ * @param string $prefix the enclosing name, for nested rows
+ * @return array name => string, or name[] => string[]
+ */
+function ws_settings_refused_fields($post, $prefix = '')
+{
+    $out = array();
+
+    foreach ((array) $post as $key => $value) {
+        $key = (string) $key;
+
+        if (preg_match('/token|password|secret|(^|_)key$/i', $key)) {
+            continue;
+        }
+
+        $name = ($prefix === '') ? $key : $prefix . '[' . $key . ']';
+
+        if (!is_array($value)) {
+            $out[$name] = (string) $value;
+            continue;
+        }
+
+        if ($value === array()) {
+            continue;
+        }
+
+        $list = (array_keys($value) === range(0, count($value) - 1));
+
+        foreach ($value as $item) {
+            $list = $list && !is_array($item);
+        }
+
+        if ($list) {
+            $out[$name . '[]'] = array_map('strval', array_values($value));
+        } else {
+            $out += ws_settings_refused_fields($value, $name);
+        }
+    }
+
+    return $out;
 }

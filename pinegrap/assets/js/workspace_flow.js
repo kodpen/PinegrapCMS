@@ -1291,7 +1291,7 @@
             tone = 'warning';
         }
 
-        return el('span', 'badge rounded-pill wsf-status text-bg-' + tone + (small ? ' wsf-status-sm' : ''), text);
+        return el('span', 'badge rounded-pill wsf-status theme-' + tone + (small ? ' wsf-status-sm' : ''), text);
     }
 
     function listEntry(flow) {
@@ -1359,13 +1359,33 @@
     // Before another flow opens: what is still unsaved is saved. Changes
     // that cannot be saved (a save that failed, a draft changed on another
     // screen) are left behind only when the person says so.
-    function leaveFlow() {
+    // next: the flow opened instead (the same one is not left behind).
+    function leaveFlow(next) {
         return flush().then(function () {
             if (!state.flow || !drafting() || !(state.dirty || state.saveError || state.conflict)) {
+                dropUntouched(next);
                 return true;
             }
 
             return K.ask(t('fl_leave_ask'), t('fl_leave'), true);
+        });
+    }
+
+    // A blank canvas left as it was made - never published, still
+    // untitled, nothing drawn on it - is not kept: leaving it deletes it
+    // without asking, so New flow tried and left adds no empty row.
+    function dropUntouched(next) {
+        var flow = state.flow;
+        var graph = flow ? draftOf() : null;
+
+        if (!flow || (+flow.id === +next) || !flow.manage || (flow.status !== 'draft') || (flow.version > 0) || (flow.name !== t('fl_untitled'))
+            || graph.nodes.length || graph.edges.length || (graph.notes || []).length) {
+            return;
+        }
+
+        state.flows = state.flows.filter(function (item) { return item.id !== flow.id; });
+        K.api('ws_flow_bin', { flow_id: flow.id }).catch(function () {
+            // Kept after all: it is an ordinary draft in the list.
         });
     }
 
@@ -1378,7 +1398,7 @@
     // its title and line, how it starts, how many boxes and data threads it
     // has, and Use.
     function showGallery(into) {
-        leaveFlow().then(function (go) {
+        leaveFlow(into).then(function (go) {
             if (!go) {
                 refocus();
                 return;
@@ -2325,7 +2345,7 @@
 
     // fallback: the flow opened instead when this one cannot be.
     function open(id, fallback) {
-        return leaveFlow().then(function (go) {
+        return leaveFlow(id).then(function (go) {
             if (!go) {
                 refocus();
                 return false;
@@ -2648,6 +2668,12 @@
             var pause = K.button('btn btn-sm btn-outline theme-secondary', t('fl_pause'), 'bi-pause-circle');
             pause.addEventListener('click', function () { act('ws_flow_pause', pause, t('fl_paused')); });
             ui.bar.appendChild(pause);
+        } else if ((flow.status === 'paused') && flow.manage) {
+            // Live again on the version it was paused at; Publish would make
+            // the same draft a new version.
+            var resume = K.button('btn btn-sm btn-outline theme-secondary', t('fl_resume'), 'bi-play-circle');
+            resume.addEventListener('click', function () { act('ws_flow_resume', resume, t('fl_resumed')); });
+            ui.bar.appendChild(resume);
         }
 
         moreMenu();
@@ -3172,14 +3198,15 @@
 
     // Where a value of a box may go: the open fields of every box that may
     // read it from that box (valueSources(), so the boxes after it, and any
-    // box for what started the run), except those already holding it.
+    // box for what started the run; a value box only what derivedOffer()
+    // lets it read), except those already holding it.
     function bindTargets(from, token) {
         var out = [];
 
         state.graph.nodes.forEach(function (node) {
             var source = valueSources(node)[token];
 
-            if (!source || (source.node.id !== from)) {
+            if (!source || (source.node.id !== from) || ((node.kind === 'value') && !derivedOffer(node)(from))) {
                 return;
             }
 
@@ -4766,6 +4793,86 @@
         return groups;
     }
 
+    // Which boxes a derived value box may be given a value of ("Add value",
+    // a thread dropped on it), as a test of a box id. Its value is worked out
+    // when a box reads it, so a box it reads must come before every box that
+    // reads it, directly or through other value boxes, as the server checks
+    // there (ws_flow_derived_sources()); a value box that reads it would read
+    // itself (ws_flow_derived_loops()). What started the run and a constants
+    // box come first anyway. Any box while nothing reads it.
+    function derivedOffer(node) {
+        var reads = {};
+        var chain = {};
+        var grew = true;
+
+        state.graph.nodes.forEach(function (other) {
+            var ids = {};
+
+            fieldTexts(other).forEach(function (item) {
+                var match;
+
+                VALUE_TOKEN.lastIndex = 0;
+
+                while ((match = VALUE_TOKEN.exec(item.text)) !== null) {
+                    if (match[1]) {
+                        ids[match[1]] = true;
+                    }
+                }
+            });
+            reads[other.id] = ids;
+        });
+
+        chain[node.id] = true;
+
+        while (grew) {
+            grew = false;
+            state.graph.nodes.forEach(function (other) {
+                if ((other.kind === 'value') && !chain[other.id] && Object.keys(reads[other.id]).some(function (id) { return chain[id]; })) {
+                    chain[other.id] = true;
+                    grew = true;
+                }
+            });
+        }
+
+        var maps = arrowMaps();
+        var into = {};
+        var shared = null;
+
+        Object.keys(maps.next).forEach(function (id) {
+            into[id] = [];
+        });
+        Object.keys(maps.next).forEach(function (from) {
+            maps.next[from].forEach(function (to) {
+                into[to].push(from);
+            });
+        });
+        state.graph.nodes.forEach(function (other) {
+            if (kindOf(other).pure || !Object.keys(reads[other.id]).some(function (id) { return chain[id]; })) {
+                return;
+            }
+
+            var before = boxesBefore(into, other.id);
+
+            shared = shared ? Object.keys(shared).reduce(function (out, id) {
+                if (before[id]) {
+                    out[id] = true;
+                }
+
+                return out;
+            }, {}) : before;
+        });
+
+        return function (id) {
+            var other = nodeById(id);
+
+            if (!other || chain[id]) {
+                return false;
+            }
+
+            return !shared || !kindOf(other).into || !!kindOf(other).pure || !!shared[id];
+        };
+    }
+
     // token => the box that gives it, the value and whether that box may be
     // skipped.
     function valueSources(node) {
@@ -5280,7 +5387,10 @@
                 return;
             }
 
-            var groups = valueGroups(node).map(function (group) {
+            var offer = (node.kind === 'value') ? derivedOffer(node) : null;
+            var groups = valueGroups(node).filter(function (group) {
+                return !offer || offer(group.node.id);
+            }).map(function (group) {
                 return takes ? { node: group.node, skipped: group.skipped, values: group.values.filter(function (one) { return takes({ node: group.node, value: one }); }) } : group;
             }).filter(function (group) {
                 return group.values.length > 0;

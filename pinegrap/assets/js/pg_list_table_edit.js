@@ -320,8 +320,13 @@
             }
         }
 
+        // The row's name is its first cell's text. That cell may be an open
+        // field itself (quick edit opens a row's fields in order), so its text
+        // is the one kept when it opened, not the empty text it has now.
+        var nameText = name ? (name.pgQuick ? (name.pgQuickName || '') : name.textContent.trim()) : '';
+
         // No name: the field never travels with a form the list sits in.
-        control.setAttribute('aria-label', String(def.label || '') + ((name && (name !== cell)) ? ': ' + name.textContent.trim() : ''));
+        control.setAttribute('aria-label', String(def.label || '') + ((name && (name !== cell) && (nameText !== '')) ? ': ' + nameText : ''));
 
         var note = document.createElement('div');
 
@@ -331,6 +336,7 @@
         control.setAttribute('aria-describedby', note.id);
 
         cell.pgQuickHtml = cell.innerHTML;
+        cell.pgQuickName = cell.textContent.trim();
         cell.pgQuick = { control: control, note: note, def: def };
         cell.textContent = '';
         cell.appendChild(control);

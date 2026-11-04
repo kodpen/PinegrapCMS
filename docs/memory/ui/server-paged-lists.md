@@ -5,7 +5,7 @@ module: list_paging
 ---
 
 ## Which lists are paged on the server, and why?
-- Pages (#6114), users (#2460, then #6325), contacts (#2528, then #6347) and submitted forms (#2509, then #6366) moved to the list table driver (`ui/page-list-paging.md`, `ui/list-table-driver.md`), and so did the Site Log, audit and firewall log (#6386: `ui/site-log-paging.md`, `ui/audit-log-paging.md`, `ui/waf-log-paging.md`). Products (#2655), commissions (#2675): `ui/product-list-paging.md`, `ui/commission-list-paging.md`.
+- Pages (#6114), users (#2460, then #6325), contacts (#2528, then #6347), submitted forms (#2509, then #6366), commissions (#2675, then #6380) and the mail queue (#6380) moved to the list table driver (`ui/page-list-paging.md`, `ui/list-table-driver.md`, `ui/commission-list-paging.md`, `ui/mail-queue-paging.md`), and so did the Site Log, audit and firewall log (#6386: `ui/site-log-paging.md`, `ui/audit-log-paging.md`, `ui/waf-log-paging.md`). Products (#2655): `ui/product-list-paging.md`.
 
 ## How does such a screen work?
 - The screen draws the toolbar and headings only; its `table.chart` carries `data-pg-list-action` (the `api.php` action) and `data-pg-list-params` (JSON, e.g. the filter). `pgListServerOptions()` in `backend.src.js` turns DataTables to `serverSide`: each draw posts `{action, token, draw, start, length, search, ...params}`.

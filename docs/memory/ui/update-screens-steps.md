@@ -15,8 +15,9 @@ description: Software Updater, Repair Software and Backup Manager: the step loop
 ## Where does the step text go?
 - Below the bar, in `<div class="logbox form-text" role="status">`. Inside `.progress-bar` Bootstrap 6 clips it (1rem high, `overflow: hidden`, `white-space: nowrap`) to the bar's current width and one line. `aria-valuenow` follows each width (`set_width()`; `software_backup_updateProgress()` in `backend.src.js` for the backup screen).
 
-## Why does Return in Backup Name not download a backup?
-- The field sits in `form#backupform`, whose first submit button is the first row's Download. A `keyup` handler runs after the browser's implicit submission, so Return downloaded a backup and started a new one. `backups.php` catches Return on `keydown` (skipping `event.isComposing`), prevents it and clicks `#backup`; the duplicate `keyup` handler in `backend.src.js` is gone.
+## Where is the backup action and how does a failed step look?
+- Backup Name and Backup sit in the screen toolbar's primary slot, outside `form#backupform`, with the bar and logbox under it. Return is caught on `keydown` (not `isComposing`) and clicks `#backup`; inside the form it had submitted the first row's Download.
+- A failed step (`software_backup_handleError()`) fills the bar red (`bg-danger`, no animation) and `.logbox.software_error` is `--pg-danger-ink`; before, an error looked like a running step.
 
 ## What happens when a backup cannot copy every file?
 - `move_files` and `move_layouts` (`includes/panel/software.php`) copy through `pg_backup_copy_folder()` (`includes/fn/backup.php`): regular files only, and a file counts as failed when `copy()` fails or the copy's size differs. On any failure the step answers status `error` with `pg_backup_copy_failure_message()` (count, first three names, "Free some disk space and try again."), logs `Software Backup (…) failed: …` and removes the folder with `pg_backup_delete_tree()`, which also gives the space back.

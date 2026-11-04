@@ -16,8 +16,8 @@ module: activitypub_outbox
 
 ## What does the queue hold?
 - Per activity one log row (`inbox = ''`, `state = 'sent'`, the activity as `body`) and one delivery row per inbox (`pg_ap_delivery_inboxes()`: shared inbox, else the follower's own, each once, https only). The log is the sweep's memory and the outbox collection; delivery rows are removed 30 days after they were sent or failed.
-- Activity id `<object id>#<create|update|delete>-<time>`, read back by `pg_ap_activity_key()`. Object ids `<actor>/p/<page id>` and `<actor>/r/<record id>`: stable across renames. They do not dereference yet (no route answers them).
-- `pg_ap_queue(..., false)`: delivery rows only (the inbox's Accept).
+- Activity id `<object id>#<create|update|delete>-<time>`, read back by `pg_ap_activity_key()`. Object ids `<actor>/p/<page id>` and `<actor>/r/<record id>`: stable across renames. Not dereferenceable yet.
+- `pg_ap_queue()` lives here (the inbox requires it): the sweep logs (`$logged = true`); the Accept gets one delivery row, never twice.
 
 ## What does an Article look like?
 - `pg_ap_object_for_page()` / `pg_ap_object_for_record()` → `pg_ap_article()`: name, content, `mediaType` text/html, url, published, updated (when later), to Public, cc followers, Image attachments (a record's RSS media field when everyone may open it). Expected shape: `tests/fixtures/activitypub/blog_create_article.json`.

@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The menu form, shared by the create and the edit screens (add_menu.php,
- * edit_menu.php): the Menu Options card, the name rule and its uniqueness
- * check, and the column values a save writes. The screens keep what
- * differs: the edit screen loads the record, shows the body tag and the
- * Duplicate link, deletes, and goes back to where it was opened from.
+ * edit_menu.php): the form and status columns with the save bar, the
+ * name rule and its uniqueness check, and the column values a save writes.
+ * The screens keep what differs: the edit screen loads the record, counts
+ * its items, shows the Duplicate link, deletes, and goes back to where it
+ * was opened from.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,16 +22,21 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/tag_name_rule.php');
 
 /**
- * The Menu Options card: name, submenu effect with its pop-up positions,
- * the menu classes and the active item classes.
+ * The form column (Menu Options, Submenu Effect and Classes cards) and the
+ * sticky status column (a Summary of the body tag and the effect, plus the
+ * menu's item count on edit), in the edit screen layout of
+ * product_builder.php. Below lg the status column follows the form in
+ * source order.
  *
  * @param liveform $liveform
- * @param string|null $stored_name  Edited menu's stored name, null on create
+ * @param array $form  'stored_name' (edited menu's stored name, null on
+ *                     create), 'status' (extra Summary rows, HTML)
  * @return string
  */
-function pg_menu_form_card($liveform, $stored_name = null)
+function pg_menu_form_cards($liveform, $form = array())
 {
-    $name_pattern = pg_menu_form_name_pattern($stored_name);
+    $form = array_merge(array('stored_name' => null, 'status' => ''), $form);
+    $name_pattern = pg_menu_form_name_pattern($form['stored_name']);
     $name_hint = (strpos($name_pattern, '_') !== false)
         ? lang('Only English letters (a-z), digits, dashes and underscores; no accented letters or spaces.')
         : lang('Only English letters (a-z), digits and dashes; no accented letters or spaces.');
@@ -42,16 +48,19 @@ function pg_menu_form_card($liveform, $stored_name = null)
             lang('Left') => 'Left',
             lang('Right') => 'Right');
 
+    $effect_labels = pg_menu_form_effect_labels();
+    $effect = (string) $liveform->get_field_value('effect');
+    $effect_label = $effect_labels[$effect] ?? '';
+
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Menu Options') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 sm:col-4 my-3">
+                                        <div class="col-12 md:col-8 lg:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Menu Name') . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<menu>') . '</div>
@@ -60,46 +69,141 @@ function pg_menu_form_card($liveform, $stored_name = null)
                                             </div>
                                             <div class="form-text" id="name_hint">' . h($name_hint) . '</div>
                                         </div>
-                                        <div class="col-12 mt-1">
-                                            <div class="form-label" id="effect_label">'. lang('Submenu Effect') . '</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold" id="effect_label">
+                                    ' . lang('Submenu Effect') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <style>@layer custom { html[data-bs-theme="dark"] .pg-menu-effect-picture { filter: invert(1); } }</style>
+                                    <div role="radiogroup" aria-labelledby="effect_label" class="my-3">
+                                        <div class="form-field d-inline-grid me-5" title="">
+                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_popup',  'name'=>'effect', 'value'=>'Pop-up', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#pop-up_row')) . '
+                                            <label class="" for="effect_popup">'. lang('Pop-up') . '<br><img src="assets/images/menu_effect_popup.png" width="71" height="75" alt="" class="pg-menu-effect-picture" /></label>
                                         </div>
-                                        <div class="col-12 mb-1">
-                                            <style>@layer custom { html[data-bs-theme="dark"] .pg-menu-effect-picture { filter: invert(1); } }</style>
-                                            <div role="radiogroup" aria-labelledby="effect_label">
-                                            <div class="form-field d-inline-grid me-5" title="">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_popup',  'name'=>'effect', 'value'=>'Pop-up', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#pop-up_row')) . '
-                                                <label class="" for="effect_popup">'. lang('Pop-up') . '<br><img src="assets/images/menu_effect_popup.png" width="71" height="75" alt="" class="pg-menu-effect-picture" /></label>
-                                            </div>
-                                            <div class="form-field d-inline-grid me-5">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_accordion', 'name'=>'effect', 'value'=>'Accordion', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="effect_accordion">'. lang('Accordion') . '<br><img src="assets/images/menu_effect_accordion.png" width="56" height="75" alt="" class="pg-menu-effect-picture" /></label>
-                                            </div>
-                                            <div class="form-field d-inline-grid me-5">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_none', 'name'=>'effect', 'value'=>'', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="effect_none">'. lang('None') . '<br><img src="assets/images/menu_effect_none.png" width="56" height="75" alt="" class="pg-menu-effect-picture" /></label>
-                                            </div>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="pop-up_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 md:col-6 my-1">
-                                                            <label for="first_level_popup_position" class="form-label">' . lang('First Expand Menu') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'first_level_popup_position', 'id'=>'first_level_popup_position', 'options'=>$popup_position_options)) . '
-                                                        </div>
-                                                        <div class="col-12 md:col-6 my-1">
-                                                            <label for="second_level_popup_position" class="form-label">' . lang('Then Expand Menu') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'second_level_popup_position', 'id'=>'second_level_popup_position', 'options'=>$popup_position_options)) . '
-                                                        </div>
-                                                    </div>
+                                        <div class="form-field d-inline-grid me-5">
+                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_accordion', 'name'=>'effect', 'value'=>'Accordion', 'class'=>'radio collapse-switcher')) . '
+                                            <label class="" for="effect_accordion">'. lang('Accordion') . '<br><img src="assets/images/menu_effect_accordion.png" width="56" height="75" alt="" class="pg-menu-effect-picture" /></label>
+                                        </div>
+                                        <div class="form-field d-inline-grid me-5">
+                                            ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_none', 'name'=>'effect', 'value'=>'', 'class'=>'radio collapse-switcher')) . '
+                                            <label class="" for="effect_none">'. lang('None') . '<br><img src="assets/images/menu_effect_none.png" width="56" height="75" alt="" class="pg-menu-effect-picture" /></label>
+                                        </div>
+                                    </div>
+                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="pop-up_row">
+                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
+                                        <div class="popover-body">
+                                            <div class="row">
+                                                <div class="col-12 md:col-6 my-1">
+                                                    <label for="first_level_popup_position" class="form-label">' . lang('First Expand Menu') . '</label>
+                                                    ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'first_level_popup_position', 'id'=>'first_level_popup_position', 'options'=>$popup_position_options)) . '
+                                                </div>
+                                                <div class="col-12 md:col-6 my-1">
+                                                    <label for="second_level_popup_position" class="form-label">' . lang('Then Expand Menu') . '</label>
+                                                    ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'second_level_popup_position', 'id'=>'second_level_popup_position', 'options'=>$popup_position_options)) . '
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Classes') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <div class="row">
                                         ' . pg_menu_form_class_field($liveform, 'class', lang('Classes'), '&lt;ul class="<span class="chip">software_menu</span>', lang('One or More Custom Classes for the Menu. Separate classes with a space')) . '
                                         ' . pg_menu_form_class_field($liveform, 'active_item_class', lang('Active Item Classes'), '&lt;a class="current', lang('One or More Classes for the Active Menu Item. Separate classes with a space')) . '
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">
+                                            <div class="py-2 border-bottom">
+                                                <dt class="fw-normal">' . lang('Page Style Body Tag') . '</dt>
+                                                <dd class="mb-0 text-break"><code id="menu_summary_tag">' . h('<menu>' . (string) $liveform->get_field_value('name') . '</menu>') . '</code></dd>
+                                            </div>
+                                            <div class="d-flex justify-content-between py-2' . ($form['status'] !== '' ? ' border-bottom' : '') . '">
+                                                <dt class="fw-normal">' . lang('Submenu Effect') . '</dt>
+                                                <dd class="mb-0 fw-bold" id="menu_summary_effect" data-labels="' . h(json_encode($effect_labels)) . '">' . h($effect_label) . '</dd>
+                                            </div>' . $form['status'] . '
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            $(document).on(\'input\', \'#name\', function () {
+                                $(\'#menu_summary_tag\').text(\'<menu>\' + this.value + \'</menu>\');
+                            });
+                            $(document).on(\'change\', \'input[name="effect"]\', function () {
+                                var $effect = $(\'#menu_summary_effect\');
+                                $effect.text($effect.data(\'labels\')[this.value] || \'\');
+                            });
+                        </script>';
+}
+
+/**
+ * The shown name of each stored submenu effect.
+ *
+ * @return array  effect column value => label
+ */
+function pg_menu_form_effect_labels()
+{
+    return array(
+        'Pop-up' => lang('Pop-up'),
+        'Accordion' => lang('Accordion'),
+        '' => lang('None'),
+    );
+}
+
+/**
+ * The Summary row of the edit screen: how many items the menu holds, linked
+ * to its items screen.
+ *
+ * @param int $item_count
+ * @param string $items_url  The menu items screen, already escaped for HTML
+ * @return string
+ */
+function pg_menu_form_items_status($item_count, $items_url)
+{
+    return '
+                                            <div class="d-flex justify-content-between py-2">
+                                                <dt class="fw-normal"><a href="' . $items_url . '">' . lang('Menu Items') . '</a></dt>
+                                                <dd class="mb-0 fw-bold" id="menu_summary_items">' . (int) $item_count . '</dd>
+                                            </div>';
+}
+
+/**
+ * The screen row: the cards (pg_menu_form_cards()) and the sticky save bar
+ * with the given buttons.
+ *
+ * @param string $cards    pg_menu_form_cards()
+ * @param string $buttons  The buttons inside the bar's group
+ * @return string
+ */
+function pg_menu_form_layout($cards, $buttons)
+{
+    return '
+                    <div class="row">' . $cards . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
                     </div>';
 }
@@ -117,7 +221,7 @@ function pg_menu_form_card($liveform, $stored_name = null)
  */
 function pg_menu_form_class_field($liveform, $name, $label, $prefix, $help)
 {
-    return '<div class="col-12 mt-5 mb-3">
+    return '<div class="col-12 my-3">
                                             <label for="' . $name . '" class="form-label">' . $label . '</label>
                                             <div class="input-group input-group-sm d-flex flex-wrap border rounded-4 border-2">
                                                 <div class="input-group-text bg-reset border-0">' . $prefix . '</div>

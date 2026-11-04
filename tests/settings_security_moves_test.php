@@ -114,8 +114,11 @@ function test_settings_security_moves_encryption_key()
 	$save = settings_security_moves_test_source('includes/settings/security.save.php');
 	pg_assert_contains("post_value('ecommerce_reset_encryption_key')", $save, 'the Accounts and sign-in save reads the switch');
 	pg_assert_contains('generate_encryption_key()', $save, 'and makes the key');
-	pg_assert_contains('encrypt_credit_card_number(', $save, 'the stored card numbers follow the new key');
-	pg_assert_contains('pg_gateway_secret_for_save(', $save, 'the gateway secrets follow the new key');
+	pg_assert_contains('pg_reseal_run(', $save, 'the sealed values follow the new key');
+
+	$reseal = settings_security_moves_test_source('includes/fn/reseal.php');
+	pg_assert_contains('encrypt_credit_card_number(', $reseal, 'the stored card numbers follow the new key');
+	pg_assert_contains('pg_gateway_secret_for_save(', $reseal, 'the gateway secrets follow the new key');
 }
 
 function test_settings_security_moves_mfa_hint()

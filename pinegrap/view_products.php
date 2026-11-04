@@ -29,7 +29,7 @@ if (pg_list_edit_requested()) {
         return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
     });
 
-    $saved = pg_pb_quick_update($edit['id'], $edit['field'], $edit['value']);
+    $saved = pg_pb_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user']);
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }
@@ -103,6 +103,26 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
 
 // else the user did not select to export products, so just list products
 } else {
+    // Refresh stale SEO scores before the views are counted and the list is
+    // fetched (a weak-score view counts only current scores) - newest records
+    // first, since those are the likeliest to be on the first screen - capped
+    // per request so a large catalog cannot stall the page; leftovers are
+    // covered by the nightly job and the refresh button on the Pages screen.
+    if (pg_seo_schema_ready()) {
+        $stale_product_ids = array();
+        $stale_result = mysqli_query(db::$con, "SELECT id FROM products WHERE seo_analysis_current = 0 ORDER BY timestamp DESC LIMIT 200") or output_error('Query failed.');
+
+        while ($stale_row = mysqli_fetch_assoc($stale_result)) {
+            $stale_product_ids[] = $stale_row['id'];
+        }
+
+        if ($stale_product_ids) {
+            // Budgeted for the same reason as the pages screen: this is
+            // synchronous work inside the visitor's request.
+            pg_seo_recalculate('product', $stale_product_ids, 3);
+        }
+    }
+
     // The filter menu, each view with its count.
     $output_filter_options = '';
     $all_products = null;
@@ -120,25 +140,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
         }
 
         $output_filter_options .= '<option value="' . h($option) . '"' . (($option == $filter) ? ' selected="selected"' : '') . '>' . h($option_view['label']) . ' (' . pg_format_number($count, 0) . ')</option>';
-    }
-
-    // Refresh stale SEO scores before the list is fetched - newest records
-    // first, since those are the likeliest to be on the first screen - capped
-    // per request so a large catalog cannot stall the page; leftovers are
-    // covered by the nightly job and the refresh button on the Pages screen.
-    if (pg_seo_schema_ready()) {
-        $stale_product_ids = array();
-        $stale_result = mysqli_query(db::$con, "SELECT id FROM products WHERE seo_analysis_current = 0 ORDER BY timestamp DESC LIMIT 200") or output_error('Query failed.');
-
-        while ($stale_row = mysqli_fetch_assoc($stale_result)) {
-            $stale_product_ids[] = $stale_row['id'];
-        }
-
-        if ($stale_product_ids) {
-            // Budgeted for the same reason as the pages screen: this is
-            // synchronous work inside the visitor's request.
-            pg_seo_recalculate('product', $stale_product_ids, 3);
-        }
     }
 
     // The list table driver prints the first rows; the next ones come from
@@ -172,13 +173,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 ' . $liveform->output_notices() . '
                
                 <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-                            <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_product.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
-                            <a class="btn btn-sm btn-outline theme-secondary m-1" href="view_products.php?mode=variant_sets"><span class="bi bi-grid me-3"></span>' . lang('Variant Sets') . '</a>
+                            <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_product.php"><i class="bi bi-plus-circle me-2" aria-hidden="true"></i>' . lang(array('string'=>'Create') ) . '</a>
+                            <a class="btn btn-sm btn-text theme-secondary" href="view_products.php?mode=variant_sets"><i class="bi bi-grid me-2" aria-hidden="true"></i>' . lang('Variant Sets') . '</a>
+                            <a class="btn btn-sm btn-text theme-secondary" href="import_products.php"><i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>' . lang(array('string'=>'Import') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
-                                <div class=" btn-group btn-group-sm flex-wrap">
-                                    <a class="btn btn-link pg-link-secondary py-0 m-1" href="import_products.php"><span class="bi bi-box-arrow-in-right me-1"></span>' . lang(array('string'=>'Import') ) . '</a>
-                                    <button type="submit" name="submit_data" value="Export Products" class="btn btn-link pg-link-secondary py-0 m-1"><span class="material-icons me-1">file_download</span>' . lang(array('string'=>'Export') ) . '</button>
-                                </div>
+                                <button type="submit" name="submit_data" value="Export Products" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>' . lang(array('string'=>'Export') ) . '</button>
                             </form>
                             <div class="pg-toolbar-grow"></div>
                             <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
@@ -188,7 +187,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                             ' . pg_list_sort_menu('view_products.php', $view['sort_columns'], $view['sort_levels'], $view['sort_default']) . '
                             <form id="search_form" action="view_products.php" method="get" class="search_form">
                                 <div class="input-group input-group-sm">
-                                    <label class="input-group-text material-icons" title="' . lang('Products shown') . '" for="filter_select">visibility</label>
+                                    <label class="input-group-text" title="' . h(lang('Products shown')) . '" for="filter_select"><i class="bi bi-eye" aria-hidden="true"></i></label>
                                     <select id="filter_select" aria-label="' . h(lang('Products shown')) . '" name="filter" class="form-control" title="' . lang('Products shown') . '" onchange="submit_form(\'search_form\')">' . $output_filter_options . '</select>
                                 </div>
                             </form>

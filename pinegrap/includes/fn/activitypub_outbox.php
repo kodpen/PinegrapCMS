@@ -696,25 +696,41 @@ function pg_ap_published_article($site, $object_id, $entry)
 }
 
 /**
- * Queues one activity: its log row, and one delivery row per inbox.
+ * Queues one activity: its log row, and one delivery row per inbox. A
+ * delivery of an unlogged activity (an Accept) already waiting for the same
+ * inbox is not queued twice, so a repeated Follow gets one Accept.
  *
- * @param array $activity
- * @param array $inboxes pg_ap_delivery_inboxes()
- * @param int   $now
- * @param bool  $logged  false: delivery rows only (an activity the sweep
- *                       does not read back, an Accept)
+ * @param array        $activity
+ * @param array|string $inboxes pg_ap_delivery_inboxes(), or one inbox
+ * @param int|null     $now     null: the current time
+ * @param bool         $logged  true: also the log row the sweep reads back
+ *                              (Create, Update, Delete)
+ * @return bool false when a row could not be written
  */
-function pg_ap_queue($activity, $inboxes, $now, $logged = true)
+function pg_ap_queue($activity, $inboxes, $now = null, $logged = false)
 {
+    $now = ($now === null) ? time() : (int) $now;
+    $id = isset($activity['id']) ? (string) $activity['id'] : '';
     $body = json_encode($activity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $ok = true;
 
     if ($logged) {
-        db_q("INSERT INTO ap_outbox (activity_id, inbox, body, attempts, next_at, state, created_at) VALUES (?, '', ?, 0, 0, 'sent', ?)", array($activity['id'], $body, (int) $now));
+        $ok = (bool) db_q("INSERT INTO ap_outbox (activity_id, inbox, body, attempts, next_at, state, created_at) VALUES (?, '', ?, 0, 0, 'sent', ?)", array($id, $body, $now));
     }
 
     foreach ((array) $inboxes as $inbox) {
-        db_q("INSERT INTO ap_outbox (activity_id, inbox, body, attempts, next_at, state, created_at) VALUES (?, ?, ?, 0, ?, 'queued', ?)", array($activity['id'], $inbox, $body, (int) $now, (int) $now));
+        if (!$logged) {
+            $waiting = db_q("SELECT id FROM ap_outbox WHERE activity_id = ? AND inbox = ? AND state = 'queued' LIMIT 1", array($id, $inbox));
+
+            if ($waiting && mysqli_num_rows($waiting)) {
+                continue;
+            }
+        }
+
+        $ok = (bool) db_q("INSERT INTO ap_outbox (activity_id, inbox, body, attempts, next_at, state, created_at) VALUES (?, ?, ?, 0, ?, 'queued', ?)", array($id, $inbox, $body, $now, $now)) && $ok;
     }
+
+    return $ok;
 }
 
 /**
@@ -770,7 +786,7 @@ function pg_ap_outbox_sweep($now)
             $activity = pg_ap_activity($site, $step['type'], pg_ap_published_article($site, $object_id, $current[$object_id]), $current[$object_id]['stamp']);
         }
 
-        pg_ap_queue($activity, $inboxes, $now);
+        pg_ap_queue($activity, $inboxes, $now, true);
         $out['queued']++;
     }
 

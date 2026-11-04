@@ -482,9 +482,10 @@ $pg_settings_cards[] = '
 
 // ── Encryption Key ──
 // The key in config.php that seals stored card numbers, the payment gateway
-// secrets and the two-step verification keys. The switch keeps its post name;
-// security.save.php makes the key and seals the card numbers and gateway
-// secrets again with it.
+// secrets and the other stored secrets. The switch keeps its post name;
+// security.save.php makes the key and seals again with it what the re-seal
+// registry lists. prep.php lists under the switch what is carried over and
+// what is lost; the save requires the confirmation box under the second list.
 $pg_settings_cards[] = '
     <div id="pgset-encryption" class="pg-set-card">
         <div class="card">
@@ -497,7 +498,7 @@ $pg_settings_cards[] = '
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="" type="checkbox" id="ecommerce_reset_encryption_key" name="ecommerce_reset_encryption_key"/></div>
                                                 <label class="" for="ecommerce_reset_encryption_key">' . lang('Reset Encryption Key') . '</label>
-                                                <div class="form-text">' . lang('Makes a new key in config.php. Card numbers kept with orders and the payment gateway secrets are encrypted again with it; two-step verification needs a key.') . $ecommerce_reset_encryption_key_disabled_message . '</div>
+                                                <div class="form-text">' . lang('Makes a new key in config.php and seals the stored secrets listed below again with it in the same save. Signed-in devices have to pair again.') . $ecommerce_reset_encryption_key_disabled_message . '</div>' . $encryption_key_reset_losses . '
                                             </div>
                                         </div>
                 </div>

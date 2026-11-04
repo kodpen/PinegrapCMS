@@ -135,7 +135,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flow-ai-drafts.md: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema and hints, graph or patch, auto layout, the card's window (D8b), a patch opened onto its flow and marked (D8c)
 - workspace-flow-ai-hints.md: What Pinegrap AI is told beyond the box catalogue when it drafts a flow, what is read for it (a lone retry, next after a step, a post meant as a question), and the hints a retry carries
 - workspace-flow-ai-start.md: New flow from a sentence (G1b #3119, #3266): ws_flow_ai_sketch() asks Pinegrap AI for a flow in propose_flow's shape, one retry, saved as a draft; the panel route and the gallery's AI card
-- workspace-flow-draft-card-window.md: The flow draft card as a mini flow window (D8b #3032, V7a #3393, V7b #3493): 128 × 60 px boxes, arrows and threads to the spec, the dry run as each box's third line, link, try and Edit here per box
+- workspace-flow-draft-card-window.md: The flow draft card as a read-only mini flow window (D8b #3032, V7a #3393): 128 × 60 px boxes, arrows and threads to the spec, the dry run as each box's third line, link and try per box
 - workspace-flow-draft-proposals.md: An application, or Claude in a channel answer, proposes a flow as a draft card ({type: flow}, A8): what is sent, checked, kept, how the card opens it, {type: scheduled}
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists
 - workspace-flows-api-filters.md: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122); the Flows screen's start filter (C4, PR #2391)
@@ -145,7 +145,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-box-look.md: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, palette wrapping
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
 - workspace-flows-canvas-harness.md: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, by hand, not in CI): what is real, how to run it, the scenarios, the result, touch emulation
-- workspace-flows-canvas-leave-focus.md: Flow canvas: one keepalive save as the page is left (state.leaveSent) and the box's focus after C › Add the arrow (#4318, #4319, PR #4322)
+- workspace-flows-canvas-leave-focus.md: Flow canvas: an untouched blank canvas binned when left, one keepalive save as the page is left (state.leaveSent) and the box's focus after C › Add the arrow (#4318, #4319, PR #4322)
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 - workspace-flows-catalogue.md: The box catalogue GET /workspace/flow-kinds (settings read from the normalizers) and GET /workspace/flows/{id}/validate (the publish check without publishing), flow_catalogue.php
 - workspace-flows-chain-box.md: The start a flow box (PR #2235, flow_runs.php): another live flow started by hand, started by a box with the owner's rights, depth 8, start key per box, {{source}}, what non-editors read
@@ -209,7 +209,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-undo.md: Undo and redo on the flow canvas (workspace_flow.js): the toolbar buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, the history of graph snapshots, which changes fold into one step, when it resets
 - workspace-flows-value-boxes.md: Value boxes of a flow (T3, decision #2415 1a): the constants box's rows, no arrows and no run row, how value boxes are read in a run, the check, the canvas form
 - workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6): the text boxes with value chips, what the list offers, "empty if skipped", how a chip is kept and edited
-- workspace-flows-versions.md: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
+- workspace-flows-versions.md: A paused flow resumed on its live version (canvas Resume and API), and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 - workspace-flows-visual-spec.md: The Flows canvas look in numbers (owner, 2026-10-27): lines, type colours and tones, thread sag, icons, run flags, mini window, template motion; all on screen (#4386)
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none
 - workspace-flows-webhook-body.md: The webhook box's answer as its body output (D9a, PR #2985, decision #2414-2): 16 KB UTF-8 cut, the run row's result budget, held back from readers who may not change the flow
@@ -265,6 +265,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-scheduled-draft-proposals.md: A connected app proposes a scheduled action (type scheduled in workspace.changes.propose): body, the save check, kept as a flow draft card since C5b, older scheduled cards, why never on a task
 - workspace-screen-companion-scripts.md: Why the Flows canvas and the channel Board tab wait for their own bundle (workspace_flow.js, workspace_board_channel.js) instead of racing ws_bootstrap; the "script did not load" fallback (#2516)
 - workspace-screen-frame.md: Which Workspace screens pad their own main area, where sticky columns stop, how the MCP servers card wraps on a phone
+- workspace-settings-card-saves.md: Workspace Settings card saves: list allow-list, refused form refilled with its error, rank rule for team rows, hours and holiday checks, mailbox fields
 - workspace-settings-row-names.md: Workspace Settings rows name their person or department, hours boxes use the panel's decimal separator, the Claude guide's copy fields are named (#2918); no two active departments of one name
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed

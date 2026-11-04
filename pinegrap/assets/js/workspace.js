@@ -11151,10 +11151,9 @@
         // A flow draft's card drawn as a small flow window
         // (ws_flow_draft_card_graph_read()): its boxes where the canvas puts
         // them, the threads between, outbound boxes and a patch's boxes
-        // marked. A box picked shows below with its link to the canvas, its
-        // try once the draft is a flow and Edit here where the person may
-        // change it. The graph is read once a page, again after a box is
-        // saved here.
+        // marked. A box picked shows below with its link to the canvas and
+        // its try once the draft is a flow; nothing is changed here, a flow
+        // is changed on the canvas. The graph is read once a page.
         flowWindow: function (change) {
             var self = this;
             var wrap = el('div', 'ws-fd-window');
@@ -11171,13 +11170,7 @@
 
                 self.flowGraphs[key].then(function (graph) {
                     clear(wrap);
-                    self.flowWindowDraw(wrap, graph, null, {
-                        change: change,
-                        reload: function () {
-                            delete self.flowGraphs[key];
-                            load();
-                        }
-                    });
+                    self.flowWindowDraw(wrap, graph, null);
                 }).catch(function (error) {
                     delete self.flowGraphs[key];
                     clear(wrap);
@@ -11190,103 +11183,13 @@
             return wrap;
         },
 
-        // Edit here on an opened draft card: the picked box's name and the
-        // texts its kind's form shows (ws_flow_draft_box_read()), saved
-        // through the canvas's own save at the draft_rev read here, so a
-        // draft moved meanwhile is refused with the canvas's message. People,
-        // times and rules stay the canvas's.
-        flowBoxForm: function (holder, change, nodeId, reload) {
-            var form = el('form', 'ws-fd-form');
-
-            form.noValidate = true;
-            holder.appendChild(form);
-
-            api('ws_flow_draft_box', { change_id: change.id, node_id: nodeId }).then(function (data) {
-                var box = data.box;
-                var label = el('input', 'form-control form-control-sm');
-                var inputs = {};
-
-                label.type = 'text';
-                label.maxLength = 160;
-                label.value = box.label;
-                label.placeholder = box.kind_label;
-                form.appendChild(formRow(t('fd_box_label'), label));
-
-                box.fields.forEach(function (field) {
-                    var input = el(field.lines ? 'textarea' : 'input', 'form-control form-control-sm');
-
-                    if (field.lines) {
-                        input.rows = 3;
-                    } else {
-                        input.type = 'text';
-                    }
-
-                    input.maxLength = field.most;
-                    input.value = field.value;
-                    inputs[field.key] = input;
-                    form.appendChild(formRow(field.label, input));
-                });
-
-                form.appendChild(el('div', 'form-text mb-3', t('fd_box_canvas')));
-
-                var bar = el('div', 'ws-fd-tools');
-                var save = button('btn btn-sm btn-solid theme-primary', t('fd_box_save'), 'bi-check2');
-                var cancel = button('btn btn-sm btn-text theme-secondary', t('fd_box_cancel'));
-
-                save.type = 'submit';
-                bar.appendChild(save);
-                bar.appendChild(cancel);
-                form.appendChild(bar);
-                label.focus();
-
-                cancel.addEventListener('click', function () {
-                    holder.removeChild(form);
-                });
-
-                form.addEventListener('submit', function (event) {
-                    var settings = {};
-
-                    event.preventDefault();
-                    save.disabled = true;
-
-                    Object.keys(inputs).forEach(function (key) {
-                        settings[key] = inputs[key].value;
-                    });
-
-                    api('ws_flow_draft_box_save', {
-                        change_id: change.id,
-                        node_id: nodeId,
-                        label: label.value,
-                        settings: settings,
-                        draft_rev: box.draft_rev
-                    }).then(function () {
-                        toast(t('fd_box_saved'), 'success');
-                        reload();
-                    }).catch(function (error) {
-                        save.disabled = false;
-                        fail(error);
-
-                        // Saved meanwhile on another screen: the window is
-                        // read again rather than saved over.
-                        if (error && error.field === 'changed_meanwhile') {
-                            reload();
-                        }
-                    });
-                });
-            }).catch(function (error) {
-                holder.removeChild(form);
-                fail(error);
-            });
-        },
-
         // onPick, when given, is told the box picked instead of the detail
-        // below (the mini window of Add › Scheduled flow shows its form);
-        // card, on a draft card's window, its change and a reload.
+        // below (the mini window of Add › Scheduled flow shows its form).
         // Drawn to the visual spec in px (ws_flow_card_graph()): boxes
         // 128 × 60 with the kind's icon and name, the kind and the box's dry
         // run as its third line; control arrows 2 px with a filled head;
         // data threads 1 px in their type's tone, placed by the server.
-        flowWindowDraw: function (wrap, graph, onPick, card) {
+        flowWindowDraw: function (wrap, graph, onPick) {
             var self = this;
             var NS = 'http://www.w3.org/2000/svg';
             var W = 128;
@@ -11430,40 +11333,6 @@
                 } else if (tools.childNodes.length) {
                     detail.appendChild(tools);
                 }
-
-                // Edit here: an opened card's box at once; a waiting card's
-                // after its draft is opened as Open on canvas opens it, the
-                // form then shown once the card is drawn opened.
-                if (card && graph.edit) {
-                    var edit = button('btn btn-sm btn-text theme-primary', t(graph.edit === 'open' ? 'fd_box_open_edit' : 'fd_box_edit'), 'bi-pencil');
-
-                    edit.addEventListener('click', function () {
-                        if (graph.edit === 'edit') {
-                            if (!detail.querySelector('.ws-fd-form')) {
-                                self.flowBoxForm(detail, card.change, node.id, card.reload);
-                            }
-
-                            return;
-                        }
-
-                        edit.disabled = true;
-                        self.flowEdit = { change: card.change.id, node: node.id };
-
-                        api('ws_flow_from_draft', { change_id: card.change.id }).then(function () {
-                            self.sync();
-                        }).catch(function (error) {
-                            self.flowEdit = null;
-                            edit.disabled = false;
-                            fail(error);
-                        });
-                    });
-
-                    if (!tools.parentNode) {
-                        detail.appendChild(tools);
-                    }
-
-                    tools.appendChild(edit);
-                }
             }
 
             graph.nodes.forEach(function (node) {
@@ -11534,16 +11403,6 @@
 
             if (!onPick) {
                 wrap.appendChild(detail);
-            }
-
-            // The box Open and edit here was asked on, once its card is
-            // drawn opened.
-            var asked = self.flowEdit;
-
-            if (card && asked && (asked.change === card.change.id) && (graph.edit === 'edit') && byId[asked.node]) {
-                self.flowEdit = null;
-                show(byId[asked.node], groups[asked.node]);
-                self.flowBoxForm(detail, card.change, asked.node, card.reload);
             }
         },
 

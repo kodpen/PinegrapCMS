@@ -65,11 +65,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $passkey_signin_ready = array_key_exists('passkey_signin', $row);
     $passkey_signin = $passkey_signin_ready ? (int) $row['passkey_signin'] : 0;
     $passkeys_available = function_exists('pg_passkeys_available') && pg_passkeys_available();
-    // The Encryption Key card warns before the key is reset when somebody's
-    // second factor would become unreadable by it.
-    $mfa_enabled_accounts = pg_mfa_table_exists()
-        ? (int) db_value("SELECT COUNT(*) FROM user_mfa WHERE enabled_at > 0")
-        : 0;
     $forgot_password_link = $row['forgot_password_link'];
     $oauth_google_enabled = $row['oauth_google_enabled'];
     $oauth_google_client_id = $row['oauth_google_client_id'];
@@ -1631,8 +1626,46 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $ecommerce_reset_encryption_key_disabled_message = ' (' . lang('OpenSSL is disabled') . ')';
     }
 
-    if ($mfa_enabled_accounts > 0) {
-        $ecommerce_reset_encryption_key_disabled_message .= ' ' . lang('Resetting the key also makes every two-step verification key unreadable: people who turned it on will need it reset from their user screen.');
+    // What a reset does to the values sealed with the key, counted per area
+    // under the switch: those the re-seal registry carries over are sealed
+    // again in the same save; the rest (signed-in devices, and any area the
+    // registry does not list) are lost, and the save asks for the
+    // confirmation box only when that list is not empty.
+    $encryption_key_reset_losses = '';
+    $encryption_key_reset_split = pg_encryption_key_reset_split(
+        pg_encryption_key_reset_counts(pg_encryption_key_reset_source()),
+        pg_encryption_key_reset_carried_areas(pg_reseal_registry())
+    );
+    $encryption_key_reset_labels = pg_encryption_key_reset_labels();
+    $encryption_key_reset_list = function (array $counts) use ($encryption_key_reset_labels) {
+        $items = '';
+
+        foreach ($counts as $area => $count) {
+            $label = isset($encryption_key_reset_labels[$area]) ? $encryption_key_reset_labels[$area] : $area;
+            $items .= '<li>' . h($label) . ': ' . (int) $count . '</li>';
+        }
+
+        return '<ul class="form-text mb-2">' . $items . '</ul>';
+    };
+
+    if ($encryption_key_reset_split['resealed']) {
+        $encryption_key_reset_losses .= '
+                                                <div id="ecommerce_reset_encryption_key_resealed" class="mt-3">
+                                                    <div class="form-text">' . lang('These values are sealed again with the new key in the same save:') . '</div>
+                                                    ' . $encryption_key_reset_list($encryption_key_reset_split['resealed']) . '
+                                                </div>';
+    }
+
+    if ($encryption_key_reset_split['lost']) {
+        $encryption_key_reset_losses .= '
+                                                <div id="ecommerce_reset_encryption_key_losses" class="mt-3">
+                                                    <div class="form-text">' . lang('These cannot be carried over to the new key and will have to be set up again after a reset:') . '</div>
+                                                    ' . $encryption_key_reset_list($encryption_key_reset_split['lost']) . '
+                                                    <div class="form-field mb-0">
+                                                        <input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="check" type="checkbox" id="ecommerce_reset_encryption_key_confirm" name="ecommerce_reset_encryption_key_confirm"/>
+                                                        <label class="fg-danger" for="ecommerce_reset_encryption_key_confirm">' . lang('I understand these will have to be set up again') . '</label>
+                                                    </div>
+                                                </div>';
     }
     
     if ($ecommerce_paypal_express_checkout == 1) {

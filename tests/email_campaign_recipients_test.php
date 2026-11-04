@@ -79,7 +79,10 @@ function test_email_campaign_recipients_group_label()
 function test_email_campaign_recipients_used_by_create()
 {
 	$src = file_get_contents(PG_FUNCTIONS_DIR . '/add_email_campaign.php');
-	pg_assert_contains("pg_email_campaign_recipient_query(\$_POST['purpose'], \$email_subscription == 1)", $src, 'recipients follow the purpose');
+	$pick = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_create.php');
+	pg_assert_contains("pg_email_campaign_pick_recipients(\$user, \$_POST['purpose']", $src, 'the screen picks with the purpose');
+	pg_assert_contains("pg_email_campaign_recipient_query(\$purpose, \$email_subscription == 1)", $pick, 'recipients follow the purpose');
+	pg_assert_false(strpos($pick, 'AND (contacts.opt_in = 1)') !== false, 'no fixed opt-in filter in the pick');
 	pg_assert_contains('pg_email_campaign_group_count_query(', $src, 'group list counts both');
 	pg_assert_contains('pg_email_campaign_group_label(', $src, 'group label');
 	pg_assert_false(strpos($src, 'AND (contacts.opt_in = 1)') !== false, 'no fixed opt-in filter left');

@@ -661,6 +661,7 @@ foreach ($email_campaigns as $email_campaign_id) {
         // update e-mail campaign status
         $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
         $result = db_q($query, array((string) $email_campaign_id));
+        $became_complete = ($result !== false) && (mysqli_affected_rows(db::$con) === 1);
 
         // Get info about this email campaign in order to determine if we need to create auto campaigns based on this campaign being sent.
         $email_campaign = db_item(
@@ -670,6 +671,11 @@ foreach ($email_campaigns as $email_campaign_id) {
                 email_campaign_profile_id
             FROM email_campaigns
             WHERE id = '$email_campaign_id'");
+
+        // Announced once, by the run that finished it.
+        if ($became_complete && $email_campaign) {
+            pg_announce('campaign.sent', pg_campaign_sent_event('email', $email_campaign['id'], $email_campaign['type']));
+        }
 
         // If this is an automatic campaign, then check if auto campaigns need to be created.
         if ($email_campaign['type'] == 'automatic') {

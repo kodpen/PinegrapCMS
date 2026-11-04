@@ -1923,6 +1923,15 @@ function get_shipping_methods($properties) {
         }
     }
 
+    // A pickup method is offered only while its location holds the cart.
+    $shipping_methods = pg_stock_pickup_methods_filter($shipping_methods, (int) $order_id);
+
+    if (!$shipping_methods) {
+        return array(
+            'status' => 'error',
+            'message' => lang('Sorry, no pickup location holds every item of your order, and no other shipping method is available for this recipient.'));
+    }
+
     /* end: find all valid shipping methods for this recipient's shipping address and requested arrival date */
 
     // create another array for shipping methods so that we can eventually sort shipping methods by shipping cost
@@ -1960,7 +1969,7 @@ function get_shipping_methods($properties) {
         $result = db_q($query, array((string) $shipping_method_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         $shipping_method_name = $row['name'];
-        $shipping_method_description = $row['description'];
+        $shipping_method_description = pg_stock_pickup_describe($shipping_method_id, $row['description']);
         $shipping_method_service = $row['service'];
         $shipping_method_realtime_rate = $row['realtime_rate'];
         $shipping_method_base_rate = $row['base_rate'];
@@ -2221,6 +2230,13 @@ function check_shipping_method($properties) {
                 (available_on_" . $day_of_week . "_cutoff_time = '00:00:00')
                 OR (available_on_" . $day_of_week . "_cutoff_time > CURRENT_TIME())
             )");
+
+    // A pickup method whose location is off or no longer holds the cart.
+    if ($shipping_method && !pg_stock_pickup_methods_filter(array($shipping_method['id']), (int) ($_SESSION['ecommerce']['order_id'] ?? 0))) {
+        return array(
+            'status' => 'error',
+            'message' => lang('Sorry, the pickup location does not hold every item of your order. Please select a different method.'));
+    }
 
     // If an active shipping method could not be found, then return error
     if (!$shipping_method) {

@@ -440,3 +440,195 @@ function api_ai_visibility_report_schema() {
 	);
 
 }
+
+// Google's figures for the site in the window, from what the Search Console
+// job downloaded (includes/fn/search_console.php): totals, each day, the top
+// searches and the top pages. Google publishes two or three days late:
+// latest_day is the last day it has figures for, and the days after it read
+// as zeros. linked false is a site not linked to Search Console, answered
+// with empty figures rather than an error.
+function api_reports_search($params) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/search_console.php');
+
+	$window = api_visitors_window($params, 400);
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 25;
+
+	$linked = pg_gsc_schema_ready() && pg_gsc_linked();
+
+	$latest = $linked ? pg_gsc_latest_day() : '';
+
+	$out = array(
+		'linked'     => $linked,
+		'from'       => $window['first'],
+		'to'         => $window['last'],
+		'latest_day' => ($latest !== '') ? $latest : null,
+		'totals'     => api_search_figures(array('clicks' => 0, 'impressions' => 0, 'ctr' => 0, 'position' => 0)),
+		'days'       => array(),
+		'queries'    => array(),
+		'pages'      => array()
+	);
+
+	if ($linked) {
+
+		$out['totals'] = api_search_figures(pg_gsc_totals($window['first'], $window['last']));
+
+		foreach (pg_gsc_daily($window['first'], $window['last']) as $day => $figures) {
+
+			$out['days'][] = array('date' => $day, 'clicks' => (int)$figures['clicks'], 'impressions' => (int)$figures['impressions']);
+
+		}
+
+		foreach (pg_gsc_top('query', $window['first'], $window['last'], $limit) as $row) {
+
+			$out['queries'][] = array_merge(array('query' => (string)$row['name']), api_search_figures($row));
+
+		}
+
+		foreach (pg_gsc_top('page', $window['first'], $window['last'], $limit) as $row) {
+
+			$out['pages'][] = array_merge(array('url' => (string)$row['name']), api_search_figures($row));
+
+		}
+
+	}
+
+	api_ok($out);
+
+}
+
+// Clicks, impressions, the click rate as a fraction and the average position,
+// rounded so a client does not get float noise.
+function api_search_figures($row) {
+
+	return array(
+		'clicks'      => (int)$row['clicks'],
+		'impressions' => (int)$row['impressions'],
+		'ctr'         => round((float)$row['ctr'], 4),
+		'position'    => round((float)$row['position'], 2)
+	);
+
+}
+
+function api_search_figures_schema() {
+
+	return array(
+		'clicks'      => 'integer',
+		'impressions' => 'integer',
+		'ctr'         => 'number',
+		'position'    => 'number'
+	);
+
+}
+
+function api_search_report_schema() {
+
+	return array(
+		'linked'     => 'boolean',
+		'from'       => 'string',
+		'to'         => 'string',
+		'latest_day' => 'string?',
+		'totals'     => api_search_figures_schema(),
+		'days'       => array(array('date' => 'string', 'clicks' => 'integer', 'impressions' => 'integer')),
+		'queries'    => array(array_merge(array('query' => 'string'), api_search_figures_schema())),
+		'pages'      => array(array_merge(array('url' => 'string'), api_search_figures_schema()))
+	);
+
+}
+
+// Each page of the site with Google's figures beside the visits that began
+// on it, their forms and orders, its page views and its SEO score
+// (includes/fn/visitor_pages.php). A Google address and a site page meet on
+// their path; pages only one side knows are listed too, with null for the
+// side that does not know them.
+function api_reports_pages($params) {
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_pages.php');
+
+	$window = api_visitors_window($params, 400);
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$sort = (isset($params['sort']) && in_array($params['sort'], array('clicks', 'visits', 'score'), true)) ? $params['sort'] : 'clicks';
+
+	$linked = pg_gsc_schema_ready() && pg_gsc_linked();
+
+	$answer = pg_visitor_pages($window['first'], $window['last'], $linked);
+
+	$rows = array();
+
+	foreach (array_slice(pg_visitor_pages_sort($answer['rows'], $sort), 0, $limit) as $row) {
+
+		$rows[] = api_page_figures($row);
+
+	}
+
+	api_ok(array(
+		'linked'       => $linked,
+		'from'         => $window['first'],
+		'to'           => $window['last'],
+		'sort'         => $sort,
+		'total'        => count($answer['rows']),
+		'rows'         => $rows,
+		'summary_to'   => $answer['summary_to'],
+		'summary_days' => $answer['summary_days']
+	));
+
+}
+
+// One row of GET /reports/pages.
+function api_page_figures($row) {
+
+	$key = (string)$row['key'];
+
+	return array(
+		'path'        => '/' . $key,
+		'home'        => ($key === ''),
+		'page_id'     => ($row['page_id'] > 0) ? (int)$row['page_id'] : null,
+		'clicks'      => ($row['clicks'] !== null) ? (int)$row['clicks'] : null,
+		'impressions' => ($row['impressions'] !== null) ? (int)$row['impressions'] : null,
+		'ctr'         => ($row['ctr'] !== null) ? round((float)$row['ctr'], 4) : null,
+		'position'    => ($row['position'] !== null) ? round((float)$row['position'], 2) : null,
+		'visits'      => (int)$row['visits'],
+		'page_views'  => (int)$row['page_views'],
+		'forms_submitted'  => (int)$row['forms'],
+		'orders_completed' => (int)$row['orders'],
+		'seo_score'   => ($row['score'] !== null) ? (int)$row['score'] : null
+	);
+
+}
+
+function api_page_figures_schema() {
+
+	return array(
+		'path'        => 'string',
+		'home'        => 'boolean',
+		'page_id'     => 'integer?',
+		'clicks'      => 'integer?',
+		'impressions' => 'integer?',
+		'ctr'         => 'number?',
+		'position'    => 'number?',
+		'visits'      => 'integer',
+		'page_views'  => 'integer',
+		'forms_submitted'  => 'integer',
+		'orders_completed' => 'integer',
+		'seo_score'   => 'integer?'
+	);
+
+}
+
+function api_pages_report_schema() {
+
+	return array(
+		'linked'       => 'boolean',
+		'from'         => 'string',
+		'to'           => 'string',
+		'sort'         => 'string',
+		'total'        => 'integer',
+		'rows'         => array(api_page_figures_schema()),
+		'summary_to'   => 'string?',
+		'summary_days' => 'integer'
+	);
+
+}

@@ -19,9 +19,17 @@ require('init.php');
 // Every other request is a web request and must come from a signed-in
 // manager, the same gate the scheduled jobs settings sit behind; without it
 // anybody could start the job from a browser.
+//
+// A web request does no work and records no run: pg_mail_job_alive() reads
+// the 'mail_job' stamp, so one browser visit (or a cross-site link or image,
+// since this is a GET without a token) made the site queue e-mail for 15
+// minutes on a site where no scheduled job would ever send it. The manager is
+// sent to the Mail queue screen, whose Run now works the queue with a token.
 if (!pg_cron_is_background_run()) {
     $user = validate_user();
     validate_area_access($user, 'manager');
+
+    go(PATH . SOFTWARE_DIRECTORY . '/mail_queue.php');
 }
 
 $result = pg_mail_queue_run(50, 50);

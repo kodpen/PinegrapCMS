@@ -24,12 +24,12 @@ description: External API (integration.php): find what the panel can do that the
   - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422): PR #6332 (`api/api-store-arrival-dates.md`).
 - X9 Campaigns, `campaigns:*`, cut in three:
   - X9a `/campaigns/profiles` CRUD: PR #6353 (`api/api-campaign-profiles.md`).
-  - X9b `GET /campaigns/sms`, event `campaign.sent`.
-  - X9c `POST /campaigns` (draft), `.../schedule` on B11's form (#6324).
+  - X9b `GET /campaigns/sms`, event `campaign.sent`: PR #6480 (`api/api-sms-campaigns.md`).
+  - X9c `POST /campaigns` (plain text), `/schedule`: PR #6502. HTML open (`api/api-campaign-create.md`).
 - X10 Calendars, cut in two:
   - X10a Calendars create/update/delete (`fn/calendar_writes.php`): PR #6375 (`api/api-calendar-writes.md`).
   - X10b `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`, event `calendar_event.reserved`: PR #6415 (`api/api-calendar-locations-reservations.md`).
-- X11 `POST /forms/{id}/submissions`, its `/delete`, `GET /forms/{id}/fields`. `forms:*`. Event `form.submission.deleted`; `form.submitted` exists.
+- X11 Form submissions write, `GET /forms/{id}/fields`: PR #6424.
 - X12 CRUD for ads, ad regions, auto dialogs, common regions under `/design/`. `design:*`. No events.
 
 ## What is not a step?

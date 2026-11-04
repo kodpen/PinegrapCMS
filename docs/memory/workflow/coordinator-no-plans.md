@@ -9,7 +9,7 @@ description: What a coordinator gives its workers when no plan step is free: ope
 
 ## What comes first?
 - Open issues. Every open issue that is not waiting on the architect (`architect` label with no decision yet) goes to a worker, `bug` issues first, oldest first:
-  `gh api 'repos/kodpen/pinegrapcms/issues?state=open&per_page=100' --jq '.[]|select(.pull_request|not)|"#\(.number) \([.labels[].name]|join(",")) \(.title)"'`
+  `php tools/free_work.php` lists them: the open issues no open PR names, the `architect` ones apart.
 - The worker claims it as `test-coordinator.md` describes (draft `[iş] <topic>` with `Fixes #<n>`). An issue that no longer reproduces or is already done: the worker says so on the issue with the commit or PR, and the merging session closes it.
 
 ## How does the bug hunt run?

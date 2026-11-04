@@ -76,7 +76,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12  my-3">
                                             <label for="file" class="form-label">' . lang('Select the file to upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'accept'=>'.csv,.xlsx,.ods', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'class'=>'form-control w-auto max-w-100', 'accept'=>'.csv,.xlsx,.ods', 'required'=>'required')) . '
                                             <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
                                             ' . pg_upload_limit_hint() . '
                                         </div>
@@ -94,7 +94,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); if(!this.form.reportValidity()){return false;} var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
+                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); if(!this.form.reportValidity()){return false;} var b=this; pgConfirm({title:' . h(json_encode(lang('Warning'))) . ', message:' . h(json_encode(lang('If an existing product has the same name as a product in the import file, then the existing product data will be replaced.'))) . ', confirmText:' . h(json_encode(lang('Import Products'))) . ', cancelText:' . h(json_encode(lang('Cancel'))) . ', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
                             </div>
                         </div>
                     </nav>

@@ -70,6 +70,7 @@ function pg_dashboard_v2_cards()
     $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx', 'ops'));
     $built[] = 'ai';
     $built = array_merge($built, array('pins', 'perf'));
+    $built[] = 'visitmap';
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(

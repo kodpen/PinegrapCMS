@@ -268,6 +268,57 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'inventory.locations',
+			'method'  => 'GET',
+			'path'    => '/inventory/locations',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_locations_list',
+			'returns' => array('list' => 'StockLocation'),
+			'summary' => 'Stock locations',
+			'description' => 'The warehouses and shops the site keeps stock in, in one page: the default first, then in their order. A location is never deleted, only turned off (enabled false): its units still count in a product\'s quantity, and it takes no transfer in. Empty on a site that keeps one stock per product. The id is what location means on the other stock endpoints.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the locations that are on, or only those that are off.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.list',
+			'method'  => 'GET',
+			'path'    => '/inventory',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_list',
+			'returns' => array('list' => 'StockLevel'),
+			'summary' => 'Stock levels per location',
+			'description' => 'The products that track stock, by id, cursor paged, with quantity (the total, the figure GET /products shows and marketplaces receive) and locations: the units at each location, 0 where the product holds none. A product that has not been changed since the first location was added holds its whole quantity at the default location. On a site without locations, locations is empty.',
+			'params'  => array(
+				array('name' => 'location',      'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only this location\'s units in locations (0 or left out: every location). An id that is not a location is refused with 422 location.'),
+				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product.'),
+				array('name' => 'in_stock',      'in' => 'query', 'type' => 'bool', 'description' => 'With location: only the products that hold units there (true) or none (false). Without it: by the total.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'inventory.transfer',
+			'method'  => 'POST',
+			'path'    => '/inventory/transfer',
+			'scope'   => 'inventory:write',
+			'handler' => 'api_inventory_transfer',
+			'dry_run' => true,
+			'returns' => 'StockTransfer',
+			'summary' => 'Move stock between locations',
+			'description' => 'Moves units of one product from one location to another, as the Transfer dialog of the stock history does: both locations change or neither does, and the product\'s quantity stays the same, so no inventory.changed is announced and no marketplace is told. Both moves carry the same ref in the stock history. Refusals: 422 location when from or to is not a location, 422 validation_failed when they are the same; 409 location_disabled when the location the units go to is turned off, 409 not_enough when from holds fewer units than quantity (nothing is taken from another location), 409 not_tracked when the product does not track stock, 409 bundle for a bundle, 409 no_locations on a site without locations, 409 refused when the location the units go to cannot hold that many. Send an Idempotency-Key so a retried transfer is not made twice.',
+			'params'  => array(
+				array('name' => 'product_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'from',       'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The location the units leave (GET /inventory/locations).'),
+				array('name' => 'to',         'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The location the units go to; it has to be on.'),
+				array('name' => 'quantity',   'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => 1000000, 'required' => true, 'description' => 'Whole units, 1 or more.'),
+				array('name' => 'note',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'Shown beside both moves in the stock history.')
+			)
+		),
+
+		array(
 			'id'      => 'products.prices',
 			'method'  => 'POST',
 			'path'    => '/products/prices',
@@ -607,7 +658,7 @@ function api_schema() {
 			'handler' => 'api_orders_list',
 			'returns' => array('list' => 'Order'),
 			'summary' => 'List orders',
-			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none) and refund_status (\'\', pending, refunded, failed or manual_required); each is null on a site whose database lacks its column.',
+			'description' => 'Cursor paged and ordered by the order date, oldest first, so updated_since walks new orders in one direction without repeating any; sort=placed_desc lists the newest first and resumes the same way. modified_since lists the orders changed at or after a moment, oldest change first, so a client asks what changed since its last read and walks forward: a status change, a cancellation, a restore, a refund, notes, shipping or an export moves an order\'s modified_at. A cursor works only under the sort (or the modified_since listing) it was made for; under another one it is 400 invalid_cursor. Each order carries type (online, local for a counter sale, or marketplace), cancelled_at (null unless cancelled), cancellation_reason (\'\' when none), refund_status (\'\', pending, refunded, failed or manual_required) and the EU VAT id the EU VAT service (VIES) confirmed at checkout: vat_id (\'\' when none; the order is then tax-exempt under the reverse charge), vat_checked_at (when VIES confirmed it, null when never) and vat_request_id (the VIES consultation number, \'\' when none); each is null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or after this moment.'),
 				array('name' => 'date_to',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only orders placed at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
@@ -652,7 +703,7 @@ function api_schema() {
 			'handler' => 'api_orders_get',
 			'returns' => 'Order',
 			'summary' => 'One order, with its lines',
-			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. labels lists the carrier labels made for the address, newest first: driver (the label service), number (the tracking number, null when none), reference (the shipment at the service), barcode, format (pdf, zpl or svg), state (active or cancelled), is_return, created_at, cancelled_at, pickup_ref (the carrier\'s confirmation of a booked pickup, null when none), pickup_at (the start of the booked pickup window, UTC, null when none), file_kept (false once the kept copy was removed after its retention time) and document_url (GET /orders/{id}/shipments/labels/{label_id}/document); the document, which carries the recipient\'s address, is never inline. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason and refund_status (\'\', pending, refunded, failed or manual_required), each null on a site whose database lacks its column.',
+			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. labels lists the carrier labels made for the address, newest first: driver (the label service), number (the tracking number, null when none), reference (the shipment at the service), barcode, format (pdf, zpl or svg), state (active or cancelled), is_return, created_at, cancelled_at, pickup_ref (the carrier\'s confirmation of a booked pickup, null when none), pickup_at (the start of the booked pickup window, UTC, null when none), file_kept (false once the kept copy was removed after its retention time) and document_url (GET /orders/{id}/shipments/labels/{label_id}/document); the document, which carries the recipient\'s address, is never inline. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason, refund_status (\'\', pending, refunded, failed or manual_required), vat_id, vat_checked_at and vat_request_id, each null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -2084,6 +2135,47 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'campaigns.create',
+			'method'  => 'POST',
+			'path'    => '/campaigns',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_create',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'status'  => 201,
+			'summary' => 'Make a plain-text campaign, kept as a draft',
+			'description' => 'Puts a manual campaign together as the create screen does: the addresses of contact_group_ids (opted-in contacts only for a commercial campaign), less every address of excluded_contact_group_ids, plus email_address, each address once. It is kept paused and nothing is sent: POST /campaigns/{id}/schedule releases it. A group that does not exist, or that an account with the user role was not given, is refused with 422. A plain-text message only; an HTML campaign is made from a page on the create screen. A campaign whose groups hold no address it may go to is refused with 422. An entered address nobody has yet becomes a contact, for an account above the user role, as on the screen.',
+			'params'  => array(
+				array('name' => 'subject',                    'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
+				array('name' => 'body',                       'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'required' => true, 'description' => 'The text of the message.'),
+				array('name' => 'from_name',                  'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'from_email',                 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true),
+				array('name' => 'reply_to',                   'in' => 'body', 'type' => 'string', 'max_length' => 100),
+				array('name' => 'purpose',                    'in' => 'body', 'type' => 'enum', 'values' => array('commercial', 'transactional'), 'required' => true, 'description' => 'commercial skips contacts who have opted out and carries the organisation and e-mail preferences footer; transactional goes to every recipient.'),
+				array('name' => 'contact_group_ids',          'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'The groups it goes to.'),
+				array('name' => 'excluded_contact_group_ids', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 200, 'description' => 'Groups whose members are left out.'),
+				array('name' => 'email_address',              'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'One more address it goes to.'),
+				array('name' => 'send_at',                    'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When the job may start sending once it is scheduled. Empty: as soon as the job runs.')
+			)
+		),
+
+		array(
+			'id'      => 'campaigns.schedule',
+			'method'  => 'POST',
+			'path'    => '/campaigns/{id}/schedule',
+			'scope'   => 'campaigns:write',
+			'handler' => 'api_campaigns_schedule',
+			'dry_run' => true,
+			'returns' => 'Campaign',
+			'summary' => 'Release a draft campaign for sending',
+			'description' => 'Moves a paused campaign to ready with send_at as its time (as soon as the job runs when it is left out or empty). Nothing is sent by this call: the scheduled e-mail job sends it, and where the site runs no job it waits for Send Campaign on its screen. Any other status is refused with 409 campaign_not_paused. An account with the user role reaches only the campaigns it created.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'send_at', 'in' => 'body', 'type' => 'datetime', 'nullable' => true)
+			)
+		),
+
+		array(
 			'id'      => 'campaigns.update',
 			'method'  => 'POST',
 			'also_accepts' => array('PATCH'),
@@ -2139,6 +2231,22 @@ function api_schema() {
 		),
 
 		/* ----- Campaign profiles -------------------------------------------- */
+
+		array(
+			'id'      => 'campaigns.sms.list',
+			'method'  => 'GET',
+			'path'    => '/campaigns/sms',
+			'scope'   => 'campaigns:read',
+			'handler' => 'api_campaigns_sms_list',
+			'returns' => array('list' => 'SmsCampaign'),
+			'summary' => 'SMS campaigns',
+			'description' => 'The texts sent to the mobile numbers of chosen contact groups, as My SMS Campaigns lists them, newest first, cursor paged. status: draft (kept, never sent), ready (waiting for send_at), queued (handed to the SMS queue at queued_at) or cancelled. queued counts the messages the queue took and refused the numbers the SMS checks turned away (no consent, refused by IYS, no sender identity, SMS not set up); outbox says what the queue still holds of a queued campaign: sent, waiting and failed (null before it is queued; sent rows leave the queue after 7 days, failed ones after 30). contact_group_ids are the groups it goes to, excluded_contact_group_ids the groups whose members are left out. campaign.sent is announced when a campaign is queued. An account with the e-mail right but the user role sees only the campaigns it created. 503 service_unavailable until the database update has created the table.',
+			'params'  => array(
+				array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('draft', 'ready', 'queued', 'cancelled')),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
 
 		array(
 			'id'      => 'campaigns.profiles.list',
@@ -3434,6 +3542,39 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'reports.search',
+			'method'  => 'GET',
+			'path'    => '/reports/search',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_search',
+			'returns' => 'SearchReport',
+			'summary' => 'Google Search: clicks, impressions, searches and pages',
+			'description' => 'What Google Search Console reports for the site, from the figures its daily job downloads: totals of the window (clicks, impressions, ctr as a fraction, average position weighted by impressions), clicks and impressions for every day, and the searches (queries) and addresses (pages) with the most clicks, at most limit each. Google publishes two or three days late: latest_day is the last day with figures and the days after it read as zeros. Searches Google keeps anonymous count in the totals but are not listed, so queries add up to less. linked false is a site not linked to Search Console: empty figures, not an error. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 25, 'description' => 'Searches and pages each.')
+			)
+		),
+
+		array(
+			'id'      => 'reports.pages',
+			'method'  => 'GET',
+			'path'    => '/reports/pages',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_pages',
+			'returns' => 'PagesReport',
+			'summary' => 'Pages with their Google figures, visits and SEO score',
+			'description' => 'One row per page of the site: Google\'s clicks, impressions, ctr (a fraction) and average position for it, the visits that began on it with their forms submitted and orders completed, its page views, and its SEO score (0-100, null until scored). A Google address and a site page meet on their path: without host, query, trailing slash or .html, decoded, case-blind; the root and every home page name are one row with home true and path /. A page only one side knows is listed too: null Google figures for a page Google did not show (or every row when linked is false, a site not linked to Search Console), page_id null for an address no page of the site has (a product or article address, or a page since deleted). Sorted by clicks, visits or score, largest first, a row without the figure last; total counts every row before limit. Google publishes two or three days late, so for the last days visits have no clicks beside them yet. summary_days and summary_to describe the visit figures as in GET /reports/visitors. Defaults to the last thirty days; a window is at most 400 days.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'sort',  'in' => 'query', 'type' => 'enum', 'values' => array('clicks', 'visits', 'score'), 'default' => 'clicks'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
+			)
+		),
+
+		array(
 			'id'      => 'reports.ai_visibility',
 			'method'  => 'GET',
 			'path'    => '/reports/ai-visibility',
@@ -3588,6 +3729,71 @@ function api_schema() {
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'complete',      'in' => 'body', 'type' => 'bool'),
 				array('name' => 'values',        'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 50, 'description' => 'Objects of {name, value}: the field name and its new answer. Up to 10000 characters each; an empty value clears it.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.fields',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/fields',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_fields',
+			'returns' => array('list' => 'FormField'),
+			'summary' => 'The fields of a form',
+			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_create',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_create',
+			'dry_run' => true,
+			'returns' => 'FormSubmission',
+			'status'  => 201,
+			'summary' => 'Add a submission',
+			'description' => 'Records a submission the way staff add one on the Add Submitted Form screen, through the same checks and the same write: the owner is stored as the submitter, office-use fields may be answered, and no visitor columns (address, referrer, tracking code) are written. Answers are addressed by the field name (GET /forms/{id}/fields). A required field is refused when it is left empty and the submission is complete; a date is YYYY-MM-DD, a time HH:MM, an e-mail address must be one, and the answer to a choice field must be one of its option values - a check box group or a multiple pick list takes its name once per choice. A file upload or a signature field cannot be answered through the API. A complete submission announces form.submitted; send_notifications also sends the e-mails a visitor\'s submission would. Contact records, memberships and the confirmation page of a visitor\'s submission are not part of it. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id',                 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'values',             'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 200, 'description' => 'Objects of {name, value}: the field name and its answer, up to 10000 characters each.'),
+				array('name' => 'complete',           'in' => 'body', 'type' => 'bool', 'description' => 'false saves it for later: required fields are not enforced and nothing is announced. true by default.'),
+				array('name' => 'send_notifications', 'in' => 'body', 'type' => 'bool', 'description' => 'true sends the notification e-mails the form sends for a visitor\'s submission. Off by default; only for a complete submission.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_delete',
+			'method'  => 'DELETE',
+			'path'    => '/forms/{id}/submissions/{submission_id}',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a submission',
+			'description' => 'As the submitted form screens delete one, which cannot be undone: its answers, its uploaded files, its signatures, its comments and their attachments go with it. Announces form.submission.deleted. A submission made on another form, or on a form in a folder the owner may not edit, is answered 404. A default IIS install answers DELETE itself before PHP is reached: POST /forms/{id}/submissions/{submission_id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_delete_post',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions/{submission_id}/delete',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a submission, addressed as a POST',
+			'description' => 'The same deletion as DELETE /forms/{id}/submissions/{submission_id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 

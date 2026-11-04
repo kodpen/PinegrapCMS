@@ -424,7 +424,18 @@ $(document).ready(function () {
             }
         };
 
-        fetch(url, { method: 'POST', body: new FormData(form), credentials: 'same-origin' }).then(function (response) {
+        // A refused export (no complete order selected, a wrong tax rate)
+        // answers with a redirect to the list, whose liveform message says
+        // why. Followed here, that page would be drawn unseen and use up the
+        // message, so the redirect is not followed: the list reloads and
+        // prints it.
+        fetch(url, { method: 'POST', body: new FormData(form), credentials: 'same-origin', redirect: 'manual' }).then(function (response) {
+            if (response.type === 'opaqueredirect') {
+                $overlay.remove();
+                $('body').css('overflow', '');
+                window.location.reload();
+                return;
+            }
             var type = response.headers.get('Content-Type') || '';
             if (!response.ok || type.indexOf('application/zip') === -1) {
                 fail();
@@ -512,6 +523,12 @@ $(document).ready(function () {
                 // The Paraşüt export answers with a zip; it is fetched and
                 // saved, then the page reloads to show the marks and notice.
                 if (value == 'Export Orders For Parasut') {
+                    // The dialog's fields go out as FormData, never through a
+                    // form submit, so the browser checks them only here.
+                    var taxRate = document.getElementById('tax_rate_for_parasut');
+                    if (taxRate && !taxRate.reportValidity()) {
+                        return false;
+                    }
                     pgUI.dialog.hide('#xlsl_setup_modal');
                     pgParasutOrderExport(document.form, el);
                     return true;
@@ -3080,12 +3097,13 @@ function pgListServerOptions(options, $table) {
     });
 }
 
-// A button of a row that came from the server (a delete in the mail queue)
-// asks its data-confirm-content question here: the software-wide confirm
-// handler binds at DOM ready to the buttons on the page then, before these
-// rows exist.
+// A button of a row that came from the server asks its data-confirm-content
+// question here: the software-wide confirm handler binds at DOM ready to the
+// buttons on the page then, before these rows exist. A list table driver
+// row's button (a delete in the mail queue) is marked no-submit, so the rows
+// printed with the page are not asked twice.
 $(function () {
-    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content]', function (event) {
+    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content], .pg-list-table button.no-submit[data-confirm-content]', function (event) {
         if (!window.confirm($(this).attr('data-confirm-content'))) {
             event.preventDefault();
         }
@@ -7529,11 +7547,13 @@ function generateIndexNowKey() {
 
 // Handle error state specifically for backup process
 function software_backup_handleError(response, backup_btn) {
-    software_backup_updateProgress(0, response.message, true);
+    software_backup_updateProgress(100, response.message, true);
     backup_btn.prop("disabled", false);
 }
 
-// Update progress bar and log messages for backup process
+// Update progress bar and log messages for backup process. An error fills
+// the bar in red and stops its animation, as on the update screens, so a
+// failed step never looks like a running one.
 function software_backup_updateProgress(percent, message, isError = false) {
     const Progress = $(".progress .progress-bar");
     const Progress_container = $(".progress");
@@ -7541,7 +7561,8 @@ function software_backup_updateProgress(percent, message, isError = false) {
 
     Progress.attr("style", "width: " + percent + "%").attr("aria-valuenow", percent);
     Progress_container.removeClass("d-none");
-    Progress.toggleClass("progress-bar-animated", percent < 100);
+    Progress.toggleClass("bg-danger", isError);
+    Progress.toggleClass("progress-bar-animated", !isError && percent < 100);
 
     LogBox.empty().append(message);
     if (isError) {

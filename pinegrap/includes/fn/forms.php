@@ -38,14 +38,19 @@ function get_style($folder_id, $device_type = 'desktop')
                 WHERE folder_id = ?";
             $result = db_q($query, array((string) $folder_id)) or output_error(lang('Query failed'));
             $row = mysqli_fetch_assoc($result);
-            $folder_parent = $row['folder_parent'] ?? '';
-            $folder_style = $row['folder_style'] ?? '';
-            $folder_level = $row['folder_level'] ?? '';
+            // A missing folder (deleted, or a bad id) ends the search: on
+            // PHP 8 '' == 0 is false, so a blank level would recurse forever.
+            if (!$row) {
+                return 0;
+            }
+            $folder_parent = $row['folder_parent'];
+            $folder_style = $row['folder_style'];
+            $folder_level = $row['folder_level'];
             // if there is a style for this folder, then return it
             if ($folder_style) {
                 return $folder_style;
                 // else if this is the root folder, then there is no where else to look, so return 0
-            } else if ($folder_level == 0) {
+            } else if ((int) $folder_level === 0) {
                 return 0;
                 // else use recursion to check for a style in the parent folder
             } else {
@@ -66,6 +71,10 @@ function get_style($folder_id, $device_type = 'desktop')
                 WHERE folder_id = ?";
             $result = db_q($query, array((string) $folder_id)) or output_error(lang('Query failed'));
             $row = mysqli_fetch_assoc($result);
+            // A missing folder ends the search (see the desktop branch).
+            if (!$row) {
+                return 0;
+            }
             $folder_parent = $row['folder_parent'];
             $mobile_style_id = $row['mobile_style_id'];
             $folder_level = $row['folder_level'];
@@ -73,7 +82,7 @@ function get_style($folder_id, $device_type = 'desktop')
             if ($mobile_style_id != 0) {
                 return $mobile_style_id;
                 // else if this is the root folder, then there is no where else to look, so return 0
-            } else if ($folder_level == 0) {
+            } else if ((int) $folder_level === 0) {
                 return 0;
                 // else use recursion to check for a style in the parent folder
             } else {

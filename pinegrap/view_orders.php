@@ -321,7 +321,14 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
     if (($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) {$where .= " AND (orders.tracking_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? ''))) . "')";}
     if (($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) {$where .= " AND (orders.http_referer LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? ''))) . "')";}
     if (($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) {$where .= " AND (INET_NTOA(orders.ip_address) LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? ''))) . "')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) {$where .= " AND (order_items.product_name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? ''))) . "')";}
+    // order_items.product_name is the SKU (products.name); the name people
+    // know is products.short_description, so the filter matches either. A
+    // subquery, not a join: the order items exports read order_items
+    // directly, without $join_order_items.
+    if (($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) {
+        $product_name_like = escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')));
+        $where .= " AND ((order_items.product_name LIKE '" . $product_name_like . "') OR (order_items.product_id IN (SELECT products.id FROM products WHERE products.short_description LIKE '" . $product_name_like . "')))";
+    }
 
     // If payment method has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['payment_method']) == false) {
@@ -2275,7 +2282,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 } else {
     $statuses = array();
 
-    $statuses[] = array('label' => '[' . lang('Any') . ']', 'value' => 'any');
+    $statuses[] = array('label' => lang('All statuses'), 'value' => 'any');
     $statuses[] = array('label' => lang('Incomplete'), 'value' => 'incomplete');
     $statuses[] = array('label' => lang('Complete'), 'value' => 'complete');
     $statuses[] = array('label' => lang('Exported'), 'value' => 'exported');
@@ -2302,7 +2309,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // Marketplace is offered only where there is one to look at. On a shop with
     // no marketplace account it is a filter that can only ever return nothing.
     $types = array();
-    $types[] = array('label' => '[' . lang('Any') . ']', 'value' => 'any');
+    $types[] = array('label' => lang('All types'), 'value' => 'any');
     $types[] = array('label' => lang('Online'), 'value' => 'online');
 
     if (pg_schema_has('marketplace_accounts')
@@ -2756,7 +2763,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $output_advanced_filters =
             '<div class="advanced_filters advanced-filter-bar  position-fixed-md"  id="advanced_filters" >
                 <div class="p-3 border justify-content-between d-flex flex-wrap header">
-                    <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
+                    <p class="m-0"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . lang('Filters') . '</p>
                     <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
                 </div>
                 <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_orders.php" method="get">
@@ -2980,7 +2987,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         </fieldset>
                         ' . get_date_picker_format() . pg_fields_script() . '
                         <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Update') . '</button>
                         </div>
                                 
                     </div>
@@ -3385,12 +3392,19 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         (function () {
             if (typeof Chart === "undefined") { return; }
             var data = ' . json_encode($orders_chart_data) . ';
-            var styles = getComputedStyle(document.documentElement);
-            var color = function (name, fallback) { return (styles.getPropertyValue(name) || "").trim() || fallback; };
+            // A panel token can read back as light-dark() text a canvas
+            // cannot parse, so every colour is resolved through a probe.
+            var probe = document.createElement("span");
+            document.body.appendChild(probe);
+            var color = function (name, fallback) {
+                probe.style.color = "";
+                probe.style.color = "var(" + name + ", " + fallback + ")";
+                return getComputedStyle(probe).color || fallback;
+            };
             var locale = document.documentElement.lang || undefined;
             var money = function (value) { return data.currency + Number(value).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
             var count = function (value) { return Number(value).toLocaleString(locale); };
-            var primary = color("--bs-primary", "#0d6efd");
+            var primary = color("--pg-primary", "#0d6efd");
             var spark = function (id, type, values, format) {
                 var canvas = document.getElementById(id);
                 if (!canvas) { return; }
@@ -3410,13 +3424,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             spark("pg_orders_spark_total", "line", data.totals, money);
             spark("pg_orders_spark_count", "bar", data.counts, count);
 
-            var palette = [primary, color("--bs-success", "#198754"), color("--bs-warning", "#ffc107"), color("--bs-info", "#0dcaf0"), color("--bs-danger", "#dc3545"), color("--bs-secondary", "#6c757d")];
-            // A custom property reads back as light-dark() text a canvas
-            // cannot parse, so the panel ink is resolved through a probe.
-            var probe = document.createElement("span");
-            probe.style.color = "var(--pg-fg-2)";
-            document.body.appendChild(probe);
-            var ink = getComputedStyle(probe).color;
+            var palette = [primary, color("--pg-success", "#198754"), color("--pg-warning", "#ffc107"), color("--pg-info", "#0dcaf0"), color("--pg-danger", "#dc3545"), color("--pg-secondary", "#6c757d")];
+            var ink = color("--pg-fg-2", "#6c757d");
+            var surface = color("--pg-bg-body", "#fff");
             probe.remove();
             var top = document.getElementById("pg_orders_top");
             if (top && data.top.length) {
@@ -3437,7 +3447,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 new Chart(payments, {
                     type: "doughnut",
                     data: { labels: data.payments.map(function (row) { return row.label; }),
-                            datasets: [{ data: data.payments.map(function (row) { return row.count; }), backgroundColor: palette, borderColor: color("--bs-body-bg", "#fff"), borderWidth: 2 }] },
+                            datasets: [{ data: data.payments.map(function (row) { return row.count; }), backgroundColor: palette, borderColor: surface, borderWidth: 2 }] },
                     options: {
                         maintainAspectRatio: false,
                         cutout: "62%",

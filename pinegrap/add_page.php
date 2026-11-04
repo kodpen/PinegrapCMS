@@ -115,7 +115,7 @@ if (!$_POST) {
             'heading_description' => lang('Create a new page, place it in a folder, and add any built-in features.'),
             'cancel'=>array('enable'=>'true','url'=>'view_pages.php'),
             'breadcrumb' => array(
-                array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
+                array('label' => lang('Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
                 array('label' => lang('Create Page')),
             ),
         )
@@ -171,11 +171,11 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                             <div class="row mt-7">
-                                                <div class="col-12 md:col-6 lg:col-auto my-3">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="style" class="form-label">' . lang('Desktop Page Style') . '</label>
                                                     ' . $output_style . '
                                                 </div>
-                                                <div class="col-12 md:col-6 lg:col-auto my-3">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
                                                     ' . $output_mobile_style . '
                                                 </div>
@@ -209,7 +209,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -247,6 +247,10 @@ if (!$_POST) {
     
     $form_url = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php';
 
+    // A folder deleted or binned while the form was open, or the Workspace
+    // folder: refused before anything is written.
+    pg_page_form_refuse($liveform_add_page, pg_page_form_folder_errors($_POST['folder'] ?? ''), $form_url);
+
     $clean_name = pg_page_form_clean_name($name, $_POST['type']);
     pg_page_form_refuse($liveform_add_page, array_filter(array('name' => $clean_name['error'])), $form_url);
     $name = $clean_name['name'];
@@ -272,6 +276,10 @@ if (!$_POST) {
     
     // if user role is Administrator, Designer, or Manager, then allow user to set style and mobile style for folder
     if ($user['role'] < 3) {
+        // A style deleted while the form was open, or one the pickers do
+        // not offer, would leave the page without regions.
+        pg_page_form_refuse($liveform_add_page, pg_page_form_style_errors($_POST), $form_url);
+
         $sql_style_fields =
             "page_style,
             mobile_style_id,";
@@ -280,9 +288,12 @@ if (!$_POST) {
             "?,
             ?,";
 
-        $style_values = array((string) ($_POST['style'] ?? ''), (string) ($_POST['mobile_style_id'] ?? ''));
+        $style_values = array((string) (int) ($_POST['style'] ?? 0), (string) (int) ($_POST['mobile_style_id'] ?? 0));
+    } else {
+        // The style pickers are not shown: the page inherits its folder's.
+        $_POST['style'] = 0;
     }
-    
+
     // A type the user was not given is saved as a standard page.
     $type = pg_page_type_user_may_set($user, $_POST['type']) ? $_POST['type'] : 'standard';
 
@@ -299,8 +310,10 @@ if (!$_POST) {
         $layout_type = 'system';
     }
     
-    // An unchecked box is absent from the POST and stored as 0.
-    $index_flags = pg_page_form_index_flags(($_POST['sitemap'] ?? '') == 1, $_POST);
+    // An unchecked box is absent from the POST and stored as 0, and so is
+    // the box of a type that is never in the site map (its row is hidden
+    // but stays ticked), as Edit Page does.
+    $index_flags = pg_page_form_index_flags((($_POST['sitemap'] ?? '') == 1) && pg_page_form_sitemap_type($type), $_POST);
     $sitemap = $index_flags['sitemap'];
     $sql_noindex = pg_page_form_noindex_sql($index_flags, pg_page_noindex_ready());
     $sql_noindex_columns = $sql_noindex['columns'];
@@ -449,7 +462,8 @@ if (!$_POST) {
     // get style code
     $result = db_q("SELECT style_code FROM style WHERE style_id = ?", array((string) $style)) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
-    $style_code = $row['style_code'];
+    // No style anywhere up the folders: the page starts without regions.
+    $style_code = (string) ($row['style_code'] ?? '');
 
     // create regions
     $pregion_count = 1;

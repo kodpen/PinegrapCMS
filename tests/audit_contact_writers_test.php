@@ -113,7 +113,9 @@ function test_audit_approve_affiliate_is_recorded()
 // The campaign's new recipient contact gets a create line, its id read before the line's own insert.
 function test_audit_email_campaign_recipient_contact_is_recorded()
 {
-	$source = audit_contact_writers_test_source('add_email_campaign.php');
+	// The create screen and POST /campaigns pick recipients through
+	// includes/fn/email_campaign_create.php.
+	$source = audit_contact_writers_test_source('includes/fn/email_campaign_create.php');
 	$insert = strpos($source, 'INSERT INTO contacts');
 	$id = strpos($source, '$new_contact_id = (int) mysqli_insert_id(db::$con);');
 	$record = strpos($source, "pg_audit_record('create', 'contacts', \$new_contact_id);");

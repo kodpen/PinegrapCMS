@@ -3780,6 +3780,14 @@ function init_tracking()
 				}
 			}
 
+			// Where the visit comes from (includes/geo.php): the country from
+			// the edge's header, the web server or the site's IP list, the city
+			// only from Cloudflare's CF-IPCity. Tor (T1) is no country. An
+			// order later overwrites both with its billing address.
+			$visitor_country = function_exists('pg_geo_country_code') ? pg_geo_country_code() : '';
+			$visitor_country = ($visitor_country === 'T1') ? '' : $visitor_country;
+			$visitor_city = function_exists('pg_geo_city') ? pg_geo_city() : '';
+
 			$query = "INSERT INTO visitors (
 
                         $sql_user_agent_column
@@ -3803,6 +3811,10 @@ function init_tracking()
                         currency_code,
 
                         affiliate_code,
+
+                        country,
+
+                        city,
 
                         start_timestamp,
 
@@ -3832,6 +3844,10 @@ function init_tracking()
 
                         ?,
 
+                        ?,
+
+                        ?,
+
                         UNIX_TIMESTAMP(),
 
                         UNIX_TIMESTAMP())";
@@ -3844,7 +3860,9 @@ function init_tracking()
 				(string) $first_visit,
 				(string) $tracking_code,
 				(string) $visitor_currency_code,
-				(string) $affiliate_code));
+				(string) $affiliate_code,
+				(string) $visitor_country,
+				(string) $visitor_city));
 			$result = db_q($query, $values) or output_error(lang('Query failed.'));
 			$_SESSION['software']['visitor_id'] = mysqli_insert_id(db::$con);
 

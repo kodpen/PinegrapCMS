@@ -14,7 +14,7 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
 4. TD4 (M) done (#6325, #6347, #6366). Users, contacts and submitted forms move with their bulk actions (export, merge, delete all) through the resolver.
    Cut in three, one screen each: TD4a done (#6325): the users list (Delete Selected); TD4b done (#6347): the contacts list (its selected-row actions: organize, opt in/out, merge, delete; Export, Merge and Delete All already act on the whole filter); TD4c done (#6366): the submitted forms list (Delete Selected through the resolver; Export and Delete All already act on the whole filter).
 
-5. TD5 (M) After TD2. Commissions, recurring commission profiles and the mail queue move.
+5. TD5 (M) done (#6380). Commissions, recurring commission profiles and the mail queue (both tabs) move.
 
 6. TD6 (M) done (#6386). Site Log (its type filter as a driver filter, today `view_log.php` calls `column(1).search()`), the audit log and the firewall log move.
 
@@ -22,7 +22,7 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
    Cut in two: TD7a done (#6337) the quick edit mode in the driver (`pg_list_table_edit.js`, `ui/list-table-quick-edit.md`), no screen on it yet; TD7b done (#6373): the products list (`view_products.php`, `product_list.php`) moves with its bulk actions and its quick edit columns (source `edit`, cells with `pg_list_edit_cell_attributes()`, column keys matching the edit fields).
 
 8. TD8 (M) After TD7. Orders, gift cards, key codes and shipping methods move; then the ERP lists with editable cells: account prices, stock minimums, price lists, stock levels.
-   Cut in two: TD8a done (#6425) the four commerce lists, printed whole (`ui/list-table-commerce-lists.md`); TD8b the ERP lists.
+   Cut in two: TD8a done (#6425) the four commerce lists, printed whole (`ui/list-table-commerce-lists.md`); TD8b done (#6450) the ERP lists: account prices, minimum stock, stock and cost (price lists are the account prices screen).
 
 ## What runs side by side?
 - TD3, TD4, TD5 and TD6 touch different screens and can run together after TD2; TD7 waits for TD3. The printed lists and the close-out are in `table-driver-steps-2.md`.

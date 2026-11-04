@@ -10,7 +10,7 @@ description: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a
   - With one sticker, Bootstrap icon or emoji layer selected, a Change button in its panel opens the Sticker grid (and the glyph part's icon and emoji sections); a pick replaces that layer's glyph instead of adding a layer. Place, size, turn, colour, opacity and motion stay; one undo step.
   - Tests: the swap keeps every field but the glyph (model); in the browser an emoji to an icon and back, undo.
 
-- E22 (M) Text to outlines. `free`, beside E21 and E23.
+- E22 (M) Text to outlines. Done (#6357).
   - "Convert to outlines" on a text layer: its letters become one path layer in the same place, size, turn, colour and effects; one undo step. A new part `outline` with an own OpenType reader: cmap, glyf/loca, CFF, hmtx, pair kerning (kern, GPOS pairs); spacing and alignment from the text tool's layout.
   - The font file: a site font by its URL; a Google font through an action `font` that fetches the family's TTF once into `data/` and serves it (browsers get WOFF2, which needs Brotli); a system font has no file: the button says so. Scripts that need shaping (Arabic, Indic) get a message for now.
   - Tests: the reader on small TTF and OTF fixtures (a contour, an advance, a kerning pair); the outline against the text layout.
@@ -19,7 +19,7 @@ description: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a
   - A Scissors tool beside the pen: a click on a path cuts it there (`M.splitAt()`): an open path becomes two, a closed one opens; a drag across paths cuts each where the line crosses. A shape is converted to a path first.
   - Tests: cuts on lines, curves and closed shapes in the model (knot counts, end points).
 
-- E24 (M) Shape builder. After E23, beside E25.
+- E24 (M) Shape builder. After E23, beside E25. Done (#6405).
   - Pathfinder buttons for two or more selected shapes or paths: unite, subtract front, intersect, exclude, divide. A Shape builder tool: drag across overlapping regions to merge them, Alt-drag to remove one.
   - Own path booleans: curves flattened (0.25 px), polygon clipping (Martinez-Rueda), refitted to curves (`M.refitPath()`), holes as even-odd subpaths. Tests: the five operations on squares and circles, holes, touching edges.
 

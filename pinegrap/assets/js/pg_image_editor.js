@@ -769,10 +769,18 @@
         // canvas is the picture's own; a canvas that reaches past it keeps
         // its corners and the mat cuts the picture (the artboard part).
         this.frame.style.borderRadius = (this.cropping() || M.saveLayout(this.doc)) ? '' : shapeRadius(this.doc.geometry.cropShape, vr, k);
-        this.layersSvg.setAttribute('viewBox', [vr.x, vr.y, vr.w, vr.h].join(' '));
+        // While cropping the frame shows the picture's own space: the layers
+        // of a picture placed on its canvas are carried into it.
+        var lr = vr, place = this.cropping() ? M.picturePlace(this.doc) : null;
+
+        if (place) {
+            lr = { x: vr.x * place.k + place.x, y: vr.y * place.k + place.y, w: vr.w * place.k, h: vr.h * place.k };
+        }
+
+        this.layersSvg.setAttribute('viewBox', [lr.x, lr.y, lr.w, lr.h].join(' '));
 
         if (this.img) {
-            var m = M.mul(M.mul(M.scale(k), M.translate(-vr.x, -vr.y)), M.pictureMatrix(this.doc));
+            var m = M.mul(M.mul(M.scale(k), M.translate(-vr.x, -vr.y)), this.cropping() ? M.pictureMatrix(this.doc) : M.placedMatrix(this.doc));
 
             this.img.style.transform = 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(', ') + ')';
         }
@@ -1161,8 +1169,12 @@
     // viewOnly redraws the stage and the undo buttons but not the panel, so
     // a slider being dragged keeps its place.
     Editor.prototype.change = function (mutate, key, viewOnly) {
-        this.history.push(M.clone(this.doc), key);
+        var before = M.clone(this.doc);
+
+        this.history.push(before, key);
         mutate(this.doc);
+        // A crop of a picture placed on its canvas keeps the canvas.
+        M.keepCanvas(before, this.doc);
         // A change that brings the opening document back (a filter put
         // back, a slider back at 0) leaves nothing to save.
         this.settleDirty();
@@ -1203,6 +1215,12 @@
         }
 
         this.doc = snapshot;
+
+        // An undone or redone deletion of the picture changes the kind.
+        if (this.syncKind) {
+            this.syncKind();
+        }
+
         this.settleDirty();
         this.layersDirty = true;
         this.keepSelection();
