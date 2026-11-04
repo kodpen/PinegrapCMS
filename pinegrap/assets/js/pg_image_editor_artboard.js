@@ -261,7 +261,9 @@
     // ---- a picture's canvas ----
 
     // What the canvas adds around the picture, in its fill, under the
-    // layers: the save box less the crop box (a checker for transparent).
+    // layers: the save box less the crop box (a checker for transparent),
+    // its hole in the crop shape, which cuts the picture only, as the save
+    // does.
     Editor.prototype.renderMat = function () {
         var b = this.board, show = this.ready && !!this.doc.source && !this.cropping() && !!M.saveLayout(this.doc);
 
@@ -288,10 +290,13 @@
         var vr = this.viewRect(), c = M.cropBox(this.doc), x0 = Math.max(vr.x, c.x), y0 = Math.max(vr.y, c.y);
         var x1 = Math.min(vr.x + vr.w, c.x + c.w), y1 = Math.min(vr.y + vr.h, c.y + c.h), fill = this.boardFill(), q = 10 / this.view.k;
         var d = 'M' + vr.x + ' ' + vr.y + 'h' + vr.w + 'v' + vr.h + 'h' + (-vr.w) + 'Z';
-        var pattern = b.mat.firstChild.firstChild;
+        var pattern = b.mat.firstChild.firstChild, shape = this.doc.geometry.cropShape || 'rect';
 
+        // A rounded or round hole is the whole crop box's shape: the canvas
+        // edge trims it as the save does, the even-odd rule leaves its part
+        // off the canvas outside the view.
         if ((x1 > x0) && (y1 > y0)) {
-            d += 'M' + x0 + ' ' + y0 + 'H' + x1 + 'V' + y1 + 'H' + x0 + 'Z';
+            d += (shape === 'rect') ? M.cropShapePath({ x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, 'rect') : M.cropShapePath(c, shape);
         }
 
         b.mat.setAttribute('viewBox', [vr.x, vr.y, vr.w, vr.h].join(' '));
@@ -548,6 +553,24 @@
                 n.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
             custom.hidden = (s.preset !== 'custom');
+            check();
+        };
+        // A custom side must be a number of 16-8000 px: an empty or refused
+        // field (the browser reads '12,5' as '') is marked and Create waits,
+        // instead of the side silently becoming the 16 px minimum.
+        var sideOk = function (v) {
+            var n = (String(v).trim() === '') ? NaN : Number(v);
+
+            return isFinite(n) && (n >= 16) && (n <= 8000);
+        };
+        var check = function () {
+            var mine = (s.preset === 'custom'), okW = !mine || sideOk(w.value), okH = !mine || sideOk(h.value);
+
+            w.setAttribute('aria-invalid', okW ? 'false' : 'true');
+            h.setAttribute('aria-invalid', okH ? 'false' : 'true');
+            create.disabled = !(okW && okH);
+
+            return okW && okH;
         };
 
         M.BOARD_PRESETS.concat([['custom', 0, 0]]).forEach(function (p) {
@@ -584,11 +607,15 @@
             input.addEventListener('input', function () {
                 s.w = w.value;
                 s.h = h.value;
+                check();
             });
             input.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    self.closeNewImage(s);
+
+                    if (check()) {
+                        self.closeNewImage(s);
+                    }
                 }
             });
         });

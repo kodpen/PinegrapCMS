@@ -6,7 +6,7 @@ module: image_editor
 
 ## What does the Sticker tool add?
 - Under the stickers and "Picture from Files", two sections that open on demand (`pg_image_editor_glyph.js`, which wraps `Editor.panels.sticker`, so `pg_image_editor_sticker.js` is unchanged):
-  - "Icons": a search box over the Bootstrap Icons names and the first 120 matches (`M.iconSearch()`: names starting with the query first, a space read as a dash).
+  - "Icons": a search box over the Bootstrap Icons names (English: the box and an empty result say so) and the first 120 matches (`M.iconSearch()`: names starting with the query first, a space read as a dash).
   - "Emoji": a recent row (the last eight, `M.emojiRecent()`, browser storage `pgie-recent-emoji`) and `M.EMOJI` by category (eight categories of 32 to 40).
 - A press adds a square glyph a fifth of the picture's shorter side in the middle of the stage, selected. With glyphs selected, icons get a colour (an emoji keeps its own colours); duplicate, forward, backward and delete are the Sticker panel's own row.
 

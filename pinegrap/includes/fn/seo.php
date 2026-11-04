@@ -3400,6 +3400,146 @@ function pg_request_is_panel_preview(array $get, $signed_in)
         && ($get['pg_preview'] === '1');
 }
 
+/**
+ * The search engines a referring host is recognised by, in the order they
+ * are tried: host pattern (matched on the lower-cased host without a
+ * trailing dot), the name stored in visitors.referring_search_engine and the
+ * query parameter that carries the search terms. Pure.
+ *
+ * The names are values of the column's ENUM: a new engine is appended to it
+ * by a schema step and listed in pg_visitor_search_engines_added() until
+ * every site has run that step.
+ *
+ * @return array list of array('pattern' => regex, 'name' => string, 'key' => string)
+ */
+function pg_visitor_search_engines()
+{
+    return array(
+        // Google by host: every country domain (google.com.tr, google.de),
+        // with or without www.
+        array('pattern' => '/(^|\.)google\./', 'name' => 'Google', 'key' => 'q'),
+        array('pattern' => '/(^|\.)bing\.com$/', 'name' => 'Bing', 'key' => 'q'),
+        array('pattern' => '/(^|\.)(yandex\.[a-z.]+|ya\.ru)$/', 'name' => 'Yandex', 'key' => 'text'),
+        array('pattern' => '/(^|\.)duckduckgo\.com$/', 'name' => 'DuckDuckGo', 'key' => 'q'),
+        array('pattern' => '/(^|\.)ecosia\.org$/', 'name' => 'Ecosia', 'key' => 'q'),
+        array('pattern' => '/^search\.brave\.com$/', 'name' => 'Brave Search', 'key' => 'q'),
+        array('pattern' => '/(^|\.)qwant\.com$/', 'name' => 'Qwant', 'key' => 'q'),
+        array('pattern' => '/(^|\.)startpage\.(com|nl)$/', 'name' => 'Startpage', 'key' => 'query'),
+        array('pattern' => '/(^|\.)baidu\.com$/', 'name' => 'Baidu', 'key' => 'wd'),
+        array('pattern' => '/^(m\.)?search\.naver\.com$/', 'name' => 'Naver', 'key' => 'query'),
+        array('pattern' => '/^search\.seznam\.cz$/', 'name' => 'Seznam', 'key' => 'q'),
+        array('pattern' => '/^(.+\.)?search\.yahoo\./', 'name' => 'Yahoo!', 'key' => 'p'),
+        array('pattern' => '/search\.msn\./', 'name' => 'MSN', 'key' => 'q'),
+        array('pattern' => '/^(search|aolsearch)\.aol\.com$/', 'name' => 'AOL', 'key' => 'query'),
+        array('pattern' => '/(^|\.)ask\.com$/', 'name' => 'Ask.com', 'key' => 'q'),
+        array('pattern' => '/^www\.ask\.co\.uk$/', 'name' => 'Ask.com', 'key' => 'ask'),
+        array('pattern' => '/^search\.earthlink\.net$/', 'name' => 'EarthLink', 'key' => 'q'),
+        array('pattern' => '/^www\.netscape\.com$/', 'name' => 'Netscape', 'key' => 's'),
+        array('pattern' => '/^(search|searcht)\.netscape\.com$/', 'name' => 'Netscape', 'key' => 'query'),
+        array('pattern' => '/^www\.alltheweb\.com$/', 'name' => 'AlltheWeb', 'key' => 'q'),
+        array('pattern' => '/^msxml\.excite\.com$/', 'name' => 'Excite', 'key' => 'qkw'),
+        array('pattern' => '/^www\.metacrawler\.com$/', 'name' => 'MetaCrawler', 'key' => 'qkw'),
+        array('pattern' => '/^dpxml\.webcrawler\.com$/', 'name' => 'WebCrawler', 'key' => 'qkw'),
+        array('pattern' => '/^search\.lycos\.com$/', 'name' => 'Lycos', 'key' => 'query'),
+        array('pattern' => '/^www\.hotbot\.com$/', 'name' => 'HotBot', 'key' => 'query'),
+        array('pattern' => '/^search\.mamma\.com$/', 'name' => 'Mamma.com', 'key' => 'query'),
+        array('pattern' => '/^search\.cometsystems\.com$/', 'name' => 'Comet Web Search', 'key' => 'qry'),
+        array('pattern' => '/^www\.overture\.com$/', 'name' => 'Overture', 'key' => 'Keywords'),
+        array('pattern' => '/^www\.looksmart\.com$/', 'name' => 'LookSmart', 'key' => 'key'),
+        array('pattern' => '/^search\.looksmart\.com$/', 'name' => 'LookSmart', 'key' => 'qt'),
+        array('pattern' => '/^search\.viewpoint\.com$/', 'name' => 'Viewpoint', 'key' => 'k'),
+        array('pattern' => '/^search\.dmoz\.org$/', 'name' => 'Open Directory Project', 'key' => 'search'),
+    );
+}
+
+/**
+ * The engine names appended to the referring_search_engine ENUM by schema
+ * step 11.0.166. Until a site has run it the column refuses them, so
+ * init_tracking() stores one only once the column lists it. Pure.
+ *
+ * @return array
+ */
+function pg_visitor_search_engines_added()
+{
+    return array('Yandex', 'DuckDuckGo', 'Ecosia', 'Brave Search', 'Qwant', 'Startpage', 'Baidu', 'Naver', 'Seznam');
+}
+
+/**
+ * The search engine a referring host belongs to. An AI assistant's host is
+ * never a search engine, even under a search engine's domain
+ * (gemini.google.com). Pure.
+ *
+ * @param string $host
+ * @return array|null array('name' => string, 'key' => query parameter), null for none
+ */
+function pg_visitor_search_engine($host)
+{
+    $host = rtrim(strtolower(trim((string) $host)), '.');
+
+    if ($host === '') {
+        return null;
+    }
+
+    if (function_exists('pg_visitor_ai_assistant') && (pg_visitor_ai_assistant($host) !== '')) {
+        return null;
+    }
+
+    foreach (pg_visitor_search_engines() as $engine) {
+        if (preg_match($engine['pattern'], $host) === 1) {
+            return array('name' => $engine['name'], 'key' => $engine['key']);
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Whether visits.referring_search_engine accepts an engine name: the names
+ * of the old list always, an appended one once the schema step has run. The
+ * column's type is read once per request, and only for an appended name.
+ *
+ * @param string $name
+ * @return bool
+ */
+function pg_visitor_search_engine_storable($name)
+{
+    static $type = null;
+
+    if (!in_array($name, pg_visitor_search_engines_added(), true)) {
+        return true;
+    }
+
+    if ($type === null) {
+        $row = db_item("SHOW COLUMNS FROM visitors WHERE Field = 'referring_search_engine'");
+        $type = (is_array($row) && isset($row['Type'])) ? (string) $row['Type'] : '';
+    }
+
+    return pg_visitor_enum_lists($type, $name);
+}
+
+/**
+ * Whether a column type is a plain string type or an ENUM that lists the
+ * value. Pure.
+ *
+ * @param string $type  SHOW COLUMNS Type
+ * @param string $value
+ * @return bool
+ */
+function pg_visitor_enum_lists($type, $value)
+{
+    $type = trim((string) $type);
+
+    if ($type === '') {
+        return false;
+    }
+
+    if (stripos($type, 'enum(') !== 0) {
+        return (stripos($type, 'char') !== false) || (stripos($type, 'text') !== false);
+    }
+
+    return strpos($type, "'" . str_replace("'", "''", (string) $value) . "'") !== false;
+}
+
 // The visitor's row in visitors for this request: opened or found again, with
 // the tracking, affiliate and campaign codes and the referring site. Called
 // by get_page.php for a page it draws and by page_view.php for a page the
@@ -3574,120 +3714,11 @@ function init_tracking()
 				// The host and not the whole address: flask.com, or another
 				// site's address that merely contains "www.google", is no search engine.
 				$delimiter = '';
-				if (preg_match('/www\.google.*/i', $referring_host_name))
+				$engine = pg_visitor_search_engine($referring_host_name);
+				if (($engine !== null) && pg_visitor_search_engine_storable($engine['name']))
 				{
-					$referring_search_engine = 'Google';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/search\.msn.*/i', $referring_host_name))
-				{
-					$referring_search_engine = 'MSN';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/search\.yahoo.*/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Yahoo!';
-					$delimiter = 'p';
-				}
-				elseif (preg_match('/www\.bing\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Bing';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/(search\.aol\.com)|(aolsearch\.aol\.com)/i', $referring_host_name))
-				{
-					$referring_search_engine = 'AOL';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/(^|\.)ask\.com$/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Ask.com';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/www\.ask\.co\.uk/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Ask.com';
-					$delimiter = 'ask';
-				}
-				elseif (preg_match('/search\.earthlink\.net/i', $referring_host_name))
-				{
-					$referring_search_engine = 'EarthLink';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/www\.netscape\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Netscape';
-					$delimiter = 's';
-				}
-				elseif (preg_match('/(search\.netscape\.com)|(searcht\.netscape\.com)/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Netscape';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/www\.alltheweb\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'AlltheWeb';
-					$delimiter = 'q';
-				}
-				elseif (preg_match('/msxml\.excite\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Excite';
-					$delimiter = 'qkw';
-				}
-				elseif (preg_match('/www\.metacrawler\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'MetaCrawler';
-					$delimiter = 'qkw';
-				}
-				elseif (preg_match('/dpxml\.webcrawler\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'WebCrawler';
-					$delimiter = 'qkw';
-				}
-				elseif (preg_match('/search\.lycos\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Lycos';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/www\.hotbot\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'HotBot';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/search\.mamma\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Mamma.com';
-					$delimiter = 'query';
-				}
-				elseif (preg_match('/search\.cometsystems\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Comet Web Search';
-					$delimiter = 'qry';
-				}
-				elseif (preg_match('/www\.overture\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Overture';
-					$delimiter = 'Keywords';
-				}
-				elseif (preg_match('/www\.looksmart\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'LookSmart';
-					$delimiter = 'key';
-				}
-				elseif (preg_match('/search\.looksmart\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'LookSmart';
-					$delimiter = 'qt';
-				}
-				elseif (preg_match('/search\.viewpoint\.com/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Viewpoint';
-					$delimiter = 'k';
-				}
-				elseif (preg_match('/search\.dmoz\.org/i', $referring_host_name))
-				{
-					$referring_search_engine = 'Open Directory Project';
-					$delimiter = 'search';
+					$referring_search_engine = $engine['name'];
+					$delimiter = $engine['key'];
 				}
 				// if a delimiter was found, get search terms. Search engines
 				// mostly send their bare address now (https://www.google.com/),

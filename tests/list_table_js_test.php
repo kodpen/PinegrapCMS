@@ -230,3 +230,47 @@ JS
 	pg_assert_same(array('order' => array(), 'hidden' => array(), 'details' => true), $result['reset']);
 	pg_assert_same('pg.list.7.view_pages', $result['key']);
 }
+
+// A list printed whole keeps the rows whose filtered cell carries the
+// value, beside the search words; a server list sends the filter with its
+// parameters and asks again.
+function test_list_table_js_filter()
+{
+	$result = list_table_js_test_node(<<<'JS'
+function row(text, type) {
+    return { textContent: text, hidden: false, querySelector: function (selector) {
+        return (selector === 'td[data-pg-col="type"]') ? { getAttribute: function () { return type; } } : null;
+    } };
+}
+var rows = [row('saved page', 'site'), row('PHP Warning', 'warn'), row('PHP Fatal', 'error')];
+var list = { browser: true, search: '', filters: {}, params: {}, selection: new T.Selection(), tbody: { rows: rows }, paint: function () {}, showHere: T.Driver.prototype.showHere };
+var out = {};
+function shown() { return rows.filter(function (r) { return !r.hidden; }).length; }
+T.Driver.prototype.setFilter.call(list, 'type', 'error');
+out.error = [shown(), list.total];
+list.search = 'php';
+T.Driver.prototype.setFilter.call(list, 'type', '');
+out.all = shown();
+list.search = 'saved';
+T.Driver.prototype.showHere.call(list);
+out.searched = shown();
+var server = { browser: false, filters: {}, params: { start_time: '1' }, selection: new T.Selection(), loads: 0, load: function () { this.loads++; } };
+T.Driver.prototype.setFilter.call(server, 'type', 'warn');
+T.Driver.prototype.setFilter.call(server, 'type', 'warn');
+out.server = [server.params.type, server.loads];
+T.Driver.prototype.setFilter.call(server, 'type', '');
+out.cleared = [server.params.hasOwnProperty('type'), server.loads];
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(1, 1), $result['error'], 'only the error row, counted');
+	pg_assert_same(2, $result['all'], 'every type, the search words still apply');
+	pg_assert_same(1, $result['searched']);
+	pg_assert_same(array('warn', 1), $result['server'], 'sent with the parameters, asked once');
+	pg_assert_same(array(false, 2), $result['cleared']);
+}

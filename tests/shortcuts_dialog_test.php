@@ -33,5 +33,6 @@ function test_shortcuts_dialog_marks_the_modifier_and_lists_its_own_key()
 	pg_assert_contains('<kbd data-pg-mod>Ctrl</kbd><kbd>K</kbd>', $html, 'Ctrl is marked for the command key');
 	pg_assert_contains('<dt><kbd>F1</kbd></dt>', $html, 'a key on its own is not marked');
 	pg_assert_contains('<dt><kbd>?</kbd></dt>', $html, 'the key that opens the dialog');
-	pg_assert_same(8, substr_count($html, 'data-pg-mod'), 'every Ctrl and nothing else');
+	pg_assert_same(7, substr_count($html, 'data-pg-mod'), 'every Ctrl but the one of Ctrl+Q, and nothing else');
+	pg_assert_contains('<dt><kbd>Ctrl</kbd><kbd>Q</kbd></dt>', $html, 'Ctrl+Q stays Ctrl on a Mac: Command+Q quits the browser');
 }

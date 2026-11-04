@@ -714,6 +714,12 @@
   font-weight: 600;
 }
 
+/* A file that could not be opened: no tool panel, only the message. */
+.pgie-failed .pgie-panel,
+.pgie-failed .pgie-mini {
+  display: none;
+}
+
 .pgie-panel {
   width: 304px;
   flex: none;
@@ -909,6 +915,10 @@
   font: inherit;
   user-select: text;
   -webkit-user-select: text;
+}
+
+.pgie .pgie-input[aria-invalid="true"] {
+  border-color: var(--pgie-danger);
 }
 
 .pgie-actions {

@@ -62,7 +62,7 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-md">
                         <label for="setting_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
-                        <input type="text" name="email_address" id="setting_email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email" data-inputmask-alias="email"/>
+                        <input type="text" name="email_address" id="setting_email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email"/>
                     </div>' . $output_organization_logo_picker . '
                     <div class="pg-f-md">
                         ' . ((pg_erp_store_country() === 'TR')
@@ -93,7 +93,7 @@ $pg_settings_cards[] = '
                 <div class="row gy-5">
                     <div class="pg-f-lg">
                         <label for="ip" class="form-label">' . lang('Website IP Address') . '</label>
-                        <input type="text" name="ip" id="ip" readonly="true" class="disabled form-control" value="' . h($server_addr) . '" inputmode="numeric" data-inputmask-alias="ip"/>
+                        <input type="text" name="ip" id="ip" readonly="true" class="disabled form-control" value="' . h($server_addr) . '" inputmode="numeric"/>
                     </div>
                     <div class="pg-f-lg">
                         <label for="hostname" class="form-label">' . lang('Hostname') . '</label>
@@ -133,7 +133,7 @@ $pg_settings_cards[] = '
                     ' . $output_software_language . '
                     <div class="pg-f-lg">
                         <label for="subscription_key" class="form-label">' . lang('Subscription Key') . '</label>
-                        <input type="text" name="subscription_key" id="subscription_key" maxlength="19" autocomplete="false" spellcheck="false" autocapitalize="characters" class="form-control input-mask-key-code" value="' . h(SUBSCRIPTION_KEY) . '"' . (($license_site_warning !== '') ? ' aria-describedby="subscription_key_site"' : '') . ' />' . $license_site_warning_html . '
+                        <input type="text" name="subscription_key" id="subscription_key" maxlength="19" spellcheck="false" autocapitalize="characters" class="form-control input-mask-key-code" value="' . h(SUBSCRIPTION_KEY) . '"' . (($license_site_warning !== '') ? ' aria-describedby="subscription_key_site"' : '') . ' />' . $license_site_warning_html . '
                     </div>
                     <div class="col-12">
                         <div class="form-field">

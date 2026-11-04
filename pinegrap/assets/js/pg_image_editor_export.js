@@ -23,7 +23,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, t = X.t, el = X.el, section = X.section;
+    var Editor = X.Editor, M = X.M, t = X.t, el = X.el, section = X.section, pct = X.pct;
 
     var LABELS = { jpeg: 'JPEG', png: 'PNG', webp: 'WebP', avif: 'AVIF' };
 
@@ -252,7 +252,7 @@
         card.appendChild(el('div', { class: 'pgie-exbar' }, [bar]));
 
         if (change) {
-            card.appendChild(el('div', { class: 'pgie-exsave' + ((change.percent > 0) ? ' pgie-heavier' : ''), text: ((change.percent > 0) ? '+' : (change.percent < 0 ? '−' : '')) + Math.abs(change.percent) + '%' }));
+            card.appendChild(el('div', { class: 'pgie-exsave' + ((change.percent > 0) ? ' pgie-heavier' : ''), text: ((change.percent > 0) ? '+' : (change.percent < 0 ? '−' : '')) + pct(Math.abs(change.percent)) }));
         }
     };
 

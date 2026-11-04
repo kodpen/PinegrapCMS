@@ -1,0 +1,63 @@
+{
+    "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        {
+            "ostatus": "http://ostatus.org#",
+            "atomUri": "ostatus:atomUri",
+            "inReplyToAtomUri": "ostatus:inReplyToAtomUri",
+            "conversation": "ostatus:conversation",
+            "sensitive": "as:sensitive",
+            "toot": "http://joinmastodon.org/ns#"
+        }
+    ],
+    "id": "https://mastodon.example/users/alice/statuses/113000000000000001/activity",
+    "type": "Create",
+    "actor": "https://mastodon.example/users/alice",
+    "published": "2026-11-03T10:00:00Z",
+    "to": [
+        "https://www.w3.org/ns/activitystreams#Public"
+    ],
+    "cc": [
+        "https://mastodon.example/users/alice/followers",
+        "https://blog.example/@news"
+    ],
+    "object": {
+        "id": "https://mastodon.example/users/alice/statuses/113000000000000001",
+        "type": "Note",
+        "summary": null,
+        "inReplyTo": "https://blog.example/news/first-post",
+        "published": "2026-11-03T10:00:00Z",
+        "url": "https://mastodon.example/@alice/113000000000000001",
+        "attributedTo": "https://mastodon.example/users/alice",
+        "to": [
+            "https://www.w3.org/ns/activitystreams#Public"
+        ],
+        "cc": [
+            "https://mastodon.example/users/alice/followers",
+            "https://blog.example/@news"
+        ],
+        "sensitive": false,
+        "content": "<p><span class=\"h-card\"><a href=\"https://blog.example/@news\" class=\"u-url mention\">@<span>news</span></a></span> Great post, thanks!</p>",
+        "contentMap": {
+            "en": "<p>Great post, thanks!</p>"
+        },
+        "attachment": [],
+        "tag": [
+            {
+                "type": "Mention",
+                "href": "https://blog.example/@news",
+                "name": "@news@blog.example"
+            }
+        ],
+        "replies": {
+            "id": "https://mastodon.example/users/alice/statuses/113000000000000001/replies",
+            "type": "Collection",
+            "first": {
+                "type": "CollectionPage",
+                "next": "https://mastodon.example/users/alice/statuses/113000000000000001/replies?only_other_accounts=true&page=true",
+                "partOf": "https://mastodon.example/users/alice/statuses/113000000000000001/replies",
+                "items": []
+            }
+        }
+    }
+}

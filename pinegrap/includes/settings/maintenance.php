@@ -116,12 +116,12 @@ $pg_settings_modals[] = '
                                             ' . lang('There are several optional Pinegrap programs or "jobs" which can be scheduled to run automatically on your web server. The setup of these jobs (commonly referred to as "scheduled tasks" or "cron jobs") is optional depending on which Pinegrap features that are going to be used.') . '
                                         </div>
                                         <div class="alert theme-secondary form-text" role="alert">
-                                            ' . lang('You do not have to schedule every one of them separately. Turn on "Run Cron Jobs Automatically" further down this page and the general job runs the ones you select, one per turn - then the general job is the only one that needs a scheduled task of its own.') . '
+                                            ' . lang('You do not have to schedule every one of them separately. Turn on "Run Cron Jobs Automatically" in the Cron Jobs card and the general job runs the ones you select, one per run - then the general job is the only one that needs a scheduled task of its own.') . '
                                         </div>
                                     </div>
                                     <div class="col-12 ">
                                         <h5 id="cron_job_general_title">' . lang('General Jobs') . '</h5>
-                                        <p>' . lang('The general job is an optional feature which only needs to be enabled if you are using the scheduled comment feature to publish comments at a future date &amp; time.') . '</p>
+                                        <p>' . lang('Every site needs a scheduled task for the general job: it runs the jobs selected under "Run Cron Jobs Automatically", publishes scheduled comments and keeps the health address and the alerts working. While it does not run, the health address answers 503.') . '</p>
                                         <textarea id="cron_job_general" aria-labelledby="cron_job_general_title">' . $cron_job_general . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_general', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Every Minute') . '</div>
@@ -194,7 +194,7 @@ $pg_settings_modals[] = '
                                     </div>
                                     <div class="col-12 ">
                                         <h5 id="cron_job_membership_title">' . lang('Membership Jobs') . '</h5>
-                                        <p>' . lang('The membership job is an optional feature which only needs to be enabled if you want one or more of the features below. Send membership expiration warning e-mail to members whose membership is about to expire. You can enable and configure this feature via the Settings Page. Remove contacts from the Membership Contact Group when a contact\'s membership is no longer valid (e.g. membership has expired). This feature runs automatically once a scheduled task is setup for the membership job.') . '</p>
+                                        <p>' . lang('The membership job is an optional feature which only needs to be enabled if you want one or more of the features below. Send membership expiration warning e-mail to members whose membership is about to expire. You can turn it on and set it up in Accounts and sign-in, Registration &amp; Membership card. Remove contacts from the Membership Contact Group when a contact\'s membership is no longer valid (e.g. membership has expired). This feature runs automatically once a scheduled task is setup for the membership job.') . '</p>
                                         <textarea id="cron_job_membership" aria-labelledby="cron_job_membership_title">' . $cron_job_membership . '</textarea>
                                         ' . pg_code_editor_attach(array('id' => 'cron_job_membership', 'code_type' => 'plain','readonly'=>true )) . '
                                         <div class="form-text text-end">' . lang('Recommended Schedule: Once a Day') . '</div>
@@ -351,7 +351,7 @@ if ($backup_settings_ready) {
     $output_backup_settings = '
                     <div class="pg-f-xs">
                         <label for="backup_keep" class="form-label">' . lang('Automatic backups to keep') . '</label>
-                        <input type="number" name="backup_keep" id="backup_keep" min="0" step="1" class="form-control" value="' . h($backup_keep) . '" />
+                        <input type="number" name="backup_keep" id="backup_keep" min="0" max="9999" step="1" class="form-control" value="' . h($backup_keep) . '" />
                     </div>
                     <div class="col-12">
                         <div class="form-text">' . lang('The automatic backup keeps one backup per week; every run in the same week replaces it. Older weeks beyond this number are deleted. 0 keeps all of them. Backups taken by hand and the install dumps are never deleted.') . '</div>

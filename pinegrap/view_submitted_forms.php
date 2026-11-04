@@ -484,6 +484,16 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
     // Delete Selected sits in the list's selection bar, which shows while
     // rows are selected, and posts the selection to delete_submitted_forms.php.
+    // The Unpaid filter (designed forms with a fee): a toggle kept in the
+    // session as 'payment', read by pg_submitted_form_list_filter() in the
+    // simple and the advanced view alike, so Export and Delete All follow it.
+    $output_unpaid_filter = '';
+
+    if (pg_form_payment_ready()) {
+        $unpaid_on = (pg_submitted_form_list_value($_SESSION['software']['forms']['view_submitted_forms'] ?? array(), 'payment') === 'unpaid');
+        $output_unpaid_filter = '<a class="btn btn-sm btn-outline theme-warning m-1' . ($unpaid_on ? ' active' : '') . '" role="button" aria-pressed="' . ($unpaid_on ? 'true' : 'false') . '" title="' . h(lang('Show only the forms whose fee is not paid yet')) . '" href="view_submitted_forms.php?payment=' . ($unpaid_on ? 'any' : 'unpaid') . '"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Unpaid') . '</a>';
+    }
+
     $output_bulk_buttons = '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
     // if the advanced filters are off
@@ -784,6 +794,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                     ' . $output_custom_form_selection . '
                                 </div>
                             </form>
+                            ' . $output_unpaid_filter . '
                             <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . pg_period_nav('view_submitted_forms.php', ($_SESSION['software']['forms']['view_submitted_forms'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),

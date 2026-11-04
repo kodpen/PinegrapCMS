@@ -1,0 +1,35 @@
+{
+    "@context": [
+        "https://www.w3.org/ns/activitystreams",
+        "https://w3id.org/security/v1",
+        {
+            "manuallyApprovesFollowers": "as:manuallyApprovesFollowers",
+            "toot": "http://joinmastodon.org/ns#",
+            "discoverable": "toot:discoverable"
+        }
+    ],
+    "id": "https://blog.example/@news",
+    "type": "Organization",
+    "preferredUsername": "news",
+    "name": "Example News",
+    "summary": "<p>News &amp; notes from Example.</p>",
+    "url": "https://blog.example/",
+    "inbox": "https://blog.example/pinegrap/ap_inbox.php",
+    "outbox": "https://blog.example/@news/outbox",
+    "followers": "https://blog.example/@news/followers",
+    "endpoints": {
+        "sharedInbox": "https://blog.example/pinegrap/ap_inbox.php"
+    },
+    "manuallyApprovesFollowers": false,
+    "discoverable": true,
+    "publicKey": {
+        "id": "https://blog.example/@news#main-key",
+        "owner": "https://blog.example/@news",
+        "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----\n"
+    },
+    "icon": {
+        "type": "Image",
+        "mediaType": "image/png",
+        "url": "https://blog.example/logo.png"
+    }
+}

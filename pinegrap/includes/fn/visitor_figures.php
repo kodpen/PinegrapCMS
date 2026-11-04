@@ -253,6 +253,91 @@ function pg_visitor_parts_sql($parts)
 }
 
 /**
+ * A split with some summary days handed to the raw rows: days whose summary
+ * lacks the dimension asked for, because it was written before that
+ * dimension existed. Neighbouring days of one source are joined again. Pure.
+ *
+ * @param array $parts pg_visitor_day_split()
+ * @param array $days  Y-m-d days to read from the rows
+ * @return array the same shape as pg_visitor_day_split()
+ */
+function pg_visitor_parts_move_days($parts, $days)
+{
+    $move = array();
+
+    foreach ((array) $days as $day) {
+        $move[(string) $day] = true;
+    }
+
+    if (count($move) === 0) {
+        return $parts;
+    }
+
+    $out = array();
+
+    $add = function ($part) use (&$out) {
+        $count = count($out);
+
+        if (($count > 0) && ($out[$count - 1]['source'] === $part['source'])) {
+            $out[$count - 1]['last'] = $part['last'];
+            $out[$count - 1]['to'] = $part['to'];
+            $out[$count - 1]['days'] += $part['days'];
+        } else {
+            $out[] = $part;
+        }
+    };
+
+    foreach ((array) $parts as $part) {
+        if ($part['source'] !== 'summary') {
+            $add($part);
+            continue;
+        }
+
+        $date = $part['first'];
+
+        while ($date <= $part['last']) {
+            $day_start = (int) strtotime($date . ' 00:00:00');
+
+            $add(array(
+                'source' => isset($move[$date]) ? 'raw' : 'summary',
+                'first' => $date,
+                'last' => $date,
+                'from' => $day_start,
+                'to' => (int) strtotime('+1 day', $day_start) - 1,
+                'days' => 1,
+            ));
+
+            $date = date('Y-m-d', strtotime($date . ' 12:00:00 +1 day'));
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Summarized days of the window that had visits but hold no row of a
+ * dimension: summarized before the dimension was added.
+ *
+ * @param string $dimension
+ * @param string $where_summary pg_visitor_parts_sql() summary condition
+ * @return array Y-m-d days
+ */
+function pg_visitor_days_without_dimension($dimension, $where_summary)
+{
+    if ($where_summary === '') {
+        return array();
+    }
+
+    $days = db_values("SELECT stat_date FROM visitor_stats_daily
+        WHERE (dimension = '') AND (visits > 0) AND " . $where_summary . "
+            AND stat_date NOT IN (
+                SELECT stat_date FROM visitor_stats_daily
+                WHERE (dimension = '" . e($dimension) . "') AND " . $where_summary . ")");
+
+    return is_array($days) ? $days : array();
+}
+
+/**
  * The summary's figure sums, as SQL over visitor_stats_daily rows.
  *
  * @return string
@@ -438,6 +523,15 @@ function pg_visitor_breakdown($dimension, $from, $to, $limit = 50)
         'summary_to' => $totals['summary_to'],
     );
     unset($totals['summary_days'], $totals['raw_days'], $totals['summary_to']);
+
+    // A day summarized before this dimension existed holds none of its rows:
+    // its visits are counted from the rows while they are kept.
+    $missing = pg_visitor_days_without_dimension($dimension, $where['summary']);
+
+    if (count($missing) > 0) {
+        $parts = pg_visitor_parts_move_days($parts, $missing);
+        $where = pg_visitor_parts_sql($parts);
+    }
 
     // With both sources a value can be outside the top of one and inside
     // the top of the sum: each list is read deeper than the limit.

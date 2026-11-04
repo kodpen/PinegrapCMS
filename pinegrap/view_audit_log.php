@@ -5,7 +5,7 @@
  * The audit trail: who changed what, when and from where, with each changed
  * field before and after (audit_log, written by pg_audit()). Lines are
  * filtered by date, source, user, action, record type, record and request,
- * listed one page at a time by the audit_log_list_rows action
+ * listed by the list table driver one batch at a time
  * (includes/fn/audit_list.php), sorted by the headings and searched on the
  * server, and handed out as a CSV file with the same filters. Each export is
  * itself a line in the trail.
@@ -101,15 +101,22 @@ if (isset($_GET['export']) && ($_GET['export'] === 'csv')) {
 
 $audit_view_query = pg_audit_view_query($audit_view_filters);
 
-// The lines come from the audit_log_list_rows action one page at a time
-// (includes/fn/audit_list.php), sorted by the headings' kept sort.
+// The list table driver prints the first lines (includes/fn/audit_list.php);
+// the next ones come from its list_table_rows action as the list scrolls,
+// sorted by the kept sort.
 $audit_view_sort = pg_audit_list_sort();
 $audit_view_kept = pg_audit_list_link_query($audit_view_query);
-$audit_view_heading_query = $audit_view_kept ? h('&' . http_build_query($audit_view_kept)) : '';
+$audit_view_source = pg_audit_list_source($user, array('filters' => $audit_view_query));
 
-$audit_view_heading = function ($code) use ($audit_view_sort, $audit_view_heading_query) {
-    return get_column_heading($audit_view_sort['sort_columns'][$code], $audit_view_sort['sort_levels'], '', $audit_view_heading_query, $code);
-};
+if ($audit_view_source === null) {
+    output_error(lang('Access denied'));
+}
+
+$audit_view_page = pg_list_table_page($audit_view_source, array(), null);
+
+if ($audit_view_page === false) {
+    output_error(lang('Query failed.'));
+}
 
 // The choices of the type and action filters: what the trail holds, plus the
 // value already chosen, ordered by the name shown.
@@ -226,31 +233,21 @@ pg_page_shell(array(
     ' . $audit_view_toolbar . '
     <div class="row">
         <div class="col-12">
-            <div class="card mb-5">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table align-top" style="width:100%;display:none" data-pg-list-action="audit_log_list_rows" data-pg-list-params="' . h(encode_json(array('filters' => (object) $audit_view_query))) . '" data-pg-audit-failed="' . h(lang('Query failed.')) . '" data-pg-audit-loading="' . h(lang('Loading...')) . '">
-                        <thead>
-                            <tr>
-                                <th>' . $audit_view_heading('date') . '</th>
-                                <th>' . $audit_view_heading('who') . '</th>
-                                <th>' . $audit_view_heading('action') . '</th>
-                                <th>' . $audit_view_heading('record') . '</th>
-                                <th>' . h(lang('Changes')) . '</th>
-                                <th>' . $audit_view_heading('ip') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+            <div class="d-flex justify-content-end mb-3">
+                <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" data-pg-list-search="view_audit_log" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+                </label>
+            </div>
+            <div class="mb-5" data-pg-audit-failed="' . h(lang('Query failed.')) . '" data-pg-audit-loading="' . h(lang('Loading...')) . '">
+                ' . pg_list_table_html($audit_view_source, $audit_view_page, lang('Audit trail')) . '
             </div>
             <p class="small fg-secondary mb-12">' . h(lang(array('string' => 'A CSV export holds at most {var:1} lines, newest first, and is recorded in the trail.', 'vars' => array(pg_format_number($audit_view_limits['export'], 0))))) . '</p>
         </div>
     </div>
     <style>@layer custom {
-        /* The list cells do not wrap and DataTables pins each column to the
-           width it measures, so a long record name would pin the column wider
-           than the screen: the name wraps anywhere and the cell is capped, and
-           the IP column stays in view. */
+        /* A long record name wraps anywhere and the cell is capped, so the
+           IP column stays in view. */
         .pg-audit-record { white-space: normal; overflow-wrap: anywhere; max-width: 24rem; }
     }</style>
     <script>
@@ -267,10 +264,10 @@ pg_page_shell(array(
             fold.setAttribute("data-pg-audit-read", "1");
 
             var body = fold.querySelector(".pg-audit-changes-body");
-            var table = fold.closest("table");
-            var failed = (table && table.getAttribute("data-pg-audit-failed")) || "";
+            var texts = fold.closest("[data-pg-audit-failed]");
+            var failed = (texts && texts.getAttribute("data-pg-audit-failed")) || "";
 
-            body.textContent = (table && table.getAttribute("data-pg-audit-loading")) || "";
+            body.textContent = (texts && texts.getAttribute("data-pg-audit-loading")) || "";
             body.setAttribute("aria-busy", "true");
 
             window.jQuery.ajax({
@@ -295,5 +292,5 @@ pg_page_shell(array(
         }, true);
     </script>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();

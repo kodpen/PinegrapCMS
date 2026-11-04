@@ -1635,6 +1635,10 @@ function test_ws_poll_input()
 	pg_assert_false(ws_poll_input(array('question' => 'Q', 'options' => range(1, 11)))['ok'], 'eleven options are too many');
 	pg_assert_same('question', ws_poll_input(array('question' => str_repeat('a', WS_MESSAGE_MAX + 1), 'options' => array('A', 'B')))['field'], 'a question longer than a message');
 	pg_assert_true(ws_poll_input(array('question' => 'Q', 'options' => array('A', 'B'), 'closes_at' => time() + 3600))['ok'], 'closing in an hour');
+
+	// Options equal once case and the dotted or dotless i are folded are one.
+	pg_assert_same('options', ws_poll_input(array('question' => 'Q', 'options' => array('Elma', 'elma')))['field'], 'Elma and elma are one option');
+	pg_assert_same(array('Işık', 'Kapı'), ws_poll_input(array('question' => 'Q', 'options' => array('Işık', 'ışık', 'IŞIK', 'Kapı')))['options'], 'the first spelling is kept');
 }
 
 // Moving a channel into a group is staff work on the channel, gated the way

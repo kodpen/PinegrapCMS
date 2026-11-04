@@ -454,11 +454,15 @@ function ws_poll_input($data)
     }
 
     $options = array();
+    // "Elma" and "elma" are one option: compared folded (ws_fold()).
+    $seen = array();
 
     foreach ((array) ($data['options'] ?? array()) as $option) {
         $option = mb_substr(trim(preg_replace('/\s+/u', ' ', (string) $option)), 0, 255);
+        $key = ws_fold($option);
 
-        if (($option !== '') && !in_array($option, $options, true)) {
+        if (($option !== '') && !isset($seen[$key])) {
+            $seen[$key] = true;
             $options[] = $option;
         }
     }
@@ -662,11 +666,12 @@ function ws_poll_edit_check($viewer, $poll, $data)
             return $fail(lang('Invalid request.'), 'options');
         }
 
-        if (($label === '') || in_array($label, $labels, true)) {
+        // Compared folded (ws_fold()), so "Elma" and "elma" are one option.
+        if (($label === '') || in_array(ws_fold($label), $labels, true)) {
             continue;
         }
 
-        $labels[] = $label;
+        $labels[] = ws_fold($label);
         $options[] = array('id' => $option_id, 'label' => $label);
     }
 

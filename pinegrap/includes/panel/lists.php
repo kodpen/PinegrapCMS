@@ -9,21 +9,16 @@
  *   commission_profile_list_rows
  *                              a page of the recurring commission profiles
  *                              (view_recurring_commission_profiles.php)
- *   site_log_list_rows         a page of the Site Log (view_log.php)
- *   audit_log_list_rows        a page of the audit trail (view_audit_log.php)
  *   audit_log_changes          the changed fields of one audit trail line
- *   waf_log_list_rows          a page of the firewall log's events
- *                              (view_waf_log.php)
  *   mail_queue_list_rows       a page of the e-mail queue (mail_queue.php)
  *   sms_queue_list_rows        a page of the text message queue
  *                              (mail_queue.php?tab=sms)
  *   list_table_rows            a batch of rows of a list drawn by the list
  *                              table driver (includes/fn/list_table.php):
- *                              the pages, users, contacts,
- *                              submitted forms and products lists
- *                              (view_pages.php, view_users.php,
- *                              view_contacts.php, view_submitted_forms.php,
- *                              view_products.php)
+ *                              the pages, users, contacts, submitted
+ *                              forms and products lists, the Site Log, the
+ *                              audit trail and the firewall log
+ *                              (pg_list_table_definitions())
  *   list_table_sort            keeps the sort of a list the driver prints
  *                              whole (browser mode), set by a heading click
  *   booking_list_rows          a page of the bookings agenda's list view
@@ -99,46 +94,6 @@ function pg_panel_commission_profile_list_rows($request, $action)
     return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }
 
-function pg_panel_site_log_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_area_access($user, 'manager'), answered here in JSON.
-    $user = validate_user();
-
-    if ((int) $user['role'] > 2) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_log_list.php');
-
-    // The range the screen shows; the sort is the one it kept in the session.
-    $range = pg_site_log_list_range($request['start_time'] ?? null, $request['stop_time'] ?? null);
-
-    if ($range === null) {
-        http_response_code(400);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    $page = pg_site_log_list_page(
-        $range,
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
-}
-
 // The audit trail's gate: validate_area_access($user, 'manager') and the
 // trail's table, answered in JSON. Each action checks the form token itself.
 function pg_panel_audit_log_gate()
@@ -162,28 +117,6 @@ function pg_panel_audit_log_gate()
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_list.php');
 }
 
-function pg_panel_audit_log_list_rows($request, $action)
-{
-    pg_panel_audit_log_gate();
-    validate_token();
-
-    // The filters the screen shows (its address), checked again; the sort
-    // is the one it kept in the session.
-    $filters = (isset($request['filters']) && is_array($request['filters'])) ? $request['filters'] : array();
-
-    $page = pg_audit_list_page(
-        pg_audit_view_filters($filters),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
-}
-
 function pg_panel_audit_log_changes($request, $action)
 {
     pg_panel_audit_log_gate();
@@ -203,43 +136,6 @@ function pg_panel_audit_log_changes($request, $action)
     }
 
     return array('status' => 'success', 'html' => $html);
-}
-
-function pg_panel_waf_log_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_area_access($user, 'manager'), answered here in JSON.
-    $user = validate_user();
-
-    if ((int) $user['role'] > 2) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/waf_log_list.php');
-
-    // The filters the screen shows (its address), checked again; the sort
-    // is the one it kept in the session.
-    $filters = (isset($request['filters']) && is_array($request['filters'])) ? $request['filters'] : array();
-
-    $page = pg_schema_has('waf_log') ? pg_waf_log_list_page(
-        pg_waf_log_list_filters($filters),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
-        time()) : false;
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }
 
 function pg_panel_mail_queue_list_rows($request, $action)
