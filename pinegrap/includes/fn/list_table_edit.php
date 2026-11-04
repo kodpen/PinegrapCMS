@@ -101,59 +101,275 @@ function pg_page_list_check_html()
     return '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
 }
 
+
 /**
- * The Pages list's cells that change in place: the switches the page
- * screen and Modify Selected set, keyed by the list's columns.
+ * The theme whose styles the Pages list shows, and a style quick edit
+ * writes, while it is previewed: a theme other than the one activated for
+ * the device type (as pg_page_list_view() decides). 0 otherwise.
  *
+ * @param string $device_type 'desktop' or 'mobile'
+ * @return int
+ */
+function pg_page_quick_preview_theme($device_type)
+{
+    $preview = (int) ($_SESSION['software']['preview_theme_id'] ?? 0);
+
+    if ($preview <= 0) {
+        return 0;
+    }
+
+    $activated = (int) db_value("SELECT id FROM files WHERE activated_" . sql_device_type($device_type) . "_theme = '1'");
+
+    return ($preview != $activated) ? $preview : 0;
+}
+
+/**
+ * The folders a page may be moved into from the list, in the order and
+ * with the indentation of the page screen's picker (pg_page_select_folder()):
+ * neither the Recycle Bin nor the Workspace's folder, nor anything below
+ * them, and only folders the user may edit. Pure over the rows.
+ *
+ * @param array    $folders   rows (folder_id, folder_name, folder_parent,
+ *                            folder_archived) in the picker's order
+ * @param callable $may       function ($folder_id): whether the user may edit it
+ * @param int      $workspace the Workspace's folder, 0 when there is none
+ * @param int      $bin       the Recycle Bin folder, 0 when there is none
+ * @return array folder id => label
+ */
+function pg_page_quick_folder_choices($folders, $may, $workspace, $bin)
+{
+    $children = array();
+
+    foreach ((array) $folders as $folder) {
+        $children[(int) $folder['folder_parent']][] = $folder;
+    }
+
+    $choices = array();
+    $seen = array();
+    $archived = ' [' . lang('ARCHIVED') . ']';
+
+    $walk = function ($parent, $level) use (&$walk, &$choices, &$seen, $children, $may, $workspace, $bin, $archived) {
+        foreach ($children[$parent] ?? array() as $folder) {
+            $id = (int) $folder['folder_id'];
+
+            // A folder left out takes what is below it along; a loop in
+            // folder_parent is walked once.
+            if (isset($seen[$id]) || ($id === (int) $workspace) || ($id === (int) $bin)) {
+                continue;
+            }
+
+            $seen[$id] = true;
+            $next = $level;
+
+            if (call_user_func($may, $id)) {
+                $choices[$id] = str_repeat("\u{00A0}\u{00A0}", $level) . (string) $folder['folder_name']
+                    . (((string) ($folder['folder_archived'] ?? '') === '1') ? $archived : '');
+                $next = $level + 1;
+            }
+
+            $walk($id, $next);
+        }
+    };
+
+    $walk(0, 0);
+
+    return $choices;
+}
+
+/**
+ * The value => label pairs of a picker's <option> list, as the page screen
+ * prints it (select_style(), get_mobile_style_options()). Pure.
+ *
+ * @param string $html
+ * @return array value => label, in the picker's order
+ */
+function pg_page_quick_option_pairs($html)
+{
+    $pairs = array();
+
+    if (preg_match_all('/<option value="([0-9]+)"[^>]*>(.*?)<\/option>/s', (string) $html, $matches, PREG_SET_ORDER)) {
+        foreach ($matches as $match) {
+            $pairs[(string) $match[1]] = html_entity_decode(strip_tags($match[2]), ENT_QUOTES, 'UTF-8');
+        }
+    }
+
+    return $pairs;
+}
+
+/**
+ * What the Pages list's fields offer the user, read once per request: the
+ * folders, the styles of the device type the list shows and the theme a
+ * style goes to while another one is previewed.
+ *
+ * @param array $user the signed-in user
+ * @return array 'device', 'preview_theme_id', 'folders', 'styles', 'style_label'
+ */
+function pg_page_quick_edit_choices($user)
+{
+    static $read = array();
+
+    $role = (int) ($user['role'] ?? 99);
+    $key = (int) ($user['id'] ?? 0) . ':' . $role;
+
+    if (isset($read[$key])) {
+        return $read[$key];
+    }
+
+    $device = pg_page_list_device_type();
+    $preview = pg_page_quick_preview_theme($device);
+
+    $folders = db_items("SELECT folder_id, folder_name, folder_parent, folder_archived FROM folder ORDER BY folder_level, folder_order, folder_name");
+    $folders = pg_page_quick_folder_choices(is_array($folders) ? $folders : array(), function ($folder_id) {
+        return check_edit_access($folder_id);
+    }, (int) pg_workspace_folder_id(), (int) pg_recycle_bin_folder_id());
+
+    $styles = array();
+
+    // Staff only, as on the page screen and in Modify Selected.
+    if ($role < 3) {
+        $default = $preview ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
+        $styles = pg_page_quick_option_pairs(($device === 'mobile') ? get_mobile_style_options('', $default) : select_style('', $default));
+    }
+
+    $read[$key] = array(
+        'device' => $device,
+        'preview_theme_id' => $preview,
+        'folders' => $folders,
+        'styles' => $styles,
+        'style_label' => ($device === 'mobile') ? lang('Mobile Page Style') : lang('Desktop Page Style'),
+    );
+
+    return $read[$key];
+}
+
+/**
+ * The Pages list's cells that change in place, keyed by the list's
+ * columns: the name, the folder, the style (staff), the custom form's name
+ * and switch (a user who may set that page type) and the switches the
+ * page screen and Modify Selected set. Without a user, the switches only.
+ *
+ * @param array|null $user    the signed-in user
+ * @param array|null $choices pg_page_quick_edit_choices(), read when null
  * @return array field => definition (pg_list_edit_parse())
  */
-function pg_page_quick_edit_columns()
+function pg_page_quick_edit_columns($user = null, $choices = null)
 {
     $yes_no = array('1' => lang('Yes'), '0' => lang('No'));
+    $columns = array();
 
-    return array(
-        'searchable' => array('type' => 'select', 'label' => lang('Searchable'), 'options' => $yes_no),
-        'comments' => array('type' => 'select', 'label' => lang('Comments'), 'options' => $yes_no),
-        'sitemap' => array('type' => 'select', 'label' => lang('Site Map'), 'options' => $yes_no),
-    );
+    if (is_array($user)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
+
+        $choices = is_array($choices) ? $choices : pg_page_quick_edit_choices($user);
+
+        $columns['name'] = array('type' => 'text', 'label' => lang('Name'), 'required' => true, 'max' => 100);
+        $columns['folder'] = array('type' => 'select', 'label' => lang('Folder'), 'options' => $choices['folders']);
+
+        if ((int) $user['role'] < 3) {
+            $columns['style'] = array('type' => 'select', 'label' => $choices['style_label'], 'options' => $choices['styles']);
+        }
+
+        if (pg_page_type_user_may_set($user, 'custom form')) {
+            $columns['form_name'] = array('type' => 'text', 'label' => lang('Form Name'), 'max' => 100);
+            $columns['form_enabled'] = array('type' => 'select', 'label' => lang('Form Enabled'), 'options' => $yes_no);
+        }
+    }
+
+    $columns['searchable'] = array('type' => 'select', 'label' => lang('Searchable'), 'options' => $yes_no);
+    $columns['comments'] = array('type' => 'select', 'label' => lang('Comments'), 'options' => $yes_no);
+    $columns['sitemap'] = array('type' => 'select', 'label' => lang('Site Map'), 'options' => $yes_no);
+
+    return $columns;
 }
 
 /**
  * The value a page cell's field opens with.
  *
  * @param string $field a key of pg_page_quick_edit_columns()
- * @param array  $page  a row of the list's read (page_search, comments, sitemap)
- * @return string '1' or '0'
+ * @param array  $page  a row of the list's read (page_name, page_folder,
+ *                      page_search, comments, sitemap, form_name, enabled,
+ *                      and 'style_value', the style the cell shows)
+ * @return string
  */
 function pg_page_quick_edit_value($field, $page)
 {
-    $columns = array('searchable' => 'page_search', 'comments' => 'comments', 'sitemap' => 'sitemap');
+    $switches = array('searchable' => 'page_search', 'comments' => 'comments', 'sitemap' => 'sitemap', 'form_enabled' => 'enabled');
 
-    return (isset($columns[$field]) && ((string) ($page[$columns[$field]] ?? '') === '1')) ? '1' : '0';
+    if (isset($switches[$field])) {
+        return ((string) ($page[$switches[$field]] ?? '') === '1') ? '1' : '0';
+    }
+
+    switch ($field) {
+        case 'name':
+            return (string) ($page['page_name'] ?? '');
+        case 'folder':
+            return (string) (int) ($page['page_folder'] ?? 0);
+        case 'style':
+            return (string) (int) ($page['style_value'] ?? 0);
+        case 'form_name':
+            return (string) ($page['form_name'] ?? '');
+    }
+
+    return '';
 }
 
 /**
- * What one quick edit of a page decides, by the bulk edit's rules
- * (pg_page_bulk_decide()), or why it cannot be made: the site map switch
- * goes on only for a page type the page screen offers it to, and never on a
- * page closed to search engines. Said rather than skipped, since the cell
+ * The fields a page cell offers: the name and folder of every page, the
+ * style unless the visual editor opens the page (its layout was built for
+ * its style), the form's two fields on a custom form page only.
+ *
+ * @param string $field   a key of pg_page_quick_edit_columns()
+ * @param array  $page    a row of the list's read
+ * @param bool   $visual  whether the visual editor opens the page
+ * @return bool
+ */
+function pg_page_quick_cell_editable($field, $page, $visual)
+{
+    if ($field === 'style') {
+        return !$visual;
+    }
+
+    if (($field === 'form_name') || ($field === 'form_enabled')) {
+        return ((string) ($page['page_type'] ?? '') === 'custom form');
+    }
+
+    return true;
+}
+
+/**
+ * What one quick edit of a page's folder, style or switch decides, by the
+ * bulk edit's rules (pg_page_bulk_decide()), or why it cannot be made: the
+ * site map switch goes on only for a page type the page screen offers it
+ * to, and never on a page closed to search engines; a page the visual
+ * editor opens keeps its style. Said rather than skipped, since the cell
  * would otherwise show the old value without a reason.
  *
- * @param array  $page  pg_page_bulk_fetch()
- * @param string $field a key of pg_page_quick_edit_columns()
- * @param string $value '0' or '1'
- * @param int    $role  the operator's role
+ * @param array  $page   pg_page_bulk_fetch()
+ * @param string $field  folder, style, searchable, comments or sitemap
+ * @param string $value  as pg_list_edit_parse() read it
+ * @param int    $role   the operator's role
+ * @param string $device the device type whose style the list shows
  * @return array array('ok' => bool, 'decision' => pg_page_bulk_decide(), 'message' => the refusal)
  */
-function pg_page_quick_decide($page, $field, $value, $role)
+function pg_page_quick_decide($page, $field, $value, $role, $device = 'desktop')
 {
-    $keys = array('searchable' => 'search', 'comments' => 'comments', 'sitemap' => 'sitemap');
+    $keys = array(
+        'searchable' => 'search',
+        'comments' => 'comments',
+        'sitemap' => 'sitemap',
+        'folder' => 'folder',
+        'style' => ($device === 'mobile') ? 'mobile_style' : 'style',
+    );
 
     if (!isset($keys[$field])) {
         return array('ok' => false, 'decision' => null, 'message' => lang('This column cannot be changed here.'));
     }
 
-    $value = ((string) $value === '1') ? '1' : '0';
+    if (in_array($field, array('searchable', 'comments', 'sitemap'), true)) {
+        $value = ((string) $value === '1') ? '1' : '0';
+    } else {
+        $value = (string) (int) $value;
+    }
 
     if (($field === 'sitemap') && ($value === '1')) {
         if (!empty($page['noindex'])) {
@@ -165,24 +381,141 @@ function pg_page_quick_decide($page, $field, $value, $role)
         }
     }
 
-    return array('ok' => true, 'decision' => pg_page_bulk_decide($page, array($keys[$field] => $value), $role), 'message' => '');
+    $decision = pg_page_bulk_decide($page, array($keys[$field] => $value), $role);
+
+    if (($field === 'style') && ($decision['style_skipped'] || !$decision['styles'])) {
+        return array('ok' => false, 'decision' => null, 'message' => lang('A page made in the visual editor keeps the style it was designed with.'));
+    }
+
+    return array('ok' => true, 'decision' => $decision, 'message' => '');
 }
 
 /**
- * Write one quick edit from the Pages list the way Modify Selected writes
- * the same switch (pg_page_bulk_apply()): the folder's edit right checked,
- * the keyword cloud and the SEO score kept in step, the audit trail and the
- * log told. The answer draws the cell from the page as stored.
+ * The page's stored values the quick edit compares with and logs: its
+ * columns, its custom form's and the style the list's cell shows.
+ *
+ * @param int   $page_id
+ * @param array $choices pg_page_quick_edit_choices()
+ * @return array
+ */
+function pg_page_quick_stored($page_id, $choices)
+{
+    $result = db_q(
+        "SELECT
+            page.page_name, page.page_folder, page.page_style, page.mobile_style_id,
+            page.page_search, page.comments, page.sitemap,
+            custom_form_pages.form_name, custom_form_pages.enabled
+        FROM page
+        LEFT JOIN custom_form_pages ON custom_form_pages.page_id = page.page_id
+        WHERE page.page_id = ?", array((int) $page_id));
+    $stored = $result ? mysqli_fetch_assoc($result) : null;
+    $stored = is_array($stored) ? $stored : array();
+
+    if ($choices['preview_theme_id'] > 0) {
+        $stored['style_value'] = (int) db_value(
+            "SELECT style_id FROM preview_styles
+            WHERE (page_id = '" . (int) $page_id . "') AND (theme_id = '" . (int) $choices['preview_theme_id'] . "')
+            AND (device_type = '" . e($choices['device']) . "')");
+    } else {
+        $stored['style_value'] = (int) ($stored[($choices['device'] === 'mobile') ? 'mobile_style_id' : 'page_style'] ?? 0);
+    }
+
+    return $stored;
+}
+
+/**
+ * Rename a page from the list as the page screen does: the name cleaned
+ * and checked by its rules, free among pages, files and short links, the
+ * SEO score marked stale, and, for staff, the old address sending visitors
+ * on (pg_short_link_page_renamed(), the page screen's box left on).
+ *
+ * @param array  $user
+ * @param array  $page pg_page_bulk_fetch()
+ * @param string $name the cleaned name
+ * @return array array('ok' => bool, 'message' => the refusal or what became of the old address)
+ */
+function pg_page_quick_rename($user, $page, $name)
+{
+    if (check_name_availability(array('name' => $name, 'ignore_item_id' => $page['page_id'], 'ignore_item_type' => 'page', 'ignore_redirects_to_page' => $page['page_id'])) == false) {
+        return array('ok' => false, 'message' => lang('The page name that you entered is already in use. Please enter a different page name.'));
+    }
+
+    $updated = db_q(
+        "UPDATE page
+        SET page_name = ?, seo_analysis_current = '0', page_timestamp = UNIX_TIMESTAMP(), page_user = ?
+        WHERE page_id = ?", array($name, (int) $user['id'], (int) $page['page_id']));
+
+    if ($updated === false) {
+        return array('ok' => false, 'message' => lang('The change could not be saved.'));
+    }
+
+    $said = pg_short_link_page_renamed_messages(
+        pg_short_link_page_renamed((int) $page['page_id'], $page['page_name'], $name, ((int) $user['role'] < 3), (int) $user['id'], (int) $page['page_folder']),
+        PATH);
+
+    return array('ok' => true, 'message' => implode(' ', array_merge($said['notes'], $said['warnings'])));
+}
+
+/**
+ * Write a custom form page's form name or switch, as the page screen's
+ * form settings do: on a custom form page only, the name unique among
+ * the forms.
+ *
+ * @param array  $user
+ * @param array  $page  pg_page_bulk_fetch()
+ * @param string $field form_name or form_enabled
+ * @param string $value
+ * @return array array('ok' => bool, 'message' => the refusal)
+ */
+function pg_page_quick_form_write($user, $page, $field, $value)
+{
+    $page_id = (int) $page['page_id'];
+
+    if ((string) $page['page_type'] !== 'custom form') {
+        return array('ok' => false, 'message' => lang('This column cannot be changed here.'));
+    }
+
+    if ($field === 'form_name') {
+        $taken = db_q("SELECT COUNT(*) AS taken FROM custom_form_pages WHERE (form_name = ?) AND (page_id != ?)", array((string) $value, $page_id));
+        $taken = $taken ? mysqli_fetch_assoc($taken) : null;
+
+        if (!$taken || ((int) $taken['taken'] > 0)) {
+            return array('ok' => false, 'message' => lang('The form name that you entered is already in use. Please enter a different form name.'));
+        }
+
+        $updated = db_q("UPDATE custom_form_pages SET form_name = ? WHERE page_id = ?", array((string) $value, $page_id));
+    } else {
+        $updated = db_q("UPDATE custom_form_pages SET enabled = ? WHERE page_id = ?", array(((string) $value === '1') ? 1 : 0, $page_id));
+    }
+
+    if (($updated === false) || !pg_page_bulk_touch($page_id, (int) $user['id'])) {
+        return array('ok' => false, 'message' => lang('The change could not be saved.'));
+    }
+
+    return array('ok' => true, 'message' => '');
+}
+
+/**
+ * Write one quick edit from the Pages list by the page screen's rules: the
+ * folder's edit right checked (the destination's too), a folder, style or
+ * switch written the way Modify Selected writes it (pg_page_bulk_apply()),
+ * a name the way the page screen renames, the custom form's fields the way
+ * its form settings save them; the audit trail and the log told. The
+ * answer draws the row's cells from the page as stored, read again through
+ * the list in the view it shows.
  *
  * @param array  $user    the signed-in user
  * @param int    $page_id
  * @param string $field   a key of pg_page_quick_edit_columns()
  * @param string $value   as pg_list_edit_parse() read it
+ * @param string $filter  the list's view
  * @return array the answer for pg_list_edit_reply()
  */
-function pg_page_quick_update($user, $page_id, $field, $value)
+function pg_page_quick_update($user, $page_id, $field, $value, $filter = '')
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_bulk.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
 
     $page = pg_page_bulk_fetch((int) $page_id);
 
@@ -194,51 +527,106 @@ function pg_page_quick_update($user, $page_id, $field, $value)
         return array('ok' => false, 'code' => 'denied', 'message' => lang('Access denied.'));
     }
 
-    $decided = pg_page_quick_decide($page, $field, $value, (int) $user['role']);
+    $choices = pg_page_quick_edit_choices($user);
+    $columns = pg_page_quick_edit_columns($user, $choices);
+    $refuse = function ($message, $code = 'invalid') {
+        return array('ok' => false, 'code' => $code, 'message' => $message);
+    };
 
-    if (!$decided['ok']) {
-        return array('ok' => false, 'code' => 'invalid', 'message' => $decided['message']);
+    if ($field === 'name') {
+        $clean = pg_page_form_clean_name((string) $value, (string) $page['page_type']);
+
+        if ($clean['error'] !== '') {
+            return $refuse($clean['error']);
+        }
+
+        $value = $clean['name'];
+    } elseif ($field !== 'form_name') {
+        $value = (string) $value;
     }
 
-    $before = db_item("SELECT page_search, comments, sitemap FROM page WHERE page_id = '" . (int) $page['page_id'] . "'");
-    $value = ((string) $value === '1') ? '1' : '0';
-    $was = pg_page_quick_edit_value($field, $before ? $before : array());
+    $before = pg_page_quick_stored($page['page_id'], $choices);
+    $was = pg_page_quick_edit_value($field, $before);
+    $notice = '';
 
     // The same value again writes nothing and logs nothing.
-    if (($was !== $value) && $decided['decision']['columns']) {
+    if ($was !== (string) $value) {
         $audit_before = pg_audit_fetch('page', $page['page_id']);
 
-        if (!pg_page_bulk_apply($page, $decided['decision'], (int) $user['id'])) {
-            return array('ok' => false, 'code' => 'failed', 'message' => lang('The change could not be saved.'));
+        if ($field === 'name') {
+            $written = pg_page_quick_rename($user, $page, $value);
+        } elseif (($field === 'form_name') || ($field === 'form_enabled')) {
+            $written = pg_page_quick_form_write($user, $page, $field, $value);
+        } else {
+            if ($field === 'folder') {
+                if (check_edit_access((int) $value) == false) {
+                    return $refuse(lang('Access denied.'), 'denied');
+                }
+
+                $folder_errors = pg_page_form_folder_errors((int) $value, (int) $page['page_folder']);
+
+                if ($folder_errors) {
+                    return $refuse(implode(' ', $folder_errors));
+                }
+            }
+
+            $decided = pg_page_quick_decide($page, $field, $value, (int) $user['role'], $choices['device']);
+
+            if (!$decided['ok']) {
+                return $refuse($decided['message']);
+            }
+
+            $written = array('ok' => true, 'message' => '');
+
+            if (($decided['decision']['columns'] || $decided['decision']['styles'])
+                && !pg_page_bulk_apply($page, $decided['decision'], (int) $user['id'], ($field === 'style') ? $choices['preview_theme_id'] : 0)) {
+                $written = array('ok' => false, 'message' => lang('The change could not be saved.'));
+            }
         }
+
+        if (!$written['ok']) {
+            return $refuse($written['message'], 'failed');
+        }
+
+        $notice = $written['message'];
 
         pg_audit_record('update', 'page', $page['page_id'], $audit_before);
 
-        $columns = pg_page_quick_edit_columns();
+        $shown = function ($stored) use ($columns, $field) {
+            $options = $columns[$field]['options'] ?? null;
+
+            return (is_array($options) && isset($options[$stored])) ? trim($options[$stored]) : $stored;
+        };
 
         log_activity(
             lang(array(
                 'string' => 'page ({var:1}) was changed on the page list: {var:2} from "{var:3}" to "{var:4}"',
-                'vars' => array($page['page_name'], $columns[$field]['label'], $columns[$field]['options'][$was], $columns[$field]['options'][$value]),
+                'vars' => array($page['page_name'], $columns[$field]['label'], $shown($was), $shown((string) $value)),
             )),
             $_SESSION['sessionusername'] ?? '');
     }
 
-    // The cell as the list draws it, from what is stored, and the last
-    // change beside it.
-    $stored = db_item(
-        "SELECT page.page_search, page.comments, page.sitemap, page.page_timestamp, user.user_username
-        FROM page
-        LEFT JOIN user ON user.user_id = page.page_user
-        WHERE page.page_id = '" . (int) $page['page_id'] . "'");
-    $stored = $stored ? $stored : array();
-    $now = pg_page_quick_edit_value($field, $stored);
+    $now = pg_page_quick_edit_value($field, pg_page_quick_stored($page['page_id'], $choices));
 
-    return array(
-        'ok' => true,
-        'value' => $now,
-        'html' => ($now === '1') ? pg_page_list_check_html() : '',
-        'class' => 'align-middle',
-        'cells' => array('last_modified' => array('html' => pg_list_when($stored['page_timestamp'] ?? 0, $stored['user_username'] ?? ''), 'class' => 'align-middle')),
-    );
+    // The row as the list draws it, in the view it shows.
+    $source = pg_page_list_source($user, array('filter' => (string) $filter));
+    $row = $source ? pg_list_table_record_row($source, $page['page_id']) : null;
+    $answer = array('ok' => true, 'value' => $now)
+        + pg_list_table_edit_answer($row, $field, array('name', 'seo', 'sitemap', 'last_modified'));
+
+    // Out of the view now (another folder, say): the cell still says what
+    // was stored.
+    if (!isset($answer['html'])) {
+        $answer['html'] = in_array($field, array('searchable', 'comments', 'sitemap', 'form_enabled'), true)
+            ? (($now === '1') ? pg_page_list_check_html() : '')
+            : (isset($columns[$field]['options'])
+            ? h(trim((string) ($columns[$field]['options'][$now] ?? '')))
+            : h($now));
+    }
+
+    if ($notice !== '') {
+        $answer['notice'] = $notice;
+    }
+
+    return $answer;
 }
