@@ -910,9 +910,9 @@ if (((string) $invoice['direction'] === 'sales') && !$is_return && !$is_cancelle
     }
 
     if ($invoice_waybills) {
-        $output_waybill_button = '<a class="btn btn-sm btn-outline theme-secondary m-1" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-3"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
+        $output_waybill_button = '<a class="btn btn-sm btn-text theme-secondary" href="edit_erp_waybill.php?id=' . (int) $invoice_waybills[0]['id'] . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . h($invoice_waybills[0]['full_number']) . '</a>';
     } elseif (!$erp_readonly) {
-        $output_waybill_button = '<a class="btn btn-sm btn-outline theme-primary m-1" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck me-3"></i>' . lang('Issue the Delivery Note') . '</a>';
+        $output_waybill_button = '<a class="btn btn-sm btn-text theme-secondary" href="add_erp_waybill.php?invoice_id=' . $invoice_id . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Issue the Delivery Note') . '</a>';
     }
 }
 
@@ -1370,7 +1370,7 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
                     <span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span>
                 </div>
             </form>';
-        $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
+        $output_mail_button = '<a class="btn btn-sm btn-text theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
     } elseif ($mail_refusal !== '') {
         $output_mail_form = '<p class="fg-secondary mb-0">' . h($mail_refusal) . '</p>';
     }
@@ -1473,8 +1473,44 @@ $output_workspace_button = '';
 
 if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
     require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-    $output_workspace_button = ws_record_button($user, 'invoice', (int) $invoice_id, (string) $invoice['full_number']);
+    $output_workspace_button = ws_record_button($user, 'invoice', (int) $invoice_id, (string) $invoice['full_number'], 'menu-item pg-link-body-emphasis');
 }
+
+// One toolbar: the PDF first, the e-mail and the delivery note beside it,
+// the rarer things in the three-dots menu, so a phone keeps one row.
+$toolbar_more = array();
+
+if ($has_own_pdf) {
+    $toolbar_more[] = '<a class="menu-item pg-link-body-emphasis" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Download') . '</a>';
+}
+
+if (((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !$erp_readonly) {
+    $toolbar_more[] = '<a class="menu-item pg-link-body-emphasis" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-3" aria-hidden="true"></i>' . lang('Copy') . '</a>';
+}
+
+if ($output_workspace_button !== '') {
+    $toolbar_more[] = $output_workspace_button;
+}
+
+if (function_exists('erp_audit_ready') && erp_audit_ready() && (((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || $erp_readonly)) {
+    $toolbar_more[] = '<a class="menu-item pg-link-body-emphasis" href="erp_audit.php?type=invoice&amp;id=' . $invoice_id . '"><i class="bi bi-shield-check me-3" aria-hidden="true"></i>' . lang('Audit trail') . '</a>';
+}
+
+$output_toolbar = pg_screen_toolbar(array(
+    'primary' => $has_own_pdf
+        ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>'
+        : '',
+    'secondary' => $output_mail_button . $output_waybill_button,
+    'overflow' => $toolbar_more
+        ? '<div class="pg-menu-wrap">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <ul class="menu pg-menu-end">
+                    <li>' . implode('</li>
+                    <li>', $toolbar_more) . '</li>
+                </ul>
+            </div>'
+        : '',
+));
 
 echo
 pg_page_shell([
@@ -1496,16 +1532,7 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        ' . ($has_own_pdf ? '
-                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1"></i>' . lang('PDF') . '</a>
-                        <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_invoice_pdf.php?id=' . $invoice_id . '&amp;download=1"><i class="bi bi-download me-1"></i>' . lang('Download') . '</a>' : '') . '
-                        ' . ((((string) $invoice['doc_type'] === 'invoice') && ((int) $invoice['order_id'] === 0) && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>' : '') . '
-                        ' . $output_mail_button . '
-                        ' . $output_waybill_button . '
-                        ' . $output_workspace_button . '
-                        ' . ((function_exists('erp_audit_ready') && erp_audit_ready() && ((((int) $user['role'] < 3) || !empty($user['manage_erp_settings']) || (defined('USER_ERP_READONLY') && USER_ERP_READONLY)))) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?type=invoice&amp;id=' . $invoice_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>' : '') . '
-                    </nav>
+            ' . $output_toolbar . '
         </div>
 
         <!--
