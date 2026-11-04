@@ -42,7 +42,7 @@ function image_editor_actions_node($script)
 	file_put_contents($file, 'var M = require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js') . ');' . "\n"
 		// The names in order, a disabled one marked with a minus.
 		. 'var names = function (s) { return M.actionList(s).map(function (a) { return (a.off ? "-" : "") + a.name; }); };' . "\n"
-		. 'var all = { erase: true, keep: true, copy: true, adjust: true, redact: true };' . "\n"
+		. 'var all = { erase: true, keep: true, copy: true, cut: true, adjust: true, redact: true };' . "\n"
 		. $script);
 
 	$out = array();
@@ -100,13 +100,13 @@ function test_image_editor_actions_for_picture_and_area()
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'runs');
 	pg_assert_same(array('options', 'lockPicture', 'removePicture'), $r['picture'], 'the picture');
-	pg_assert_same(array('options', 'erase', 'keep', 'copy', 'adjust', 'redact', 'invert', 'deselect'), $r['area'], 'every area command');
+	pg_assert_same(array('options', 'erase', 'keep', 'copy', 'cut', 'adjust', 'redact', 'invert', 'deselect'), $r['area'], 'every area command');
 	pg_assert_same(array('redact', 'invert', 'deselect'), $r['areaOpen'], 'only the commands the editor has');
 	pg_assert_same(array('-redact', 'invert', 'deselect'), $r['noRedact'], 'Redact off without the redaction part');
 }
 
 // The part is bundled, has its labels, and each command it draws has a
-// label (the area's pixel commands bring theirs with the area part).
+// label (most are the owning parts').
 function test_image_editor_actions_part()
 {
 	$bundles = pg_js_bundles();
@@ -120,15 +120,12 @@ function test_image_editor_actions_part()
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_actions.js');
 	preg_match_all("#^\s*([a-zA-Z]+): \['[a-zA-Z]+', '([a-zA-Z]+)'#m", $js, $m, PREG_SET_ORDER);
-	pg_assert_true(count($m) >= 9, 'the commands are listed');
+	pg_assert_true(count($m) >= 13, 'the commands are listed');
 
 	$strings = pg_image_editor_strings();
-	$pixel = array('erase', 'keep', 'copy', 'adjust');
 
 	foreach ($m as $command) {
-		if (!in_array($command[1], $pixel, true)) {
-			pg_assert_true(isset($strings[$command[2]]), $command[1] . ' has its label ' . $command[2]);
-		}
+		pg_assert_true(isset($strings[$command[2]]), $command[1] . ' has its label ' . $command[2]);
 	}
 }
 

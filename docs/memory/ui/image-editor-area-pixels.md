@@ -1,6 +1,6 @@
 ---
 name: image-editor-area-pixels
-description: What an image editor selection does to pixels (E27b, #6678): Erase and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends and the engine's mask step under GD and Imagick
+description: What an image editor selection does to pixels (E27b, #6678): Erase inside and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends, the engine's mask step under GD and Imagick
 module: image_editor
 ---
 
@@ -11,6 +11,7 @@ module: image_editor
 ## What do Keep only and Copy to a layer do?
 - Keep only, one undo step: the crop becomes the selection's box (inside the old crop; an output size scales with it) and an erase layer covers the rest of the box (`M.areaRest()`; none for a rectangle). A straightened picture or one on a canvas keeps its crop, which would move it under its layers: only the rest is erased. The selection goes.
 - Copy to a layer: the picture inside the outline (feathered), with the document's colour step, as a PNG picture layer in place named "Cut-out" (at most 4096 px a side); redactions and see-through erases are cut out of it, so the overlay never shows what they hide. A save keeps it as a file like any picture from this computer. A picture that cannot be read back shows a note.
+- Cut to a layer, the name "Erase inside" and where an area layer takes a press: `image-editor-area-cut.md`.
 
 ## What does a save send and the server do?
 - `masks: [{ op: 'erase'|'color', x, y, mask, fill?, adjust?, filter? }]`, one per visible layer in the layers' order, a PNG of its output box like the redaction masks (`areaMasks()`); for replace, copy, `url` and the animation base. `pg_image_editor_take_masks()` checks them (at most 50, whole pixels inside the output, a known op, a `#rrggbb` fill, adjustments in range) and computes each colour step (`pg_image_editor_mask_color()`); a colour area without a change is left out. Masks are dropped with the redactions on every path.

@@ -4205,7 +4205,7 @@
             add('lockPicture');
             add('removePicture');
         } else {
-            ['erase', 'keep', 'copy', 'adjust'].forEach(function (name) {
+            ['erase', 'keep', 'copy', 'cut', 'adjust'].forEach(function (name) {
                 if (can[name]) {
                     add(name);
                 }
@@ -7235,6 +7235,18 @@
         return (l.area || []).map(function (r) { return r.map(function (p) { return apply(m, p[0] * l.w, p[1] * l.h); }); });
     }
 
+    // Whether p, in an area layer's own frame (as M.hitLayer() passes it),
+    // lies inside its outline. An erased background's hole is not the
+    // layer's, so a press there reaches what is under it. Other shapes are
+    // hit anywhere in their box.
+    function areaHit(l, p) {
+        if ((l.shape !== 'area') || !l.area || !l.w || !l.h) {
+            return true;
+        }
+
+        return insideRings([p[0] / l.w, p[1] / l.h], l.area);
+    }
+
     // What lies in frame { x, y, w, h } outside the selection's rings: the
     // part Keep only erases.
     function areaRest(rings, frame) {
@@ -7245,7 +7257,7 @@
 
     var SELECTION = {
         AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
-        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest
+        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest, areaHit: areaHit
     };
 
     var api = {
