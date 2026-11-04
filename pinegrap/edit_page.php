@@ -455,44 +455,44 @@ if (!$_POST) {
                 pg_hosted());
 
             $output_layout_buttons =
-                '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h($edit_layout_url) . '" target="_top"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
-                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="generate_layout.php?page_id=' . $page_id . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>';
+                '<a class="btn btn-sm btn-text theme-secondary" href="' . h($edit_layout_url) . '" target="_top"><i class="bi bi-code-slash me-2" aria-hidden="true"></i>' . lang('Edit Layout') . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="generate_layout.php?page_id=' . $page_id . '"><i class="bi bi-file-earmark-code me-2" aria-hidden="true"></i>' . lang('Generate Layout') . '</a>';
         }
 
         switch ($page_type) {
             case 'custom form':
-                $output_edit_custom_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Form') . '</a>';
+                $output_edit_custom_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Form') . '</a>';
                 break;
 
             case 'form list view':
-                $output_edit_form_list_view = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_list_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">list</span>' . lang('Edit Form List View') . '</a>';
+                $output_edit_form_list_view = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_list_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-list-ul me-2" aria-hidden="true"></i>' . lang('Edit Form List View') . '</a>';
                 break;
 
             case 'form item view':
-                $output_edit_form_item_view = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_item_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">description</span>' . lang('Edit Form Item View') . '</a>';
+                $output_edit_form_item_view = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_form_item_view.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-file-earmark-text me-2" aria-hidden="true"></i>' . lang('Edit Form Item View') . '</a>';
                 break;
 
             case 'express order':
                 if (($stored_properties['shipping_form'] ?? '')) {
-                    $output_edit_custom_shipping_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=shipping&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
+                    $output_edit_custom_shipping_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=shipping&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Shipping Form') . '</a>';
                 }
 
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_billing_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=billing&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
+                    $output_edit_custom_billing_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;form_type=billing&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Billing Form') . '</a>';
                 }
 
                 break;
 
             case 'shipping address and arrival':
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_shipping_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Shipping Form') . '</a>';
+                    $output_edit_custom_shipping_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Shipping Form') . '</a>';
                 }
 
                 break;
 
             case 'billing information':
                 if (($stored_properties['form'] ?? '') == '1') {
-                    $output_edit_custom_billing_form = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-1">edit_note</span>' . lang('Edit Custom Billing Form') . '</a>';
+                    $output_edit_custom_billing_form = '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '"><i class="bi bi-ui-checks me-2" aria-hidden="true"></i>' . lang('Edit Custom Billing Form') . '</a>';
                 }
 
                 break;
@@ -562,7 +562,7 @@ if (!$_POST) {
             '<div class="col-12 d-none" id="name_redirect_row" data-current-name="' . h($page_name) . '">
                 <div class="form-field">
                     <input type="hidden" name="name_redirect" value="0" />
-                    <input value="1" checked="checked" id="name_redirect" name="name_redirect" class="check" type="checkbox" />
+                    <div class="switch"><input value="1" checked="checked" id="name_redirect" name="name_redirect" type="checkbox" role="switch" /></div>
                     <label class="" for="name_redirect">' . lang('Send visitors of the old address here (301 redirect)') . ' <span class="fg-secondary">' . OUTPUT_PATH . h($page_name) . '</span></label>
                 </div>
             </div>';
@@ -772,7 +772,7 @@ if (!$_POST) {
         $delete_confirmation = (pg_recycle_ready() && !pg_recycle_is_inside($page_folder))
             ? lang('This page will be moved to the Recycle Bin.')
             : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('page'))));
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . $delete_confirmation . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
 
     // "Write with AI" beside the browser title and description
@@ -877,11 +877,11 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                             <div class="row mt-7">
-                                                <div class="col-12 md:col-6 lg:col-auto my-3">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="style" class="form-label">' . lang('Desktop Page Style') . '</label>
                                                     ' . $output_style . '
                                                 </div>
-                                                <div class="col-12 md:col-6 lg:col-auto my-3">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
                                                     ' . $output_mobile_style . '
                                                 </div>
@@ -976,7 +976,7 @@ if (!$_POST) {
                                                                     <label for="comments_message" class="form-label">' . lang('Add Comment Message') . '</label>
                                                                     <input value="' . h($comments_message) . '" type="text" name="comments_message" id="comments_message" class="form-control" maxlength="255"/>
                                                                 </div>
-                                                                <div class="col-12 md:col-12 lg:offset-4 lg:col-8 my-3">
+                                                                <div class="col-12 my-3">
                                                                     <label for="comments_disallow_new_comment_message" class="form-label">' . lang('Do Not Allow New Comments Message') . '</label>
                                                                     <input value="' . h($comments_disallow_new_comment_message) . '" type="text" name="comments_disallow_new_comment_message" id="comments_disallow_new_comment_message" class="form-control" maxlength="255"/>
                                                                 </div>
@@ -1037,7 +1037,7 @@ if (!$_POST) {
                                                                             <div class="row">
                                                                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                                     <label for="comments_administrator_email_to_email_address" class="form-label">' . lang('To E-mail Address') . '</label>
-                                                                                    <input value="' . h($comments_administrator_email_to_email_address) . '" type="text" class="form-control text-end" id="comments_administrator_email_to_email_address" name="comments_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
+                                                                                    <input value="' . h($comments_administrator_email_to_email_address) . '" type="email" class="form-control' . ($liveform->check_field_error('comments_administrator_email_to_email_address') ? ' is-invalid' : '') . '" id="comments_administrator_email_to_email_address" name="comments_administrator_email_to_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
                                                                                 </div>
                                                                                 <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                                     <label for="comments_administrator_email_subject" class="form-label">' . lang('Subject') . '</label>
@@ -1104,7 +1104,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
                                 ' . $output_delete_button . '
                             </div>
                         </div>

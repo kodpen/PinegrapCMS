@@ -115,7 +115,7 @@ if (!$_POST) {
             'heading_description' => lang('Create a new page, place it in a folder, and add any built-in features.'),
             'cancel'=>array('enable'=>'true','url'=>'view_pages.php'),
             'breadcrumb' => array(
-                array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
+                array('label' => lang('Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
                 array('label' => lang('Create Page')),
             ),
         )
@@ -171,11 +171,11 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                             <div class="row mt-7">
-                                                <div class="col-12 md:col-6 lg:col-auto my-3">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="style" class="form-label">' . lang('Desktop Page Style') . '</label>
                                                     ' . $output_style . '
                                                 </div>
-                                                <div class="col-12 md:col-6 lg:col-auto my-3">
+                                                <div class="col-12 md:col-6 my-3">
                                                     <label for="mobile_style_id" class="form-label">' . lang('Mobile Page Style') . '</label>
                                                     ' . $output_mobile_style . '
                                                 </div>
@@ -209,7 +209,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
