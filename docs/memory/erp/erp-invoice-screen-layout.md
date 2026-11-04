@@ -12,5 +12,5 @@ description: Invoice create and draft and new quote screens: the columns option 
 - The lines table needs about 1,060px (`min-width:66rem`); in an `lg:col-8` at 1280px it scrolled sideways, as on the quote screen (`erp-quote-screen-layout.md`). Below 2xl the totals stay a `lg:col-5 ms-auto` card under the lines.
 
 ## Do the quote and purchase order editors use it?
-- The new quote (`add_erp_quote.php`) does (#6845): its Quote templates card is the `lead` option, the top of the form column above the Sales quote card, because it fills and keeps the lines; the status column holds only the totals.
+- The new quote (`add_erp_quote.php`) does (#6850): its Quote templates card is the `lead` option, the top of the form column above the Sales quote card, because it fills and keeps the lines; the status column holds only the totals.
 - The quote edit screen and the purchase order screens call the same function without `columns` and keep their layout. `tests/erp_invoice_screen_layout_test.php` pins both.
