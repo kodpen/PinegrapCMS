@@ -83,8 +83,10 @@ function pg_dashboard_v2_salesmap_data($collect, $maps_url, $limit = 6, $can_ope
         }
 
         if (count($rows) < $limit) {
+            // A country row in the panel language unless the store renamed
+            // it (pg_geo_country_label()); the link keeps the stored name.
             $row = array(
-                'text'  => (string) $entry['name'],
+                'text'  => $on_map ? (string) $entry['name'] : pg_geo_country_label((string) $entry['name'], $code),
                 'value' => (float) $entry['total'],
                 'note'  => pg_dashboard_v2_money($entry['total']),
             );
@@ -115,7 +117,7 @@ function pg_dashboard_v2_salesmap_data($collect, $maps_url, $limit = 6, $can_ope
         'figure'     => pg_dashboard_v2_money($period['total']),
         'sub'        => lang('Last 30 days') . ' · ' . lang(array('string' => '{var:1} order{suffix:1}', 'vars' => pg_format_number($count, 0), 'suffix' => ($count == 1) ? '' : 's')),
         'map_url'    => $on_map ? $maps_url . (string) $collect['home_map'] : '',
-        'map_label'  => $on_map ? lang(array('string' => 'Sales by region in {var:1}, last 30 days', 'vars' => lang((string) $collect['home_name']))) : '',
+        'map_label'  => $on_map ? lang(array('string' => 'Sales by region in {var:1}, last 30 days', 'vars' => pg_geo_country_name($home))) : '',
         'shades'     => (object) $shades,
         'places'     => array_values($places),
         'legend'     => array(lang('Few'), lang('Many')),
