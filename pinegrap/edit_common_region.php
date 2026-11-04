@@ -41,14 +41,17 @@ $component_id = pg_common_region_components(array($id))[$id];
 
 // The conversion form posts no name: it is a POST all the same.
 if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
-    $query = "SELECT cregion_name, cregion_content, cregion_designer_type "
+    $query = "SELECT cregion_name, cregion_content, cregion_designer_type, cregion_timestamp, user.user_username "
             ."FROM cregion "
+            ."LEFT JOIN user ON cregion.cregion_user = user.user_id "
             ."WHERE cregion_id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
     $row = mysqli_fetch_array($result);
     $cregion_name = $row['cregion_name'];
     $cregion_content = $row['cregion_content'];
     $cregion_designer_type = $row['cregion_designer_type'];
+    $cregion_timestamp = (int) $row['cregion_timestamp'];
+    $cregion_username = (string) $row['user_username'];
 
     // The stored values, or the posted ones after a refused name.
     $form_name = $cregion_name;
@@ -82,6 +85,16 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
         $output_component = '';
     }
 
+    // Summary rows of the status column: the component drawing the region,
+    // then when and by whom it was last saved.
+    $output_status = '';
+
+    if ($component_id) {
+        $output_status .= pg_common_region_form_status_row(lang('Shared Component'), h($component_name), false);
+    }
+
+    $output_status .= pg_common_region_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => $cregion_timestamp)) . ($cregion_username !== '' ? ' ' . h($cregion_username) : ''));
+
     $output = '';
     $output .= 
     pg_page_shell([
@@ -99,7 +112,6 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
         'secondary' => array(
             '<a class="btn btn-sm btn-text theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_common_region.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . lang('Duplicate') . '</a>',
         ),
-        'grow'      => '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<cregion>' . $cregion_name . '</cregion>') . '</code></span>',
     )) . '
             <div class="row">
             <div class="col-12">
@@ -109,20 +121,18 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
                 <form name="form" action="edit_common_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                    ' . pg_common_region_form_card($form_name, $form_content, '
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="type" class="form-label">' . lang('Region Type') . '</label>
-                                            <select name="type" id="type" class="form-control"' . ($component_id ? ' disabled' : '') . '><option value="common"' . ($form_type == 'common' ? ' selected="selected"' : '') . '>' . lang('Common Region') . '</option><option value="designer"' . ($form_type == 'designer' ? ' selected="selected"' : '') . '>' . lang('Designer Region') . '</option></select>
-                                            ' . ($component_id ? '<input type="hidden" name="type" value="common">' : '<div class="form-text text-end">' . lang('You can change Region Type') . '</div>') . '
-                                        </div>', !$component_id, $name_error) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
+                    ' . pg_common_region_form_layout(
+                        pg_common_region_form_cards($form_name, $form_content, array(
+                            'type' => $form_type,
+                            'type_locked' => (bool) $component_id,
+                            'with_content' => !$component_id,
+                            'name_error' => $name_error,
+                            'status' => $output_status,
+                        )),
+                        '
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($component_id ? lang('This region is a shared component and cannot be deleted while the component exists. Delete the component first.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('common region'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h($component_id ? lang('This region is a shared component and cannot be deleted while the component exists. Delete the component first.') : lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('common region'))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                    ) . '
                 </form>
             </div>
         </div>
