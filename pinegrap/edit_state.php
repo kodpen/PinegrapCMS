@@ -72,6 +72,19 @@ if ($_POST) {
 
 if (!$_POST || $errors) {
 
+    // What the state is in, under the Summary; the Delete confirmation
+    // names the same counts.
+    $delete_counts = pg_state_form_delete_counts($id);
+    $last_change = db_item(
+        "SELECT states.timestamp, user.user_username
+        FROM states
+        LEFT JOIN user ON user.user_id = states.user
+        WHERE states.id = '" . $id . "'");
+    $status_rows = pg_state_form_status_row(lang('Shipping Zones'), (string) $delete_counts[1], false)
+        . pg_state_form_status_row(lang('Tax Zones'), (string) $delete_counts[2], false)
+        . pg_state_form_status_row(lang('Verified Shipping Addresses'), (string) $delete_counts[0], false)
+        . pg_state_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => (int) ($last_change['timestamp'] ?? 0))) . ((string) ($last_change['user_username'] ?? '') !== '' ? ' ' . h($last_change['user_username']) : ''));
+
     $output =
     pg_page_shell([
         'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('State'))),
@@ -84,25 +97,15 @@ if (!$_POST || $errors) {
             'breadcrumb' => array(array('label' => lang('All States'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_states.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('State'))))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
                 <form name="form" action="edit_state.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_state_form_card($values, $errors) . '
                     <input type="hidden" name="id" value="' . $id . '">
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(implode(' ', array_map('lang', pg_state_form_delete_confirm(...pg_state_form_delete_counts($id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_state_form_layout(
+                        pg_state_form_cards($values, $errors, $status_rows),
+                        '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . h(implode(' ', array_map('lang', pg_state_form_delete_confirm(...$delete_counts)))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>') . '
                 </form>
-            </div>
-        </div>
-    
 </main>' .
     output_footer();
 

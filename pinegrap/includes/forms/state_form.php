@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The state/province form, shared by the create and the edit screens
- * (add_state.php, edit_state.php): the options card (name, code, country)
+ * (add_state.php, edit_state.php): the wide layout (the Options card with
+ * name, code and country, a Summary in the status column, the save bar)
  * and the posted values both screens write. The screens keep what differs:
  * the edit screen loads the state, posts its id, offers delete and clears
  * the zone and address links of a deleted state; each writes its own row.
@@ -154,72 +155,169 @@ function pg_state_form_code_error($values, $stored, $except_id, $taken = 'pg_sta
 }
 
 /**
- * The options card, from the opening row to its closing tag; the screens
- * print the form tag, the buttons and the edit screen's id around it.
+ * The form column (the Options card: name, code, country) and the sticky
+ * status column (a Summary of the name, the code and the country as they
+ * are typed or picked, then the screen's own rows: on edit the zones and
+ * addresses the state is in and the last change); the screens wrap it in
+ * pg_state_form_layout().
  *
- * @param array|null $values 'name', 'code', 'country_id' of a stored state
- *                           or a refused post (plain text); null on create,
- *                           which prints no values
- * @param array      $errors Field => message; 'name', 'code' and
- *                           'country_id' are printed under their fields
+ * @param array|null $values      'name', 'code', 'country_id' of a stored state
+ *                                or a refused post (plain text); null on create,
+ *                                which prints no values
+ * @param array      $errors      Field => message; 'name', 'code' and
+ *                                'country_id' are printed under their fields
+ * @param string     $status_rows More Summary rows (pg_state_form_status_row()), HTML
  * @return string  HTML
  */
-function pg_state_form_card($values, $errors = array())
+function pg_state_form_cards($values, $errors = array(), $status_rows = '')
 {
     $country_error = isset($errors['country_id']) ? (string) $errors['country_id'] : '';
     $country_class = ($country_error !== '') ? ' is-invalid' : '';
     $country_aria = ($country_error !== '') ? ' aria-invalid="true" aria-describedby="country_id-error"' : '';
     $country_feedback = ($country_error !== '') ? '
-                                                <div id="country_id-error" class="invalid-feedback d-block">' . h($country_error) . '</div>' : '';
+                                            <div id="country_id-error" class="invalid-feedback d-block">' . h($country_error) . '</div>' : '';
     $name_error = isset($errors['name']) ? (string) $errors['name'] : '';
     $name_class = ($name_error !== '') ? ' is-invalid' : '';
     $name_aria = ($name_error !== '') ? ' aria-invalid="true" aria-describedby="name-error"' : '';
     $name_feedback = ($name_error !== '') ? '
-                                                <div id="name-error" class="invalid-feedback d-block">' . h($name_error) . '</div>' : '';
+                                            <div id="name-error" class="invalid-feedback d-block">' . h($name_error) . '</div>' : '';
     $code_error = isset($errors['code']) ? (string) $errors['code'] : '';
     $code_class = ($code_error !== '') ? ' is-invalid' : '';
     $code_aria = ($code_error !== '') ? ' aria-invalid="true" aria-describedby="code-error"' : '';
     $code_feedback = ($code_error !== '') ? '
-                                                <div id="code-error" class="invalid-feedback d-block">' . h($code_error) . '</div>' : '';
+                                            <div id="code-error" class="invalid-feedback d-block">' . h($code_error) . '</div>' : '';
 
     if ($values === null) {
-        $name_value = '';
-        $code_value = '';
+        $name = '';
+        $code = '';
         $country_options = select_country();
     } else {
-        $name_value = 'value="' . h($values['name']) . '" ';
-        $code_value = 'value="' . h($values['code']) . '" ';
+        $name = (string) $values['name'];
+        $code = (string) $values['code'];
         $country_options = select_country($values['country_id']);
     }
 
+    $summary = pg_state_form_status_row(lang('Name'), '<span id="state_summary_name">' . h($name) . '</span>', false)
+        . pg_state_form_status_row(lang('Code'), '<span id="state_summary_code">' . h($code) . '</span>', false)
+        . pg_state_form_status_row(lang('Country'), '<span id="state_summary_country">' . pg_state_form_selected_label($country_options) . '</span>', $status_rows === '')
+        . $status_rows;
+
     return '
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card my-7">
-                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Options') . '
-                                    </h2>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('State'))) . '</label>
-                                                <input ' . $name_value . 'name="name" id="name" type="text" class="form-control' . $name_class . '" maxlength="50" required' . $name_aria . ' />' . $name_feedback . '
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label for="code" class="form-label">' . lang('State Code') . '</label>
-                                                <input ' . $code_value . 'name="code" id="code" type="text" class="form-control' . $code_class . '" maxlength="50" required' . $code_aria . ' />' . $code_feedback . '
-                                                <div class="form-text">' . lang('State/Province Code for Order Reporting') . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-12 lg:col-4 my-3">
-                                                <label for="country_id" class="form-label">' . lang('Country') . '</label>
-                                                <select name="country_id" id="country_id" class="form-control' . $country_class . '" required' . $country_aria . '>' . $country_options . '</select>' . $country_feedback . '
-                                            </div>
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Options') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <div class="row">
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('State'))) . '</label>
+                                            <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . $name_class . '" maxlength="50" required' . $name_aria . ' />' . $name_feedback . '
+                                        </div>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="code" class="form-label">' . lang('State Code') . '</label>
+                                            <input value="' . h($code) . '" name="code" id="code" type="text" class="form-control' . $code_class . '" maxlength="50" required' . $code_aria . ' />' . $code_feedback . '
+                                            <div class="form-text">' . lang('State/Province Code for Order Reporting') . '</div>
+                                        </div>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="country_id" class="form-label">' . lang('Country') . '</label>
+                                            <select name="country_id" id="country_id" class="form-control' . $country_class . '" required' . $country_aria . '>' . $country_options . '</select>' . $country_feedback . '
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-';
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">' . $summary . '
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            // The Summary follows the fields as they change.
+                            (function () {
+                                function follow(id, summary_id, read) {
+                                    var field = document.getElementById(id);
+                                    var summary = document.getElementById(summary_id);
+                                    var update = function () { summary.textContent = read(field); };
+                                    field.addEventListener("input", update);
+                                    field.addEventListener("change", update);
+                                }
+                                var value = function (field) { return field.value.trim(); };
+                                var label = function (field) {
+                                    var option = field.options[field.selectedIndex];
+                                    return (option && option.value !== "") ? option.text : "";
+                                };
+                                follow("name", "state_summary_name", value);
+                                follow("code", "state_summary_code", value);
+                                follow("country_id", "state_summary_country", label);
+                            })();
+                        </script>';
+}
+
+/**
+ * The label of the selected option of select_country(), as the option
+ * prints it (already HTML-escaped), or '' when none is selected or the
+ * selected one is the empty "Select a country" choice.
+ *
+ * @param string $options select_country() output
+ * @return string  HTML
+ */
+function pg_state_form_selected_label($options)
+{
+    if (!preg_match('/<option value="([^"]*)" selected="selected">([^<]*)<\/option>/', (string) $options, $match)) {
+        return '';
+    }
+
+    return ($match[1] === '') ? '' : $match[2];
+}
+
+/**
+ * One Summary row of the status column: a label and its value.
+ *
+ * @param string $label  The label, plain text
+ * @param string $value  The value, already HTML
+ * @param bool   $last   False draws the line under the row
+ * @return string
+ */
+function pg_state_form_status_row($label, $value, $last = true)
+{
+    return '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . $value . '</dd>
+                                            </div>';
+}
+
+/**
+ * The screen row: the columns (pg_state_form_cards()) and the sticky save
+ * bar with the given buttons.
+ *
+ * @param string $cards    pg_state_form_cards()
+ * @param string $buttons  The buttons inside the bar's group
+ * @return string
+ */
+function pg_state_form_layout($cards, $buttons)
+{
+    return '
+                    <div class="row">' . $cards . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>';
 }
 
 /**
