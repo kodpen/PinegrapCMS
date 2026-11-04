@@ -717,3 +717,121 @@ function pg_short_link_form_answer($liveform, $short_link_id, $name, $current_co
 
     return $short_link_answer;
 }
+
+/**
+ * The form's fields filled from a stored link, the way the edit screen
+ * opens it: the page goes to the picker of its destination type (a product
+ * group's to the catalog or the catalog detail picker, by the page's type).
+ *
+ * @param liveform $liveform
+ * @param array $short_link  short_links row with page_type (the page's)
+ * @return void
+ */
+function pg_short_link_form_fill($liveform, $short_link)
+{
+    foreach (pg_short_link_form_values($short_link) as $field => $value) {
+        $liveform->assign_field_value($field, $value);
+    }
+}
+
+/**
+ * The form's field values for a stored link (pg_short_link_form_fill()).
+ * Pure.
+ *
+ * @param array $short_link  short_links row with page_type (the page's)
+ * @return array field => value
+ */
+function pg_short_link_form_values($short_link)
+{
+    $type = (string) ($short_link['destination_type'] ?? '');
+    $values = array(
+        'name' => (string) ($short_link['name'] ?? ''),
+        'destination_type' => $type,
+    );
+
+    switch ($type) {
+        case 'page':
+            $values['page_id'] = $short_link['page_id'];
+            break;
+
+        case 'product_group':
+            $values[(($short_link['page_type'] ?? '') === 'catalog') ? 'catalog_page_id' : 'catalog_detail_page_id'] = $short_link['page_id'];
+            break;
+
+        case 'product':
+            $values['catalog_detail_page_id'] = $short_link['page_id'];
+            break;
+
+        case 'url':
+            $values['url'] = $short_link['url'];
+            break;
+
+        case 'file':
+            $values['file'] = $short_link['file_id'];
+            break;
+    }
+
+    $values['product_group_id'] = $short_link['product_group_id'] ?? '';
+    $values['product_id'] = $short_link['product_id'] ?? '';
+    $values['tracking_code'] = $short_link['tracking_code'] ?? '';
+
+    if (isset($short_link['redirect_code'])) {
+        $values['redirect_code'] = (string) (int) $short_link['redirect_code'];
+    }
+
+    return $values;
+}
+
+/**
+ * Writes a checked form to the link: the name, the destination (only the
+ * destination type's own column keeps its target, the others are cleared),
+ * the tracking code, the answer columns and the change stamp. Run once
+ * pg_short_link_form_validate_name(), pg_short_link_form_validate_destination()
+ * and pg_short_link_form_answer() left no error.
+ *
+ * @param liveform $liveform
+ * @param int $id
+ * @param string $name     pg_short_link_form_validate_name()'s name
+ * @param mixed $page_id   pg_short_link_form_validate_destination()'s page
+ * @param array $answer    pg_short_link_form_answer()
+ * @param int $user_id
+ * @return bool
+ */
+function pg_short_link_form_save($liveform, $id, $name, $page_id, $answer, $user_id)
+{
+    $sql_answer = '';
+    $answer_values = array();
+
+    foreach ($answer['columns'] as $answer_column => $answer_value) {
+        $sql_answer .= $answer_column . " = ?,
+                ";
+        $answer_values[] = (string) (int) $answer_value;
+    }
+
+    $destination = array('product_group_id' => '', 'product_id' => '', 'url' => '', 'file_id' => '');
+    $destination_column = pg_short_link_form_destination_column($liveform->get_field_value('destination_type'));
+
+    if ($destination_column !== null) {
+        $destination[$destination_column[0]] = $liveform->get_field_value($destination_column[1]);
+    }
+
+    return (bool) db_q(
+        "UPDATE short_links
+        SET
+            name = ?,
+            destination_type = ?,
+            page_id = ?,
+            product_group_id = ?,
+            product_id = ?,
+            url = ?,
+            tracking_code = ?,
+            file_id = ?,
+            " . $sql_answer . "last_modified_user_id = ?,
+            last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE id = ?",
+        array_merge(
+            array((string) $name, (string) $liveform->get_field_value('destination_type'), (string) $page_id, (string) $destination['product_group_id'], (string) $destination['product_id'], (string) $destination['url'], (string) $liveform->get_field_value('tracking_code'), (string) $destination['file_id']),
+            $answer_values,
+            array((string) (int) $user_id, (string) (int) $id)
+        ));
+}
