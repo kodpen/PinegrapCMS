@@ -20,7 +20,7 @@ description: Plan: the Workspace Today page (?view=home) drawn as new-dashboard 
 ## Steps
 - W1 (done, #6718) — shell, top row, greeting, shared frame `todayCard()` for every card (bodies unchanged), look, stylesheet sections, card methods. Files: workspace.php, includes/workspace/home.php, includes/fn/output.php, assets/js/workspace.js (`showHome`, `drawHome`, `homeCard`, new `homeDecisions`/`homeJoin`/`homeAbout`), assets/css/ws_today.src.css (new), tests/workspace_today_test.php, workspace-today-page.md. First; all others wait for it.
 
-- W2 — Waiting for you, Today and overdue. Files: workspace.js (`homeWaiting`, `homeDue`, `homeCount`), workspace_approvals.js, workspace_acks.js (`homeRows`), ws_today.src.css "Waiting", "Due". After W1; parallel with W3–W5.
+- W2 (done, #6745) — Waiting for you, Today and overdue. Files: workspace.js (`homeWaiting`, `homeDue`, `homeCount`), workspace_approvals.js, workspace_acks.js (`homeRows`), ws_today.src.css "Waiting", "Due". After W1; parallel with W3–W5.
 
 - W3 — Calendar · today. Files: workspace.js (`homeCalendar`), ws_today.src.css "Calendar". After W1; parallel with W2, W4, W5.
 
