@@ -1382,6 +1382,13 @@ function submit_order($type) {
 
     // Check min and max quantity requirements for products.
     check_quantity($liveform);
+
+    // A gift card line over its unit limit (a cart filled before the limit)
+    // would be charged for cards it never issues: the order waits until the
+    // quantity is lowered.
+    if (pg_order_gift_card_lines_over_limit($_SESSION['ecommerce']['order_id'] ?? '') > 0) {
+        $liveform->mark_error('', pg_gift_card_line_quantity_error());
+    }
     
     // check inventory for order items in order to make sure they are still all in stock
     check_inventory($liveform);

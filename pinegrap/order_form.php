@@ -416,6 +416,13 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
             foreach ($selected_products as $product) {
                 // add product to order
                 $order_item_id = add_order_item($product['id'], $product['quantity'], $product['donation_amount'], $product['ship_to'], $product['add_name']);
+
+                // A gift card line over its unit limit was refused by add_order_item().
+                if (pg_gift_card_quantity_refusal_take()) {
+                    $liveform->mark_error('', pg_gift_card_line_quantity_error());
+                    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path(get_page_name($liveform->get_field_value('page_id'))));
+                    exit();
+                }
                 
                 // if the product is a recurring product, then update recurring values for order item
                 if ($product['recurring'] == 1) {
@@ -538,6 +545,13 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                 }
                 
                 add_order_item($liveform->get_field_value('product_id'), $quantity, $donation_amount, $liveform->get_field_value('ship_to'), $liveform->get_field_value('add_name'));
+
+                // A gift card line over its unit limit was refused by add_order_item().
+                if (pg_gift_card_quantity_refusal_take()) {
+                    $liveform->mark_error('quantity', pg_gift_card_line_quantity_error());
+                    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path(get_page_name($liveform->get_field_value('page_id'))));
+                    exit();
+                }
 
                 // An item has been added to the order, so offers for this order
                 // need to be refreshed, so that the subtotal in a cart region is accurate.

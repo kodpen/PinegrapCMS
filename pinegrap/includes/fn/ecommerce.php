@@ -107,7 +107,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             shippable,
             selection_type,
             submit_form,
-            form
+            form,
+            gift_card
         FROM products
         WHERE
             (id = ?)
@@ -131,7 +132,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     }
     // find out if product has already been added to order
     // ignore order items that have been added by offers because they might be discounted and we don't want to mess with that
-    $query = "SELECT id
+    $query = "SELECT id, quantity
         FROM order_items
         WHERE
             (order_id = ?)
@@ -141,12 +142,20 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             AND (recurrence_number = ?)
             AND (added_by_offer = '0')" . pg_order_item_active_sql();
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+    $row = mysqli_fetch_assoc($result);
+    // A gift card line issues one card per unit up to a limit; a line over it
+    // would be charged for cards it never issues, so the add is refused and
+    // the caller shows pg_gift_card_line_quantity_error().
+    if (($product['gift_card'] == 1) && ($product['selection_type'] != 'donation')
+        && !pg_gift_card_line_quantity_allowed((int) ($row['quantity'] ?? 0) + (int) $quantity)) {
+        pg_gift_card_quantity_refusal(true);
+        return false;
+    }
     // if product has already been added to order, update order item
-    if (mysqli_num_rows($result) > 0) {
+    if ($row) {
         // The shopper's own line found above; the update goes to it by id, so
         // a gift line an offer put in the same recipient for the same product
         // (added_by_offer = 1) keeps its quantity and price.
-        $row = mysqli_fetch_assoc($result);
         $order_item_id = $row['id'];
         // if this product is a donation product, update price
         if ($product['selection_type'] == 'donation') {
