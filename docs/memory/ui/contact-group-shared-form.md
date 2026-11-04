@@ -6,7 +6,7 @@ description: The contact group create and edit screens share includes/forms/cont
 ## Where is the contact group form?
 - `includes/forms/contact_group_form.php` (gate `PG_FUNCTIONS_DIR`, PR #2604). `add_contact_group.php` and `edit_contact_group.php` stay at the root as thin wrappers and `require_once` it.
 - `pg_contact_group_form_card($liveform, $required = false)` prints the Main Informations card: name, the e-mail subscription switch with its Open/Closed type and the description shown on My Account pages.
-- `$required` (create) adds `required` to the name input, as the create screen always did; edit has no browser-side required name.
+- `$required` adds `required` to the name input; both screens pass `true`. Edit had none, so an emptied name cost a round trip to the server's refusal; its Delete button carries `formnovalidate`, so a group whose name was cleared can still be deleted.
 
 ## What does a save share?
 - `pg_contact_group_form_validate_name($liveform, $id)` (`null` on create, the posted id on edit): required, at most 100 characters (`mb_strlen`), then not used by another contact group (edit skips its own row with `id != ?`). A required or length error skips the name lookup.
@@ -21,7 +21,7 @@ description: The contact group create and edit screens share includes/forms/cont
 - Tests: `tests/contact_group_form_test.php`; `db_q_contacts_forms_test.php` (edit screen, form) and `db_q_small_functions_test.php` (create screen) pin the queries.
 
 ## Why one message under the name?
-- The fixed `<div class="invalid-feedback">Required Area</div>` after the name box stays for the browser's `required` check on create, but a server refusal (name in use, name missing on edit) printed liveform's message and it together (#5260). `backend.src.css` hides a fixed `.invalid-feedback` that follows a `.pg-inline-feedback`, so every form that kept its fixed message (`ui/inline-feedback-placement.md`) shows the server's reason alone.
+- The fixed `<div class="invalid-feedback">Required Area</div>` after the name box stays for the browser's `required` check, but a server refusal (name in use, name missing on edit) printed liveform's message and it together (#5260). `backend.src.css` hides a fixed `.invalid-feedback` that follows a `.pg-inline-feedback`, so every form that kept its fixed message (`ui/inline-feedback-placement.md`) shows the server's reason alone.
 
 ## How does the list sort?
 - `view_contact_groups.php` shows the type and the description only for a group with an e-mail subscription, so `pg_contact_group_list_order_map()` (`includes/fn/contact_list.php`) sorts both on `IF(email_subscription = 1, …, '')`: a group without a subscription sorts as blank, not on text nobody sees (#5262). Test: `tests/contact_group_list_sort_test.php`.
