@@ -178,7 +178,8 @@ function pg_page_quick_folder_choices($folders, $may, $workspace, $bin)
 
 /**
  * The value => label pairs of a picker's <option> list, as the page screen
- * prints it (select_style(), get_mobile_style_options()). Pure.
+ * prints it (select_style(), get_mobile_style_options(), select_page_type()).
+ * Pure.
  *
  * @param string $html
  * @return array value => label, in the picker's order
@@ -187,9 +188,9 @@ function pg_page_quick_option_pairs($html)
 {
     $pairs = array();
 
-    if (preg_match_all('/<option value="([0-9]+)"[^>]*>(.*?)<\/option>/s', (string) $html, $matches, PREG_SET_ORDER)) {
+    if (preg_match_all('/<option value="([^"]*)"[^>]*>(.*?)<\/option>/s', (string) $html, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
-            $pairs[(string) $match[1]] = html_entity_decode(strip_tags($match[2]), ENT_QUOTES, 'UTF-8');
+            $pairs[html_entity_decode($match[1], ENT_QUOTES, 'UTF-8')] = trim(html_entity_decode(strip_tags($match[2]), ENT_QUOTES, 'UTF-8'));
         }
     }
 
@@ -198,11 +199,12 @@ function pg_page_quick_option_pairs($html)
 
 /**
  * What the Pages list's fields offer the user, read once per request: the
- * folders, the styles of the device type the list shows and the theme a
- * style goes to while another one is previewed.
+ * folders, the styles of the device type the list shows, the theme a
+ * style goes to while another one is previewed and the page types the user
+ * may set (the page screen's picker, select_page_type()).
  *
  * @param array $user the signed-in user
- * @return array 'device', 'preview_theme_id', 'folders', 'styles', 'style_label'
+ * @return array 'device', 'preview_theme_id', 'folders', 'styles', 'style_label', 'types'
  */
 function pg_page_quick_edit_choices($user)
 {
@@ -232,6 +234,7 @@ function pg_page_quick_edit_choices($user)
     }
 
     $read[$key] = array(
+        'types' => pg_page_quick_option_pairs(select_page_type('', $user)),
         'device' => $device,
         'preview_theme_id' => $preview,
         'folders' => $folders,
@@ -268,6 +271,8 @@ function pg_page_quick_edit_columns($user = null, $choices = null)
         if ((int) $user['role'] < 3) {
             $columns['style'] = array('type' => 'select', 'label' => $choices['style_label'], 'options' => $choices['styles']);
         }
+
+        $columns['page_type'] = array('type' => 'select', 'label' => lang('Page Type'), 'options' => $choices['types'] ?? array());
 
         if (pg_page_type_user_may_set($user, 'custom form')) {
             $columns['form_name'] = array('type' => 'text', 'label' => lang('Form Name'), 'max' => 100);
@@ -308,6 +313,8 @@ function pg_page_quick_edit_value($field, $page)
             return (string) (int) ($page['style_value'] ?? 0);
         case 'form_name':
             return (string) ($page['form_name'] ?? '');
+        case 'page_type':
+            return (string) ($page['page_type'] ?? '');
     }
 
     return '';
@@ -316,15 +323,22 @@ function pg_page_quick_edit_value($field, $page)
 /**
  * The fields a page cell offers: the name and folder of every page, the
  * style unless the visual editor opens the page (its layout was built for
- * its style), the form's two fields on a custom form page only.
+ * its style), the form's two fields on a custom form page only, the type
+ * when the user may set the page's present type (edit_page.php writes a
+ * type only then).
  *
  * @param string $field   a key of pg_page_quick_edit_columns()
  * @param array  $page    a row of the list's read
  * @param bool   $visual  whether the visual editor opens the page
+ * @param array  $columns pg_page_quick_edit_columns()
  * @return bool
  */
-function pg_page_quick_cell_editable($field, $page, $visual)
+function pg_page_quick_cell_editable($field, $page, $visual, $columns = array())
 {
+    if ($field === 'page_type') {
+        return isset($columns['page_type']['options'][(string) ($page['page_type'] ?? '')]);
+    }
+
     if ($field === 'style') {
         return !$visual;
     }
@@ -557,6 +571,8 @@ function pg_page_quick_update($user, $page_id, $field, $value, $filter = '')
             $written = pg_page_quick_rename($user, $page, $value);
         } elseif (($field === 'form_name') || ($field === 'form_enabled')) {
             $written = pg_page_quick_form_write($user, $page, $field, $value);
+        } elseif ($field === 'page_type') {
+            $written = pg_page_quick_type_write($user, $page, $value);
         } else {
             if ($field === 'folder') {
                 if (check_edit_access((int) $value) == false) {
@@ -612,7 +628,7 @@ function pg_page_quick_update($user, $page_id, $field, $value, $filter = '')
     $source = pg_page_list_source($user, array('filter' => (string) $filter));
     $row = $source ? pg_list_table_record_row($source, $page['page_id']) : null;
     $answer = array('ok' => true, 'value' => $now)
-        + pg_list_table_edit_answer($row, $field, array('name', 'seo', 'sitemap', 'last_modified'));
+        + pg_list_table_edit_answer($row, $field, array('name', 'seo', 'sitemap', 'form_name', 'form_enabled', 'actions', 'last_modified'));
 
     // Out of the view now (another folder, say): the cell still says what
     // was stored.
@@ -629,4 +645,114 @@ function pg_page_quick_update($user, $page_id, $field, $value, $filter = '')
     }
 
     return $answer;
+}
+
+/**
+ * The type options a page starts with when the list changes its type: what
+ * the page screen saves for the type's fields as a new page draws them
+ * (pg_page_form_new_page_properties()), the rest empty, a custom form
+ * switched on as the screen draws it. Empty for a type without a table of
+ * its own.
+ *
+ * @param string $page_type
+ * @param int    $page_id
+ * @return array the row for create_or_update_page_type_record()
+ */
+function pg_page_quick_type_properties($page_type, $page_id)
+{
+    $properties = pg_page_form_type_properties_from_post($page_type, (int) $page_id, array());
+
+    if (!$properties) {
+        return array();
+    }
+
+    $defaults = pg_page_form_new_page_properties();
+    $defaults = $defaults[$page_type] ?? array();
+
+    if ($page_type === 'custom form') {
+        $defaults['enabled'] = '1';
+    }
+
+    return array_merge($properties, array_intersect_key($defaults, $properties));
+}
+
+/**
+ * Change a page's type from the list by the page screen's rules
+ * (edit_page.php): the user may set both the present and the new type; a
+ * custom form with submitted forms keeps its type; the old type's options,
+ * its form list links and its search results keywords go; the new type
+ * starts with the options a new page has (pg_page_quick_type_properties());
+ * a type the site map does not list leaves it.
+ *
+ * @param array  $user
+ * @param array  $page pg_page_bulk_fetch()
+ * @param string $type the new type
+ * @return array array('ok' => bool, 'message' => the refusal, or what to do next)
+ */
+function pg_page_quick_type_write($user, $page, $type)
+{
+    $page_id = (int) $page['page_id'];
+    $current = (string) $page['page_type'];
+    $type = (string) $type;
+
+    if (!pg_page_type_user_may_set($user, $current) || !pg_page_type_user_may_set($user, $type) || (get_page_type_name($type) === null)) {
+        return array('ok' => false, 'message' => lang('Access denied.'));
+    }
+
+    if (($current === 'custom form') && ((int) db_value("SELECT COUNT(*) FROM forms WHERE page_id = '" . $page_id . "'") > 0)) {
+        return array('ok' => false, 'message' => lang('The page type for this page could not be changed because there are submitted forms for this page.  All submitted forms for this page must be deleted before the page type for this page is allowed to be changed.'));
+    }
+
+    $properties = pg_page_quick_type_properties($type, $page_id);
+
+    // The form name is the form's address among the forms; an empty one
+    // another form already has would be refused on the page screen too.
+    if (($type === 'custom form')
+        && ((int) db_value("SELECT COUNT(*) FROM custom_form_pages WHERE (form_name = '" . e((string) $properties['form_name']) . "') AND (page_id != '" . $page_id . "')") > 0)) {
+        return array('ok' => false, 'message' => lang('Another custom form has no name either. Change the type on the page screen, where the form gets its name.'));
+    }
+
+    if ($current === 'search results') {
+        delete_tag_cloud_keywords_for_search_results_page($page_id);
+    }
+
+    // The table name comes from the page type list, never from the request.
+    if (check_for_page_type_properties($current)) {
+        db_q("DELETE FROM " . str_replace(' ', '_', $current) . "_pages WHERE page_id = ?", array($page_id));
+    }
+
+    if ($current === 'form list view') {
+        db_q("DELETE FROM form_view_directories_form_list_views_xref WHERE form_list_view_page_id = ?", array($page_id));
+    }
+
+    if ($current === 'form view directory') {
+        db_q("DELETE FROM form_view_directories_form_list_views_xref WHERE form_view_directory_page_id = ?", array($page_id));
+    }
+
+    if ($properties) {
+        create_or_update_page_type_record($type, $properties);
+    }
+
+    $updated = db_q(
+        "UPDATE page
+        SET
+            page_type = ?,
+            sitemap = IF(?, sitemap, 0),
+            seo_analysis_current = '0',
+            page_timestamp = UNIX_TIMESTAMP(),
+            page_user = ?
+        WHERE page_id = ?",
+        array($type, pg_page_form_sitemap_type($type) ? 1 : 0, (int) $user['id'], $page_id));
+
+    if ($updated === false) {
+        return array('ok' => false, 'message' => lang('The change could not be saved.'));
+    }
+
+    // The page screen goes on to the form designer for a new form, and
+    // the type's own options are set there.
+    $next = ($type === 'custom form')
+        ? lang('Add the fields of the new form in the form designer.')
+        : ($properties ? lang('Set the options of the new page type on the page screen.') : '');
+
+    return array('ok' => true, 'message' => $next);
 }
