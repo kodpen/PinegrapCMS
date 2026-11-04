@@ -77,18 +77,29 @@ if (!$_POST) {
         }
     }
 
+    // The Summary: the parent the copy is made in and the pages directly
+    // inside the folder, the ones the copy takes along.
+    $parent_name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . (int) $folder['parent'] . "'");
+    $page_count = (int) db_value("SELECT COUNT(*) FROM page WHERE page_folder = '" . (int) $folder['id'] . "'");
+
     echo pg_page_shell([
         'title'=> lang('Duplicate Folder'),
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Duplicate Folder'),
         'cancel'=>array('enable'=>'true','url'=>$back_url),
+        'breadcrumb' => array(
+            array('label' => lang('File Manager'), 'url' => $back_url),
+            array('label' => lang('Duplicate Folder') . ' [' . $folder['name'] . ']'),
+        ),
     ]);
 
     $content = render(array(
         'template' => 'duplicate_folder.php',
         'form' => $form,
         'folder' => $folder,
+        'parent_name' => $parent_name,
+        'page_count' => $page_count,
         'back_url' => $back_url));
 
     echo $form->prepare($content);
