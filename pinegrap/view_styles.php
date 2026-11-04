@@ -17,9 +17,7 @@
  */
 
 include('init.php');
-
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 validate_area_access($user, 'designer');
@@ -28,9 +26,6 @@ validate_area_access($user, 'designer');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/custom_style_form.php');
 
 $liveform = new liveform('view_styles');
-
-$number_of_results = 0;
-$output_clear_button = '';
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -60,11 +55,6 @@ $order_by = pg_list_order_by($sort_levels, array(
 
 // Designs made with the visual editor have their own screen
 // (view_system_styles.php); this list is the HTML-template styles.
-$query = "SELECT COUNT(style_id) FROM style WHERE style_layout <> 'visual_designer'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$row = mysqli_fetch_row($result);
-$all_styles = $row[0];
-
 // get the number of folders and pages that use each style
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/style_usage.php');
 $style_usage = pg_style_usage(
@@ -97,46 +87,54 @@ while ($row = mysqli_fetch_assoc($result)) {
     $styles[] = $row;
 }
 
-// loop through styles in order to prepare to output them
-foreach ($styles as $style) {
-    $output_link_url = 'edit_' . $style['type'] . '_style.php?id=' . $style['id'];
-    
-    // if the last modified username was found, then prepare to output it
-    if ($style['last_modified_username']) {
-        $last_modified_username = $style['last_modified_username'];
-        
-    // else the last modified username was not found, so prepare placeholder
-    } else {
-        $last_modified_username = '[' . lang('Unknown') . ']';
-    }
-    
+// Every style is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort in the session.
+// Delete Selected posts the selected ids as styles[] (delete_styles.php).
+$list_rows = array();
 
-    
+foreach ($styles as $style) {
     // A classic style edited as code opens in the visual designer, its code
     // as the shared component framing its pages; nothing changes on the site
     // until the design is saved (includes/fn/classic_style_design.php).
     $output_designer_button = '';
     if ($style['type'] === 'custom' && (int)$user['role'] <= 1) {
-        $output_designer_button = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$style['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
+        $output_designer_button = '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Open in the visual designer')) . '" aria-label="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$style['id'] . '&amp;classic=1"><i class="bi bi-magic" aria-hidden="true"></i></a>';
     }
 
-    $output_rows .= '
-        <tr>
-            <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="styles[]" value="' . $style['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($style['name'])))) . '" /></td>
-			<td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                ' . $output_designer_button . '
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-            </td>
-            <td class="align-middle chart_label"  nowrap>' . h($style['name']) . '</td>
-            <td class="align-middle text-center">' . pg_format_number(isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_folders'] : 0, 0) . '</td>
-            <td class="align-middle text-center">' . pg_format_number(isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_pages'] : 0, 0) . '</td>
-            <td class="align-middle ">' . h($style['theme_name']) . '</td>
-            <td class="align-middle text-center">' . strtoupper($style['collection']) . '</td>
-            <td class="align-middle ">' . h(pg_style_layout_type_label($style['layout_type'])) . '</td>
-            <td class="align-middle " nowrap>' . get_relative_time(array('timestamp' => $style['last_modified_timestamp'])) . '  ' . h($last_modified_username) . '</td>
-        </tr>';
+    $folders_using = isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_folders'] : 0;
+    $pages_using = isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_pages'] : 0;
+
+    $list_rows[] = array(
+        'id' => $style['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_' . h($style['type']) . '_style.php?id=' . (int) $style['id'] . '" data-pg-open>' . h($style['name']) . '</a>', 'align-middle text-nowrap'),
+            'folders' => pg_list_cell(pg_format_number($folders_using, 0), 'align-middle', array('data-pg-sort-value' => (int) $folders_using)),
+            'pages' => pg_list_cell(pg_format_number($pages_using, 0), 'align-middle', array('data-pg-sort-value' => (int) $pages_using)),
+            'theme' => pg_list_cell(h($style['theme_name'])),
+            'collection' => pg_list_cell(h(strtoupper($style['collection'])), 'align-middle text-center'),
+            'layout_type' => pg_list_cell(h(pg_style_layout_type_label($style['layout_type']))),
+            'last_modified' => pg_list_table_when_cell($style['last_modified_timestamp'], $style['last_modified_username'] ?? ''),
+            'designer' => pg_list_cell($output_designer_button),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_styles',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'folders' => array('heading' => lang('Folders Using Style'), 'kind' => 'number'),
+        'pages' => array('heading' => lang('Pages Using Style'), 'kind' => 'number'),
+        'theme' => array('heading' => lang('Theme')),
+        'collection' => array('heading' => lang('Collection')),
+        'layout_type' => array('heading' => lang('Layout Type')),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        'designer' => array('heading' => lang('Open in the visual designer'), 'kind' => 'actions'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'ids_field' => 'styles[]',
+));
 
 // Once the bin holds styles, the ones deleted here go there (delete_styles.php).
 require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
@@ -165,45 +163,16 @@ pg_page_shell([
                     // Read-only readiness report of every classic style (legacy_to_designer.php).
                     array('label' => lang('Move to the visual designer'), 'url' => 'legacy_to_designer.php', 'icon' => 'bi-clipboard-check'),
                 ),
-                'search'    => pg_list_sort_menu('view_styles.php', $sort_columns, $sort_levels, $sort_default),
+                'search'    => array(pg_list_table_search_box('view_styles'), pg_list_sort_menu('view_styles.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <form name="form" action="delete_styles.php" method="post" class="disable_shortcut"> 
-                        ' . get_token_field() . '
-                        <table class="chart table-hover table " style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">
-                                        <div class="form-field">
-                                            <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                        </div>
-                                    </th>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th nowrap>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th class="text-center">' . lang('Folders Using Style') . '</th>
-                                    <th class="text-center">' . lang('Pages Using Style') . '</th>
-                                    <th>' . get_column_heading(lang('Theme'), $sort_levels, '', '', 'theme') . '</th>
-                                    <th class="text-center">' . get_column_heading(lang('Collection'), $sort_levels, '', '', 'collection') . '</th>
-                                    <th>' . get_column_heading(lang('Layout Type'), $sort_levels, '', '', 'layout_type') . '</th>
-                                    <th nowrap>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
-                                </div>
-                            </div>
-                        </nav>
-                    </form>
-                </div>
-            </div>
+            <form name="form" action="delete_styles.php" method="post" class="disable_shortcut">
+                ' . get_token_field() . '
+                ' . pg_list_table_html($list['source'], $list['page'], lang('All Page Styles'), '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h($delete_confirmation) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>') . '
+            </form>
         </div>
     </div>
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();
 

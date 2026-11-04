@@ -185,12 +185,158 @@ function pg_visitor_device_sql($column)
 }
 
 /**
- * The paid / organic channel of a visit as SQL: 'pay_per_click' when the
- * tracking code carries the pay-per-click flag of the SEO settings,
- * 'organic' when a search engine referred it, otherwise ''.
+ * The paid / organic split of a visit the saved visitor reports group by
+ * (pay_per_click_organic) as SQL: 'pay_per_click' when the tracking code
+ * carries the pay-per-click flag of the SEO settings, 'organic' when a
+ * search engine referred it, otherwise ''.
  *
  * With no flag set nothing counts as paid: an empty pattern would match
- * every visit (the API counts it the same way).
+ * every visit.
+ *
+ * @param string $prefix Table name or alias with its dot, or ''
+ * @return string
+ */
+function pg_visitor_paid_organic_sql($prefix = '')
+{
+    $flag = defined('PAY_PER_CLICK_FLAG') ? trim((string) PAY_PER_CLICK_FLAG) : '';
+
+    return "CASE"
+        . (($flag !== '') ? " WHEN (" . $prefix . "tracking_code LIKE '%" . e(escape_like($flag)) . "%') THEN 'pay_per_click'" : '')
+        . " WHEN (" . $prefix . "referring_search_engine <> '') THEN 'organic' ELSE '' END";
+}
+
+/**
+ * The social networks a referring host is counted as social by: domains
+ * matched on the host's last two labels (m.facebook.com, l.instagram.com).
+ * Pure.
+ *
+ * @return array
+ */
+function pg_visitor_social_hosts()
+{
+    return array(
+        'facebook.com', 'fb.com', 'fb.me',
+        'instagram.com',
+        'x.com', 'twitter.com', 't.co',
+        'linkedin.com', 'lnkd.in',
+        'youtube.com', 'youtu.be',
+        'tiktok.com',
+        'pinterest.com', 'pin.it',
+        'reddit.com',
+        'whatsapp.com', 'wa.me',
+        'telegram.org', 't.me',
+    );
+}
+
+/**
+ * The utm_medium values of each channel the medium decides. Pure.
+ *
+ * @return array channel => list of lower-case mediums
+ */
+function pg_visitor_channel_mediums()
+{
+    return array(
+        'paid' => array('cpc', 'ppc', 'paid', 'paid_social'),
+        'email' => array('email', 'newsletter'),
+        'social' => array('social'),
+    );
+}
+
+/**
+ * The channel names in the order the rule tries them. Pure.
+ *
+ * @return array
+ */
+function pg_visitor_channels()
+{
+    return array('paid', 'email', 'ai', 'organic', 'social', 'referral', 'direct');
+}
+
+/**
+ * The channel of one visit, the rule pg_visitor_channel_sql() runs in the
+ * database: the first that matches of paid, email, ai, organic, social,
+ * referral, direct. Pure.
+ *
+ * @param array  $visit tracking_code, utm_medium, referring_host_name, referring_search_engine
+ * @param string $flag  The pay-per-click flag of the SEO settings
+ * @return string
+ */
+function pg_visitor_channel($visit, $flag = '')
+{
+    $flag = trim((string) $flag);
+    $code = isset($visit['tracking_code']) ? (string) $visit['tracking_code'] : '';
+    $medium = isset($visit['utm_medium']) ? strtolower(trim((string) $visit['utm_medium'])) : '';
+    $host = isset($visit['referring_host_name']) ? strtolower(trim((string) $visit['referring_host_name'])) : '';
+    $engine = isset($visit['referring_search_engine']) ? (string) $visit['referring_search_engine'] : '';
+    $mediums = pg_visitor_channel_mediums();
+
+    if ((($flag !== '') && (stripos($code, $flag) !== false)) || in_array($medium, $mediums['paid'], true)) {
+        return 'paid';
+    }
+
+    if (in_array($medium, $mediums['email'], true)) {
+        return 'email';
+    }
+
+    if (($host !== '') && in_array($host, pg_visitor_channel_ai_hosts(), true)) {
+        return 'ai';
+    }
+
+    if ($engine !== '') {
+        return 'organic';
+    }
+
+    $labels = explode('.', $host);
+    $last_two = implode('.', array_slice($labels, -2));
+
+    if (in_array($medium, $mediums['social'], true) || (($host !== '') && in_array($last_two, pg_visitor_social_hosts(), true))) {
+        return 'social';
+    }
+
+    return ($host !== '') ? 'referral' : 'direct';
+}
+
+/**
+ * The AI assistants' hosts with their www. forms (ai_visibility.php), empty
+ * when that module is not loaded.
+ *
+ * @return array
+ */
+function pg_visitor_channel_ai_hosts()
+{
+    return function_exists('pg_visitor_ai_host_list') ? pg_visitor_ai_host_list() : array();
+}
+
+/**
+ * A list of fixed strings (host names, mediums written in this file, never
+ * request input) as a quoted SQL IN () list. Quoted without the connection,
+ * so the SQL can be built before one is open. Pure.
+ *
+ * @param array $values
+ * @return string
+ */
+function pg_visitor_sql_list($values)
+{
+    $out = array();
+
+    foreach ((array) $values as $value) {
+        $out[] = "'" . str_replace(array('\\', "'"), array('\\\\', "''"), (string) $value) . "'";
+    }
+
+    return implode(', ', $out);
+}
+
+/**
+ * The channel of a visit as SQL over a `visitors` row, the rule
+ * pg_visitor_channel() applies: paid (the tracking code carries the
+ * pay-per-click flag, or a paid utm_medium), email, ai (an AI assistant's
+ * host), organic (a search engine referred it), social (utm_medium social
+ * or a social network's host), referral (any other host), direct.
+ *
+ * With no flag set only the medium makes a visit paid: an empty pattern
+ * would match every visit. The host is stored as the referrer gave it, www.
+ * included: the AI list carries both forms, the social match reads the last
+ * two labels.
  *
  * @param string $prefix Table name or alias with its dot, or ''
  * @return string
@@ -198,10 +344,28 @@ function pg_visitor_device_sql($column)
 function pg_visitor_channel_sql($prefix = '')
 {
     $flag = defined('PAY_PER_CLICK_FLAG') ? trim((string) PAY_PER_CLICK_FLAG) : '';
+    $mediums = pg_visitor_channel_mediums();
+    $medium = "LOWER(TRIM(" . $prefix . "utm_medium))";
+    $host = "LOWER(" . $prefix . "referring_host_name)";
+
+    $paid = $medium . " IN (" . pg_visitor_sql_list($mediums['paid']) . ")";
+
+    if ($flag !== '') {
+        $paid = "(" . $prefix . "tracking_code LIKE '%" . e(escape_like($flag)) . "%') OR " . $paid;
+    }
+
+    $ai_hosts = pg_visitor_channel_ai_hosts();
+    $ai = (count($ai_hosts) > 0) ? " WHEN (" . $host . " IN (" . pg_visitor_sql_list($ai_hosts) . ")) THEN 'ai'" : '';
 
     return "CASE"
-        . (($flag !== '') ? " WHEN (" . $prefix . "tracking_code LIKE '%" . e(escape_like($flag)) . "%') THEN 'pay_per_click'" : '')
-        . " WHEN (" . $prefix . "referring_search_engine <> '') THEN 'organic' ELSE '' END";
+        . " WHEN (" . $paid . ") THEN 'paid'"
+        . " WHEN (" . $medium . " IN (" . pg_visitor_sql_list($mediums['email']) . ")) THEN 'email'"
+        . $ai
+        . " WHEN (" . $prefix . "referring_search_engine <> '') THEN 'organic'"
+        . " WHEN (" . $medium . " IN (" . pg_visitor_sql_list($mediums['social']) . ")"
+        . " OR SUBSTRING_INDEX(" . $host . ", '.', -2) IN (" . pg_visitor_sql_list(pg_visitor_social_hosts()) . ")) THEN 'social'"
+        . " WHEN (" . $prefix . "referring_host_name <> '') THEN 'referral'"
+        . " ELSE 'direct' END";
 }
 
 /**
@@ -225,7 +389,8 @@ function pg_visitor_summary_dimensions()
         'referring_host_name' => 'referring_host_name',
         'referring_search_engine' => 'referring_search_engine',
         'referring_search_terms' => 'referring_search_terms',
-        'pay_per_click_organic' => pg_visitor_channel_sql(),
+        'pay_per_click_organic' => pg_visitor_paid_organic_sql(),
+        'channel' => pg_visitor_channel_sql(),
         'landing_page_name' => 'landing_page_name',
         'first_visit' => 'first_visit',
         'tracking_code' => 'tracking_code',

@@ -15,10 +15,11 @@ module: visitor_figures
 - `pg_visitor_summary_range()`: the contiguous run of days with a totals row (`dimension = ''`) ending at the most recent one (pure `pg_visitor_summary_run()`); an island behind a gap is not used.
 - `pg_visitor_day_split()` (pure, through `pg_visitor_day_sources()`): a day is summary when it is whole in the window, inside the run and before today; everything else, and the cut part of a day, is raw. Neighbouring days of one source are one part, so a window needs at most one query per source.
 - A day is read from one source only: a summarized day whose rows the cleanup has not removed yet is not counted twice.
+- `pg_visitor_breakdown()` reads a summarized day that has visits but no row of the asked dimension from the raw rows (`pg_visitor_parts_move_days()`); the totals still come from the summary.
 
 ## How are the two lists added up?
 - `pg_visitor_merge_rows()`: by value without regard to case (`mb_strtolower`), the first spelling kept, largest first then by value. The summary's rest row (`is_rest = 1`) is never listed; it counts in the totals only, which come from the totals rows.
 - With both sources each list is read `max(500, limit × 4)` deep, so a value outside one source's top can still reach the merged top.
 
 ## What did the API keep?
-- `api_reports_visitors()` answers as before (`neither` for an empty channel, null for an empty value) plus `summary_days`. `api_visitors_dimensions()` and `api_visitors_summary_dimensions()` stay in the API file; the second maps `by` to the module's dimension.
+- `api_reports_visitors()` answers as before (null for an empty value) plus `summary_days`; `by=channel` reads the summary dimension `channel` (`visitor-channel-rule.md`). `api_visitors_dimensions()` and `api_visitors_summary_dimensions()` stay in the API file; the second maps `by` to the module's dimension.

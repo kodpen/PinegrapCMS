@@ -217,6 +217,9 @@ $event_pages[] = array(
         'confirm_email'        => 1,
         'confirm_subject'      => lang('We received your registration'),
         'confirm_page_id'      => '{{tab:email_registration_received}}',
+        // The optional fee: its product is free until it is given a price
+        // (no payment step then); bank transfer where the store takes it.
+        'payment'              => array('product_id' => '{{product:registration_fee}}', 'amount_source' => 'product', 'offline' => 1),
     ),
     'tree'             => $page(array(
         $page_header(lang('Register for an Event'), lang('Tell us which event and pass, and who is coming. Your confirmation comes by e-mail, usually within a working day.')),

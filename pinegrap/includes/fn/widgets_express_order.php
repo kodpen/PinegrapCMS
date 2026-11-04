@@ -693,6 +693,47 @@ function _eo_fit_district_field(&$tree, $ship_rid = 0)
     pg_ship_to_district_tree_mark($tree, $bound('shipping_district'), $country, $tr_codes, $asks);
 }
 
+// The tax number box of a designed form was drawn for Turkish ids (10 or 11
+// digits, a pattern the browser enforces). A store elsewhere takes an EU VAT
+// id with its prefix, which the pattern would refuse: the box loses the
+// pattern, widens to the column, and the digits hint beside it becomes the
+// VAT id hint (pg_vat_tax_number_attrs_fit(), pg_vat_tax_number_hint()).
+function _eo_fit_tax_number_field(&$tree, $store_country = null)
+{
+    if (!is_array($tree)) return;
+    if ($store_country === null) {
+        $store_country = function_exists('pg_erp_store_country') ? (string) pg_erp_store_country() : '';
+    }
+    $hint = pg_vat_tax_number_hint($store_country);
+    if ($hint === '') return;
+    $source = '11 digits for a person, 10 for a company.';
+    $digits_hints = array($source, lang($source));
+    $walk = function (&$node) use (&$walk, $store_country, $hint, $digits_hints) {
+        if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return;
+        $has_box = false;
+        foreach ($node['children'] as &$child) {
+            if (isset($child['props']['_bindings']['eo_field']) && (string) $child['props']['_bindings']['eo_field'] === 'tax_number') {
+                $has_box = true;
+                $child['props']['_attrs'] = pg_vat_tax_number_attrs_fit(isset($child['props']['_attrs']) ? (array) $child['props']['_attrs'] : array(), $store_country);
+            }
+        }
+        unset($child);
+        foreach ($node['children'] as &$child) {
+            if ($has_box && isset($child['props']['text']) && in_array(trim((string) $child['props']['text']), $digits_hints, true)) {
+                $child['props']['text'] = $hint;
+            }
+            $walk($child);
+        }
+        unset($child);
+    };
+    if (isset($tree['type']) || isset($tree['children'])) {
+        $walk($tree);
+    } else {
+        foreach ($tree as &$root) $walk($root);
+        unset($root);
+    }
+}
+
 // The country the checkout's country controls start with: the shop's
 // default (countries.default_selected), '' when none is set.
 function _eo_default_country()

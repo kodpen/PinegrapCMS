@@ -23,12 +23,10 @@ Source: the vendor plan's section 9 and its owner decisions, numbered as there (
 - Until release day licences answer 503 `not_live` (card: technical reason, 15-min retry); stable offers nothing (404 or an older adopted release); beta offers the pre-release the owner points at.
 
 ## Which questions are open?
-- Q1 decided (#3204, done in P6 #3755): a same-version beta build is offered only over a build file naming a beta build of the running version; Repair still installs the pointer's build, named on screen (`platform/update-beta-builds.md`).
-- Decided and recorded (#3205, `workflow/decisions-made-product-5.md`): widget 14 retired with its Subscription ID field, column kept; `download_assistant.php` keeps its api2 call and key. Owner (2026-11-01, #4396, `decisions-made-product-15.md`): P7 removes the fixed `API` key from the three api2 calls now; api2 was updated on the server and no longer needs it.
-- Open on the vendor side, no step waits: the old fixed beta download on release day (how many sites meet Q1); KVKK erasure (P7's note promises none); an outbox "try now".
+- Open on the vendor side, no step waits: the old fixed beta download on release day (how many sites meet Q1, `platform/update-beta-builds.md`); KVKK erasure (P7's note promises none); an outbox "try now".
 - Inputs: the two public P-256 keys, lower-case ids (P5c; P8 waits); the primary id as P2's repository variable.
 
 ## Where to start?
-- After the claim check: P5c, P7 (P7 after P4 #4381 merges). P2 (`.github/`, `docs/` only) may run beside a step on the same terms.
+- After the claim check: P5c. P2 (`.github/`, `docs/` only) may run beside a step on the same terms.
 
 Related: docs/memory/platform/license-check.md

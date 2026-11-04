@@ -19,6 +19,23 @@
 include('init.php');
 require_once(dirname(__FILE__) . '/seo.php');
 
+// A switch of the list changed in place (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen; the write is Modify Selected's own (pg_page_quick_update()).
+if (pg_list_edit_requested()) {
+    require_once(dirname(__FILE__) . '/includes/fn/page_list.php');
+
+    $edit = pg_list_edit_request(pg_page_quick_edit_columns(), function ($user) {
+        // The list's own gate (pg_page_list_source()); each write checks
+        // the page's folder.
+        return ((int) $user['role'] < 3) || (((int) $user['role'] == 3) && no_acl_check($user['id']));
+    });
+
+    $saved = pg_page_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $liveform = new liveform('view_pages');
 $user = validate_user();
 validate_area_access($user, 'user');

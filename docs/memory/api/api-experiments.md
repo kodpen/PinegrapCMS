@@ -8,7 +8,7 @@ description: The experiments API resource (PX7, #6295): list, get with figures a
 - Setting one up, editing the variant and "Publish the winner" stay in the panel: publishing saves a design under the page lock and the content gate, which an application does not hold.
 
 ## What does an experiment carry?
-- `api_experiment_present()` (pure): the row, its page, goal (`goal_target` null when empty), ISO times, `winner_variant_id` (null for none), summed views/goals, and `variants[]` (`ExperimentVariant`): key, control, draft_page_id (null for the live page), weight, views, goals, rate, lift, p_value, significant, verdict (ahead/behind/more/even/none, null for the control), needed_views. Figures from `pg_experiment_results_rows()`, the same as `experiments.php`.
+- `api_experiment_present()` (pure): the row, its page, goal (`goal_target` null when empty), ISO times, `winner_variant_id` (null for none), summed views/goals, and `variants[]` (`ExperimentVariant`): key, control, draft_page_id (null for the live page), weight, views, goals, rate, lift, p_value, significant, verdict (ahead/behind/more/even/none, null for the control; more with needed_views null while a version has no views or nothing converted), needed_views. Figures from `pg_experiment_results_rows()`, the same as `experiments.php`.
 - Variants and sums of a page of rows: two queries (`api_experiment_variants_for()`).
 
 ## How is a move made?

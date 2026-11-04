@@ -74,7 +74,7 @@ function test_list_row_names_product_row()
 	}
 
 	pg_assert_contains('>MUG &lt;1&gt;</a>', $row['cells']['id']['html'], 'the row\'s link names the product');
-	pg_assert_contains('class="pg-seo-open d-block text-decoration-none" aria-label="' . h(lang('SEO score has not been calculated yet.')) . '"', $html, 'the SEO link names the score');
+	pg_assert_contains('data-pg-seo-bar="product:12" aria-label="' . h(lang('SEO score has not been calculated yet.')) . '"', $html, 'the SEO link names the score');
 }
 
 function test_list_row_names_no_image_named()
@@ -103,15 +103,16 @@ function test_list_row_names_submitted_form_row()
 function test_list_row_names_order_row()
 {
 	$source = list_row_names_source('view_orders.php');
-	pg_assert_contains('name="orders[]" value="\' . $id . \'" aria-label="\' . h(lang(array(\'string\' => \'Select {var:1}\', \'vars\' => array($output_row_name)))) . \'"', $source);
+	pg_assert_contains("urlencode(PATH . SOFTWARE_DIRECTORY . '/view_orders.php'), h(\$output_row_name))", $source, 'the row is named by its link');
 	pg_assert_contains("\$output_row_name = (trim((string) \$order_number) !== '') ? \$order_number : trim(\$billing_first_name . ' ' . \$billing_last_name);", $source);
 	pg_assert_contains("\$output_row_name = '#' . \$id;", $source);
 }
 
 function test_list_row_names_page_seo_links()
 {
-	$source = list_row_names_source('includes/fn/page_list.php');
-	pg_assert_same(2, substr_count($source, 'aria-label="\' . h(pg_seo_link_name($page)) . \'"'), 'name-cell bar and SEO column badge');
+	$source = list_row_names_source('includes/fn/list_table.php');
+	pg_assert_contains('aria-label="\' . h(pg_seo_link_name($row)) . \'"', $source, 'the SEO column\'s bar names the record');
+	pg_assert_contains("pg_list_table_seo_cell('page'", list_row_names_source('includes/fn/page_list.php'), 'the pages list uses it');
 }
 
 function test_list_row_names_folder_access_mark()

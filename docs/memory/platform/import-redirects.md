@@ -13,6 +13,7 @@ module: importers
 - 301, link mode permanent, `created_user_id` the importing person.
 
 ## When is none added?
+- A page made under its old address (a root WordPress page `/about/` becomes page `about`): `pg_import_redirect_is_own_address()` (pure, case ignored) returns no redirect and no line. Before, the report listed it as "in use on this site already".
 - `pg_short_link_name_problem()`, a `*` in the path (it would be a pattern), a name any page, file or link holds (`check_name_availability()`: nothing is replaced), the loop checks (`pg_short_link_redirect_columns()`), before 11.0.12. Each is a report line of kind Redirects with the reason; the counts have a `redirect` row.
 
 ## Where are they listed and how do they go?

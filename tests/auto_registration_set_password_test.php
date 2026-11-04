@@ -131,6 +131,7 @@ function test_auto_registration_no_password_in_session_or_output()
 		'get_custom_form_confirmation_screen_content.php',
 		'includes/fn/widgets.php',
 		'includes/fn/custom_form.php',
+		'includes/fn/form_mails.php',
 		'includes/templates/form_item_view.php',
 	);
 
@@ -154,5 +155,6 @@ function test_auto_registration_account_has_no_password_and_mail_is_secret()
 
 	pg_assert_same(1, preg_match('/create_member_user\(array\(/', $source), 'account is created');
 	pg_assert_same(0, preg_match('/create_member_user\(array\((?:(?!\)\);).)*\'password\'/s', $source), 'no password passed');
-	pg_assert_contains("'secret' => ((\$to_email_address == \$submitter_email_address) && (pg_cf_new_account_email(\$form_id) !== ''))", $source, 'sender copy is secret');
+	pg_assert_contains("'secret' => ((\$to_email_address == \$submitter_email_address) && (pg_cf_new_account_email(\$form_id) !== ''))",
+		file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/form_mails.php'), 'sender copy is secret');
 }

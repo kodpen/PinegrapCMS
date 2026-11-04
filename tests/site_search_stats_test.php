@@ -168,7 +168,7 @@ function test_site_search_report_sql_sums_rows()
 	$summary = pg_site_search_summary_sql();
 	pg_assert_contains('COALESCE(SUM(searches), 0) AS searches', $summary);
 	pg_assert_contains('COUNT(DISTINCT term) AS terms', $summary);
-	pg_assert_contains('WHERE day >= ?', $summary);
+	pg_assert_contains('WHERE day >= ? AND day <= ?', $summary, 'both ends of the period are bound');
 
 	$top = pg_site_search_terms_sql('top', 100);
 	pg_assert_contains('SUM(searches) AS searches', $top);
@@ -191,10 +191,9 @@ function test_site_search_report_screen()
 {
 	$screen = site_search_stats_test_source('visitor_search.php');
 	pg_assert_contains('validate_visitors_access($user);', $screen);
-	pg_assert_contains("\$may_tune = ((int) \$user['role'] < 3);", $screen, 'only managers get the promote button');
-	pg_assert_contains("settings_features.php?search_promote=", $screen);
+	pg_assert_contains("'#site_search', true, 301);", $screen, 'the old screen sends its links to the overview section');
 
 	$menu = site_search_stats_test_source('includes/fn/output.php');
-	pg_assert_contains("'site_search' => array('visitor_search.php', 'bi-search', pg_site_search_stats_ready())", $menu, 'the Visitors menu opens it until the overview has the section');
+	pg_assert_contains("'site_search' => array('visitor_search.php', 'bi-search', pg_site_search_stats_ready())", $menu, 'the ready check of the menu anchor');
 	pg_assert_contains("case 'visitor_search.php':", $menu);
 }

@@ -83,17 +83,16 @@ function test_api_reports_channel_needs_a_flag_to_call_a_visit_paid()
 
 	$channel = $dimensions['channel'];
 
-	if (defined('PAY_PER_CLICK_FLAG') && trim((string)PAY_PER_CLICK_FLAG) !== '') {
+	pg_assert_same(pg_visitor_channel_sql(), $channel, 'the channel is the summary rule');
 
-		pg_assert_true(strpos($channel, "'pay_per_click'") !== false, 'a set flag makes paid visits');
+	if (!defined('PAY_PER_CLICK_FLAG') || trim((string)PAY_PER_CLICK_FLAG) === '') {
 
-	} else {
-
-		pg_assert_true(strpos($channel, 'pay_per_click') === false, 'no flag, nothing is paid');
+		pg_assert_true(strpos($channel, 'tracking_code') === false, 'no flag, no tracking code pattern');
 
 	}
 
 	pg_assert_true(strpos($channel, "THEN 'organic'") !== false, 'a search engine referral is organic');
+	pg_assert_same('channel', api_visitors_summary_dimensions()['channel'], 'kept under the summary dimension channel');
 }
 
 // Up to the limit every period comes back and the totals are theirs: the

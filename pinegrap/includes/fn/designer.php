@@ -8014,6 +8014,11 @@ function _pg_tpl_fill($node, $vars)
     if (preg_match('/^\{\{contact_group:([a-z0-9_-]+)\}\}$/', $node, $cm)) {
         return isset($vars['contact_groups'][$cm[1]]) ? (int)$vars['contact_groups'][$cm[1]] : 0;
     }
+    // A product of the template's catalog by its key (a form's fee product):
+    // its id as a number, 0 when the site has none (no shop).
+    if (preg_match('/^\{\{product:([a-z0-9_-]+)\}\}$/', $node, $pm)) {
+        return isset($vars['products'][$pm[1]]) ? (int)$vars['products'][$pm[1]] : 0;
+    }
     return preg_replace_callback('/\{\{([a-z_]+)(?::([a-z0-9_-]+))?\}\}/', function ($m) use ($vars) {
         $key = isset($m[2]) ? $m[2] : '';
         if ($m[1] === 'page') {
@@ -8041,6 +8046,9 @@ function _pg_tpl_fill($node, $vars)
         }
         if ($m[1] === 'contact_group') {
             return isset($vars['contact_groups'][$key]) ? (string)(int)$vars['contact_groups'][$key] : '0';
+        }
+        if ($m[1] === 'product') {
+            return isset($vars['products'][$key]) ? (string)(int)$vars['products'][$key] : '0';
         }
         return isset($vars[$m[1]]) ? $vars[$m[1]] : $m[0];
     }, $node);
@@ -8120,15 +8128,23 @@ function _pg_tpl_catalog_file($tpl_id, $source, $folder_id, $user_id)
  * the USD figure for any other; in major units. 'details' are lines every
  * product's Details tab lists.
  *
+ * 'fees' are hidden products a form's payment setting names
+ * ('{{product:<key>}}'): key => sku, title, price; in no group, so no
+ * catalog lists them, not shipped and not taxed (_pg_tpl_fee_product()).
+ * One already on the site with the template's SKU is used as it is.
+ *
  * Returns array('groups' => key => id, 'paths' => key => address name,
- * 'images' => key => picture address). Empty without the shop.
+ * 'images' => key => picture address, 'products' => fee key => id). Empty
+ * without the shop.
  */
 function _pg_tpl_catalog($tpl, $user_id, $root_group_id, $folders = array())
 {
-    $out = array('groups' => array(), 'paths' => array(), 'images' => array());
+    $out = array('groups' => array(), 'paths' => array(), 'images' => array(), 'products' => array());
     if (!defined('ECOMMERCE') || !ECOMMERCE) return $out;
     $def = (isset($tpl['catalog']) && is_array($tpl['catalog'])) ? $tpl['catalog'] : array();
-    if (empty($def['groups']) || !is_array($def['groups'])) return $out;
+    $fees = (isset($def['fees']) && is_array($def['fees'])) ? $def['fees'] : array();
+    if ((empty($def['groups']) || !is_array($def['groups'])) && !$fees) return $out;
+    if (!isset($def['groups']) || !is_array($def['groups'])) $def['groups'] = array();
     if (!function_exists('pg_pb_create_product')) {
         if (!is_file(PG_FUNCTIONS_DIR . '/product_builder.php')) return $out;
         require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
@@ -8236,7 +8252,43 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id, $folders = array())
             }
         }
     }
+
+    // The hidden fee products: found again by their SKU, else made in no group.
+    foreach ($fees as $key => $p) {
+        $key = (string)$key;
+        $sku = (is_array($p) && isset($p['sku'])) ? trim((string)$p['sku']) : '';
+        if ($sku === '' || !preg_match('/^[a-z0-9_-]+$/', $key)) continue;
+        $pid = (int)db_value("SELECT id FROM products WHERE name = '" . e($sku) . "' ORDER BY id LIMIT 1");
+        if ($pid <= 0) {
+            $pid = (int)pg_pb_create_product(_pg_tpl_fee_product($p, $currency, $user_id),
+                array('images' => array(), 'group_ids' => array(), 'zone_ids' => array(), 'attributes' => array(), 'submit_form' => array()));
+        }
+        if ($pid > 0) $out['products'][$key] = $pid;
+    }
     return $out;
+}
+
+// The products row of a template's fee product ('fees' in its catalog):
+// enabled, in minor units of $currency (the USD figure for a currency not
+// listed), not shipped and not taxed, since the form's order adds nothing on
+// top of the fee. Pure.
+function _pg_tpl_fee_product($p, $currency, $user_id)
+{
+    $prices = (isset($p['price']) && is_array($p['price'])) ? $p['price'] : array();
+    $price  = isset($prices[$currency]) ? $prices[$currency] : (isset($prices['USD']) ? $prices['USD'] : 0);
+    $sku    = trim((string)$p['sku']);
+    $label  = isset($p['title']) ? (string)$p['title'] : $sku;
+    $text   = isset($p['description']) ? (string)$p['description'] : '';
+    return array(
+        'name' => $sku, 'enabled' => '1', 'price' => max(0, (int)round((float)$price * 100)), 'taxable' => '0', 'shippable' => '0',
+        'free_shipping' => '0', 'title' => '', 'short_description' => mb_substr($label, 0, 255), 'meta_description' => mb_substr($text, 0, 255),
+        'brand' => '', 'gtin' => '', 'mpn' => '', 'keywords' => '',
+        'weight' => 0, 'length' => 0, 'width' => 0, 'height' => 0, 'inventory' => '0', 'inventory_quantity' => 0,
+        'user' => (int)$user_id, 'full_description' => ($text !== '') ? '<p>' . h($text) . '</p>' : '', 'meta_keywords' => '',
+        'notes' => '', 'details' => '', 'seo_analysis' => '', 'code' => '', 'out_of_stock_message' => '',
+        'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
+        'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
+    );
 }
 
 // The access a template product gives once its order is paid, as products
@@ -8688,6 +8740,7 @@ function pg_design_template_prepare($template_id, $user)
         'tabs'      => array(),
         'folders'   => $folders,
         'product_groups' => array_merge($catalog['groups'], array('root' => $root_group)),
+        'products'  => $catalog['products'],
     );
     foreach ($names as $key => $name) {
         $vars['pages'][$key] = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($name);

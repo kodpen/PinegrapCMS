@@ -104,6 +104,23 @@ function pg_backup_name_reserved($name)
 
 
 /**
+ * Whether a listed backup is one of the starter-site dumps the installer
+ * offers. Deleting one removes that language from a later install made from
+ * this copy, so the Backup Manager's delete confirmation says so. Only the
+ * folders count: the installer reads folders, not archives.
+ *
+ * Compared without case: Windows and macOS folders ignore it.
+ *
+ * @param string $name a name from backup_list()
+ * @return bool
+ */
+function pg_backup_is_starter_dump($name)
+{
+    return in_array(strtolower((string) $name), array('english_default', 'turkish_default'), true);
+}
+
+
+/**
  * The order the Backup Manager lists backups in: newest first, then by name.
  *
  * @param array $times backup name => the time it was taken

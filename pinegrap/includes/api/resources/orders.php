@@ -94,7 +94,12 @@ function api_order_present($row, $items = null, $shipments = null) {
 		'type'                => array_key_exists('type', $row) ? (string)$row['type'] : null,
 		'cancelled_at'        => array_key_exists('cancelled_at', $row) ? api_time($row['cancelled_at']) : null,
 		'cancellation_reason' => array_key_exists('cancellation_reason', $row) ? (string)$row['cancellation_reason'] : null,
-		'refund_status'       => array_key_exists('refund_status', $row) ? (string)$row['refund_status'] : null
+		'refund_status'       => array_key_exists('refund_status', $row) ? (string)$row['refund_status'] : null,
+		// An EU VAT id VIES confirmed at checkout ('' for none), the time of
+		// the check and the VIES consultation number (2026.11.0).
+		'vat_id'         => array_key_exists('vat_id', $row) ? (string)$row['vat_id'] : null,
+		'vat_checked_at' => array_key_exists('vat_checked_at', $row) ? api_time($row['vat_checked_at']) : null,
+		'vat_request_id' => array_key_exists('vat_request_id', $row) ? (string)$row['vat_request_id'] : null
 	);
 
 	foreach (api_order_money_fields() as $field) {
@@ -263,12 +268,13 @@ function api_order_shipments($order_id) {
 
 }
 
-// The order's kind and cancellation state, each added by a later migration
-// (type 2026.1.4, the cancellation 2026.1.26, refund_status 2026.1.27): a site
-// that missed one still answers, with that field null.
+// The order's kind, cancellation state and EU VAT id, each added by a later
+// migration (type 2026.1.4, the cancellation 2026.1.26, refund_status
+// 2026.1.27, the VAT id 2026.11.0): a site that missed one still answers,
+// with that field null.
 function api_order_state_columns() {
 
-	return array('type', 'cancelled_at', 'cancellation_reason', 'refund_status');
+	return array('type', 'cancelled_at', 'cancellation_reason', 'refund_status', 'vat_id', 'vat_checked_at', 'vat_request_id');
 
 }
 
@@ -1774,6 +1780,9 @@ function api_order_schema() {
 		'cancelled_at'        => 'string?',
 		'cancellation_reason' => 'string?',
 		'refund_status'       => 'string?',
+		'vat_id'              => 'string?',
+		'vat_checked_at'      => 'string?',
+		'vat_request_id'      => 'string?',
 		'items' => array(array(
 			'id'             => 'integer',
 			'product_id'     => 'integer?',

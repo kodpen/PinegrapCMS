@@ -213,7 +213,8 @@ function test_custom_form_rules_templates()
 	}
 
 	$address = _test_cf_rules_template_node('pinegrap-cafe', 'cf-quote-address');
-	pg_assert_same(array('required_when' => array('field' => 'delivery', 'answers' => array(lang('Delivered to us')))),
+	$delivery_rule = array('field' => 'delivery', 'answers' => array(lang('Delivered to us')));
+	pg_assert_same(array('required_when' => $delivery_rule, 'shown_when' => $delivery_rule),
 		pg_cf_rules_clean($address['props']['_cf']['rules']), 'the delivery address');
 	$delivered = _test_cf_rules_template_node('pinegrap-cafe', 'cf-quote-delivery-1');
 	pg_assert_true($delivered !== null, 'the first delivery answer exists');

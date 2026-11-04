@@ -18,8 +18,6 @@ description: Plan (owner 2026-11-02): rule-driven contact groups whose members a
 - Counting and recomputing follow `visitors/high-volume-counter-rules.md`: visit conditions read the summary tables and the visit's contact link only, never scan raw rows per contact.
 
 ## Which questions are decided? (#5033, #6319)
-1. `contact_groups.kind`, `rules`, `computed_at`, `compute_cursor`; `users_contact_groups_xref.source` with its index; shape in the issue.
-2. One recompute an hour per group, 20 seconds a tick, groups over 100,000 members in pages of 10,000 by cursor.
 3. Architect (#6319): the recompute touches only `rule` rows; the switch to dynamic reviews hand, form and product rows once (remove or turn into rule rows); the merge keeps `source` (`workflow/decisions-made-product-25.md`).
 
 ## Where does it start?
