@@ -4,20 +4,13 @@
  *
  * Panel actions - the rows of the big list screens, one page at a time.
  *
- *   commission_list_rows       a page of the commissions list
- *                              (view_commissions.php)
- *   commission_profile_list_rows
- *                              a page of the recurring commission profiles
- *                              (view_recurring_commission_profiles.php)
  *   audit_log_changes          the changed fields of one audit trail line
- *   mail_queue_list_rows       a page of the e-mail queue (mail_queue.php)
- *   sms_queue_list_rows        a page of the text message queue
- *                              (mail_queue.php?tab=sms)
  *   list_table_rows            a batch of rows of a list drawn by the list
  *                              table driver (includes/fn/list_table.php):
  *                              the pages, users, contacts, submitted
  *                              forms and products lists, the Site Log, the
- *                              audit trail and the firewall log
+ *                              audit trail, the firewall log, the commission
+ *                              lists and the mail queue
  *                              (pg_list_table_definitions())
  *   list_table_sort            keeps the sort of a list the driver prints
  *                              whole (browser mode), set by a heading click
@@ -38,60 +31,6 @@
 
 if (!defined('PG_PANEL_ACTIONS')) {
     exit;
-}
-
-// Both commission screens' gate: validate_ecommerce_access(), answered in
-// JSON. Each action checks the form token itself.
-function pg_panel_commission_list_gate()
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    $user = validate_user();
-
-    if (((int) $user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
-}
-
-function pg_panel_commission_list_rows($request, $action)
-{
-    pg_panel_commission_list_gate();
-    validate_token();
-
-    // The date range is the one the screen kept in the session.
-    $page = pg_commission_list_page(
-        pg_commission_list_range(),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
-}
-
-function pg_panel_commission_profile_list_rows($request, $action)
-{
-    pg_panel_commission_list_gate();
-    validate_token();
-
-    $page = pg_commission_profile_list_page(
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }
 
 // The audit trail's gate: validate_area_access($user, 'manager') and the
@@ -136,73 +75,6 @@ function pg_panel_audit_log_changes($request, $action)
     }
 
     return array('status' => 'success', 'html' => $html);
-}
-
-function pg_panel_mail_queue_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_area_access($user, 'manager'), answered here in JSON.
-    $user = validate_user();
-
-    if ((int) $user['role'] > 2) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    return pg_panel_queue_list_page($request, 'mail');
-}
-
-function pg_panel_sms_queue_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_area_access($user, 'manager'), answered here in JSON.
-    $user = validate_user();
-
-    if ((int) $user['role'] > 2) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    return pg_panel_queue_list_page($request, 'sms');
-}
-
-/**
- * A page of one of the mail queue screen's lists, past its action's gate.
- *
- * @param array  $request the action's JSON body
- * @param string $queue   mail or sms
- * @return array
- */
-function pg_panel_queue_list_page($request, $queue)
-{
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
-
-    $ready = ($queue === 'sms') ? pg_sms_queue_ready() : pg_mail_queue_ready();
-
-    $page = $ready ? pg_mail_queue_list_page(
-        $queue,
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
-        time()) : false;
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }
 
 function pg_panel_list_table_rows($request, $action)

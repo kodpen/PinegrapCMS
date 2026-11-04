@@ -54,6 +54,10 @@ function pg_list_table_definitions()
         'view_audit_log' => array('file' => 'includes/fn/audit_list.php', 'source' => 'pg_audit_list_source'),
         'view_waf_log' => array('file' => 'includes/fn/waf_log_list.php', 'source' => 'pg_waf_log_list_source'),
         'view_stock_moves' => array('file' => 'includes/fn/stock_moves.php', 'source' => 'pg_stock_move_list_source'),
+        'view_commissions' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_list_source'),
+        'view_recurring_commission_profiles' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_profile_list_source'),
+        'mail_queue' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_mail_queue_list_source'),
+        'mail_queue_sms' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_sms_queue_list_source'),
     );
 }
 

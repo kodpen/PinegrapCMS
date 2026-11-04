@@ -93,7 +93,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - comment-moderation-recycle-bin.md: Comments on pages in the Recycle Bin: left out of the moderation queue, its count, the greeting and the Workspace counter; marked without a link on the Comments list and edit screens
 - commerce-delete-confirm.md: Edit State, Country, Shipping Method, Zone and Product Attribute name and count, in their Delete confirmation, the records the delete removes or unlinks
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
-- commission-list-paging.md: The commission lists (view_commissions.php, view_recurring_commission_profiles.php) paged and searched on the server; issue #2038 (search found only the page PHP printed); what the screens keep
+- commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
 - contact-filter-keyboards.md: Contacts Advanced Filters: no address autofill, phone and web address keyboards, an unmasked e-mail box; the panel's permissive Inputmask email alias; Submitted Forms Referring URL keyboard
 - contact-form-checks.md: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
@@ -271,7 +271,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
 - list-table-commerce-lists.md: Orders, gift cards, key codes, shipping methods (TD8a) and the ERP account prices, minimum stock and stock lists (TD8b) on the list table driver: printed whole, quick edit, bulk actions as ids
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A, undo, rows on scroll, sort, search, columns menu, details panel, phone cards, thumbnails, layout
-- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, logs, the printed lists): sources, columns, bulk actions, what each keeps
+- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, commissions, mail queue, logs, printed lists): sources, columns, bulk actions
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
 - list-table-printed.md: Browser mode of the list table driver: a small list printed whole (pg_list_table_printed()), its sort kept by list_table_sort, the toolbar search box
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
@@ -281,7 +281,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: what it holds, the default, what stays in the screens
-- mail-queue-paging.md: The mail queue screen's e-mail and SMS lists paged on the server, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
+- mail-queue-paging.md: The mail queue screen's e-mail and SMS lists on the list table driver, the row confirm, the wrapping long-text cells, Retry while the queue is inactive, and the screen's wording
 - main-menu-categories.md: Main menu rows in categories (pg_menu_categories(), pg_menu_layout()): which rows, no heading over nothing, the File Manager row with the files, retired slot 3, store row names, heading look
 - main-menu-drawer-focus.md: The phone main menu drawer (below lg) is inert while shut, Escape gives focus back to the bar button, focus leaving it shuts it; the symptoms they fixed
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked
