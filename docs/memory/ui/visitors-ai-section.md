@@ -1,12 +1,12 @@
 ---
 name: visitors-ai-section
-description: The AI visibility section (visitor_ai.php until the Visitors overview takes it): bots and firewall state, fetches by day, top pages per bot, AI assistant visits, unfetched sitemap pages
+description: AI Visibility section of the Visitors overview (ai.php, #6475): bots and firewall, fetches by day, pages per bot, assistant visits, unfetched pages, old-screen redirect
 module: visitor_insights
 ---
 
 ## Where is it?
-- `pg_visitor_ai_section($window, $user)` in `includes/fn/visitor_insights.php`; `visitor_ai.php` (Visitors flyout "AI Visibility", panel search, gate `validate_visitors_access()`) prints it with the period filter (`7d`/`30d`/`90d`) and a link to Page Speed. The overview's `ai` section calls the same function when `visitors.php` lands (WV5, #5827).
-- Shown in the flyout once `pg_ai_visibility_ready()`; the figures are `visitors/ai-visibility-figures.md`.
+- `pg_visitor_ai_section($window, $user)` in `includes/fn/visitor_insights.php`; `includes/visitors/ai.php` (`pg_visitors_section_ai()`) puts it in `visitors.php#ai` with the overview's period as the window (V17, #6475). Nothing is drawn until `pg_ai_visibility_ready()`; the flyout anchor follows the same check. The figures are `visitors/ai-visibility-figures.md`.
+- `visitor_ai.php` only answers a 301 to `visitors.php?p=…#ai`, its `p` kept (30 days when absent). Panel search "AI Visibility" opens the anchor.
 
 ## What does it show?
 - Tiles: verified AI fetches and how many bots fetched (`pg_ai_fetch_summary()`, unverified claims kept apart), visits from AI assistants with page views, forms submitted, and with `ECOMMERCE` orders completed with the order total (minor units / 100 through `prepare_amount()`).

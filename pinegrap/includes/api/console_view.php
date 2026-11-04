@@ -26,27 +26,12 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 	exit;
 }
 
-// The endpoint blocks and the index beside them, grouped by resource in the
-// order the schema declares them. Returns array('nav' => html, 'panels' => html,
-// 'count' => endpoints, 'groups' => groups). $try_hint is a sentence shown
-// beside the Try button, or '' for none.
-function api_console_endpoints_html($try_hint = '') {
+// The heading of each endpoint group, keyed by the route id's prefix. A group
+// a resource or module adds needs its line here, or it falls back to the
+// prefix itself.
+function api_console_group_labels() {
 
-	$groups = array();
-
-	foreach (api_schema() as $route) {
-
-		$parts = explode('.', $route['id']);
-
-		$tag = $parts[0];
-
-		if (!isset($groups[$tag])) { $groups[$tag] = array(); }
-
-		$groups[$tag][] = $route;
-
-	}
-
-	$group_labels = array(
+	return array(
 		'meta'           => lang('Site info'),
 		'products'       => lang('Products'),
 		'product_groups' => lang('Product Groups'),
@@ -84,8 +69,58 @@ function api_console_endpoints_html($try_hint = '') {
 		'push'           => lang('Push notifications'),
 		'erp'            => lang('ERP'),
 		'workspace'      => lang('Workspace'),
-		'translations'   => lang('Translations')
+		'translations'   => lang('Translations'),
+		'returns'        => lang('Returns'),
+		'cart_quotes'    => lang('Cart quotes'),
+		'audit_log'      => lang('Audit trail'),
+		'affiliates'     => lang('Affiliates'),
+		'subscriptions'  => lang('Subscriptions'),
+		'experiments'    => lang('Experiments'),
+		'bookings'       => lang('Bookings'),
+		'docs'           => lang('Documentation')
 	);
+
+}
+
+// The allowed range of a parameter as one short note: both ends as "1–100", one
+// end as "≥ 1" or "≤ 100", '' when neither is declared.
+function api_console_range_note($param) {
+
+	$has_min = isset($param['min']);
+
+	$has_max = isset($param['max']);
+
+	if ($has_min && $has_max) { return $param['min'] . '–' . $param['max']; }
+
+	if ($has_min) { return '≥ ' . $param['min']; }
+
+	if ($has_max) { return '≤ ' . $param['max']; }
+
+	return '';
+
+}
+
+// The endpoint blocks and the index beside them, grouped by resource in the
+// order the schema declares them. Returns array('nav' => html, 'panels' => html,
+// 'count' => endpoints, 'groups' => groups). $try_hint is a sentence shown
+// beside the Try button, or '' for none.
+function api_console_endpoints_html($try_hint = '') {
+
+	$groups = array();
+
+	foreach (api_schema() as $route) {
+
+		$parts = explode('.', $route['id']);
+
+		$tag = $parts[0];
+
+		if (!isset($groups[$tag])) { $groups[$tag] = array(); }
+
+		$groups[$tag][] = $route;
+
+	}
+
+	$group_labels = api_console_group_labels();
 
 	$nav = '';
 
@@ -95,7 +130,9 @@ function api_console_endpoints_html($try_hint = '') {
 
 	foreach ($groups as $tag => $routes) {
 
-		$label = isset($group_labels[$tag]) ? $group_labels[$tag] : ucfirst($tag);
+		// A prefix with no line in the list still reads as words, never as
+		// cart_quotes: the group headings are set in capitals.
+		$label = isset($group_labels[$tag]) ? $group_labels[$tag] : ucfirst(str_replace('_', ' ', $tag));
 
 		$nav .= '<div class="doc-nav-group">' . h($label) . '</div>';
 
@@ -132,11 +169,9 @@ function api_console_endpoints_html($try_hint = '') {
 
 				if (isset($param['values'])) { $notes[] = h(implode(' | ', $param['values'])); }
 
-				if (isset($param['min']) || isset($param['max'])) {
+				$range = api_console_range_note($param);
 
-					$notes[] = h((isset($param['min']) ? $param['min'] : '') . '–' . (isset($param['max']) ? $param['max'] : ''));
-
-				}
+				if ($range !== '') { $notes[] = h($range); }
 
 				if (isset($param['default'])) { $notes[] = lang('default') . ' ' . h($param['default']); }
 
@@ -488,7 +523,8 @@ window.pgApiConsole = (function () {
 			'string' => '{var:1} could not be read as an object. Enter a JSON object such as {"key": "value"}.',
 			'vars'   => '%NAME%'
 		)), JSON_UNESCAPED_UNICODE) . ',
-		noCredential: ' . json_encode(lang('No credential is available for this call.'), JSON_UNESCAPED_UNICODE) . '
+		noCredential: ' . json_encode(lang('No credential is available for this call.'), JSON_UNESCAPED_UNICODE) . ',
+		where: ' . json_encode(array('path' => lang('Path'), 'query' => lang('Query'), 'body' => lang('Body')), JSON_UNESCAPED_UNICODE) . '
 	};
 
 	var settings = null;
@@ -518,7 +554,7 @@ window.pgApiConsole = (function () {
 			var id = "doc_field_" + (++fieldSeq);
 			var attributes = " id=\'" + id + "\' data-name=\'" + esc(name) + "\' data-type=\'" + esc(type) + "\' data-where=\'" + esc(where) + "\'";
 			html += "<div class=\'col-6 lg:col-4\'><label for=\'" + id + "\' class=\'form-label small mb-1\'>" + esc(name) +
-				" <span class=\'fg-2\'>" + esc(where) + "</span></label>";
+				" <span class=\'fg-2\'>" + esc(T.where[where] || where) + "</span></label>";
 			if (type === "list") {
 				html += "<textarea rows=\'2\' class=\'form-control form-control-sm doc-field\'" + attributes +
 					" placeholder=\'[&quot;a&quot;, &quot;b&quot;]\'></textarea>";
@@ -586,6 +622,12 @@ window.pgApiConsole = (function () {
 		var panel = endpoint.querySelector(".doc-try-panel");
 
 		if (!settings.hasCredential()) {
+			// The warning stands in for the fields; a second click on Try it
+			// closes it again, like it closes an open panel.
+			if (!panel.classList.contains("d-none") && !panel.querySelector(".doc-send")) {
+				panel.classList.add("d-none");
+				return;
+			}
 			panel.classList.remove("d-none");
 			panel.innerHTML = "<div class=\'alert theme-warning py-3 px-5 small mb-0\'>" + esc(settings.missing) + "</div>";
 			return;

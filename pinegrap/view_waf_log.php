@@ -6,7 +6,7 @@
  *
  * Backend view of the waf_log table written by waf.php. The summary, the
  * possible false positives and the bans are drawn here; the events come one
- * page at a time from the waf_log_list_rows action
+ * batch at a time through the list table driver
  * (includes/fn/waf_log_list.php), sorted by the headings and searched on the
  * server.
  *
@@ -454,16 +454,12 @@ $csp_mode    = function_exists('waf_setting') ? (string) waf_setting('security_c
 
 // ---- Events ----------------------------------------------------------------
 //
-// The events come from the waf_log_list_rows action one page at a time
-// (includes/fn/waf_log_list.php), sorted by the headings' kept sort.
+// The list table driver prints the first events (includes/fn/waf_log_list.php);
+// the next ones come from its list_table_rows action as the list scrolls,
+// sorted by the kept sort.
 
 $list_sort = pg_waf_log_list_sort();
 $list_query = array_filter(array('range' => $range, 'category' => $category, 'search' => $search), 'strlen');
-$list_heading_query = h('&' . http_build_query($list_query));
-
-$list_heading = function ($code) use ($list_sort, $list_heading_query) {
-    return get_column_heading($list_sort['sort_columns'][$code], $list_sort['sort_levels'], '', $list_heading_query, $code);
-};
 
 // ---- Output ----------------------------------------------------------------
 
@@ -728,18 +724,19 @@ if ((int) $summary['rows_stored'] === 0 && ($category !== '' || $search !== ''))
 } elseif ((int) $summary['rows_stored'] === 0) {
     echo '<p class="fg-secondary mb-0">' . lang('No firewall events were recorded in this period.') . '</p>';
 } else {
-    echo '<div class="position-relative">
-        <table class="chart table table-sm table-hover align-middle mb-0" style="width:100%;display:none" data-pg-list-action="waf_log_list_rows" data-pg-list-params="' . h(encode_json(array('filters' => array('range' => $range, 'category' => $category, 'search' => $search)))) . '">
-        <thead><tr>
-            <th>' . $list_heading('time') . '</th>
-            <th>' . $list_heading('hits') . '</th>
-            <th>' . $list_heading('action') . '</th>
-            <th>' . $list_heading('ip') . '</th>
-            <th>' . $list_heading('rule') . '</th>
-            <th>' . $list_heading('score') . '</th>
-            <th>' . lang('Request') . '</th>
-            <th>' . lang('Match') . '</th>
-        </tr></thead><tbody></tbody></table></div>';
+    $list_source = pg_waf_log_list_source($user, array('filters' => array('range' => $range, 'category' => $category, 'search' => $search)));
+    $list_page = ($list_source === null) ? false : pg_list_table_page($list_source, array(), null);
+
+    if ($list_page === false) {
+        echo '<p class="fg-danger mb-0">' . lang('Query failed.') . '</p>';
+    } else {
+        echo '<div class="d-flex justify-content-end mb-3">
+            <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                <input type="search" class="form-ghost" data-pg-list-search="view_waf_log" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+            </label>
+        </div>' . pg_list_table_html($list_source, $list_page, lang('Recent Events')) . pg_js_bundle_tags('assets/js/pg_list_table.min.js');
+    }
 }
 
 echo '</div></div></main>';

@@ -182,6 +182,54 @@ function pg_ltd_style_state($facts)
 }
 
 /**
+ * What stays classic after every style is moved, for the report's summary:
+ * styles the designer refuses (they stay as they are), dynamic regions
+ * (they stay PHP, edited from their node), pages with a custom layout (it
+ * keeps drawing inside the system region) and a card gateway with no
+ * payment driver (its code stays in submit_order.php; a converted checkout
+ * posts to it unchanged). Items with nothing to list are left out.
+ *
+ * Pure: no query.
+ *
+ * @param array  $report  pg_ltd_report() entries
+ * @param string $frozen_gateway  the card gateway when no driver serves it, else ''
+ * @return array  list of array('code', 'count', 'styles' (names))
+ */
+function pg_ltd_stays_classic($report, $frozen_gateway = '')
+{
+    $items = array(
+        'blocked'       => array('code' => 'blocked', 'count' => 0, 'styles' => array()),
+        'dynamic'       => array('code' => 'dynamic', 'count' => 0, 'styles' => array()),
+        'custom_layout' => array('code' => 'custom_layout', 'count' => 0, 'styles' => array()),
+    );
+    foreach ((array)$report as $s) {
+        $name = (string)($s['name'] ?? '');
+        if ((string)($s['state'] ?? '') === 'blocked') {
+            ++$items['blocked']['count'];
+            $items['blocked']['styles'][] = $name;
+        }
+        $dynamic = (int)($s['regions']['counts']['dynamic'] ?? 0);
+        if ($dynamic > 0) {
+            $items['dynamic']['count'] += $dynamic;
+            $items['dynamic']['styles'][] = $name;
+        }
+        $custom = (int)($s['custom_layouts'] ?? 0);
+        if ($custom > 0) {
+            $items['custom_layout']['count'] += $custom;
+            $items['custom_layout']['styles'][] = $name;
+        }
+    }
+    $out = array();
+    foreach ($items as $item) {
+        if ($item['count'] > 0) $out[] = $item;
+    }
+    if ((string)$frozen_gateway !== '') {
+        $out[] = array('code' => 'gateway', 'count' => 1, 'styles' => array(), 'gateway' => (string)$frozen_gateway);
+    }
+    return $out;
+}
+
+/**
  * The readiness report: one entry per classic style, by name. Reads the
  * styles, folders, pages (binned ones left out), common regions, page
  * region counts and the designer's live page locks and presence.

@@ -1,6 +1,6 @@
 ---
 name: legacy-to-designer-report
-description: The "Move to the visual designer" readiness report (LD1): what it lists per classic style, how the state is worked out, what it does not do
+description: The "Move to the visual designer" readiness report (LD1, #6219): what it lists per classic style, its state, the "What stays classic" card (#6488), the rules the whole move keeps
 module: legacy_to_designer
 ---
 
@@ -16,7 +16,15 @@ module: legacy_to_designer
 
 ## How is the state worked out?
 - `pg_ltd_style_state()`: `blocked` when `pg_classic_style_refusal()` names a reason; else `attention` for PHP in the style's code (the style importer has no PHP lift, so `<?php` is not kept), a common region tag with no row, a held page, the style open now; else `ready`.
-- Notes never change the state: dynamic regions (stay PHP), custom layouts (keep drawing inside the system region), no page uses the style. These feed LD5's "stays classic" list.
+- Notes never change the state: dynamic regions (stay PHP), custom layouts (keep drawing inside the system region), no page uses the style.
+
+## What stays classic, and where is it shown?
+- The card "What stays classic" under the styles table, from `pg_ltd_stays_classic()` (pure), with the style names per line: styles the designer refuses (`pg_classic_style_refusal()`: older cell-based styles, PHP template files); dynamic regions (stay PHP, `dynamic-region-in-designer.md`); pages with a custom layout (drawn by the page's `system` node, a widget only when the designer chooses, `layout-widget-offer.md`); the card gateway when it is one of `pg_payment_legacy_gateways()` that no driver serves (frozen in `submit_order.php`; the checkout widgets post to the classic handlers, so a moved checkout keeps it, `commerce/payment-driver-layer-decisions.md`).
+- Kept unread, not listed: a converted common region's `cregion` row and grants stay, decided in #3156 (`classic-regions-in-designer.md`).
+
+## Which rules does the whole move keep?
+- Owner 2026-11-03 (#6006): nothing classic is removed, the renderers stay, conversion never runs by itself: a designer (role 0-1) chooses styles, sees the dry run, starts the move. Undo is the existing paths (deleting a component, page revisions).
+- The bulk move writes only what the editor's single Save writes, through the same converters (`legacy-to-designer-bulk-run.md`, `-run.md`); normalised output is fine, byte-identical is not a goal; no schema. Search over trees and Migration carrying designs complete it (`tree-search.md`, `migration-carries-designs.md`).
 
 ## Tests?
 - `tests/legacy_to_designer_test.php`: tags in order and the skipped blocks, PHP detection, the common region split, pages by style, the states. The collector and the screen were not run against a database or in a browser.

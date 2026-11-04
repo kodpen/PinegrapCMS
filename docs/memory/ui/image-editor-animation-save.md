@@ -12,7 +12,7 @@ module: image_editor
 ## How is the file sent?
 - One body: the request as one line of JSON, a line end, the file's bytes (`pg_image_editor_binary_body()`); `pg_image_editor_api()` splits only when the whole body is no JSON, and hands the bytes in `$request['binary']`. No base64.
 - Action `animation` (`pg_image_editor_action_animation()`): the format from the bytes (`pg_image_editor_animation_type()`: GIF, APNG by an acTL before IDAT, animated WebP by VP8X's flag, MP4 `ftyp`, WebM by its EBML doctype, PDF), never the name; refused over the limit (413).
-- New: beside the source in its folder (its stem, the format's extension, unique name), or a canvas's folder (a saved canvas through `pg_image_editor_file()`'s checks, or `save.folderId`); the bin and folder 0 refused. Replace: only an animation the editor made, from the same source, in the same format.
+- New: beside the source in its folder (its stem, the format's extension, unique name), or a canvas's folder (a saved canvas through `pg_image_editor_file()`'s checks, or `save.folderId`); the bin and folder 0 refused. Replace: only an animation the editor made, from the same source (a saved canvas is its source), in the same format. The document passes `pg_image_edit_validate()` first.
 - `files.type` is the extension; `.webm` and `.mp4` were already in `get_file.php`'s MIME map, which answers ranges.
 
 ## What does its version keep?
@@ -20,4 +20,4 @@ module: image_editor
 - Only that marker counts: a still or canvas save drops a browser's `animation` member (`pg_image_editor_animation_strip()`), else a user who may edit a file could name another's picture as its source and have a privileged opener save its frames into it.
 
 ## How does it open again?
-- `pg_image_editor_animation_open()` before the SVG and still paths: while the file holds its newest version's bytes and that document names an animation, the answer is the source file (its url, base, versions) with the animation's document, `file.replace` false (a still save is a copy), a notice naming both, and `animation` {id, name, format, replace}. A canvas animation opens as its canvas document. Once the source's base row is pruned it opens as before: a still copy.
+- `pg_image_editor_animation_open()` before the SVG and still paths: while the file holds its newest version's bytes and that document names an animation, the answer is the source file (its url, base, versions) with the animation's document, `file.replace` false (a still save is a copy), a notice naming both, and `animation` {id, name, format, replace}. A canvas animation opens as the canvas it was made from (`ui/image-editor-scenes.md`). Once the source's base row is pruned it opens as before: a still copy.

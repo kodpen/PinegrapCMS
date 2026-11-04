@@ -305,3 +305,46 @@ function test_submitted_form_list_is_a_driver_list()
 	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
 	pg_assert_same(null, pg_submitted_form_list_source(array('id' => 4, 'role' => 3, 'manage_forms' => false), array()), 'a user who does not manage forms may not open the list');
 }
+
+// A designed form's fee: the Payment column only once the fee columns exist,
+// after Status and never sorted, so the kept sort codes stay as they were.
+function test_submitted_form_list_payment_column()
+{
+	pg_assert_false(array_key_exists('payment', pg_submitted_form_list_columns()), 'no fee columns: no Payment column');
+
+	$columns = pg_submitted_form_list_columns(true);
+	$keys = array_keys($columns);
+	pg_assert_same(array_search('status', $keys) + 1, array_search('payment', $keys), 'right after Status');
+	pg_assert_same('badge', $columns['payment']['kind']);
+	pg_assert_false(isset($columns['payment']['sort']), 'not sorted');
+}
+
+// The badge: nothing for a record without a fee order, Unpaid or Paid.
+function test_submitted_form_list_payment_cell()
+{
+	pg_assert_same('', pg_submitted_form_list_payment_badge(array('order_id' => 0, 'paid_at' => 0)), 'no fee');
+	pg_assert_contains(lang('Unpaid'), pg_submitted_form_list_payment_badge(array('order_id' => '7', 'paid_at' => '0')));
+	pg_assert_contains(lang('Paid'), pg_submitted_form_list_payment_badge(array('order_id' => '7', 'paid_at' => '1700000000')));
+
+	$record = array(
+		'id' => '3', 'complete' => '1', 'form_name' => 'F', 'reference_code' => 'R',
+		'contact_id' => null, 'contact_name' => null, 'submitted_username' => '',
+		'submitted_timestamp' => time(), 'last_modified_username' => '', 'last_modified_timestamp' => time(),
+	);
+	pg_assert_same(array_keys(pg_submitted_form_list_columns()), array_keys(pg_submitted_form_list_row($record, false)['cells']), 'a record read without the fee columns has no Payment cell');
+
+	$row = pg_submitted_form_list_row($record + array('order_id' => '7', 'paid_at' => '0'), false);
+	pg_assert_same(array_keys(pg_submitted_form_list_columns(true)), array_keys($row['cells']), 'a cell for every column with the fee columns');
+	pg_assert_contains(lang('Unpaid'), $row['cells']['payment']['html']);
+}
+
+// The Unpaid filter, in the simple and the advanced view alike, only once
+// the fee columns exist.
+function test_submitted_form_list_unpaid_filter()
+{
+	pg_assert_same(pg_form_payment_unpaid_where('forms'), pg_submitted_form_list_payment_condition(array('payment' => 'unpaid'), true));
+	pg_assert_same('', pg_submitted_form_list_payment_condition(array('payment' => 'unpaid'), false), 'no fee columns: no filter');
+	pg_assert_same('', pg_submitted_form_list_payment_condition(array('payment' => 'any'), true), 'any');
+	pg_assert_same('', pg_submitted_form_list_payment_condition(array(), true), 'unset');
+	pg_assert_same('', pg_submitted_form_list_payment_condition(array('payment' => array('unpaid')), true), 'not text');
+}

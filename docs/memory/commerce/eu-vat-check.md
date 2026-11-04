@@ -1,6 +1,6 @@
 ---
 name: eu-vat-check
-description: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; what SF6b still wires
+description: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; where it is wired
 module: vat_check
 ---
 
@@ -19,8 +19,8 @@ module: vat_check
 ## When is an order tax-exempt?
 - `pg_vat_exempt_decision($check, $billing_country, $site_country)` (pure, owner decision #5047 question 4: a VIES-confirmed id sets the flag on its own): exempt only when VIES said valid, the billing country and the site's are both member states and differ, and the id belongs to the billing country. Reasons otherwise: `no_check`, `not_eu`, `same_country`, `other_country`, `unavailable` (VIES down: the order is taxed and carries a note), `invalid` (malformed too). A site outside the EU never exempts, so nothing changes there.
 
-## What is still to wire (SF6b)?
-- The billing information widget, the express order and the account card's tax number box calling the check, the texts, `orders.tax_exempt` set from the decision, the ERP invoice's reverse-charge note, and where the id and check time are written on the order (`orders` has no tax column, `erp-order-tax-number-difference.md`): a schema question.
+## Where is it wired?
+- At checkout (billing information, express order) by `includes/fn/vat_checkout.php`: `eu-vat-checkout.md`. The order keeps the id, check time and consultation number in `orders.vat_id`, `vat_checked_at`, `vat_request_id` (#5559). The order screen, printout, API and the order's ERP invoice show them (`eu-vat-checkout.md`); the ERP account card check is still open.
 
 ## Which tests cover it?
 - `tests/vat_check_test.php`: every prefix's pattern, wrong shapes, prefix from country (GR/EL), the request with and without requester, valid/invalid/unavailable mapping, every decision reason, no call for a malformed id, the cache's day and no caching of `unavailable`.

@@ -95,10 +95,10 @@ function test_seo_refresh_updates_every_indicator()
 	pg_assert_contains("data-pg-seo-badge=\"product_group:' . (int) \$_GET['id'] . '\"", seo_panel_run_source('edit_product_group.php'), 'group badge');
 	pg_assert_contains("data-pg-seo-badge=\"product:' . (int) \$seo_record_id . '\"", seo_panel_run_source('product_builder.php'), 'product badge');
 
-	$pages = seo_panel_run_source('includes/fn/page_list.php');
-	pg_assert_contains("data-pg-seo-bar=\"page:' . (int) \$page['page_id'] . '\"", $pages, 'pages list bar');
-	pg_assert_contains("data-pg-seo-badge=\"page:' . (int) \$page['page_id'] . '\"", $pages, 'pages list badge');
-	pg_assert_contains("data-pg-seo-bar=\"product:' . (int) \$id . '\"", seo_panel_run_source('includes/fn/product_list.php'), 'products list bar');
+	// The lists' SEO column carries the bar under the record's key.
+	pg_assert_contains("pg_list_table_seo_cell('page', \$page['page_id'], \$page)", seo_panel_run_source('includes/fn/page_list.php'), 'pages list bar');
+	pg_assert_contains("pg_list_table_seo_cell('product', \$id, \$product)", seo_panel_run_source('includes/fn/product_list.php'), 'products list bar');
+	pg_assert_contains('data-pg-seo-bar="\' . h($key) . \'"', seo_panel_run_function(seo_panel_run_source('includes/fn/list_table.php'), 'pg_list_table_seo_cell'), 'the cell names the key');
 }
 
 // The template markup is built from the same badge and bar renderers.

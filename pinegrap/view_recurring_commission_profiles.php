@@ -25,12 +25,24 @@ $liveform = new liveform('view_recurring_commission_profiles');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
 
-// The rows come one page at a time from the commission_profile_list_rows
-// action (includes/panel/lists.php), searched and counted on the server.
+// The list table driver prints the first rows; the next ones come from its
+// list_table_rows action (includes/panel/lists.php) as the list scrolls.
 $list_sort = pg_commission_profile_list_sort();
 $sort_columns = $list_sort['sort_columns'];
 $sort_default = $list_sort['sort_default'];
 $sort_levels = $list_sort['sort_levels'];
+
+$list_source = pg_commission_profile_list_source($user, array());
+
+if ($list_source === null) {
+    output_error(lang('Access denied'));
+}
+
+$list_page = pg_list_table_page($list_source, array(), null);
+
+if ($list_page === false) {
+    output_error(lang('Query failed.'));
+}
 
 print
 pg_page_shell([
@@ -48,34 +60,16 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
            
             ' . pg_screen_toolbar(array(
-                'search' => pg_list_sort_menu('view_recurring_commission_profiles.php', $sort_columns, $sort_levels, $sort_default),
+                'search' => array(
+                    '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search"><span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span><input type="search" class="form-ghost" data-pg-list-search="view_recurring_commission_profiles" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '"></label>',
+                    pg_list_sort_menu('view_recurring_commission_profiles.php', $sort_columns, $sort_levels, $sort_default),
+                ),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none" data-pg-list-action="commission_profile_list_rows">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Affiliate Name'), $sort_levels, '', '', 'affiliate_name') . '</th>
-                                <th>' . get_column_heading(lang('Affiliate Code'), $sort_levels, '', '', 'affiliate_code') . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled') . '</th>
-                                <th class="text-end">' . get_column_heading(lang('Amount'), $sort_levels, '', '', 'amount') . '</th>
-                                <th>' . get_column_heading(lang('Start Date'), $sort_levels, '', '', 'start_date') . '</th>
-                                <th>' . get_column_heading(lang('Frequency'), $sort_levels, '', '', 'frequency') . '</th>
-                                <th>' . get_column_heading(lang('Commissions'), $sort_levels, '', '', 'commissions') . '</th>
-                                <th>' . get_column_heading(lang('Order'), $sort_levels, '', '', 'order_number') . '</th>
-                                <th>' . get_column_heading(lang('Product'), $sort_levels, '', '', 'product') . '</th>
-                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list_source, $list_page, lang('All Commission Profiles')) . '
         </div>
     </div>
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();
 

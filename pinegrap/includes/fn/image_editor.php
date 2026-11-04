@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'access', 'fonts', 'glyph');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'access', 'fonts', 'glyph', 'warp');
 }
 
 /**
@@ -80,6 +80,7 @@ function pg_image_editor_strings_core()
         'zoomOut'        => lang('Zoom out'),
         'zoomFit'        => lang('Fit to screen'),
         'zoomActual'     => lang('Actual size'),
+        'percent'        => lang('{var:1}%'),
         'tools'          => lang('Tools'),
         'layers'         => lang('Layers'),
         'selection'      => lang('Selection'),
@@ -111,6 +112,7 @@ function pg_image_editor_strings_core()
         'tool_frame'     => lang('Frame'),
         'tool_vector'    => lang('Vector'),
         'tool_scissors'  => lang('Scissors'),
+        'tool_warp'      => lang('Warp'),
         'tool_artboard'  => lang('Canvas'),
         'tool_image'     => lang('Image'),
         'tool_export'    => lang('Export'),
@@ -426,6 +428,22 @@ function pg_image_edit_validate($doc)
     if (isset($doc['layers']) && (!is_array($doc['layers']) || (count($doc['layers']) > 500))) {
         $result['error'] = 'layers';
         return $result;
+    }
+
+    // A canvas's scenes: a closed one keeps its layers in its entry, capped
+    // as the open one's (the editor's SCENE_MAX and SCENE_LAYERS_MAX).
+    if (isset($doc['scenes'])) {
+        if (!is_array($doc['scenes']) || !isset($doc['artboard']) || (count($doc['scenes']) > 50)) {
+            $result['error'] = 'scenes';
+            return $result;
+        }
+
+        foreach ($doc['scenes'] as $scene) {
+            if (!is_array($scene) || (isset($scene['layers']) && (!is_array($scene['layers']) || (count($scene['layers']) > 500)))) {
+                $result['error'] = 'scenes';
+                return $result;
+            }
+        }
     }
 
     if (isset($doc['artboard'])) {
@@ -1545,19 +1563,26 @@ function pg_image_editor_sticker_rows($rows, $folders)
 
 /**
  * The WHERE clause of the sticker panel's listing: pictures only, none in
- * the Recycle Bin (pg_image_editor_file() treats those as offline), a
+ * the Recycle Bin (pg_image_editor_file() treats those as offline), no ERP
+ * document (expense receipts and signatures are personal data kept in
+ * read-only virtual folders, left out like every other picker does), a
  * role-3 user's folders only, and the name search. The folders are filtered
  * here, before the LIMIT, so a user whose folders hold none of the newest
  * pictures still sees theirs.
  *
- * @param string     $search  the name search ('' for none)
- * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
- * @param array      $bin     the Recycle Bin's folder ids
+ * @param string     $search    the name search ('' for none)
+ * @param array|null $folders   the folder ids a role-3 user may reach; null for every folder
+ * @param array      $bin       the Recycle Bin's folder ids
+ * @param bool|null  $erp_ready whether files.erp_doc_type exists; null asks the schema
  * @return string|null the clause, or null when the user may reach no folder
  */
-function pg_image_editor_sticker_where($search, $folders, $bin)
+function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = null)
 {
-    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')";
+    if ($erp_ready === null) {
+        $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+    }
+
+    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
     $ids = function ($list) {
         return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
     };
@@ -2420,17 +2445,21 @@ function pg_image_editor_strings_artboard()
         'hintImage'         => lang('Choose an image, or drop or paste one onto the canvas.'),
         'imagePick'         => lang('Choose an image from this computer'),
         'imageNote'         => lang('You can also drop an image onto the canvas or paste one.'),
+        'pictureFree'       => lang('Move and resize the picture on the canvas'),
+        'pictureDelete'     => lang('Delete the picture'),
+        'pictureTitle'      => lang('Picture'),
     );
 }
 
 /**
  * The canvas a picture's save is laid on (saveLayout() of the model): w x h
- * whole pixels, the picture's top left x, y on it (below 0: trimmed) and the
- * fill, '#rrggbb' or 'transparent'. Some of the picture (out_w x out_h) has
- * to lie on the canvas. Pure.
+ * whole pixels, the picture's top left x, y on it (below 0: trimmed), its
+ * size there pw x ph when it was resized on the canvas (else out_w x out_h)
+ * and the fill, '#rrggbb' or 'transparent'. Some of the picture has to lie
+ * on the canvas. Pure.
  *
- * @return array|null|false w, h, x, y, fill (array(r, g, b) or null for
- *                          transparent); null for none, false when refused
+ * @return array|null|false w, h, x, y, pw, ph, fill (array(r, g, b) or null
+ *                          for transparent); null for none, false when refused
  */
 function pg_image_edit_extend($value, $out_w, $out_h)
 {
@@ -2449,8 +2478,15 @@ function pg_image_edit_extend($value, $out_w, $out_h)
         return false;
     }
 
-    $x = isset($value['x']) ? pg_image_edit_number($value['x'], 1 - $out_w, $w - 1) : null;
-    $y = isset($value['y']) ? pg_image_edit_number($value['y'], 1 - $out_h, $h - 1) : null;
+    $pw = isset($value['pw']) ? pg_image_edit_number($value['pw'], 1, 8000) : $out_w;
+    $ph = isset($value['ph']) ? pg_image_edit_number($value['ph'], 1, 8000) : $out_h;
+
+    if (($pw === null) || ($ph === null) || (floor($pw) != $pw) || (floor($ph) != $ph)) {
+        return false;
+    }
+
+    $x = isset($value['x']) ? pg_image_edit_number($value['x'], 1 - $pw, $w - 1) : null;
+    $y = isset($value['y']) ? pg_image_edit_number($value['y'], 1 - $ph, $h - 1) : null;
     $fill = isset($value['fill']) ? $value['fill'] : null;
 
     if (($x === null) || ($y === null) || (floor($w) != $w) || (floor($h) != $h) || (floor($x) != $x) || (floor($y) != $y)) {
@@ -2465,7 +2501,7 @@ function pg_image_edit_extend($value, $out_w, $out_h)
         return false;
     }
 
-    return array('w' => (int) $w, 'h' => (int) $h, 'x' => (int) $x, 'y' => (int) $y, 'fill' => $fill);
+    return array('w' => (int) $w, 'h' => (int) $h, 'x' => (int) $x, 'y' => (int) $y, 'pw' => (int) $pw, 'ph' => (int) $ph, 'fill' => $fill);
 }
 
 /**
@@ -2610,8 +2646,13 @@ function pg_image_editor_save_canvas($request, $board, $mode, $user)
             return $file['refusal'];
         }
 
-        // A canvas is a PNG; a replace writes a PNG over a PNG only.
-        if (($mode === 'replace') && (!$file['replace'] || ($file['type'] !== IMAGETYPE_PNG))) {
+        // A canvas is a PNG; a replace writes a PNG over a PNG only. A photo
+        // whose picture was deleted (a canvas now) goes beside it as a copy.
+        if (($mode === 'replace') && $file['replace'] && ($file['type'] !== IMAGETYPE_PNG)) {
+            $mode = 'copy';
+        }
+
+        if (($mode === 'replace') && !$file['replace']) {
             return pg_image_editor_refusal(lang('Access denied'), 403);
         }
 
@@ -3681,7 +3722,7 @@ function pg_image_editor_binary_body($body)
 /**
  * The document an animation file's version keeps: the browser's (decoded as
  * objects) with an animation member naming the file its frames are drawn
- * from (0 for a canvas), the version_no of that file's base row and the
+ * from (a saved canvas's file; 0 for a canvas not saved), the version_no of that file's base row and the
  * format; '' when it may not be kept (pg_file_versions_doc_storable()).
  * Pure.
  *
@@ -3838,19 +3879,32 @@ function pg_image_editor_animation_open($file_id, $user)
         'replace' => !(((int) $row['design'] === 1) && ($user['role'] > 1)));
     $versions = count(pg_file_versions_rows((int) $row['id']));
 
-    if ($made['animation']['source'] === 0) {
-        if (!pg_image_editor_canvas_is_doc($made['doc'])) {
-            return null;
+    // A canvas's animation opens as that canvas (a still save is a copy of
+    // it), so Save animation names the canvas the animation was made from;
+    // one whose canvas is gone, or was never saved, as a canvas of its own.
+    if (pg_image_editor_canvas_is_doc($made['doc'])) {
+        $canvas = ($made['animation']['source'] > 0) ? pg_image_editor_file($made['animation']['source'], $user) : null;
+        $file = array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'url' => '', 'replace' => false, 'notice' => '');
+
+        if ($canvas && !$canvas['refusal']) {
+            $file['id'] = (int) $canvas['row']['id'];
+            $file['name'] = (string) $canvas['row']['name'];
+            $file['notice'] = lang(array('string' => 'Editing the animation {var:1}: its frames are drawn from {var:2}.', 'vars' => array((string) $row['name'], (string) $canvas['row']['name'])));
+            $versions = count(pg_file_versions_rows((int) $canvas['row']['id']));
         }
 
         return array(array(
             'status'    => 'success',
-            'file'      => array('id' => (int) $row['id'], 'name' => (string) $row['name'], 'url' => '', 'replace' => false, 'notice' => ''),
+            'file'      => $file,
             'versions'  => $versions,
             'doc'       => $made['doc'],
             'base'      => 0,
             'canvas'    => true,
             'animation' => $animation), 200);
+    }
+
+    if ($made['animation']['source'] === 0) {
+        return null;
     }
 
     $source = pg_image_editor_file($made['animation']['source'], $user);
@@ -3913,6 +3967,14 @@ function pg_image_editor_action_animation($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
+    // The document its version keeps passes the save's checks (the layers
+    // and scenes capped).
+    $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
+
+    if ($check['error'] !== '') {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
     $limit = pg_image_editor_animation_limit(pg_upload_limits());
 
     if (($limit > 0) && (strlen($bytes) > $limit)) {
@@ -3962,6 +4024,11 @@ function pg_image_editor_action_animation($request, $user)
 
         $folder = (int) $file['row']['folder'];
         $stem = (string) $file['row']['name'];
+        // The animation names its canvas, so only an animation of this
+        // canvas is replaced from it; one opened as its own canvas (its
+        // canvas gone) keeps the canvas it names.
+        $self = pg_image_editor_animation_file($file_id);
+        $source_id = $self ? (int) $self['animation']['source'] : $file_id;
 
     } else {
         $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
@@ -4036,6 +4103,34 @@ function pg_image_editor_action_animation($request, $user)
     $record[0]['format'] = $format;
 
     return $record;
+}
+
+// -- Scenes (pg_image_editor_scenes.js) --
+
+/**
+ * The scenes part's labels: the strip under the play bar and the open
+ * scene's panel. {n} is a scene's number, {kind} a transition's name and
+ * {time} its time.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_scenes()
+{
+    return array(
+        'scenesRegion'        => lang('Scenes'),
+        'sceneName'           => lang('Scene {n}'),
+        'sceneAdd'            => lang('Add a scene'),
+        'sceneMax'            => lang('A canvas holds at most {n} scenes.'),
+        'sceneDuration'       => lang('Duration'),
+        'sceneTransition'     => lang('Transition to the next scene'),
+        'sceneTransitionTime' => lang('Transition time'),
+        'sceneTransitionTip'  => lang('Transition: {kind} · {time}'),
+        'sceneDuplicate'      => lang('Duplicate'),
+        'sceneDelete'         => lang('Delete'),
+        'sceneEarlier'        => lang('Move earlier'),
+        'sceneLater'          => lang('Move later'),
+        'sceneNote'           => lang('The layers move within their own scene\'s duration. Play shows the open scene; Save animation plays the scenes one after another.'),
+    );
 }
 
 // -- Access (pg_image_editor_access.js) --
@@ -4115,8 +4210,9 @@ function pg_image_editor_strings_glyph()
         'glyphIcons'         => lang('Icons'),
         'glyphIcon'          => lang('Icon'),
         'glyphEmoji'         => lang('Emoji'),
-        'glyphIconFind'      => lang('Search icons'),
+        'glyphIconFind'      => lang('Search icons by English name'),
         'glyphIconNone'      => lang('No icon matches the search.'),
+        'glyphIconEnglish'   => lang('Icon names are in English, for example heart or star.'),
         'glyphIconMore'      => lang('Search to find the other icons.'),
         'glyphIconError'     => lang('The icons could not be loaded.'),
         'glyphRecent'        => lang('Recently used'),
@@ -4150,6 +4246,45 @@ function pg_image_editor_icon_urls()
     return array(
         'font' => $base . 'fonts/bootstrap-icons.woff2?v=' . (int) @filemtime($dir . 'fonts/bootstrap-icons.woff2'),
         'map'  => $base . 'bootstrap-icons.json?v=' . (int) @filemtime($dir . 'bootstrap-icons.json'),
+    );
+}
+
+// -- Warp (pg_image_editor_warp.js) --
+
+/**
+ * The Warp tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_warp()
+{
+    return array(
+        'hintWarp'       => lang('Select a path or shape, then pick a warp.'),
+        'warpNote'       => lang('Select one path, shape or outlined text to warp it.'),
+        'warpTextNote'   => lang('A text is warped once its letters are outlines.'),
+        'warpToOutlines' => lang('Convert to outlines'),
+        'warpStyles'     => lang('Warp styles'),
+        'warp_none'      => lang('None'),
+        'warp_arc'       => lang('Arc'),
+        'warp_arch'      => lang('Arch'),
+        'warp_bulge'     => lang('Bulge'),
+        'warp_flag'      => lang('Flag'),
+        'warp_wave'      => lang('Wave'),
+        'warp_fish'      => lang('Fish'),
+        'warp_rise'      => lang('Rise'),
+        'warp_squeeze'   => lang('Squeeze'),
+        'warp_twist'     => lang('Twist'),
+        'warp_mesh'      => lang('Envelope'),
+        'warpBend'       => lang('Bend'),
+        'warpHorizontal' => lang('Horizontal distortion'),
+        'warpVertical'   => lang('Vertical distortion'),
+        'warpCols'       => lang('Columns'),
+        'warpRows'       => lang('Rows'),
+        'warpMeshNote'   => lang('Drag the mesh points on the picture to shape it.'),
+        'warpMeshPoint'  => lang('Mesh point'),
+        'warpReset'      => lang('Reset mesh'),
+        'warpExpand'     => lang('Expand'),
+        'warpExpandNote' => lang('Expand turns the warp into the path for good.'),
     );
 }
 

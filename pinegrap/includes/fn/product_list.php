@@ -456,9 +456,8 @@ function pg_product_list_site_view($filter)
 
 /**
  * The list's columns for the list table driver, in the order the table
- * shows them: the name (the editor link, with the SEO bar), the picture,
- * the view's columns, the SEO score where the view sorts by it (hidden at
- * first, as the bar shows it), and the row's buttons. A column sorts when
+ * shows them: the name (the editor link), the picture, the SEO score bar,
+ * the view's columns and the row's buttons. A column sorts when
  * the view sorts by its code, so a sort kept in the session still names
  * its column. A column whose key is a quick edit field changes in place.
  *
@@ -487,7 +486,7 @@ function pg_product_list_columns($view, $quick_edit)
         'last_modified' => '10rem', 'out_of_stock_date' => '10rem',
     );
     // The input each quick edit field type opens as.
-    $inputs = array('text' => 'text', 'select' => 'select', 'money' => 'money', 'integer' => 'number');
+    $inputs = array('text' => 'text', 'select' => 'select', 'money' => 'money', 'integer' => 'number', 'decimal' => 'number');
 
     $spec = function ($code, $heading) use ($view, $sql, $kinds, $widths, $quick_edit, $inputs) {
         $column = array('heading' => $heading, 'kind' => $kinds[$code] ?? 'text');
@@ -500,8 +499,11 @@ function pg_product_list_columns($view, $quick_edit)
             $column['sort'] = $sql[$code];
         }
 
-        if (isset($quick_edit[$code]['type'], $inputs[$quick_edit[$code]['type']])) {
-            $column['editable'] = $inputs[$quick_edit[$code]['type']];
+        // The ID column changes the product code (pg_pb_quick_edit_field_of()).
+        $field = $quick_edit ? pg_pb_quick_edit_field_of($code) : $code;
+
+        if (isset($quick_edit[$field]['type'], $inputs[$quick_edit[$field]['type']])) {
+            $column['editable'] = $inputs[$quick_edit[$field]['type']];
         }
 
         return $column;
@@ -514,16 +516,13 @@ function pg_product_list_columns($view, $quick_edit)
         $columns['image'] = array('heading' => lang('Image'), 'width' => '6rem', 'kind' => 'image');
     }
 
-    $seo = isset($view['sort_columns']['seo']);
+    // The score bar in a narrow column of its own beside the name; it sorts
+    // where the view sorts by the score.
+    $columns['seo'] = pg_list_table_seo_column(isset($view['sort_columns']['seo']) ? $sql['seo'] : '');
 
     foreach ($view['columns'] as $code) {
         if ($code === 'id') {
             continue;
-        }
-
-        // The score before the impact it weighs.
-        if (($code === 'impact') && $seo) {
-            $columns['seo'] = $spec('seo', lang('SEO')) + array('hidden' => true);
         }
 
         $columns[$code] = $spec($code, $view['labels'][$code]);
@@ -822,11 +821,10 @@ function pg_product_list_row($product, $view, $context)
     }
 
     // The name opens the product, from a click or a double-click or Enter
-    // on the row (data-pg-open); the SEO bar under it opens the analysis.
+    // on the row (data-pg-open); the SEO column's bar opens the analysis.
     $cells = array(
         'id' => pg_list_cell(
-            '<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="edit_product.php?id=' . $id . '">' . h($product['name']) . '</a>'
-            . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '" data-pg-seo-bar="product:' . (int) $id . '">' . pg_seo_render_bar($product) . '</a>',
+            '<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="edit_product.php?id=' . $id . '">' . h($product['name']) . '</a>',
             $list_cells['name']['class'],
             array('data-pg-cell' => 'name')),
     );
@@ -834,6 +832,8 @@ function pg_product_list_row($product, $view, $context)
     if ($view['show_image']) {
         $cells['image'] = pg_list_cell(pg_product_image_cell_content('product-' . $id, $product['image_name'], $product['name'], $product['short_description'], $context['more_images'][$id] ?? array()), 'align-middle');
     }
+
+    $cells['seo'] = pg_list_table_seo_cell('product', $id, $product);
 
     foreach ($view['columns'] as $code) {
         switch ($code) {
@@ -976,10 +976,6 @@ function pg_product_list_row($product, $view, $context)
                 break;
 
             case 'impact':
-                if (isset($view['sort_columns']['seo'])) {
-                    $cells['seo'] = pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open text-decoration-none" data-pg-seo-badge="product:' . $id . '" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '">' . pg_seo_render_badge($product) . '</a>', 'align-middle');
-                }
-
                 $cells[$code] = pg_list_cell(pg_seo_render_impact($product), 'align-middle text-center');
                 break;
 
@@ -990,6 +986,22 @@ function pg_product_list_row($product, $view, $context)
             case 'out_of_stock_date':
                 $cells[$code] = pg_list_cell(get_relative_time(array('timestamp' => $product['out_of_stock_timestamp'])));
                 break;
+        }
+    }
+
+    // Every other value the product screen changes opens as a field in
+    // quick edit (pg_pb_quick_edit_more_fields()).
+    $more = pg_pb_quick_edit_more_fields();
+
+    foreach (array_keys($cells) as $code) {
+        $field = pg_pb_quick_edit_field_of($code);
+
+        if (isset($more[$field], $quick_edit[$field])) {
+            $attributes = pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_pb_quick_edit_value($field, $product));
+
+            if ($attributes) {
+                $cells[$code]['attributes'] = array_merge($cells[$code]['attributes'] ?? array(), array_map('strval', $attributes));
+            }
         }
     }
 

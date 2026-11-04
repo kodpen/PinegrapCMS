@@ -308,7 +308,7 @@ function pg_ai_unfetched_pages($first, $last, $limit = 50)
     $sql_noindex = pg_page_noindex_ready() ? "AND (page.noindex = '0')" : "";
 
     $result = db_q(
-        "SELECT page.page_id, page.page_name, page.page_folder
+        "SELECT page.page_id, page.page_name, page.page_folder, page.page_type, page.page_home, page.page_timestamp
          FROM page
          INNER JOIN folder ON folder.folder_id = page.page_folder
          WHERE (page.sitemap = '1')
@@ -322,7 +322,7 @@ function pg_ai_unfetched_pages($first, $last, $limit = 50)
 
     // A page behind a login is not in the sitemap; each folder is asked once.
     $public = array();
-    $pages = array();
+    $rows = array();
 
     while ($result && ($row = mysqli_fetch_assoc($result))) {
         $folder_id = (int) $row['page_folder'];
@@ -332,8 +332,26 @@ function pg_ai_unfetched_pages($first, $last, $limit = 50)
         }
 
         if ($public[$folder_id]) {
-            $pages[] = array('page_id' => (int) $row['page_id'], 'page_name' => (string) $row['page_name']);
+            $rows[] = $row;
         }
+    }
+
+    // The standard pages whose system widget keeps them out of sitemap.xml
+    // (get_sitemap_info.php): an error, login, account, checkout or detail page.
+    $unlisted = array();
+
+    if (function_exists('pg_sw_widget_pages') && function_exists('pg_sw_page_type_widgets') && function_exists('pg_sitemap_unlisted_widget_types')) {
+        foreach (pg_sitemap_unlisted_widget_types(pg_sw_page_type_widgets()) as $widget_type) {
+            foreach (pg_sw_widget_pages($widget_type) as $widget_page) {
+                $unlisted[(int) $widget_page['page_id']] = true;
+            }
+        }
+    }
+
+    $pages = array();
+
+    foreach (pg_ai_sitemap_listed_pages($rows, $unlisted) as $row) {
+        $pages[] = array('page_id' => (int) $row['page_id'], 'page_name' => (string) $row['page_name']);
     }
 
     $fetched = db_values(
@@ -343,6 +361,45 @@ function pg_ai_unfetched_pages($first, $last, $limit = 50)
     );
 
     return pg_ai_unfetched_cut($pages, is_array($fetched) ? $fetched : array(), $limit);
+}
+
+/**
+ * The page rows sitemap.xml lists, as get_sitemap_info.php picks them: a
+ * standard page among $unlisted is left out, and of the pages marked as home
+ * only the newest one stays (the sitemap lists it once, at the site root).
+ * $rows are the public folders' pages only.
+ *
+ * @param array $rows     of page_id, page_type, page_home, page_timestamp
+ * @param array $unlisted page id => true
+ * @return array the kept rows, in their order
+ */
+function pg_ai_sitemap_listed_pages(array $rows, array $unlisted)
+{
+    $home_id = null;
+    $home_time = null;
+
+    foreach ($rows as $row) {
+        if (($row['page_home'] === 'yes') && (($home_time === null) || ((int) $row['page_timestamp'] > $home_time))) {
+            $home_id = (int) $row['page_id'];
+            $home_time = (int) $row['page_timestamp'];
+        }
+    }
+
+    $kept = array();
+
+    foreach ($rows as $row) {
+        $page_id = (int) $row['page_id'];
+
+        if ($row['page_home'] === 'yes') {
+            if ($page_id === $home_id) {
+                $kept[] = $row;
+            }
+        } elseif (($row['page_type'] !== 'standard') || !isset($unlisted[$page_id])) {
+            $kept[] = $row;
+        }
+    }
+
+    return $kept;
 }
 
 /**

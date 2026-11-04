@@ -519,6 +519,7 @@ function ws_editor_js_strings()
         'block_code'                => ws_js_template('Code · {var:1} lines', 1),
         'block_edit'                => lang('Click to edit'),
         'block_remove'              => lang('Remove from the message'),
+        'block_remove_note'         => lang('Remove from the note'),
         'block_table'               => ws_js_template('Table · {var:1} columns, {var:2} rows', 2),
         'checklist_hint'            => lang('Enter starts the next item; Backspace on an empty item removes it.'),
         'code_language'             => lang('Code language'),

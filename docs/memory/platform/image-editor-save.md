@@ -14,13 +14,13 @@ module: image_editor
 
 ## How are the pixels made?
 - From the original on the server (under GD with colour changes, from the browser's colour layer): `pg_image_edit_apply()` gives the recipe (rot, flips, straighten, crop, space_w/h, shape, out_w/h, color, sharpen, vignette, overlay, first_frame, type) to `pg_process_image_file()`'s `edit` option, `write => false`, quality 92.
-- Both libraries (`pg_image_edit_imagick()`, `pg_image_edit_gd()`) follow the preview's `pictureMatrix()`: quarter turn, flips of the turned picture, straighten scaled by the cover scale (`pg_image_edit_cover_scale()` = the model's `coverScale()`), crop, output size, colour, sharpen, vignette (ui/image-editor-adjust.md), overlay, crop shape. The shape comes last because the preview clips the layers to it.
+- Both libraries (`pg_image_edit_imagick()`, `pg_image_edit_gd()`) follow the preview's `pictureMatrix()`: quarter turn, flips of the turned picture, straighten scaled by the cover scale (`pg_image_edit_cover_scale()` = the model's `coverScale()`), crop, output size, colour, sharpen, vignette (ui/image-editor-adjust.md), overlay, crop shape (last, cutting the layers too; with `extend` only the picture: `ui/image-editor-canvas-save.md`).
 - The crop is measured in the browser's turned space (`space_w` x `space_h`); a file of another size is cropped at the same place (`pg_image_edit_plan()`).
 - Shapes: Imagick draws a mask; GD clears whole pixels by rows and gives those the curve crosses a 4 x 4 coverage (a smooth edge). Without alpha (JPEG, BMP) the corners are white.
 - `tests/image_editor_save_test.php` holds GD and Imagick to the preview: Node gives the model's source point of samples of the result, a gradient picture's pixels say where each came from.
 
 ## What do replace, copy and new write?
-- replace: the file in place (temp file and rename), same id and name, so links keep working; the row's size and dimensions, `optimized = 0` (fresh bytes encoded for quality: Optimize is offered again), audit `update`.
+- replace: the file in place (temp file and rename), same id and name, so links keep working; the row's size and dimensions, `optimized = 0` (Optimize is offered again), audit `update`.
 - copy: `get_unique_name()` beside it, a new row (`design = 0`), audit `create`. An animated file gives its first frame (`first_frame`: Imagick reads `<path>[0]`, GD reads one frame anyway); the file itself keeps its animation.
 - new: an artboard with `save.folderId`; the browser's PNG, recompressed by the engine when smaller, as `<name>.png`.
 

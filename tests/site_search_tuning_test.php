@@ -70,6 +70,21 @@ function test_search_promoted_parse_keeps_paths_on_this_site()
 	pg_assert_same($entries, pg_search_promoted_parse(pg_search_promoted_format($entries)), 'the box reads back the same');
 }
 
+function test_search_promoted_rejected_names_the_lines_left_out()
+{
+	$text = "iade => iade\n"
+		. "  \n"
+		. " bozuk satır \n"
+		. "dış => https://evil.example.com/x | Dış\n"
+		. "şğü => <b>x</b> | <i>y</i>\n"
+		. "kahve => urunler/kahve";
+
+	pg_assert_same(array('bozuk satır', 'dış => https://evil.example.com/x | Dış', 'şğü => <b>x</b> | <i>y</i>'), pg_search_promoted_rejected($text));
+	pg_assert_same(array('iade', 'urunler/kahve'), array_column(pg_search_promoted_parse($text), 'url'), 'markup is no address');
+	pg_assert_same(array(), pg_search_promoted_rejected(''));
+	pg_assert_same(array(), pg_search_promoted_rejected(null));
+}
+
 function test_search_promoted_for_matches_a_whole_term()
 {
 	$entries = array(

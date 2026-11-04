@@ -216,9 +216,6 @@ if (!$_POST) {
     $start_timestamp = mktime (0, 0, 0, $start_month, $start_day, $start_year);
     $stop_timestamp = mktime (23, 59, 59, $stop_month, $stop_day, $stop_year);
 
-    // get query data for URL
-    $keys_and_values = h("&start_month=$start_month&start_day=$start_day&start_year=$start_year&stop_month=$stop_month&stop_day=$stop_day&stop_year=$stop_year");
-
     // The sort kept in the session, and what each column orders by
     // (includes/fn/site_log_list.php).
     $list_sort = pg_site_log_list_sort();
@@ -232,22 +229,25 @@ if (!$_POST) {
     // Determine whether to include error_log entries (only for admins and if enabled in settings)
     $include_error_logs = (defined('USER_ROLE') && (USER_ROLE < 1) && !empty($_SESSION['software']['settings']['view_log']['error_log']));
 
-    $output_rows = '';
     $number_of_results = 0;
 
-    $output_list_attributes = '';
+    // The list table driver (includes/fn/site_log_list.php) prints the first
+    // rows; the database view reads the next ones from its list_table_rows
+    // action (includes/panel/lists.php) for the range shown here.
+    $list_source = pg_site_log_list_source($user, array('start_time' => (string) $start_timestamp, 'stop_time' => (string) $stop_timestamp));
+
+    if ($list_source === null) {
+        output_error(lang('Access denied'));
+    }
 
     if (!$include_error_logs) {
-        // Only the database is read: the rows come one page at a time from
-        // the site_log_list_rows action (includes/panel/lists.php) for the
-        // range shown here.
-        $number_of_results = pg_site_log_list_count(array('start' => $start_timestamp, 'stop' => $stop_timestamp));
+        $list_page = pg_list_table_page($list_source, array(), null);
 
-        if ($number_of_results === false) {
+        if ($list_page === false) {
             output_error('Query failed.');
         }
 
-        $output_list_attributes = ' data-pg-list-action="site_log_list_rows" data-pg-list-params="' . h(encode_json(array('start_time' => (string) $start_timestamp, 'stop_time' => (string) $stop_timestamp))) . '"';
+        $number_of_results = $list_page['total'];
     } else {
         // Full path: collect DB logs into array, gather error_log entries, merge and sort
         $db_logs = array();
@@ -427,11 +427,10 @@ if (!$_POST) {
             return ($tie_direction === 'desc') ? -$result : $result;
         });
 
-        // Build rows
-        foreach ($all_entries as $row) {
-            $number_of_results++;
-            $output_rows .= pg_list_row_html(pg_site_log_list_row($row));
-        }
+        // Printed whole: the browser sorts, searches and filters it by type.
+        $list_source['all'] = true;
+        $list_page = array('rows' => array_map('pg_site_log_list_row', $all_entries), 'next' => null, 'total' => count($all_entries));
+        $number_of_results = count($all_entries);
     }
 
 
@@ -464,16 +463,17 @@ if (!$_POST) {
     $output_quick_ranges .= '<a class="btn ' . ($view_all_is_active ? 'btn-solid theme-primary' : 'btn-outline theme-secondary') . '" href="view_log.php?view=all">' . lang('View All') . '</a>';
 
     // Type filter buttons.  They only make sense when error_log entries are mixed in,
-    // otherwise every row is a site log.  Filtering happens client side on the already
-    // rendered table, so no page reload is needed.
+    // otherwise every row is a site log.  The list is printed whole then, so the
+    // driver filters its rows by the type cell without a reload.
     $output_type_filters = '';
     if ($include_error_logs) {
         $output_type_filters = '
-                        <div class="btn-group btn-group-sm my-1 sm:ms-3" role="group" aria-label="' . h(lang('Type')) . '">
-                            <button type="button" class="btn btn-outline theme-secondary active pg-log-type-filter" aria-pressed="true" data-token="">' . lang('All') . '</button>
-                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" aria-pressed="false" data-token="pglogsite">' . lang('Site Log') . '</button>
-                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" aria-pressed="false" data-token="pglogerror">' . lang('Error Log') . '</button>
-                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" aria-pressed="false" data-token="pglogwarn">' . lang('Warning') . '</button>
+                        <div class="btn-group btn-group-sm my-1 sm:ms-3" role="group" aria-label="' . h(lang('Type')) . '">';
+        foreach (array('' => lang('All'), 'site' => lang('Site Log'), 'error' => lang('Error Log'), 'warn' => lang('Warning')) as $type_value => $type_label) {
+            $output_type_filters .= '
+                            <button type="button" class="btn btn-outline theme-secondary' . (($type_value === '') ? ' active' : '') . '" aria-pressed="' . (($type_value === '') ? 'true' : 'false') . '" data-pg-list-filter="view_log" data-pg-filter-column="type" data-pg-filter-value="' . $type_value . '">' . $type_label . '</button>';
+        }
+        $output_type_filters .= '
                         </div>';
     }
 
@@ -602,6 +602,10 @@ if (!$_POST) {
                 ' . pg_screen_toolbar(array(
                     'secondary' => $output_control_buttons,
                     'search'  => array(
+                        '<label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                            <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                            <input type="search" class="form-ghost" data-pg-list-search="view_log" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+                        </label>',
                         pg_list_sort_menu('view_log.php', $sort_columns, $sort_levels, $sort_default, array(
                             'start_month' => $start_month,
                             'start_day'   => $start_day,
@@ -615,30 +619,13 @@ if (!$_POST) {
                 )) . '
                 ' . $output_advanced_filters . '
                 ' . $output_toolbar . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table " style="width:100%;display:none"' . $output_list_attributes . '>
-                            <thead>
-                                <tr>
-                                    <th>' . get_column_heading(lang('Time'), $sort_levels, '', $keys_and_values, 'time') . '</th>
-                                    <th>' . lang('Type') . '</th>
-                                    <th>' . get_column_heading(lang('User'), $sort_levels, '', $keys_and_values, 'user') . '</th>
-                                    <th>' . get_column_heading(lang('Description'), $sort_levels, '', $keys_and_values, 'description') . '</th>
-                                    <th>' . get_column_heading(lang('IP Address'), $sort_levels, '', $keys_and_values, 'ip_address') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list_source, $list_page, lang('Site Log')) . '
             </div>
         </div>
     <style>@layer custom {
         /* Clipped log messages: show the first few lines and fade out the rest. */
-        /* The list cells do not wrap and DataTables pins each column to the
-           width it measures, so a long word or line would pin the description
-           column wider than the screen: the message wraps anywhere and is
-           capped, and the IP column stays in view. */
+        /* A long word or line wraps anywhere and the message is capped, so
+           the description column never pushes the IP column out of view. */
         .pg-log-msg { white-space: normal; overflow-wrap: anywhere; max-width: 40rem; }
         .pg-log-msg-code { font-family: var(--pg-font-mono); font-size: .8125rem; }
         .pg-log-clip { position: relative; max-height: 4.8em; overflow: hidden; }
@@ -658,7 +645,7 @@ if (!$_POST) {
         tr.pg-log-row-warn > td:first-child { box-shadow: inset 3px 0 0 var(--pg-warning); }
     }</style>
     <script>
-        // Delegated handlers so they keep working after DataTables redraws the table.
+        // Delegated handlers so they keep working on rows the list loads later.
         // Registered without waiting for jQuery, which is resolved lazily on click.
         document.addEventListener("click", function (event) {
             var target = event.target;
@@ -726,32 +713,9 @@ if (!$_POST) {
                 }
                 return;
             }
-
-            // Filter the table by log type using the hidden token in the type column.
-            var type_filter = target.closest(".pg-log-type-filter");
-            if (type_filter) {
-                event.preventDefault();
-                var buttons = document.querySelectorAll(".pg-log-type-filter");
-                for (var i = 0; i < buttons.length; i++) {
-                    buttons[i].classList.remove("active");
-                    buttons[i].setAttribute("aria-pressed", "false");
-                }
-                type_filter.classList.add("active");
-                type_filter.setAttribute("aria-pressed", "true");
-
-                if (!window.jQuery || !window.jQuery.fn.dataTable) {
-                    return;
-                }
-                var table = window.jQuery("table.chart");
-                if (!table.length || !window.jQuery.fn.dataTable.isDataTable(table)) {
-                    return;
-                }
-                // Column 1 is the type column.
-                table.DataTable().column(1).search(type_filter.getAttribute("data-token")).draw();
-            }
         });
     </script>
-</main>' . output_footer();
+</main>' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
      $liveform->remove_form();
 } else {

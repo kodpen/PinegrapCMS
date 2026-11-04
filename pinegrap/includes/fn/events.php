@@ -109,6 +109,17 @@ function pg_announce_consent_changed($id, $row)
     }
 }
 
+// The campaign.sent payload; no database. Identifiers only: the figures are
+// read from GET /campaigns/{id} or GET /campaigns/sms.
+function pg_campaign_sent_event($channel, $id, $type)
+{
+    return array(
+        'id'      => (int) $id,
+        'channel' => ($channel === 'sms') ? 'sms' : 'email',
+        'type'    => ($type === 'automatic') ? 'automatic' : 'manual',
+    );
+}
+
 // A contact that did not exist a moment ago, whichever screen or form made it.
 //
 // The address book is written from eight places in this software and most of

@@ -3198,14 +3198,15 @@
 
     // Where a value of a box may go: the open fields of every box that may
     // read it from that box (valueSources(), so the boxes after it, and any
-    // box for what started the run), except those already holding it.
+    // box for what started the run; a value box only what derivedOffer()
+    // lets it read), except those already holding it.
     function bindTargets(from, token) {
         var out = [];
 
         state.graph.nodes.forEach(function (node) {
             var source = valueSources(node)[token];
 
-            if (!source || (source.node.id !== from)) {
+            if (!source || (source.node.id !== from) || ((node.kind === 'value') && !derivedOffer(node)(from))) {
                 return;
             }
 
@@ -4792,6 +4793,86 @@
         return groups;
     }
 
+    // Which boxes a derived value box may be given a value of ("Add value",
+    // a thread dropped on it), as a test of a box id. Its value is worked out
+    // when a box reads it, so a box it reads must come before every box that
+    // reads it, directly or through other value boxes, as the server checks
+    // there (ws_flow_derived_sources()); a value box that reads it would read
+    // itself (ws_flow_derived_loops()). What started the run and a constants
+    // box come first anyway. Any box while nothing reads it.
+    function derivedOffer(node) {
+        var reads = {};
+        var chain = {};
+        var grew = true;
+
+        state.graph.nodes.forEach(function (other) {
+            var ids = {};
+
+            fieldTexts(other).forEach(function (item) {
+                var match;
+
+                VALUE_TOKEN.lastIndex = 0;
+
+                while ((match = VALUE_TOKEN.exec(item.text)) !== null) {
+                    if (match[1]) {
+                        ids[match[1]] = true;
+                    }
+                }
+            });
+            reads[other.id] = ids;
+        });
+
+        chain[node.id] = true;
+
+        while (grew) {
+            grew = false;
+            state.graph.nodes.forEach(function (other) {
+                if ((other.kind === 'value') && !chain[other.id] && Object.keys(reads[other.id]).some(function (id) { return chain[id]; })) {
+                    chain[other.id] = true;
+                    grew = true;
+                }
+            });
+        }
+
+        var maps = arrowMaps();
+        var into = {};
+        var shared = null;
+
+        Object.keys(maps.next).forEach(function (id) {
+            into[id] = [];
+        });
+        Object.keys(maps.next).forEach(function (from) {
+            maps.next[from].forEach(function (to) {
+                into[to].push(from);
+            });
+        });
+        state.graph.nodes.forEach(function (other) {
+            if (kindOf(other).pure || !Object.keys(reads[other.id]).some(function (id) { return chain[id]; })) {
+                return;
+            }
+
+            var before = boxesBefore(into, other.id);
+
+            shared = shared ? Object.keys(shared).reduce(function (out, id) {
+                if (before[id]) {
+                    out[id] = true;
+                }
+
+                return out;
+            }, {}) : before;
+        });
+
+        return function (id) {
+            var other = nodeById(id);
+
+            if (!other || chain[id]) {
+                return false;
+            }
+
+            return !shared || !kindOf(other).into || !!kindOf(other).pure || !!shared[id];
+        };
+    }
+
     // token => the box that gives it, the value and whether that box may be
     // skipped.
     function valueSources(node) {
@@ -5306,7 +5387,10 @@
                 return;
             }
 
-            var groups = valueGroups(node).map(function (group) {
+            var offer = (node.kind === 'value') ? derivedOffer(node) : null;
+            var groups = valueGroups(node).filter(function (group) {
+                return !offer || offer(group.node.id);
+            }).map(function (group) {
                 return takes ? { node: group.node, skipped: group.skipped, values: group.values.filter(function (one) { return takes({ node: group.node, value: one }); }) } : group;
             }).filter(function (group) {
                 return group.values.length > 0;

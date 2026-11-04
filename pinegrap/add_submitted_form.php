@@ -302,207 +302,29 @@ if (!$_POST) {
     $save_for_later_clicked = isset($_POST['save_for_later_button']);
     $complete_clicked = isset($_POST['complete_button']);
 
-    // get all fields for this form
-    $fields = db_items(
-        "SELECT
-            id,
-            name,
-            rss_field,
-            label,
-            type,
-            wysiwyg,
-            multiple,
-            contact_field,
-            required,
-            office_use_only,
-            upload_folder_id
-         FROM form_fields
-         WHERE
-            (page_id = '" . escape($page_id) . "')
-            AND (type != 'information')
-         ORDER BY sort_order");
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_writes.php');
 
-    // Loop through fields in order to validate them.
-    foreach ($fields as $field) {
-        // If this is an office use only field that was not displayed, then skip it.
-        if (($field['office_use_only'] == 1) && ($office_use_only_access == false)) {
-            continue;
-        }
+    $fields = pg_submitted_form_fields($page_id);
 
-        // If field is required and the user clicked the complete button, then require the field.
-        // Required fields are not enforced for the save for later button, so that a partially
-        // filled in submitted form can still be stored.
-        if ($field['required'] and $complete_clicked) {
-            $error_message = '';
-
-            if ($field['label']) {
-                $error_message = lang(array('string'=>'{var:1} is required.','vars'=>h($field['label'])));
-            }
-
-            // If field is a file upload type then determine if field should be required, in a certain way.
-            if ($field['type'] == 'file upload') {
-                if ((isset($_FILES[$field['id']]) == false) || ($_FILES[$field['id']]['name'] == '')) {
-                    $liveform->mark_error($field['id'], $error_message);
-                }
-
-            // Otherwise field is not a file upload type, so determine if field should be required, in a different way.
-            } else {
-                $liveform->validate_required_field($field['id'], $error_message);
-            }
-        }
-
-        // A signature that arrived as anything other than a PNG data URL is
-        // refused here, the same as on the visitor's form.
-        if (
-            ($field['type'] == 'signature')
-            && function_exists('pg_signature_png_from_data_url')
-            && ($liveform->check_field_error($field['id']) == false)
-            && ($liveform->get_field_value($field['id']) != '')
-            && (pg_signature_png_from_data_url($liveform->get_field_value($field['id'])) === false)
-        ) {
-            $liveform->mark_error($field['id'], lang('The signature could not be read. Please clear the box and sign again.'));
-        }
-
-        pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls);
-    }
+    // Required fields are not enforced for the save for later button, so that
+    // a partially filled in submitted form can still be stored.
+    pg_submitted_form_create_check($liveform, $fields, $page_id, $complete_clicked, $office_use_only_access, $pretty_urls, $_FILES);
 
     // if an error does not exist
     if ($liveform->check_form_errors() == false) {
 
-        // If the save for later button was clicked, then mark the form as incomplete.
-        if ($save_for_later_clicked) {
-            $new_complete = 0;
+        // The save for later button marks the form as incomplete.
+        $new_complete = $save_for_later_clicked ? 0 : 1;
 
-        // Otherwise the complete button was clicked, so mark the form as complete.
-        } else {
-            $new_complete = 1;
+        // The user creating the submitted form is stored as the submitter,
+        // which is what import_submitted_forms.php does as well.
+        $created = pg_submitted_form_create($liveform, $fields, $page_id, ($new_complete == 1), $user['id'], $office_use_only_access, $pretty_urls, $_FILES, ($liveform->get_field_value('send_notifications') == 1));
+
+        if ($created === false) {
+            output_error(lang('Query failed.'));
         }
 
-        $reference_code = generate_form_reference_code();
-
-        // Create the submitted form.  The user that is creating the submitted form is stored
-        // as the submitter, which is what import_submitted_forms.php does as well.  Visitor
-        // specific columns (ip address, http referer, tracking code, affiliate code) are not
-        // stored, because this submitted form was not created by a visitor.
-        $query =
-            "INSERT INTO forms (
-                page_id,
-                complete,
-                user_id,
-                reference_code,
-                submitted_timestamp,
-                last_modified_user_id,
-                last_modified_timestamp)
-            VALUES (
-                ?,
-                ?,
-                ?,
-                ?,
-                UNIX_TIMESTAMP(),
-                ?,
-                UNIX_TIMESTAMP())";
-        $result = db_q($query, array((string) $page_id, (string) $new_complete, (string) $user['id'], (string) $reference_code, (string) $user['id'])) or output_error('Query failed.');
-
-        $form_id = mysqli_insert_id(db::$con);
-
-        // The signatures drawn on the form, stored after the loop.
-        $signature_pending = array();
-
-        // Loop through all fields in order to save data for each one.
-        foreach ($fields as $field) {
-            // If this is an office use only field that was not displayed, then skip it.
-            if (($field['office_use_only'] == 1) && ($office_use_only_access == false)) {
-                continue;
-            }
-
-            // If field is a file upload type then save data in a certain way.
-            if ($field['type'] == 'file upload') {
-                // If a file was uploaded, then deal with that.
-                if ((isset($_FILES[$field['id']]) == true) && ($_FILES[$field['id']]['name'] != '')) {
-                    $file_id = pg_submitted_form_store_upload($field, $user['id']);
-
-                    db(
-                        "INSERT INTO form_data (
-                            form_id,
-                            form_field_id,
-                            file_id,
-                            name)
-                        VALUES (
-                            '" . $form_id . "',
-                            '" . $field['id'] . "',
-                            '" . $file_id . "',
-                            '" . escape($field['name']) . "')");
-
-                // Otherwise a file was not uploaded, so insert a blank form data record,
-                // which is what happens when a visitor submits a form without a file.
-                } else {
-                    db(
-                        "INSERT INTO form_data (
-                            form_id,
-                            form_field_id,
-                            name)
-                        VALUES (
-                            '" . $form_id . "',
-                            '" . $field['id'] . "',
-                            '" . escape($field['name']) . "')");
-                }
-
-            // A signature is written through its own path: the drawing becomes a
-            // file, form_data points at it, and the record that gives it meaning
-            // is written beside it. The row is written without a file here; the
-            // record is written once every answer is stored
-            // (pg_signature_store_pending()), because the document it is bound
-            // to is the answers as stored.
-            } else if (($field['type'] == 'signature') && function_exists('pg_signature_ready') && pg_signature_ready()) {
-                $signature_png = pg_signature_png_from_data_url($liveform->get_field_value($field['id']));
-                $signature_file_id = false;
-
-                if ($signature_png !== false) {
-                    $signature_pending[] = array(
-                        'field_id' => $field['id'],
-                        'label' => $field['label'],
-                        'png' => $signature_png,
-                        'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
-                    );
-                }
-
-                db(
-                    "INSERT INTO form_data (
-                        form_id,
-                        form_field_id,
-                        file_id,
-                        name)
-                    VALUES (
-                        '" . $form_id . "',
-                        '" . $field['id'] . "',
-                        '" . (($signature_file_id === false) ? '0' : (int) $signature_file_id) . "',
-                        '" . escape($field['name']) . "')");
-
-            // Otherwise the field is not a file upload type so save data in a different way.
-            } else {
-                pg_submitted_form_save_value($liveform, $form_id, $field);
-            }
-        }
-
-        if ($signature_pending) {
-            pg_signature_store_pending($form_id, $page_id, $signature_pending);
-        }
-
-        // If pretty URLs are enabled, then update address name.
-        if ($pretty_urls == true) {
-            update_submitted_form_address_name($form_id);
-        }
-
-        // If the user asked for notifications to be sent, and the submitted form was marked
-        // as complete, then send the same notification e-mails that a visitor submission
-        // would have sent.  This is off by default, because the submitted form was created
-        // manually by a member of staff.
-        if (
-            ($new_complete == 1)
-            && ($liveform->get_field_value('send_notifications') == 1)
-        ) {
-            pg_send_custom_form_notifications($page_id, $form_id, 0);
-        }
+        $reference_code = $created['reference_code'];
 
         log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was created','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);
 

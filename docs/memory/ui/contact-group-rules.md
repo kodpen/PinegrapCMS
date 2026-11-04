@@ -18,6 +18,7 @@ module: audiences
 ## What does a save write?
 - `pg_audience_editor_posted()`: `kind` is `dynamic` only with the switch on; the cleaned rules are stored either way, so switching back to static keeps them. Dynamic with no condition is refused with a message.
 - Turning a group dynamic or changing its rules (`pg_audience_rules_changed()`, compared cleaned) sets `computed_at = 0`: the next general job tick takes it. A pass under way keeps its cursor.
+- Switch review: on a static group with hand, form or product rows, the card shows inside the switch's collapse the counts ("1,240 by hand, 30 from forms") and a `switch_rows` radio: Keep them (default), Remove them, Let the rules decide them (`to_rule`). Only the save that turns a static group dynamic runs the choice (`pg_audience_switch_action()`, `pg_audience_switch_apply()`, `core/audiences-doors.md`); a group already dynamic shows no review.
 - Delete of a dynamic group is held back only by rows that are not `source = 'rule'`; the delete also removes the recompute's state file.
 
 ## What do the list and the contact card show?
@@ -25,6 +26,7 @@ module: audiences
 - The contact card (`pg_contact_form_group_cells()`): a dynamic group has no switch; when the contact is in it, it shows under "Members by rule" as a chip linking to the group. `pg_contact_form_all_groups()` leaves dynamic groups out, so the contact save neither adds to them nor removes an unticked contact, and the user role's "keep one group" check counts only static ones.
 
 ## Tests?
+- `tests/audiences_switch_review_test.php`: the posted choice, the count line, the card and the save name them.
 - `tests/audiences_editor_test.php`: the catalogue matches `pg_audience_conditions()`, refs by kind with nesting, the posted kind and rules, rules compared cleaned, the count text.
 
 Related: docs/memory/core/audiences-rules.md, docs/memory/core/audiences-recompute.md
