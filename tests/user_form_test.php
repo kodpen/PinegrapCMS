@@ -104,3 +104,38 @@ function test_user_form_edit_save_guards_module_columns()
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 	pg_assert_true((bool) preg_match('/CALENDARS\s*==\s*true\)\s*\{\s*if \(\$replace\)\s*\{\s*db_q\("DELETE FROM users_calendars_xref/', $form), 'the calendar grants are rewritten only while Calendars is on');
 }
+
+function test_user_form_reward_points()
+{
+	pg_assert_same(0, pg_user_form_reward_points(null), 'not sent');
+	pg_assert_same(0, pg_user_form_reward_points(''), 'blank');
+	pg_assert_same(0, pg_user_form_reward_points('  '), 'spaces');
+	pg_assert_same(12, pg_user_form_reward_points('12'), 'a whole number');
+	pg_assert_same(12, pg_user_form_reward_points(12), 'an integer');
+	pg_assert_same(4294967295, pg_user_form_reward_points('4294967295'), 'the column maximum');
+	pg_assert_same(7, pg_user_form_reward_points('0007'), 'leading zeros');
+	pg_assert_same(null, pg_user_form_reward_points('4294967296'), 'above the column');
+	pg_assert_same(null, pg_user_form_reward_points('99999999999'), 'far above the column');
+	pg_assert_same(null, pg_user_form_reward_points('-5'), 'negative');
+	pg_assert_same(null, pg_user_form_reward_points('12,50'), 'a decimal comma');
+	pg_assert_same(null, pg_user_form_reward_points('12.5'), 'a decimal point');
+	pg_assert_same(null, pg_user_form_reward_points('abc'), 'not a number');
+	pg_assert_same(null, pg_user_form_reward_points(array('1')), 'an array');
+}
+
+function test_user_form_text_fits()
+{
+	pg_assert_same(true, pg_user_form_text_fits(str_repeat('a', 100)), '100 characters');
+	pg_assert_same(false, pg_user_form_text_fits(str_repeat('a', 101)), '101 characters');
+	pg_assert_same(true, pg_user_form_text_fits(str_repeat('ş', 100)), '100 multibyte characters');
+	pg_assert_same(true, pg_user_form_text_fits(''), 'empty');
+}
+
+function test_import_users_checks_points_and_lengths()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_users.php');
+
+	pg_assert_contains('pg_user_form_reward_points($_POST[\'reward_points\'] ?? null)', $source, 'the points are checked');
+	pg_assert_contains('pg_user_form_text_fits($_POST[\'badge_label\'] ?? \'\')', $source, 'the badge label length is checked');
+	pg_assert_false(strpos($source, "escape(\$_POST['reward_points']") !== false, 'the raw points are not written');
+}

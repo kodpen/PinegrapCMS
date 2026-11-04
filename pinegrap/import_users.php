@@ -300,6 +300,23 @@ if (!$_POST) {
     // A checked private folder whose date is not one stops here, before
     // anything is written; a date already gone is named after the import.
     $past_expiry_folders = pg_user_form_check_expiry_dates($_POST);
+
+    // The points and the badge label are checked here: a lenient server
+    // would clamp or cut them and the import would still report success.
+    $reward_points = pg_user_form_reward_points($_POST['reward_points'] ?? null);
+
+    if ($reward_points === null) {
+        $liveform->mark_error('reward_points', h(lang(array('string' => '{var:1} is invalid', 'vars' => lang('Reward Points')))) . '.');
+    }
+
+    if (!pg_user_form_text_fits($_POST['badge_label'] ?? '')) {
+        $liveform->mark_error('badge_label', h(lang(array('string' => '{var:1} is too long.', 'vars' => lang('Badge Label')))));
+    }
+
+    if ($liveform->check_form_errors()) {
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_users.php?send_to=' . urlencode((string) ($_REQUEST['send_to'] ?? '')));
+        exit();
+    }
     
     // if no file was uploaded
     if (empty($_FILES['file']['name'])) {
@@ -439,6 +456,14 @@ if (!$_POST) {
             // If there is a username in this row, then check if the username
             // is already in use.
             if (trim($import_cell($row, $username_key)) != '') {
+                // A username longer than its column would be cut on a
+                // lenient server, past the uniqueness check below.
+                if (!pg_user_form_text_fits(trim($import_cell($row, $username_key)))) {
+                    $missing_email_lines[] = array($line, lang(array('string' => '{var:1} is too long.', 'vars' => lang('Username'))));
+                    $current_import_user_error = true;
+                    $import_user_error = true;
+                }
+
                 // Check if the username is already in use
                 $result = db_q("SELECT user_id FROM user WHERE (user_username = ?) OR (user_email = ?)", array((string) ($import_cell($row, $username_key)), (string) ($import_cell($row, $username_key)))) or output_error('Query failed');
                 if (mysqli_num_rows($result) > 0)
@@ -696,7 +721,7 @@ if (!$_POST) {
                 '" . escape($_POST['home_page'] ?? '') . "',
                 '" . escape($_POST['badge'] ?? '') . "',
                 '" . escape($_POST['badge_label'] ?? '') . "',
-                '" . escape($_POST['reward_points'] ?? '') . "',
+                '" . (int) $reward_points . "',
                 '" . escape($_POST['manage_contacts'] ?? '') . "',
                 '" . escape($_POST['manage_visitors'] ?? '') . "',
                 '" . escape($_POST['create_pages'] ?? '') . "',
