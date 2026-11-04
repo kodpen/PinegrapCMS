@@ -5,7 +5,7 @@ description: External API plan, part 2: the users write step X13 (#5237) and why
 
 ## Which step is here?
 - X13 Users write (#5237), cut in two (the move out of the screens alone is near the size limit):
-  - X13a The write module `includes/fn/user_write.php` (create, update, delete, the shared checks) called by `add_user.php`, `edit_user.php`, `delete_users.php`; no route yet: `in progress`.
+  - X13a The write module `includes/fn/user_write.php` (create, update, delete, the shared checks) called by `add_user.php`, `edit_user.php`, `delete_users.php`; no route yet: `done` (#6484).
   - X13b The routes below on that module: `free` once X13a has landed.
   - Routes `POST /users`, `POST /users/{id}`, `POST /users/{id}/delete` (POST twins, `Idempotency-Key` on create, `api_dry_run_stop()` above the first write) through one write function moved out of `add_user.php` / `edit_user.php` / `delete_users.php` into an `includes/fn/` module that the screens and the API both call, so the screens' rules hold (unique e-mail, the role list, the permission columns, the delete as the screen does it).
   - Scope `users:write` in `api_scope_groups()`; `api_owner_scopes()` gives it only to an owner with role 0. `users:read` stays at the designer ceiling (X4).

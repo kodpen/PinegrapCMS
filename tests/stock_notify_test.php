@@ -234,8 +234,7 @@ function test_stock_notify_heard_from_every_announcer()
 function test_stock_notify_outside_the_module()
 {
 	pg_assert_contains('pg_stock_notify_trim_daily();', (string) file_get_contents(PG_FUNCTIONS_DIR . '/job.php'), 'the general job trims daily');
-	pg_assert_contains('pg_stock_notify_forget_user(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/delete_users.php'), 'deleting accounts');
-	pg_assert_contains('pg_stock_notify_forget_user(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_user.php'), 'deleting one account');
+	pg_assert_contains('pg_stock_notify_forget_user(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php'), 'deleting accounts (pg_user_delete())');
 	pg_assert_contains('pg_stock_notify_forget_product(', pg_test_function_source('pg_pb_delete_product'), 'deleting a product for good');
 
 	pg_assert_true(array_key_exists('stock_notify', pg_privacy_export_sections()), 'an export section');

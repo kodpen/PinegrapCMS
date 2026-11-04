@@ -37,7 +37,7 @@ function user_screens_words_test_tr()
 function test_user_screens_create_contact_runs_after_the_save()
 {
 	$source = user_screens_words_test_source('edit_user.php');
-	$save = strpos($source, 'pg_user_form_save_access($_POST[\'id\']');
+	$save = strpos($source, 'pg_user_update($audit_user_id');
 	pg_assert_true($save !== false, 'the save branch found');
 
 	$first_read = strpos($source, '$_POST[\'submit_create_contact\']');

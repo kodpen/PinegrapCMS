@@ -30,6 +30,7 @@ validate_token_field();
 // is read back with the list's own query and the user's rights
 // (pg_user_list_selected_ids()).
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
 $user_ids = pg_user_list_selected_ids($user, $_POST['selection'] ?? '', $_POST['list_params'] ?? '');
 
 if ($user_ids === false) {
@@ -72,69 +73,7 @@ if ($user_ids) {
         if (($user['role'] == 0) || ($user['role'] < $user_role)) {
             // if this user is not an administrator or the number of administrators is greater than one, then we can allow this user to be deleted, so prepare checkbox
             if (($user_role != 0) || ($number_of_administrators > 1)) {
-                // The account as it was, before anything that goes with it is
-                // removed.
-                $audit_user_id = (int) $user_id;
-                $audit_before = pg_audit_fetch('user', $audit_user_id);
-
-                // Sign-in tokens first: a token outliving its user is a row
-                // that still names a user_id nobody owns any more, and the
-                // browser holding it keeps presenting it on every request.
-                pg_auth_token_revoke_user($user_id);
-
-                // The second factor, its recovery codes and the account's
-                // passkeys go with the account, for the same reason (silent
-                // before the 8.40 and 11.0.13 upgrades).
-                pg_mfa_reset($user_id);
-
-                // The Microsoft and Apple identities go with it too.
-                pg_signin_identities_forget($user_id);
-
-                // So do its favourites and back-in-stock requests.
-                pg_wishlist_forget_user($user_id);
-                pg_stock_notify_forget_user($user_id);
-
-                // delete user record
-                $query = "DELETE FROM user WHERE user_id = ?";
-                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
-
-                pg_audit_record('delete', 'user', $audit_user_id, $audit_before);
-                
-                // delete aclfolder records
-                $query = "DELETE FROM aclfolder WHERE aclfolder_user = ?";
-                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
-                
-                // delete users_contact_groups_xref records
-                $query = "DELETE FROM users_contact_groups_xref WHERE user_id = ?";
-                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
-                
-                // delete users_calendars_xref records
-                $query = "DELETE FROM users_calendars_xref WHERE user_id = ?";
-                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
-                
-                // delete address book records
-                $query = "DELETE FROM address_book WHERE user = ?";
-                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
-                
-                // delete ad region xref records
-                $query = "DELETE FROM users_ad_regions_xref WHERE user_id = ?";
-                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
-                
-                // delete common region xref records
-                $query = "DELETE FROM users_common_regions_xref WHERE user_id = ?";
-                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
-                
-                // delete menu xref records
-                $query = "DELETE FROM users_menus_xref WHERE user_id = ?";
-                $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
-
-                db("DELETE FROM users_messages_xref WHERE user_id = '" . e($user_id) . "'");
-
-                // A person's saved replies are theirs alone.
-                if (pg_schema_has('ws_saved_replies')) db("DELETE FROM ws_saved_replies WHERE user_id = '" . (int) $user_id . "'");
-
-                // delete shared component xref records
-                if (pg_schema_has('users_shared_components_xref')) db("DELETE FROM users_shared_components_xref WHERE user_id = '" . e($user_id) . "'");
+                pg_user_delete($user_id);
 
                 $number_of_users++;
                 

@@ -161,15 +161,20 @@ function pg_auth_user_disabled($user_id)
  * piece ends in a comma, like the lines around it.
  *
  * @param string $mode
+ * @param array|null $post  The form's fields, $_POST when not given
  * @return string
  */
-function pg_user_erp_readonly_sql($mode)
+function pg_user_erp_readonly_sql($mode, $post = null)
 {
+    if ($post === null) {
+        $post = $_POST;
+    }
+
     if (!pg_user_has_erp_readonly_column()) {
         return '';
     }
 
-    $value = (!empty($_POST['manage_erp_readonly']) ? 1 : 0);
+    $value = (!empty($post['manage_erp_readonly']) ? 1 : 0);
 
     if ($mode === 'columns') {
         return 'manage_erp_readonly,';
