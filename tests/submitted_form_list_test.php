@@ -288,7 +288,7 @@ function test_submitted_form_list_columns_keep_the_sort_codes()
 
 	$columns = pg_list_table_columns(pg_submitted_form_list_columns());
 
-	pg_assert_same(array('custom_form', 'reference_code', 'status', 'contact', 'user', 'submitted', 'last_modified'), array_keys(pg_list_table_sort_columns($columns)), 'a kept sort still names its column');
+	pg_assert_same(array('custom_form', 'reference_code', 'status', 'contact', 'user', 'form_editor', 'submitted', 'last_modified'), array_keys(pg_list_table_sort_columns($columns)), 'a kept sort still names its column');
 	pg_assert_same(false, $columns['custom_form']['hideable'], 'the form name is never hidden');
 	pg_assert_same("CONCAT(contacts.last_name, ' ', contacts.first_name)", $columns['contact']['sort'], 'the contact sorts by last name, then first name');
 	pg_assert_false($columns['actions']['sortable']);

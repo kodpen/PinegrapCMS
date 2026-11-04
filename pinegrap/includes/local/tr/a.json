@@ -1213,6 +1213,7 @@
     "A request is not a credit check and costs nothing": "İstek bir kredi sorgusu değildir ve ücretsizdir",
     "A request is not yet a booking: the reception answers within a day with the price for your dates.": "Talep henüz bir rezervasyon değildir: resepsiyon bir gün içinde tarihleriniz için fiyatla yanıt verir.",
     "A request with this Idempotency-Key is still being carried out. Send it again in a moment to receive its answer.": "Bu Idempotency-Key ile gönderilen bir istek hâlâ işleniyor. Cevabını almak için biraz sonra yeniden gönderin.",
+    "A required field is empty.": "Zorunlu bir alan boş.",
     "A required form field cannot be hidden by a condition: the form could not be sent.": "Zorunlu bir form alanı koşulla gizlenemez: form gönderilemezdi.",
     "A required form field cannot be hidden by a condition: the site ignores this one. Choose Always to remove it.": "Zorunlu bir form alanı koşulla gizlenemez: site bu koşulu yok sayar. Kaldırmak için Her Zaman'ı seçin.",
     "A reserved workshop seat": "Ayrılmış bir atölye koltuğu",

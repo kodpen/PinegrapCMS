@@ -22,3 +22,6 @@ description: clean_up.php $file_list and data/temp sweep: never list a live file
 
 ## How is the list of what Cleanup deletes printed?
 - Each line comes from `pg_clean_up_list_row($icon, $name)` (`includes/fn/files.php`), which escapes the name. An orphan in `data/files` arrived outside the uploader (FTP, an unpacked archive) and keeps any name; before #5142 a name holding markup ran in the panel when the screen was opened.
+
+## How is the screen laid out?
+- The product_builder layout (`ui/edit-screen-wide-layout.md`, #6839): the list in an Items to Delete card, a sticky Summary (`pg_clean_up_summary()`: folders, files, and the expired `iyzipay_3ds_state` rows only with e-commerce on) and the sticky bar with the delete button.
