@@ -61,3 +61,21 @@ function test_designer_region_form_screens_use_shared_form()
 	pg_assert_contains('INSERT INTO cregion', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_designer_region.php'), 'create keeps its INSERT');
 	pg_assert_contains('UPDATE cregion', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_designer_region.php'), 'edit keeps its UPDATE');
 }
+
+function test_designer_region_edit_screens_keep_the_stored_type()
+{
+	$designer = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_designer_region.php'));
+	$common = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_common_region.php'));
+
+	pg_assert_contains("!== 'yes')) {\n    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . \$id);", $designer, 'a common region opened on the designer screen goes to its own screen');
+	pg_assert_contains("=== 'yes')) {", $common, 'a designer region opened on the common screen goes to its own screen');
+	pg_assert_contains('pg_common_region_components(array($id))', $designer, 'the designer screen knows the shared component');
+	pg_assert_contains('DELETE FROM users_common_regions_xref WHERE common_region_id = ?', $designer, 'a delete takes the grants with it');
+
+	$delete = substr($designer, (int) strpos($designer, "== 'Delete'"));
+	pg_assert_true(strpos($delete, 'if ($component_id)') < strpos($delete, 'DELETE FROM cregion'), 'a shared component region is not deleted');
+
+	foreach (array('edit_common_region.php', 'edit_designer_region.php', 'edit_dynamic_region.php', 'edit_login_region.php') as $file) {
+		pg_assert_contains('name="submit_delete" value="Delete" formnovalidate', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ': Delete works with a blank name');
+	}
+}

@@ -44,7 +44,7 @@ function pg_login_region_form_card($liveform, $defaults = false)
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<login>') . '</div>
                                                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                                <div class="input-group-text">' . h('</login>') . '</div>
+                                                <div class="input-group-text pg-tag-close">' . h('</login>') . '</div>
                                             </div>
                                         </div>
                                         <h3 class="h5 mt-12">' . lang('Not Logged In') . '</h3>
@@ -84,7 +84,7 @@ function pg_login_region_form_card($liveform, $defaults = false)
 }
 
 /**
- * The name check a save runs: required, and not used by another login
+ * The name check a save runs: required, at most 100 characters, and not used by another login
  * region. The uniqueness query runs only when a name was given.
  *
  * @param liveform $liveform
@@ -94,6 +94,13 @@ function pg_login_region_form_card($liveform, $defaults = false)
 function pg_login_region_form_validate_name($liveform, $id)
 {
     $liveform->validate_required_field('name', lang('Name is required.'));
+
+    // login_regions.name is varchar(100) and the session is not strict: a
+    // longer name would be cut on save, past the uniqueness check below, and
+    // two regions could end up with the same name.
+    if (($liveform->check_field_error('name') == false) && pg_name_too_long($liveform->get_field_value('name'))) {
+        $liveform->mark_error('name', lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length()))));
+    }
 
     if ($liveform->check_field_error('name') == false) {
         $query = "SELECT id FROM login_regions WHERE (name = ?)";

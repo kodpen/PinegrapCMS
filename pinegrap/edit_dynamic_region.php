@@ -53,15 +53,15 @@ if (!isset($_POST['name'])) {
 
     print 
     pg_page_shell([
-        'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Dynamic Region'))),
+        'title'=> lang('Edit Dynamic Region'),
         'extra classes'=>'design',
         'icon'=>'design',
-        'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Dynamic Region'))),
+        'heading'=>lang('Edit Dynamic Region'),
         'heading_description' => lang('Update this dynamic region of shared content. (A rename will require its tag to be updated in any page styles.)'),
         'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_dynamic_regions'),
         'breadcrumb' => array(
             array('label' => lang('All Dynamic Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_dynamic_regions'),
-            array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Dynamic Region')))),
+            array('label' => lang('Edit Dynamic Region')),
         ),
     ]) . '
 <main id="content" class="container-fluid">
@@ -79,7 +79,7 @@ if (!isset($_POST['name'])) {
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('dynamic region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('dynamic region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -96,10 +96,13 @@ if (!isset($_POST['name'])) {
     
     // if region was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
+        // Delete skips the browser's form check, so the posted name may be
+        // blank: the log names the stored one.
+        $stored_name = (string) db_value("SELECT dregion_name FROM dregion WHERE dregion_id = '" . $id . "'");
         $query = "DELETE FROM dregion "
                 ."WHERE dregion_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
-        log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('dynamic region'), $_POST['name']) )), $_SESSION['sessionusername']);
+        $result = db_q($query, array((string) $id)) or output_error('Query failed');
+        log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('dynamic region'), $stored_name) )), $_SESSION['sessionusername']);
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Dynamic Region') ));
     } else {
         list($name, $code) = pg_dynamic_region_form_values($_POST);
