@@ -7,7 +7,7 @@ description: Generated from the module field of the memory files: each includes/
 
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
-- `activitypub`: [[activitypub-actor]]
+- `activitypub`: [[activitypub-actor]], [[activitypub-decisions]]
 - `activitypub_comments`: [[activitypub-comments]], [[activitypub-reactions]]
 - `activitypub_inbox`: [[activitypub-inbox]]
 - `activitypub_moderation`: [[activitypub-moderation]]

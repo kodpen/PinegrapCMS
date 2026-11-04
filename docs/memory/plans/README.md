@@ -15,9 +15,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Files
 
-- activitypub-steps-2.md: Steps AP5-AP8 of plans/activitypub.md: moderation and blocks, the Fediverse settings screen, API and personal data, close-out; claim as [plan:activitypub] AP<n>
-- activitypub-steps.md: Steps AP1-AP4 of plans/activitypub.md: actor, WebFinger and signatures, inbox and followers, publishing through the outbox queue, replies as comments; claim as [plan:activitypub] AP<n>
-- activitypub.md: Plan (owner 2026-11-02): the site as a Fediverse actor over ActivityPub: WebFinger and actor, followers, posts delivered to inboxes, replies as comments, moderation, a settings screen; steps AP1-AP8
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - agent-channel.md: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
 - appointment-booking-steps-2.md: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar rows, My bookings and manage page, API, deposits, templates and close-out; claim as [plan:appointment-booking] BK<n>
