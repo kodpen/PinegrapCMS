@@ -115,11 +115,26 @@ function pg_design_file_form_description_card($description = '', $compact = fals
  *
  * @param string $form_cards    Cards the operator fills (name, files, description), HTML
  * @param string $status_cards  Cards of the status column (Summary, File Access Control), HTML
- * @param string $buttons       The buttons inside the bar's group, HTML
+ * @param string $buttons       The buttons inside the bar's group, HTML; '' draws no bar
  * @return string
  */
 function pg_design_file_form_layout($form_cards, $status_cards, $buttons)
 {
+    // No buttons (a read-only screen): no empty sticky bar.
+    $output_save_bar = '';
+
+    if ($buttons !== '') {
+        $output_save_bar = '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>';
+    }
+
     return '
                     <div class="row">
                         <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $form_cards . '
@@ -128,15 +143,7 @@ function pg_design_file_form_layout($form_cards, $status_cards, $buttons)
                             <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
                             <div class="position-sticky" style="top:3.3rem;">' . $status_cards . '
                             </div>
-                        </div>
-                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
-                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
-                                <div class="container">
-                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
-                                    </div>
-                                </div>
-                            </nav>
-                        </div>
+                        </div>' . $output_save_bar . '
                     </div>';
 }
 

@@ -53,36 +53,56 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(pg_send_to_url()) . '" />
                     <div class="row">
-                        <div class="col-12">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="card my-7">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Import ZIP') . '
+                                    ' . h(lang('Import ZIP')) . '
                                 </div>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 lg:col-auto my-3">
-                                            <label for="file" class="form-label">' . lang('Select .zip to Upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
-                                            ' . pg_upload_limit_hint() . '
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <label for="file" class="form-label">' . h(lang('Select .zip to Upload')) . '</label>
+                                                ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'class'=>'form-control', 'accept'=>'.zip,application/zip', 'required'=>'required')) . '
+                                                ' . pg_upload_limit_hint() . '
+                                            </div>
                                         </div>
-                                        <div class="col-12 lg:col my-3">
-                                            <label for="name" class="form-label">' . lang('Tag') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'import_name', 'size'=>'10', 'class'=>'form-control')) . '
-                                            <div class="form-text text-end">' . lang('appended to imported items and filenames for easy reference, recommended, e.g. \'mysite\'') . '</div>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <div class="form-field">
+                                                <label for="name" class="form-label">' . h(lang('Tag')) . '</label>
+                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'import_name', 'class'=>'form-control', 'aria-describedby'=>'import_zip_tag_help')) . '
+                                                <div class="form-text" id="import_zip_tag_help">' . h(lang('appended to imported items and filenames for easy reference, recommended, e.g. \'mysite\'')) . '</div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>       
-                            </div> 
-                        </div> 
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success "  ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import') ) . '</span></button>
+                                </div>
                             </div>
-                            <p class="small fg-secondary mt-2 mb-0" id="import_zip_status" role="status" aria-live="polite"></p>
                         </div>
-                    </nav>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <div class="card my-7 position-sticky" style="top:3.3rem;">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('What Is Imported')) . '</div>
+                                <div class="card-body">
+                                    <ul class="small ps-5 mb-0">
+                                        <li class="mb-2">' . h(lang('Each web page (.html, .htm, .xhtml) becomes a page with its own custom page style, in a new folder under Import ZIP File.')) . '</li>
+                                        <li class="mb-2">' . h(lang('Every other file goes to Files; CSS, JavaScript, SVG, font and icon files are marked as design files.')) . '</li>
+                                        <li class="mb-2">' . h(lang('Links between the imported items are rewritten to their new addresses.')) . '</li>
+                                        <li class="mb-2">' . h(lang('With a tag, a file that already has the tagged name is kept as a -backup copy and the imported file takes its name.')) . '</li>
+                                        <li>' . h(lang('Files of a type that cannot be uploaded here are left out.')) . '</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 order-3">
+                            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Import')) . '</span></button>
+                                    </div>
+                                    <p class="small fg-secondary mt-2 mb-0" id="import_zip_status" role="status" aria-live="polite"></p>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>

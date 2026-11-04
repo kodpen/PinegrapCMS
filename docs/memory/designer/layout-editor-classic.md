@@ -13,6 +13,9 @@ module: layouts
 - `pg_layout_edit_url($page_id, $style_id, $designed, $role, $hosted)` (`includes/fn/layouts.php`): a page whose own style is a visual design goes to `edit_system_style.php?id=<style>&page=<id>` (+ `&layout=1` per `pg_layout_tab_param()`); any other page to `edit_page_layout.php?id=<id>`. The screen asks the same function and redirects a designed page to the designer.
 - "Edit Layout" in `edit_page.php` and `view_fields.php` use it (`view_fields.php` adds `send_to`; the screen's back control falls back to `edit_page.php?id=`).
 
+## How is the screen laid out?
+- The wide edit layout through `pg_design_file_form_layout()` and `pg_design_file_form_summary_card()` (`includes/forms/design_file_form.php`, loaded after the gate): the Layout card with the editor in the form column; a Summary (Page, Page Type, Style, Layout File, Access) in the status column; Save and Regenerate (ids `pg_layout_save`, `pg_layout_regenerate`, which the script finds) in the sticky save bar, not the toolbar. Empty buttons draw no bar, so a hosted site has none. Test: `tests/edit_page_layout_screen_test.php`.
+
 ## Hosted sites?
 - `pg_hosted()`: the editor is read only with a note, no Save or Regenerate; read shows the generated layout, which is what the site draws.
 

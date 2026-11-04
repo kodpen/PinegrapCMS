@@ -334,7 +334,9 @@ function erp_import_read($path, $delimiter, $limit = 0)
             continue;
         }
 
-        $cells = array_map('trim', array_map('strval', $cells));
+        // The accounts export guards text cells against formula evaluation;
+        // reading it back drops that apostrophe again.
+        $cells = array_map('pg_csv_formula_unguard', array_map('trim', array_map('strval', $cells)));
 
         if ($header === null) {
             $header = $cells;

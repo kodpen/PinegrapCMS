@@ -3455,7 +3455,9 @@
     function blockPuller(onPick) {
         var node = offcanvas('ws-block-pull', t('pull_title'));
         var body = clear(node.querySelector('.drawer-body'));
-        var search = el('input', 'form-control form-control-sm mb-3');
+        // The drawer body is a scrolling flex column: without flex-shrink-0 a
+        // long list squeezes the input to a thin line.
+        var search = el('input', 'form-control form-control-sm flex-shrink-0 mb-3');
         var list = el('div', 'ws-pull-list');
         var serial = 0;
 
@@ -3514,7 +3516,9 @@
     function libraryPicker(onPick) {
         var node = offcanvas('ws-library', t('lib_from_manager'));
         var body = clear(node.querySelector('.drawer-body'));
-        var search = el('input', 'form-control form-control-sm mb-3');
+        // The drawer body is a scrolling flex column: without flex-shrink-0 a
+        // long list squeezes the input to a thin line.
+        var search = el('input', 'form-control form-control-sm flex-shrink-0 mb-3');
         var trail = el('nav', 'ws-lib-trail');
         var list = el('div', 'ws-pull-list');
         var serial = 0;
