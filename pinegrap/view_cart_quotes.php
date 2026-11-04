@@ -121,6 +121,11 @@ foreach ($rows as $row) {
 $output_not_ready = $ready ? '' : '
                 <div class="alert theme-warning" role="status">' . h(lang('Cart quotes are not installed yet: the database has to be updated first.')) . '</div>';
 
+// One quote asked for by its id and not found: say so instead of an empty
+// list.
+$output_not_found = ($ready && ($quote_id > 0) && !$rows) ? '
+                <div class="alert theme-warning" role="status">' . h(lang('The cart quote could not be found.')) . '</div>' : '';
+
 $output_limit = (count($rows) >= PG_CART_QUOTE_PANEL_LIMIT) ? '
                 <p class="small fg-secondary">' . h(lang(array('string' => 'The newest {var:1} cart quotes are shown.', 'vars' => array(PG_CART_QUOTE_PANEL_LIMIT)))) . '</p>' : '';
 
@@ -133,18 +138,36 @@ if (($quote_id > 0) && $rows && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLE
     $output_workspace_button = ws_record_button($user, 'cart_quote', $quote_id, lang('Cart quote') . ' #' . $quote_id);
 }
 
+// A filtered list names whose quotes, or which quote, it shows.
+$heading = lang('Cart quotes');
+
+if ($quote_id > 0) {
+    $heading = lang('Cart quote') . ' #' . $quote_id;
+} elseif ($contact_id > 0) {
+    $contact = db_item("SELECT first_name, last_name, company FROM contacts WHERE id = '" . $contact_id . "'");
+    $person = is_array($contact) ? trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name'])) : '';
+    $name = ($person !== '') ? $person : (is_array($contact) ? trim((string) $contact['company']) : '');
+    $heading = lang('Cart quotes') . ': ' . (($name !== '') ? $name : '#' . $contact_id);
+}
+
+$breadcrumb = array(array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'));
+
+if ($filter) {
+    $breadcrumb[] = array('label' => lang('Cart quotes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_cart_quotes.php');
+}
+
+$breadcrumb[] = array('label' => $heading);
+
 echo
     pg_page_shell(array(
-        'title'               => lang('Cart quotes'),
+        'title'               => $heading,
         'extra classes'       => 'store',
         'icon'                => 'store',
-        'heading'             => lang('Cart quotes'),
+        // The heading is printed as markup; a contact's name is escaped here.
+        'heading'             => h($heading),
         'heading_description' => lang('Product lists sent to a customer as a link that fills their cart at the store\'s current prices.'),
         'cancel'              => array('enable' => 'true', 'url' => 'view_orders.php', 'title' => lang('All Orders')),
-        'breadcrumb'          => array(
-            array('label' => lang('All Orders'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php'),
-            array('label' => lang('Cart quotes')),
-        ),
+        'breadcrumb'          => $breadcrumb,
     )) . '
 <main id="content" class="container-fluid">
     <div class="row">
@@ -152,6 +175,7 @@ echo
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
             ' . $output_not_ready . '
+            ' . $output_not_found . '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                 ' . ($ready ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-12" href="add_cart_quote.php' . (($contact_id > 0) ? '?contact_id=' . $contact_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New cart quote')) . '</a>' : '') . '
                 ' . ($filter ? '<a class="btn btn-sm btn-text theme-secondary" href="view_cart_quotes.php"><i class="bi bi-list-ul me-1" aria-hidden="true"></i>' . h(lang('All cart quotes')) . '</a>' : '') . '

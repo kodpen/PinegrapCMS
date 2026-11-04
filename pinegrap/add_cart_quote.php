@@ -185,13 +185,13 @@ for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
 
     $output_rows .= '
                     <div class="row g-5 mb-5">
-                        <div class="col-12 col-sm-9">
+                        <div class="col-12 sm:col-9">
                             <select class="form-control" id="product_' . $row . '" name="product_' . $row . '" aria-label="' . h(lang(array('string' => 'Product {var:1}', 'vars' => $row))) . '" data-pg-combobox data-pg-source="add_cart_quote.php?request=products" data-pg-min-length="2" data-placeholder="' . h(lang('Search for a product')) . '">
                                 <option value=""></option>
                                 ' . (is_array($product_row) ? $selected($product_row['id'], trim($product_row['short_description'] . ' (' . $product_row['name'] . ')')) : '') . '
                             </select>
                         </div>
-                        <div class="col-12 col-sm-3">
+                        <div class="col-12 sm:col-3">
                             <input class="form-control' . ($liveform->check_field_error('quantity_' . $row) ? ' is-invalid' : '') . '" type="number" min="1" max="' . PG_CART_QUOTE_MAX_QUANTITY . '" step="1" id="quantity_' . $row . '" name="quantity_' . $row . '" value="' . h($quantity) . '" aria-label="' . h(lang(array('string' => 'Quantity {var:1}', 'vars' => $row))) . '">
                         </div>
                     </div>';
