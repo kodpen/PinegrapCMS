@@ -1014,6 +1014,7 @@
     "No insurance, I pay myself": "Sigortam yok, kendim ödeyeceğim",
     "No interest and no contract": "Faiz yok, sözleşme yok",
     "No invitation after a week? Look in your spam folder, then write to me from the contact page with your reference code.": "Bir hafta içinde davet gelmedi mi? İstenmeyen posta klasörünüze bakın, sonra referans kodunuzla iletişim sayfasından bana yazın.",
+    "No invoice repeats right now. Choose \"All\" to see the stopped ones.": "Şu an çalışan tekrarlanan fatura yok. Durdurulanları görmek için \"Tümü\"nü seçin.",
     "No invoice repeats yet. Open an issued invoice typed in the ERP and use \"Repeat this invoice\".": "Henüz tekrarlanan fatura yok. ERP'de yazılmış kesilmiş bir faturayı açıp \"Bu faturayı tekrarla\"yı kullanın.",
     "No invoice series is set.": "Fatura serisi tanımlı değil.",
     "No invoices yet.": "Henüz fatura yok.",
