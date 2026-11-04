@@ -65,6 +65,8 @@ $action_names = array(
     'booking_rescheduled' => lang('Booking Rescheduled'),
     'booking_cancelled' => lang('Booking Cancelled'),
     'contact_group_joined' => lang('Joined a Contact Group'),
+    'credit_issued' => lang('Store Credit Issued'),
+    'credit_expiring' => lang('Store Credit Expiring'),
 );
 
 // What each sort code orders by. Only codes pg_list_state() let through

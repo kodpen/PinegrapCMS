@@ -129,6 +129,14 @@ function pg_credit_staff_issue_error($code)
  */
 function pg_credit_staff_card_state(array $card, $now)
 {
+    // The expiry pass closes an ended card by writing its balance to 0, so a
+    // card past its end reads expired whatever is left on it.
+    $expires = (int) ($card['expires_at'] ?? 0);
+
+    if (($expires > 0) && ($expires <= (int) $now)) {
+        return 'expired';
+    }
+
     if ((int) ($card['balance'] ?? 0) <= 0) {
         return 'used';
     }
