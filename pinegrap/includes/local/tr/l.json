@@ -655,6 +655,7 @@
     "Links Row": "Bağlantılar Satırı",
     "Links To": "Bağlandığı Yer",
     "Links and speed are measured on the saved page.": "Bağlantı ve hız kayıtlı sayfadan ölçülür.",
+    "Links between the imported items are rewritten to their new addresses.": "İçe aktarılan öğeler arasındaki bağlantılar yeni adreslerine göre yeniden yazılır.",
     "Links bound to \"{var}\" and the \"may open the staff page\" condition appear only for visitors the page's folder lets in.": "\"{var}\" alanına bağlanan linkler ve \"personel sayfasını açabilir\" koşulu yalnız sayfanın klasörünün içeri aldığı ziyaretçilerde görünür.",
     "Links bound to \"{var}\" on the cart rows go to this detail page. Format: <code>/&lt;detail-page&gt;/&lt;product-slug&gt;</code>. When empty, the first page carrying a Catalog Detail widget is used, or else the site's catalog detail page.": "Sepet satırlarında \"{var}\" alanına bağlanan linkler bu detay sayfasına gider. Biçim: <code>/&lt;detay-sayfası&gt;/&lt;ürün-slug&gt;</code>. Boşsa Katalog Detay widget'ı taşıyan ilk sayfa, o da yoksa sitenin katalog detay sayfası kullanılır.",
     "Links bound to \"{var}\" open the page chosen here.": "\"{var}\" alanına bağlanan linkler burada seçilen sayfayı açar.",
