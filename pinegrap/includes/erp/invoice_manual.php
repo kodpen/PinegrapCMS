@@ -1084,3 +1084,63 @@ function erp_invoice_create_manual($data)
 
     return array('success' => true, 'invoice_id' => (int) $saved['invoice_id'], 'full_number' => $issued['full_number'], 'error' => '');
 }
+
+/**
+ * A note as it is stored: one trimmed text of at most 5,000 characters; a
+ * value that is not one text (an array posted for it) is no note.
+ *
+ * @param mixed $notes
+ * @return string
+ */
+function erp_invoice_notes_clean($notes)
+{
+    if (!is_scalar($notes)) {
+        return '';
+    }
+
+    return mb_substr(trim((string) $notes), 0, 5000);
+}
+
+/**
+ * Save the internal note of an issued invoice.
+ *
+ * The note is the one field of an issued invoice that may still change, and
+ * it is internal: the copy kept at issue (PDF, download, e-mail attachment,
+ * public link, accountant pack) is not drawn again, so the note never reaches
+ * it. A change is announced as erp.invoice.note_changed, which writes the
+ * audit trail line. A draft's note is saved with the draft.
+ *
+ * @param int   $invoice_id
+ * @param mixed $notes
+ * @return array ['success' => bool, 'changed' => bool, 'error' => string]
+ */
+function erp_invoice_notes_save($invoice_id, $notes)
+{
+    $invoice_id = (int) $invoice_id;
+    $notes = erp_invoice_notes_clean($notes);
+
+    $invoice = ($invoice_id > 0)
+        ? db_item("SELECT id, status, notes FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1")
+        : null;
+
+    if (!is_array($invoice)) {
+        return array('success' => false, 'changed' => false, 'error' => lang('The invoice could not be found.'));
+    }
+
+    if ((string) $invoice['status'] === 'draft') {
+        return array('success' => false, 'changed' => false, 'error' => lang('The note could not be saved.'));
+    }
+
+    // Saving the same text again is no change and leaves no line in the trail.
+    if ((string) $invoice['notes'] === $notes) {
+        return array('success' => true, 'changed' => false, 'error' => '');
+    }
+
+    if (erp_query("UPDATE erp_invoices SET notes = '" . escape($notes) . "', updated_at = '" . time() . "' WHERE id = '" . $invoice_id . "'") === false) {
+        return array('success' => false, 'changed' => false, 'error' => lang('The note could not be saved.'));
+    }
+
+    erp_event_invoice($invoice_id, 'erp.invoice.note_changed', array('notes' => $notes));
+
+    return array('success' => true, 'changed' => true, 'error' => '');
+}

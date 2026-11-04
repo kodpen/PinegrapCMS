@@ -3908,16 +3908,19 @@ function pg_return_refund_plan($return)
  * The caller has checked the person's commerce rights.
  *
  * @param int   $return_id
- * @param array $options amount (minor units), method (driver or manual),
+ * @param array $options amount (minor units), method (driver, manual or credit),
  *                       reference (of a manual refund), log_user (the name
  *                       the activity log lines carry; '' is the signed-in
  *                       person, as on the panel)
  * @param int   $user_id
  * @return array ok, error, code (why it was refused: not_installed,
  *               not_found, busy, not_received, no_driver, amount,
- *               amount_exceeds, changed, refused, unclear; '' when ok),
+ *               amount_exceeds, changed, refused, unclear, no_customer
+ *               (no account for store credit), credit (no card written);
+ *               '' when ok),
  *               amount, method, mailed, erp (pg_return_refund_plan()'s),
- *               unclear (the driver's answer did not say; ok is false)
+ *               unclear (the driver's answer did not say; ok is false),
+ *               credit (what the store credit card holds, minor units)
  */
 function pg_return_refund($return_id, $options, $user_id = 0)
 {
@@ -3937,7 +3940,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     }
 
     $options = is_array($options) ? $options : array();
-    $method = (isset($options['method']) && ($options['method'] === 'driver')) ? 'driver' : 'manual';
+    $method = (isset($options['method']) && in_array($options['method'], array('driver', 'credit'), true)) ? (string) $options['method'] : 'manual';
     $amount = isset($options['amount']) ? (int) $options['amount'] : -1;
     $lock = pg_return_lock_name($return['order_id']);
 
@@ -3972,7 +3975,15 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         return $fail(lang('The payment of this order cannot be refunded from here. Refund it another way and record it.'), 'no_driver');
     }
 
-    if (($amount < 0) || (($method === 'driver') && ($amount === 0))) {
+    $customer_id = (int) db_value("SELECT user_id FROM orders WHERE id = '" . (int) $return['order_id'] . "'");
+
+    if (($method === 'credit') && !pg_credit_refund_possible($customer_id)) {
+        $release();
+
+        return $fail(lang('This order has no customer account to give store credit to.'), 'no_customer');
+    }
+
+    if (($amount < 0) || (($method !== 'manual') && ($amount === 0))) {
         $release();
 
         return $fail(lang('The refund amount must be greater than 0.'), 'amount');
@@ -3996,6 +4007,26 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     $reference = pg_return_text(isset($options['reference']) ? $options['reference'] : '', 255);
     $unclear = null;
     $kept = pg_schema_has('order_returns', 'refund_method');
+    $credit = 0;
+
+    if ($method === 'credit') {
+        // The card is the refund: its id is the reference, the bonus is on
+        // the card only. No card written puts the return back to received.
+        $issued = pg_credit_refund_issue($customer_id, $amount,
+            'Refund of return request #' . (int) $return['id'] . ' of order #' . $plan['order']['order_number'], (int) $user_id);
+
+        if ($issued['card_id'] <= 0) {
+            db("UPDATE order_returns SET status = 'received', refunded_at = 0" . pg_return_touch_sql() . "
+                WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
+
+            $release();
+
+            return $fail(lang('The store credit could not be written.'), 'credit');
+        }
+
+        $reference = (string) $issued['card_id'];
+        $credit = $issued['credit'];
+    }
 
     if ($method === 'driver') {
         // A driver refund keeps only the service's own id of the refund: the
@@ -4058,7 +4089,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             VALUES (
                 '" . (int) $return['order_id'] . "',
                 '" . $amount . "',
-                '" . (($method === 'driver') ? 'return' : 'return_manual') . "',
+                '" . (($method === 'driver') ? 'return' : (($method === 'credit') ? 'return_credit' : 'return_manual')) . "',
                 '" . e($reference) . "',
                 '" . e('Return request #' . (int) $return['id'] . (($unclear !== null) ? ' (unconfirmed: no clear answer from ' . $plan['driver_label'] . ')' : '')) . "',
                 NOW())");
@@ -4135,9 +4166,13 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     $vars = array((int) $return['id'], $plan['order']['order_number'], pg_return_money_text($amount));
 
-    log_activity(($method === 'driver')
-        ? lang(array('string' => 'Return request {var:1} of order {var:2} was refunded: {var:3}.', 'vars' => $vars))
-        : lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.', 'vars' => $vars)), $log_user);
+    if ($method === 'credit') {
+        log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was refunded as store credit: {var:3}, the card holds {var:4}.', 'vars' => array_merge($vars, array(pg_return_money_text($credit))))), $log_user);
+    } else {
+        log_activity(($method === 'driver')
+            ? lang(array('string' => 'Return request {var:1} of order {var:2} was refunded: {var:3}.', 'vars' => $vars))
+            : lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.', 'vars' => $vars)), $log_user);
+    }
 
     return array(
         'ok'     => true,
@@ -4145,9 +4180,10 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         'code'   => '',
         'amount' => $amount,
         'method' => $method,
-        'mailed' => ($amount > 0) ? pg_return_send_refund_mail($return['id'], $amount, $method) : false,
+        'mailed' => ($amount > 0) ? pg_return_send_refund_mail($return['id'], $amount, $method, $credit) : false,
         'erp'    => $plan['erp'],
         'unclear' => false,
+        'credit' => $credit,
     );
 }
 
@@ -4320,6 +4356,9 @@ function pg_return_refund_mail_body($data)
             'vars'   => array(isset($data['order_number']) ? (string) $data['order_number'] : '', isset($data['amount']) ? (string) $data['amount'] : '')))))
         . (($items !== '') ? '<ul style="margin:0 0 12px;padding-left:20px;">' . $items . '</ul>' : '')
         . (!empty($data['by_payment']) ? $paragraph(h(lang('The money goes back the way you paid. Your bank may take a few days to show it.'))) : '')
+        . ((isset($data['credit']) && ((string) $data['credit'] !== '')) ? $paragraph(h(lang(array(
+            'string' => 'The refund was added to your account as store credit of {var:1}. It is used at checkout when you are signed in.',
+            'vars'   => array((string) $data['credit']))))) : '')
         . '<p style="margin:16px 0 0;color:#666;font-size:12px;">' . h(isset($data['from_name']) ? (string) $data['from_name'] : '') . '</p>'
         . '</div></body></html>';
 }
@@ -4330,10 +4369,11 @@ function pg_return_refund_mail_body($data)
  *
  * @param int    $return_id
  * @param int    $amount minor units
- * @param string $method driver or manual
+ * @param string $method driver, manual or credit
+ * @param int    $credit what the store credit card holds (method credit)
  * @return bool sent or queued
  */
-function pg_return_send_refund_mail($return_id, $amount, $method)
+function pg_return_send_refund_mail($return_id, $amount, $method, $credit = 0)
 {
     $context = pg_return_mail_context($return_id);
 
@@ -4354,6 +4394,7 @@ function pg_return_send_refund_mail($return_id, $amount, $method)
             'lines'        => $context['lines'],
             'amount'       => pg_return_money_text($amount),
             'by_payment'   => ($method === 'driver'),
+            'credit'       => ($method === 'credit') ? pg_return_money_text($credit) : '',
             'from_name'    => $context['from_name'],
         )),
         'type'               => 'system',

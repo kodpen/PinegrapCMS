@@ -22,3 +22,7 @@ Reference implementation: `product_builder.php` (draws `add_product.php` and pro
 - The status column holds what is read, not what is filled. The one box the operator works on (barcode in the product editor) goes on top.
 - Short cards may pair up (`col-12 col-xl-6`); order of preference: first move status info to the column, then pair the rest.
 - A screen that departs from the pattern says WHY in a comment.
+
+## How do the account create and edit screens apply it?
+- `edit_erp_account.php`: the cards and the sticky save bar in the form column; the Balance card (balance, credit limit line, late fee panel) in the status column, outside the account form, because `erp_late_fee_panel()` carries its own form; the statement full width below (`order-3`). Before (issue #6551) all six cards and the balance strip were stacked in one `col-12`.
+- `add_erp_account.php`: the form wraps both columns; the status column holds the Notes card (`erp_account_form_cards(..., $with_notes = false)` + `erp_account_form_notes_card()`).

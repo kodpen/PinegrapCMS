@@ -53,6 +53,57 @@ function test_login_region_form_values_keep_the_insert_and_update_order()
 		'name, not logged in header, login form, not logged in footer, logged in header, logged in footer');
 }
 
+function test_login_region_form_refuses_a_name_longer_than_its_column()
+{
+	// A form double: the required check marks a blank name; mark_error()
+	// records the field. The uniqueness query is never reached here.
+	$make = function ($name) {
+		return new class($name) {
+			public $errors = array();
+			private $name;
+
+			public function __construct($name)
+			{
+				$this->name = $name;
+			}
+
+			public function get_field_value($field)
+			{
+				return ($field === 'name') ? $this->name : '';
+			}
+
+			public function validate_required_field($field, $message)
+			{
+				if ((string) $this->get_field_value($field) === '') {
+					$this->mark_error($field, $message);
+				}
+			}
+
+			public function check_field_error($field)
+			{
+				return isset($this->errors[$field]);
+			}
+
+			public function mark_error($field, $message)
+			{
+				$this->errors[$field] = $message;
+			}
+		};
+	};
+
+	$liveform = $make(str_repeat('L', 101));
+	pg_login_region_form_validate_name($liveform, null);
+	pg_assert_true(isset($liveform->errors['name']), 'a 101-character name is refused, not cut to 100');
+
+	$liveform = $make(str_repeat('ğ', 101));
+	pg_login_region_form_validate_name($liveform, '4');
+	pg_assert_true(isset($liveform->errors['name']), 'the limit counts characters');
+
+	$liveform = $make('');
+	pg_login_region_form_validate_name($liveform, null);
+	pg_assert_same(lang('Name is required.'), $liveform->errors['name'], 'a blank name keeps its own message');
+}
+
 function test_login_region_form_default_only_on_create()
 {
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/login_region_form.php');

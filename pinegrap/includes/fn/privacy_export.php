@@ -85,20 +85,47 @@ function pg_privacy_export_row_limit()
 /**
  * The person as asked for: the address in its one form and the ids, each
  * list without duplicates. Anything that is not an address or an id is
- * dropped.
+ * dropped. A Fediverse account address (fediverse) finds the comments that
+ * account sent from Mastodon and the like (comments.remote_actor); it is
+ * tied to no user or contact, so it finds nothing else.
  *
- * @param array $input  any of email, user_id, contact_id
- * @return array  emails, user_ids, contact_ids
+ * @param array $input  any of email, user_id, contact_id, fediverse
+ * @return array  emails, user_ids, contact_ids, actors
  */
 function pg_privacy_export_seed(array $input)
 {
     $email = pg_privacy_normalize_email(isset($input['email']) ? $input['email'] : '');
+    $actor = pg_privacy_normalize_actor(isset($input['fediverse']) ? $input['fediverse'] : '');
 
     return array(
         'emails'      => ($email !== '') ? array($email) : array(),
         'user_ids'    => _pg_privacy_export_ids(array(isset($input['user_id']) ? $input['user_id'] : 0)),
         'contact_ids' => _pg_privacy_export_ids(array(isset($input['contact_id']) ? $input['contact_id'] : 0)),
+        'actors'      => ($actor !== '') ? array($actor) : array(),
     );
+}
+
+/**
+ * A Fediverse account address as comments.remote_actor holds it: an http or
+ * https address without its fragment, at most 255 characters. Pure.
+ *
+ * @param mixed $value
+ * @return string '' when it is not one
+ */
+function pg_privacy_normalize_actor($value)
+{
+    $value = is_string($value) ? trim($value) : '';
+    $value = preg_replace('/#.*$/s', '', $value);
+
+    if (
+        ($value === '')
+        || (strlen($value) > 255)
+        || !preg_match('~^https?://[^/\s?#@]+(?:[/?][^\s]*)?$~i', $value)
+    ) {
+        return '';
+    }
+
+    return $value;
 }
 
 /**
@@ -150,6 +177,7 @@ function pg_privacy_export_merge(array $person, array $users, array $contacts)
         'emails'      => $unique,
         'user_ids'    => _pg_privacy_export_ids($user_ids),
         'contact_ids' => _pg_privacy_export_ids($contact_ids),
+        'actors'      => isset($person['actors']) ? array_values(array_unique((array) $person['actors'])) : array(),
     );
 }
 
@@ -161,7 +189,7 @@ function pg_privacy_export_merge(array $person, array $users, array $contacts)
  */
 function pg_privacy_export_is_empty(array $person)
 {
-    return empty($person['emails']) && empty($person['user_ids']) && empty($person['contact_ids']);
+    return empty($person['emails']) && empty($person['user_ids']) && empty($person['contact_ids']) && empty($person['actors']);
 }
 
 /**
@@ -301,6 +329,7 @@ function pg_privacy_export_document(array $person, array $collected, array $meta
             'emails'      => array_values(isset($person['emails']) ? (array) $person['emails'] : array()),
             'user_ids'    => _pg_privacy_export_ids(isset($person['user_ids']) ? (array) $person['user_ids'] : array()),
             'contact_ids' => _pg_privacy_export_ids(isset($person['contact_ids']) ? (array) $person['contact_ids'] : array()),
+            'actors'      => array_values(isset($person['actors']) ? (array) $person['actors'] : array()),
         ),
         'sections'     => $sections,
     );
@@ -362,6 +391,8 @@ function pg_privacy_export_filename(array $person, $extension, $time = null)
         $who = 'user-' . (int) reset($person['user_ids']);
     } elseif (!empty($person['contact_ids'])) {
         $who = 'contact-' . (int) reset($person['contact_ids']);
+    } elseif (!empty($person['actors'])) {
+        $who = 'fediverse';
     }
 
     $who = strtolower(pg_transliterate_to_ascii($who));
@@ -930,7 +961,15 @@ function pg_privacy_export_collect(array $found)
         $sections['signatures'] = _pg_privacy_export_select("SELECT * FROM form_signatures WHERE " . $signature_where . " ORDER BY id", ($signature_where !== '') ? array(1) : array(), array(), array('strokes', 'stamp_token'));
     }
 
-    $sections['comments'] = _pg_privacy_export_select("SELECT * FROM comments WHERE " . _pg_privacy_export_in('created_user_id', $user_ids) . " ORDER BY id", $user_ids);
+    // The account's own comments, and those an account on the Fediverse sent
+    // (once comments has remote_actor, 2026.11.0).
+    $actors = (isset($person['actors']) && pg_schema_has('comments', 'remote_actor')) ? (array) $person['actors'] : array();
+    $comment_where = _pg_privacy_export_any(array(
+        _pg_privacy_export_in('created_user_id', $user_ids),
+        _pg_privacy_export_in('remote_actor', $actors),
+    ));
+
+    $sections['comments'] = _pg_privacy_export_select("SELECT * FROM comments WHERE " . $comment_where . " ORDER BY id", ($comment_where !== '') ? array(1) : array());
 
     $watch_where = _pg_privacy_export_any(array(
         _pg_privacy_export_in('user_id', $user_ids),

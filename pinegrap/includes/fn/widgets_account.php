@@ -1876,8 +1876,10 @@ function _pg_acct_staff_url($staff_page_id)
 // the staff page's folder lets in). Sections: order_history (the member's
 // orders, newest first, each linking to the order view page), subscriptions
 // (the member's subscriptions with their actions,
-// pg_subscription_customer_section_html()). Flags: has_orders, no_orders,
-// is_staff.
+// pg_subscription_customer_section_html()), bookings (the member's upcoming
+// and past appointments, each upcoming one linking to its manage page,
+// pg_booking_customer_section_html()). Flags: has_orders, no_orders,
+// is_staff, has_bookings.
 function _pg_my_account_extras($logged_in, $cfg = array())
 {
     $shop  = defined('ECOMMERCE') && ECOMMERCE;
@@ -1892,8 +1894,8 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     );
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
-    $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => ''),
-                 'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false),
+    $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => ''),
+                 'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false, 'has_bookings' => false),
                  'orders' => array(), 'order_view_url' => '');
     if (!$logged_in) return $out;
 
@@ -1912,6 +1914,11 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     $links['__staff_url'] = _pg_acct_staff_url(is_array($cfg) && isset($cfg['staff_page_id']) ? $cfg['staff_page_id'] : 0);
     $out['flags']['is_staff'] = ($links['__staff_url'] !== '');
     $out['links'] = $links;
+
+    if (defined('USER_ID') && (int)USER_ID > 0) {
+        $out['sections']['bookings'] = pg_booking_customer_section_html(pg_booking_customer_rows((int)USER_ID), time());
+        $out['flags']['has_bookings'] = ($out['sections']['bookings'] !== '');
+    }
 
     if ($shop && defined('USER_ID') && (int)USER_ID > 0) {
         $orders = (array)db_items(

@@ -49,7 +49,7 @@ function api_webhook_events() {
 		'order.return.requested' => 'A return was requested for an order: by the customer in My Account, recorded by staff on the panel, or recorded through the API (a withdrawn request is not announced)',
 		'order.return.approved'  => 'A return request was approved, one event per request a bulk approval takes (a rejection is not announced)',
 		'order.return.received'  => 'The goods of a return arrived back at the shop (the customer saying the parcel left is not announced)',
-		'order.return.refunded'  => 'A received return was refunded through the payment service, or recorded as refunded another way; unclear: true when the service gave no clear answer and the refund is booked unconfirmed (closing a return is not announced)',
+		'order.return.refunded'  => 'A received return was refunded through the payment service, recorded as refunded another way, or given as store credit (refund_method credit); unclear: true when the service gave no clear answer and the refund is booked unconfirmed (closing a return is not announced)',
 		// A marketplace package (includes/api/outbound/orders.php, sync.php).
 		// id is the order's, as in every order.* event; the account, the
 		// provider and the marketplace's own order and package ids follow.

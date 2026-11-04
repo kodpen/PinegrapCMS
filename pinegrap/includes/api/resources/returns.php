@@ -422,7 +422,9 @@ function api_return_action_check($row, $params, $context = array()) {
 
 			$method = isset($params['method']) ? (string)$params['method'] : '';
 
-			if ($method === '') {
+			// Store credit is given on the panel only: the API keeps driver
+			// and manual.
+			if (!in_array($method, array('driver', 'manual'), true)) {
 
 				return $refuse(422, 'validation_failed', lang('Choose how the money goes back: driver or manual.'), 'method');
 

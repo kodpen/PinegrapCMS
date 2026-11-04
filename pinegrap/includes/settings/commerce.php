@@ -406,6 +406,14 @@ $pg_settings_cards[] = '
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                        <div class="pg-f-xs">
+                                                            <label for="credit_refund_bonus" class="form-label">' . lang('Bonus on refunds given as store credit') . '</label>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">%</span>
+                                                                <input value="' . h($credit_refund_bonus) . '" type="text" name="credit_refund_bonus" id="credit_refund_bonus" class="form-ghost" size="6" maxlength="6" inputmode="decimal" style="text-align: right;" />
+                                                            </label>
+                                                            <div class="form-text text-end">(' . lang('leave blank for no bonus') . ')</div>
+                                                        </div>
                                                         <div class="col-12 ">
                                                             <div class="form-field">
                                                                 <div class="switch"><input value="1"' . $ecommerce_reward_program_checked . ' class="collapse-switcher" type="checkbox" id="ecommerce_reward_program" name="ecommerce_reward_program" data-bs-target="#ecommerce_reward_program_row"/></div>

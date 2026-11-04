@@ -911,6 +911,9 @@ function pg_privacy_erase_tables()
             'name'            => '',
             'created_user_id' => 0,
         )),
+        // What a Fediverse account sent goes whole, as a block or a Delete
+        // of the account removes it (_pg_privacy_erase_apply_remote_comments()).
+        'remote_comments' => array('table' => 'comments', 'find' => array('remote_actor' => 'actors'), 'action' => 'delete', 'fields' => array()),
         'consent_log' => array('find' => array('person_token' => 'tokens', 'user_id' => 'user_ids', 'contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
             'user_id'    => 0,
             'contact_id' => 0,
@@ -1045,6 +1048,7 @@ function pg_privacy_erase_labels()
         'erp_quotes'                   => lang('Quotes'),
         'erp_waybills'                 => lang('Waybills'),
         'comments'                     => lang('Comments and reviews'),
+        'remote_comments'              => lang('Fediverse comments'),
         'consent_log'                  => lang('Consents'),
         'ws_approval_guests'           => lang('Workspace approvals'),
         'ws_events'                    => lang('Customer visits'),
@@ -1165,6 +1169,7 @@ function pg_privacy_erase_scope(array $found)
         'user_ids'         => $person['user_ids'],
         'contact_ids'      => $person['contact_ids'],
         'emails'           => $person['emails'],
+        'actors'           => isset($person['actors']) ? $person['actors'] : array(),
         'tokens'           => array_values(array_unique(array_filter(array_map('pg_privacy_person_token', $person['emails']), 'strlen'))),
         'phones'           => array(),
         'order_ids'        => array(),
@@ -1790,6 +1795,21 @@ function _pg_privacy_erase_write($table, $where, array $fields, $name)
         $same = ($value === null) ? " IS NULL" : " = '" . e($value) . "'";
 
         db("UPDATE `" . $table . "` SET " . pg_privacy_erase_set($fields, $name, pg_privacy_erase_token($value)) . " WHERE " . $where . " AND (`" . $column . "`" . $same . ")");
+    }
+}
+
+/**
+ * A Fediverse account's comments go the way a block or a Delete of the
+ * account takes them (pg_ap_forget_actor()): with their notifications and
+ * the records' counters rebuilt, and with the account's follower row and
+ * likes and boosts, the rest of what the site keeps about it.
+ */
+function _pg_privacy_erase_apply_remote_comments($where, array $fields, array $scope, $name)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_moderation.php');
+
+    foreach ((array) $scope['actors'] as $actor) {
+        pg_ap_forget_actor((string) $actor);
     }
 }
 

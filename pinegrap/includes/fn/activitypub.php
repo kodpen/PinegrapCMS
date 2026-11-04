@@ -46,8 +46,9 @@ if (!defined('PG_AP_KEY_CACHE_TTL')) {
  * the settings screen. Missing (before the upgrade, or never saved) reads as
  * off.
  *
- * @return array enabled (bool), handle, summary, type ('Person' or
- *               'Organization'), publish (the chosen forms and folders)
+ * @return array enabled (bool), handle, name, summary, icon (a file name
+ *               or an address), type ('Person' or 'Organization'), publish
+ *               (the chosen forms and folders)
  */
 function pg_ap_settings()
 {
@@ -77,7 +78,9 @@ function pg_ap_settings_read($json)
     return array(
         'enabled' => !empty($data['enabled']),
         'handle'  => isset($data['handle']) ? (string) $data['handle'] : '',
+        'name'    => isset($data['name']) ? (string) $data['name'] : '',
         'summary' => isset($data['summary']) ? (string) $data['summary'] : '',
+        'icon'    => isset($data['icon']) ? (string) $data['icon'] : '',
         'type'    => (isset($data['type']) && ($data['type'] === 'Organization')) ? 'Organization' : 'Person',
         'publish' => (isset($data['publish']) && is_array($data['publish'])) ? $data['publish'] : array(),
     );
@@ -117,7 +120,11 @@ function pg_ap_site()
 {
     $settings = pg_ap_settings();
 
-    $name = trim((string) ORGANIZATION_NAME);
+    $name = trim($settings['name']);
+
+    if ($name === '') {
+        $name = trim((string) ORGANIZATION_NAME);
+    }
 
     if ($name === '') {
         $name = trim((string) TITLE);
@@ -135,8 +142,11 @@ function pg_ap_site()
 
     $icon = '';
 
-    if (defined('ORGANIZATION_LOGO') && function_exists('pg_resolve_config_image')) {
-        $logo = pg_resolve_config_image(ORGANIZATION_LOGO);
+    // The screen's own avatar, else the organization logo.
+    $picture = (trim($settings['icon']) !== '') ? $settings['icon'] : (defined('ORGANIZATION_LOGO') ? (string) ORGANIZATION_LOGO : '');
+
+    if (($picture !== '') && function_exists('pg_resolve_config_image')) {
+        $logo = pg_resolve_config_image($picture);
         $icon = !empty($logo['url']) ? (string) $logo['url'] : '';
     }
 
@@ -155,6 +165,24 @@ function pg_ap_site()
         'version'            => defined('VERSION') ? (string) VERSION : '',
         'followers'          => (int) db_value("SELECT COUNT(*) FROM ap_followers"),
     );
+}
+
+/**
+ * The link a page's head carries while the feature is on, so a Fediverse
+ * server given any page address finds the site's account.
+ *
+ * @return string '' while off
+ */
+function pg_ap_alternate_link()
+{
+    if (!pg_ap_enabled()) {
+        return '';
+    }
+
+    $settings = pg_ap_settings();
+    $id = URL_SCHEME . HOSTNAME_SETTING . PATH . '@' . $settings['handle'];
+
+    return '        <link rel="alternate" type="application/activity+json" href="' . htmlspecialchars($id, ENT_QUOTES, 'UTF-8') . '" />' . "\n";
 }
 
 /**

@@ -25,6 +25,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Panel CSS sits in `@layer custom` and reads `--pg-*` tokens, never `--bs-*` variables; colour with alpha is `color-mix(in srgb, var(--pg-…) N%, transparent)`, not `rgba(var(--bs-…-rgb))`; a missing name goes into the token block of backend.src.css (`panel-css-tokens.md`).
 - A button's label span is `<span class="pg-btn-label">`, never `btn-text`; a flyout menu inside a menu is `.pg-submenu`, never `.submenu`: Bootstrap 6 owns `.btn-text`, `.submenu` and `.menu` (`bootstrap-6.md`).
 - Mark a chips, select2, date or time field with its `data-pg-*` hook and print `pg_fields_script()`; read and write it through `pgChips`/`pgCombobox`/`pgDatePicker`/`pgDateTimeField`, never call tagin, select2 or the jQuery UI pickers from a panel screen (`pg-field-wrappers.md`).
+- Never style every child of a `:has()` element (`X:has(…) > *`, `> :not(…)`, `X:has(…) *`): Chromium then restyles the whole document on each DOM insertion; put the `:has()` on the subject (`css-has-whole-document-restyle.md`, `tests/css_has_restyle_test.php`).
 <!-- key-rules:end -->
 
 ## Files
@@ -109,6 +110,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; limits, unit conversion, required boxes, the list's figures
 - copy-buttons.md: Hand-written panel Copy buttons: label kept, icon swapped, polite status beside the button, clipboard API only in a secure context, execCommand decides; which screens follow it
 - country-shared-form.md: add_country.php and edit_country.php draw the country options card and read its posted values through includes/forms/country_form.php; what each screen keeps
+- css-has-whole-document-restyle.md: Chromium restyles the whole document on every DOM insertion while a rule styles every child of a :has() element; the settings card rewrite, the guard test, the Bootstrap 6 rule left
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater (#1341); Update Exchange Rates announces only the rates it wrote
 - currency-shared-form.md: The currency create and edit screens share includes/forms/currency_form.php: what it holds, what stays in the screens
 - current-and-pressed-state.md: The current link or menu item carries aria-current beside .active; a segmented toggle button carries aria-pressed beside its fill (.active or btn-solid)
@@ -153,6 +155,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - deleted-picture-fallback.md: A contact or product picture whose file was deleted in the File Manager falls back to the letters or icon (pg_contact_picture_name(), is_file() on product thumbs)
 - design-file-missing-on-disk.md: What the theme, file, design file, comment and quote signature screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - design-file-shared-form.md: add_design_file.php and edit_design_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
+- design-files-modify-dialog.md: Design files list Modify Selected is an in-page pgUI dialog (no popup); its fields belong to the list form, edit_files.php only takes the post
 - design-files-screens.md: All Design Files and Edit Design File: type read from the name, image editor script outside the table, Recycle Bin left out, POST branch, blocked rename, optimize way back
 - designer-region-shared-form.md: The designer region create and edit screens share includes/forms/designer_region_form.php: what it holds, the label fix, what stays in the screens
 - detail-screen-values.md: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; ERP quarter option wording
@@ -194,6 +197,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - explorer-selection-bar-menu.md: The file manager's selection bar "More actions" menu is placed by Floating UI (fixed strategy), not displayed statically: why, and the rule for a menu in a clipped or bottom bar
 - explorer-tour-texts.md: File and Catalog Manager tour steps name the control they ring by its printed label; the toolbar More button is named; keys stay .4 on rewording
 - explorer-tree-keyboard.md: The File and Catalog Manager tree on the explorer's own screen (in the main menu panel) from the keyboard: focusable link rows with aria-current, arrows with aria-expanded, Enter/Space
+- fediverse-settings.md: Settings › Fediverse: account card and handle check, Look me up, what is published, followers and blocks, delivery log with Try again, the rel=alternate link
 - field-caption-links.md: Captions tied to their fields on the code-field screens, Generate Layout, Create File and the order tracking numbers; why chips need a label, not an aria-label
 - field-form-checks.md: What the form field screens refuse on save (type, number boxes, blank choices) and which pages the form view and field screens open for
 - field-help-describedby.md: pgBindFieldHelp() in backend.src.js ties a panel field's .form-text help to the field with aria-describedby at runtime: which field, what is skipped, when it runs, what is left
@@ -245,11 +249,13 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-outline.md: The image editor's text to outlines: the model's own OpenType reader, where the font file comes from (action font, data/fonts), the path it makes, what is refused
 - image-editor-parts.md: The image editor in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
 - image-editor-picture-layer.md: A photo's picture as the bottom layer (E30, #6470): doc.canvas.picture, unlocking, move, resize and delete like a layer, the extend step's pw and ph
+- image-editor-present.md: Present (AN8): a canvas's scenes full screen, keys, swipes, transitions, reduced motion; PDF in Save animation, a JPEG page per scene from M.pdfFile()
 - image-editor-redact.md: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
 - image-editor-render.md: The image editor's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download
 - image-editor-scenes-play.md: Play, the scrub and the clock over every scene of a canvas (AN7b): the whole timeline's hooks, the stage showing the playing scene and its transition, a card dragged to reorder
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
 - image-editor-scissors.md: The image editor's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
+- image-editor-select.md: How the image editor's Select tool picks layers: a click, Shift, a press inside an unfilled shape, the selection box, Select all, touch
 - image-editor-sticker.md: The image editor's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
 - image-editor-svg-motion.md: Motion in a saved SVG (AN10): layer groups pgm-n, the numbers M.svgMotion() sends, the @keyframes style the server writes, reduced motion, what reopening keeps
 - image-editor-svg.md: The image editor's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
@@ -286,9 +292,11 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-order-side-lists.md: Product attributes, cart quotes, returns, subscriptions and a contact's orders on the list table driver (TD10a): printed whole, what changes in place and what stays on the record's screen
 - list-table-printed.md: Browser mode of the list table driver: a small list printed whole (pg_list_table_printed()), its sort kept by list_table_sort, the toolbar search box
 - list-table-quick-edit-pages.md: Pages list quick edit (includes/fn/list_table_edit.php): which cells are fields for whom, where the choices come from, how name, folder, style, type, form fields and switches are written
+- list-table-quick-edit-users.md: Users list quick edit (includes/fn/user_list_edit.php): which cells are fields for whom and in which view, how a username, e-mail, role, start page or right is checked and written
 - list-table-quick-edit-values.md: Which values of each driver list change in quick edit (products, pages), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - list-table-region-lists.md: Regions, ads and form fields on the list table driver (TD9c): printed whole, list names, quick edit fields and checks, what stays on the edit screen; menu items stay a plain table
+- list-table-shipping-lists.md: Arrival dates, ship date adjustments, verified shipping addresses, order reports and duplicate products on the list table driver (TD10b); the shipping report as a plain report table
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
 - liveform-alert-markup.md: The alert around liveform's errors, warnings and notices: Bootstrap 6 alert component in the panel (PG_PANEL_OUTPUT), Bootstrap 5 markup on sites, the v5 fallback rule
 - liveform-field-names.md: Liveform field names and pagers: aria-label, file id, required import pickers, new-password on outside secret boxes, the Set Password username field, ERP fields
@@ -330,6 +338,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - page-bulk-edit-dialog.md: Pages list Modify Selected: a dialog of the list (no popup window), the move-to-folder check, and a notice, site log line and audit built from what was written
 - page-bulk-edit.md: The two bulk page edits (Pages list Modify Selected, File Manager bulk page panel) share pg_page_bulk_decide()/apply(): style rule, sitemap by type and noindex, SEO stale mark, tag cloud
 - page-button-bar.md: The #button_bar strip under a screen's heading is the .pg-toolbar component: full-width nav, buttons as direct children, which wrappers are allowed, fields in it, the list filter select.
+- page-edit-layout.md: Create Page and Edit Page: wide layout (form, sticky status and save bar columns, Summary card), rows hidden with d-none via pg_page_row(), bindPageTypePicker(), no fake popovers
 - page-form-count-defaults.md: Create/Edit Page and the designer's Page Type pane save an emptied or zero Photo Gallery column count or Form View Directory summary box as the form's default (4 / 30 / 5), not 0
 - page-form-group-names.md: Create/Edit Page type properties and the ERP accounts import: radio questions are legends, the custom form's two e-mail blocks are named by their switch
 - page-form-lazy-page-pickers.md: Create Page / Edit Page untyped page pickers carry only their stored page and fill from one <template> when opened (select_page(), pg_page_picker_lazy()); the page list is read once per request
@@ -399,9 +408,10 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
 - product-group-shared-form.md: The product group create and edit screens share includes/forms/product_group_form.php: what it holds, what stays in the screens
 - product-list-paging.md: The products list (view_products.php): views and their columns, the list table driver source, quick edit columns, bulk actions, search, barcode button, export
+- product-modify-dialog.md: Products list and product group Modify Selected is an in-page pgUI dialog (no popup); its fields belong to the page form, edit_products.php only takes the post
 - progressbar-names.md: Names of panel progress bars (role="progressbar"): the sentence goes on the bar as aria-label, the hover title is only for the mouse; which Workspace bars are named, which are not yet
 - range-value-bubble.md: Panel sliders as the Bootstrap 6 Range with a value bubble (step B9e, #2207): markup, pgUI.range.bubble(), data-pg-range, where it is used, the site Range that stays v5
-- referral-source-shared-form.md: add_referral_source.php and edit_referral_source.php draw the referral source card and read its posted values through includes/forms/referral_source_form.php; what each screen keeps
+- referral-source-shared-form.md: add_referral_source.php and edit_referral_source.php draw the referral source columns and save bar and read its posted values through includes/forms/referral_source_form.php; what each screen keeps
 - report-dynamic-date-filter.md: Order and Visitor reports: a 'Day(s) Ago' filter on a date field compares a bare Y-m-d date through pg_report_dynamic_value() (#3725)
 - report-screen-controls.md: Report and panel controls on Bootstrap 6: period changers, named arrows, labelled layout and date selects (#2716), calendar controls, comment rating, accessibility tables (#2900)
 - report-table-rows.md: Order, visitor and shipping report tables: group names and Grand Total as row headers, detail rows and product names as links, percent figures through '{var:1}%' (Search Console too), named yes marks
@@ -432,7 +442,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-invalid-fields.md: A refused Site Settings save marks its fields by name; the dialog marks and focuses them (#3026), a settings page puts the typed values back (pgSettingsRestore())
 - settings-invalid-vs-error.md: Settings save outcomes: rejected input returns status invalid (no re-read, nothing written, no log); pane sentences are plain text.
 - settings-list-headings.md: Site Settings dialog list: the four group headings (decided #3879, built #4118), the group key per category, how a new category joins one.
-- settings-modal-architecture.md: Site Settings dialog: file map, the 14 categories under 4 headings, where moved cards went, moving a card, adding a category.
+- settings-modal-architecture.md: Site Settings dialog: file map, the 15 categories under 4 headings, where moved cards went, moving a card, adding a category.
 - settings-modal-autofill-lock.md: Settings dialog autofill prevention: readonly latch/unlatch of text fields, stamped autocomplete attributes, no fake password field in the dialog.
 - settings-modal-autofill-restore.md: Settings dialog defence against password-manager fills: hold()/review() restore, gesture-clock ownership, patrol() polling, three-restore limit.
 - settings-modal-card-dialogs.md: Rules for a settings card that opens its own dialog inside the settings modal: extras box, data-pgdialog rename, the dialog-open scroll lock, dispose.
@@ -478,7 +488,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - theme-screens.md: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
 - time-zone-list-labels.md: How the time zone pick lists label and order their zones (offsets computed from the time zone database, renamed places, values unchanged)
 - toggle-and-mark-names.md: Toggle aria-labels follow state, icon marks carry visually-hidden text, radio groups get a legend or radiogroup name, reasons are printed not hovered (offers, key codes, ERP)
-- toolbar-phone-fit.md: Toolbar filter forms capped to the bar (.pg-toolbar-filter), facts of Edit Page / Edit Comment / Edit Theme File in the grow slot, the Subscriptions date range wrapping at 375 px (#4264)
+- toolbar-phone-fit.md: Toolbar filter forms capped to the bar (.pg-toolbar-filter), Edit Comment / Edit Theme File facts in the grow slot, Subscriptions date range wrapping at 375 px (#4264)
 - translations-screen-editor-rows.md: Translations screen (translations.php, translations.js): engine wait, row state and count sync, scoped chips, glossary duplicates and refused saves, return view, CSV guard, box size
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve"
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope is labelled, where its error shows, and which messages survive the reload after a job or a bulk action

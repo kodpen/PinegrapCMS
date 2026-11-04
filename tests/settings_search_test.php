@@ -125,6 +125,7 @@ function test_settings_search_every_category_names_its_group()
 		'accounting'  => 'selling',
 		'bookings'    => 'selling',
 		'api'         => 'running',
+		'fediverse'   => 'running',
 		'maintenance' => 'running',
 	), settings_search_test_registry_groups(), 'each category under its heading, in today\'s order');
 }

@@ -1319,7 +1319,8 @@ function api_order_return_windows($rows) {
 // carry. null until the return was refunded, and on a site whose upgrade
 // has not added the columns yet; a return closed after its refund keeps
 // it. amount is in minor units (0 is a refund recorded as 0). method is
-// driver (through the payment service) or manual (made another way and
+// driver (through the payment service), credit (given as store credit; the
+// reference is the card id) or manual (made another way and
 // recorded). Both are null for a return refunded before the columns whose
 // refund could not be found again. reference is the service's refund id or
 // the typed reference, null when none. unclear: the service gave no clear
@@ -1335,7 +1336,7 @@ function api_order_return_refund_present($row) {
 
 	$method = (string)$row['refund_method'];
 
-	$known = in_array($method, array('driver', 'manual'), true);
+	$known = in_array($method, array('driver', 'manual', 'credit'), true);
 
 	$reference = isset($row['refund_reference']) ? (string)$row['refund_reference'] : '';
 

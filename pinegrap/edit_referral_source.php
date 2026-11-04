@@ -34,9 +34,17 @@ $output_breadcrumb_link = '<li class="breadcrumb-item"><a class="pg-link-seconda
 
 if (!$_POST) {
     // get referral source data
-    $query = "SELECT * FROM referral_sources WHERE id = ?";
+    $query = "SELECT referral_sources.name, referral_sources.code, referral_sources.sort_order, referral_sources.timestamp, user.user_username
+        FROM referral_sources
+        LEFT JOIN user ON referral_sources.user = user.user_id
+        WHERE referral_sources.id = ?";
     $result = db_q($query, array((int) $id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+    $values = array('name' => $row['name'], 'code' => $row['code'], 'sort_order' => $row['sort_order']);
+    // A source stored before the column was written has no time: show a dash.
+    $last_modified = ((int) $row['timestamp'] > 0)
+        ? get_relative_time(array('timestamp' => (int) $row['timestamp'])) . ((string) $row['user_username'] !== '' ? ' ' . h($row['user_username']) : '')
+        : '&mdash;';
 
     $output =
         pg_page_shell(
@@ -60,16 +68,14 @@ if (!$_POST) {
                     <form name="form" action="edit_referral_source.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                        ' . pg_referral_source_form_card(array('name' => $row['name'], 'code' => $row['code'], 'sort_order' => $row['sort_order'])) . '
-                        <input type="hidden" name="id" value="' . $id . '">      
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('referral source')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        <input type="hidden" name="id" value="' . $id . '">
+                        ' . pg_referral_source_form_layout(
+                            pg_referral_source_form_card($values)
+                            . pg_referral_source_form_status($values, pg_referral_source_form_status_row(lang('Last Modified'), $last_modified)),
+                            '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('referral source')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                        ) . '
                     </form>
                 </div>
             </div>

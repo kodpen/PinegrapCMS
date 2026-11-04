@@ -7,7 +7,9 @@
  * ?id=N streams the document inline; &download=1 sends it as an attachment
  * and &html=1 returns the rendered HTML for a look in the browser. A POST that
  * carries a template renders that template instead of the saved one, so the
- * settings screen can show a draft before it is kept. No panel chrome is
+ * settings screen can show a draft before it is kept. A cancelled invoice is
+ * drawn live with a CANCELLED ribbon instead of the copy kept at issue (its
+ * public link answers 404 and it is never e-mailed). No panel chrome is
  * printed: the output is the document and nothing else.
  *
  * @author      Erdal Güral (Kodpen)
@@ -72,8 +74,11 @@ if (!erp_archive_keeps_rendering((string) $invoice['direction'])) {
 }
 
 // The copy kept at issue is the document; a live rendering is only for a
-// template preview or ?html=1.
-$live = (($preview_template !== null) || !empty($_GET['html']));
+// template preview, ?html=1 and a cancelled invoice. A cancelled one is drawn
+// as it stands with the CANCELLED ribbon (label.cancelled), so the panel
+// never hands out the unmarked copy; it is never kept either.
+$cancelled = ((string) $invoice['status'] === 'cancelled');
+$live = (($preview_template !== null) || !empty($_GET['html']) || $cancelled);
 $kept = $live ? null : erp_archive_file('invoice', $invoice_id);
 
 if ($kept !== null) {
@@ -108,8 +113,8 @@ if ($pdf === false) {
 
 // An issued sales invoice with no kept copy is one from before copies were
 // kept, or one whose copy could not be written at issue: this rendering
-// becomes it.
-if ((string) $invoice['status'] !== 'draft') {
+// becomes it. A cancelled invoice's marked rendering never does.
+if (((string) $invoice['status'] !== 'draft') && !$cancelled) {
     erp_archive_store('invoice', $invoice_id, $pdf, (string) $invoice['full_number'], 'pdf', (int) $user['id']);
 }
 

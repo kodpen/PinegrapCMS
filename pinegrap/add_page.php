@@ -135,11 +135,11 @@ if (!$_POST) {
                 <form name="form" action="add_page.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
-                        ' . $page_type_fields['selector'] . '
-                        <div class="col-12 md:col-8 lg:col-9 xl:col-10">
+                        <!-- Form column first: below lg the columns stack in source order. -->
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="row">
                                 <div class="col-12">
-                                    <div class="card my-7 position-sticky" style="top:56px;">
+                                    <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
                                         </div>
@@ -185,7 +185,7 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 ' . $page_type_fields['properties'] . '
-                                <div class="col-12 my-5">
+                                <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Search Engine Optimization') . '
@@ -205,20 +205,32 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem keeps the box below the fixed top bar. -->
+                            <div class="position-sticky mt-7" style="top:3.3rem;">
+                                ' . $page_type_fields['selector'] . '
                             </div>
                         </div>
-                    </nav>
+                        <!-- Sticky on its own column: the row is as tall as the form. -->
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class=" btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
     <script>
     // Indexing switch dependencies — logic in assets/js/backend.src.js
     bindPageIndexingSwitches();
+
+    // Page type rows and the comments switch — logic in assets/js/backend.src.js
+    bindPageTypePicker();
     </script>
 </main>' .
         output_footer();

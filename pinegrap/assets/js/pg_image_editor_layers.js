@@ -188,6 +188,17 @@
             box.appendChild(d);
         });
 
+        // The selection box being dragged.
+        if (this.drag && (this.drag.kind === 'box')) {
+            var a = this.drag.at, b = this.drag.to, m = el('div', { class: 'pgie-marquee' });
+
+            m.style.left = (v.x + (Math.min(a[0], b[0]) - vr.x) * k) + 'px';
+            m.style.top = (v.y + (Math.min(a[1], b[1]) - vr.y) * k) + 'px';
+            m.style.width = (Math.abs(b[0] - a[0]) * k) + 'px';
+            m.style.height = (Math.abs(b[1] - a[1]) * k) + 'px';
+            box.appendChild(m);
+        }
+
         (this.guides ? this.guides.gx : []).forEach(function (x) {
             box.appendChild(el('div', { class: 'pgie-guide pgie-gx', style: 'left: ' + (v.x + (x - vr.x) * k) + 'px' }));
         });
@@ -214,26 +225,35 @@
         if (h && one) {
             this.drag = { kind: (h === 'rot') ? 'rotate' : ((BOX_HANDLES.indexOf(h) >= 0) ? 'resize' : 'handle'), h: h, start: M.clone(one) };
         } else {
-            hit = hit || M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, layerHit);
+            // A closed shape without a fill is hit on its line; a press inside
+            // it takes it too where no other layer lies.
+            hit = hit || M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, layerHit) || M.hitLayer(this.doc, p[0], p[1], 0, function (l) {
+                var rings = M.layerRings(l);
+
+                return !!rings && M.insideRings(p, rings);
+            });
 
             if (!hit) {
+                // An empty spot: a drag draws a box that selects the layers it
+                // touches (with Shift, besides the selection); a click clears
+                // the selection.
                 if (this.sel.length && !e.shiftKey) {
                     this.select([]);
                 }
 
-                return;
-            }
+                this.drag = { kind: 'box', at: p, to: p, base: this.sel.slice() };
+            } else {
+                if (e.shiftKey) {
+                    this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
+                    return;
+                }
 
-            if (e.shiftKey) {
-                this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
-                return;
-            }
+                if (this.sel.indexOf(hit.id) < 0) {
+                    this.select([hit.id]);
+                }
 
-            if (this.sel.indexOf(hit.id) < 0) {
-                this.select([hit.id]);
+                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !l.locked; }).map(M.clone) };
             }
-
-            this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !l.locked; }).map(M.clone) };
         }
 
         e.preventDefault();
@@ -245,8 +265,27 @@
         }
     };
 
+    // The layers a selection box touches, after the ones selected before it
+    // with Shift; while the box is still a click, only those.
+    Editor.prototype.boxSelection = function (d) {
+        var k = this.view.k, box = { x: Math.min(d.at[0], d.to[0]), y: Math.min(d.at[1], d.to[1]), w: Math.abs(d.to[0] - d.at[0]), h: Math.abs(d.to[1] - d.at[1]) };
+
+        if ((box.w * k < 3) && (box.h * k < 3)) {
+            return d.base.slice();
+        }
+
+        return d.base.concat(M.layersInBox(this.doc, box).filter(function (id) { return d.base.indexOf(id) < 0; }));
+    };
+
     Editor.prototype.moveDrag = function (e) {
         var d = this.drag, p = this.toDoc(e.clientX, e.clientY), k = this.view.k;
+
+        if (d.kind === 'box') {
+            d.to = p;
+            this.sel = this.boxSelection(d);
+            this.renderView();
+            return;
+        }
 
         if (d.kind === 'move') {
             var dx = p[0] - d.at[0], dy = p[1] - d.at[1], moved = M.bounds(d.start);
@@ -319,14 +358,34 @@
     };
 
     Editor.prototype.endDrag = function () {
-        if (!this.drag) {
+        var d = this.drag;
+
+        if (!d) {
             return;
         }
 
         this.drag = null;
         this.guides = null;
         this.history.key = null;
+
+        // A selection box ends in its selection; a second finger, which pans
+        // the view, gives back the one before it.
+        if (d.kind === 'box') {
+            this.select((Object.keys(this.pointers).length > 1) ? d.base : this.boxSelection(d));
+            return;
+        }
+
         this.render();
+    };
+
+    // Every layer selected: Ctrl+A, and Select all in the layers list (from
+    // a tool that does not select, Select takes over).
+    Editor.prototype.selectAll = function () {
+        if (Editor.selectTools.indexOf(this.tool) < 0) {
+            this.tool = 'select';
+        }
+
+        this.select(this.doc.layers.map(function (l) { return l.id; }));
     };
 
     // What a moved layer snaps to: the canvas's edges and middle, and the
@@ -356,7 +415,7 @@
         }
 
         if (mod && (k === 'a' || k === 'A')) {
-            this.select(this.doc.layers.map(function (l) { return l.id; }));
+            this.selectAll();
             return true;
         }
 
@@ -646,6 +705,14 @@
         }
 
         var list = el('ul', { class: 'pgie-layerlist', 'aria-label': t('layers') });
+
+        // Two layers or more: Select all, for a touch screen without Shift
+        // or Ctrl+A.
+        if (this.doc.layers.length > 1) {
+            body.appendChild(el('div', { class: 'pgie-btnrow pgie-selall' }, [
+                button('pgie-btn', t('selectAll'), 'select', function () { self.selectAll(); }, true)
+            ]));
+        }
 
         this.doc.layers.slice().reverse().forEach(function (l) {
             var on = (self.sel.indexOf(l.id) >= 0);

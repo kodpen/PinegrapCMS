@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 $user = validate_user();
 validate_ecommerce_access($user);
@@ -144,39 +145,53 @@ $verified_shipping_addresses = db_items(
     $where
     ORDER BY $order_by");
 
-$output_rows = '';
+// Every address of the state filter is printed: the list table driver
+// sorts and searches them in the browser (browser mode) and keeps a
+// heading's sort.
+$list_rows = array();
 
 foreach ($verified_shipping_addresses as $address) {
-
-    $created_username = '';
-
-    if ($address['created_username'] != '') {
-        $created_username = ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($address['created_username']))));
-    }
-
-    $last_modified_username = '';
-
-    if ($address['last_modified_username'] != '') {
-        $last_modified_username = ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($address['last_modified_username']))));
-    }
-
-    $output_rows .=
-        '<tr>
-            <td></td>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_verified_shipping_address.php?id=' . $address['id'] . '\'"><i class="bi bi-pencil"></i></button>
-            </td>
-            <td class="chart_label align-middle">' . h($address['company']) . '</td>
-            <td class="align-middle">' . h($address['address_1']) . '</td>
-            <td class="align-middle">' . h($address['address_2']) . '</td>
-            <td class="align-middle">' . h($address['city']) . '</td>
-            <td class="align-middle">' . h($address['state_name']) . '</td>
-            <td class="align-middle">' . h($address['zip_code']) . '</td>
-            <td class="align-middle">' . h(pg_geo_country_label($address['country_name'], $address['country_code'])) . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $address['created_timestamp'])) . $created_username . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $address['last_modified_timestamp'])) . $last_modified_username . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => (int) $address['id'],
+        'cells' => array(
+            'company' => pg_list_cell('<a href="edit_verified_shipping_address.php?id=' . (int) $address['id'] . '" data-pg-open>' . h(($address['company'] != '') ? $address['company'] : '#' . $address['id']) . '</a>'),
+            'address_1' => pg_list_cell(h($address['address_1'])),
+            'address_2' => pg_list_cell(h($address['address_2'])),
+            'city' => pg_list_cell(h($address['city'])),
+            'state' => pg_list_cell(h($address['state_name'])),
+            'zip_code' => pg_list_cell(h($address['zip_code'])),
+            'country' => pg_list_cell(h(pg_geo_country_label($address['country_name'], $address['country_code']))),
+            'created' => pg_list_table_when_cell($address['created_timestamp'], (string) $address['created_username']),
+            'last_modified' => pg_list_table_when_cell($address['last_modified_timestamp'], (string) $address['last_modified_username']),
+        ),
+    );
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_verified_shipping_addresses',
+    'columns' => array(
+        'company' => array('heading' => lang('Company')),
+        'address_1' => array('heading' => lang('Address 1')),
+        'address_2' => array('heading' => lang('Address 2')),
+        'city' => array('heading' => lang('City')),
+        'state' => array('heading' => lang('State')),
+        'zip_code' => array('heading' => lang('Zip Code')),
+        'country' => array('heading' => lang('Country')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
+
+// The state filter sits in the toolbar beside the search box.
+$output_state_filter = '<form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-inline-flex align-items-center gap-3">
+        <label for="state_id" class="small fg-secondary">' . lang('State') . '</label>
+        <select id="state_id" name="state_id" class="form-control form-control-sm w-auto max-w-100" onchange="document.getElementById(\'state_filter\').submit()">
+            <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . pg_format_number($all_verified_shipping_addresses, 0) . ')</option>
+            ' . $output_state_options . '
+        </select>
+    </form>';
 
 echo
     pg_page_shell([
@@ -195,43 +210,14 @@ echo
 
                 ' . pg_screen_toolbar(array(
                     'primary' => array('label' => lang('Create'), 'url' => 'add_verified_shipping_address.php?state_id=' . urlencode($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? ''), 'icon' => 'bi-plus-circle'),
-                    'search'  => pg_list_sort_menu('view_verified_shipping_addresses.php', $sort_columns, $sort_levels, $sort_default),
+                    'search'  => array($output_state_filter, pg_list_table_search_box('view_verified_shipping_addresses'), pg_list_sort_menu('view_verified_shipping_addresses.php', $sort_columns, $sort_levels, $sort_default)),
                 )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <div class="p-5 border-bottom">
-                            <form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-flex align-items-center gap-3 flex-wrap">
-                                <label for="state_id" class="fw-semibold">' . lang('State') . ':</label>
-                                <select id="state_id" name="state_id" class="form-control form-control-sm w-auto max-w-100" onchange="document.getElementById(\'state_filter\').submit()">
-                                    <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . pg_format_number($all_verified_shipping_addresses, 0) . ')</option>
-                                    ' . $output_state_options . '
-                                </select>
-                            </form>
-                        </div>
-                        <table class="chart table-hover table" style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis"></th>
-                                    <th class="noVis">' . lang('Action') . '</th>
-                                    <th>' . get_column_heading(lang('Company'), $sort_levels, '', '', 'company') . '</th>
-                                    <th>' . get_column_heading(lang('Address 1'), $sort_levels, '', '', 'address_1') . '</th>
-                                    <th>' . get_column_heading(lang('Address 2'), $sort_levels, '', '', 'address_2') . '</th>
-                                    <th>' . get_column_heading(lang('City'), $sort_levels, '', '', 'city') . '</th>
-                                    <th>' . get_column_heading(lang('State'), $sort_levels, '', '', 'state') . '</th>
-                                    <th>' . get_column_heading(lang('Zip Code'), $sort_levels, '', '', 'zip_code') . '</th>
-                                    <th>' . get_column_heading(lang('Country'), $sort_levels, '', '', 'country') . '</th>
-                                    <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('All Verified Shipping Addresses')) . '
             </div>
         </div>
     
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
     output_footer();
 
 $liveform->remove_form();

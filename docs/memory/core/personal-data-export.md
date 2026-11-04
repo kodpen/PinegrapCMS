@@ -14,6 +14,7 @@ module: privacy_export
 ## What do the sections read?
 - `pg_privacy_export_sections()` pins the 31 keys and their order (the file's format; the test fails on a change). Every section is written, empty ones too; each holds at most 5000 rows (`truncated` when cut); one read in parts is cut by `pg_privacy_export_join()` (#4589).
 - Orders include carts; a line saved for later is an `order_items` row of the cart (`saved_for_later`), not the wishlist. A product form's answers sit in the order row as `form_answers`; a form submission's fields as `fields`, found also by the address typed in any field (`form_data.data`, prefix index).
+- Comments also by a Fediverse address (`api/api-fediverse.md`).
 - Favourites (`wishlist`, after `watchers`): the account's `wishlist_items` rows with the product's SKU and name. A visitor's list is keyed by a cookie hash that names nobody; it is found once it joins the account at sign-in (`commerce/wishlist.md`).
 - Back-in-stock requests (`stock_notify`, after `wishlist`): by account or address typed, with SKU and name.
 - Bounces (`mail_bounces`, after `mail`): by the person's addresses.
@@ -30,6 +31,6 @@ module: privacy_export
 - Each download: `pg_audit('export', 'person', 0, [], after, label)`; label = first address, after = format, `person` (the person token under a name the trail does not mask), user and contact ids, counts of non-empty sections. The preview writes nothing.
 
 ## Sandbox (2026-10-20)?
-- MariaDB, a person in every section then: found by contact id and upper-case address, no secret in the JSON, a two-page Turkish PDF; a manager refused for the administrator.
+- MariaDB: found by id and upper-case address, no secret in the JSON, a manager refused for the admin.
 
 Related: docs/memory/core/consent-log-and-audit-trail.md, docs/memory/core/audit-trail-writers.md, docs/memory/core/dompdf-embedding.md

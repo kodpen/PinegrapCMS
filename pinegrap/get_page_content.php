@@ -6577,6 +6577,19 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = preg_replace('/<\/head>/i', pg_regex_replacement($output_rss_link_tags) . '</head>', $content);
     }
     
+    // The Fediverse account's link (includes/fn/activitypub.php), loaded
+    // only once its settings exist, so a site that never switched it on
+    // pays one cached settings read.
+    if (!$email && (pg_config_text('ap_settings') !== '')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub.php');
+
+        $output_ap_link = pg_ap_alternate_link();
+
+        if ($output_ap_link !== '') {
+            $content = preg_replace('/<\/head>/i', pg_regex_replacement($output_ap_link) . '</head>', $content, 1);
+        }
+    }
+
     // replace path placeholders
     $content = preg_replace('/{path}/i', pg_regex_replacement(OUTPUT_PATH), $content);
 

@@ -144,6 +144,9 @@ function workspace_record_kinds_test_lists()
 	// sales quote, which a proposal adds. A cart quote is tag-only too.
 	$tag_only = array_fill_keys(array('invoice', 'waybill', 'receipt', 'edoc'), 'an ERP document is tag-only: no kind of ws_change_types() writes it');
 	$tag_only['cart_quote'] = 'a cart quote is made and changed on its own screens (add_cart_quote.php, view_cart_quotes.php): no kind of ws_change_types() writes it';
+	// A booking moves on the staff agenda only: a status move mails the
+	// customer and frees or takes its slot (pg_booking_changed()).
+	$tag_only['booking'] = 'a booking is changed on the staff agenda (edit_booking.php), where a status move mails the customer and frees or takes its slot: no kind of ws_change_types() writes it';
 
 	$records = array();
 
@@ -259,7 +262,7 @@ function workspace_record_kinds_test_lists()
 		'customers' => array(
 			'where'  => 'ws_customer_types() in includes/workspace/customer.php',
 			'kinds'  => ws_customer_types(),
-			'except' => array_fill_keys(array('order', 'product', 'product_group', 'offer', 'cart_quote', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote', 'form', 'calendar_event', 'file', 'page'),
+			'except' => array_fill_keys(array('order', 'product', 'product_group', 'offer', 'cart_quote', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote', 'form', 'calendar_event', 'booking', 'file', 'page'),
 				'a record about a customer, not one: a customer is a contact, a user or a current account'),
 			'others' => array(),
 		),

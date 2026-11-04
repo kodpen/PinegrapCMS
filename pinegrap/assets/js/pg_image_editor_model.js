@@ -799,6 +799,16 @@
         return null;
     }
 
+    // The ids of the visible, unlocked layers whose turned box meets box
+    // { x, y, w, h } (a selection box dragged over the stage), bottom to top.
+    function layersInBox(doc, box) {
+        return doc.layers.filter(function (l) {
+            var b = (!l.hidden && !l.locked) ? bounds([l]) : null;
+
+            return !!b && (b.x <= box.x + box.w) && (b.x + b.w >= box.x) && (b.y <= box.y + box.h) && (b.y + b.h >= box.y);
+        }).map(function (l) { return l.id; });
+    }
+
     // Whether x, y lies inside a layer's box by more than margin on every
     // side, in the layer's own turned frame.
     function insideBox(l, x, y, margin) {
@@ -3636,7 +3646,10 @@
         webm: {
             mime: 'video/webm', ext: 'webm', video: true, even: true, edges: [480, 640, 720, 960, 1280, 1920], edge: 1280, maxMs: 60000, rates: [24, 30], rate: 30, needs: 'webm',
             codecs: ['vp09.00.40.08'], recorder: ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
-        }
+        },
+        // A page per scene, each still (pg_image_editor_present.js): offered
+        // with two scenes or more; no rate or length limit of its own.
+        pdf: { mime: 'application/pdf', ext: 'pdf', pdf: true, edges: [640, 960, 1280, 1920, 2560], edge: 1920, maxMs: Infinity, rates: [1], rate: 1, needs: 'scenes' }
     };
 
     // Every edge some format offers.
@@ -4796,6 +4809,169 @@
         SCENE_TRANSITION_MAX: SCENE_TRANSITION_MAX, sceneCount: sceneCount, sceneIndex: sceneIndex, sceneTransition: sceneTransition, sceneList: sceneList,
         sceneStart: sceneStart, sceneOpen: sceneOpen, sceneAdd: sceneAdd, sceneDelete: sceneDelete, sceneMove: sceneMove, sceneSet: sceneSet,
         sceneTotal: sceneTotal, sceneStartAt: sceneStartAt, sceneSlot: sceneSlot, sceneAt: sceneAt, sceneView: sceneView, sceneTransitionAt: sceneTransitionAt
+    };
+
+    // -- presenting the scenes and their PDF (pg_image_editor_present.js) --
+
+    // A swipe moves on once it is this long and mostly sideways; a press
+    // that moved less than PRESENT_TAP is a tap.
+    var PRESENT_SWIPE = 40, PRESENT_TAP = 10;
+    // A PDF page's points per pixel: a pixel is 1/96 inch, a point 1/72.
+    var PDF_PT = 0.75;
+
+    // A sw x sh scene inside a vw x vh screen at its largest, centred
+    // (letterboxed): whole pixels, at least 1.
+    function presentFit(sw, sh, vw, vh) {
+        var k = Math.min(vw / Math.max(1, sw), vh / Math.max(1, sh));
+        var w = Math.max(1, Math.round(sw * k)), h = Math.max(1, Math.round(sh * k));
+
+        return { x: Math.round((vw - w) / 2), y: Math.round((vh - h) / 2), w: w, h: h };
+    }
+
+    // What a key does while presenting: next, prev, first, last, close or
+    // null (the key is not Present's).
+    function presentKey(key) {
+        var map = {
+            ArrowRight: 'next', ArrowDown: 'next', PageDown: 'next', ' ': 'next', Spacebar: 'next', Enter: 'next',
+            ArrowLeft: 'prev', ArrowUp: 'prev', PageUp: 'prev', Backspace: 'prev',
+            Home: 'first', End: 'last', Escape: 'close', Esc: 'close'
+        };
+
+        return map.hasOwnProperty(key) ? map[key] : null;
+    }
+
+    // A press that moved dx, dy: a swipe to the left is next, to the right
+    // prev, a short press a tap; anything else (mostly up or down) null.
+    function presentGesture(dx, dy) {
+        var ax = Math.abs(dx), ay = Math.abs(dy);
+
+        if (Math.max(ax, ay) < PRESENT_TAP) {
+            return 'tap';
+        }
+
+        if ((ax >= PRESENT_SWIPE) && (ax > 1.5 * ay)) {
+            return (dx < 0) ? 'next' : 'prev';
+        }
+
+        return null;
+    }
+
+    // The scene an action leads to from index of count; -1 closes. Next on
+    // the last scene and prev on the first stay where they are.
+    function presentGo(index, count, action) {
+        var last = Math.max(0, count - 1);
+
+        switch (action) {
+            case 'next':
+                return Math.min(last, index + 1);
+            case 'prev':
+                return Math.max(0, index - 1);
+            case 'first':
+                return 0;
+            case 'last':
+                return last;
+            case 'close':
+                return -1;
+            default:
+                return index;
+        }
+    }
+
+    // How scene index is drawn at its own time local: arriving forward
+    // over the previous scene's transition the whole animation's moment
+    // (whole, the transition shown), else the scene alone at its time,
+    // held at its end (local).
+    function presentTime(doc, index, local, forward) {
+        var list = sceneList(doc), s = list[index], prev = list[index - 1], ms = 0;
+
+        local = Math.max(0, Number(local) || 0);
+
+        if (forward && prev && (prev.transition.kind !== 'none')) {
+            ms = Math.min(prev.transition.ms, s.duration);
+        }
+
+        if (local < ms) {
+            return { whole: sceneStartAt(doc, index) + local, local: local };
+        }
+
+        return { whole: null, local: Math.min(local, s.duration) };
+    }
+
+    // ASCII text as bytes.
+    function pdfText(s) {
+        var out = new Uint8Array(s.length);
+
+        for (var i = 0; i < s.length; i++) {
+            out[i] = s.charCodeAt(i) & 255;
+        }
+
+        return out;
+    }
+
+    // A PDF with a page per picture: pages [{ jpeg (Uint8Array, a baseline
+    // RGB JPEG), w, h (its pixels) }], each page the picture's size at 96
+    // pixels an inch, the picture filling it (DCTDecode, no re-encoding).
+    // Answers the file's bytes.
+    function pdfFile(pages) {
+        var parts = [], offsets = [], at = 0, kids = [], n = pages.length;
+
+        function put(bytes) {
+            parts.push(bytes);
+            at += bytes.length;
+        }
+
+        function obj(num, text, stream) {
+            offsets[num] = at;
+            put(pdfText(num + ' 0 obj\n' + text + (stream ? '\nstream\n' : '\nendobj\n')));
+
+            if (stream) {
+                put(stream);
+                put(pdfText('\nendstream\nendobj\n'));
+            }
+        }
+
+        function pt(px) {
+            return String(Math.round(px * PDF_PT * 100) / 100);
+        }
+
+        put(pdfText('%PDF-1.4\n'));
+        put(new Uint8Array([37, 226, 227, 207, 211, 10]));
+
+        for (var i = 0; i < n; i++) {
+            kids.push((3 + 3 * i) + ' 0 R');
+        }
+
+        obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+        obj(2, '<< /Type /Pages /Kids [' + kids.join(' ') + '] /Count ' + n + ' >>');
+
+        pages.forEach(function (p, i) {
+            var page = 3 + 3 * i, w = pt(p.w), h = pt(p.h), draw = pdfText('q ' + w + ' 0 0 ' + h + ' 0 0 cm /Im0 Do Q');
+
+            obj(page, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + w + ' ' + h + '] /Resources << /XObject << /Im0 ' + (page + 2) + ' 0 R >> >> /Contents ' + (page + 1) + ' 0 R >>');
+            obj(page + 1, '<< /Length ' + draw.length + ' >>', draw);
+            obj(page + 2, '<< /Type /XObject /Subtype /Image /Width ' + p.w + ' /Height ' + p.h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + p.jpeg.length + ' >>', p.jpeg);
+        });
+
+        var count = 3 + 3 * n, xref = at, table = 'xref\n0 ' + count + '\n0000000000 65535 f \n';
+
+        for (var k = 1; k < count; k++) {
+            table += ('0000000000' + offsets[k]).slice(-10) + ' 00000 n \n';
+        }
+
+        put(pdfText(table + 'trailer\n<< /Size ' + count + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n'));
+
+        var out = new Uint8Array(at), o = 0;
+
+        parts.forEach(function (b) {
+            out.set(b, o);
+            o += b.length;
+        });
+
+        return out;
+    }
+
+    var PRESENT = {
+        presentFit: presentFit, presentKey: presentKey, presentGesture: presentGesture, presentGo: presentGo, presentTime: presentTime, pdfFile: pdfFile
     };
 
     // -- outlines (pg_image_editor_outline.js) --
@@ -6350,6 +6526,20 @@
         return { ids: ids, pieces: pieces };
     }
 
+    // A shape builder click, merging (one region touched): the shapes
+    // stacked over that region (items [{ id, rings }] bottom to top) united
+    // whole in the style of the top one, as builderMerge() gives it; nothing
+    // for a region of one shape, which a click leaves as it is.
+    function builderStack(items, region) {
+        var stack = region ? items.filter(function (it) { return region.members.indexOf(it.id) >= 0; }) : [];
+
+        if (stack.length < 2) {
+            return { ids: [], pieces: [] };
+        }
+
+        return { ids: stack.map(function (it) { return it.id; }), pieces: pathfinder('unite', stack) };
+    }
+
     // ---- back to curves ----
 
     // A closed polygon's knots: straight runs between corners (turns over
@@ -6533,7 +6723,7 @@
     var BUILDER = {
         flattenRing: flattenRing, layerRings: layerRings, ringArea: ringArea, ringsArea: ringsArea, clipRings: clipRings,
         ringIslands: ringIslands, insideRings: insideRings, pathfinder: pathfinder, builderRegions: builderRegions, regionAt: regionAt,
-        builderMerge: builderMerge, ringKnots: ringKnots, ringsPath: ringsPath
+        builderMerge: builderMerge, builderStack: builderStack, ringKnots: ringKnots, ringsPath: ringsPath
     };
 
     var api = {
@@ -6545,14 +6735,14 @@
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
-        newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
+        newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, layersInBox: layersInBox, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
         ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle
     };
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, OUTLINE, BUILDER].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

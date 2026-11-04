@@ -84,14 +84,7 @@ if (!isset($_POST['name'])) {
         exit();
     }
 
-    $query = "INSERT INTO cregion (cregion_name, cregion_content, cregion_designer_type, cregion_user, cregion_timestamp) "
-            ."VALUES (?, ?, 'no', ?, UNIX_TIMESTAMP())";
-    // insert row into region table
-    $result = db_q($query, array(
-        $name,
-        (string) prepare_rich_text_editor_content_for_input($content),
-        (int) $user['id'],
-    )) or output_error('Query failed');
+    pg_cregion_save(0, $name, (string) prepare_rich_text_editor_content_for_input($content), 'no', (int) $user['id']) or output_error('Query failed');
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('common region'), $name))), $_SESSION['sessionusername']);
     $liveform->remove_form();
     $notice = lang(array('string'=>'{var:1} was created successfully','vars'=>lang('Common Region') ));

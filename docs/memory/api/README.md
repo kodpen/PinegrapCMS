@@ -37,6 +37,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
 - api-design-ads.md: Ads and ad regions over the external API (/design/ads, /design/ad-regions): the write path the four screens share, the routes, refusals, the region that keeps its ads
+- api-design-dialogs-regions.md: Auto dialogs and common regions over the external API (/design/auto-dialogs, /design/common-regions): the write path the four screens share, routes, refusals, the converted region that keeps its row
 - api-device-pairing.md: Pairing a team device with a QR code (device_pairing.php, POST /auth/pair, table api_device_pairings): code storage, who may make one, the exchange, limits, revocation
 - api-device-refresh-rotation.md: Refresh-token exchange (api_device_rotate_pair, devices and OAuth): next pair derived from the presented token so concurrent refreshes agree; conditional UPDATE; 60 s grace from the first exchange
 - api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation
@@ -44,6 +45,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-dry-run.md: Making an external API write rehearsable (X-Dry-Run or ?dry_run=true): the route flag, where api_dry_run_stop() goes, batch endpoints, the *_check() split, side effects a rehearsal skips
 - api-endpoint-rules.md: Writing an external API endpoint: one route row, one presenter, list paging and batch reads, body checks, nullable fields, error codes, formats, partial updates, mirroring panel changes
 - api-experiments.md: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move, experiments:read/write for roles 0-1, two events
+- api-fediverse.md: GET /fediverse/followers and /fediverse/deliveries (fediverse:read): shapes, paging, the state filter, who may hold the scope; the personal data export and erasure of a Fediverse account
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies
 - api-folder-access-widening.md: External API page and folder moves keep or narrow access: access type rank, and for private folders the aclfolder reader list (PR #1786); 409 access_widening_refused

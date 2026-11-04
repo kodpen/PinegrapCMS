@@ -18,6 +18,7 @@ description: When an ERP invoice can be cancelled, what the screen asks before t
 - The gift-card credit and its allocation are reversed with it; every stock move the document made is turned round (`erp_stock_post_cancel()`, counts applied after the commit).
 - An order that produced the invoice gets `orders.erp_invoice_id = 0` and can be invoiced again; cancelling a return gives its quantities back to the parent (`returned_qty`) and recomputes the parent's status.
 - After the commit the `erp.invoice.cancelled` event is raised.
+- Its PDF is drawn live with a CANCELLED ribbon, never the kept copy: erp-invoice-note-and-cancelled-pdf.md.
 
 ## What does the period lock do to a cancel?
 - An invoice dated on or before the lock date cannot be cancelled; it is taken back with a return dated in the open period.

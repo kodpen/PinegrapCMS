@@ -157,3 +157,60 @@ function test_ap_comments_a_site_reply_is_sent_only_when_published()
 	pg_assert_contains("if ((\$published == '1') && (\$parent_id > 0) && (\$comment_id > 0) && function_exists('pg_config_text') && (pg_config_text('ap_settings') !== '')) {", $source);
 	pg_assert_contains('pg_ap_reply_send($comment_id);', $source);
 }
+
+function test_ap_comments_thread_objects_name_the_page_or_the_record()
+{
+	$site = ap_comments_test_site();
+
+	pg_assert_same(array('https://blog.example/@news/p/12'), pg_ap_thread_objects($site, 12, '', 0), 'a page\'s own thread');
+	pg_assert_same(array('https://blog.example/@news/r/7'), pg_ap_thread_objects($site, 12, 'submitted_form', 7), 'a record\'s thread');
+	pg_assert_same(array(), pg_ap_thread_objects($site, 12, 'product', 3), 'a product is never published');
+	pg_assert_same(array(), pg_ap_thread_objects($site, 12, 'calendar_event', 3), 'nor an event');
+	pg_assert_same(array(), pg_ap_thread_objects($site, 0, '', 0), 'no page');
+	pg_assert_same(array(), pg_ap_thread_objects($site, 12, 'submitted_form', 0), 'no record');
+}
+
+function test_ap_comments_reaction_counts_read_grouped_rows()
+{
+	pg_assert_same(array('like' => 0, 'announce' => 0), pg_ap_reaction_counts_read(false), 'a failed query reads as none');
+	pg_assert_same(array('like' => 3, 'announce' => 1), pg_ap_reaction_counts_read(array(
+		array('kind' => 'like', 'n' => '3'),
+		array('kind' => 'announce', 'n' => '1'),
+		array('kind' => 'other', 'n' => '9'),
+		array('kind' => 'like', 'n' => 'x'),
+		'junk',
+	)));
+	pg_assert_same(array('like' => 0, 'announce' => 0), pg_ap_reaction_counts(array()), 'no object asks nothing');
+}
+
+function test_ap_comments_reactions_show_in_the_comments_widget()
+{
+	if (!function_exists('pg_comments_reaction_values')) {
+		return;
+	}
+
+	pg_assert_same(array('__comments_likes_count' => '', '__comments_boosts_count' => '', '__comments_reactions_text' => ''),
+		pg_comments_reaction_values(array('like' => 0, 'announce' => 0)), 'none: every token empty');
+
+	$one = pg_comments_reaction_values(array('like' => 1, 'announce' => 0));
+	pg_assert_same('1', $one['__comments_likes_count']);
+	pg_assert_same('', $one['__comments_boosts_count']);
+	pg_assert_same('1 like', $one['__comments_reactions_text'], 'singular, no empty boost part');
+
+	$many = pg_comments_reaction_values(array('like' => 3, 'announce' => 2));
+	pg_assert_same('3 likes · 2 boosts', $many['__comments_reactions_text']);
+	pg_assert_same('2', $many['__comments_boosts_count']);
+	pg_assert_same('1 boost', pg_comments_reaction_values(array('announce' => 1))['__comments_reactions_text']);
+	pg_assert_same('', pg_comments_reaction_values('junk')['__comments_reactions_text']);
+
+	// The widget reads them for its thread; an e-mail draws none.
+	$widget = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_comments.php');
+	pg_assert_contains('+ pg_comments_reaction_values(pg_comments_widget_reactions($page_id, $post_type, $post_id));', $widget);
+	pg_assert_contains("if (pg_config_text('ap_settings') === '') {", $widget, 'a site that never saved the settings loads nothing');
+	pg_assert_contains(") + pg_comments_reaction_values(array());", $widget);
+
+	// A like or its undo makes the cached pages stale.
+	$inbox = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_inbox.php');
+	pg_assert_contains("// The comments widget shows the counts (pg_comments_widget_reactions()).", $inbox);
+	pg_assert_same(2, substr_count($inbox, 'pg_page_cache_mark_dirty();'), 'react and undo');
+}

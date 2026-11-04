@@ -1098,3 +1098,52 @@ function pg_product_list_selected_ids($user, $selection, $list_params)
 
     return $selected['more'] ? null : $selected['ids'];
 }
+
+/**
+ * The Modify Selected dialog of the products list and the product group
+ * screen (includes/templates/edit_products.php). Its fields belong to the
+ * page's form by their form attribute, so Save posts them with that form's
+ * selection to edit_products.php; the form carries the token, the action and
+ * the selection fields. An empty pick list leaves its property alone.
+ *
+ * @param string $form_id the id of the page's form that posts the change
+ * @param string $warning a warning shown above the fields (plain text), or ''
+ * @return string HTML
+ */
+function pg_product_modify_dialog($form_id, $warning = '')
+{
+    $enabled_options = array(
+        lang(array('string'=>'Select to change {var:1}','vars'=>array(lang('Status')) )) => '',
+        lang('Enable') => '1',
+        lang('Disable') => '0'
+    );
+    $price_change_method_options = pg_product_mass_price_method_options(BASE_CURRENCY_SYMBOL);
+    $inventory_options = array(
+        lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Option for Track Inventory')) ))=>'',
+        lang('Enable Track Inventory')=>'1',
+        lang('Disable Track Inventory')=>'0',
+    );
+    $inventory_quantity_process_options = array(
+        lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Process')) ))=>'',
+        lang('Enter an Inventory Quantity instead of the Current Inventory Quantity.')=>'value',
+        lang('Increase Current Inventory Quantity (+)')=>'increase',
+        lang('Decrease Current Inventory Quantity (-)')=>'decrease',
+    );
+    $tax_rate_method_options = array(
+        lang(array('string'=>'Select a {var:1}','vars'=>array(lang('Process')) ))=>'',
+        lang('Set the tax rate to the value below')=>'set',
+        lang('Follow the tax zone (clear the product rate)')=>'zone',
+    );
+
+    // The zone lists only on a site that ships.
+    $zones = ECOMMERCE_SHIPPING ? db_items("SELECT id, name FROM zones ORDER BY name") : null;
+
+    // The locations a quantity change can go to, default first; none on a
+    // site without stock locations.
+    $stock_locations = pg_stock_screen_locations();
+
+    ob_start();
+    require(PG_FUNCTIONS_DIR . '/includes/templates/edit_products.php');
+
+    return (string) ob_get_clean();
+}

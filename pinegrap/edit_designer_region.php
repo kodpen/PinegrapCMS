@@ -33,6 +33,19 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM cregion WHERE cregion_id 
 include_once('liveform.class.php');
 $liveform = new liveform('edit_designer_region');
 
+// A region made a shared component is drawn by the component; its row stays
+// until the component is deleted.
+require_once(PG_FUNCTIONS_DIR . '/includes/designer_access.php');
+$component_id = pg_common_region_components(array($id))[$id];
+
+// A common region opened here (a stale recent-items link, a type changed
+// on the list, a hand-typed id) goes to its own screen, which keeps the
+// type and the shared component's guard.
+if (!isset($_POST['name']) && (db_value("SELECT cregion_designer_type FROM cregion WHERE cregion_id = '" . $id . "'") !== 'yes')) {
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . $id);
+    exit();
+}
+
 if (!isset($_POST['name'])) {
     // Get designer region information.
     $query = "SELECT cregion_name, cregion_content, cregion_designer_type "
@@ -56,15 +69,15 @@ if (!isset($_POST['name'])) {
 
     print
     pg_page_shell([
-        'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region'))),
+        'title'=> lang('Edit Designer Region'),
         'extra classes'=>'design',
         'icon'=>'design',
-        'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region'))),
+        'heading'=>lang('Edit Designer Region'),
         'heading_description' => lang('Update this designer region of shared content. (A rename will require its tag to be updated in any page styles.)'),
         'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_regions.php?filter=all_designer_regions')),
         'breadcrumb' => array(
             array('label' => lang('All Designer Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_designer_regions'),
-            array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Designer Region')))),
+            array('label' => lang('Edit Designer Region')),
         ),
     ]) . '
 <main id="content" class="container-fluid">
@@ -92,7 +105,7 @@ if (!isset($_POST['name'])) {
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('designer region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('designer region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -110,10 +123,31 @@ $liveform->remove_form();
     
     // if region was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
+        // The row is the <cregion> tag's only link to its shared component
+        // and the component's undo: while the component exists the region
+        // stays, and its own screen points at the component.
+        if ($component_id) {
+            $component_name = (string) db_value("SELECT name FROM shared_components WHERE id = '" . (int) $component_id . "'");
+            $liveform_common = new liveform('edit_common_region');
+            $liveform_common->add_error(
+                h(lang(array('string' => 'This common region is the shared component "{var:1}". Delete the component first; its content comes back here, then the region can be deleted.', 'vars' => $component_name)))
+                . ' <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '">' . h(lang('Edit in the visual designer')) . '</a>');
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . $id);
+            exit();
+        }
+
+        // Delete skips the browser's form check, so the posted name may be
+        // blank: the log names the stored one.
+        $stored_name = (string) db_value("SELECT cregion_name FROM cregion WHERE cregion_id = '" . $id . "'");
         $query = "DELETE FROM cregion "
                 ."WHERE cregion_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
-        log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('designer region'), $_POST['name']) )), $_SESSION['sessionusername']);
+        $result = db_q($query, array((string) $id)) or output_error('Query failed');
+
+        // The users granted the region lose the grant with it.
+        $query = "DELETE FROM users_common_regions_xref WHERE common_region_id = ?";
+        $result = db_q($query, array((string) $id)) or output_error('Query failed');
+
+        log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('designer region'), $stored_name) )), $_SESSION['sessionusername']);
 
 
         // if there is not a send to, then prepare notice
@@ -122,6 +156,13 @@ $liveform->remove_form();
         }
         
     } else {
+        // A stale form of a region made a shared component meanwhile: its
+        // kept content is the component's undo and is not overwritten here.
+        if ($component_id) {
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . $id);
+            exit();
+        }
+
         list($name, $content) = pg_designer_region_form_values($_POST);
 
         // A blank or too long name, or a rename onto a name another region

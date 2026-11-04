@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-2
-description: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row in the main menu; menu icons in two colours; app-like screens print no alert boxes; user-rights trees keep the Workspace folder
+description: Decisions list, panel part 2 (2026-11-02 on): no Site Settings menu row; two-colour menu icons; no alert boxes on app-like screens; rights trees keep Workspace; a local change in the Bootstrap 6 dist
 ---
 
 ## Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
@@ -14,3 +14,6 @@ description: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row 
 
 ## Why do the user-rights folder trees still list the Workspace folder? (owner, 2026-11-02)
 - The Site Settings pickers leave the Workspace folder (`config.ws_folder_id`) out (#5086), and the page folder pickers (Add Page, Edit Page, the Pages list's move picker) leave it out too: a page is never filed under the Workspace (#5102). The folder trees of Add User, Edit User and Import Users (`get_acl_folder_tree()`) keep listing it so an administrator can grant a user view or edit rights on Workspace folders. `select_folder()` keeps its default; a page picker passes the Workspace folder as the excluded one and shows a stored Workspace folder selected and marked "(no longer offered)", as the settings pickers do; the row is never rewritten. Not a missing filter.
+
+## May the vendored Bootstrap 6 dist be changed? (architect, 2026-11-04, #6619)
+- Decided: yes, by one rule only, and only because no other place can remove it. `assets/lib/bootstrap-6/css/bootstrap.css` and `bootstrap.min.css` get `.form-field:has(> .check, > .radio, > .switch) > :not(.check, .radio, .switch)` rewritten as `.form-field > :not(.check, .radio, .switch):is(:has(~ :is(.check, .radio, .switch)), :is(.check, .radio, .switch) ~ *)`: the same elements (a sibling of a check, radio or switch inside one `.form-field`), the same weight (0,3,0), measured on the 14 settings panes with no layout difference. Reason: Chromium restyles the whole document on every element added or removed while a rule of the form `X:has(…) > *` or `> :not(…)` is loaded, whatever the page holds; a rule in a loaded sheet cannot be cancelled by a later rule, a runtime rewrite of the CSSOM (option b) is a shim on every panel page that breaks silently on a text change, and waiting for upstream (c) leaves the designer at about a second per click (`ui/css-has-whole-document-restyle.md`, #6612). Conditions: `document.txt` gets a "Local changes" block naming the rule, the rewrite and the reason, so an update re-applies it; `tests/css_has_restyle_test.php` reads the dist too, so an update that brings the form back fails CI; the `.map` files stay as they are; nothing else in the dist is edited, and the "copied unchanged" rule of the other vendored libraries (`core/vanilla-calendar-library.md`, `core/sortablejs-library.md`, #2693) stands.
