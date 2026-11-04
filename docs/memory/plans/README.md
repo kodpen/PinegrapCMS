@@ -20,8 +20,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - appointment-booking-steps-2.md: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar rows, My bookings and manage page, API, deposits, templates and close-out; claim as [plan:appointment-booking] BK<n>
 - appointment-booking-steps.md: Steps BK1-BK5 of plans/appointment-booking.md: schema and slot engine, settings, the staff agenda, the booking widget, mails, SMS and reminders; claim as [plan:appointment-booking] BK<n>
 - appointment-booking.md: Plan (owner 2026-11-02): appointments with real time slots: services, staff hours, a booking widget, confirmations and reminders, the agenda, Workspace calendars; steps BK1-BK10
-- audiences-steps.md: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, recompute job and announce, the rule editor, readers and doors, the audience token, close-out; claim as [plan:audiences] AU<n>
-- audiences.md: Plan (owner 2026-11-02): rule-driven contact groups whose members are computed from orders, visits, consent, membership and fields, usable wherever a group is today; steps AU1-AU6
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
