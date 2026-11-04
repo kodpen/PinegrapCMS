@@ -201,3 +201,27 @@ function test_booking_widget_registered()
 		pg_assert_contains("'" . $part . "'", $js, 'the editor offers part ' . $part);
 	}
 }
+
+function test_booking_widget_details_clean()
+{
+	$good = pg_booking_widget_details_clean(array('name' => "  Ada \n Lovelace ", 'email' => ' ada@example.com ', 'phone' => '+90 (532) 111-22-33', 'notes' => "First visit\r\nPlease call", 'consent' => true));
+	pg_assert_same(array(), $good['errors'], 'a full form passes');
+	pg_assert_same('Ada Lovelace', $good['values']['name'], 'spaces folded');
+	pg_assert_same('ada@example.com', $good['values']['email']);
+	pg_assert_same('+90 (532) 111-22-33', $good['values']['phone']);
+	pg_assert_same("First visit\nPlease call", $good['values']['notes'], 'line ends kept as \n');
+
+	$empty = pg_booking_widget_details_clean(array());
+	pg_assert_same(array('name', 'email'), array_keys($empty['errors']), 'name and e-mail are needed; no consent box sent, none asked');
+
+	$bad = pg_booking_widget_details_clean(array('name' => 'A', 'email' => 'not-mail', 'phone' => 'call me', 'consent' => false));
+	pg_assert_same(array('email', 'phone', 'consent'), array_keys($bad['errors']), 'bad e-mail, phone with letters, consent box left empty');
+
+	$long = pg_booking_widget_details_clean(array('name' => str_repeat('a', 150), 'email' => 'a@b.co', 'notes' => str_repeat('n', 3000), 'consent' => 'yes'));
+	pg_assert_same(100, mb_strlen($long['values']['name']), 'name cut to its column');
+	pg_assert_same(1000, mb_strlen($long['values']['notes']), 'notes bounded');
+	pg_assert_true(isset($long['errors']['consent']), 'only a true consent counts');
+
+	$arrays = pg_booking_widget_details_clean(array('name' => array('x'), 'email' => array('a@b.co')));
+	pg_assert_same(array('name', 'email'), array_keys($arrays['errors']), 'a list is no value');
+}
