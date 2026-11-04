@@ -3592,12 +3592,74 @@ function pg_comments_email_reply_ok($enabled, $allow_new, $replies_ready, $widge
 }
 
 /**
+ * The Fediverse likes and boosts of a thread as tokens, raw: each number
+ * ('' at none, so a pg-hide-if-empty element drops) and one line naming
+ * both ("3 likes · 1 boost", '' when there are none). Pure but for the
+ * translation.
+ *
+ * @param mixed $counts like, announce (pg_ap_reaction_counts())
+ * @return array __comments_likes_count, __comments_boosts_count, __comments_reactions_text
+ */
+function pg_comments_reaction_values($counts)
+{
+    $counts = is_array($counts) ? $counts : array();
+    $count = function ($key) use ($counts) {
+        return (isset($counts[$key]) && is_numeric($counts[$key])) ? max(0, (int) $counts[$key]) : 0;
+    };
+    $likes = $count('like');
+    $boosts = $count('announce');
+    $parts = array();
+
+    if ($likes > 0) {
+        $parts[] = lang(array('string' => ($likes === 1) ? '{var:1} like' : '{var:1} likes', 'vars' => array(pg_format_number($likes, 0))));
+    }
+
+    if ($boosts > 0) {
+        $parts[] = lang(array('string' => ($boosts === 1) ? '{var:1} boost' : '{var:1} boosts', 'vars' => array(pg_format_number($boosts, 0))));
+    }
+
+    return array(
+        '__comments_likes_count' => ($likes > 0) ? pg_format_number($likes, 0) : '',
+        '__comments_boosts_count' => ($boosts > 0) ? pg_format_number($boosts, 0) : '',
+        '__comments_reactions_text' => implode(' · ', $parts),
+    );
+}
+
+/**
+ * The Fediverse likes and boosts of the drawn thread (includes/fn/
+ * activitypub_comments.php): none on a site that never saved the Fediverse
+ * settings or has the account off, and none for a product's, a group's or
+ * an event's thread, which is never published.
+ *
+ * @param int    $page_id
+ * @param string $post_type the thread's item type
+ * @param int    $post_id
+ * @return array like, announce (int)
+ */
+function pg_comments_widget_reactions($page_id, $post_type, $post_id)
+{
+    $none = array('like' => 0, 'announce' => 0);
+
+    if (pg_config_text('ap_settings') === '') {
+        return $none;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_comments.php');
+
+    if (!pg_ap_enabled()) {
+        return $none;
+    }
+
+    return pg_ap_reaction_counts(pg_ap_thread_objects(pg_ap_site(), $page_id, $post_type, $post_id));
+}
+
+/**
  * The thread tokens of a comment e-mail, raw: one comment, the thread
  * page's label, intro and closed message, the name of the product, group
  * or event the thread is about ('' for a page's or a record's); the
  * visitor's (the featured and sign-in links, the name they post as, the
- * comment they answer, the watcher count) are ''. Pure but for the
- * translation.
+ * comment they answer, the watcher count) and the Fediverse likes and boosts
+ * are ''. Pure but for the translation.
  *
  * @param mixed $settings  pg_comments_settings() of the thread page
  * @param mixed $item_name pg_comment_item_name() of the thread
@@ -3625,7 +3687,7 @@ function pg_comments_email_thread_values($settings, $item_name = '')
         '__reply_to_name' => '',
         '__watcher_count_text' => '',
         '__comments_item_name' => (is_scalar($item_name) && !is_bool($item_name)) ? (string) $item_name : '',
-    );
+    ) + pg_comments_reaction_values(array());
 }
 
 /**
@@ -4856,7 +4918,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         '__reply_to_name' => $reply_name,
         '__watcher_count_text' => ($watching_on && !$search) ? pg_comments_watcher_count_text($watcher_count, $is_watcher, $label_lower) : '',
         '__comments_item_name' => pg_comment_item_name($post_type, $post_id),
-    );
+    ) + pg_comments_reaction_values(pg_comments_widget_reactions($page_id, $post_type, $post_id));
 
     // The comments of this page.
     $badge_label = defined('BADGE_LABEL') ? (string) BADGE_LABEL : '';

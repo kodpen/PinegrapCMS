@@ -12105,7 +12105,7 @@ const StyleDesigner = (function () {
                     '__watcher_count_text', '__comment_anchor', '__comment_file_name', '__comment_file_url', '__comment_file_size',
                     '__comment_seller_reply_html', '__comment_seller_reply_date', '__comment_reply_url', '__comment_parent_id',
                     '__comment_parent_name', '__comment_parent_url', '__comment_quote', '__comment_depth', '__comment_reply_count',
-                    '__comments_item_name'],
+                    '__comments_item_name', '__comments_likes_count', '__comments_boosts_count', '__comments_reactions_text'],
                 flags: ['comments_open', 'comments_closed', 'can_comment', 'must_sign_in', 'featured_view', 'has_featured', 'name_is_typed',
                     'name_is_chosen', 'name_is_fixed', 'rating_on', 'files_on', 'watching_on', 'is_replying', 'is_watching', 'not_watching',
                     'can_manage_watchers', 'is_email', 'comment_is_reply', 'comment_has_quote', 'comment_has_replies', 'comment_has_file',
@@ -14633,6 +14633,9 @@ const StyleDesigner = (function () {
         '__comments_title': _sdT('3 Comments'),
         '__comments_count': '3',
         '__comments_label_plural': _sdT('Comments'),
+        '__comments_likes_count': '3',
+        '__comments_boosts_count': '1',
+        '__comments_reactions_text': _sdT('3 likes · 1 boost'),
         // A list of recent comments.
         '__comment_thread_title': _sdT('How do I reset my password?'),
         '__comment_label': _sdT('Comment'),
@@ -40828,7 +40831,10 @@ const StyleDesigner = (function () {
             ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')],
             ['__reply_to_name',           _sdT('Name of the comment the form answers ("Replying to")')],
             ['__watcher_count_text',      _sdT('How many people are told of a new comment')],
-            ['__comments_item_name',      _sdT('Name of the product, product group or event the comments are about')]
+            ['__comments_item_name',      _sdT('Name of the product, product group or event the comments are about')],
+            ['__comments_likes_count',    _sdT('Fediverse likes of the page or record (empty at none)')],
+            ['__comments_boosts_count',   _sdT('Fediverse boosts of the page or record (empty at none)')],
+            ['__comments_reactions_text', _sdT('Fediverse likes and boosts in one line ("3 likes · 1 boost")')]
         ]},
         { label: _sdT('Links (href)'), tokens: [
             ['__comments_show_all_url',      _sdT('Show all comments (featured filter only; the link drops otherwise)')],
