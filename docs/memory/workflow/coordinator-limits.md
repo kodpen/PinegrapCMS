@@ -8,7 +8,7 @@ description: Coordinator rules: model and effort, the quota guard before a worke
 - Workers waited hours for a decision (one 9.5 hours), paying their whole context on every check-in; a worker with an open decision question now ends its session (`session-lifecycle.md`), so the decision must reach a new session.
 
 ## Which quota guard?
-- Before starting a worker the coordinator calls `get_session` on itself and reads `rate_limit_info`: a status other than `allowed` means no new worker until `resetsAt`. A session of its account that fails within a minute of its start is read as a limit hit: no new worker for 10 minutes, the owner told once.
+- Before starting a worker the coordinator calls `get_session` on itself and reads `rate_limit_info`: a refused status (`rejected`) means no new worker until `resetsAt`. A warning (`allowed_warning`) stops nothing: the window still has room, and a worker not started leaves it unspent. A session of its account that fails within a minute of its start is read as a limit hit: no new worker for 10 minutes, the owner told once.
 - Each coordinator keeps 4 to 10 workers busy, the count set each hour by the 5-hour quota (`coordinator-quota.md`, since 2026-11-02; 4 to 8 from 2026-11-01, 3 to 6 from 2026-10-31). Fewer than 4 only while the quota guard, the queue limit (CLAUDE.md, Working mode 8) or a lack of free steps stops a start. The queue rule (at most 6 of the 20 places per coordinator; 4 of 15 before 2026-10-28) stays.
 - Starts are staggered: at most one new worker a minute. The architect starts no sub-agents for the same reason.
 
