@@ -1573,7 +1573,7 @@
 
             html += '<div class="pg-pb-pr-attr border rounded-4 px-5 py-3 mb-3" data-attr-id="' + esc(attrId) + '">' +
                 '<div class="d-flex flex-wrap align-items-center gap-3">' +
-                '<span class="fw-semibold">' + esc(attrName) + '</span>' +
+                '<span class="fw-semibold text-break min-w-0">' + esc(attrName) + '</span>' +
                 '<select class="form-control form-control-sm pg-pb-pr-mode" aria-label="' + esc(attrName) + '">' +
                 choice('', label('No effect on price'), false) +
                 choice('set', label('Sets the price'), (setOwner !== '') && (setOwner !== attrId)) +

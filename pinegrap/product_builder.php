@@ -2846,9 +2846,9 @@ function pg_pb_render_attribute_card($attribute, $selected_option_ids = array(),
             <div class="card-body py-3 px-5">
 
                 <div class="d-flex align-items-center gap-3 mb-3">
-                    <span class="fw-semibold">' . h($attribute['name']) . '</span>
+                    <span class="fw-semibold text-break min-w-0">' . h($attribute['name']) . '</span>
                     <span class="badge theme-primary pg-pb-attr-count d-none">0</span>
-                    <div class="ms-auto d-flex align-items-center gap-1">
+                    <div class="ms-auto d-flex align-items-center gap-1 flex-shrink-0">
                         ' . ($single_choice
                             /* A product carries one option per attribute, so
                                "select all" would be a one-click way to describe
@@ -3530,6 +3530,15 @@ function pg_pb_render_styles()
             /* Wireframe previews. Grey bars, not a copy of the storefront —
                see pg_pb_render_preview(). Sized to the side column: the point is
                "what will a visitor see roughly", not a rendering. */
+            /* Attribute name tokens under the SKU and description
+               templates. A .btn does not wrap, so a long attribute name made
+               one pill wider than its column and the page scrolled sideways. */
+            .pg-pb-token {
+                white-space: normal;
+                max-width: 100%;
+                overflow-wrap: anywhere;
+                text-align: start;
+            }
             .pg-pb-wf-caption {
                 font-size: .7rem;
                 text-transform: uppercase;
