@@ -1734,6 +1734,8 @@
     "{var:1} {var:2} is not a working day.": "{var:1} {var:2} mesai günü değil.",
     "{var:1} {var:2} were skipped because they belong to another user.": "{var:1} {var:2} başka bir kullanıcıya ait olduğu için atlandı.",
     "{var:1} {var:2} will be notified when a {var:3} is added.": "{var:1} {var:2}, bir {var:3} eklendiğinde bilgilendirilecek.",
+    "{var:1} {var:2} {var:3}": "{var:3} {var:1} {var:2}",
+    "{var:1} {var:2} {var:3}, at {var:4}": "{var:3} {var:1} {var:2}, saat {var:4}",
     "{var:1} {var:3} have been imported, and {var:2} {var:3} have been updated.": "{var:1} {var:3} içe aktarıldı ve {var:2} {var:3} güncellendi.",
     "{var:1} · Workspace ({var:2})": "{var:1} · Çalışma Alanı ({var:2})",
     "{var:1} · due in {var:2} d": "{var:1} · {var:2} gün içinde",
