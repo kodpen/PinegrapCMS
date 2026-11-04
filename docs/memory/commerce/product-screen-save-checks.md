@@ -18,7 +18,7 @@ Label Column Width is empty, 0 (an old stored value, read as none) or up to
 refused: their readers dropped the sign and stored it positive. Weight and
 dimensions: digits and separators only, at most 99999999.9999 as pounds or
 inches (`pg_pb_measure_from_input()`); `1e5` was stored as 15 and a big
-figure cut to the column's top (#R02PR).
+figure cut to the column's top (#6527).
 
 ## Why are the quantities checked against each other?
 
@@ -43,7 +43,7 @@ set with no combination.
 No option ticked posts `variants_json` `[]`; the script also posts
 `pg_pb_attributes_posted=1`, and only with both (`pg_pb_attributes_cleared()`)
 does `pg_pb_update_product()` delete the product's `products_attributes_xref`
-rows; before, the last option came back ticked (#R02PR).
+rows; before, the last option came back ticked (#6527).
 
 ## Which BCC message is shown?
 
@@ -71,9 +71,9 @@ address (#5274).
 twice with `pg_product_attribute_form_duplicate_label()`, as the attribute
 screens do (#5273). `create_option` (the card's inline add) adds
 `pg_product_attribute_form_label_taken()` to its SQL `=`, whose collation
-tells `I` from `ı` (#R02PR).
+tells `I` from `ı` (#6527).
 
 ## Can a binned product be duplicated?
 
 No: `duplicate_product.php` refuses a product in the Recycle Bin and Edit
-Product leaves Duplicate out of its toolbar; the copy came out live (#R02PR).
+Product leaves Duplicate out of its toolbar; the copy came out live (#6527).
