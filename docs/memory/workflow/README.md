@@ -56,7 +56,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-25.md: Decisions list, product part 25 (2026-11-03 evening on): bookings on the Workspace calendar, reward points of a cancelled order, hand rows of a group filled by rules; the key reset warning
 - decisions-made-product-26.md: Decisions list, product part 26 (2026-11-04 on): the starter dumps stay deletable in the Backup Manager, with a confirmation that names the consequence
 - decisions-made-product-27.md: Decisions list, product part 27 (2026-11-04 midday on): image editor rail groups, Import, SVG layer, context menu; group-join triggers; no Delete for a store credit card on the gift card screen
-- decisions-made-product-28.md: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled; the new logo
+- decisions-made-product-28.md: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled; the new logo; the image editor's selection bar
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14

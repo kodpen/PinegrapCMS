@@ -22,4 +22,5 @@ description: Steps E23b, E30-E32, E31b of plans/image-editor.md: Fotoğraf and V
 
 - E32 (M) Context menu (owner 2026-11-04). `free` once E23b is merged.
   - A right click on the stage, a rail item or a scene (a long press on touch, Shift+F10, the menu key) opens a menu built from the tool and the selection: on layers cut, copy, paste, duplicate, delete, order, lock, hide, align and the type's commands (Combine shapes with two areas or more, Convert to outlines, Expand a warp, Break apart an SVG); on the empty canvas paste, select all, Import, canvas size, fit; on a group item its modes; on a scene duplicate, delete, earlier, later. Text fields keep the browser's menu.
+  - The commands for layers, the picture and an area start from `M.actionList()`, which the small screen's selection bar already shows (`ui/image-editor-actions.md`): the menu adds the rest.
   - Tests: the items for a tool and a selection (model); browser on desktop and phone, keys and focus (role menu).
