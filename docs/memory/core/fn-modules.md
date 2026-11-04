@@ -46,6 +46,7 @@ description: Generated from the module field of the memory files: each includes/
 - `cloud_file_picker`: [[cloud-file-picker]], [[cloud-file-picker-onedrive]]
 - `cloudflare_tools`: [[cloudflare-image-vary-rule]], [[cloudflare-tools-failed-reads]], [[panel-turkish-terms-2]]
 - `collections`: [[collection-references]]
+- `comment_list_edit`: [[list-table-quick-edit-comments]]
 - `comments`: [[comment-anonymous-name]], [[comment-label-stored-and-mail-line]], [[comment-moderation-recycle-bin]], [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-item-threads]], [[comments-widget-pages]], [[comments-widget-product-page]], [[designed-page-comment-names]], [[product-review-order]]
 - `commerce_list`: [[list-table-commerce-lists]], [[list-table-order-side-lists]]
 - `commission_list`: [[affiliate-approval-and-commission-edit]], [[api-commission-writes]], [[commission-list-paging]], [[order-cancel-commissions]]
