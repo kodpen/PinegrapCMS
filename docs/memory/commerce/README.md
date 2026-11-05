@@ -69,6 +69,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - cart-quotes-screens.md: Cart quote list and new-quote form details: the products cell, New link confirmation, a deleted contact, quantity checks and redraw
 - cart-quotes.md: Cart quotes (Sepet teklifi): cart_quotes / cart_quote_items, the hashed link, cart_quote.php (GET confirm, POST fills the cart), plan rules, ordered on completion, contact holder, export and erasure
 - cart-save-for-later.md: Opt-in Save for Later: cart_action.php endpoint, pg_order_item_active_sql() in every cart and checkout reader, what still counts a saved line, lines dropped when the order is placed (#732).
+- cart-stock-below-minimum.md: Checkout stock check against a product's minimum quantity: a line the stock can only cover below the minimum is removed, not cut (bundle path); the plain check_inventory() path still cuts it
 - cart-tax-estimate.md: The cart widget's tax estimate (pg_cart_estimate_tax): stored line taxes while each taxable line has one that fits today's amount, else the default-rate preview (#3455, PRs #3530, #3920)
 - cart-widget-low-stock.md: Cart widget low-stock warning (define, tokens, exact condition), cart query stock columns and out_of_stock_message.
 - cart-widget-payment-plan-and-gates.md: Who writes cart recurring payment plan columns, the Messages-node-before-loop liveform snapshot rule, and the double gate for staff-only offline payment checkbox.
