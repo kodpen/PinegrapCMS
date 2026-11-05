@@ -116,6 +116,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
 - mail-bounces.md: The bounce record (mail_bounces, one row per address) and the send gate the mail queue and campaigns ask before a send; complaint withdraws e-mail consent; resubscribe or address change clears
 - mail-failure-reason.md: Screens that send an e-mail at once show the mail server's reason on failure through pg_mail_failure_sentence(), not a pointer at the log
+- mail-merge-values-once.md: replace_variables() fills every ^^field^^ in one pass; a filled-in value is never read again as a field.
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
 - mail-transport-failure.md: PHP mail() failing with no SMTP server set is permanent, stores the product sentence, sends no sender notice, and the mail queue screen warns with a link to SMTP Settings
 - mail-transport-webhooks.md: mail_webhook.php — bounce, complaint and delivery reports of the API mail transports into the bounce record; URL key, Mailgun/Resend signatures, replays, SES subscription
