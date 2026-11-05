@@ -217,7 +217,7 @@ function pg_push_subscription_save($user_id, $endpoint, $p256dh, $auth, $user_ag
 	// ending this session from the list - can take the subscription with it.
 	$selector = '';
 
-	if (isset($_COOKIE['software']['auth'])) {
+	if (isset($_COOKIE['software']['auth']) && is_string($_COOKIE['software']['auth'])) {
 		$parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
 		$selector = (string) $parts[0];
 	}
