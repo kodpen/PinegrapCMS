@@ -4096,6 +4096,7 @@
     "The report covers at most two years at a time.": "Rapor bir seferde en fazla iki yılı kapsar.",
     "The report covers at most two years at a time; the end date was brought forward.": "Rapor bir seferde en fazla iki yılı kapsar; bitiş tarihi öne alındı.",
     "The report covers at most {var:1} days at a time.": "Rapor bir seferde en fazla {var:1} günü kapsar.",
+    "The report groups orders by up to three levels, each sorted on its own.": "Rapor siparişleri, her biri kendi sıralamasıyla en çok üç düzeyde gruplar.",
     "The report lists a known limitation": "Rapor bilinen bir kısıtlama listeliyor",
     "The report lists no known limitation": "Rapor bilinen bir kısıtlama listelemiyor",
     "The report of the month is shared here once the invoices and the collections are checked.": "Faturalar ve tahsilatlar kontrol edilince ayın raporu burada paylaşılır.",
