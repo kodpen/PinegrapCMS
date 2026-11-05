@@ -40,6 +40,7 @@ if (!isset($_POST['submit'])) {
     $query =
         "SELECT
             user.user_id,
+            user.user_email,
             contacts.id as contact_id,
             contacts.affiliate_approved
         FROM user
@@ -48,6 +49,7 @@ if (!isset($_POST['submit'])) {
     $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $user_id = $row['user_id'];
+    $current_email_address = $row['user_email'];
     $contact_id = $row['contact_id'];
     $existing_affiliate_approved = $row['affiliate_approved'];
 
@@ -129,9 +131,14 @@ if (!isset($_POST['submit'])) {
         }
     }
 
-    // check to see if e-mail address is already in use
-    $query = "SELECT user_id FROM user WHERE (user_email = ?) AND (user_username != ?)";
-    $result = db_q($query, array((string) $liveform->get_field_value('email_address'), (string) $_SESSION['sessionusername'])) or output_error('Query failed.');
+    // The address becomes the account's e-mail, which signs in like a
+    // username: it must not be another account's e-mail or username, or the
+    // sign-in lookup could find either account for it.
+    $query = "SELECT user_id FROM user WHERE ((user_username = ?) OR (user_email = ?)) AND (user_id != ?)";
+    $result = db_q($query, array(
+        (string) $liveform->get_field_value('email_address'),
+        (string) $liveform->get_field_value('email_address'),
+        (string) (int) $user_id)) or output_error('Query failed.');
     if (mysqli_num_rows($result) > 0) {
         $liveform->mark_error('email_address', lang('That email address is already in use. Please enter a different email address.'));
         $liveform->assign_field_value('email_address', '');
@@ -315,13 +322,17 @@ if (!isset($_POST['submit'])) {
             }
         }
 
+        // A pending reset or set password link went to the old address: a
+        // new address ends it, so the old mailbox cannot set the password.
+        $sql_clear_reset_link = ((string) $liveform->get_field_value('email_address') !== (string) $current_email_address) ? ', token = NULL, token_timestamp = 0' : '';
+
         // update user
         $query = "UPDATE user
                  SET
                     user_email = ?,
                     user_contact = ?,
                     user_user = ?,
-                    user_timestamp = UNIX_TIMESTAMP()
+                    user_timestamp = UNIX_TIMESTAMP()" . $sql_clear_reset_link . "
                  WHERE user_id = ?";
         $result = db_q($query, array((string) $liveform->get_field_value('email_address'), (string) $contact_id, (string) $user_id, (string) $user_id)) or output_error('Query failed.');
         
