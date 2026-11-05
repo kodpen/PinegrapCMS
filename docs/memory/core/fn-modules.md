@@ -208,7 +208,7 @@ description: Generated from the module field of the memory files: each includes/
 - `subscriptions`: [[subscriptions]], [[subscriptions-iyzico]], [[subscriptions-later-start]], [[subscriptions-stripe]]
 - `subscriptions_account`: [[subscriptions-account]]
 - `subscriptions_operator`: [[subscriptions-operator-screen]], [[subscriptions-operator-words-errors]]
-- `svg_sanitize`: [[image-editor-svg]]
+- `svg_sanitize`: [[image-editor-svg-sanitize]]
 - `text_search`: [[capital-i-search-term]], [[find-and-replace-architecture]], [[find-and-replace-results]]
 - `theme_list_edit`: [[list-table-quick-edit-themes]]
 - `translate`: [[error-screen-language-and-status]]
