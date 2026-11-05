@@ -16,4 +16,7 @@ description: Per-document template settings in erp_settings.php (config.erp_<doc
 ## How is the placeholder reference built?
 - From the data itself: `erp_settings_placeholders_from_data()`. An ordered list (`array_keys === range`) is shown as a block with the first element's fields joined by " › "; bool → Doğru/Boş; a value is cut to 60 characters (like `logo_data_uri`). `seller.logo_data_uri` is large but harmless because it is cut.
 
+## Can a value bring placeholders into a document?
+- No. `erp_template_render()` prints every value with its `{` masked (`erp_template_mask()`, `ERP_TEMPLATE_BRACE_MASK`) and unmasks once at the end. Before, a section's output was scanned again by the outer passes, so an account address typed as `{{{account.title}}}` (from a checkout) printed the title unescaped in `get_erp_invoice_pdf.php?html=1`, the PDF and the e-mail. Test: `tests/erp_template_render_test.php`.
+
 Related: docs/memory/erp/erp-invoice-document-pdf.md
