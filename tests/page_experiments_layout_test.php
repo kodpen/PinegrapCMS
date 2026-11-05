@@ -28,12 +28,13 @@ function test_page_experiments_has_form_and_status_columns()
 
 	$form = strpos($source, '<div class="col-12 lg:col-8 2xl:col-9 order-1">');
 	$status = strpos($source, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
-	$bar = strpos($source, '<div class="col-12 order-3 position-sticky');
+	$bar = strpos($source, '$output_save_bar . \'', (int) $status);
 
 	pg_assert_true($form !== false, 'the form column is there');
 	pg_assert_true($status !== false, 'the status column is there');
-	pg_assert_true($bar !== false, 'the save bar is there');
-	pg_assert_true($form < $status && $status < $bar, 'form column, status column, save bar in that order');
+	pg_assert_true($bar !== false, 'the save bar is printed after the status column');
+	pg_assert_contains('<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">', $source, 'the save bar sticks to the bottom');
+	pg_assert_true($form < $status, 'form column before status column');
 	pg_assert_contains('<div class="position-sticky my-7" style="top:3.3rem;">', $source, 'the status column sticks below the top bar');
 
 	foreach (array('id="button_bar"', '$output_form', '$output_experiments') as $part) {
@@ -48,7 +49,7 @@ function test_page_experiments_form_fields_are_form_field_boxes()
 
 	foreach (array('name', 'draft_page_id', 'goal_kind', 'goal_target', 'weight_b') as $field) {
 		pg_assert_true(
-			(bool) preg_match('/<div class="form-field[^"]*"[^>]*>\s*\'\s*\.\s*\$liveform->output_field\(array\(\'type\' => \'[a-z]+\', \'name\' => \'' . $field . '\'/', $source),
+			(bool) preg_match('/<div class="form-field[^"]*"[^>]*>\s*<label[^>]*>(?:(?!form-field).)*?<\/label>\s*\'\s*\.\s*\$liveform->output_field\(array\(\'type\' => \'[a-z]+\', \'name\' => \'' . $field . '\'/s', $source),
 			$field . ' sits in a form-field box'
 		);
 	}
