@@ -282,3 +282,102 @@ function pg_gift_card_form_delete_refusal($gift_card)
 
     return '';
 }
+
+/**
+ * Writes a gift card's balance, expiration date and notes: the one save of
+ * the gift card screen (edit_gift_card.php) and of the list's quick edit
+ * (pg_gift_card_quick_update()), stamped with who made it.
+ *
+ * The balance is written only when it differs from balance_was, and then
+ * only over that balance: an order takes its amount off with
+ * balance - amount, so a save must not put a spent amount back. A null
+ * balance_was (a form opened before the field existed) writes it as typed.
+ * With notes_was, the save only lands on those notes: cancelling the order
+ * that bought a card adds a line to them.
+ *
+ * Nothing is written when a guard does not hold; the row read afterwards
+ * tells which.
+ *
+ * @param int   $id
+ * @param array $save    'balance' (minor units), 'balance_was' (minor units
+ *                       or null), 'expiration_date' (as
+ *                       pg_gift_card_form_expiration() returns it), 'notes',
+ *                       and optionally 'notes_was'
+ * @param int   $user_id
+ * @return array 'ok' => bool; 'field' => 'balance' (it changed meanwhile),
+ *               'notes' (they changed meanwhile) or '' (the write failed);
+ *               'balance' => the balance stored now, in minor units
+ */
+function pg_gift_card_form_write($id, array $save, $user_id)
+{
+    $id = (int) $id;
+    $balance = (int) $save['balance'];
+    $balance_was = $save['balance_was'];
+    $guard_balance = ($balance_was !== null);
+    $write_balance = !$guard_balance || ((int) $balance_was !== $balance);
+    $guard_notes = array_key_exists('notes_was', $save);
+
+    $params = $write_balance ? array((string) $balance) : array();
+    $params = array_merge($params, array((string) $save['expiration_date'], (string) $save['notes'], (string) (int) $user_id, (string) $id));
+
+    if ($write_balance && $guard_balance) {
+        $params[] = (string) (int) $balance_was;
+    }
+
+    if ($guard_notes) {
+        $params[] = (string) $save['notes_was'];
+    }
+
+    $done = db_q(
+        "UPDATE gift_cards
+        SET
+            " . ($write_balance ? "balance = ?," : '') . "
+            expiration_date = ?,
+            notes = ?,
+            last_modified_user_id = ?,
+            last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE id = ?"
+        . (($write_balance && $guard_balance) ? " AND balance = ?" : '')
+        . ($guard_notes ? " AND notes = ?" : ''),
+        $params);
+
+    $affected = $done ? (int) mysqli_affected_rows(db::$con) : -1;
+    $stored = db_item("SELECT balance, notes FROM gift_cards WHERE id = '" . $id . "'");
+
+    return pg_gift_card_form_write_result($affected, $stored, $save, $write_balance);
+}
+
+/**
+ * Whether a gift card's save landed (pg_gift_card_form_write()). A row the
+ * UPDATE changed landed. One it left alone either already held these values
+ * (saved twice within a second) or failed a guard, which the row read
+ * afterwards tells. Pure.
+ *
+ * @param int        $affected      rows the UPDATE changed, -1 when it failed
+ * @param array|null $stored        balance and notes read after it
+ * @param array      $save          the values written
+ * @param bool       $write_balance whether the balance was part of the write
+ * @return array 'ok', 'field', 'balance' as pg_gift_card_form_write() returns them
+ */
+function pg_gift_card_form_write_result($affected, $stored, array $save, $write_balance)
+{
+    if (($affected < 0) || !is_array($stored)) {
+        return array('ok' => false, 'field' => '', 'balance' => is_array($stored) ? (int) $stored['balance'] : 0);
+    }
+
+    $result = array('ok' => true, 'field' => '', 'balance' => (int) $stored['balance']);
+
+    if ($affected > 0) {
+        return $result;
+    }
+
+    if ($write_balance && ((int) $stored['balance'] !== (int) $save['balance'])) {
+        return array('ok' => false, 'field' => 'balance') + $result;
+    }
+
+    if (array_key_exists('notes_was', $save) && ((string) $stored['notes'] !== (string) $save['notes'])) {
+        return array('ok' => false, 'field' => 'notes') + $result;
+    }
+
+    return $result;
+}

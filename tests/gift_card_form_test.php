@@ -118,9 +118,9 @@ function test_gift_card_form_expiration()
 		pg_assert_same('2027-12-15', pg_gift_card_form_expiration('12/15/2027'), 'month first with slashes');
 	}
 
-	foreach (array('add_gift_card.php', 'edit_gift_card.php') as $file) {
+	foreach (array('add_gift_card.php' => 'e(pg_gift_card_form_expiration($expiration_date))', 'edit_gift_card.php' => "'expiration_date' => pg_gift_card_form_expiration(\$expiration_date)") as $file => $stores) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-		pg_assert_contains('e(pg_gift_card_form_expiration($expiration_date))', $source, $file . ' stores the checked date');
+		pg_assert_contains($stores, $source, $file . ' stores the checked date');
 		pg_assert_false(strpos($source, "prepare_form_data_for_input(\$expiration_date, 'date')") !== false, $file . ' no longer pads an unchecked date');
 	}
 }
@@ -162,8 +162,10 @@ function test_gift_card_form_edit_keeps_the_balance_guard()
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_gift_card.php');
 
 	pg_assert_contains("'type' => 'hidden', 'name' => 'balance_was'", $edit, 'the edit screen draws balance_was');
-	pg_assert_contains("AND balance = '\" . (int) \$balance_was . \"'\")", $edit, 'a changed balance is written only over the one the screen opened with');
-	pg_assert_contains("\$liveform->assign_field_value('balance_was', (string) \$now);", $edit, 'a stale save takes the current balance');
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/gift_card_form.php');
+	pg_assert_contains("'balance_was' => is_numeric(\$balance_was) ? (int) \$balance_was : null", $edit, 'the screen saves over the balance it opened with');
+	pg_assert_contains('" AND balance = ?"', $form, 'a changed balance is written only over that one (pg_gift_card_form_write())');
+	pg_assert_contains("\$liveform->assign_field_value('balance_was', (string) \$written['balance']);", $edit, 'a stale save takes the current balance');
 	pg_assert_contains("output_error(lang('Record not found.')", $edit, 'the not-found guard');
 }
 

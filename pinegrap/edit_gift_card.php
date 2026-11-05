@@ -412,46 +412,35 @@ if (!$_POST) {
 
         // The balance is written only when it was changed on this screen,
         // and then only over the amount the screen opened with: an order or
-        // the API may have changed it since. A form without the field (opened
-        // before this check existed) writes it as before.
+        // the API may have changed it since (pg_gift_card_form_write()). A
+        // form without the field (opened before this check existed) writes
+        // it as before.
         $balance_was = $liveform->get_field_value('balance_was');
-        $balance_set = '';
-        $balance_before = null;
+        $balance_before = is_numeric($balance_was) ? (int) $balance_was : (int) $gift_card['balance'];
 
-        if (!is_numeric($balance_was) || ((int) $balance_was !== $balance)) {
-            $balance_before = is_numeric($balance_was) ? (int) $balance_was : (int) $gift_card['balance'];
+        $written = pg_gift_card_form_write($gift_card['id'], array(
+            'balance' => $balance,
+            'balance_was' => is_numeric($balance_was) ? (int) $balance_was : null,
+            'expiration_date' => pg_gift_card_form_expiration($expiration_date),
+            'notes' => $notes), USER_ID);
 
-            if (is_numeric($balance_was)) {
-                db("UPDATE gift_cards SET balance = '" . $balance . "' WHERE id = '" . (int) $gift_card['id'] . "' AND balance = '" . (int) $balance_was . "'");
-                $now = (int) db_value("SELECT balance FROM gift_cards WHERE id = '" . (int) $gift_card['id'] . "'");
-
-                if ($now !== $balance) {
-                    $liveform->assign_field_value('balance_was', (string) $now);
-                    $liveform->mark_error('balance', lang(array(
-                        'string' => 'The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.',
-                        // Plain text: the field's own feedback escapes the message.
-                        'vars'   => html_entity_decode(pg_format_money($now / 100, BASE_CURRENCY_SYMBOL), ENT_QUOTES, 'UTF-8'))));
-                    go($_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
-                }
+        if (!$written['ok']) {
+            if ($written['field'] === 'balance') {
+                $liveform->assign_field_value('balance_was', (string) $written['balance']);
+                $liveform->mark_error('balance', lang(array(
+                    'string' => 'The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.',
+                    // Plain text: the field's own feedback escapes the message.
+                    'vars'   => html_entity_decode(pg_format_money($written['balance'] / 100, BASE_CURRENCY_SYMBOL), ENT_QUOTES, 'UTF-8'))));
             } else {
-                $balance_set = "balance = '" . $balance . "',";
+                $liveform->mark_error('', lang('The value could not be saved.'));
             }
-        }
 
-        // Update gift card properties.
-        db(
-            "UPDATE gift_cards
-            SET
-                " . $balance_set . "
-                expiration_date = '" . e(pg_gift_card_form_expiration($expiration_date)) . "',
-                notes = '" . e($notes) . "',
-                last_modified_user_id = '" . USER_ID . "',
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . e($liveform->get_field_value('id')) . "'");
+            go($_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
+        }
 
         // A changed balance of store credit reaches the audit trail, as
         // every other change of a customer's credit does.
-        if (($balance_before !== null) && ($balance_before !== $balance) && ((int) $gift_card['credit_user_id'] > 0)) {
+        if (($balance_before !== $balance) && ((int) $gift_card['credit_user_id'] > 0)) {
             $credit_before = array(
                 'user_id' => (int) $gift_card['credit_user_id'],
                 'kind' => $gift_card['credit_kind'],
