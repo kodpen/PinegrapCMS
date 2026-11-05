@@ -65,6 +65,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
 - content-translation-result-check.md: pg_tr_result_check(): when a translation of a site text is refused or marked suspicious, and why a brand name the glossary keeps is not suspicious
 - content-translation-uses.md: translation_uses (where a text of the front-end translation is drawn): owner types, who rewrites them, and how a deleted or binned page's texts leave the counts and the pending list
+- cross-site-json-requests.md: api.php and booking_slots.php refuse a browser's cross-site request (pg_request_cross_site()), because the session cookie can be SameSite=None after a checkout.
 - css-bundles.md: The panel stylesheet served minified (pg_css_bundles(), tools/build_css.php, tools/css_minify.php): what the minifier removes and keeps, src mode, the CI and pre-push check, how it was proved equal
 - csv-escape-argument.md: Every fgetcsv(), fputcsv() and str_getcsv() call passes enclosure '"' and escape '\\': PHP 8.4 deprecates leaving the escape out; why '\\' and not '', and the test that holds it
 - csv-exports.md: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset and byte order mark) and stamp times with pg_csv_export_time() (site clock); pg_csv_open() steps over the mark on import
