@@ -44,6 +44,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
 - backup-manager-names-and-list.md: Backup Manager: the folder name (no basename, 100 characters), reserved names, starter-dump delete, the overwrite question, step errors, list time and order, incomplete folders
 - backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
+- backup-remote-stored-secret.md: Settings › Backups: an empty FTP password box keeps the stored password only for the same host, port and TLS; the S3 secret key is kept as is, since SigV4 never sends it
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
 - ca-bundle-panel-update.md: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): https-only source, validation checks, atomic write to data/cacert.pem.
