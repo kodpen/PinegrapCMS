@@ -2143,14 +2143,16 @@ function ws_change_check($viewer, $type, $action, $record, $values)
                 }
             }
 
-            // Another user signing in with the same address would make both
-            // accounts unreachable by it.
+            // A username and an e-mail address share one sign-in namespace
+            // (pg_user_write_problem()): an address that is another user's
+            // address or username would let one identifier match two
+            // accounts.
             if (array_key_exists('email', $values)) {
                 if ((string) $values['email'] === '') {
                     return lang('A user needs an e-mail address.');
                 }
 
-                if ((int) db_value("SELECT COUNT(*) FROM user WHERE user_email = '" . e($values['email']) . "' AND user_id <> '" . (int) $record['id'] . "'") > 0) {
+                if ((int) db_value("SELECT COUNT(*) FROM user WHERE ((user_email = '" . e($values['email']) . "') OR (user_username = '" . e($values['email']) . "')) AND user_id <> '" . (int) $record['id'] . "'") > 0) {
                     return lang('Another user already has this e-mail address.');
                 }
             }

@@ -179,3 +179,18 @@ function test_workspace_changes_order_writer_uses_the_helpers()
 	pg_assert_same(1, count($writes[0]), 'one status write of its own');
 	pg_assert_contains("AND status = '\" . e(\$record['status']) . \"'", isset($writes[0][0]) ? $writes[0][0] : '', 'guarded by the status it was read with');
 }
+
+// A user's new e-mail address is refused when it is another account's
+// address or its username: either signs in, so one identifier would match two
+// accounts (the namespace pg_user_write_problem() keeps on the panel).
+function test_workspace_changes_user_email_checked_against_usernames()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
+	$start = strpos($source, 'function ws_change_check(');
+	$check = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+	$user = substr($check, strpos($check, "case 'user':"), strpos($check, "case 'form':") - strpos($check, "case 'user':"));
+
+	pg_assert_contains("user_email = '\" . e(\$values['email']) . \"'", $user, 'another account\'s address');
+	pg_assert_contains("user_username = '\" . e(\$values['email']) . \"'", $user, 'and another account\'s username');
+	pg_assert_contains("user_id <> '\" . (int) \$record['id'] . \"'", $user, 'the account itself excluded');
+}
