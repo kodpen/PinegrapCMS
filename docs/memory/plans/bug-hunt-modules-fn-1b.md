@@ -42,7 +42,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `order_view`: clean (callers escape)
 
-- `output`: done (#5568: page panel Next/Skip Page links did not encode the page name; a deleted skip page linked to the root); clean for list sort, quick edit, back URL, filter, period nav, license check and card; menu helpers clean; header done (#5614: an OAuth client name ended <title> on the consent screen)
+- `output`: done (#5568: page panel Next/Skip Page links did not encode the page name; a deleted skip page linked to the root); clean for list sort, quick edit, back URL, filter, period nav, license check and card; menu helpers clean; header done (#5614: an OAuth client name ended <title> on the consent screen); second round clean (quick edit text, several-line and several-choice reading, page panel facts, actions and preview lists, logo, asset and srcset versions, script bundles, toolbar)
 
 - `page_bulk`: clean
 
