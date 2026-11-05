@@ -7373,6 +7373,9 @@ function pg_js_bundles()
         'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js', 'assets/js/pg_list_table_edit.js'),
         // The Prototype view's hotspot collector (window.PGProtoHotspots).
         'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
+        // Live pictures of designs and templates (window.PGLivePicture,
+        // includes/fn/design_previews.php).
+        'assets/js/pg_live_picture.min.js'         => array('assets/js/pg_live_picture.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
