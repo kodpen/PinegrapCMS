@@ -31,6 +31,15 @@ $liveform = new liveform('import_email_campaign_profiles');
 // If the form has not been submitted, then output it.
 if (!$_POST) {
 
+    // One row of the Summary: a label and its value.
+    $status_row = function ($label, $value, $last) {
+        return '
+                                        <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                            <dt class="fw-normal">' . h($label) . '</dt>
+                                            <dd class="mb-0 fw-bold text-end text-break">' . $value . '</dd>
+                                        </div>';
+    };
+
     echo
     pg_page_shell([
         'title'=> lang('Import Campaign Profiles'),
@@ -43,49 +52,71 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('My Campaign Profiles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_email_campaign_profiles.php'), array('label' => lang('Import Campaign Profiles'))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->get_warnings() . '
-                ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <div class="alert theme-danger"><p class="mb-0">' . lang('Please be aware that existing campaign profiles will be updated if the name matches.') . '</p></div>
-                    </div>
-                </div>
-
-                <form name="form" method="post" enctype="multipart/form-data">
-                    ' . get_token_field() . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Import CSV') . '
+    <div class="row">
+        <div class="col-12">
+            ' . $liveform->output_errors() . '
+            ' . $liveform->get_warnings() . '
+            ' . $liveform->output_notices() . '
+            <form name="form" method="post" enctype="multipart/form-data">
+                ' . get_token_field() . '
+                <!-- Edit screen layout of product_builder.php: the form column, the sticky status column (Summary), the sticky save bar. -->
+                <div class="row">
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Import CSV') . '
+                            </h2>
+                            <div class="card-body pt-0">
+                                <div class="my-3">
+                                    <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
+                                    <input name="file" id="file" type="file" class="form-control" accept=".csv,.txt,text/csv" aria-describedby="file_help" required />
+                                    <div id="file_help" class="form-text">' . h(lang('The first row of the file names the columns; a name column is required. A file exported from the campaign profiles list can be imported as it is.')) . '</div>
+                                    ' . pg_upload_limit_hint() . '
                                 </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12  my-3">
-                                            <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
-                                            ' . pg_upload_limit_hint() . '
-                                        </div>
-                                    </div>
-                                </div>       
-                            </div> 
-                        </div> 
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_button" value="Import Campaign Profiles" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import') ) . '</span></button>
                             </div>
                         </div>
-                    </nav>
-                </form>
-            </div>
+                    </div>
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                        <div class="position-sticky" style="top:3.3rem;">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Summary') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <dl class="mb-0">'
+        . $status_row(lang('Campaign Profiles'), h(number_format((int) db_value("SELECT COUNT(*) FROM email_campaign_profiles"))), false)
+        . $status_row(lang('File'), '<span id="profile_import_summary_file">' . h(lang('None')) . '</span>', true) . '
+                                    </dl>
+                                    <p class="small fg-secondary mt-3 mb-0">' . lang('Please be aware that existing campaign profiles will be updated if the name matches.') . '</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                        <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                            <div class="container">
+                                <div class="btn-group flex-wrap justify-content-center">
+                                    <button type="submit" id="submit_import_products" name="submit_button" value="Import Campaign Profiles" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">file_upload</span><span class="pg-btn-label">' . lang('Import') . '</span></button>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </form>
+            <script>
+                // The Summary names the chosen file.
+                (function () {
+                    var box = document.getElementById("file");
+                    var file = document.getElementById("profile_import_summary_file");
+                    var none = file.textContent;
+                    box.addEventListener("change", function () {
+                        file.textContent = (box.files && box.files.length) ? box.files[0].name : none;
+                    });
+                })();
+            </script>
         </div>
-    
+    </div>
 </main>' .
     output_footer();
     
