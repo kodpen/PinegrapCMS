@@ -671,12 +671,17 @@ function pg_payment_paytr_refund_with($order, $amount, $settings, $http)
     if (($result === 'error') || ($result === 'failed')) {
         $code = (isset($body['err_no']) && is_scalar($body['err_no'])) ? trim((string) $body['err_no']) : '';
         $message = (isset($body['err_msg']) && is_scalar($body['err_msg'])) ? trim((string) $body['err_msg']) : '';
+        $error = ($message !== '') ? $message : lang('The payment was not accepted.');
 
+        // PayTR answers "failed" without a message when it has no payment
+        // with this merchant_oid. The panel shows the translated text; the
+        // raw message stays English for the log.
         if (($message === '') && ($result === 'failed')) {
             $message = 'no payment ' . $oid . ' at PayTR';
+            $error = lang(array('string' => 'PayTR has no payment {var:1}.', 'vars' => array($oid)));
         }
 
-        return pg_payment_failure(($message !== '') ? $message : lang('The payment was not accepted.'), array('message' => $message, 'code' => $code));
+        return pg_payment_failure($error, array('message' => $message, 'code' => $code));
     }
 
     return pg_payment_paytr_refund_unclear(is_array($body) ? 'HTTP ' . $status : 'HTTP ' . $status . ', not JSON', array('message' => 'HTTP ' . $status));

@@ -537,6 +537,7 @@
     "PayPal reports that capture {var:1} of {var:2} {var:3} was DENIED: nothing was taken. Do not ship it": "PayPal, {var:2} {var:3} tutarındaki {var:1} tahsilatının REDDEDİLDİĞİNİ bildiriyor: hiçbir ücret alınmadı. Siparişi göndermeyin",
     "PayTR could not be reached for order #{var:1}: {var:2}": "#{var:1} numaralı sipariş için PayTR'ye ulaşılamadı: {var:2}",
     "PayTR does not take payments in this currency.": "PayTR bu para biriminde ödeme almıyor.",
+    "PayTR has no payment {var:1}.": "PayTR'da {var:1} numaralı ödeme yok.",
     "PayTR payment {var:1} started for order #{var:2}{var:3}.": "#{var:2} numaralı sipariş için {var:1} PayTR ödemesi başlatıldı{var:3}.",
     "PayTR refunded {var:1} of payment {var:2} for order #{var:3}{var:4}.": "PayTR, #{var:3} numaralı siparişin {var:2} ödemesinden {var:1} iade etti{var:4}.",
     "PayTR refused the payment page for order #{var:1}: {var:2}": "PayTR, #{var:1} numaralı sipariş için ödeme sayfasını reddetti: {var:2}",

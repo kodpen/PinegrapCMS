@@ -467,6 +467,7 @@ function test_payment_paytr_refund_refusals_carry_paytrs_message()
 
 	pg_assert_false($answer['success']);
 	pg_assert_false($answer['unclear']);
+	pg_assert_same('PayTR has no payment PG42T1761730000.', $answer['error'], 'the refusal shown in the panel is translated text');
 	pg_assert_same('no payment PG42T1761730000 at PayTR', $answer['raw']['message']);
 }
 
