@@ -3532,6 +3532,36 @@ function pg_form_list_search_value($value, $multiple)
     return '';
 }
 
+// The query string a form list view's browse filter and pagination links
+// carry over from the current address: every parameter $skip($name) does not
+// refuse, a list as name[]=value pairs, joined with "&" and without the "?".
+// A nested list (?a[x][y]=1) is left out: the view reads none, and
+// urlencode() of an array throws a TypeError that took the page down.
+function pg_form_list_carry_query(array $parameters, callable $skip)
+{
+    $pairs = array();
+
+    foreach ($parameters as $name => $value) {
+        $name = (string) $name;
+
+        if ($skip($name)) {
+            continue;
+        }
+
+        if (is_array($value)) {
+            foreach ($value as $subvalue) {
+                if (!is_array($subvalue)) {
+                    $pairs[] = urlencode($name . '[]') . '=' . urlencode((string) $subvalue);
+                }
+            }
+        } else {
+            $pairs[] = urlencode($name) . '=' . urlencode((string) $value);
+        }
+    }
+
+    return implode('&', $pairs);
+}
+
 // The properties of one field tag in a form list's advanced search layout,
 // the text between the outer braces of {{...}}. The field tags the panel lists
 // are written in JavaScript object form ({name: 'subject', dynamic: true}),

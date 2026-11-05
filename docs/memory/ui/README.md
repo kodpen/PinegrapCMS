@@ -222,6 +222,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - form-field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php: wide layout with the type first, a Summary (form, type, name, Last Modified), what stays in the screens
 - form-item-view-layout.md: edit_form_item_view.php in the wide layout (B11) through includes/forms/form_item_view_form.php: layout card, sticky Summary and variables, save bar; what stays in the screen
 - form-item-view-variables.md: Variables a form item view layout (and form e-mail subject/body) can use: ^^field^^, conditional blocks, date and check box formats, and where the edit screen's clickable list comes from
+- form-list-view-carried-query.md: How a form list view's browse filter and pagination links carry the current query string, and the nested-list crash it fixed
 - form-list-view-field-columns.md: Which order-by and filter fields a form list view can store, the address_name ENUM widening and the screen's refusal of other values
 - form-mail-link-variables.md: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form e-mails: who gets a link, where and in which order they are filled in, why they are not standard fields (PR #1385)
 - form-names-distinct.md: A form field name is unique within its form as the database compares it (no case, no diacritics); every custom form picker tells same-named forms apart and marks binned ones
