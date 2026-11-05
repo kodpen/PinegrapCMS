@@ -2039,11 +2039,6 @@ $(document).ready(function () {
             options["info"] = true;
         }
 
-        // A list that names a panel action is paged on the server.
-        if ($('table.chart[data-pg-list-action]').length === 1) {
-            pgListServerOptions(options, $('table.chart[data-pg-list-action]'));
-        }
-
         // A list comes back on the page, length and search it was left on:
         // panel pages are sent no-store, so Back loads the screen again.
         // Every table.chart shares these options, so only a single list is
@@ -3034,14 +3029,6 @@ function edit_chart_content(action, name) {
     }
 }
 
-/**
- * DataTables options for a list paged on the server (includes/fn/list_paging.php).
- * The table names its panel action in data-pg-list-action and what the action
- * needs besides the page (the filter) in data-pg-list-params. Each draw asks
- * the action for one page with the page window and the search box; a row
- * comes back as its cells' content, with the cells' classes in DT_RowData.
- * Sorting stays the headings' links, so DataTables sends no order.
- */
 // The loading curtain of a list screen waits for its table
 // (pg_preloader_markup()); the first table drawn lifts it.
 function pgListCurtainDone() {
@@ -3050,80 +3037,13 @@ function pgListCurtainDone() {
     }
 }
 
-function pgListServerOptions(options, $table) {
-    var params = {};
-
-    try {
-        params = JSON.parse($table.attr('data-pg-list-params') || '{}') || {};
-    } catch (e) {
-        params = {};
-    }
-
-    options.serverSide = true;
-    options.searchDelay = 400;
-
-    options.ajax = function (request, callback) {
-        var body = $.extend({}, params, {
-            action: $table.attr('data-pg-list-action'),
-            token: software_token,
-            draw: request.draw,
-            start: request.start,
-            length: request.length,
-            search: (request.search && request.search.value) || ''
-        });
-
-        $.ajax({
-            contentType: 'application/json',
-            url: 'api.php',
-            type: 'POST',
-            dataType: 'json',
-            data: JSON.stringify(body)
-        }).done(function (response) {
-            if (response && (response.status === 'success')) {
-                callback(response);
-            } else {
-                pgListServerFailed(callback, request.draw, $table, response && response.message);
-            }
-        }).fail(function (xhr) {
-            pgListServerFailed(callback, request.draw, $table, xhr.responseJSON && xhr.responseJSON.message);
-        });
-    };
-
-    // The cells' classes and other attributes (a quick edit's data-pg-edit);
-    // cells holds hidden columns' cells too.
-    options.createdRow = function (row, data, index, cells) {
-        var classes = (data && data.DT_RowData && data.DT_RowData.pgCells) || [];
-        var attributes = (data && data.DT_RowData && data.DT_RowData.pgAttrs) || {};
-
-        for (var i = 0; (i < classes.length) && cells && (i < cells.length); i++) {
-            cells[i].className = classes[i];
-
-            for (var name in (attributes[i] || {})) {
-                if (Object.prototype.hasOwnProperty.call(attributes[i], name)) {
-                    cells[i].setAttribute(name, attributes[i][name]);
-                }
-            }
-        }
-    };
-
-    // Hints, menus and lazy pictures of the rows that just arrived.
-    $table.on('draw.dt', function () {
-        pgInitInjected($table.find('tbody'));
-
-        if ($.fn.Lazy) {
-            pgLazyStill($table.find('img.lazy'));
-            $table.find('img.lazy:not(.delayed)').Lazy(pgLazyOptions);
-        }
-    });
-}
-
-// A button of a row that came from the server asks its data-confirm-content
-// question here: the software-wide confirm handler binds at DOM ready to the
-// buttons on the page then, before these rows exist. A list table driver
-// row's button (a delete in the mail queue) is marked no-submit, so the rows
-// printed with the page are not asked twice.
+// A list table driver row's button (a delete in the mail queue) asks its
+// data-confirm-content question here: the software-wide confirm handler
+// binds at DOM ready to the buttons on the page then, before rows loaded
+// later exist. Such a button is marked no-submit, so the rows printed with
+// the page are not asked twice.
 $(function () {
-    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content], .pg-list-table button.no-submit[data-confirm-content]', function (event) {
+    $(document).on('click', '.pg-list-table button.no-submit[data-confirm-content]', function (event) {
         if (!window.confirm($(this).attr('data-confirm-content'))) {
             event.preventDefault();
         }
@@ -3312,12 +3232,6 @@ function pgListHeadingCopies(api) {
             .attr('inert', '')
             .find('a[href], button, input, select, textarea, [tabindex]').attr('tabindex', '-1');
     }
-}
-
-// An empty page with the reason in the table's empty row.
-function pgListServerFailed(callback, draw, $table, message) {
-    callback({ draw: draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
-    $table.find('tbody td.dt-empty').text(message || lang('Query failed.'));
 }
 
 function chart_checkbox_state_change() {
