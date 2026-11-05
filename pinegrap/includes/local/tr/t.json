@@ -4313,6 +4313,7 @@
     "The secure connection to claude.ai failed ({var:1}). Either this server does not trust the certificate, and CURL_CA_BUNDLE in data/config.php has to point at a root certificate list (data/cacert.pem), or an antivirus or a proxy on the machine scans HTTPS connections: leave the web server's PHP out of that scanning.": "claude.ai ile güvenli bağlantı kurulamadı ({var:1}). Ya bu sunucu sertifikaya güvenmiyor ve data/config.php içindeki CURL_CA_BUNDLE bir kök sertifika listesini (data/cacert.pem) göstermeli, ya da bilgisayardaki bir antivirüs veya vekil sunucu HTTPS bağlantılarını tarıyor: web sunucusunun PHP'sini bu taramanın dışında bırakın.",
     "The selected Ad Region was not found, so please select a different Ad Region.": "Seçilen Reklam Bölgesi bulunamadı, lütfen başka bir Reklam Bölgesi seçin.",
     "The selected Google account is no longer connected for Search Console.": "Seçilen Google hesabı artık Search Console için bağlı değil.",
+    "The selected arrival date is not available. Please select another one.": "Seçilen varış tarihi kullanılamıyor. Lütfen başka bir tarih seçin.",
     "The selected assortment option could not be found, so no products were duplicated.": "Seçilen Assortment seçeneği bulunamadı, bu yüzden hiçbir ürün çoğaltılmadı.",
     "The selected country was not found. Select a country.": "Seçilen ülke bulunamadı. Bir ülke seçin.",
     "The selected custom form could not be found. Please choose a different custom form.": "Seçilen özel form bulunamadı. Lütfen başka bir özel form seçin.",
