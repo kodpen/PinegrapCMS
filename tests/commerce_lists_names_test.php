@@ -55,7 +55,7 @@ function test_commerce_lists_names_tax_rate_percent()
 
 function test_commerce_lists_names_shipping_marks_read_yes()
 {
-	$source = commerce_lists_names_source('view_shipping_methods.php');
+	$source = commerce_lists_names_source('includes/fn/shipping_method_list_edit.php');
 
 	pg_assert_true(strpos($source, '<span class="material-icons">task_alt</span>') === false, 'bare task_alt ligature');
 	pg_assert_contains("<span class=\"material-icons\" aria-hidden=\"true\">task_alt</span><span class=\"visually-hidden\">' . h(lang('Yes')) . '</span>", $source);
