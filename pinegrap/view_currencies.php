@@ -18,6 +18,26 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/currency_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/currency_list_edit.php');
+
+// Every value the currency's screen changes is a field.
+$quick_edit = pg_currency_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen, with the currency screen's rights (validate_ecommerce_access())
+// and checks (pg_currency_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_currency_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -54,25 +74,7 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified' => 'currencies.last_modified_timestamp',
 ));
 
-// get all of the currency information. Join user_id with username
-$query =
-    "SELECT
-        currencies.id,
-        currencies.name,
-        currencies.base,
-        currencies.code,
-        currencies.symbol,
-        currencies.exchange_rate,
-        currencies.created_user_id,
-        currencies.created_timestamp,
-        currencies.last_modified_user_id,
-        currencies.last_modified_timestamp,
-        created_user.user_username as created_username,
-        last_modified_user.user_username as last_modified_username
-    FROM currencies
-    LEFT JOIN user as created_user ON currencies.created_user_id = created_user.user_id
-    LEFT JOIN user as last_modified_user ON currencies.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $order_by";
+$query = pg_currency_list_sql() . " ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
@@ -91,43 +93,15 @@ $currencies = pg_currency_list_sort($currencies, $sort_levels);
 $list_rows = array();
 
 foreach ($currencies as $currency) {
-
-    // The stored rate is units of this currency per 1 base unit; the
-    // reverse (1 USD = 49,95 TRY) is how a rate is usually quoted.
-    $output_inverse_rate = '';
-
-    if (($currency['base'] != 1) && ((float) $currency['exchange_rate'] > 0)) {
-        $output_inverse_rate = '<small class="d-block fg-secondary">1 ' . h($currency['code']) . ' = ' . pg_format_number(1 / (float) $currency['exchange_rate'], 4) . ' ' . h((string) BASE_CURRENCY_CODE) . '</small>';
-    }
-
-    $list_rows[] = array(
-        'id' => (int) $currency['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_currency.php?id=' . (int) $currency['id'] . '" data-pg-open>' . h(pg_currency_label($currency['name'])) . '</a>'),
-            'base' => pg_list_table_check_cell($currency['base'] == 1),
-            'code' => pg_list_cell(h($currency['code'])),
-            // The symbol is stored as HTML (an entity like &#36;).
-            'symbol' => pg_list_cell($currency['symbol']),
-            'exchange_rate' => pg_list_cell(pg_format_number((float) $currency['exchange_rate'], 5) . $output_inverse_rate, 'align-middle', array('data-pg-sort-value' => (float) $currency['exchange_rate'])),
-            'created' => pg_list_table_when_cell($currency['created_timestamp'], (string) $currency['created_username']),
-            'last_modified' => pg_list_table_when_cell($currency['last_modified_timestamp'], (string) $currency['last_modified_username']),
-        ),
-    );
+    $list_rows[] = array('id' => (int) $currency['id'], 'cells' => pg_currency_list_cells($currency, $quick_edit, (string) BASE_CURRENCY_CODE));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_currencies',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'base' => array('heading' => lang('Base'), 'kind' => 'check'),
-        'code' => array('heading' => lang('Code')),
-        'symbol' => array('heading' => lang('Symbol')),
-        'exchange_rate' => array('heading' => lang('Exchange Rate'), 'kind' => 'number'),
-        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_currency_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_currencies.php', 'columns' => $quick_edit),
 ));
 
 print

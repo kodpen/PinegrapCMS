@@ -313,6 +313,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-quick-edit-comments.md: Comments list quick edit (includes/fn/comment_list_edit.php): the fields, Published and schedule vs the publish choice, the shared check and save, who may change them
 - list-table-quick-edit-contacts.md: Contacts list quick edit (includes/fn/contact_list_edit.php): which cells are fields in which view, the split phone and address columns, how a change is checked and written like edit_contact.php
 - list-table-quick-edit-containers.md: All Containers list quick edit (includes/fn/container_list_edit.php): the fields, the units, the container screen's own check and save, who may change them
+- list-table-quick-edit-currencies.md: All Currencies list quick edit (includes/fn/currency_list_edit.php): the fields, the screen's checks and write path, the base rate kept as text, the base move that redraws the other rows
 - list-table-quick-edit-design-files.md: All Design Files list quick edit (includes/fn/design_file_list_edit.php): the fields, the design file screen's shared name check and save, the answer that redraws a renamed row
 - list-table-quick-edit-key-codes.md: All Key Codes list quick edit (includes/fn/key_code_list_edit.php): the fields, the key code screen's own check and save, notes on several lines, who may change them
 - list-table-quick-edit-menus.md: All Menus list quick edit (includes/fn/menu_list_edit.php): the fields, the classes as the chips post them, the menu screen's own check and save, who may change them
