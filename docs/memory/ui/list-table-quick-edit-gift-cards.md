@@ -5,7 +5,7 @@ module: gift_card_list_edit
 ---
 
 ## Which cells change?
-- `pg_gift_card_edit_columns()`: Expiration Date (typed in the site's date order, blank for never) and Notes. Text: the code, the original amount, From, Recipient, Delivery Date, Created, Last Modified (an order sets them, or they are computed), and Balance (below). `tests/gift_card_list_edit_test.php` fails for a new column that is neither.
+- `pg_gift_card_edit_columns()`: Expiration Date (typed in the site's date order, blank for never) and Notes (`textarea`: lines kept, also the line a cancelled order adds). Text: the code, the original amount, From, Recipient, Delivery Date, Created, Last Modified (an order sets them, or they are computed), and Balance (below). `tests/gift_card_list_edit_test.php` fails for a new column that is neither.
 
 ## Why is the balance not a field?
 - The screen refuses a typed balance when the card's balance changed since the screen opened (`balance_was`, `commerce/gift-card-balance-edit.md`). A list edit posts only `field`, `id`, `value`, so the endpoint could only compare with the balance it reads itself: a redemption made after the list was drawn would be overwritten, the spent amount put back (review on #6968).
@@ -14,8 +14,7 @@ module: gift_card_list_edit
 
 ## Which rows keep their cells as text?
 - Store credit (`gift_cards.user_id` > 0, `credit_user_id`): every cell. The screen records a credit balance change in the audit trail (`pg_audit('update', 'store_credit', …)`); the list does not, so credit changes there only.
-- Notes on more lines (typed on the screen, or the line a cancelled order adds): the notes cell only; the list's box is one line and would join them.
-- `pg_gift_card_quick_cell_editable()` decides both for the cell and the write.
+- `pg_gift_card_quick_cell_editable()` decides both for the cell and the write. Before the `textarea` type, notes on more lines stayed text too (a one-line box would have joined them).
 
 ## How is a change checked and written?
 - `pg_gift_card_quick_update()` fills a throwaway liveform (`gift_card_quick_edit`) with the stored card as the screen opens it plus the one change (`pg_gift_card_quick_form_values()`) and runs the screen's `pg_gift_card_form_check($form, 'edit')` (the stored balance passes it): a real date or blank. The first field error is the refusal's message.

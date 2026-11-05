@@ -87,8 +87,9 @@ function test_key_code_quick_cells_carry_the_values_their_fields_open_with()
 	pg_assert_false(isset($cells['offer_message']['attributes']['data-pg-edit']), 'the offer\'s message is not a field');
 
 	$lines = pg_key_code_list_row_cells(pg_test_key_code_quick_row(array('notes' => "One\nTwo")), '2026-11-05', $columns);
-	pg_assert_false(isset($lines['notes']['attributes']['data-pg-edit']), 'notes on more lines stay on the screen');
-	pg_assert_contains('One<br />', $lines['notes']['html'], 'and keep their lines');
+	pg_assert_same("One\nTwo", $lines['notes']['attributes']['data-pg-edit-value'] ?? null, 'notes on more lines are a field, opened with their lines');
+	pg_assert_contains('One<br />', $lines['notes']['html'], 'and drawn with their lines');
+	pg_assert_same('textarea', $columns['notes']['type']);
 
 	$plain = pg_key_code_list_row_cells(pg_test_key_code_quick_row(), '2026-11-05', array());
 	pg_assert_false(isset($plain['code']['attributes']['data-pg-edit']), 'no fields without quick edit');
