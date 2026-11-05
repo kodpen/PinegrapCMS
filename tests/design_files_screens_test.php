@@ -49,7 +49,7 @@ function test_design_files_list_prints_the_editor_once_outside_the_table()
 
 function test_design_files_list_leaves_the_recycle_bin_out()
 {
-	$source = design_files_screens_source('view_design_files.php');
+	$source = design_files_screens_source('includes/fn/design_file_list_edit.php');
 
 	pg_assert_contains('pg_design_files_bin_where()', $source, 'the list query skips the bin');
 	pg_assert_contains("pg_file_name_extension(\$file['name'])", $source, 'the type comes from the name');
@@ -60,20 +60,21 @@ function test_design_files_list_leaves_the_recycle_bin_out()
 function test_edit_design_file_posts_on_method_and_reads_the_checked_id()
 {
 	$source = design_files_screens_source('edit_design_file.php');
+	$form = design_files_screens_source('includes/forms/design_file_form.php');
 
 	pg_assert_contains("if (\$_SERVER['REQUEST_METHOD'] !== 'POST') {", $source, 'the branch follows the method, not the name');
 	pg_assert_true(strpos($source, "empty(\$_POST['name'])") === false, 'an empty name no longer draws the form');
 	pg_assert_true(strpos($source, "\$_GET['id']") === false, 'the checked $id is used everywhere');
 	pg_assert_contains('pg_design_files_bin_where()', $source, 'a file in the bin is not found');
-	pg_assert_contains('pg_upload_name_blocked($name_posted)', $source, 'a blocked new name is refused');
-	pg_assert_contains('pg_upload_blocked_message($name_posted)', $source, 'with the upload message');
-	pg_assert_contains('$file_extension = pg_file_name_extension($name);', $source, 'no dot, no type');
+	pg_assert_contains('pg_upload_name_blocked($name_posted)', $form, 'a blocked new name is refused');
+	pg_assert_contains('pg_upload_blocked_message($name_posted)', $form, 'with the upload message');
+	pg_assert_contains('$file_extension = pg_file_name_extension($name);', $form, 'no dot, no type');
 	pg_assert_contains('pg_image_dimensions_label(', $source, 'one dimensions format');
 	pg_assert_contains("'webp'", substr($source, strpos($source, '$preview_types'), 200), 'WebP gets a preview');
 	pg_assert_contains("&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_design_files.php')", $source, 'optimize comes back to the design list');
 
 	$delete = strpos($source, "if (!empty(\$_POST['delete']))");
-	$blank = strpos($source, "lang('Please enter a name.')");
+	$blank = strpos($source, 'pg_design_file_form_refusal($name_posted, $stored_name, $id)');
 	pg_assert_true(($delete !== false) && ($blank !== false) && ($delete < $blank), 'Delete works with an empty name box');
 }
 
