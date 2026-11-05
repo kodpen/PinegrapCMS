@@ -12,7 +12,7 @@ description: List quick edit keys (backend.src.js cells, the list table driver):
 
 ## How does a several-choice field read and take the keys?
 - Field type `multiselect` with `options` (values without a comma): posted and stored in `data-pg-edit-value` as "3,7"; `pg_list_edit_parse()` gives a list in the options' order, refuses a value not offered, `required` needs one. List column `'editable' => 'multiselect'`. Used by contact groups and shipping method zones.
-- Drawn as a group of check boxes (`.pg-list-table-choices`, `choiceGroup()`); Tab and Space move and tick inside it, leaving the group saves (`focusout`), Enter and Ctrl+S save, Escape puts the stored choice back. `quickChanged()` compares the values as a set.
+- Drawn as a group of check boxes (`.pg-list-table-choices`, `choiceGroup()`); Tab and Space move and tick inside it, leaving the group saves (`focusout`), Enter and Ctrl+S save, Escape puts the stored choice back. The group has `tabIndex = -1`: Safari and Firefox on macOS do not focus a clicked box, so without it a tick by mouse or touch never left a focused group and was not saved. `quickChanged()` compares the values as a set.
 
 ## Where does focus go on Tab past the last row?
 - On the edited cell (`td[data-pg-edit]` has `tabindex="0"`). `step()` returns false when no row is left and `commit()` then calls `state.cell.focus()`. Before, the input had already left the page (`send()` or the restored `innerHTML`) and focus fell to `<body>` with nothing announced (`tests/list_edit_focus_test.php`).

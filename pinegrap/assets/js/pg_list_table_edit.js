@@ -376,6 +376,10 @@
 
         group.className = 'pg-list-table-field pg-list-table-choices';
         group.setAttribute('role', 'group');
+        // Safari, and Firefox on macOS, do not focus a clicked or tapped
+        // check box: the group itself takes the focus then, so leaving it
+        // still saves the boxes ticked.
+        group.tabIndex = -1;
 
         (def.options || []).forEach(function (pair) {
             var label = document.createElement('label');
