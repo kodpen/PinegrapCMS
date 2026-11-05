@@ -295,6 +295,22 @@ function erp_cash_till_refusal($cash_account_id, $allow_inactive = false)
 }
 
 /**
+ * Why a receipt or payment cannot be written against this account, or ''.
+ * The wording is the external API's (erp_api_receipts_create()).
+ *
+ * @param array|null|false $account  erp_accounts row, as read
+ * @return string
+ */
+function erp_receipt_account_row_refusal($account)
+{
+    if (!is_array($account)) {
+        return lang('That account could not be found.');
+    }
+
+    return '';
+}
+
+/**
  * Take money in against a customer, or pay money out to a supplier.
  *
  * The one door for both, because they are the same two rows with the arrows
@@ -347,6 +363,11 @@ function erp_post_receipt_check($data)
     }
     if ($cash_account_id <= 0) {
         return lang('Choose a till or bank account.');
+    }
+    // The screen and a bank statement line send the posted id as it came:
+    // a missing account got a ledger row nobody owned while the till moved.
+    if (($refusal = erp_receipt_account_row_refusal(db_item("SELECT id FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1"))) !== '') {
+        return $refusal;
     }
     if (($refusal = erp_cash_till_refusal($cash_account_id, !empty($data['allow_inactive_till']))) !== '') {
         return $refusal;
