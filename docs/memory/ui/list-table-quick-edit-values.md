@@ -1,6 +1,6 @@
 ---
 name: list-table-quick-edit-values
-description: Which values of each driver list change in quick edit (products, pages, containers …), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
+description: Which values of each driver list change in quick edit, which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 module: list_table_edit
 ---
 
@@ -23,11 +23,12 @@ module: list_table_edit
 - Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
 
 ## Which other lists have quick edit?
-- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes (name, folder, activation), styles (a custom style's name, collection, layout), design files (name, folder), shipping methods (all but the zones), key codes (all but the offer's message), offers (all but the flow), product attributes (name, label), shipping zones (name, rates), tax zones (name, rate), verified shipping addresses (all but the country): each in its own `list-table-quick-edit-<list>.md` (listed in `ui/README.md`), with its cells.
+- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes, styles, design files, shipping methods (all but the zones), key codes (all but the offer's message), offers (all but the flow), product attributes, shipping zones, tax zones, arrival dates, verified shipping addresses (all but the country): each in its own `list-table-quick-edit-<list>.md` (listed in `ui/README.md`), with its cells.
 
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
 - Contacts: the groups (multi-select). Comments and themes: the message, the description (several lines).
 - The commerce lists' columns outside their `pg_*_edit_columns()` (orders, gift cards).
+- Not a driver list: product groups, in the Catalog Manager (`view_folders.php`): renamed in its grid and tree, the rest on the group's screen.
 
 Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/product-list-paging.md

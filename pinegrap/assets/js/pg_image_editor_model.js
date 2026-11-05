@@ -7056,9 +7056,16 @@
     // tolerance (0-100) and contiguous. A wand's outline is worked out from
     // the picture each time the document opens, so only its seed is kept.
     // Kind subject (pg_image_editor_subject.js) keeps its rings (rings) and
-    // the box the cut started from, since the cut takes too long to redo.
+    // the box the cut started from, since the cut takes too long to redo;
+    // its Keep and Remove brushes (strokes: [{ keep, r, pts }], turned
+    // space) the cut ran again from, and its soft edge (edge, units, 0 or
+    // none for hard) that layers made from the selection take as matte.
 
     var AREA_MAX_POINTS = 4000, AREA_MAX_OPS = 40;
+
+    // A subject op keeps at most this many brush strokes; its soft edge is
+    // at most SUBJECT_EDGE_MAX units, the guided filter's eps MATTE_EPS.
+    var SUBJECT_MAX_STROKES = 60, SUBJECT_EDGE_MAX = 20, MATTE_EPS = 1e-4;
 
     function areaRound(v) {
         return Math.round(v * 100) / 100;
@@ -7434,10 +7441,215 @@
         }));
     }
 
+    // The subject op whose brushes and soft edge the panel shows: the last
+    // op of kind subject in the selection; -1 for none.
+    function subjectIndex(sel) {
+        var ops = (sel && sel.ops) || [], i;
+
+        for (i = Math.min(ops.length, AREA_MAX_OPS) - 1; i >= 0; i--) {
+            if (ops[i] && (ops[i].kind === 'subject')) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // The soft edge a layer of the selection takes (its subject's edge, in
+    // the turned space's units); 0 for a hard one.
+    function selectionMatte(sel) {
+        var i = subjectIndex(sel), e = (i >= 0) ? Number(sel.ops[i].edge) : 0;
+
+        return (isFinite(e) && (e > 0)) ? Math.min(SUBJECT_EDGE_MAX, e) : 0;
+    }
+
+    // A brush stroke kept on a subject op: its path thinned to points at
+    // least a quarter of its radius apart (at most AREA_MAX_POINTS), in the
+    // turned space; null without a point.
+    function subjectStroke(keep, r, pts) {
+        var out = [], step = Math.max(0.25, r / 4);
+
+        (pts || []).forEach(function (p) {
+            var last = out[out.length - 1];
+
+            if (!last || (Math.hypot(p[0] - last[0], p[1] - last[1]) >= step)) {
+                out.push([areaRound(p[0]), areaRound(p[1])]);
+            }
+        });
+
+        if (!out.length || !(r > 0)) {
+            return null;
+        }
+
+        if (out.length > AREA_MAX_POINTS) {
+            var every = out.length / AREA_MAX_POINTS;
+
+            out = out.filter(function (p, i) { return Math.floor(i / every) !== Math.floor((i - 1) / every); });
+        }
+
+        return { keep: keep ? 1 : 0, r: areaRound(r), pts: out };
+    }
+
+    // The mean of src (w x h) over a (2r + 1) square round each pixel, the
+    // square cut at the edges, into out.
+    function boxMean(src, w, h, r, out, tmp) {
+        var x, y, s, a, b;
+
+        for (y = 0; y < h; y++) {
+            var row = y * w;
+
+            s = 0;
+
+            for (x = 0; x < Math.min(r, w); x++) {
+                s += src[row + x];
+            }
+
+            for (x = 0; x < w; x++) {
+                a = x + r;
+                b = x - r - 1;
+
+                if (a < w) {
+                    s += src[row + a];
+                }
+
+                if (b >= 0) {
+                    s -= src[row + b];
+                }
+
+                tmp[row + x] = s / (Math.min(w - 1, a) - Math.max(0, b + 1) + 1);
+            }
+        }
+
+        for (x = 0; x < w; x++) {
+            s = 0;
+
+            for (y = 0; y < Math.min(r, h); y++) {
+                s += tmp[y * w + x];
+            }
+
+            for (y = 0; y < h; y++) {
+                a = y + r;
+                b = y - r - 1;
+
+                if (a < h) {
+                    s += tmp[a * w + x];
+                }
+
+                if (b >= 0) {
+                    s -= tmp[b * w + x];
+                }
+
+                out[y * w + x] = s / (Math.min(h - 1, a) - Math.max(0, b + 1) + 1);
+            }
+        }
+
+        return out;
+    }
+
+    // The guided filter (He, Sun and Tang) of the alpha p (0-1, w x h) with
+    // the colour picture guide (RGBA bytes) as its guide, radius r, eps
+    // the smoothing in (0-1)^2 colour units: the alpha follows the
+    // picture's edges within r of its own.
+    function guidedFilter(guide, p, w, h, r, eps) {
+        var n = w * h, I = [new Float32Array(n), new Float32Array(n), new Float32Array(n)], tmp = new Float32Array(n), i, c;
+        var mean = function (src) { return boxMean(src, w, h, r, new Float32Array(n), tmp); };
+        var prod = function (a, b) { var o = new Float32Array(n); for (var k = 0; k < n; k++) { o[k] = a[k] * b[k]; } return o; };
+
+        for (i = 0; i < n; i++) {
+            for (c = 0; c < 3; c++) {
+                I[c][i] = guide[i * 4 + c] / 255;
+            }
+        }
+
+        var mI = I.map(mean), mp = mean(p), cIp = I.map(function (ch) { return mean(prod(ch, p)); });
+        var vRR = mean(prod(I[0], I[0])), vRG = mean(prod(I[0], I[1])), vRB = mean(prod(I[0], I[2]));
+        var vGG = mean(prod(I[1], I[1])), vGB = mean(prod(I[1], I[2])), vBB = mean(prod(I[2], I[2]));
+        var A = [new Float32Array(n), new Float32Array(n), new Float32Array(n)], B = new Float32Array(n);
+
+        for (i = 0; i < n; i++) {
+            var m0 = mI[0][i], m1 = mI[1][i], m2 = mI[2][i], mpi = mp[i];
+            var c0 = cIp[0][i] - m0 * mpi, c1 = cIp[1][i] - m1 * mpi, c2 = cIp[2][i] - m2 * mpi;
+            var s00 = vRR[i] - m0 * m0 + eps, s01 = vRG[i] - m0 * m1, s02 = vRB[i] - m0 * m2;
+            var s11 = vGG[i] - m1 * m1 + eps, s12 = vGB[i] - m1 * m2, s22 = vBB[i] - m2 * m2 + eps;
+            var i00 = s11 * s22 - s12 * s12, i01 = s02 * s12 - s01 * s22, i02 = s01 * s12 - s02 * s11;
+            var i11 = s00 * s22 - s02 * s02, i12 = s01 * s02 - s00 * s12, i22 = s00 * s11 - s01 * s01;
+            var det = s00 * i00 + s01 * i01 + s02 * i02;
+            var a0 = (c0 * i00 + c1 * i01 + c2 * i02) / det, a1 = (c0 * i01 + c1 * i11 + c2 * i12) / det, a2 = (c0 * i02 + c1 * i12 + c2 * i22) / det;
+
+            A[0][i] = a0;
+            A[1][i] = a1;
+            A[2][i] = a2;
+            B[i] = mpi - a0 * m0 - a1 * m1 - a2 * m2;
+        }
+
+        var mA = A.map(mean), mB = mean(B), q = new Float32Array(n);
+
+        for (i = 0; i < n; i++) {
+            q[i] = Math.max(0, Math.min(1, mA[0][i] * I[0][i] + mA[1][i] * I[1][i] + mA[2][i] * I[2][i] + mB[i]));
+        }
+
+        return q;
+    }
+
+    // The soft edge of a mask: its alpha (RGBA bytes, w x h, the alpha
+    // byte) guided by the picture under it (guide, RGBA bytes of the same
+    // size) with radius r pixels, in place. The work goes tile by tile and
+    // skips a tile whose alpha is one value 2r round it, where the filter
+    // changes nothing, so a large mask costs only its edge.
+    function matteMask(mask, guide, w, h, r) {
+        r = Math.max(1, Math.round(r));
+
+        var T = 256, halo = 2 * r, tx, ty;
+
+        for (ty = 0; ty < h; ty += T) {
+            for (tx = 0; tx < w; tx += T) {
+                var x0 = Math.max(0, tx - halo), y0 = Math.max(0, ty - halo), x1 = Math.min(w, tx + T + halo), y1 = Math.min(h, ty + T + halo);
+                var tw = x1 - x0, th = y1 - y0, first = mask[(y0 * w + x0) * 4 + 3], flat = true, x, y;
+
+                for (y = y0; (y < y1) && flat; y++) {
+                    for (x = x0; x < x1; x++) {
+                        if (mask[(y * w + x) * 4 + 3] !== first) {
+                            flat = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (flat) {
+                    continue;
+                }
+
+                var p = new Float32Array(tw * th), g = new Uint8ClampedArray(tw * th * 4);
+
+                for (y = 0; y < th; y++) {
+                    for (x = 0; x < tw; x++) {
+                        var at = ((y0 + y) * w + x0 + x) * 4, k = y * tw + x;
+
+                        p[k] = mask[at + 3] / 255;
+                        g[k * 4] = guide[at];
+                        g[k * 4 + 1] = guide[at + 1];
+                        g[k * 4 + 2] = guide[at + 2];
+                    }
+                }
+
+                var q = guidedFilter(g, p, tw, th, r, MATTE_EPS);
+
+                for (y = ty; y < Math.min(h, ty + T); y++) {
+                    for (x = tx; x < Math.min(w, tx + T); x++) {
+                        mask[(y * w + x) * 4 + 3] = Math.round(q[(y - y0) * tw + x - x0] * 255);
+                    }
+                }
+            }
+        }
+
+        return mask;
+    }
+
     var SELECTION = {
         AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
         maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest, areaHit: areaHit,
-        simplifyRing: simplifyRing, subjectRings: subjectRings
+        simplifyRing: simplifyRing, subjectRings: subjectRings, subjectIndex: subjectIndex, selectionMatte: selectionMatte, subjectStroke: subjectStroke,
+        guidedFilter: guidedFilter, matteMask: matteMask, SUBJECT_MAX_STROKES: SUBJECT_MAX_STROKES, SUBJECT_EDGE_MAX: SUBJECT_EDGE_MAX
     };
 
     var api = {

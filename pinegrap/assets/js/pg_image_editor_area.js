@@ -6,7 +6,10 @@
  * feathered, shown as marching ants; and what it does to pixels: Erase,
  * Keep only, Copy to a layer, Adjust inside and Redact. Select subject
  * cuts the subject from its background (pg_image_editor_subject.js, in a
- * worker) into the selection.
+ * worker) into the selection; the Keep and Remove brushes mark what the
+ * cut got wrong and it runs again, and the subject's soft edge follows the
+ * picture at full size (a guided filter, M.matteMask()) in the masks and
+ * cut-outs of the layers made from it.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor_redact.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -46,6 +49,9 @@
     // Select subject cuts the picture at most this long a side.
     var SUBJECT_SIDE = 800;
 
+    // A new subject's soft edge, in the turned space's units.
+    var SUBJECT_EDGE = 4;
+
     // A copy to a layer is at most this long a side.
     var COPY_SIDE = 4096;
 
@@ -62,7 +68,7 @@
     }
 
     Editor.inits.push(function () {
-        this.areaDefaults = { kind: 'rect', mode: 'new', tolerance: 20, contiguous: true };
+        this.areaDefaults = { kind: 'rect', mode: 'new', tolerance: 20, contiguous: true, brush: 24 };
         this.areaPoly = null;
         this.areaCache = null;
         this.areaPixelCache = null;
@@ -200,16 +206,32 @@
             return;
         }
 
-        var box = this.subjectBox(px), op = box ? 'new' : this.areaDefaults.mode, data = new Uint8ClampedArray(px.data).buffer;
-        var src = this.img.src;
+        var box = this.subjectBox(px), op = box ? 'new' : this.areaDefaults.mode;
+
+        this.subjectCut(px, box, null, function (out, rings) {
+            if (!rings.length) {
+                self.subjectNote = 'subjectNone';
+                self.render();
+                return;
+            }
+
+            self.areaAdd(op, { kind: 'subject', rings: rings, box: out.box, edge: SUBJECT_EDGE });
+        });
+    };
+
+    // A cut of the pixels px from box and strokes (in px's pixels) in the
+    // cutter; done(answer, rings) unless another picture came in meanwhile.
+    Editor.prototype.subjectCut = function (px, box, strokes, done) {
+        var self = this, data = new Uint8ClampedArray(px.data).buffer, src = this.img.src;
 
         this.subjectBusy = true;
         this.render();
 
         subjectCutter().then(function (run) {
-            return run({ type: 'cut', data: data, width: px.w, height: px.h, box: box }, [data]);
+            return run({ type: 'cut', data: data, width: px.w, height: px.h, box: box, strokes: strokes }, [data]);
         }).then(function (out) {
             self.subjectBusy = false;
+            self.subjectPending = null;
 
             if (!out || (out.type !== 'mask')) {
                 throw new Error('subject');
@@ -221,19 +243,62 @@
                 return;
             }
 
-            var rings = M.subjectRings(new Uint8Array(out.mask), px.w, px.h, px.m);
+            done(out, M.subjectRings(new Uint8Array(out.mask), px.w, px.h, px.m));
+        }).then(null, function () {
+            self.subjectBusy = false;
+            self.subjectPending = null;
+            self.subjectNote = 'subjectError';
+            self.render();
+        });
+    };
 
-            if (!rings.length) {
-                self.subjectNote = 'subjectNone';
+    // The subject op the brushes change, null for none.
+    Editor.prototype.subjectOp = function () {
+        var i = M.subjectIndex(this.doc.selection);
+
+        return (i >= 0) ? this.doc.selection.ops[i] : null;
+    };
+
+    // A Keep or Remove stroke: the cut runs again from the subject's box
+    // and all its strokes, and its rings and the stroke go in as one undo
+    // step. The stroke shows on the picture while it cuts.
+    Editor.prototype.subjectStroke = function (keep, r, pts) {
+        var self = this, op = this.subjectOp(), stroke = M.subjectStroke(keep, r, pts), px = this.areaPixelsAt(SUBJECT_SIDE);
+
+        if (!op || !stroke || this.subjectBusy) {
+            this.renderView();
+            return;
+        }
+
+        if (!px || !op.box) {
+            this.subjectNote = 'subjectRead';
+            this.render();
+            return;
+        }
+
+        var index = M.subjectIndex(this.doc.selection), strokes = (op.strokes || []).concat([stroke]).slice(-M.SUBJECT_MAX_STROKES);
+        var back = M.inv(px.m), unit = Math.sqrt(Math.abs(back[0] * back[3] - back[1] * back[2])) || 1, key = JSON.stringify(op.box);
+
+        this.subjectNote = null;
+        this.subjectPending = stroke;
+        this.subjectCut(px, op.box, strokes.map(function (s) {
+            return { keep: s.keep, r: s.r * unit, pts: s.pts.map(function (p) { return M.apply(back, p[0], p[1]); }) };
+        }), function (out, rings) {
+            var now = self.doc.selection ? self.doc.selection.ops[index] : null;
+
+            // The selection changed while it cut.
+            if (!now || (now.kind !== 'subject') || (JSON.stringify(now.box) !== key)) {
                 self.render();
                 return;
             }
 
-            self.areaAdd(op, { kind: 'subject', rings: rings, box: out.box });
-        }).then(null, function () {
-            self.subjectBusy = false;
-            self.subjectNote = 'subjectError';
-            self.render();
+            self.change(function (doc) {
+                var o = doc.selection.ops[index];
+
+                o.rings = rings;
+                o.strokes = strokes;
+            });
+            self.history.key = null;
         });
     };
 
@@ -361,7 +426,15 @@
             return;
         }
 
-        this.drag = { kind: 'area', shape: kind, op: op, at: p, to: p, pts: [p] };
+        if ((kind === 'keep') || (kind === 'remove')) {
+            if (!this.subjectOp() || this.subjectBusy) {
+                return;
+            }
+
+            this.drag = { kind: 'area', shape: kind, at: p, to: p, pts: [p], r: this.areaDefaults.brush / 2 / k };
+        } else {
+            this.drag = { kind: 'area', shape: kind, op: op, at: p, to: p, pts: [p] };
+        }
 
         try {
             this.stage.setPointerCapture(e.pointerId);
@@ -380,7 +453,7 @@
         d.to = p;
         d.far = d.far || M.areaDragged(d.at, [p], 3 / this.view.k);
 
-        if (d.shape === 'lasso') {
+        if ((d.shape === 'lasso') || (d.shape === 'keep') || (d.shape === 'remove')) {
             var last = d.pts[d.pts.length - 1];
 
             if (Math.hypot(p[0] - last[0], p[1] - last[1]) * this.view.k >= 2) {
@@ -403,6 +476,11 @@
         // How far the path went, not where it was let go: a lasso closed on
         // its first point is a shape.
         var moved = !!d.far;
+
+        if ((d.shape === 'keep') || (d.shape === 'remove')) {
+            this.subjectStroke(d.shape === 'keep', d.r, d.pts);
+            return;
+        }
 
         if (d.shape === 'wand') {
             this.areaAdd(d.op, { kind: 'wand', at: [Math.round(d.at[0] * 100) / 100, Math.round(d.at[1] * 100) / 100],
@@ -479,7 +557,28 @@
             ants(rings.map(ring).join(''));
         }
 
-        if ((this.tool === 'area') && d && (d.kind === 'area') && (d.shape !== 'wand')) {
+        // The subject's brush strokes while a brush is picked, the one
+        // being cut and the one being drawn.
+        var brushing = (this.tool === 'area') && ((this.areaDefaults.kind === 'keep') || (this.areaDefaults.kind === 'remove'));
+        var subjectOp = brushing ? this.subjectOp() : null;
+        var stroke = function (s, now) {
+            over.appendChild(svg('path', {
+                d: s.pts.map(function (p, i) { return (i ? 'L' : 'M') + at(p); }).join('') + ((s.pts.length === 1) ? 'l0.01 0' : ''),
+                class: 'pgie-sstroke ' + (s.keep ? 'pgie-skeep' : 'pgie-sremove') + (now ? ' pgie-snow' : ''), 'stroke-width': Math.max(1, s.r * 2 * k)
+            }));
+        };
+
+        if (subjectOp) {
+            (subjectOp.strokes || []).forEach(function (s) { stroke(s, false); });
+        }
+
+        if (this.subjectPending) {
+            stroke(this.subjectPending, true);
+        }
+
+        if (brushing && d && (d.kind === 'area') && ((d.shape === 'keep') || (d.shape === 'remove'))) {
+            stroke({ keep: d.shape === 'keep', r: d.r, pts: d.pts }, true);
+        } else if ((this.tool === 'area') && d && (d.kind === 'area') && (d.shape !== 'wand')) {
             var shape = (d.shape === 'rect') ? M.areaRect(d.at, d.to) : ((d.shape === 'ellipse') ? M.areaEllipse(d.at, d.to) : null);
 
             if (shape) {
@@ -694,7 +793,7 @@
     // selection is, pushed onto doc; its id, or null for no area. extra
     // holds the layer's own fields.
     function pushArea(doc, type, extra, rings) {
-        var geo = M.areaLayer(rings), feather = doc.selection ? (doc.selection.feather || 0) : 0;
+        var geo = M.areaLayer(rings), feather = doc.selection ? (doc.selection.feather || 0) : 0, matte = M.selectionMatte(doc.selection);
 
         if (!geo) {
             return null;
@@ -704,6 +803,11 @@
 
         if (feather) {
             l.feather = feather;
+        }
+
+        // A subject's soft edge: the mask follows the picture under it.
+        if (matte) {
+            l.matte = matte;
         }
 
         l.id = M.newId(doc);
@@ -819,11 +923,23 @@
                 g.putImageData(data, 0, 0);
             }
 
+            var shape = Object.assign({ feather: this.doc.selection ? (this.doc.selection.feather || 0) : 0 }, geo), matte = M.selectionMatte(this.doc.selection);
+
             g.globalCompositeOperation = 'destination-in';
-            g.save();
-            at();
-            X.areaShapes.paint(g, Object.assign({ feather: this.doc.selection ? (this.doc.selection.feather || 0) : 0 }, geo), k);
-            g.restore();
+
+            if (matte) {
+                // The soft edge follows the picture just drawn.
+                g.drawImage(matteCanvas(canvas.width, canvas.height, function (mg) {
+                    mg.setTransform(k, 0, 0, k, -geo.x * k, -geo.y * k);
+                    X.areaShapes.paint(mg, shape, k);
+                }, g.getImageData(0, 0, canvas.width, canvas.height).data, matte * k), 0, 0);
+            } else {
+                g.save();
+                at();
+                X.areaShapes.paint(g, shape, k);
+                g.restore();
+            }
+
             g.globalCompositeOperation = 'destination-out';
             this.doc.layers.forEach(function (l) {
                 if (!l.hidden && ((l.type === 'redact') || ((l.type === 'erase') && !l.fill))) {
@@ -885,10 +1001,55 @@
         this.areaShow(id);
     };
 
+    // A w x h canvas whose alpha is the shape draw(g) paints, its edge
+    // softened along the picture guide (RGBA bytes, w x h) by the guided
+    // filter with radius r pixels.
+    function matteCanvas(w, h, draw, guide, r) {
+        var canvas = document.createElement('canvas'), g;
+
+        canvas.width = w;
+        canvas.height = h;
+        g = canvas.getContext('2d');
+        draw(g);
+        g.setTransform(1, 0, 0, 1, 0, 0);
+
+        var data = g.getImageData(0, 0, w, h);
+
+        M.matteMask(data.data, guide, w, h, r);
+        g.putImageData(data, 0, 0);
+
+        return canvas;
+    }
+
+    // The picture as it lies under a w x h canvas that place(g) sets up
+    // over the turned space, as RGBA bytes; null when it cannot be read
+    // back (the mask then keeps its hard edge).
+    Editor.prototype.areaGuide = function (w, h, place) {
+        var img = this.img, src = this.doc.source, m = M.placedMatrix(this.doc), canvas = document.createElement('canvas'), g;
+
+        if (!img || !src) {
+            return null;
+        }
+
+        canvas.width = w;
+        canvas.height = h;
+        g = canvas.getContext('2d');
+        place(g);
+        g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+        g.drawImage(img, 0, 0, src.width, src.height);
+
+        try {
+            return g.getImageData(0, 0, w, h).data;
+        } catch (err) {
+            // A picture from another site cannot be read back.
+            return null;
+        }
+    };
+
     // One mask per visible Erase or Adjust inside layer, drawn at the output
     // size over its own box, in the layers' order.
     Editor.prototype.areaMasks = function () {
-        var box = M.pictureBox(this.doc), out = M.outputSize(this.doc), list = [];
+        var self = this, box = M.pictureBox(this.doc), out = M.outputSize(this.doc), list = [];
 
         this.doc.layers.forEach(function (l) {
             var r = (isMaskLayer(l) && !l.hidden && ((l.type === 'erase') || areaColor(l))) ? M.redactRegion(l, box, out.w, out.h) : null;
@@ -897,15 +1058,26 @@
                 return;
             }
 
-            var canvas = document.createElement('canvas'), g, entry;
+            var canvas = document.createElement('canvas'), g, entry, sx = out.w / box.w, sy = out.h / box.h;
+            var place = function (c) { c.setTransform(sx, 0, 0, sy, -box.x * sx - r.x, -box.y * sy - r.y); };
+            var guide = l.matte ? self.areaGuide(r.w, r.h, place) : null;
 
-            canvas.width = r.w;
-            canvas.height = r.h;
-            g = canvas.getContext('2d');
-            g.setTransform(out.w / box.w, 0, 0, out.h / box.h, -box.x * out.w / box.w - r.x, -box.y * out.h / box.h - r.y);
-            // The layer's opacity weakens the area's effect.
-            g.globalAlpha = (l.opacity === undefined) ? 1 : l.opacity;
-            X.areaShapes.paint(g, l, out.w / box.w);
+            if (guide) {
+                canvas = matteCanvas(r.w, r.h, function (mg) {
+                    place(mg);
+                    mg.globalAlpha = (l.opacity === undefined) ? 1 : l.opacity;
+                    X.areaShapes.paint(mg, l, sx);
+                }, guide, l.matte * sx);
+            } else {
+                canvas.width = r.w;
+                canvas.height = r.h;
+                g = canvas.getContext('2d');
+                place(g);
+                // The layer's opacity weakens the area's effect.
+                g.globalAlpha = (l.opacity === undefined) ? 1 : l.opacity;
+                X.areaShapes.paint(g, l, sx);
+            }
+
             entry = { op: (l.type === 'erase') ? 'erase' : 'color', x: r.x, y: r.y, mask: canvas.toDataURL('image/png') };
 
             if (l.type === 'erase') {
@@ -964,6 +1136,12 @@
         subject.setAttribute('aria-busy', this.subjectBusy ? 'true' : 'false');
         body.appendChild(el('div', { class: 'pgie-arow' }, [subject]));
         body.appendChild(el('p', { class: 'pgie-note' + (this.subjectNote ? ' pgie-warn' : ''), text: t(this.subjectNote || 'subjectNote') }));
+
+        var subjectOp = this.subjectOp();
+
+        if (subjectOp) {
+            this.subjectPanel(body, subjectOp);
+        }
 
         KINDS.forEach(function (kind) {
             var b = tile(kind[1], t(kind[1]), function () {
@@ -1031,6 +1209,29 @@
         if (this.areaCopyFailed) {
             body.appendChild(el('p', { class: 'pgie-note pgie-warn', text: t('areaCopyNote') }));
         }
+    };
+
+    // The subject's brushes and soft edge, while the selection holds one.
+    Editor.prototype.subjectPanel = function (body, op) {
+        var self = this, d = this.areaDefaults, brush = (d.kind === 'keep') || (d.kind === 'remove');
+
+        body.appendChild(section(t('subjectRefine'), this.drawSegment([['keep', t('subjectKeep')], ['remove', t('subjectRemove')]],
+            brush ? d.kind : null, function (v) { d.kind = v; self.areaPoly = null; self.render(); })));
+
+        if (brush) {
+            body.appendChild(this.drawSlider(t('subjectBrush'), 4, 120, d.brush, function (v) { return v + ' px'; }, function (v) { d.brush = v; }));
+            body.appendChild(el('p', { class: 'pgie-note', text: t(this.subjectBusy ? 'subjectRefining' : 'subjectBrushNote') }));
+        }
+
+        body.appendChild(this.drawSlider(t('subjectEdge'), 0, M.SUBJECT_EDGE_MAX, Math.round(Number(op.edge) || 0), function (v) { return v + ' px'; }, function (v, live) {
+            self.change(function (doc) {
+                var i = M.subjectIndex(doc.selection);
+
+                if (i >= 0) {
+                    doc.selection.ops[i].edge = v;
+                }
+            }, 'subject-edge', live);
+        }));
     };
 
     Editor.panels.area = Editor.prototype.areaPanel;
