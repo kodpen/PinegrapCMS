@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs — not a fault in the alert (masked since #5057); the same full URL went into the activity log on give-up, fixed in #6691
 
-- `order_completion`: done (#4884, #4962: DST end dates; #5073: two payment callbacks both lowered `ship_tos.shipping_cost`); line forms, from_payment clean
+- `order_completion`: done (#4884, #4962: DST end dates; #5073: two payment callbacks both lowered `ship_tos.shipping_cost`); line forms, from_payment clean; second round taken by Arzu V5 worker (lifetime membership kept, #5058)
 
 - `order_list`: clean
 
