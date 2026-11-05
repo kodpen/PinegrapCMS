@@ -41,18 +41,6 @@ function test_list_edit_account_price_columns_take_a_figure_or_nothing()
 	pg_assert_same('decimal', $columns['discount']['type'], 'the discount is a figure, not an amount');
 }
 
-function test_list_edit_key_code_enabled_column_offers_enabled_or_disabled()
-{
-	$columns = pg_key_code_edit_columns();
-
-	pg_assert_same(array('enabled'), array_keys($columns), 'only the enabled flag');
-	pg_assert_same('select', $columns['enabled']['type'], 'a choice');
-	pg_assert_same(array('1', '0'), array_map('strval', array_keys($columns['enabled']['options'])), 'enabled first, then disabled');
-	pg_assert_same('0', pg_list_edit_parse($columns['enabled'], '0')['value'], 'disabled is read as 0');
-	pg_assert_false(pg_list_edit_parse($columns['enabled'], '2')['ok'], 'nothing else');
-	pg_assert_false(pg_list_edit_parse($columns['enabled'], '')['ok'], 'not empty');
-}
-
 function test_list_edit_key_code_is_active_only_when_it_works_at_checkout()
 {
 	$today = '2026-10-14';

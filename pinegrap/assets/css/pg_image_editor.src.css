@@ -1519,6 +1519,26 @@
   stroke-width: 1.5;
 }
 
+/* Keep and Remove brush strokes over the picture. */
+.pgie-sstroke {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.35;
+}
+
+.pgie-sstroke.pgie-snow {
+  opacity: 0.55;
+}
+
+.pgie-skeep {
+  stroke: #1f9d55;
+}
+
+.pgie-sremove {
+  stroke: #d64545;
+}
+
 .pgie-akinds {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }

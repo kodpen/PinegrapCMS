@@ -45,7 +45,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - external-api-coverage.md: External API (integration.php): find what the panel can do that the API cannot, then add the missing endpoints in steps (owner, 2026-11-01); claim as [plan:external-api-coverage] X<n>
 - feature-plans-2026-11.md: The eleven feature plans approved 2026-11-02: index and order, how one coordinator and its five workers hold a plan, the shared rules
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
-- flows-loop-in-one-flow.md: Plan (owner 2026-11-04): a loop in one flow: a Read a row box, Repeat N times with pure boxes in the loop, date words in a derived value; claim as [plan:flows-loop-in-one-flow] FL<n>
 - image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
 - image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
 - image-editor-animation-steps.md: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion, tracks, GIF, saving, APNG, WebP, video, scenes, Present, PDF, keyframes, SVG; claim as [plan:image-editor-animation] AN<n>

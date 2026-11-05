@@ -271,7 +271,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-scissors.md: The image editor's Scissors tool: a click cuts a path or shape at a point, a drag cuts every path the line crosses; the model's cut functions
 - image-editor-select.md: How the image editor's Select tool picks layers: a click, Shift, a press inside an unfilled shape, the selection box, Select all, touch
 - image-editor-sticker.md: The image editor's Sticker and Frame tools: the sticker layer, its label, a picture from Files, the four frames on the saved picture's edge, an artboard's background fill, how a save draws them
-- image-editor-subject.md: The image editor's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op with its rings in doc.selection
+- image-editor-subject-brushes.md: The image editor's Keep and Remove brushes on a selected subject (E28b, #6889): strokes as hard labels of a new cut, and the guided-filter soft edge of the layers made from it
+- image-editor-subject.md: The image editor's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
 - image-editor-svg-motion.md: Motion in a saved SVG (AN10): layer groups pgm-n, the numbers M.svgMotion() sends, the @keyframes style the server writes, reduced motion, what reopening keeps
 - image-editor-svg-sanitize.md: What pg_svg_sanitize() keeps of an SVG, why its style rules are scoped to the root or prefixed to reach use copies, what it refuses
 - image-editor-svg.md: The image editor's SVG files: opened as layers on a transparent artboard, saved as SVG through the allowlist sanitizer pg_svg_sanitize()
@@ -308,21 +309,27 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-layout.md: How a list on the table driver looks (backend.src.css): the frame, one-line rows, sticky name and actions columns, the selection bar, the details panel's layout rule, the SEO score column
 - list-table-order-side-lists.md: Product attributes, cart quotes, returns, subscriptions and a contact's orders on the list table driver (TD10a): printed whole, what changes in place and what stays on the record's screen
 - list-table-printed.md: Browser mode of the list table driver: a small list printed whole (pg_list_table_printed()), its sort kept by list_table_sort, the toolbar search box
+- list-table-quick-edit-arrival-dates.md: All Shipping Arrival Dates list quick edit (includes/fn/arrival_date_list_edit.php): the fields, the arrival date screen's check and save behind each change, the cut-off guard on the dates
 - list-table-quick-edit-comments.md: Comments list quick edit (includes/fn/comment_list_edit.php): the fields, Published and schedule vs the publish choice, the shared check and save, who may change them
 - list-table-quick-edit-contacts.md: Contacts list quick edit (includes/fn/contact_list_edit.php): which cells are fields in which view, the split phone and address columns, how a change is checked and written like edit_contact.php
 - list-table-quick-edit-containers.md: All Containers list quick edit (includes/fn/container_list_edit.php): the fields, the units, the container screen's own check and save, who may change them
+- list-table-quick-edit-currencies.md: All Currencies list quick edit (includes/fn/currency_list_edit.php): the fields, the screen's checks and write path, the base rate kept as text, the base move that redraws the other rows
 - list-table-quick-edit-design-files.md: All Design Files list quick edit (includes/fn/design_file_list_edit.php): the fields, the design file screen's shared name check and save, the answer that redraws a renamed row
+- list-table-quick-edit-key-codes.md: All Key Codes list quick edit (includes/fn/key_code_list_edit.php): the fields, the key code screen's own check and save, notes on several lines, who may change them
 - list-table-quick-edit-menus.md: All Menus list quick edit (includes/fn/menu_list_edit.php): the fields, the classes as the chips post them, the menu screen's own check and save, who may change them
 - list-table-quick-edit-offers.md: All Offers list quick edit (offer_list_edit.php): the fields, the editor's whole-offer check and save behind each change, dates and open-ended offers, the row's chip data after a save
+- list-table-quick-edit-orders.md: All Orders list quick edit (view_orders.php): the status between complete and exported only; why every other column stays text
 - list-table-quick-edit-pages.md: Pages list quick edit (includes/fn/list_table_edit.php): which cells are fields for whom, where the choices come from, how name, folder, style, type, form fields and switches are written
 - list-table-quick-edit-product-attributes.md: Product Attributes list quick edit (view_product_attributes.php, commerce_list.php): name and label change in place, the options stay text
+- list-table-quick-edit-referral-sources.md: All Referral Sources list quick edit (referral_source_list_edit.php): name, code and sort order as fields, the referral source screen's checks and save
 - list-table-quick-edit-shipping-methods.md: All Shipping Methods list quick edit (shipping_method_list_edit.php): the fields, service and real-time rate, cells a pickup method or variable base rate keeps as text
 - list-table-quick-edit-short-links.md: Short links list quick edit (includes/fn/short_link_list_edit.php): fields per destination type, the split destination columns, the edit screen's own checks and save
 - list-table-quick-edit-styles.md: All Page Styles list quick edit (includes/fn/style_list_edit.php): the fields, which rows stay text, the custom style screen's shared check and save
 - list-table-quick-edit-submitted-forms.md: Submitted forms list quick edit (includes/fn/submitted_form_list_edit.php): Status and Form Editor, the required-field check before completing, the screen's rights and side effects
+- list-table-quick-edit-tax-zones.md: All Tax Zones list quick edit (tax_zone_list_edit.php): the name and the rate, the tax zone screen's checks and save, the countries and states kept
 - list-table-quick-edit-themes.md: All Themes list quick edit (includes/fn/theme_list_edit.php): the fields, the shared theme check and save, the answer that redraws the replaced theme
 - list-table-quick-edit-users.md: Users list quick edit (includes/fn/user_list_edit.php): which cells are fields for whom and in which view, how a username, e-mail, role, start page or right is checked and written
-- list-table-quick-edit-values.md: Which values of each driver list change in quick edit (products, pages, containers …), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
+- list-table-quick-edit-values.md: Which values of each driver list change in quick edit, which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - list-table-quick-edit-zones.md: All Shipping Zones list quick edit (zone_list_edit.php): name and the four rates as fields, the zone screen's checks and save, rates not edited written as stored
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - list-table-region-lists.md: Regions, ads and form fields on the list table driver (TD9c): printed whole, list names, quick edit fields and checks, what stays on the edit screen; menu items stay a plain table
@@ -345,6 +352,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - main-menu-settings-row.md: The retired Site Settings row of the main menu (slot 20): what replaced it, where Translations went, which screens it marked, what is left of data-pg-settings-page
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
 - marketplace-products-names.md: Marketplace products screen: named row boxes, focus kept on redrawn rows and when the bulk bar hides, pager spans, emphasis inks, formatted counts, announced progress and selected count
+- marketplace-settings-layout.md: Marketplaces screen (marketplace_settings.php) on the wide layout: account tiles, work cards in the form column, the account card in the status column, the Settings drawer sections and form-field rows
 - marketplace-settings-screen-a11y.md: Marketplaces account screen: phone-width rows, inks, named dialogs, current account, counts, a refused Connect or Save with its messages inside, long names, toolbar
 - mass-edit-find-replace.md: The Find & Replace card of mass_edit.php: its liveform fields, what a refused apply comes back with, the first-draw defaults; the Get Edit Form address
 - mass-edit-live-pages-and-input-vars.md: Pages › Mass Edit reads only live pages and posts only changed fields, with a max_input_vars marker

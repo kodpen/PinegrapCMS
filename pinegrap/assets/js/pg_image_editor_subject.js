@@ -13,8 +13,10 @@
  * refuses the worker (window.PgImageSubject), and under Node for the tests
  * (module.exports): the same object in each.
  *
- * Messages in:  { type: 'cut', data, width, height, box }  (data an
- *               ArrayBuffer of RGBA; box [x0, y0, x1, y1] or null)
+ * Messages in:  { type: 'cut', data, width, height, box, strokes }  (data
+ *               an ArrayBuffer of RGBA; box [x0, y0, x1, y1] or null;
+ *               strokes, optional, the Keep and Remove brushes in the
+ *               pixels: [{ keep, r, pts: [[x, y], ...] }], in order)
  *          out: { type: 'mask', mask, box }  (mask an ArrayBuffer, a byte
  *               a pixel, 1 for the subject)
  * A failure answers { type: 'error', message }.
@@ -786,9 +788,80 @@
         return clampBox([x0 - gx, y0 - gy, x1 + gx, y1 + gy], w, h);
     }
 
-    // The subject of a picture: its mask and the box it started from.
-    function subject(data, w, h, box) {
+    // ---- the Keep and Remove brushes ----
+
+    // The labels of a cut from its box and the brushes: the box, grown to
+    // take in each Keep stroke with twice its radius round it, is left to
+    // the cut (PR_FG), the rest is background; a stroke's pixels (within
+    // its radius of its path) are hard subject (Keep) or background
+    // (Remove), a later stroke over an earlier one. Null when no box fits.
+    function strokeLabels(w, h, box, strokes) {
+        var n = w * h, labels = new Uint8Array(n), x, y;
+        var b = box ? [box[0], box[1], box[2], box[3]] : null;
+
+        (strokes || []).forEach(function (s) {
+            if (!s.keep || !s.pts || !s.pts.length) {
+                return;
+            }
+
+            var grow = 2 * Math.max(1, s.r || 0);
+
+            s.pts.forEach(function (p) {
+                b = b ? [Math.min(b[0], p[0] - grow), Math.min(b[1], p[1] - grow), Math.max(b[2], p[0] + grow), Math.max(b[3], p[1] + grow)]
+                    : [p[0] - grow, p[1] - grow, p[0] + grow, p[1] + grow];
+            });
+        });
+        b = clampBox(b, w, h);
+
+        if (!b) {
+            return null;
+        }
+
+        for (y = b[1]; y < b[3]; y++) {
+            for (x = b[0]; x < b[2]; x++) {
+                labels[y * w + x] = PR_FG;
+            }
+        }
+
+        (strokes || []).forEach(function (s) {
+            var pts = s.pts || [], r = Math.max(0.5, s.r || 0), label = s.keep ? FG : BG, k;
+
+            for (k = 0; k < pts.length; k++) {
+                paintSegment(labels, w, h, pts[k], pts[Math.min(k + 1, pts.length - 1)], r, label);
+            }
+        });
+
+        return labels;
+    }
+
+    // The pixels whose centres lie within r of the segment a-b get label.
+    function paintSegment(labels, w, h, a, b, r, label) {
+        var x0 = Math.max(0, Math.floor(Math.min(a[0], b[0]) - r)), x1 = Math.min(w - 1, Math.ceil(Math.max(a[0], b[0]) + r));
+        var y0 = Math.max(0, Math.floor(Math.min(a[1], b[1]) - r)), y1 = Math.min(h - 1, Math.ceil(Math.max(a[1], b[1]) + r));
+        var dx = b[0] - a[0], dy = b[1] - a[1], len2 = dx * dx + dy * dy, x, y;
+
+        for (y = y0; y <= y1; y++) {
+            for (x = x0; x <= x1; x++) {
+                var px = x + 0.5, py = y + 0.5, t = len2 ? Math.max(0, Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / len2)) : 0;
+                var ex = px - a[0] - t * dx, ey = py - a[1] - t * dy;
+
+                if (ex * ex + ey * ey <= r * r) {
+                    labels[y * w + x] = label;
+                }
+            }
+        }
+    }
+
+    // The subject of a picture: its mask and the box it started from. With
+    // brushes the cut runs again from the box and their hard labels.
+    function subject(data, w, h, box, strokes) {
         var start = box ? clampBox(box, w, h) : startBox(data, w, h);
+
+        if (start && strokes && strokes.length) {
+            var labels = strokeLabels(w, h, start, strokes);
+
+            return { mask: labels ? grabcut(data, w, h, null, { labels: labels }) : new Uint8Array(w * h), box: start };
+        }
 
         return { mask: start ? grabcut(data, w, h, start) : new Uint8Array(w * h), box: start };
     }
@@ -810,7 +883,7 @@
                 throw new Error('The pixels do not match the size.');
             }
 
-            var out = subject(data, w, h, m.box || null);
+            var out = subject(data, w, h, m.box || null, Array.isArray(m.strokes) ? m.strokes : null);
 
             this.post({ type: 'mask', mask: out.mask.buffer, box: out.box }, [out.mask.buffer]);
         } catch (err) {
@@ -826,6 +899,7 @@
         startBox: startBox,
         clampBox: clampBox,
         subject: subject,
+        strokeLabels: strokeLabels,
         session: function (post) { return new Session(post); },
         BG: BG, FG: FG, PR_BG: PR_BG, PR_FG: PR_FG
     };

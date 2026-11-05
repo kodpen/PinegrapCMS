@@ -135,7 +135,7 @@ function test_dark_theme_badges_keep_their_ink()
 
 	pg_assert_contains(
 		'<span class="badge fw-light theme-secondary">',
-		dark_theme_leftovers_source('view_key_codes.php'));
+		dark_theme_leftovers_source('includes/fn/key_code_list_edit.php'));
 
 	$offer = dark_theme_leftovers_source('assets/js/offer_editor.js');
 	pg_assert_contains('<a href="#" class="fg-reset text-decoration-none" data-on="', $offer, 'offer tag remove link');
