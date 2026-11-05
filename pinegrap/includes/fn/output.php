@@ -1787,7 +1787,8 @@ function pg_list_edit_request($columns, $allowed)
  * list should draw: the cell's 'html', 'class', 'title' and 'sort' (its
  * data-sort, for a table the browser sorts), each only when it changes, and
  * 'cells' for the other cells of the row that change with it, keyed by their
- * data-pg-cell name. A refusal carries 'ok' => false and a 'message'.
+ * data-pg-cell name, and 'rows' (row id => such cells) for other rows the
+ * change also redrew. A refusal carries 'ok' => false and a 'message'.
  *
  * @param array $data
  * @param int   $status
@@ -7339,7 +7340,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
             'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
             'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
-            'assets/js/pg_image_editor_actions.js'),
+            'assets/js/pg_image_editor_actions.js', 'assets/js/pg_image_editor_menu.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.
         'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),

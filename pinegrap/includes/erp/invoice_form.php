@@ -325,7 +325,9 @@ function erp_invoice_form_keep_account($account_options, $account)
  *                           column and a status column holding the totals),
  *                           status (HTML under the totals in the status
  *                           column), save_bar (the save bar's nav, drawn in
- *                           the row's last column, which is the sticky one)
+ *                           the row's last column, which is the sticky one),
+ *                           lead (HTML at the top of the form column, above
+ *                           the document card)
  * @return string  HTML
  */
 function erp_invoice_form_cards($liveform, $options = array())
@@ -440,7 +442,7 @@ function erp_invoice_form_cards($liveform, $options = array())
         // The columns split only from 2xl: the lines table needs about
         // 1,060px and scrolled sideways in an lg:col-8 at 1280px.
         ? '
-    <div class="col-12 2xl:col-9 order-1">' : '') . '
+    <div class="col-12 2xl:col-9 order-1">' . ((string) ($options['lead'] ?? '')) : '') . '
     <div class="card my-7">
         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . ($is_quote ? lang('Sales quote') : ($is_order ? lang('Purchase order') : lang('Invoice'))) . '

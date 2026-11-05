@@ -40,8 +40,9 @@
         lockPicture: ['lock', 'lock', function () { this.lockPicture(true); }],
         removePicture: ['trash', 'delete', function () { this.deletePicture(); }, true],
         erase: ['eraser', 'areaErase', function () { this.areaErase(); }, true],
-        keep: ['scissors', 'areaKeep', function () { this.areaKeep(); }],
+        keep: ['crop', 'areaKeep', function () { this.areaKeep(); }],
         copy: ['layers', 'areaCopy', function () { this.areaCopy(); }],
+        cutToLayer: ['scissors', 'areaCut', function () { this.areaCut(); }],
         adjust: ['adjust', 'areaAdjust', function () { this.areaAdjust(); }],
         redact: ['redact', 'areaRedact', function () { this.areaRedact(); }],
         invert: ['invert', 'areaInvert', function () { this.areaInvert(); }],
@@ -66,7 +67,7 @@
             area: (this.tool === 'area') && !!this.areaSelected && this.areaSelected(),
             sheet: !!this.panel && !this.sheetOpen,
             can: {
-                erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, adjust: !!this.areaAdjust,
+                erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, cutToLayer: !!this.areaCut, adjust: !!this.areaAdjust,
                 redact: !!this.newRedaction
             }
         };

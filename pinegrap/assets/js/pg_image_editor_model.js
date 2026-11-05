@@ -4205,7 +4205,7 @@
             add('lockPicture');
             add('removePicture');
         } else {
-            ['erase', 'keep', 'copy', 'adjust'].forEach(function (name) {
+            ['erase', 'keep', 'copy', 'cutToLayer', 'adjust'].forEach(function (name) {
                 if (can[name]) {
                     add(name);
                 }
@@ -4219,6 +4219,119 @@
     }
 
     var ACTIONS = { actionList: actionList };
+
+    // -- The context menu (pg_image_editor_menu.js) --
+
+    // The layers' order and alignment and the shapes' combinations, as the
+    // panel offers them.
+    var MENU_ORDER = ['front', 'forward', 'backward', 'back'];
+    var MENU_ALIGN = ['alignLeft', 'alignCenter', 'alignRight', 'alignTop', 'alignMiddle', 'alignBottom', 'distX', 'distY'];
+    var MENU_COMBINE = ['unite', 'minusFront', 'intersect', 'exclude', 'divide'];
+
+    // The items of the menu a right click, a long press or the menu key
+    // opens, in order: [{ name, off, sub, mode, on }], a separator as
+    // { sep: true }. s.at: 'stage', 'rail' or 'scene'.
+    // On the stage the selection's commands start from actionList() (s.layers,
+    // s.free, s.picture, s.area, s.can as there) and the menu adds the rest:
+    // s.clip (layers to paste), s.locked and s.hidden (every selected layer
+    // is), s.areas (selected unlocked shapes with an area), s.texts, s.warp
+    // (one warped layer), s.svg (one imported SVG), s.count (the layers),
+    // s.imports (the Import button is there) and s.site (Import from the
+    // site), s.canvas (the Canvas tool is offered).
+    // On a rail item: s.modes, its tools, and s.tool; one mode has no menu.
+    // On a scene: s.index, s.count and s.max of the scenes.
+    function menuList(s) {
+        var out = [], acts;
+        var item = function (name, off, extra) {
+            var it = { name: name, off: !!off };
+
+            Object.keys(extra || {}).forEach(function (k) { it[k] = extra[k]; });
+            out.push(it);
+        };
+        var sep = function () {
+            if (out.length && !out[out.length - 1].sep) {
+                out.push({ sep: true });
+            }
+        };
+        var sub = function (names, off) {
+            return names.map(function (n) { return { name: n, off: !!(off && off(n)) }; });
+        };
+
+        if (s.at === 'rail') {
+            return ((s.modes || []).length > 1) ? s.modes.map(function (m) { return { name: 'mode', mode: m, on: m === s.tool, off: false }; }) : out;
+        }
+
+        if (s.at === 'scene') {
+            item('sceneDuplicate', s.count >= s.max);
+            item('sceneDelete', s.count < 2);
+            item('sceneEarlier', s.index <= 0);
+            item('sceneLater', s.index >= s.count - 1);
+
+            return out;
+        }
+
+        acts = actionList({ layers: s.layers, free: s.free, picture: s.picture, area: s.area, sheet: false, can: s.can });
+
+        if (s.layers) {
+            item('cut', !s.free);
+            item('copyLayers');
+            item('paste', !s.clip);
+            acts.forEach(function (a) { item(a.name, a.off); });
+            sep();
+            item('order', false, { sub: sub(MENU_ORDER) });
+            item('align', !s.free, { sub: sub(MENU_ALIGN, function (n) { return (n === 'distX' || n === 'distY') && (s.free < 3); }) });
+            item(s.locked ? 'unlock' : 'lock');
+            item(s.hidden ? 'show' : 'hide');
+            sep();
+
+            if (s.areas >= 2) {
+                item('combine', false, { sub: sub(MENU_COMBINE) });
+            }
+
+            if (s.texts) {
+                item('outlines');
+            }
+
+            if (s.warp) {
+                item('expandWarp');
+            }
+
+            if (s.svg) {
+                item('breakApart');
+            }
+        } else if (s.picture || s.area) {
+            acts.forEach(function (a) { item(a.name, a.off); });
+
+            if (s.picture) {
+                sep();
+                item('paste', !s.clip);
+            }
+        } else {
+            item('paste', !s.clip);
+            item('selectAll', !s.count);
+            sep();
+
+            if (s.imports && s.site) {
+                item('import', false, { sub: sub(['importComputer', 'importSite']) });
+            } else if (s.imports) {
+                item('importFile');
+            }
+
+            if (s.canvas) {
+                item('canvasSize');
+            }
+
+            item('fit');
+        }
+
+        if (out.length && out[out.length - 1].sep) {
+            out.pop();
+        }
+
+        return out;
+    }
+
+    var MENU = { menuList: menuList };
 
     // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
 
@@ -7237,6 +7350,18 @@
         return (l.area || []).map(function (r) { return r.map(function (p) { return apply(m, p[0] * l.w, p[1] * l.h); }); });
     }
 
+    // Whether p, in an area layer's own frame (as M.hitLayer() passes it),
+    // lies inside its outline. An erased background's hole is not the
+    // layer's, so a press there reaches what is under it. Other shapes are
+    // hit anywhere in their box.
+    function areaHit(l, p) {
+        if ((l.shape !== 'area') || !l.area || !l.w || !l.h) {
+            return true;
+        }
+
+        return insideRings([p[0] / l.w, p[1] / l.h], l.area);
+    }
+
     // What lies in frame { x, y, w, h } outside the selection's rings: the
     // part Keep only erases.
     function areaRest(rings, frame) {
@@ -7311,7 +7436,7 @@
 
     var SELECTION = {
         AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
-        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest,
+        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest, areaHit: areaHit,
         simplifyRing: simplifyRing, subjectRings: subjectRings
     };
 
@@ -7332,7 +7457,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

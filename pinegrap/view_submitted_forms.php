@@ -18,6 +18,24 @@
 
 include('init.php');
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list_edit.php');
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the list's (validate_forms_access(): a manager or above, or
+// a user who manages forms); the form's folder is checked in
+// pg_submitted_form_quick_update().
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_submitted_form_quick_edit_columns(), function ($user) {
+        return ((int) $user['role'] < 3) || (($user['manage_forms'] ?? false) == true);
+    });
+
+    $saved = pg_submitted_form_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value']);
+
+    pg_list_edit_reply($saved, ($saved['ok'] ?? false) ? 200 : (((($saved['code'] ?? '') === 'denied')) ? 403 : 422));
+}
+
 $user = validate_user();
 validate_forms_access($user);
 

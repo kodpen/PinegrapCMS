@@ -10,7 +10,7 @@ description: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free def
   - Pins on a path layer (or outlined text); dragging one bends the shape around the others (moving least squares, rigid). Kept as `puppet` {pins at rest and moved} and drawn on the flattened outline; Expand bakes it.
   - Tests: one pin moves the whole shape, two pins keep their distance at rest, a symmetric pull gives a symmetric shape.
 
-- E27 (M) Area selection, a mode of the Fotoğraf item (`image-editor-steps-5.md` E23b). Cut in two: the whole step is far over 1,000 product lines.
+- E27 (M) Area selection, a mode of the Fotoğraf item (`image-editor-steps-5.md` E23b). Done: cut in two, E27a (#6611) and E27b (#6678); Select area sits in the Fotoğraf group since #6819 (`ui/image-editor-rail.md`).
 - E27a (M) The tool and the selection. Done (#6611, `ui/image-editor-area.md`).
   - A Select area tool on the picture: rectangle, ellipse, lasso, polygon, magic wand (tolerance, contiguous); Shift adds, Alt subtracts; invert, feather, marching ants. Kept in the document as `selection` (shapes, wand seed points and tolerance), so it opens again. Redact (E10 on its shape: a redaction area of the selection's outline) needs no server code and came with it.
   - Tests: each shape, the wand's flood fill and the outline traced from its pixels, in the model.

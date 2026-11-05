@@ -1015,7 +1015,9 @@
         if (b.pic && h && b.picEl && b.picEl.contains(e.target)) {
             this.drag = { kind: 'picture', h: h, start: box, doc: M.clone(this.doc) };
         } else {
-            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k);
+            // An erased or redacted area takes the press only inside its
+            // outline: in an erased background's hole the picture is hit.
+            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, M.areaHit);
 
             if (hit || (p[0] < box.x) || (p[1] < box.y) || (p[0] > box.x + box.w) || (p[1] > box.y + box.h)) {
                 b.pic = false;

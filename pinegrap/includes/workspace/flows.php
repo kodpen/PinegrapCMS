@@ -3133,6 +3133,7 @@ function ws_flow_js_strings()
         'fl_email_subject'    => lang('Subject'),
         'fl_email_body'       => lang('Text of the e-mail'),
         'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
+        'fl_values_hint_plain' => lang('Add value puts in what started the run or what an earlier box gave.'),
         'fl_values_add'       => lang('Add value'),
         'fl_values_text'      => lang('What it did'),
         'fl_values_outcome'   => lang('Outcome'),

@@ -1,6 +1,6 @@
 ---
 name: barcode-scanner-detection
-description: The jQuery Scanner Detection listener on the barcode stock screens and Create Order ignores keys typed into fields, scans in an open dialog and blank codes; the Last Scans row is built as text
+description: Barcode stock screens and Create Order: the scanner listener ignores fields, dialogs and blank codes; Last Scans rows built as text; the stock screens' wide layout
 ---
 
 ## Which screens listen for a barcode scanner?
@@ -21,3 +21,6 @@ PR #3377. Test: `tests/barcode_scanner_fields_test.php` (source pins).
 ## How is a Last Scans row built?
 - Cell by cell in jQuery: name, short description and the three quantities with `.text()`, `response.data.scanned_at` (a `<time>` element from `get_absolute_time()`) with `.html()`. The `?request=action` answer stays raw JSON.
 - Symptom fixed: the row was a concatenated string, so `Pantolon <Siyah>` showed as `Pantolon `, a `<b>` bolded the row and `<img src=x onerror=…>` in a product name ran in the scanning operator's session. PR #4121, test: `tests/barcode_scan_log_escaping_test.php`.
+
+## How are the two stock screens laid out?
+- The product_builder pattern (`edit-screen-wide-layout.md`, B11): the Scan card (Last Scan & Manual Read, Quantity, the stock location) and the Last Scans table in the form column; a sticky Summary (Increase or Decrease, this visit's scan count and units, the last product and its new quantity, counted in the browser from each answer); Read in the sticky save bar. The ids the scripts and tests read (`scanner_input`, `scanner_quantity_input`, `barcode_read_button`, `barcode_status`, `action_logs`) are unchanged.

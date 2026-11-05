@@ -20,9 +20,12 @@ if (!defined('PG_ERP_ENTRY')) {
  * @param liveform $liveform
  * @param bool     $currency_locked  The till already has movements, so its
  *                                   currency is shown but cannot be changed.
+ * @param bool     $with_status      false leaves the Status field out: the
+ *                                   create screen draws it in its status
+ *                                   column (erp_till_form_status_card()).
  * @return string  HTML
  */
-function erp_till_form_cards($liveform, $currency_locked = false)
+function erp_till_form_cards($liveform, $currency_locked = false, $with_status = true)
 {
     $kind_options = array();
     $kind_options[lang('Cash')] = 'cash';
@@ -30,36 +33,30 @@ function erp_till_form_cards($liveform, $currency_locked = false)
     $kind_options[lang('Card terminal')] = 'pos';
     $kind_options[lang('Credit card')] = 'credit_card';
 
-    $active_options = array();
-    $active_options[lang('Active')] = '1';
-    $active_options[lang('Passive')] = '0';
-
     return '
     <div class="card my-7">
-        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Till or Bank Account') . '
-        </div>
+        </h2>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 lg:col-5 my-3">
+                <div class="col-12 ' . ($with_status ? 'lg:col-5' : 'lg:col-7') . ' my-3">
                     <label for="name" class="form-label">' . lang('Name') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'name', 'name' => 'name',
                         'class' => 'form-control', 'maxlength' => '100',
                         'autocomplete' => 'off', 'required' => 'required')) . '
                 </div>
-                <div class="col-12 sm:col-6 lg:col-4 my-3">
+                <div class="col-12 ' . ($with_status ? 'sm:col-6 lg:col-4' : 'lg:col-5') . ' my-3">
                     <label for="kind" class="form-label">' . lang('Type') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'kind', 'name' => 'kind',
                         'class' => 'form-control', 'options' => $kind_options)) . '
-                </div>
+                </div>' . ($with_status ? '
                 <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="is_active" class="form-label">' . lang('Status') . '</label>
-                    ' . $liveform->output_field(array(
-                        'type' => 'select', 'id' => 'is_active', 'name' => 'is_active',
-                        'class' => 'form-control', 'options' => $active_options)) . '
-                </div>
+                    ' . erp_till_form_status_field($liveform) . '
+                </div>' : '') . '
             </div>
             <div class="row">
                 <div class="col-12 lg:col-4 my-3">
@@ -88,6 +85,45 @@ function erp_till_form_cards($liveform, $currency_locked = false)
                 </div>
             </div>
             ' . erp_currency_form_row($liveform, $currency_locked, lang('The currency the till or bank account holds. Every movement through it is in this currency.')) . '
+        </div>
+    </div>';
+}
+
+/**
+ * The Active / Passive select of a till.
+ *
+ * @param liveform $liveform
+ * @return string  HTML
+ */
+function erp_till_form_status_field($liveform)
+{
+    $active_options = array();
+    $active_options[lang('Active')] = '1';
+    $active_options[lang('Passive')] = '0';
+
+    return $liveform->output_field(array(
+        'type' => 'select', 'id' => 'is_active', 'name' => 'is_active',
+        'class' => 'form-control', 'options' => $active_options));
+}
+
+/**
+ * The Status card of the create screen's status column: the one field that
+ * says whether the new till takes movements, with what passive means.
+ *
+ * @param liveform $liveform
+ * @return string  HTML
+ */
+function erp_till_form_status_card($liveform)
+{
+    return '
+    <div class="card my-7">
+        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            ' . lang('Status') . '
+        </h2>
+        <div class="card-body pt-0">
+            <label for="is_active" class="form-label">' . lang('Status') . '</label>
+            ' . erp_till_form_status_field($liveform) . '
+            <div class="form-text">' . lang('A passive till keeps its history but takes no new receipt, payment or transfer.') . '</div>
         </div>
     </div>';
 }

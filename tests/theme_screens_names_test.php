@@ -76,12 +76,13 @@ function test_theme_screens_wide_layout()
 
 function test_theme_screens_list_marks_named()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_themes.php');
+	// The list's cells are drawn by includes/fn/theme_list_edit.php.
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/theme_list_edit.php');
 
 	pg_assert_false(strpos($source, '<span class="material-icons">task_alt</span>') !== false, 'no bare task_alt');
-	pg_assert_same(2, substr_count($source, 'pg_list_table_check_cell('), 'both marks are check cells');
+	pg_assert_same(1, substr_count($source, 'pg_list_table_check_cell('), 'both marks are check cells, drawn by one helper');
 	pg_assert_contains('role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>', pg_list_table_check_cell(true)['html'], 'a check cell reads Yes');
-	pg_assert_contains('pg_folder_list_name($file[\'folder_name\'])', $source, 'folder cell');
+	pg_assert_contains('pg_folder_list_name((string) $theme[\'folder_name\'])', $source, 'folder cell');
 	pg_assert_contains('<span class="material-icons d-inline" aria-hidden="true">folder</span>', pg_folder_list_name('Docs'), 'folder ligature silent');
 }
 

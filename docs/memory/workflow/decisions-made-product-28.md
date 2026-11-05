@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-28
-description: Decisions list, product part 28 (2026-11-04 afternoon on): a changed expense updates its active repeat; a duplicated campaign profile starts disabled; the new logo; the image editor's selection bar
+description: Decisions list, product part 28 (2026-11-04 afternoon on): expense repeats, duplicated campaign profiles, the new logo, the image editor's selection bar and Cut to a layer
 ---
 
 ## Where are the rules and the earlier parts?
@@ -17,3 +17,6 @@ description: Decisions list, product part 28 (2026-11-04 afternoon on): a change
 
 ## The new logo everywhere (owner, 2026-11-04)
 - The squirrel in its space window and the single-line Pinegrap wordmark replace every old logo. A narrow place shows the square mascot, a wide place the full logo, whatever it showed before. The panel's own screens (header, loading curtain, installer, theme designer) play the mascot's loop, with the still frame for reduced motion, a data saver, a small device or a refused play; icons and files are still. The SVGs of the mascot, the wordmark and both together stay in `assets/images`. The previous image editor's logo goes (`clean_up.php`). Nothing is drawn over the logo: the version pill under the mascot went the same day; the version stays in the page title. Why: one recognisable brand, and the very old "PineGrap™" icons kept showing. Details: `ui/brand-logo.md`.
+
+## Cut to a layer in the image editor (owner, 2026-11-05)
+- After Select area, Cut to a layer makes the selection its own see-through picture layer and erases the same outline from the picture, in one undo step; Erase inside and Keep only stay as they were. The uncut picture must stay restorable: undo, deleting the erased area, and the saved versions bring it back. Why: the kept part should behave as a separate PNG piece. Details: `ui/image-editor-area-cut.md`.

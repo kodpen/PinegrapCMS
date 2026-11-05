@@ -5389,13 +5389,24 @@
         return input;
     }
 
+    // The kinds whose texts the run fills with {{date}} and the other words
+    // of scheduled actions (ws_step_scheduled_texts() and a task's
+    // ws_flow_task_texts()). In any other box such a word stays as typed: a
+    // derived value, a table cell, MCP arguments, a check-in's question.
+    var WORD_KINDS = ['post', 'email', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
+
+    // The help under a value field: the words named only where they work.
+    function valuesHint(node) {
+        return t((WORD_KINDS.indexOf(node.kind) >= 0) ? 'fl_values_hint' : 'fl_values_hint_plain');
+    }
+
     // A field of a box's text with "Add value": the list of what started the
     // run and the boxes before it, each value a chip put in the text; with
     // `takes`, only the values it accepts ({ node, value }); `bare`: it takes
     // no "When empty, write" text.
     function valueField(node, label, value, max, onInput, multi, help, takes, bare) {
         var input = valueInput(node, value, max, onInput, multi, bare);
-        var wrap = field(label, input, help ? help + ' ' + t('fl_values_hint') : t('fl_values_hint'));
+        var wrap = field(label, input, help ? help + ' ' + valuesHint(node) : valuesHint(node));
         var caption = wrap.querySelector('label');
 
         // A label names a form control only; the text box is a div.

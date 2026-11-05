@@ -263,6 +263,12 @@ if (!empty($_POST['quick_add'])) {
                             break;
                     }
 
+                    // A gift card line over its unit limit was refused by add_order_item().
+                    if (pg_gift_card_quantity_refusal_take()) {
+                        $order_item_added = false;
+                        $liveform->mark_error('quick_add_quantity', pg_gift_card_line_quantity_error());
+                    }
+
                     // If a quick add order item was added, then offers for this order need to be refreshed,
                     // so that the subtotal in a cart region is accurate.
                     if ($order_item_added == true) {
@@ -429,6 +435,11 @@ if ($order_submitted == false) {
             if ($_POST['quantity'][$order_item['id']] == '0') {
                 remove_order_item($order_item['id']);
                 unset($order_items[$key]);
+
+            // A gift card line over its unit limit keeps its quantity: the line
+            // would be charged for cards it never issues.
+            } elseif (($order_item['gift_card'] == 1) && (preg_match("/^\d+$/", $_POST['quantity'][$order_item['id']]) == true) && !pg_gift_card_line_quantity_allowed($_POST['quantity'][$order_item['id']])) {
+                $liveform->mark_error('quantity[' . $order_item['id'] . ']', pg_gift_card_line_quantity_error());
 
             // else if quantity is a positive integer and new quantity is different from old quantity, then update quantity
             } elseif ((preg_match("/^\d+$/", $_POST['quantity'][$order_item['id']]) == true) && ($_POST['quantity'][$order_item['id']] != $order_item['quantity'])) {
