@@ -9511,23 +9511,31 @@ function bindPageRenameRedirect(ids) {
             const lbl = this.template.label;
             const DPI = 96;
             const mmToPx = mm => mm * DPI / 25.4;
-            const W = mmToPx(lbl.width);
-            const H = mmToPx(lbl.height);
+            // The template is stored JSON anyone with the product screens
+            // may save, and the barcode a free text: every value below is
+            // read as a number, a CSS value or escaped text before it goes
+            // into the markup of the print window, which shares the panel's
+            // origin.
+            const num = (v, d) => this._num(v, d);
+            const css = (v, d) => this._css(v, d);
+            const W = mmToPx(num(lbl.width, 50));
+            const H = mmToPx(num(lbl.height, 30));
 
             let elementsHTML = '';
             this.template.elements.forEach((el, elIdx) => {
-                const l = mmToPx(el.x);
-                const t = mmToPx(el.y);
-                const w = mmToPx(el.width);
-                const h = mmToPx(el.height);
-                const rotStyle = el.rotation ? `transform:rotate(${el.rotation}deg);transform-origin:center center;` : '';
+                const l = mmToPx(num(el.x, 0));
+                const t = mmToPx(num(el.y, 0));
+                const w = mmToPx(num(el.width, 0));
+                const h = mmToPx(num(el.height, 0));
+                const rotation = num(el.rotation, 0);
+                const rotStyle = rotation ? `transform:rotate(${rotation}deg);transform-origin:center center;` : '';
                 const base = `position:absolute;left:${l}px;top:${t}px;width:${w}px;height:${h}px;overflow:hidden;box-sizing:border-box;z-index:${elIdx};${rotStyle}`;
 
                 if (el.type === 'barcode') {
                     const BC_FONT = 10;
                     const bcH = Math.max(15, h - (el.showText !== false ? BC_FONT + 8 : 4));
                     const baseNoClip = `position:absolute;left:${l}px;top:${t}px;width:${w}px;height:${h}px;box-sizing:border-box;z-index:${elIdx};${rotStyle}`;
-                    elementsHTML += `<div style="${baseNoClip}"><svg id="print-bc-${el.id}" style="display:block;" data-bc-type="${el.barcodeType || 'CODE128'}" data-bc-show-text="${el.showText !== false}" data-bc-h="${bcH}" data-bc-fs="${BC_FONT}"></svg></div>`;
+                    elementsHTML += `<div style="${baseNoClip}"><svg id="print-bc-${el.id}" style="display:block;" data-bc-type="${this._esc(el.barcodeType || 'CODE128')}" data-bc-show-text="${el.showText !== false}" data-bc-h="${bcH}" data-bc-fs="${BC_FONT}"></svg></div>`;
                 } else if (el.type === 'text') {
                     let txt = '';
                     if (el.field === 'custom') txt = el.text || '';
@@ -9535,17 +9543,18 @@ function bindPageRenameRedirect(ids) {
                     else if (el.field === 'sku') txt = data.sku || '';
                     else if (el.field === 'price') txt = data.price || '';
                     else if (el.field === 'attributes') txt = data.attributes || '';
-                    const transform = el.scrollX ? `transform:translateX(${el.scrollX}px);` : '';
+                    const scrollX = num(el.scrollX, 0);
+                    const transform = scrollX ? `transform:translateX(${scrollX}px);` : '';
                     elementsHTML += `<div style="${base}display:flex;align-items:center;justify-content:${el.align === 'center' ? 'center' : (el.align === 'right' ? 'flex-end' : 'flex-start')};padding:0 2px;">
-                        <span style="font-size:${el.fontSize || 8}px;font-weight:${el.fontWeight || 'normal'};color:${el.color || '#000'};white-space:nowrap;${transform}">${this._esc(txt)}</span></div>`;
+                        <span style="font-size:${num(el.fontSize, 8) || 8}px;font-weight:${css(el.fontWeight, 'normal')};color:${css(el.color, '#000')};white-space:nowrap;${transform}">${this._esc(txt)}</span></div>`;
                 } else if (el.type === 'image') {
                     const src = (el.field === 'product_image')
                         ? (data.productImageSrc || el.src || '')
                         : (el.src || '');
                     elementsHTML += `<img src="${this._esc(src)}" style="${base}object-fit:contain;"/>`;
                 } else if (el.type === 'rect') {
-                    const fill = el.fill && el.fill !== 'none' ? el.fill : 'transparent';
-                    elementsHTML += `<div style="${base}border:${el.borderWidth || 1}px solid ${el.borderColor || '#000'};background:${fill};border-radius:${el.borderRadius || 0}px;"></div>`;
+                    const fill = el.fill && el.fill !== 'none' ? css(el.fill, 'transparent') : 'transparent';
+                    elementsHTML += `<div style="${base}border:${num(el.borderWidth, 1) || 1}px solid ${css(el.borderColor, '#000')};background:${fill};border-radius:${num(el.borderRadius, 0)}px;"></div>`;
                 }
             });
 
@@ -9566,7 +9575,7 @@ function bindPageRenameRedirect(ids) {
   @media print {
     html, body { margin:0; padding:0; width:${W}px; height:${H}px; }
   }
-  .label { position:relative; width:${W}px; height:${H}px; background:${lbl.background || '#fff'}; overflow:hidden; }
+  .label { position:relative; width:${W}px; height:${H}px; background:${css(lbl.background, '#fff')}; overflow:hidden; }
 </style>
 </head><body>
 <div class="label">${elementsHTML}</div>
@@ -9574,7 +9583,7 @@ function bindPageRenameRedirect(ids) {
 window.onload = function() {
   document.querySelectorAll('[id^="print-bc-"]').forEach(function(svg) {
     try {
-      JsBarcode(svg, ${JSON.stringify(data.barcode || '0000000000')}, {
+      JsBarcode(svg, ${JSON.stringify(String(data.barcode || '0000000000')).replace(/</g, '\\u003c')}, {
         format: svg.dataset.bcType || 'CODE128',
         displayValue: svg.dataset.bcShowText !== 'false',
         margin: 2, lineColor: '#000', width: 1.5,
@@ -9591,6 +9600,20 @@ window.onload = function() {
 
         _esc(str) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        },
+
+        // A template number, or `fallback` when it is not a finite number.
+        _num(value, fallback) {
+            const n = parseFloat(value);
+            return isFinite(n) ? n : fallback;
+        },
+
+        // A template CSS value (a colour, a weight): only the characters
+        // such a value is written with, so it cannot end the declaration,
+        // the attribute or the element; `fallback` otherwise.
+        _css(value, fallback) {
+            const s = String(value == null ? '' : value).trim();
+            return /^[#a-zA-Z0-9.,%() -]+$/.test(s) ? s : fallback;
         }
     };
 
