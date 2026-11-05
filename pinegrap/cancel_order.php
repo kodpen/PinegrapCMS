@@ -38,6 +38,11 @@
 
 include('init.php');
 
+// The reason and the screen marker post one value each: one posted as an
+// array (cancellation_reason[]=) counts as not given instead of being cast
+// to "Array" with an "Array to string conversion" warning.
+pg_request_single_values(array('cancellation_reason', 'admin_context'));
+
 validate_token_field();
 
 if (!defined('ECOMMERCE') || ECOMMERCE !== true) {
