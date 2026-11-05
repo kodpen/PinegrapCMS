@@ -70,6 +70,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
+- file-copy-chat-attachments.md: File Manager paste, folder copy, zip archives and the Workspace file picker refuse a team chat attachment to anyone get_file.php refuses it to; an archive holding a form upload stays an attachment
 - file-manager-page-where-used.md: The File Manager's "Where used" for a page (explorer_page_usage): menu items, short links, links in content, page settings, products/offers/events and site settings that point at it
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, what it reads by id, the cap, the answer

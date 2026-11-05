@@ -85,6 +85,7 @@ description: Generated from the module field of the memory files: each includes/
 - `experiments_sheet`: [[page-experiments-sheet]]
 - `explorer_side`: [[explorer-menu-tree]]
 - `field_list`: [[list-table-region-lists]]
+- `file_copy_gate`: [[file-copy-chat-attachments]]
 - `file_storage`: [[file-object-storage]], [[file-object-storage-readers]], [[object-storage-migration]], [[workspace-files-object-storage]]
 - `files`: [[design-files-modify-dialog]], [[design-files-screens]], [[edit-file-header]], [[import-my-site-scans]], [[name-length-refusal]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]], [[theme-screens-names-and-returns]]
 - `form_mails`: [[custom-form-mails]]
