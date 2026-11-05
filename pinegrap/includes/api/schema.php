@@ -3098,7 +3098,7 @@ function api_schema() {
 			'handler' => 'api_calendar_event_reservations',
 			'returns' => array('list' => 'CalendarReservation'),
 			'summary' => 'The reservations of an event',
-			'description' => 'The order lines of placed orders that reserve the event, oldest first, cursor paged; carts not yet ordered are left out. A cancelled order\'s line is listed with its order_status. recurrence_number is the repeat a line reserves (0: the event as a whole, or a repeating event whose repeats share their spots). customer (name, e-mail, contact) is null for an owner who may not open orders. An event on none of the calendars the owner may open is answered 404. The calendar_event.reserved webhook announces each new one.',
+			'description' => 'The order lines of placed orders that reserve the event, oldest first, cursor paged; carts not yet ordered are left out. A cancelled order\'s line is listed with its order_status. recurrence_number is the repeat a line reserves (0: the event as a whole, or a repeating event whose repeats share their spots). customer (name, e-mail, contact) is null for an owner who may not open orders or a key without orders:read. An event on none of the calendars the owner may open is answered 404. The calendar_event.reserved webhook announces each new one.',
 			'params'  => array(
 				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the reservations of this repeat.'),

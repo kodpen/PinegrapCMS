@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-derived-calculate
-description: Calculate rule of a flow's derived value box (#7016, FA1): one calculator formula, values bound by the resolver not pasted, places, empty on error, the check, the canvas function list
+description: Calculate rule of a flow's derived value box (#7016, PR #7260): one calculator formula, values bound by the resolver not pasted, places, empty on error, the check, the canvas function list
 ---
 
 ## What does it do?
