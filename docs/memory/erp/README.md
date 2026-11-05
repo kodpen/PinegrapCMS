@@ -163,6 +163,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-settings-cards.md: ERP settings cards from includes/erp/settings_cards.php: Accounting pane for role < 3, erp_settings.php for role 3 only; how each saves; why the template editor stays.
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.
+- erp-stock-return-cost-rounding.md: A line returned in parts takes back exactly the cost and quantity its stock move recorded: each return's share is the difference of rounded running totals.
 - erp-tax-names-zones-and-second-tax.md: ERP tax captions (erp_tax_label, config.erp_tax_name), the zone rate for store and account sales, and the second tax (4.75): columns, SQL helpers, captions, the e-document limit.
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-till-below-zero.md: A cash till (drawer, received-cheque portfolio) never goes below zero on a transfer, payment or expense: the one check, where it is asked, who skips it, what an already negative till does
