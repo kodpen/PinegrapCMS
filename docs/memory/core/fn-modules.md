@@ -273,6 +273,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_starters`: [[widget-starters]], [[widget-starters-detail]]
 - `widgets_wishlist`: [[wishlist-widget]]
 - `wishlist`: [[wishlist]]
+- `zone_list_edit`: [[list-table-quick-edit-zones]]
 
 ## How does a module get on this list?
 - The memory file that describes it names it in its frontmatter (`module: comments, widgets_comments`) and `php tools/memory_index.php` is run. The kinds of function the older modules hold are in [[fn-module-map]].
