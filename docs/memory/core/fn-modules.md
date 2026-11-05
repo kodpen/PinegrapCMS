@@ -230,6 +230,7 @@ description: Generated from the module field of the memory files: each includes/
 - `vat_check`: [[eu-vat-check]]
 - `vat_checkout`: [[eu-vat-checkout]]
 - `vendor_api`: [[vendor-api-client]]
+- `verified_shipping_address_list_edit`: [[list-table-quick-edit-verified-addresses]]
 - `visitor_figures`: [[visitor-figures-module]]
 - `visitor_insights`: [[visitors-ai-section]], [[visitors-speed-section]]
 - `visitor_pages`: [[visitors-pages]]
