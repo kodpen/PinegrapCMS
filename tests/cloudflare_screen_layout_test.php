@@ -54,3 +54,28 @@ function test_cloudflare_screen_analytics_fill_the_row()
 	pg_assert_true(substr_count($source, '<div class="col-6 md:col-4 xl:col"><div class="card h-100">') === 5, 'the five analytics cards share the row');
 	pg_assert_contains('<span class="pg-btn-label">\' . lang(\'Clear Cache\') . \'</span>', $source, 'the Clear Cache label is in its span');
 }
+
+function test_cloudflare_screen_date_fields_are_labelled_form_fields()
+{
+	$source = cloudflare_screen_layout_source();
+
+	foreach (array('cf_start_date' => 'start_date', 'cf_end_date' => 'end_date', 'cf_log_start' => 'log_start', 'cf_log_end' => 'log_end') as $id => $name) {
+		pg_assert_contains('<label for="' . $id . '" class="form-label">', $source, $name . ' has its label');
+		pg_assert_contains('<input type="date" data-pg-date id="' . $id . '" name="' . $name . '"', $source, $name . ' carries the id its label names');
+	}
+
+	pg_assert_true(substr_count($source, '<div class="form-field">' . "\n") >= 4, 'the four date fields sit in form-field boxes');
+	pg_assert_true(strpos($source, '<form method="get" class="mb-7">\'.$period_fields.\'') !== false, 'Refresh Logs keeps a custom analytics period');
+	pg_assert_contains('<input type="hidden" name="log_start" value="\'.$log_start_val.\'">', $source, 'Apply keeps the log range');
+}
+
+function test_cloudflare_screen_dns_and_logs_cards_have_headings()
+{
+	$source = cloudflare_screen_layout_source();
+
+	pg_assert_true(strpos($source, '<label class="form-label mb-0 fw-bold">') === false, 'no card title is a label without a field');
+	pg_assert_contains('<section class="card my-7" aria-labelledby="cf_dns_title">', $source, 'the DNS card is named by its heading');
+	pg_assert_contains('<section class="card my-7" aria-labelledby="cf_logs_title">', $source, 'the logs card is named by its heading');
+	pg_assert_contains('<span class="pg-btn-label">\' . lang(\'Add Record\') . \'</span>', $source, 'the Add Record label is in its span');
+	pg_assert_true(strpos($source, '<th>') === false, 'every log table heading is a column header');
+}

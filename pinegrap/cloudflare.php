@@ -961,17 +961,27 @@ print pg_page_shell([
 
     '.(($period === 'custom') ? '
     <!-- Custom Date Range -->
-    <form method="get" class="mb-5">
-      <input type="hidden" name="period" value="custom">
-      <div class="row g-3">
-        <div class="md:col-4">
-          <input type="date" data-pg-date name="start_date" value="' . h((isset($_REQUEST['start_date']) && is_string($_REQUEST['start_date'])) ? $_REQUEST['start_date'] : '') . '" class="form-control" required>
-        </div>
-        <div class="md:col-4">
-          <input type="date" data-pg-date name="end_date" value="' . h((isset($_REQUEST['end_date']) && is_string($_REQUEST['end_date'])) ? $_REQUEST['end_date'] : '') . '" class="form-control" required>
-        </div>
-        <div class="md:col-4">
-          <button type="submit" class="btn btn-solid theme-primary">' . lang('Apply') . '</button>
+    <form method="get" class="card mb-5">
+      <div class="card-body">
+        <input type="hidden" name="period" value="custom">
+        <input type="hidden" name="log_start" value="'.$log_start_val.'">
+        <input type="hidden" name="log_end" value="'.$log_end_val.'">
+        <div class="row g-5 align-items-end">
+          <div class="col-12 md:col-5">
+            <div class="form-field">
+              <label for="cf_start_date" class="form-label">' . lang('Start Date') . '</label>
+              <input type="date" data-pg-date id="cf_start_date" name="start_date" value="' . h((isset($_REQUEST['start_date']) && is_string($_REQUEST['start_date'])) ? $_REQUEST['start_date'] : '') . '" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-12 md:col-5">
+            <div class="form-field">
+              <label for="cf_end_date" class="form-label">' . lang('End Date') . '</label>
+              <input type="date" data-pg-date id="cf_end_date" name="end_date" value="' . h((isset($_REQUEST['end_date']) && is_string($_REQUEST['end_date'])) ? $_REQUEST['end_date'] : '') . '" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-12 md:col-2">
+            <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Apply') . '</button>
+          </div>
         </div>
       </div>
     </form>
@@ -1005,71 +1015,70 @@ print pg_page_shell([
     '.$image_vary_card.'
 
     <!-- DNS Records -->
-    <div class="card my-7">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <label class="form-label mb-0 fw-bold"><i class="bi bi-hdd-network"></i> ' . lang('DNS Records') . '</label>
-        <div class="d-flex gap-3 align-items-center">
+    <section class="card my-7" aria-labelledby="cf_dns_title">
+      <div class="card-header bg-reset border-0 d-flex flex-wrap gap-3 justify-content-between align-items-center">
+        <h2 id="cf_dns_title" class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('DNS Records') . '</h2>
+        <div class="ms-auto d-flex flex-wrap justify-content-end gap-3 align-items-center">
           ' . pg_list_table_search_box('cloudflare_dns') . '
-          <button class="btn btn-solid theme-primary btn-sm" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle"></i> ' . lang('Add Record') . '</button>
+          <button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Add Record') . '</span></button>
         </div>
       </div>
       <div class="card-body p-0">
         ' . pg_list_table_html($dns_list['source'], $dns_list['page'], lang('DNS Records')) . '
       </div>
-    </div>
+    </section>
     <form method="post" id="pg-cf-delete-form" class="d-none">
       ' . get_token_field() . '
       <input type="hidden" name="action" value="delete_record">
       <input type="hidden" name="id" value="">
     </form>
 
-    <!-- Zone Logs -->
-    <div class="card my-7">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <label class="form-label mb-0 fw-bold"><i class="bi bi-list-columns-reverse"></i> ' . lang('Zone Logs') . '</label>
+    <!-- Zone Logs: the date range filters this card; it keeps a custom
+         analytics period, whose dates are not kept in the session. -->
+    <section class="card my-7" aria-labelledby="cf_logs_title">
+      <div class="card-header bg-reset border-0">
+        <h2 id="cf_logs_title" class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Zone Logs') . '</h2>
       </div>
       <div class="card-body">
 
-        <!-- Log Date Range Filter -->
-        <form method="get" class="mb-7">
-          <div class="row g-3 align-items-end">
-            <div class="md:col-3">
-              <label class="form-label small">' . lang('Start Date') . '</label>
-              <input type="date" data-pg-date name="log_start" value="'.$log_start_val.'" class="form-control" required>
+        <form method="get" class="mb-7">'.$period_fields.'
+          <div class="row g-5 align-items-end">
+            <div class="col-12 md:col-5">
+              <div class="form-field">
+                <label for="cf_log_start" class="form-label">' . lang('Start Date') . '</label>
+                <input type="date" data-pg-date id="cf_log_start" name="log_start" value="'.$log_start_val.'" class="form-control" required>
+              </div>
             </div>
-            <div class="md:col-3">
-              <label class="form-label small">' . lang('End Date') . '</label>
-              <input type="date" data-pg-date name="log_end" value="'.$log_end_val.'" class="form-control" required>
+            <div class="col-12 md:col-5">
+              <div class="form-field">
+                <label for="cf_log_end" class="form-label">' . lang('End Date') . '</label>
+                <input type="date" data-pg-date id="cf_log_end" name="log_end" value="'.$log_end_val.'" class="form-control" required>
+              </div>
             </div>
-            <div class="md:col-2">
-              <button type="submit" class="btn btn-solid theme-primary btn-sm"><i class="bi bi-arrow-clockwise"></i> ' . lang('Refresh Logs') . '</button>
+            <div class="col-12 md:col-2">
+              <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Refresh Logs') . '</span></button>
             </div>
           </div>
         </form>
 
-        <!-- Audit Logs -->
-        <h6 class="mb-5"><i class="bi bi-shield-check"></i> ' . lang('Audit Logs') . ' <small class="fg-secondary">(' . lang('Account Activity') . ')</small></h6>
+        <h3 class="h6 mb-5"><i class="bi bi-shield-check" aria-hidden="true"></i> ' . lang('Audit Logs') . ' <small class="fg-secondary">(' . lang('Account Activity') . ')</small></h3>
         <div class="table-responsive mb-7">
           <table class="table table-sm table-striped w-100">
-            <thead><tr><th>' . lang('Timestamp') . '</th><th>' . lang('Action') . '</th><th>' . lang('Actor') . '</th><th>' . lang('Resource') . '</th><th>' . lang('Zone') . '</th></tr></thead>
-
-
-
+            <thead><tr><th scope="col">' . lang('Timestamp') . '</th><th scope="col">' . lang('Action') . '</th><th scope="col">' . lang('Actor') . '</th><th scope="col">' . lang('Resource') . '</th><th scope="col">' . lang('Zone') . '</th></tr></thead>
             <tbody>'.$audit_rows.'</tbody>
           </table>
         </div>
 
-        <!-- Firewall Events -->
-        <h6 class="mb-5"><i class="bi bi-shield-exclamation"></i> ' . lang('Firewall Events') . ' <small class="fg-secondary">(' . lang('Security Events') . ')</small></h6>
+        <h3 class="h6 mb-5"><i class="bi bi-shield-exclamation" aria-hidden="true"></i> ' . lang('Firewall Events') . ' <small class="fg-secondary">(' . lang('Security Events') . ')</small></h3>
         <div class="table-responsive">
           <table class="table table-sm table-striped w-100">
-            <thead><tr><th>' . lang('Time') . '</th><th>' . lang('Action') . '</th><th>' . lang('Client IP') . '</th><th>' . lang('Requests') . '</th><th>' . lang('Ray ID') . '</th></tr></thead>
+            <thead><tr><th scope="col">' . lang('Time') . '</th><th scope="col">' . lang('Action') . '</th><th scope="col">' . lang('Client IP') . '</th><th scope="col">' . lang('Requests') . '</th><th scope="col">' . lang('Ray ID') . '</th></tr></thead>
             <tbody>'.$fw_rows.'</tbody>
           </table>
         </div>
 
       </div>
-    </div>
+    </section>
 
   </div>
   <div class="col-12 lg:col-4 2xl:col-3 order-2">
