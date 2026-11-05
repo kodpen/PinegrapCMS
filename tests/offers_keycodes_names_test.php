@@ -41,7 +41,7 @@ function test_key_code_marks_read_as_text()
 {
 	$src = offers_keycodes_names_source('view_key_codes.php');
 
-	pg_assert_contains('<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">\' . h(lang(\'Yes\')) . \'</span>', (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_key_codes.php'), 'the Single-Use mark reads Yes');
+	pg_assert_contains('<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">\' . h(lang(\'Yes\')) . \'</span>', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/key_code_list_edit.php'), 'the Single-Use mark reads Yes');
 	pg_assert_false(strpos($src, 'aria-label="Button Bar"') !== false, 'the toolbar landmark is translated');
 	pg_assert_contains('<i class="bi bi-trash me-1" aria-hidden="true"></i>', $src, 'the delete icon is not read');
 

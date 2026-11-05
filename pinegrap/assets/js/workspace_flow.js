@@ -641,6 +641,12 @@
             return delayText(config);
         }
 
+        if ((node.kind === 'for_each') && (config.mode === 'count')) {
+            var times = (config.count || '').trim();
+
+            return times ? t('fl_loop_count_meta', /^\d+$/.test(times) ? times : valueLabel(node, times)) : t('fl_loop_no_count');
+        }
+
         if (node.kind === 'for_each') {
             return config.list ? valueLabel(node, config.list) : t('fl_loop_no_list');
         }
@@ -3062,7 +3068,7 @@
         checkin: [['question', 'fl_checkin_question', 500]],
         approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]],
         value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]],
-        for_each: [['list', 'fl_loop_list', 200]],
+        for_each: [['list', 'fl_loop_list', 200], ['count', 'fl_loop_count', 200]],
         for_each_end: [['collect', 'fl_loop_collect', 200]]
     };
 
@@ -3196,7 +3202,10 @@
             ? [{ key: 'cells', label: t('fl_rows_cells'), text: config.cells }] : [];
 
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
-            return typeof config[item[0]] === 'string';
+            return (typeof config[item[0]] === 'string')
+                // A For each box reads its list, or in count mode its count
+                // (ws_flow_loop_source_key()).
+                && ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list')));
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: config[item[0]] };
         }).concat(cells);
@@ -3217,7 +3226,7 @@
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
             return (node.kind !== 'value') || (item[0] !== 'b') || derivedRule(config.rule).two;
         }).filter(function (item) {
-            return !kindOf(node).loop || !config[item[0]];
+            return ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list'))) && (!kindOf(node).loop || !config[item[0]]);
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
         });
@@ -5053,6 +5062,11 @@
             return listValue(source);
         }
 
+        // A count is a number.
+        if ((node.kind === 'for_each') && (key === 'count')) {
+            return source.value.type === 'number';
+        }
+
         if ((node.kind === 'for_each_end') && (key === 'collect')) {
             var loop = flowLoops()[node.config.for_each || ''];
 
@@ -5070,7 +5084,7 @@
     // Does a field take a "When empty, write" text? A loop's list and the
     // value its End box gathers are read as they are (ws_step_value_single()).
     function fieldFallback(node, key) {
-        return !(((node.kind === 'for_each') && (key === 'list')) || ((node.kind === 'for_each_end') && (key === 'collect')));
+        return !(((node.kind === 'for_each') && ((key === 'list') || (key === 'count'))) || ((node.kind === 'for_each_end') && (key === 'collect')));
     }
 
     // An address with a value put at its end: after its path's "/" when it
@@ -6543,11 +6557,39 @@
         box.appendChild(field(t('fl_chain_flow'), pick, t('fl_chain_help')));
     }
 
-    // A For each box: the one value holding the list, where the list sits in
-    // it, and the fields of an item it gives by name
-    // (ws_flow_loop_normalize()).
+    // A For each box: what it goes through (a list, or a count: Repeat N
+    // times); for a list the one value holding it, where the list sits in
+    // it and the fields of an item it gives by name; for a count the number
+    // of times, 1 to 50, or one value (ws_flow_loop_normalize()).
     function loopFields(box, node) {
         var config = node.config;
+        var mode = K.select([['list', t('fl_loop_mode_list')], ['count', t('fl_loop_mode_count')]], (config.mode === 'count') ? 'count' : 'list');
+
+        mode.setAttribute('data-refocus', 'loop-mode-' + node.id);
+        mode.addEventListener('change', function () {
+            config.mode = mode.value;
+
+            // An item of a count has no fields to name.
+            if (config.mode === 'count') {
+                config.fields = [];
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_loop_mode'), mode));
+
+        if (config.mode === 'count') {
+            box.appendChild(valueField(node, t('fl_loop_count'), config.count || '', 200, function (value) {
+                config.count = value.trim();
+                refreshNode(node);
+            }, false, t('fl_loop_count_help'), function (source) {
+                return fieldTakes(node, 'count', source);
+            }, !fieldFallback(node, 'count')));
+
+            return;
+        }
+
         var fields = textInput((config.fields || []).join(', '), 400, function (value) {
             config.fields = [];
             value.split(',').forEach(function (part) {
@@ -8588,7 +8630,7 @@
         } else if (kind === 'start_flow') {
             config = { flow_id: 0 };
         } else if (kind === 'for_each') {
-            config = { list: '', path: '', fields: [] };
+            config = { list: '', path: '', fields: [], mode: 'list', count: '' };
         } else if (kind === 'for_each_end') {
             // The loop that has no End box yet, when there is one such.
             var loops = flowLoops();

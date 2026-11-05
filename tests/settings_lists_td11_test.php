@@ -48,7 +48,7 @@ function test_settings_lists_td11_printed()
 		pg_assert_contains("pg_list_table_search_box('" . $list . "')", $source, $file . ': toolbar search box');
 		pg_assert_contains("pg_js_bundle_tags('assets/js/pg_list_table.min.js')", $screen, $file . ': driver loaded');
 		// A list with quick edit draws its cells in its includes/fn module.
-		$modules = array('view_zones' => 'zone_list_edit.php', 'view_currencies' => 'currency_list_edit.php');
+		$modules = array('view_zones' => 'zone_list_edit.php', 'view_tax_zones' => 'tax_zone_list_edit.php', 'view_currencies' => 'currency_list_edit.php');
 		$cells = isset($modules[$list]) ? (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/' . $modules[$list]) : $screen;
 		pg_assert_contains('data-pg-open', $cells, $file . ': the name opens the record');
 	}

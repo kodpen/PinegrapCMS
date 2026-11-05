@@ -191,7 +191,7 @@ $output_new = (!$ready || $readonly) ? '' : '
                         ' . $liveform->output_field(array('type' => 'text', 'id' => 'notes', 'name' => 'notes', 'class' => 'form-control', 'maxlength' => '255')) . '
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                         <span class="form-text ms-3">' . lang('Taken from a customer, it is a collection: their debt comes down now. Given to a supplier, it is a payment.') . '</span>
                     </div>
                     </div>
@@ -229,14 +229,9 @@ pg_page_shell([
                 ' . $output_status_filter . '
                 ' . $output_direction_filter . '
             </nav>
-
-            <div class="row g-5 my-1">
-                <div class="col-12 md:col-4"><div class="card h-100"><div class="card-body"><div class="small fg-secondary text-uppercase">' . lang('In the portfolio or at the bank') . '</div><div class="h4 mb-0">' . h(erp_money_out($totals['received'][1])) . '</div><div class="small fg-secondary">' . h(lang(array('string' => '{var:1} cheque(s) or note(s)', 'vars' => $totals['received'][0]))) . '</div></div></div></div>
-                <div class="col-12 md:col-4"><div class="card h-100"><div class="card-body"><div class="small fg-secondary text-uppercase">' . lang('Given and not yet paid') . '</div><div class="h4 mb-0">' . h(erp_money_out($totals['given'][1])) . '</div><div class="small fg-secondary">' . h(lang(array('string' => '{var:1} cheque(s) or note(s)', 'vars' => $totals['given'][0]))) . '</div></div></div></div>
-                <div class="col-12 md:col-4"><div class="card h-100"><div class="card-body"><div class="small fg-secondary text-uppercase">' . lang('Due within a week') . '</div><div class="h4 mb-0' . (($totals['due_week'] > 0) ? ' fg-danger' : '') . '">' . (int) $totals['due_week'] . '</div>' . (($totals['overdue'] > 0) ? '<div class="small fg-danger">' . h(lang(array('string' => '{var:1} overdue', 'vars' => $totals['overdue']))) . '</div>' : '') . '</div></div></div>
-            </div>
-
-            <div class="card my-7">
+        </div>
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            <div class="card my-7" id="erp_cheques">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
@@ -254,6 +249,26 @@ pg_page_shell([
                 </div>
             </div>
             ' . $output_new . '
+        </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky my-7" style="top:3.3rem;">
+                <div class="card">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                    <div class="card-body">
+                        <dl class="row small mb-0">
+                            <dt class="col-7 fw-normal fg-secondary">' . h(lang('In the portfolio or at the bank')) . '</dt>
+                            <dd class="col-5 text-end mb-0 fw-semibold">' . h(erp_money_out($totals['received'][1])) . '</dd>
+                            <dd class="col-12 text-end fg-secondary mb-3">' . h(lang(array('string' => '{var:1} cheque(s) or note(s)', 'vars' => $totals['received'][0]))) . '</dd>
+                            <dt class="col-7 fw-normal fg-secondary">' . h(lang('Given and not yet paid')) . '</dt>
+                            <dd class="col-5 text-end mb-0 fw-semibold">' . h(erp_money_out($totals['given'][1])) . '</dd>
+                            <dd class="col-12 text-end fg-secondary mb-3">' . h(lang(array('string' => '{var:1} cheque(s) or note(s)', 'vars' => $totals['given'][0]))) . '</dd>
+                            <dt class="col-7 fw-normal fg-secondary">' . h(lang('Due within a week')) . '</dt>
+                            <dd class="col-5 text-end mb-0 fw-semibold' . (($totals['due_week'] > 0) ? ' fg-danger' : '') . '">' . (int) $totals['due_week'] . '</dd>
+                            ' . (($totals['overdue'] > 0) ? '<dd class="col-12 text-end fg-danger mt-1 mb-0">' . h(lang(array('string' => '{var:1} overdue', 'vars' => $totals['overdue']))) . '</dd>' : '') . '
+                        </dl>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </main>' .

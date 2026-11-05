@@ -46,11 +46,12 @@ function test_commerce_lists_names_countries_translated()
 
 function test_commerce_lists_names_tax_rate_percent()
 {
-	$source = commerce_lists_names_source('view_tax_zones.php');
+	// The list's cells are drawn by includes/fn/tax_zone_list_edit.php.
+	$source = commerce_lists_names_source('includes/fn/tax_zone_list_edit.php');
 
-	pg_assert_contains("format_tax_rate(\$tax_zone['tax_rate'])", $source);
+	pg_assert_contains("format_tax_rate(\$row['tax_rate'])", $source);
 	pg_assert_contains("lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(", $source);
-	pg_assert_true(strpos($source, "h(\$tax_zone['tax_rate']) . '%") === false, 'tax rate printed as stored');
+	pg_assert_true(strpos($source, "h(\$row['tax_rate']) . '%") === false, 'tax rate printed as stored');
 }
 
 function test_commerce_lists_names_shipping_marks_read_yes()

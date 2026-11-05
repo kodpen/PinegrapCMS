@@ -1719,7 +1719,7 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 	$id = $prefix . '_' . $field;
 
 	$out = '
-			<div class="mb-5">
+			<div class="form-field mb-5">
 				<label class="form-label" for="' . h($id) . '">' . h(lang($meta['label'])) . '</label>';
 
 	if (mp_provider_field_is_select($meta)) {
@@ -2766,11 +2766,11 @@ echo '
 			</div>
 			<div class="dialog-body">
 				' . (($mp_refused === 'create') ? $mp_form_errors : '') . '
-				<div class="mb-5">
+				<div class="form-field mb-5">
 					<label class="form-label" for="new_provider">' . lang('Marketplace') . '</label>
 					<select class="form-control' . ((($mp_refused === 'create') && isset($mp_invalid['provider'])) ? ' is-invalid" aria-invalid="true' : '') . '" id="new_provider" name="provider">' . $provider_options . '</select>
 				</div>
-				<div class="mb-5">
+				<div class="form-field mb-5">
 					<label class="form-label" for="new_name">' . lang('Name') . '</label>
 					<input type="text" class="form-control' . ((($mp_refused === 'create') && isset($mp_invalid['name'])) ? ' is-invalid" aria-invalid="true' : '') . '" id="new_name" name="name" value="' . h($new_name) . '" required maxlength="100"
 						placeholder="' . lang('The name you will recognise this store by') . '">
@@ -2866,11 +2866,16 @@ if ($selected) {
 		</div>
 		<div class="drawer-body">
 			' . (($mp_refused === 'update') ? $mp_form_errors : '') . '
-			<div class="mb-5">
+			<fieldset class="mb-7">
+			<legend class="fs-md fw-semibold mb-4">' . lang('Connection') . '</legend>
+			<div class="form-field mb-5">
 				<label class="form-label" for="edit_name">' . lang('Name') . '</label>
 				<input type="text" class="form-control' . ((($mp_refused === 'update') && isset($mp_invalid['name'])) ? ' is-invalid" aria-invalid="true' : '') . '" id="edit_name" name="name" value="' . h($edit_name) . '" required maxlength="100">
 			</div>
 			' . $edit_fields . '
+			</fieldset>
+			<fieldset class="mb-7">
+			<legend class="fs-md fw-semibold mb-4">' . lang('Stock and prices') . '</legend>
 			<div class="form-field mb-3">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_status" name="status" value="active"'
 					. ($edit['status'] === 'active' ? ' checked' : '') . '></div>
@@ -2881,47 +2886,52 @@ if ($selected) {
 					. (!empty($edit['push_stock']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_push_stock">' . lang('Send stock') . '</label>
 			</div>
-			<div class="form-field mb-7">
+			<div class="form-field">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_push_price" name="push_price" value="1"'
 					. (!empty($edit['push_price']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_push_price">' . lang('Send prices') . '</label>
 			</div>
-			<hr>'
+			</fieldset>
+			<fieldset class="mb-7">
+			<legend class="fs-md fw-semibold mb-4">' . lang('Orders') . '</legend>'
 			. ($can_orders ? '
-			<div class="form-field ' . ($can_approve ? 'mb-3' : 'mb-7') . '">
+			<div class="form-field' . ($can_approve ? ' mb-3' : '') . '">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_pull_orders" name="pull_orders" value="1"'
 					. (!empty($edit['pull_orders']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_pull_orders">' . lang('Bring orders in from this marketplace') . '</label>
 			</div>'
 			. ($can_approve ? '
-			<div class="form-field mb-7">
+			<div class="form-field">
 				<div class="switch"><input class="" type="checkbox" role="switch" id="edit_auto_approve" name="auto_approve" value="1"'
 					. (!empty($edit['auto_approve']) ? ' checked' : '') . '></div>
 				<label class="" for="edit_auto_approve">' . lang('Accept new orders automatically') . '</label>
 				<div class="form-text">'
 					. lang('Accepting an order tells the marketplace you are preparing it, and their dispatch clock starts. Leave this off to accept them yourself.') . '</div>
 			</div>' : '') : '
-			<p class="small opacity-75 mb-7">' . h(lang(array(
+			<p class="small opacity-75 mb-0">' . h(lang(array(
 				'string' => 'Orders are not brought in from {var:1} yet.',
 				'vars'   => array(mp_provider_name($selected['provider']))
 			))) . '</p>') . '
-			<hr>'
+			</fieldset>
+			<fieldset class="mb-7">
+			<legend class="fs-md fw-semibold mb-4">' . lang('Shipping') . '</legend>'
 			. (!empty($providers[$selected['provider']]['shipment_template']) ? '
-			<div class="mb-5">
+			<div class="form-field mb-5">
 				<label class="form-label" for="edit_shipment_template">' . lang('Cargo template') . '</label>
 				<input type="text" class="form-control' . ((($mp_refused === 'update') && isset($mp_invalid['shipment_template'])) ? ' is-invalid" aria-invalid="true' : '') . '" id="edit_shipment_template" name="shipment_template" maxlength="100"
 					value="' . h((string)$edit['shipment_template']) . '">
 				<div class="form-text">'
 					. lang('The name of the cargo agreement in your marketplace store settings, copied exactly. A new listing is refused without it.') . '</div>
 			</div>' : '') . '
-			<div class="mb-7">
+			<div class="form-field">
 				<label class="form-label" for="edit_preparing_day">' . lang('Days to prepare') . '</label>
 				<input type="number" class="form-control" id="edit_preparing_day" name="preparing_day" min="1" max="30" step="1" required
 					value="' . (int)$edit['preparing_day'] . '" style="max-width:110px">
 				<div class="form-text">' . lang('How long you take to hand a parcel over. It is shown to the buyer.') . '</div>
 			</div>
-			<hr>'
+			</fieldset>'
 			. ($selected_managed ? '' : '
+			<hr>
 			<p class="small opacity-75">'
 				. (!empty($selected['credentials']['webhook_id'])
 					? h(lang(array(
