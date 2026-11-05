@@ -3,10 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The All Gift Cards list (view_gift_cards.php) and its quick edit: the
- * values the gift card screen (edit_gift_card.php) saves, the balance, the
- * expiration date and the notes, are fields, checked by that screen's own
- * check and written by its own save (includes/forms/gift_card_form.php).
- * Store credit and notes written on more lines change only on the screen.
+ * expiration date and the notes are fields, checked by the gift card
+ * screen's (edit_gift_card.php) own check and written by its own save
+ * (includes/forms/gift_card_form.php). The balance, store credit and notes
+ * written on more lines change only on the screen.
  *
  * Loaded where it is needed (require_once), not by functions.php; it needs
  * includes/forms/gift_card_form.php.
@@ -22,17 +22,18 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The quick edit fields, keyed by the list's column: the values the gift
- * card screen saves. The balance is read as the screen reads it (12,50,
- * 1.234,56 or 1,234.56); the expiration date is typed in the site's date
- * order, blank for none. Pure but for lang().
+ * The quick edit fields, keyed by the list's column. The expiration date is
+ * typed in the site's date order, blank for none. The balance stays on the
+ * gift card's screen: its save is refused when the balance changed since the
+ * screen opened (balance_was), and the list's edit posts only the new value,
+ * so it could not tell a redemption made after the list was drawn and would
+ * put the spent amount back. Pure but for lang().
  *
  * @return array field => definition
  */
 function pg_gift_card_edit_columns()
 {
     return array(
-        'balance' => array('type' => 'money', 'label' => lang('Balance')),
         'expiration_date' => array('type' => 'text', 'label' => lang('Expiration Date'), 'max' => 20),
         'notes' => array('type' => 'text', 'label' => lang('Notes')),
     );
@@ -72,9 +73,9 @@ function pg_gift_card_quick_cell_editable($gift_card, $field)
 }
 
 /**
- * The value a field opens with, as the gift card screen shows it: the
- * balance in the panel language's separators, the expiration date in the
- * site's date order (blank when it never expires).
+ * The value a field (or the screen form's balance) opens with, as the gift
+ * card screen shows it: the balance in the panel language's separators, the
+ * expiration date in the site's date order (blank when it never expires).
  *
  * @param array  $gift_card a gift_cards row
  * @param string $field
@@ -106,13 +107,14 @@ function pg_gift_card_quick_value($gift_card, $field)
  */
 function pg_gift_card_quick_form_values($gift_card, $field, $value)
 {
-    $values = array();
+    // The balance is not a field, but the screen's check requires it.
+    $values = array('balance' => pg_gift_card_quick_value($gift_card, 'balance'));
 
     foreach (array_keys(pg_gift_card_edit_columns()) as $key) {
         $values[$key] = pg_gift_card_quick_value($gift_card, $key);
     }
 
-    if (array_key_exists($field, $values)) {
+    if (array_key_exists($field, pg_gift_card_edit_columns())) {
         $values[$field] = (string) $value;
     }
 
@@ -251,8 +253,8 @@ function pg_gift_card_list_row_cells($gift_card, $today, array $quick_edit)
 
 /**
  * The quick edit answer from a gift card read again: the edited cell and
- * every other cell of the row (the code's colour follows the balance and
- * the expiration date; Last Modified follows every change), each with the
+ * every other cell of the row (the code's colour follows the expiration
+ * date; Last Modified follows every change), each with the
  * value its field opens with.
  *
  * @param array  $cells pg_gift_card_list_row_cells()
@@ -286,10 +288,10 @@ function pg_gift_card_quick_saved(array $cells, $field)
 
 /**
  * Writes one value changed on the list through the gift card screen's own
- * check (pg_gift_card_form_check(): a balance 0 or above that fits the
- * column, a real expiration date or blank) and save
- * (pg_gift_card_form_write(): the balance only over the one read, the notes
- * only over the ones read). The same values again write nothing.
+ * check (pg_gift_card_form_check(): a real expiration date or blank; the
+ * stored balance passes it) and save
+ * (pg_gift_card_form_write(): the stored balance is left alone, the notes
+ * are written only over the ones read). The same values again write nothing.
  *
  * @param int    $id
  * @param string $field      a key of pg_gift_card_edit_columns()

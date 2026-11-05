@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the All Gift Cards list quick edit
- * (includes/fn/gift_card_list_edit.php): the values the gift card screen
- * saves are fields; store credit and notes on more lines stay text; the
+ * (includes/fn/gift_card_list_edit.php): the expiration date and the notes
+ * are fields; the balance, store credit and notes on more lines stay text; the
  * screen and the list share one save (pg_gift_card_form_write()).
  *
  * @author      Erdal Güral (Kodpen)
@@ -44,18 +44,16 @@ function pg_test_gift_card_quick_row(array $over = array())
 	);
 }
 
-function test_gift_card_quick_edit_fields_are_what_the_screen_saves()
+function test_gift_card_quick_edit_fields_are_the_date_and_the_notes()
 {
 	$columns = pg_gift_card_edit_columns();
 	$text = array_values(array_diff(array_keys(pg_gift_card_list_columns()), array_keys($columns)));
 	sort($text);
 
-	pg_assert_same(array('balance', 'expiration_date', 'notes'), array_keys($columns), 'the balance, the date and the notes');
-	pg_assert_same(array('code', 'created', 'delivery_date', 'from', 'last_modified', 'original_amount', 'recipient'), $text, 'what the screen does not change stays text');
-	pg_assert_same('money', $columns['balance']['type'], 'the balance is an amount');
-	pg_assert_true(empty($columns['balance']['empty']), 'and required, as on the screen');
-	pg_assert_same('1.234,56', pg_list_edit_parse($columns['balance'], '1.234,56')['value'], 'kept as typed for the screen\'s check');
-	pg_assert_false(pg_list_edit_parse($columns['balance'], '-5')['ok'], 'no minus sign');
+	pg_assert_same(array('expiration_date', 'notes'), array_keys($columns), 'the date and the notes');
+	// The balance: the list posts only the new value, so it could not keep
+	// the screen's guard against a redemption made since the list was drawn.
+	pg_assert_same(array('balance', 'code', 'created', 'delivery_date', 'from', 'last_modified', 'original_amount', 'recipient'), $text, 'the balance and what the screen does not change stay text');
 	pg_assert_same('', pg_list_edit_parse($columns['expiration_date'], ' ')['value'], 'a blank date for no expiration');
 }
 
@@ -63,14 +61,16 @@ function test_gift_card_quick_cells_editable_but_store_credit_and_lines()
 {
 	$row = pg_test_gift_card_quick_row();
 
-	foreach (array('balance', 'expiration_date', 'notes') as $field) {
+	pg_assert_false(pg_gift_card_quick_cell_editable($row, 'balance'), 'the balance changes on the screen only');
+
+	foreach (array('expiration_date', 'notes') as $field) {
 		pg_assert_true(pg_gift_card_quick_cell_editable($row, $field), $field . ' changes on the list');
 		pg_assert_false(pg_gift_card_quick_cell_editable(pg_test_gift_card_quick_row(array('credit_user_id' => 3)), $field), $field . ': store credit stays on its screen');
 	}
 
 	pg_assert_false(pg_gift_card_quick_cell_editable($row, 'code'), 'the code is not a field');
 	pg_assert_false(pg_gift_card_quick_cell_editable(pg_test_gift_card_quick_row(array('notes' => "One\r\nTwo")), 'notes'), 'notes on more lines stay on the screen');
-	pg_assert_true(pg_gift_card_quick_cell_editable(pg_test_gift_card_quick_row(array('notes' => "One\nTwo")), 'balance'), 'but the balance of such a card changes');
+	pg_assert_true(pg_gift_card_quick_cell_editable(pg_test_gift_card_quick_row(array('notes' => "One\nTwo")), 'expiration_date'), 'but the date of such a card changes');
 }
 
 function test_gift_card_quick_form_values_are_the_screen_form_with_one_change()
@@ -82,7 +82,7 @@ function test_gift_card_quick_form_values_are_the_screen_form_with_one_change()
 	pg_assert_same(pg_format_input_amount(12.5), $values['balance'], 'the balance as the screen opens it');
 	pg_assert_same(prepare_form_data_for_output('2026-12-31', 'date', false), $values['expiration_date'], 'the date in the site\'s order');
 	pg_assert_same('', pg_gift_card_quick_form_values(pg_test_gift_card_quick_row(array('expiration_date' => '0000-00-00')), 'notes', 'x')['expiration_date'], 'a card that never expires opens blank');
-	pg_assert_same('20', pg_gift_card_quick_form_values($row, 'balance', '20')['balance'], 'a new balance');
+	pg_assert_same(pg_format_input_amount(12.5), pg_gift_card_quick_form_values($row, 'balance', '99')['balance'], 'the balance is not a field: the stored one is kept');
 }
 
 function test_gift_card_quick_form_values_pass_the_screen_check()
@@ -98,13 +98,13 @@ function test_gift_card_quick_form_values_pass_the_screen_check()
 	pg_assert_true($form->check_form_errors(), 'a date that does not exist is refused by the screen\'s check');
 	$form->remove_form();
 
-	foreach (pg_gift_card_quick_form_values(pg_test_gift_card_quick_row(), 'balance', '0') as $field => $value) {
+	foreach (pg_gift_card_quick_form_values(pg_test_gift_card_quick_row(array('balance' => 0)), 'expiration_date', '') as $field => $value) {
 		$form->assign_field_value($field, $value);
 	}
 
 	$amount = pg_gift_card_form_check($form, 'edit');
-	pg_assert_true(!$form->check_form_errors(), 'a zero balance is allowed, as on the screen');
-	pg_assert_same(0, (int) round($amount * 100), 'read as nothing');
+	pg_assert_true(!$form->check_form_errors(), 'a used-up card takes a new date, and blank is no expiration');
+	pg_assert_same(0, (int) round($amount * 100), 'its stored balance passes the screen\'s check');
 	$form->remove_form();
 }
 
@@ -132,8 +132,9 @@ function test_gift_card_quick_cells_carry_the_values_their_fields_open_with()
 	pg_assert_same(array_keys(pg_gift_card_list_columns()), array_keys($cells), 'a cell for every column, in order');
 	pg_assert_contains('edit_gift_card.php?id=7', $cells['code']['html'], 'the code opens the gift card');
 	pg_assert_contains('status_enabled', $cells['code']['html'], 'green with a balance');
-	pg_assert_same(pg_format_input_amount(12.5), $cells['balance']['attributes']['data-pg-edit-value'], 'the balance field');
+	pg_assert_false(isset($cells['balance']['attributes']['data-pg-edit']), 'the balance is not a field');
 	pg_assert_same('1250', $cells['balance']['attributes']['data-pg-sort-value'], 'sorted in minor units');
+	pg_assert_same(prepare_form_data_for_output('2026-12-31', 'date', false), $cells['expiration_date']['attributes']['data-pg-edit-value'], 'the date field');
 	pg_assert_same('For <the> fair', $cells['notes']['attributes']['data-pg-edit-value'], 'the notes as stored');
 	pg_assert_contains('For &lt;the&gt; fair', $cells['notes']['html'], 'escaped');
 	pg_assert_false(isset($cells['original_amount']['attributes']['data-pg-edit']), 'the first amount is not a field');
@@ -147,18 +148,18 @@ function test_gift_card_quick_cells_carry_the_values_their_fields_open_with()
 	$credit = pg_gift_card_list_row_cells(pg_test_gift_card_quick_row(array('credit_user_id' => 3)), '2026-11-05', $columns);
 	pg_assert_contains(lang('Store credit'), $credit['code']['html'], 'store credit is marked');
 
-	foreach (array('balance', 'expiration_date', 'notes') as $field) {
+	foreach (array('expiration_date', 'notes') as $field) {
 		pg_assert_false(isset($credit[$field]['attributes']['data-pg-edit']), $field . ' of store credit stays text');
 	}
 
 	$plain = pg_gift_card_list_row_cells(pg_test_gift_card_quick_row(), '2026-11-05', array());
-	pg_assert_false(isset($plain['balance']['attributes']['data-pg-edit']), 'no fields without quick edit');
+	pg_assert_false(isset($plain['notes']['attributes']['data-pg-edit']), 'no fields without quick edit');
 
-	$answer = pg_gift_card_quick_saved($cells, 'balance');
-	pg_assert_same(pg_format_input_amount(12.5), $answer['value'], 'the edited field\'s value');
+	$answer = pg_gift_card_quick_saved($cells, 'expiration_date');
+	pg_assert_same(prepare_form_data_for_output('2026-12-31', 'date', false), $answer['value'], 'the edited field\'s value');
 	pg_assert_same('For <the> fair', $answer['cells']['notes']['value'], 'the other cells carry theirs');
-	pg_assert_true(isset($answer['cells']['code']), 'the code redrawn: its colour follows the balance');
-	pg_assert_false(isset($answer['cells']['balance']), 'the edited cell is the answer itself');
+	pg_assert_true(isset($answer['cells']['code']), 'the code redrawn: its colour follows the date');
+	pg_assert_false(isset($answer['cells']['expiration_date']), 'the edited cell is the answer itself');
 }
 
 function test_gift_card_screen_and_list_share_one_save()
