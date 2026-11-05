@@ -3946,6 +3946,11 @@ function ws_change_write($viewer, $type, $action, $record, $values, $as_job = fa
 
         $done = call_user_func('ws_change_write_' . $type, $viewer, $action, $record, $values);
 
+        // The page cache keeps no copy of what this changed on the site.
+        if (function_exists('pg_page_cache_ws_change_dirties') && pg_page_cache_ws_change_dirties($type, $done)) {
+            pg_page_cache_mark_dirty();
+        }
+
         $target = $audit ? ws_change_audit_target($type, $action, is_array($done) ? $done : array(), is_array($values) ? $values : array(), $record) : array();
         $record_id = ($action === 'create') ? (int) ($done['id'] ?? 0) : $id;
 
