@@ -47,17 +47,8 @@ if ($contact_ids) {
     switch ($_POST['action'] ?? '') {
         // if contacts are being organized
         case 'organize':
-            if ($_POST['add_to_contact_groups'] ?? '') {
-                $add_to_contact_groups = explode(',', $_POST['add_to_contact_groups']);
-            } else {
-                $add_to_contact_groups = array();
-            }
-
-            if ($_POST['remove_from_contact_groups'] ?? '') {
-                $remove_from_contact_groups = explode(',', $_POST['remove_from_contact_groups']);
-            } else {
-                $remove_from_contact_groups = array();
-            }
+            $add_to_contact_groups = pg_contact_list_posted_group_ids($_POST['add_to_contact_groups'] ?? '');
+            $remove_from_contact_groups = pg_contact_list_posted_group_ids($_POST['remove_from_contact_groups'] ?? '');
 
             // A group filled by rules is left to its rules: neither added to
             // nor taken from here.

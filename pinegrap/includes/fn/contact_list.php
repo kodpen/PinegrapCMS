@@ -180,6 +180,24 @@ function pg_contact_list_organized_count(array $moved)
 }
 
 /**
+ * The group ids an Organize Selected post names in one field: the dialog
+ * posts them as one comma-separated text. Anything else (a field sent as an
+ * array) names no group: explode() on it ended the request with a fatal
+ * error. The ids are checked later (pg_audience_hand_ids()). Pure.
+ *
+ * @param mixed $value the posted add_to_contact_groups or remove_from_contact_groups
+ * @return array the parts, as text
+ */
+function pg_contact_list_posted_group_ids($value)
+{
+    if (!is_string($value) || (trim($value) === '')) {
+        return array();
+    }
+
+    return explode(',', $value);
+}
+
+/**
  * The list's group choices kept to the ones the screen offers: the picked
  * group must be [All], [None] (above the user role) or a group the user may
  * edit, else it falls back to [All]; the advanced filters' checked groups
