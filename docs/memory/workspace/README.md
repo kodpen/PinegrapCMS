@@ -229,6 +229,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-growth-terms.md: Shared names and single owners of the Workspace growth work (2026-10-23): workflow tables, Workspace canvas, quote kinds, registries, engine words, agent keys, one proposal route, personal by default
 - workspace-guest-cleared-room.md: A guest's requests on one message (file address, tick, reaction, vote) reach only the room's current conversation, after its clear floor, as the guest page lists it
 - workspace-guest-request-input.md: How the public guest page reads the strings of its JSON body and its cookie
+- workspace-holiday-feed-overrides.md: Holiday calendar addresses (ws_ical_events()): a moved occurrence gets its own uid so it never replaces its yearly day; cancelled days are left out
 - workspace-keyboard-rows.md: Workspace div rows act as buttons through pressKeys() (Enter and Space), the inbox Join shortcut takes keys, planning board hours print through hoursText()
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
