@@ -1195,100 +1195,120 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type'=>'hidden', 'id'=>'last_filter_number', 'name'=>'last_filter_number', 'value'=>'0')) . '
                     ' . $output_hidden_id_field . '
                     <div class="row">
-                        <div class="col-12">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
                             <div class="card my-7">
-                                <div class="card-body">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report')) . '</h2>
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 sm:col-4 my-3">
-                                            <label for="name" class="form-label">' . lang('Visitor Report Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <h4 class="fw-bold fg-secondary">' . lang('Visitor Report Layout') . '</h4>
-                                        </div>
-                                        <div class="col-12 lg:col-8 my-3">
-                                            <div class="row g-2 align-items-center my-3">
-                                                <label for="summarize_by_1" class="col-12 md:col form-label mb-0">' . lang('Summarize by') . '</label>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'id'=>'summarize_by_1', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <label for="order_by_1" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'id'=>'order_by_1', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <div class="form-field">
+                                                <label for="name">' . h(lang('Visitor Report Name')) . '</label>
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                             </div>
-                                            <div class="row g-2 align-items-center my-3">
-                                                <label for="summarize_by_2" class="col-12 md:col form-label mb-0">' . lang('and then by') . '</label>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'id'=>'summarize_by_2', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <label for="order_by_2" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'id'=>'order_by_2', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
-                                            </div>
-                                            <div class="row g-2 align-items-center my-3">
-                                                <label for="summarize_by_3" class="col-12 md:col form-label mb-0">' . lang('and finally by') . '</label>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'id'=>'summarize_by_3', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <label for="order_by_3" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
-                                                <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'id'=>'order_by_3', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <h4 class="fw-bold fg-secondary">' . lang('Visitor Report Filters') . '</h4>
-                                        </div>
-                                        <script type="text/javascript" language="JavaScript 1.2">
-                                            //We add new language data to translate object
-                                            translate["contains"] = "' . lang('contains') . '";
-                                            translate["does not contain"] = "' . lang('does not contain') . '";
-                                            translate["is equal to"] = "' . lang('is equal to') . '";
-                                            translate["is not equal to"] = "' . lang('is not equal to') . '";
-                                            translate["is less than"] = "' . lang('is less than') . '";
-                                            translate["is less than or equal to"] = "' . lang('is less than or equal to') . '";
-                                            translate["is greater than"] = "' . lang('is greater than') . '";
-                                            translate["is greater than or equal to"] = "' . lang('is greater than or equal to') . '";
-                                            translate["Current Date"] = "' . lang('Current Date') . '";
-                                            translate["Current Date & Time"] = "' . lang('Current Date & Time') . '";
-                                            translate["Day(s) Ago"] = "' . lang('Day(s) Ago') . '";
-                                            translate["Current Time"] = "' . lang('Current Time') . '";
-                                            translate["Viewer"] = "' . lang('Viewer') . '";
-                                            translate["Viewer\'s E-mail Address"] = "' . lang('Viewer\'s E-mail Address') . '";
-
-                                            var last_filter_number = 0;
-                                            var filters = new Array();
-                                            ' . $output_filters_for_javascript . '
-                                            var field_options = new Array();
-                                            ' . $output_field_options_for_javascript . '
-                                            window.onload = initialize_filters;
-                                        </script>
-                                        <div>
-                                            <button type="button" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</button>' . get_date_picker_format() . pg_fields_script() . '
-                                        </div>
-                                        <div class="table-responsive">
-                                            <table id="filter_table" class="chart_no_hover table">
-                                                <thead>
-                                                    <tr>
-                                                        <th class="text-nowrap" style="min-width:200px">' . lang('Field') . '</th>
-                                                        <th class="text-nowrap" style="min-width:200px">' . lang('Operator') . '</th>
-                                                        <th class="text-nowrap" style="min-width:200px">' . lang('Value') . '</th>
-                                                        <th class="text-nowrap" style="min-width:200px">' . lang('Dynamic Value') . '</th>
-                                                        <th class="text-nowrap">&nbsp;</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody></tbody>
-                                            </table>
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="form-field">
                                                 <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'detail', 'id'=>'detail', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                <label class="" for="detail">' . lang('Show Detail (Include Visitor Session Information)') . '</label>
+                                                <label for="detail">' . h(lang('Show Detail (Include Visitor Session Information)')) . '</label>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Run') ) . '</span></button>
-                                ' . $output_cancel_button . $output_delete_button . '
+                            <div class="card my-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report Layout')) . '</h2>
+                                <div class="card-body pt-0">
+                                    <div class="row g-2 align-items-center my-3">
+                                        <label for="summarize_by_1" class="col-12 md:col form-label mb-0">' . lang('Summarize by') . '</label>
+                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'id'=>'summarize_by_1', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                        <label for="order_by_1" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'id'=>'order_by_1', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
+                                    </div>
+                                    <div class="row g-2 align-items-center my-3">
+                                        <label for="summarize_by_2" class="col-12 md:col form-label mb-0">' . lang('and then by') . '</label>
+                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'id'=>'summarize_by_2', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                        <label for="order_by_2" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'id'=>'order_by_2', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
+                                    </div>
+                                    <div class="row g-2 align-items-center my-3">
+                                        <label for="summarize_by_3" class="col-12 md:col form-label mb-0">' . lang('and finally by') . '</label>
+                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'id'=>'summarize_by_3', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
+                                        <label for="order_by_3" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                        <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'id'=>'order_by_3', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card my-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor Report Filters')) . '</h2>
+                                <div class="card-body pt-0">
+                                    <script type="text/javascript" language="JavaScript 1.2">
+                                        //We add new language data to translate object
+                                        translate["contains"] = "' . lang('contains') . '";
+                                        translate["does not contain"] = "' . lang('does not contain') . '";
+                                        translate["is equal to"] = "' . lang('is equal to') . '";
+                                        translate["is not equal to"] = "' . lang('is not equal to') . '";
+                                        translate["is less than"] = "' . lang('is less than') . '";
+                                        translate["is less than or equal to"] = "' . lang('is less than or equal to') . '";
+                                        translate["is greater than"] = "' . lang('is greater than') . '";
+                                        translate["is greater than or equal to"] = "' . lang('is greater than or equal to') . '";
+                                        translate["Current Date"] = "' . lang('Current Date') . '";
+                                        translate["Current Date & Time"] = "' . lang('Current Date & Time') . '";
+                                        translate["Day(s) Ago"] = "' . lang('Day(s) Ago') . '";
+                                        translate["Current Time"] = "' . lang('Current Time') . '";
+                                        translate["Viewer"] = "' . lang('Viewer') . '";
+                                        translate["Viewer\'s E-mail Address"] = "' . lang('Viewer\'s E-mail Address') . '";
+
+                                        var last_filter_number = 0;
+                                        var filters = new Array();
+                                        ' . $output_filters_for_javascript . '
+                                        var field_options = new Array();
+                                        ' . $output_field_options_for_javascript . '
+                                        window.onload = initialize_filters;
+                                    </script>
+                                    <div class="my-3">
+                                        <button type="button" onclick="create_filter()" class="btn btn-solid theme-primary"><i class="bi bi-plus-lg me-2" aria-hidden="true"></i>' . h(lang('Add Filter')) . '</button>' . get_date_picker_format() . pg_fields_script() . '
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table id="filter_table" class="chart_no_hover table">
+                                            <thead>
+                                                <tr>
+                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Field') . '</th>
+                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Operator') . '</th>
+                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Value') . '</th>
+                                                    <th class="text-nowrap" style="min-width:200px">' . lang('Dynamic Value') . '</th>
+                                                    <th class="text-nowrap">&nbsp;</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody></tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </nav>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <div class="card my-7 position-sticky" style="top:3.3rem;">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('How It Works')) . '</h2>
+                                <div class="card-body pt-0">
+                                    <ul class="small ps-5 mb-0">
+                                        <li class="mb-2">' . h(lang('The report groups visits by up to three levels, each sorted on its own.')) . '</li>
+                                        <li class="mb-2">' . h(lang('Only visits in the chosen date range that match every filter are counted.')) . '</li>
+                                        <li class="mb-2">' . h(lang('With detail on, the report also lists each visit with its session information.')) . '</li>
+                                        <li>' . h(lang('Save & Run saves the report and shows its results with the current data.')) . '</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 order-3">
+                            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . h(lang('Save & Run')) . '</span></button>
+                                        ' . $output_cancel_button . $output_delete_button . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>
                 </form>
                 <div class="row mb-3 flex-wrap">
                     <div class="col-12 sm:col-12 md:col-6 xl:col-8 text-center md:text-start"></div> 
