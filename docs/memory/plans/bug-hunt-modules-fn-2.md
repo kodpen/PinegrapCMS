@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `sms_messages`: clean (NY)
 - `speculation`: clean (NY)
 - `stock_notify`: #4668
-- `store_credit`, `store_credit_account`, `store_credit_events`, `store_credit_mails`, `store_credit_points`, `store_credit_refunds`, `store_credit_staff` (with `convert_reward_points.php`, `edit_user.php` credit form, `api/resources/customer_credit.php`): clean, second round (#PR); refund bonus on the gift card part asked in #7017
+- `store_credit`, `store_credit_account`, `store_credit_events`, `store_credit_mails`, `store_credit_points`, `store_credit_refunds`, `store_credit_staff` (with `convert_reward_points.php`, `edit_user.php` credit form, `api/resources/customer_credit.php`): clean, second round (#7018); refund bonus on the gift card part asked in #7017
 - `submitted_form_list`: #5143 (NY)
 - `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 - `subscriptions`: clean (#4621)
