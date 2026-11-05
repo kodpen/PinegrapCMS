@@ -8,4 +8,4 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 - Not a fault: `do.php?action=add_watcher_for_product_submit_form` sets the watcher from any link, by design.
 
 ## Which groups outside the root and fn lists are hunted?
-- Dashboard v2 (`includes/dashboard/v2/`, its actions in `includes/panel/dashboard.php`, `pg_dash*.js`): taken by an Arzu V5 worker.
+- Dashboard v2 (`includes/dashboard/v2/`, its actions in `includes/panel/dashboard.php`, `pg_dash*.js`): done #7003.
