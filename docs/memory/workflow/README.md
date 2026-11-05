@@ -61,6 +61,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-29.md: Decisions list, product part 29 (2026-11-04 evening on): the external API does not delete a store credit card; a gift card line takes at most 100 units
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-30.md: Decisions list, product part 30 (2026-11-05 on): a loop in one flow (Read a row, Repeat N times, date words in a value box); the image editor's eraser on shapes and touch corners
+- decisions-made-product-31.md: Decisions list, product part 31 (2026-11-05 evening on): the image editor's move recorded by dragging, sound in an animation's video
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card

@@ -50,6 +50,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, and ready templates; steps in flows-next-steps and -templates
 - image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
 - image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
+- image-editor-animation-steps-2.md: Steps AN12 on of plans/image-editor-animation.md (owner 2026-11-05): a move recorded by dragging, its path and speed kept as keyframes; claim as [plan:image-editor-animation] AN<n>
 - image-editor-animation-steps.md: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion, tracks, GIF, saving, APNG, WebP, video, scenes, Present, PDF, keyframes, SVG; claim as [plan:image-editor-animation] AN<n>
 - image-editor-animation-visuals.md: Screens of plans/image-editor-animation.md (AN0), 26 to 32 in plans/image-editor/: what each shows and which step builds it
 - image-editor-animation.md: Plan (owner 2026-11-01): image editor animation, layers and scenes that move, saved as GIF, APNG, WebP, MP4 or WebM, a PDF of the scenes or animated SVG; held with plans/image-editor.md
