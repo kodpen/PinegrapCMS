@@ -435,10 +435,10 @@ function test_marketplace_trendyol_orders_pull_reads_a_short_page_to_the_end()
 {
 	$calls = array();
 	$before = time();
-
-	// A day back, well inside the two-week window: a fixed date fell out of
-	// it as the calendar moved on.
-	$cursor = $before - 86400;
+	// An hour back, well inside the two-week window: a fixed moment fell
+	// out of the window two weeks after it was written, and the start was
+	// then the window's own edge.
+	$cursor = $before - 3600;
 
 	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), $cursor,
 		trendyol_orders_test_fixed_transport(200, trendyol_orders_test_fixture('v2-orders-page0.json'), $calls));
