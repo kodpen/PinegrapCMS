@@ -9,7 +9,7 @@
  * completed by a clause built elsewhere with escaped values, which may hold
  * a '?' (the billing contact update with $sql_fax / $sql_tax, the order
  * update with $sql_erp_on_account, the visitor update that adds the bare
- * $total, and in forms.php $sql_where, $sql_collection and $sql_update).
+ * $total, and in forms.php $sql_where).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -119,7 +119,7 @@ function db_q_submit_order_forms_test_calls($path)
 // Clause variables a raw query may still be completed by.
 function db_q_submit_order_forms_test_built($text)
 {
-	return (bool) preg_match('/\$(sql_fax|sql_tax|sql_erp_on_account|sql_where|sql_collection|sql_update)\b|order_total \+ \$total/', $text);
+	return (bool) preg_match('/\$(sql_fax|sql_tax|sql_erp_on_account|sql_where)\b|order_total \+ \$total/', $text);
 }
 
 function test_db_q_submit_order_forms_value_queries_use_db_q()
