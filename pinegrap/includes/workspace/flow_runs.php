@@ -3636,9 +3636,7 @@ function ws_flow_step_mend_check($viewer, $run, $node_id)
         'status' => 200,
         'field'  => '',
         'step'   => $step,
-        'behind' => ws_flow_skipped_behind(ws_flow_run_graph($run), ws_flow_step_states(array_filter($rows, function ($row) use ($step) {
-            return (int) $row['pass'] === (int) $step['pass'];
-        })), $step['node_id']),
+        'behind' => ws_flow_loop_skipped_behind(ws_flow_run_graph($run), $rows, $step['node_id'], (int) $step['pass']),
     );
 }
 
