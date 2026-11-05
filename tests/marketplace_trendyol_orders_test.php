@@ -435,7 +435,9 @@ function test_marketplace_trendyol_orders_pull_reads_a_short_page_to_the_end()
 {
 	$calls = array();
 	$before = time();
-	// A cursor an hour ago stays inside the two-week window whenever the test runs.
+	// An hour back, well inside the two-week window: a fixed moment fell
+	// out of the window two weeks after it was written, and the start was
+	// then the window's own edge.
 	$cursor = $before - 3600;
 
 	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), $cursor,

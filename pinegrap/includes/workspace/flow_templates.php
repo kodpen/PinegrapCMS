@@ -374,6 +374,60 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'task', 'next')));
     }
 
+    // A week after delivery the customer has used what came: a task to ask
+    // how it went and for a review (the delay box waits at most a week).
+    if (in_array('order.delivered', $events, true)) {
+        $out[] = array('key' => 'review_request', 'category' => 'sales', 'icon' => 'bi-star',
+            'title' => lang('Ask for a review after delivery'),
+            'help' => lang('A week after an order is delivered, a task to ask the customer how it went and for a review.'),
+            'boxes' => array(
+                'start' => $on('order.delivered'),
+                'wait'  => array('kind' => 'delay', 'config' => array('amount' => 7, 'unit' => 'days')),
+                'ask'   => $task(lang('Ask the customer for a review of {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'wait', 'next'), array('wait', 'ask', 'done')));
+    }
+
+    // Restocking asked first: an order to the supplier spends money, so
+    // somebody approves it before the task to place it opens.
+    if (in_array('stock.low', $events, true)) {
+        $out[] = array('key' => 'restock_approval', 'category' => 'sales', 'icon' => 'bi-cart-check',
+            'title' => lang('Restock after approval'),
+            'help' => lang('When a product runs low, asks in a channel whether to order more; approved, a task to order it opens.'),
+            'boxes' => array(
+                'start' => $on('stock.low'),
+                'ask'   => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Order more of {{record_title}}?'),
+                    'text' => lang('{{record_title}} is running low. Approve to order more, or reject to leave it as it is.'),
+                    'approvers' => array($me), 'rule' => 'any', 'closes_in' => 48),
+                    'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+                'order' => $task(lang('Order more of {{record_title}}'), 'high'),
+                'left'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Not ordering more of {{record_title}} for now.')), 'setting' => array('person', 'user_ids')),
+                'late'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Nobody decided in time whether to order more of {{record_title}}.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'ask', 'next'), array('ask', 'order', 'approved'), array('ask', 'left', 'rejected'),
+                array('ask', 'late', 'expired')));
+    }
+
+    // A return to handle within two days, said in the channel; the person
+    // is told when the task is still open by then.
+    if (in_array('order.return.requested', $events, true)) {
+        $out[] = array('key' => 'return_task', 'category' => 'sales', 'icon' => 'bi-arrow-return-left',
+            'title' => lang('Handle a return'),
+            'help' => lang('A requested return becomes a task due in two days and a line in the channel; you are told if it is still open then.'),
+            'boxes' => array(
+                'start'  => $on('order.return.requested'),
+                'handle' => array('kind' => 'task', 'config' => array('title' => lang('Handle the return of {{record_title}}'),
+                    'description' => '{{record}}' . "\n" . '{{record_link}}', 'assignees' => array($me), 'due_in' => 2, 'priority' => 'high', 'timeout' => 48),
+                    'setting' => array('person', 'assignees')),
+                'tell'   => $tell(lang('A return was requested: {{record}}')),
+                'late'   => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('The return of {{record_title}} is still not handled after two days.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'handle', 'next'), array('start', 'tell', 'next'), array('handle', 'late', 'timeout')));
+    }
+
     // The templates a scheduled action has no form for: tasks that wait for
     // each other, a wait between them, approvals and their outcomes.
 

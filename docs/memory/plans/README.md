@@ -45,6 +45,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - external-api-coverage.md: External API (integration.php): find what the panel can do that the API cannot, then add the missing endpoints in steps (owner, 2026-11-01); claim as [plan:external-api-coverage] X<n>
 - feature-plans-2026-11.md: The eleven feature plans approved 2026-11-02: index and order, how one coordinator and its five workers hold a plan, the shared rules
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
+- flows-next-steps.md: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow boxes, and site events flows can start on; claim as [plan:flows-next] <step>
+- flows-next-templates.md: Template steps T1-T14 of plans/flows-next.md: ready flows people pick instead of building box by box, what each needs and how it is tested before it is added
+- flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, and ready templates; steps in flows-next-steps and -templates
 - image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
 - image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
 - image-editor-animation-steps.md: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion, tracks, GIF, saving, APNG, WebP, video, scenes, Present, PDF, keyframes, SVG; claim as [plan:image-editor-animation] AN<n>
@@ -100,6 +103,11 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - table-driver-steps-2.md: Steps of the table driver plan, part 2: the browser mode, the printed lists in batches, the screens with their own DataTables code, removal of DataTables (TD9-TD14)
 - table-driver-steps.md: Steps of the table driver plan: the driver core, its parts, the server-paged, quick edit and log lists (TD1-TD8)
 - table-driver.md: Plan (owner 2026-11-03): the panel's own list table driver replacing DataTables, and the move of every table.chart screen to it, screen by screen (TD1-TD14)
+- template-previews-code.md: What the code holds for plans/template-previews.md (development 8d9a31a): the installer's design step and layout, the DB-less preview, the drawings and their users, a bug found
+- template-previews-steps-2.md: Steps TP4-TP5 of plans/template-previews.md: real pictures on the Visual Page Editor home and in Choose a Template, the template's own theme first, close-out; claim as [plan:template-previews] TP<n>
+- template-previews-steps.md: Steps TP1-TP3 of plans/template-previews.md: the live picture and tour, the installer's design step, the panel's preview address; claim as [plan:template-previews] TP<n>
+- template-previews-visuals.md: Screens of plans/template-previews.md the owner approved on 2026-11-05, in plans/template-previews/: what each shows and which step builds it
+- template-previews.md: Plan (owner 2026-11-05): template and design pictures drawn live from the real pages, a short installer design step with a home-page preview and a page tour, the installer at Bootstrap 6 width
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions in visitor_stats_daily, added only when a real report needs one
 - workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt

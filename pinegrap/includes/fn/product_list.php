@@ -486,7 +486,7 @@ function pg_product_list_columns($view, $quick_edit)
         'last_modified' => '10rem', 'out_of_stock_date' => '10rem',
     );
     // The input each quick edit field type opens as.
-    $inputs = array('text' => 'text', 'select' => 'select', 'money' => 'money', 'integer' => 'number', 'decimal' => 'number');
+    $inputs = array('text' => 'text', 'select' => 'select', 'multiselect' => 'multiselect', 'money' => 'money', 'integer' => 'number', 'decimal' => 'number');
 
     $spec = function ($code, $heading) use ($view, $sql, $kinds, $widths, $quick_edit, $inputs) {
         $column = array('heading' => $heading, 'kind' => $kinds[$code] ?? 'text');
@@ -701,7 +701,7 @@ function pg_product_list_select($view)
  * page: one query for the page's zones and one for all of them.
  *
  * @param array $product_ids
- * @return array product id => array('allowed' => names, 'disallowed' => names)
+ * @return array product id => array('allowed' => zone id => name, 'disallowed' => zone id => name)
  */
 function pg_product_list_zones($product_ids)
 {
@@ -731,7 +731,7 @@ function pg_product_list_zones($product_ids)
 
         // By name, as the zones were read.
         foreach ($zones as $zone_id => $name) {
-            $answer[$product_id][isset($allowed[$product_id][$zone_id]) ? 'allowed' : 'disallowed'][] = $name;
+            $answer[$product_id][isset($allowed[$product_id][$zone_id]) ? 'allowed' : 'disallowed'][$zone_id] = $name;
         }
     }
 
@@ -755,7 +755,7 @@ function pg_product_list_rows($view, $products, $choices = null)
         'quick_edit' => pg_pb_quick_edit_columns($choices),
         'fields' => pg_pb_quick_edit_fields($choices),
         'more_images' => ($view['show_image'] && $ids) ? pg_product_more_images($ids) : array(),
-        'zones' => in_array('allowed_zones', $view['columns'], true) ? pg_product_list_zones($ids) : array(),
+        'zones' => array_intersect(array('allowed_zones', 'disallowed_zones'), $view['columns']) ? pg_product_list_zones($ids) : array(),
     );
 
     $rows = array();
@@ -1000,6 +1000,11 @@ function pg_product_list_row($product, $view, $context)
     // quick edit (pg_pb_quick_edit_fields()), where the product screen
     // would show it (pg_pb_quick_cell_editable()).
     $more = isset($context['fields']) ? $context['fields'] : pg_pb_quick_edit_more_fields();
+
+    // The zone cells open with the product's allowed zones, read for the page.
+    if (isset($context['zones'][$id])) {
+        $product['allowed_zone_ids'] = implode(',', array_keys($context['zones'][$id]['allowed']));
+    }
 
     foreach (array_keys($cells) as $code) {
         $field = pg_pb_quick_edit_field_of($code);

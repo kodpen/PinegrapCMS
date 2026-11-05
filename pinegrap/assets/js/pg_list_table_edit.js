@@ -693,6 +693,11 @@
             }
         }
 
+        // A date drawn as text sorts by the value the answer gives with it.
+        if ((typeof view.sort === 'string') || (typeof view.sort === 'number')) {
+            cell.setAttribute('data-pg-sort-value', String(view.sort));
+        }
+
         if (typeof view['class'] === 'string') {
             var invalid = cell.classList.contains('is-invalid');
 
@@ -744,6 +749,13 @@
         cell.classList.remove('pg-list-table-saved');
         void cell.offsetWidth;
         cell.classList.add('pg-list-table-saved');
+
+        // The screen hears a save on the root, e.g. to follow what the
+        // answer says about the row outside its cells (filter groups).
+        this.root.dispatchEvent(new CustomEvent('pg-list-table:saved', {
+            bubbles: true,
+            detail: { cell: cell, row: row, data: data }
+        }));
     };
 
     /**

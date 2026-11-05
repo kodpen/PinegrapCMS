@@ -45,7 +45,7 @@ function erp_drawer_markup($type)
     $script = PG_FUNCTIONS_DIR . '/assets/js/erp_lists.js';
 
     return '
-<style>@layer custom {tr[data-erp-drawer-id] { cursor: pointer; } .pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); } .pg-erp-drawer table.table { margin-top: 0; }}</style>
+<style>@layer custom {.pg-erp-drawer { --pg-drawer-width: min(560px, 100vw); } .pg-erp-drawer table.table { margin-top: 0; }}</style>
 <dialog class="drawer drawer-end pg-erp-drawer" id="erp_drawer" aria-labelledby="erp_drawer_title" data-erp-drawer-type="' . h($type) . '" data-erp-drawer-url="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/get_erp_drawer.php') . '" data-erp-drawer-error="' . h(lang('The details could not be loaded.')) . '" data-erp-drawer-loading="' . h(lang('Loading...')) . '">
     <div class="drawer-header border-bottom gap-3">
         <h5 class="drawer-title text-break me-auto" id="erp_drawer_title"></h5>
@@ -58,14 +58,16 @@ function erp_drawer_markup($type)
 }
 
 /**
- * The row attributes that make a list row open the drawer.
+ * The button of a list row that opens the drawer. The row itself selects
+ * (the list table driver) and its name opens the record's screen, so the
+ * quicker look has a button of its own in the row's actions column.
  *
  * @param int $id
- * @return string  Starts with a space
+ * @return string
  */
-function erp_drawer_row_attributes($id)
+function erp_drawer_button($id)
 {
-    return ' data-erp-drawer-id="' . (int) $id . '" tabindex="0"';
+    return '<button type="button" class="btn btn-sm btn-text theme-secondary" data-erp-drawer-id="' . (int) $id . '" title="' . h(lang('Quick look')) . '" aria-label="' . h(lang('Quick look')) . '"><i class="bi bi-layout-sidebar-inset-reverse" aria-hidden="true"></i></button>';
 }
 
 /**
