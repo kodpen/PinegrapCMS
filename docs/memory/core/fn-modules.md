@@ -181,7 +181,7 @@ description: Generated from the module field of the memory files: each includes/
 - `shipping_method_list_edit`: [[list-table-quick-edit-shipping-methods]]
 - `shipping_methods`: [[api-store-shipping-method-writes]]
 - `short_link_list_edit`: [[list-table-quick-edit-short-links]]
-- `short_link_redirects`: [[short-link-binned-destination]]
+- `short_link_redirects`: [[short-link-binned-destination]], [[short-link-gone-destination]]
 - `site_datetime`: [[site-datetime-loader]]
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]
