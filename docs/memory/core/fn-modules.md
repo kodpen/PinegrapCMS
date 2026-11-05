@@ -157,6 +157,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype_links`: [[designer-prototype-share-links]]
 - `prototype_map`: [[prototype-map-read]]
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
+- `referral_source_list_edit`: [[list-table-quick-edit-referral-sources]]
 - `region_list`: [[list-table-region-lists]]
 - `request_scheme`: [[proxy-https-trust]], [[secure-mode-proxy-offer]]
 - `reseal`: [[encryption-key-reseal-registry]]
