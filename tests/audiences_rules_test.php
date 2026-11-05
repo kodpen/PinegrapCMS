@@ -215,7 +215,33 @@ function test_audiences_day_windows()
 	pg_assert_contains('INNER JOIN orders ON orders.id = visitors.order_id', $query['sql'], 'through the order the visit made');
 
 	$query = pg_audience_sql(array('conditions' => array(array('key' => 'membership', 'op' => 'expiring', 'value' => 10))), $now);
-	pg_assert_same(array(gmdate('Y-m-d', $now), gmdate('Y-m-d', $now + 10 * 86400)), $query['params']);
+	pg_assert_same(array(date('Y-m-d', $now), date('Y-m-d', strtotime(date('Y-m-d', $now) . ' +10 days'))), $query['params']);
+}
+
+// expiration_date is a day in the site's zone (init.php sets PHP's zone to
+// it), so the membership conditions compare it with the site's today, not
+// UTC's, and count "ends within n days" in calendar days.
+function test_audiences_membership_reads_the_site_day()
+{
+	$zone = date_default_timezone_get();
+
+	// 2024-03-10 22:30 UTC is already the 11th in Auckland.
+	date_default_timezone_set('Pacific/Auckland');
+	$now = gmmktime(22, 30, 0, 3, 10, 2024);
+
+	foreach (array('active', 'expired') as $op) {
+		$query = pg_audience_sql(array('conditions' => array(array('key' => 'membership', 'op' => $op))), $now);
+		pg_assert_same(array('2024-03-11'), $query['params'], $op . ' compares with the site day');
+	}
+
+	// 2024-10-20 00:30 in Berlin is still the 19th in UTC; thirty days on
+	// crosses the 25-hour day of the autumn change.
+	date_default_timezone_set('Europe/Berlin');
+	$now = mktime(0, 30, 0, 10, 20, 2024);
+	$query = pg_audience_sql(array('conditions' => array(array('key' => 'membership', 'op' => 'expiring', 'value' => 30))), $now);
+	pg_assert_same(array('2024-10-20', '2024-11-19'), $query['params'], 'ends within thirty site days');
+
+	date_default_timezone_set($zone);
 }
 
 function test_audiences_consent_reads_the_latest_answer()
