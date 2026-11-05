@@ -2,9 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests that get_form_item_view.php and get_file.php grant a member the
- * submitter's or a watcher's rights by e-mail address only when the member
- * has an address: a submission with no connect-to-contact e-mail field gives
+ * Tests that get_form_item_view.php, get_file.php and add_comment.php grant
+ * a member the submitter's or a watcher's rights by e-mail address only when
+ * the member has an address: a submission with no connect-to-contact e-mail field gives
  * no row (null), which the old mb_strtolower() comparison turned into '' and
  * matched against an account with no stored address; a watcher row added by
  * user id carries a blank address, which matched the same account.
@@ -34,7 +34,7 @@ function test_submitter_email_match_helper_is_shared()
 // strings, and every watcher lookup by address skips a blank address.
 function test_submitter_email_match_endpoints_use_helper()
 {
-	$files = array('get_form_item_view.php' => 1, 'get_file.php' => 3);
+	$files = array('get_form_item_view.php' => 1, 'get_file.php' => 3, 'add_comment.php' => 1);
 
 	foreach ($files as $file => $count) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);

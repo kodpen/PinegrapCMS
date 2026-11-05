@@ -84,6 +84,13 @@ $query =
 $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
+// A page deleted while its form was open takes no comment; without this every
+// read below would run against null.
+if (!$row) {
+    $liveform->remove_form();
+    output_error(lang('Sorry, the item could not be found.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.', 400);
+}
+
 $page_name = $row['page_name'];
 $folder_id = $row['folder_id'];
 $page_type = $row['page_type'];
@@ -368,7 +375,8 @@ if ($item_type == 'submitted_form') {
 
         // If this visitor submitted this form during this browser session, then grant access.
         if (
-            (is_array($_SESSION['software']['submitted_form_reference_codes']) == true)
+            isset($_SESSION['software']['submitted_form_reference_codes'])
+            && (is_array($_SESSION['software']['submitted_form_reference_codes']) == true)
             && (in_array($submitted_form['reference_code'], $_SESSION['software']['submitted_form_reference_codes']) == true)
         ) {
             $view_access = true;
@@ -398,8 +406,10 @@ if ($item_type == 'submitted_form') {
                         AND (form_fields.contact_field = 'email_address')");
 
                 // If this user has the same e-mail address as the connect-to-contact e-mail address
-                // field value for this submitted form, then the user has view access.
-                if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                // field value for this submitted form, then the user has view access. A blank
+                // address on either side never matches (a submission without an e-mail field
+                // gives null).
+                if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                     $view_access = true;
 
                 // Otherwise this user is not the submitter, but if they are a watcher,
@@ -411,7 +421,7 @@ if ($item_type == 'submitted_form') {
                         WHERE
                             (
                                 (user_id = '" . USER_ID . "')
-                                OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                OR ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') AND (email_address != ''))
                             )
                             AND (page_id = '" . escape($page_id) . "')
                             AND (item_id = '" . $submitted_form['id'] . "')
