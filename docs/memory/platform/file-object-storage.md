@@ -21,7 +21,7 @@ module: file_storage
 
 ## What happens on replace and delete?
 - Replace: `pg_file_storage_reconcile_run(500)` walks stored rows (cursor config_text `object_storage_reconcile`); one with a local file again goes back to 'local', its copy is dropped, the move job sends it again.
-- Delete: no door was touched. `pg_file_storage_orphan_sweep()` once a day (config_text `object_storage_orphan_sweep`) lists `files/` (first 5000 keys), and deletes up to 200 objects whose key no row holds and that are over a day old (`pg_file_storage_orphans()`); rows that cannot be read (`pg_file_storage_referenced_keys()` null, an empty list not confirmed by a count) delete nothing. Runs while a store is set up, switch or not.
+- Delete: no door was touched. `pg_file_storage_orphan_sweep()` once a day (config_text `object_storage_orphan_sweep`) lists a window of 5000 keys of `files/`, starting after the key in config_text `object_storage_orphan_sweep_after` (`pg_file_storage_sweep_cursor()`: past the window, on the last handled orphan when over 200, cleared at the end; before #PRNUM the first 5000 keys every day, so later orphans stayed), and deletes up to 200 objects whose key no row holds and that are over a day old (`pg_file_storage_orphans()`); rows that cannot be read (`pg_file_storage_referenced_keys()` null, an empty list not confirmed by a count) delete nothing. Runs while a store is set up, switch or not.
 
 ## How does a reader get a path?
 - See `file-object-storage-readers.md`: `pg_file_local_copy()`, `pg_file_reader_path()`, `pg_file_make_local()`, `pg_file_present_path()`, the copy's last use.
