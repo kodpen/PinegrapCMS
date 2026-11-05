@@ -1,6 +1,6 @@
 ---
 name: image-editor-draw
-description: The image editor's Draw tool: nine kinds and the eraser, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
+description: The image editor's Draw tool: nine kinds and the eraser's size, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
 module: image_editor
 ---
 
@@ -19,7 +19,7 @@ module: image_editor
 - A rect or bubble shows a dot inside its top-left corner (at least 12 screen px in), the panel the value in px. Dragging it sets `radius` to the dot's distance along the diagonal, cut to `maxRadius()`. A bubble is drawn with its largest radius unless one was set.
 
 ## What does the eraser do?
-- It cuts visible, unlocked pen strokes where it passes (`eraseTrace()`): the points under it go, each remaining run becomes its own pen layer with the same angle, mirror and style (the first keeps the id). Shapes are deleted with Delete, not erased. Its size is Thin/Medium/Thick × 2.5, at least 8 screen px; a ring shows it while dragging.
+- It cuts pen strokes and masks shapes and paths where it passes; a locked layer stays (`image-editor-eraser.md`). Its size is Thin/Medium/Thick × 2.5, at least 8 screen px; a ring shows it while dragging.
 
 ## How do the picture's turns and flips carry a shape?
 - `mapLayer()` moves every non-upright box by its centre, keeps its size and adds the turn to its angle; under a mirror it negates the angle and toggles `mirror`. So an arrow points the other way after a flip and a triangle points down after a vertical one. Before this a box swapped its sides and kept its angle, which turned a drawing the wrong way.

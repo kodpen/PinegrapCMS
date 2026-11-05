@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 
 // The editor's callback is one value; one sent as an array
@@ -80,7 +81,6 @@ if (($_SESSION['software']['editor_select_page_or_file']['folder_id'] ?? '') != 
     $folders = array_merge($folders, $child_folders);
 }
 
-$extras = '&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? '')));
 
 // Create an array that we will use to store all items.
 $items = array();
@@ -124,12 +124,13 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             'last_modified' => 'last_modified_timestamp',
         );
 
-        $output_heading_cells =
-            '<th>' . get_column_heading(lang('URL'), $sort_levels, '', $extras, 'url') . '</th>
-            <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $extras, 'folder') . '</th>
-            <th>' . get_column_heading(lang('Page Type'), $sort_levels, '', $extras, 'page_type') . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $extras, 'last_modified') . '</th>
-            <th class="noVis"></th>';
+        $list_name = 'editor_select_page_or_file_page';
+        $list_columns = array(
+            'url'           => array('heading' => lang('URL')),
+            'folder'        => array('heading' => lang('Folder')),
+            'page_type'     => array('heading' => lang('Page Type')),
+            'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        );
 
         $where = "";
 
@@ -242,13 +243,14 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             'last_modified' => 'last_modified_timestamp',
         );
 
-        $output_heading_cells =
-            '<th>&nbsp;</th>
-            <th>' . get_column_heading(lang('URL'), $sort_levels, '', $extras, 'url') . '</th>
-            <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $extras, 'folder') . '</th>
-            <th>' . get_column_heading(lang('Size'), $sort_levels, '', $extras, 'size') . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $extras, 'last_modified') . '</th>
-            <th class="noVis"></th>';
+        $list_name = 'editor_select_page_or_file_file';
+        $list_columns = array(
+            'url'           => array('heading' => lang('URL')),
+            'thumbnail'     => array('heading' => lang('Image'), 'kind' => 'image'),
+            'folder'        => array('heading' => lang('Folder')),
+            'size'          => array('heading' => lang('Size'), 'kind' => 'number'),
+            'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        );
 
         $where = "";
 
@@ -360,12 +362,13 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
             'last_modified'   => 'last_modified_timestamp',
         );
 
-        $output_heading_cells =
-            '<th>' . get_column_heading(lang('URL'), $sort_levels, '', $extras, 'url') . '</th>
-            <th>' . get_column_heading(lang('Destination URL'), $sort_levels, '', $extras, 'destination_url') . '</th>
-            <th>' . get_column_heading(lang('Folder'), $sort_levels, '', $extras, 'folder') . '</th>
-            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', $extras, 'last_modified') . '</th>
-            <th class="noVis"></th>';
+        $list_name = 'editor_select_page_or_file_short_link';
+        $list_columns = array(
+            'url'             => array('heading' => lang('URL')),
+            'destination_url' => array('heading' => lang('Destination URL')),
+            'folder'          => array('heading' => lang('Folder')),
+            'last_modified'   => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        );
 
         $where = "";
 
@@ -505,121 +508,71 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
         break;
 }
 
-$output_rows = '';
+$list_rows = array();
 
 // if there is at least one result to display
 if ($items) {
     // Sorted by each level in turn, the way the database lists sort: a size
     // or a time as a number, a page type by the name it is shown under, text
-    // in the panel language's order.
+    // in the panel language's order. The driver sorts them again in the
+    // browser by a heading click, and keeps that sort in the session.
     $items = pg_list_sort_items($items, $sort_levels, $sort_keys, array('size', 'last_modified_timestamp'), array('page_type' => get_page_type_names()));
 
-    foreach ($items as $item) {
-        $output_last_modified_username = '';
-        
-        if ($item['last_modified_username'] != '') {
-            $output_last_modified_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($item['last_modified_username']) ) ) );
+    $type = ($_SESSION['software']['editor_select_page_or_file']['type'] ?? '');
+
+    foreach ($items as $index => $item) {
+        // The address goes back to the editor that opened this window: a
+        // click on it (data-pg-pick, the script below), or a double click
+        // or Enter on its row (data-pg-open).
+        $cells = array(
+            'url' => pg_list_cell('<a href="' . h($item['href']) . '" data-pg-open data-pg-pick="' . h($item['href']) . '">' . h($item['url']) . '</a>'),
+            'folder' => pg_list_cell(h($item['folder_name'])),
+            'last_modified' => pg_list_table_when_cell($item['last_modified_timestamp'], $item['last_modified_username']),
+        );
+
+        // The access control type colours the row; a short link to a URL
+        // has no folder and so none.
+        if (($type != 'short_link') || ($item['destination_type'] != 'url')) {
+            if ($item['access_control_type'] == '') {
+                $item['access_control_type'] = get_access_control_type($item['folder_id']);
+            }
+        } else {
+            $item['access_control_type'] = '';
         }
 
-        // Prepare the rows of items differently based on the type.
-        switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
+        switch ($type) {
             default:
             case 'page':
-                // If we did not get the access control type already up above for this page, then get it now.
-                if ($item['access_control_type'] == '') {
-                    $item['access_control_type'] = get_access_control_type($item['folder_id']);
-                }
-
-                $output_rows .=
-                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
-                        <td class="align-middle chart_label"><button type="button" class="btn btn-link p-0 text-start" onclick="event.stopPropagation(); window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">' . h($item['url']) . '</button></td>
-                        <td class="align-middle">' . h($item['folder_name']) . '</td>
-                        <td class="align-middle">' . h(get_page_type_name($item['page_type'])) . '</td>
-                        <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $output_last_modified_username . '</td>
-                        <td></td>
-                    </tr>';
-
+                $cells['page_type'] = pg_list_cell(h(get_page_type_name($item['page_type'])));
                 break;
 
             case 'file':
-                // If we did not get the access control type already up above for this file, then get it now.
-                if ($item['access_control_type'] == '') {
-                    $item['access_control_type'] = get_access_control_type($item['folder_id']);
+                $thumbnail = '<svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' . h(lang('No Image')) . '"><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . h(lang('No Image')) . '</text></svg>';
+
+                // An image shows its thumbnail once its row is in sight.
+                if (($item['name'] != '') && in_array(strtolower((string) $item['file_type']), array('bmp', 'gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'svg', 'webp'), true)) {
+                    $thumbnail = '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail" alt="" data-pg-thumb="' . h(pg_image_panel_thumb_url(PATH . encode_url_path($item['name']))) . '" />';
                 }
 
-                $output_thumbnail = '';
-
-                // If this item is an image, then output thumbnail.
-                if (
-                    ($item['file_type'] == 'bmp')
-                    || ($item['file_type'] == 'gif')
-                    || ($item['file_type'] == 'jpg')
-                    || ($item['file_type'] == 'jpeg')
-                    || ($item['file_type'] == 'png')
-                    || ($item['file_type'] == 'tif')
-                    || ($item['file_type'] == 'tiff')
-                    || ($item['file_type'] == 'svg')
-                    || ($item['file_type'] == 'webp')
-                ) {
-                    // Get the dimensions of the image.
-                    $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $item['name']);
-                    $image_width = $image_size[0];
-                    $image_height = $image_size[1];
-
-                    // Set the maximum dimension size for the image.
-                    $max_dimension = 75;
-
-                    // Call function to resize image.
-                    $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
-                    
-                    if(!$item['name']){// Output emptythumnail.
-                        $output_thumbnail ='<svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' . h(lang('No Image')) . '"><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image') ) . '</text></svg>';
-                    }else{// Output thumnail.
-                        $output_thumbnail ='<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(pg_image_panel_thumb_url(PATH . encode_url_path($item['name']))) . '" />';
-                    }
-                }else{
-                    //if there is no thumnail
-                    $output_thumbnail ='<svg class="bd-placeholder-img img-thumbnail" width="50" height="50" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="' . h(lang('No Image')) . '"><rect width="100%" height="100%" fill="#868e96"></rect><text x="10%" y="50%" style="font-size: 8px;" fill="#dee2e6" dy=".3em">' . lang(array('string'=>'No Image') ) . '</text></svg>';
-                }
-
-                $output_rows .=
-                    '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
-                        <td class="align-middle text-center" style="min-width:50px;height:50px;">' . $output_thumbnail . '</td>
-                        <td class="align-middle chart_label"><button type="button" class="btn btn-link p-0 text-start" onclick="event.stopPropagation(); window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">' . h($item['url']) . '</button></td>
-                        <td class="align-middle">' . h($item['folder_name']) . '</td>
-                        <td class="align-middle">' . h(convert_bytes_to_string($item['size'], 'auto')) . '</td>
-                        <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $output_last_modified_username . '</td>
-                        <td></td>
-                    </tr>';
-
+                $cells['thumbnail'] = pg_list_cell($thumbnail, 'align-middle text-center');
+                $cells['size'] = pg_list_cell(h(convert_bytes_to_string($item['size'], 'auto')), 'align-middle', array('data-pg-sort-value' => (int) $item['size']));
                 break;
 
             case 'short_link':
-                $output_access_control_type_class = '';
-
-                // If the destination type is not url, then output access control type.
-                if ($item['destination_type'] != 'url') {
-                    // If we did not get the access control type already up above for this short link, then get it now.
-                    if ($item['access_control_type'] == '') {
-                        $item['access_control_type'] = get_access_control_type($item['folder_id']);
-                    }
-
-                    $output_access_control_type_class = ' ' . h($item['access_control_type']);
-                }
-
-                $output_rows .=
-                    '<tr class="pointer' . $output_access_control_type_class . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
-                        <td class="align-middle chart_label"><button type="button" class="btn btn-link p-0 text-start" onclick="event.stopPropagation(); window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">' . h($item['url']) . '</button></td>
-                        <td class="align-middle">' . h($item['destination_url']) . '</td>
-                        <td class="align-middle">' . h($item['folder_name']) . '</td>
-                        <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $output_last_modified_username . '</td>
-                        <td></td>
-                    </tr>';
-
+                $cells['destination_url'] = pg_list_cell(h($item['destination_url']));
                 break;
         }
+
+        $list_rows[] = array('id' => $index + 1, 'class' => $item['access_control_type'], 'cells' => $cells);
     }
 }
+
+$list = pg_list_table_printed(array(
+    'list' => $list_name,
+    'columns' => $list_columns,
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 echo 
 output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
@@ -647,7 +600,8 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
     <p class="form-text mt-5 mb-0 text-center md:text-start">' . lang('Select the Page, File, or Short Link that you want to link to.') . '</p>
     ' . pg_screen_toolbar(array(
         'search' => array(
-            pg_list_sort_menu('editor_select_page_or_file.php', $sort_columns, $sort_levels, $sort_default, array('CKEditorFuncNum' => ($_GET['CKEditorFuncNum'] ?? ''))),
+            pg_list_table_search_box($list_name),
+            pg_list_sort_menu('editor_select_page_or_file.php', $sort_columns, $sort_levels, $sort_default, array('CKEditorFuncNum' => ($_GET['CKEditorFuncNum'] ?? '')), $list_name),
             // Folder and access narrow the list together: one form, so a change
             // of one keeps the other.
             '<form id="search" action="editor_select_page_or_file.php" method="get" class="pg-toolbar-filter disable_shortcut flex-wrap row-gap-2">
@@ -669,19 +623,17 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
             ' . ((USER_ROLE < 3) ? '<a class="btn btn-text theme-secondary' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&amp;CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Short Links') . '</a>' : '') . '
         </div>',
     )) . '
-    <div class="card my-7">
-        <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
-        <div class="card-body p-0 position-relative">
-            <table class="chart table-hover table " style="width:100%;display:none">
-                <thead>
-                    <tr>
-                        ' . $output_heading_cells . '
-                    </tr>
-                </thead>
-                <tbody>
-                    ' . $output_rows . '
-                </tbody>
-            </table>
-        </div>
+    <div class="my-7">
+        ' . pg_list_table_html($list['source'], $list['page'], lang('Browse Items')) . '
     </div>
-</main>' . output_footer_secure() ;
+    <script>
+    // A picked address goes back to the editor that opened this window.
+    document.addEventListener("click", function (event) {
+        var link = event.target && event.target.closest ? event.target.closest("a[data-pg-pick]") : null;
+        if (!link || !window.opener || !window.opener.CKEDITOR) { return; }
+        event.preventDefault();
+        window.opener.CKEDITOR.tools.callFunction(' . json_encode((string) ($_GET['CKEditorFuncNum'] ?? ''), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ', link.getAttribute("data-pg-pick"));
+        window.close();
+    });
+    </script>
+</main>' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer_secure() ;

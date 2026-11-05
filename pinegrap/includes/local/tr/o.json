@@ -1306,6 +1306,8 @@
     "Order item (loop_area)": "Sipariş kalemi (loop_area)",
     "Order item ID": "Sipariş kalemi kimliği",
     "Order items": "Sipariş kalemleri",
+    "Order more of {{record_title}}": "{{record_title}} yeniden sipariş et",
+    "Order more of {{record_title}}?": "{{record_title}} yeniden sipariş edilsin mi?",
     "Order not checked out": "Ödemeye geçilmedi",
     "Order not completed": "Sipariş tamamlanmadı",
     "Order not created": "Sipariş oluşturulmadı",

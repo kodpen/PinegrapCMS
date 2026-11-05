@@ -1073,6 +1073,10 @@ function pg_list_table_printed_lists()
         'view_contact_groups', 'view_calendars', 'view_calendar_event_locations', 'view_auto_dialogs',
         'view_email_campaigns', 'view_email_campaign_history', 'view_email_campaign_profiles', 'view_sms_campaigns', 'view_visitor_reports', 'view_not_found_log',
         'backups', 'cloudflare_dns', 'database_engine',
+        'erp_accounts', 'erp_invoices', 'erp_waybills', 'erp_cash', 'erp_inbox',
+        'erp_account_sync_differ', 'erp_account_sync_provider_only', 'erp_account_sync_erp_only',
+        'erp_account_sync_same', 'erp_account_sync_ignored',
+        'view_offers', 'editor_select_page_or_file_page', 'editor_select_page_or_file_file', 'editor_select_page_or_file_short_link',
     );
 }
 
@@ -1127,6 +1131,31 @@ function pg_list_table_printed(array $spec)
         'source' => $source,
         'page' => array('rows' => $rows, 'next' => null, 'total' => count($rows), 'restarted' => false),
     );
+}
+
+/**
+ * The sort codes of a printed list for pg_list_state() and
+ * pg_list_sort_menu(): every column that sorts in the browser, keyed by
+ * itself, with its heading.
+ *
+ * @param array $columns key => spec, as pg_list_table_printed() takes them
+ * @return array key => heading
+ */
+function pg_list_table_printed_sort_columns(array $columns)
+{
+    $sort_columns = array();
+
+    foreach ($columns as $key => $spec) {
+        $kind = (string) ($spec['kind'] ?? 'text');
+
+        if (in_array($kind, array('actions', 'image'), true) || (array_key_exists('sortable', $spec) && empty($spec['sortable']))) {
+            continue;
+        }
+
+        $sort_columns[$key] = (string) ($spec['heading'] ?? '');
+    }
+
+    return $sort_columns;
 }
 
 /**

@@ -58,10 +58,31 @@ function test_offer_quick_edit_fields_are_the_editor_list_values()
 	$text = array_diff(array_keys($cells), array_keys($columns));
 	pg_assert_same(array('modified'), array_values($text), 'only the last change is a drawn cell that stays text');
 
-	$tpl = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/view_offers.php');
+	$row = pg_offer_list_row(offer_list_edit_test_entry(array('timestamp' => 1700000000, 'sentence' => 's', 'condition_chips' => array(), 'action_chips' => array(), 'upsell' => false)), $columns);
+	pg_assert_same(array_keys(pg_offer_list_columns()), array_keys($row['cells']), 'a cell for every driver column');
 	foreach (array_keys($cells) as $name) {
-		pg_assert_contains("<?=\$cell('" . $name . "')?>", $tpl, 'the list draws ' . $name . ' from pg_offer_list_cells()');
+		pg_assert_same($cells[$name]['html'], $row['cells'][$name]['html'], 'the list draws ' . $name . ' from pg_offer_list_cells()');
+		pg_assert_same($name, $row['cells'][$name]['attributes']['data-pg-cell'], 'an answer finds the ' . $name . ' cell');
 	}
+	foreach (array_keys($columns) as $name) {
+		pg_assert_same($name, $row['cells'][$name]['attributes']['data-pg-edit'], $name . ' is a quick edit field');
+	}
+	pg_assert_true(!isset($row['cells']['modified']['attributes']['data-pg-edit']), 'the last change stays text');
+	pg_assert_same('1700000000', $row['cells']['modified']['attributes']['data-pg-sort-value'], 'the last change sorts by its time');
+	pg_assert_same('2026-03-01', $row['cells']['start_date']['attributes']['data-pg-sort-value'], 'a date sorts by Y-m-d');
+	pg_assert_same('active code', $row['cells']['enabled']['attributes']['data-pg-filter'], 'the chips\' groups on the Status cell');
+	pg_assert_contains(h(lang('Disable offer')), $row['cells']['actions']['html'], 'the toggle prints its name');
+
+	$tpl = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/view_offers.php');
+	pg_assert_contains("pg_list_table_html(\$list['source'], \$list['page'], lang('All Offers'))", $tpl, 'the list is the table driver');
+	pg_assert_contains('data-pg-list-filter="view_offers" data-pg-filter-column="enabled"', $tpl, 'the chips are driver filters');
+	pg_assert_same(false, strpos($tpl, 'DataTable'), 'no DataTables code left');
+}
+
+function test_offer_list_filter_names_every_group()
+{
+	pg_assert_same('scheduled auto incomplete', pg_offer_list_filter(offer_list_edit_test_entry(array('status' => 'scheduled', 'require_code' => 0, 'incomplete' => true))));
+	pg_assert_same('disabled code', pg_offer_list_filter(offer_list_edit_test_entry(array('status' => 'disabled'))));
 }
 
 function test_offer_quick_request_changes_one_value_and_keeps_the_rest()
@@ -113,7 +134,7 @@ function test_offer_quick_answer_redraws_the_row()
 	pg_assert_true($answer['ok']);
 	pg_assert_same('0', $answer['value']);
 	pg_assert_contains(lang('Incomplete'), $answer['html']);
-	pg_assert_same(array('status' => 'disabled', 'how' => 'auto', 'incomplete' => '1', 'enabled' => 0), $answer['row'], 'the chips\' filter data');
+	pg_assert_same(array('status' => 'disabled', 'how' => 'auto', 'incomplete' => '1', 'enabled' => 0, 'filter' => 'disabled auto incomplete'), $answer['row'], 'the chips\' filter data');
 	pg_assert_true(!isset($answer['cells']['enabled']), 'the cell itself is not among the others');
 	pg_assert_contains('Ten &lt;b&gt;off&lt;/b&gt;', $answer['cells']['description']['html'], 'the message is escaped');
 	pg_assert_contains('&lt;i&gt;ayse&lt;/i&gt;', $answer['cells']['modified']['html'], 'the user name is escaped');
@@ -131,6 +152,7 @@ function test_offer_quick_edit_answers_before_the_screen()
 	pg_assert_true(strpos($src, 'pg_list_edit_request(pg_offer_edit_columns()') < strpos($src, 'validate_ecommerce_access($user);'), 'a refusal is JSON, not the access page');
 	pg_assert_contains("return (\$user['role'] < 3) || !empty(\$user['manage_ecommerce']);", $src, 'the editor\'s rights');
 
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
-	pg_assert_contains("new window.CustomEvent('pg:list-edit-saved'", $js, 'a saved quick edit is announced to the screen');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_list_table_edit.js');
+	pg_assert_contains("new CustomEvent('pg-list-table:saved'", $js, 'a saved quick edit is announced to the screen');
+	pg_assert_contains("root.addEventListener('pg-list-table:saved'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/view_offers.php'), 'the screen follows the row\'s groups');
 }

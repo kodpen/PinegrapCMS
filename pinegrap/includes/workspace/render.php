@@ -1032,6 +1032,34 @@ function ws_plain_text($viewer, $body, $refs = null, $note = false)
         $grouped[$index] = null;
     }
 
+    // A table the screen draws (a row, the row of dashes, then its rows)
+    // reads row by row once the text folds into one line: the outer pipes
+    // dropped, the cells joined by " · ", each row after the first led by
+    // "/ ". Lines inside code stay as written.
+    $words_lines = $lines;
+    $fenced = ws_code_fence_lines($lines);
+    $row_pattern = '/^\s*\|.*\|\s*$/';
+    $count = count($lines);
+
+    for ($i = 0; $i < $count; $i++) {
+        if (isset($fenced[$i]) || !preg_match($row_pattern, $lines[$i]) || (($i + 1) >= $count) || isset($fenced[$i + 1]) || (ws_table_alignments($lines[$i + 1]) === null)) {
+            continue;
+        }
+
+        $j = $i;
+
+        while (($j < $count) && !isset($fenced[$j]) && (($j === $i + 1) || preg_match($row_pattern, $lines[$j]))) {
+            if ($j !== $i + 1) {
+                $cells = array_filter(ws_table_cells($lines[$j]), 'strlen');
+                $words_lines[$j] = ($cells ? (($j === $i) ? '' : '/ ') . implode(' · ', $cells) : '');
+            }
+
+            $j++;
+        }
+
+        $i = $j - 1;
+    }
+
     $headings = $note ? ws_heading_lines($lines) : array();
 
     foreach (array_keys($headings) as $index) {
@@ -1047,7 +1075,7 @@ function ws_plain_text($viewer, $body, $refs = null, $note = false)
 
             foreach ($block['lines'] as $index) {
                 if (!isset($headings[$index])) {
-                    $run[] = $lines[$index];
+                    $run[] = $words_lines[$index];
                     continue;
                 }
 
