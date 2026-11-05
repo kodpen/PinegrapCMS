@@ -9,7 +9,7 @@ description: Steps TP1-TP3 of plans/template-previews.md: the live picture and t
 
 ## Which steps are there?
 
-- TP1 (M) The live picture and the tour page. free.
+- TP1 (M) The live picture and the tour page. done (#7258).
   - New `includes/fn/design_previews.php` (module `design_previews`): `pg_design_live_picture($src, $opts)` (the box, an optional fallback), `pg_design_preview_address()` (the installer's or the panel's address of a template page or tour; look and palette only from the known lists) and `pg_design_tour_html()` (bar: name and theme, a page list with an E-mails group, previous and next, "n / total", desktop or phone, the continue button; the frame follows `pgDesignPreview`).
   - `assets/js/pg_live_picture.js`, bundle `pg_live_picture.min.js` (`window.PGLivePicture`): loads on view (IntersectionObserver), scales the 1280×800 frame to the box (ResizeObserver), `sandbox=""`, `tabindex="-1"`, `aria-hidden`, a quiet wait state, the fallback after 12 s, `set(el, src)` to swap.
   - `.pg-live-picture` in `backend.src.css` (16:10, both themes). Tests `tests/design_previews_test.php`; memory `designer/design-live-pictures.md`.

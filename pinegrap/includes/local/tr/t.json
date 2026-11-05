@@ -357,6 +357,7 @@
     "Template applied: {var:1} — {var:2} tasks, {var:3} notes": "Şablon uygulandı: {var:1} — {var:2} görev, {var:3} not",
     "Template details": "Şablon ayrıntıları",
     "Template name": "Şablon adı",
+    "Template preview": "Şablon önizlemesi",
     "Template saved.": "Şablon kaydedildi.",
     "Template version": "Şablon sürümü",
     "Template {var:1} stopped half way: {var:2} Made before it stopped: {var:3}.": "{var:1} şablonu yarıda kaldı: {var:2} Durmadan önce açılanlar: {var:3}.",
