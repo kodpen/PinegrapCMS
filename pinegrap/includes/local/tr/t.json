@@ -1285,6 +1285,7 @@
     "The archive is not a backup taken before an update.": "Arşiv güncelleme öncesi alınmış bir yedek değil.",
     "The archive is too large to be extracted here. Copy the backup folder into the backups folder with FTP instead.": "Arşiv burada çıkartılamayacak kadar büyük. Bunun yerine yedek klasörünü FTP ile yedekler klasörüne kopyalayın.",
     "The archive is unpacked into the backups folder and then appears in the list beside this card. It must contain a site backup: a folder with sql.sql in it, and the files and layouts folders beside it.": "Arşiv yedekler klasörüne açılır ve yandaki listede görünür. İçinde bir site yedeği olmalıdır: içinde sql.sql bulunan bir klasör ve yanında files ile layouts klasörleri.",
+    "The archive names {var:1} file(s) outside the folder it is unpacked into. Nothing was changed: {var:2}": "Arşiv, açıldığı klasörün dışında {var:1} dosya adı içeriyor. Hiçbir şey değiştirilmedi: {var:2}",
     "The archive was empty, so nothing was extracted.": "Arşiv boştu, hiçbir şey çıkartılmadı.",
     "The archive was extracted to {var:1} and selected. {var:2} files were extracted.": "Arşiv {var:1} klasörüne açıldı ve seçildi. {var:2} dosya çıkartıldı.",
     "The archive {var:1} could not be brought to this server: {var:2}": "{var:1} arşivi bu sunucuya getirilemedi: {var:2}",
