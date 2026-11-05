@@ -12,7 +12,7 @@ description: How an ERP invoice goes through the e-document provider: the send g
 - The order card offers the send instead of a status question; it and the invoice screen say a draft may already be at the provider. Repair and Move to today stay closed; a later write to the row restarts the 15 minutes.
 
 ## How does a send run? (`erp_edoc_invoice_send()`)
-- `sending` is set before the call only where status, id and `updated_at` are as the gate read them (`erp_edoc_invoice_send_claim_where()`); else it stops, so two sends at once make one record (#PR). The code of the account's linked provider card goes along (`erp_edoc_account_link_code()`).
+- `sending` is set before the call only where status, id and `updated_at` are as the gate read them (`erp_edoc_invoice_send_claim_where()`); else it stops, so two sends at once make one record (#7045). The code of the account's linked provider card goes along (`erp_edoc_account_link_code()`).
 - Failure: `error` + `edoc_error` (the provider's words). Success: `edoc_provider`, `edoc_external_id`, the driver's status, `edoc_sent_at`, and `gib_uuid` / `gib_number` when the answer has them; event `erp.invoice.edoc_changed`.
 - Both drivers answer `created`: a draft at the provider, not a document yet. With "Hand the document to GİB in the same step" on (`config.erp_edoc_autosend`, 4.63, default 1, `erp_edoc_autosend()`) the same click runs `erp_edoc_invoice_submit()`; off, the operator looks the draft over and presses Hand to GİB. A failed hand-over leaves `created` with the provider's words; no second draft is ever made.
 - `erp_edoc_invoice_submit()` never creates: it refuses `sent` / `accepted` and writes `sent` on success.
