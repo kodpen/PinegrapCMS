@@ -304,6 +304,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - subscriptions-iyzico.md: iyzico store-run subscriptions (PR #3249, decided in #3183): the stored-card renewals switch, card_ref, charge_renewal, update_card, subscription_cancel, the checkout row
 - subscriptions-later-start.md: Recurring lines that start after the order day on the driver gateways (PR #3378, decided in #3310): their row on today's card, the first charge on the start date, the nothing-today order refused
 - subscriptions-mails.md: Subscription e-mails (decided in #3288): renewed / failed / cancelled campaign profiles, which event mails which, once per event, the fields, the signed card update page, step 11.0.129
+- subscriptions-move-lock.md: Why a pause, resume or cancel of a store-run subscription (My Account, operator screen, API) waits for the renewal job's row lock, and what it answers while a charge runs
 - subscriptions-number-of-payments.md: What a product's Number of Payments (recurring_number_of_payments) counts on store-run subscriptions (#4623): N charges in all, the order's own charge included; legacy gateway profiles differ
 - subscriptions-operator-screen.md: Operator Subscriptions screen (#3343): view_subscriptions.php list and filters, ?id= row page, pause/resume/cancel at period end through the shared move, operator named in the event
 - subscriptions-operator-words-errors.md: Operator Subscriptions screen: staff event words, the Event type column, 404 and the not_found move error, the one-line next-charge range on a phone (#5744, #5745, #5746)
