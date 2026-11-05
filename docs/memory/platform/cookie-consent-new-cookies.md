@@ -11,6 +11,10 @@ description: Adding a front-end cookie or third-party tag under the cookie notic
 - In `pg_consent_catalogue()`, under its category with a one-line purpose: a cookie that is not there does not appear in the notice.
 - If turning the category off again must delete it, also in `pg_consent_revoke_names()` (a trailing `*` matches a prefix, as in `_ga_*`); `pg_consent.js` deletes those names.
 
+## When does the notice delete a category's cookies?
+- On every answer that refuses the category (Reject all, Save with it off, closing before answering), whatever the answer before it: a cookie set while the site did not ask yet (consent switched on later, an older version) would otherwise stay, and `get_tracking_code()` / `get_affiliate_code()` keep reading it. Before PR #PRNUM only a withdrawal (allowed → refused) deleted them, so a first "Reject all" kept them.
+- Only a withdrawal also reloads the page: a held script that already ran cannot be stopped in place. `tests/consent_js_revoke_test.php` runs `pg_consent.js` in Node for both cases.
+
 ## How does a third-party tag the software prints wait for consent?
 - `pg_consent_hold_scripts($html, $category)`: every `<script>` becomes `type="text/plain" data-pg-consent="<category>"`, its `src` kept as `data-pg-src`, and `pg_consent.js` starts it in place once the visitor agrees, no reload. Google Analytics in `get_page_content.php` is held this way. Never print such a tag as a plain `<script src>`.
 - `data-pg-consent-builtin` keeps the software's own held tags out of `pg_consent_page_services()`, so their cookies are listed in the catalogue by hand (`_ga, _ga_*`).
