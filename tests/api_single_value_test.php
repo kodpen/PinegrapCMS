@@ -62,3 +62,27 @@ function test_api_single_value_is_checked_before_the_switch()
 
 	pg_assert_true(($start !== false) && ($check !== false) && ($switch !== false) && ($check < $switch), 'checked above the switch');
 }
+
+// A list declared with a one-value item type ('of' => 'string' or 'integer')
+// takes no list or object as an item: a handler casts each item with (string).
+function test_api_single_value_list_items_are_single()
+{
+	$events = array('name' => 'events', 'type' => 'list', 'of' => 'string');
+	$ids = array('name' => 'ids', 'type' => 'list', 'of' => 'integer');
+
+	pg_assert_true(api_list_items_are_single($events, array('order.created', 'product.updated')), 'strings');
+	pg_assert_true(api_list_items_are_single($ids, array(1, '2', null)), 'numbers');
+	pg_assert_true(api_list_items_are_single($events, array()), 'empty list');
+	pg_assert_false(api_list_items_are_single($events, array(array('order.created'))), 'nested list');
+	pg_assert_false(api_list_items_are_single($ids, array(1, array('a' => 2))), 'object item');
+	pg_assert_false(api_list_items_are_single($events, array(new stdClass())), 'stdClass item');
+}
+
+// A list of objects ('of' as a field map) or with no item type is left to its handler.
+function test_api_single_value_list_of_objects_is_left_alone()
+{
+	$options = array('name' => 'options', 'type' => 'list', 'of' => array('label' => 'string'));
+
+	pg_assert_true(api_list_items_are_single($options, array(array('label' => 'Red'))), 'objects');
+	pg_assert_true(api_list_items_are_single(array('name' => 'items', 'type' => 'list'), array(array('a' => 1))), 'no item type');
+}

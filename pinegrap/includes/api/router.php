@@ -612,6 +612,27 @@ function api_value_is_single($param, $raw) {
 
 }
 
+// Whether every item of a list declared with a one-value item type
+// ('of' => 'string' or 'integer') is a single value. The handlers cast each
+// item with (string) or (int), and (string) on a nested JSON list or object
+// gave "Array" and a PHP warning before the refusal. A list of objects ('of'
+// as a field map) or one with no item type is checked by its handler.
+function api_list_items_are_single($param, $raw) {
+
+	if (!isset($param['of']) || !is_string($param['of']) || !is_array($raw)) {
+		return true;
+	}
+
+	foreach ($raw as $item) {
+		if (is_array($item) || is_object($item)) {
+			return false;
+		}
+	}
+
+	return true;
+
+}
+
 // Whether a money value is a whole number of minor units: a JSON integer or a
 // string of digits with an optional minus sign. is_numeric() alone also takes
 // the exponent form, and (int)"1999e-2" is 19, so a price of 19.99 written
@@ -775,6 +796,15 @@ function api_validate_value($param, $raw) {
 				api_fail_validation(lang(array(
 					'string' => '{var:1} holds more than the {var:2} items accepted in one request.',
 					'vars'   => array($name, $param['max_items'])
+				)), $name);
+
+			}
+
+			if (!api_list_items_are_single($param, $raw)) {
+
+				api_fail_validation(lang(array(
+					'string' => '{var:1} must hold single values, not lists or objects.',
+					'vars'   => $name
 				)), $name);
 
 			}
