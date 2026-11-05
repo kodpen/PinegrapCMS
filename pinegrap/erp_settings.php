@@ -321,6 +321,7 @@ foreach ($placeholders as $group => $names) {
 
 $output_cards = '';
 $output_seller = '';
+$output_seller_title = '';
 $output_late_fee = '';
 $output_efatura_threshold = '';
 
@@ -357,13 +358,15 @@ if (!$can_site_settings && erp_settings_efatura_threshold_shown()) {
 if ($can_site_settings) {
 
     // One line instead of the cards: they are edited in the Accounting pane.
-    // Read in the status column: where the other accounting settings are.
+    // It is read in the status column.
+    $output_seller_title = lang('Accounting');
     $output_seller = '
                         <p class="small mb-0">' . lang('The seller, the accounting rules, the late payment fee and the e-Fatura threshold are in the accounting settings.') . '
                             <a href="' . h(pg_settings_link('accounting')) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . '</a></p>';
 } else {
     // Read in the status column: where the seller printed on the documents
     // is set. Only the rules card stays in the form column.
+    $output_seller_title = lang('Seller Information');
     $output_seller = '
                         <p class="small mb-3">' . lang('The seller title, address, logo, tax number and tax office printed on the invoice are on the Organization card.') . '
                             ' . $organization_place . '</p>
@@ -483,7 +486,7 @@ echo pg_page_shell(array(
                     </div>
                 </div>
                 <div class="card my-7">
-                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($can_site_settings ? lang('Accounting') : lang('Seller Information')) . '</h2>
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($output_seller_title) . '</h2>
                     <div class="card-body pt-0">' . $output_seller . '
                     </div>
                 </div>
