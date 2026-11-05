@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions', 'menu');
 }
 
 /**
@@ -4938,6 +4938,26 @@ function pg_image_editor_strings_actions()
     );
 }
 
+// -- Context menu (pg_image_editor_menu.js) --
+
+/**
+ * The context menu's own labels; its other items use the labels of the
+ * parts that own them (Duplicate, Bring to front, Combine shapes…).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_menu()
+{
+    return array(
+        'ctxMenu'       => lang('Commands'),
+        'ctxCut'        => lang('Cut'),
+        'ctxCopy'       => lang('Copy'),
+        'ctxPaste'      => lang('Paste'),
+        'ctxExpandWarp' => lang('Expand warp'),
+        'ctxImportFile' => lang('Import from this computer'),
+    );
+}
+
 // -- Area selection (pg_image_editor_area.js) --
 
 /**
@@ -4970,9 +4990,10 @@ function pg_image_editor_strings_area()
         'areaWandNote'    => lang('The magic wand cannot read this picture.'),
         'areaLimit'       => lang('The selection has as many shapes as it can hold; invert or deselect it to go on.'),
         'areaWith'        => lang('With the selection'),
-        'areaErase'       => lang('Erase'),
+        'areaErase'       => lang('Erase inside'),
         'areaKeep'        => lang('Keep only'),
         'areaCopy'        => lang('Copy to a layer'),
+        'areaCut'         => lang('Cut to a layer'),
         'areaAdjust'      => lang('Adjust inside'),
         'areaCopyNote'    => lang('This picture cannot be read back, so the selection cannot be copied.'),
         'areaCutName'     => lang('Cut-out'),

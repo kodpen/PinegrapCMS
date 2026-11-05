@@ -26,3 +26,6 @@ Reference implementation: `product_builder.php` (draws `add_product.php` and pro
 ## How do the account create and edit screens apply it?
 - `edit_erp_account.php`: the cards and the sticky save bar in the form column; the Balance card (balance, credit limit line, late fee panel) in the status column, outside the account form, because `erp_late_fee_panel()` carries its own form; the statement full width below (`order-3`). Before (issue #6551) all six cards and the balance strip were stacked in one `col-12`.
 - `add_erp_account.php`: the form wraps both columns; the status column holds the Notes card (`erp_account_form_cards(..., $with_notes = false)` + `erp_account_form_notes_card()`).
+
+## How do the till screens apply it?
+- `add_erp_till.php` (Open a Till, #6834): the till card in the form column, a Status card (Active/Passive and what passive means) in the sticky status column, `erp_till_form_cards($liveform, false, false)` leaving Status out of the card; before, one full-width card. `edit_erp_till.php` keeps Status in the card and reads balance, type and movements in its status column, the cash book full width below.

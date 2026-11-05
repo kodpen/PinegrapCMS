@@ -18,14 +18,14 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function test_theme_file_rename_before_record_update()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_theme_file.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/theme_file_form.php');
 
 	$rename = strpos($source, "!@rename(FILE_DIRECTORY_PATH . '/' . \$original_name, FILE_DIRECTORY_PATH . '/' . \$name)");
 	$deactivate = strpos($source, "SET activated_desktop_theme = '0'");
-	$update = strpos($source, "UPDATE files \n            SET \n                name = ?");
+	$update = strpos($source, "UPDATE files \n        SET \n            name = ?");
 
 	pg_assert_same(true, $rename !== false, 'the rename result is read');
 	pg_assert_same(true, ($rename !== false) && ($deactivate !== false) && ($rename < $deactivate), 'the disk rename comes before the other themes are deactivated');
 	pg_assert_same(true, ($rename !== false) && ($update !== false) && ($rename < $update), 'the disk rename comes before the record update');
-	pg_assert_contains("\$liveform->mark_error('name', lang('The file could not be renamed on the file system. Check write permission for the file directory.'));", $source, 'a failed rename stops the save with a message');
+	pg_assert_contains("\$liveform->mark_error('name', lang('The file could not be renamed on the file system. Check write permission for the file directory.'));\n\n        return array('ok' => false,", $source, 'a failed rename stops the save with a message');
 }

@@ -52,7 +52,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - auto-dialog-shared-form.md: add_auto_dialog.php and edit_auto_dialog.php share the template and includes/forms/auto_dialog_form.php (checks, page clean-up, saved values); what stays in the screens
 - back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
-- barcode-scanner-detection.md: The jQuery Scanner Detection listener on the barcode stock screens and Create Order ignores keys typed into fields, scans in an open dialog and blank codes; the Last Scans row is built as text
+- barcode-scanner-detection.md: Barcode stock screens and Create Order: the scanner listener ignores fields, dialogs and blank codes; Last Scans rows built as text; the stock screens' wide layout
 - bell-refusals.md: What the bell panel shows when loading, marking unread or Delete All Notifications is refused or fails (no endless spinner, refused rows put back)
 - booking-agenda.md: Booking agenda (view_bookings.php, edit_booking.php, #6231): views, who sees what, staff-made bookings, status moves, cancel reason, audit, search
 - booking-settings.md: Settings › Bookings (category bookings): services, staff hours grid and exceptions, booking rules and widget texts in config_text; what the save writes and refuses
@@ -239,7 +239,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-actions.md: The image editor's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked
 - image-editor-adjust.md: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-animation-save.md: Saving an animation into Files (AN4): Save to Files, the upload limit, action animation (binary body, type by bytes), its version with the document, reopening, same-format replace
-- image-editor-area-pixels.md: What an image editor selection does to pixels (E27b, #6678): Erase and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends and the engine's mask step under GD and Imagick
+- image-editor-area-cut.md: The image editor's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why an area layer takes a press only inside its outline
+- image-editor-area-pixels.md: What an image editor selection does to pixels (E27b, #6678): Erase inside and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends, the engine's mask step under GD and Imagick
 - image-editor-area.md: The image editor's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
 - image-editor-artboard.md: The image editor canvas (E12): New image dialog, Canvas tool on a board and on a photo (grow or trim with a fill), outward frames, Image tool, the ARTBOARD model section
 - image-editor-builder.md: The image editor's Shape builder: pathfinder buttons, the drag that merges or removes overlap regions, and the model's own path booleans (flatten, Martinez-Rueda, refit)
@@ -255,6 +256,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 - image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
+- image-editor-menu.md: The image editor's context menu: where it opens (right click, long press, Shift+F10, menu key), which items M.menuList() gives, the keys and focus, the long-press traps it fixes
 - image-editor-modal.md: The image editor core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
 - image-editor-motion.md: The image editor's Animate tool: anim and doc.motion, M.motionAt() and its spans, the play bar, the playhead and previews, the empty panel, what a still save sees
 - image-editor-outline.md: The image editor's text to outlines: the model's own OpenType reader, where the font file comes from (action font, data/fonts), the path it makes, what is refused
@@ -311,6 +313,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-quick-edit-pages.md: Pages list quick edit (includes/fn/list_table_edit.php): which cells are fields for whom, where the choices come from, how name, folder, style, type, form fields and switches are written
 - list-table-quick-edit-short-links.md: Short links list quick edit (includes/fn/short_link_list_edit.php): fields per destination type, the split destination columns, the edit screen's own checks and save
 - list-table-quick-edit-submitted-forms.md: Submitted forms list quick edit (includes/fn/submitted_form_list_edit.php): Status and Form Editor, the required-field check before completing, the screen's rights and side effects
+- list-table-quick-edit-themes.md: All Themes list quick edit (includes/fn/theme_list_edit.php): the fields, the shared theme check and save, the answer that redraws the replaced theme
 - list-table-quick-edit-users.md: Users list quick edit (includes/fn/user_list_edit.php): which cells are fields for whom and in which view, how a username, e-mail, role, start page or right is checked and written
 - list-table-quick-edit-values.md: Which values of each driver list change in quick edit (products, pages, containers …), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows

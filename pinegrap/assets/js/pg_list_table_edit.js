@@ -578,19 +578,41 @@
         }
     };
 
-    /** A saved answer drawn on its row: the cell and the cells it names. */
+    /** The cells an answer names, drawn on a row; the edited cell left out. */
+    D.paintRow = function (row, cells, skip) {
+        if (!row || !cells || (typeof cells !== 'object')) {
+            return;
+        }
+
+        for (var name in cells) {
+            if (Object.prototype.hasOwnProperty.call(cells, name)) {
+                var other = row.querySelector('[data-pg-cell="' + quote(name) + '"], td[data-pg-col="' + quote(name) + '"], td[data-pg-edit="' + quote(name) + '"]');
+
+                if (other && (other !== skip)) {
+                    this.paintCell(other, cells[name]);
+                }
+            }
+        }
+    };
+
+    /**
+     * A saved answer drawn on its row: the cell and the cells it names;
+     * 'rows' (id => cells) redraws other rows on screen the save changed
+     * too (a theme activated in place of another one).
+     */
     D.takeSaved = function (cell, data) {
         var row = cell.closest('tr');
 
         this.paintCell(cell, data);
+        this.paintRow(row, data.cells, cell);
 
-        if (row && data.cells && (typeof data.cells === 'object')) {
-            for (var name in data.cells) {
-                if (Object.prototype.hasOwnProperty.call(data.cells, name)) {
-                    var other = row.querySelector('[data-pg-cell="' + quote(name) + '"], td[data-pg-col="' + quote(name) + '"], td[data-pg-edit="' + quote(name) + '"]');
+        if (data.rows && (typeof data.rows === 'object')) {
+            for (var id in data.rows) {
+                if (Object.prototype.hasOwnProperty.call(data.rows, id)) {
+                    var other = this.tbody.querySelector('tr[data-pg-id="' + quote(id) + '"]');
 
-                    if (other && (other !== cell)) {
-                        this.paintCell(other, data.cells[name]);
+                    if (other && (other !== row)) {
+                        this.paintRow(other, data.rows[id], null);
                     }
                 }
             }

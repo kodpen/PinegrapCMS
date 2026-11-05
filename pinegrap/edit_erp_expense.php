@@ -564,10 +564,10 @@ $output_cancel = '';
 
 if ($can_change && ($status === 'paid') && !$can_cash) {
     $output_cancel = '
-        <p class="small fg-secondary my-7">' . lang('Cancelling a paid expense needs the right to the tills.') . '</p>';
+        <p class="small fg-secondary mb-7">' . lang('Cancelling a paid expense needs the right to the tills.') . '</p>';
 } elseif ($can_change) {
     $output_cancel = '
-        <div class="card my-7 border-subtle-danger">
+        <div class="card mb-7 border-subtle-danger">
             <div class="card-header bg-reset border-0 text-uppercase h6 fg-danger fw-bold">' . lang('Cancel the expense') . '</div>
             <div class="card-body">
                 <p class="small fg-secondary">' . (($status === 'paid')
@@ -594,6 +594,10 @@ if ($status === 'cancelled') {
         ))) . '</div>';
 }
 
+// Wide edit layout: the details and every form (pay, receipt, repeat,
+// cancel) in the form column, the status and the amounts in a sticky status
+// column written after it. No sticky save bar: each card carries its own
+// form and button, and the screen has no single primary save.
 $heading = ((string) $expense['supplier'] !== '') ? (string) $expense['supplier'] : lang(array('string' => 'Expense #{var:1}', 'vars' => $id));
 
 echo
@@ -619,7 +623,6 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . ($can_change ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_expense.php?id=' . $id . h($send_to_query) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
                 ' . (!$readonly ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
-                <span class="ms-3">' . $output_badge . '</span>
             </nav>
 
             ' . (($locked && $open) ? '<div class="alert theme-warning my-5"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . h(($status === 'unpaid')
@@ -628,43 +631,41 @@ pg_page_shell([
             ' . $output_cancelled . '
 
             <div class="row g-7 my-1">
-                <div class="col-12 xl:col-7">
-                    <div class="card h-100">
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                    <div class="card mb-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The expense') . '</div>
                         <div class="card-body">' . $output_details . '</div>
                     </div>
-                </div>
-                <div class="col-12 xl:col-5">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Amount and tax') . '</div>
-                        <div class="card-body">' . $output_figures . '</div>
-                    </div>
-                </div>
-                <div class="col-12 xl:col-7">
-                    <div class="card h-100">
+                    <div class="card mb-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Payment') . '</div>
                         <div class="card-body">' . $output_payment . '</div>
                     </div>
-                </div>
-                <div class="col-12 xl:col-5">
-                    <div class="card h-100">
+                    <div class="card mb-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The receipt') . '</div>
                         <div class="card-body">' . $output_receipt . '</div>
                     </div>
+                    ' . (($output_repeat !== '') ? '<div class="card mb-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat') . '</div>
+                        <div class="card-body">' . $output_repeat . '</div>
+                    </div>' : '') . '
+                    ' . $output_cancel . '
+                </div>
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <div class="position-sticky" style="top:3.3rem;">
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Amount and tax') . '</div>
+                            <div class="card-body">
+                                <div class="mb-3">' . $output_badge . '</div>
+                                ' . $output_figures . '
+                            </div>
+                            <div class="card-footer bg-reset border-0 small fg-secondary">' . h(lang(array(
+                                'string' => 'Recorded by {var:1} on {var:2}.',
+                                'vars' => array(((string) $expense['created_by_name'] !== '') ? (string) $expense['created_by_name'] : '-', prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $expense['created_at']), 'date and time')),
+                            ))) . '</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            ' . (($output_repeat !== '') ? '<div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat') . '</div>
-                <div class="card-body">' . $output_repeat . '</div>
-            </div>' : '') . '
-
-            ' . $output_cancel . '
-
-            <p class="small fg-secondary">' . h(lang(array(
-                'string' => 'Recorded by {var:1} on {var:2}.',
-                'vars' => array(((string) $expense['created_by_name'] !== '') ? (string) $expense['created_by_name'] : '-', prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $expense['created_at']), 'date and time')),
-            ))) . '</p>
         </div>
     </div>
 </main>
