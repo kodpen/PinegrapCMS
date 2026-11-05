@@ -312,10 +312,11 @@
             }, 'drag', true);
         } else if (d.kind === 'resize') {
             // A type with ratio (a picture) keeps its shape from a corner;
-            // Shift does the other.
+            // Shift does the other. A finger or a pen keeps it from any
+            // corner (M.keepRatio()).
             // A type's resize(start, box, handle) answers the fields that
             // change (a text scales its letters).
-            var b = M.resizeBox(d.start, d.h, p[0], p[1], e.shiftKey !== !!kind(d.start).ratio, 4 / k);
+            var b = M.resizeBox(d.start, d.h, p[0], p[1], M.keepRatio(e.pointerType, e.shiftKey, !!kind(d.start).ratio), 4 / k);
 
             if (kind(d.start).resize) {
                 b = kind(d.start).resize.call(this, d.start, b, d.h);
