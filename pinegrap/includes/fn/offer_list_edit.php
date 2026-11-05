@@ -81,6 +81,7 @@ function pg_offer_list_entry($row, $products, $shipping_methods)
         'end_date'        => (string) $row['end_date'],
         'sentence'        => _pg_offer_sentence($state, $products, $shipping_methods),
         'modified'        => get_relative_time(array('timestamp' => $row['timestamp'])),
+        'timestamp'       => (int) $row['timestamp'],
         'modified_by'     => (string) $row['last_modified_username']);
 }
 
@@ -144,6 +145,138 @@ function pg_offer_list_cells($offer)
         'end_date'     => array('html' => $end, 'class' => 'align-middle text-nowrap fg-secondary', 'sort' => $offer['end_date']),
         'modified'     => array('html' => $modified, 'class' => 'align-middle text-nowrap fg-secondary'),
     );
+}
+
+/**
+ * The list's columns for the table driver (pg_list_table_printed()): the
+ * code first, as the record's name, the row's buttons last.
+ *
+ * @return array key => column spec
+ */
+function pg_offer_list_columns()
+{
+    return array(
+        'code'         => array('heading' => lang('Offer'), 'editable' => 'text'),
+        'description'  => array('heading' => lang('Message'), 'editable' => 'text'),
+        'flow'         => array('heading' => lang('Flow'), 'sortable' => false),
+        'require_code' => array('heading' => lang('How'), 'kind' => 'badge', 'editable' => 'select'),
+        'enabled'      => array('heading' => lang('Status'), 'kind' => 'badge', 'editable' => 'select'),
+        'start_date'   => array('heading' => lang('Start Date'), 'kind' => 'date', 'editable' => 'text'),
+        'end_date'     => array('heading' => lang('End Date'), 'kind' => 'date', 'editable' => 'text'),
+        'modified'     => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        'actions'      => array('heading' => lang('Action'), 'kind' => 'actions', 'hideable' => false),
+    );
+}
+
+/**
+ * The filter groups an offer stands in, as the toolbar's chips name them:
+ * its status, how it applies and, when it is, incomplete. The driver keeps
+ * a row whose Status cell holds the chip's value (data-pg-filter).
+ *
+ * @param array $offer pg_offer_list_entry()
+ * @return string values separated by spaces
+ */
+function pg_offer_list_filter($offer)
+{
+    return $offer['status'] . ' ' . ($offer['require_code'] ? 'code' : 'auto') . ($offer['incomplete'] ? ' incomplete' : '');
+}
+
+/**
+ * The conditions and results of an offer as chips (the Flow cell). Text,
+ * edited only in the editor.
+ *
+ * @param array $offer pg_offer_list_entry()
+ * @return string HTML
+ */
+function pg_offer_list_flow_html($offer)
+{
+    $html = '';
+
+    if ($offer['condition_chips']) {
+        foreach ($offer['condition_chips'] as $chip) {
+            $html .= '<span class="badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal"><i class="bi bi-funnel" aria-hidden="true"></i> ' . h($chip) . '</span>';
+        }
+    } else {
+        $html .= '<span class="badge rounded-pill bg-1 fg-secondary border fw-normal">' . h(lang('Every order')) . '</span>';
+    }
+
+    $html .= '<span class="fg-secondary small">→</span>';
+
+    if ($offer['action_chips']) {
+        foreach ($offer['action_chips'] as $chip) {
+            $html .= '<span class="badge rounded-pill bg-subtle-success fg-emphasis-success border border-subtle-success fw-normal"><i class="bi ' . h($chip['icon']) . '" aria-hidden="true"></i> ' . h($chip['text']) . '</span>';
+        }
+    } else {
+        $html .= '<span class="badge rounded-pill bg-subtle-danger fg-emphasis-danger border border-subtle-danger fw-normal"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> ' . h(lang('No result')) . '</span>';
+    }
+
+    if ($offer['upsell']) {
+        $html .= '<span class="badge rounded-pill bg-1 fg-secondary border fw-normal" title="' . h(lang('Up-sell message')) . '"><i class="bi bi-chat-square-text" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Up-sell message')) . '</span></span>';
+    }
+
+    return '<div class="d-flex flex-wrap align-items-center gap-1">' . $html . '</div>';
+}
+
+/**
+ * The row's buttons: edit, duplicate and the power toggle, which enables or
+ * disables the offer in place (the template's script); its name says what
+ * a press does.
+ *
+ * @param array $offer pg_offer_list_entry()
+ * @return string HTML
+ */
+function pg_offer_list_actions_html($offer)
+{
+    $id = (int) $offer['id'];
+    $toggle = $offer['enabled'] ? lang('Disable offer') : lang('Enable offer');
+
+    return '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_offer.php?id=' . $id . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>'
+        . '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="edit_offer.php?duplicate=' . $id . '" title="' . h(lang('Duplicate')) . '" aria-label="' . h(lang('Duplicate')) . '"><i class="bi bi-copy" aria-hidden="true"></i></a>'
+        . '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 pg-offer-toggle" data-id="' . $id . '" title="' . h($toggle) . '" aria-label="' . h($toggle) . '"><i class="bi bi-power" aria-hidden="true"></i></button>';
+}
+
+/**
+ * One offer as a row of the table driver: the cells of pg_offer_list_cells()
+ * with their quick edit field, the dates sorted by Y-m-d and the last change
+ * by its time, the chip groups on the Status cell.
+ *
+ * @param array $offer      pg_offer_list_entry()
+ * @param array $quick_edit pg_offer_edit_columns(), or array() for none
+ * @return array array('id', 'cells')
+ */
+function pg_offer_list_row($offer, $quick_edit)
+{
+    $drawn = pg_offer_list_cells($offer);
+    $cells = array();
+
+    foreach (array_keys(pg_offer_list_columns()) as $key) {
+        if ($key === 'flow') {
+            $cells[$key] = pg_list_cell(pg_offer_list_flow_html($offer), 'align-middle', array('title' => $offer['sentence']));
+            continue;
+        }
+
+        if ($key === 'actions') {
+            $cells[$key] = pg_list_cell(pg_offer_list_actions_html($offer), 'align-middle text-nowrap');
+            continue;
+        }
+
+        $attributes = pg_list_edit_cell_attributes($quick_edit, $key, $offer['id'], isset($quick_edit[$key]) ? pg_offer_quick_value($offer, $key) : '');
+        $attributes['data-pg-cell'] = $key;
+
+        if (isset($drawn[$key]['sort'])) {
+            $attributes['data-pg-sort-value'] = $drawn[$key]['sort'];
+        } elseif ($key === 'modified') {
+            $attributes['data-pg-sort-value'] = (int) $offer['timestamp'];
+        }
+
+        if ($key === 'enabled') {
+            $attributes['data-pg-filter'] = pg_offer_list_filter($offer);
+        }
+
+        $cells[$key] = pg_list_cell($drawn[$key]['html'], $drawn[$key]['class'], $attributes);
+    }
+
+    return array('id' => (int) $offer['id'], 'cells' => $cells);
 }
 
 /**
@@ -332,5 +465,6 @@ function pg_offer_quick_answer($offer, $field)
                 'status'     => $offer['status'],
                 'how'        => $offer['require_code'] ? 'code' : 'auto',
                 'incomplete' => $offer['incomplete'] ? '1' : '0',
-                'enabled'    => $offer['enabled'] ? 1 : 0));
+                'enabled'    => $offer['enabled'] ? 1 : 0,
+                'filter'     => pg_offer_list_filter($offer)));
 }

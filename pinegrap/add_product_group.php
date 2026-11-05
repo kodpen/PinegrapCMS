@@ -39,7 +39,7 @@ if (!$_POST) {
 
     // Determine whether to show product images based on config setting (default: show).
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
-    $output_image_header = $show_image ? '<th>' . lang('Image') . '</th>' : '';
+    $output_image_header = $show_image ? '<th data-pg-sort="none">' . lang('Image') . '</th>' : '';
 
     // Products in the Recycle Bin are not offered for the new group.
     $live_products_sql = pg_catalog_bin_live_sql('products');
