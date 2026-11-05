@@ -72,6 +72,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - csv-import-feedback.md: Contacts, Users, Products, Submitted Forms and Campaign Profiles CSV import: separator from the header line, unknown headings and unused rows named 'Line n: reason'
 - csv-import-headings.md: How Import Products and Import Campaign Profiles match headings (pg_import_heading: case, spaces, dashes), the products name-column refusal, and blank submitted-form rows passed over
 - csv-line-endings.md: The CSV importers open the upload with pg_csv_open(), which turns a classic Mac (CR-only) file into LF lines instead of the auto_detect_line_endings setting deprecated in PHP 8.1 (PR #1757)
+- custom-form-private-access-expiry.md: A custom form's private access expiry is today plus N calendar days (pg_cf_private_expiry_date()), never N * 86400 seconds, so a clock change does not end it a day early (PR #7039)
 - db-legacy-and-magic-quotes.md: PHP 5 remnants removed (PR #3149, #3195): the DB_LEGACY mysql_* connection in db_connect() and router.php, the magic quotes strip of init.php and the installer; a config that still sets DB_LEGACY
 - deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close()/openssl_x509_free(); db_connect() checks a reused connection with SELECT 1, not mysqli_ping() (PR #1744)
 - designer-i18n-audit-tool.md: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
