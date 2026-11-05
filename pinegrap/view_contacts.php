@@ -27,13 +27,17 @@ if (pg_list_edit_requested()) {
 
     $quick_filter = pg_contact_list_filter_name((isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : '');
 
-    $edit = pg_list_edit_request(pg_contact_quick_edit_columns($quick_filter), function ($user) use ($quick_filter) {
+    // The groups field offers the signed-in user's groups; a visitor gets
+    // none, and pg_list_edit_request() answers them in JSON.
+    $quick_groups = (defined('USER_LOGGED_IN') && USER_LOGGED_IN) ? pg_contact_quick_group_options(validate_user()) : array();
+
+    $edit = pg_list_edit_request(pg_contact_quick_edit_columns($quick_filter, $quick_groups), function ($user) use ($quick_filter) {
         // The list's own gate; the duplicates view is not a User's.
         return (validate_contacts_access($user, true) == true)
             && (((int) $user['role'] < 3) || ($quick_filter !== 'all_duplicate_contacts'));
     });
 
-    $saved = pg_contact_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value'], $quick_filter);
+    $saved = pg_contact_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value'], $quick_filter, $quick_groups);
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }

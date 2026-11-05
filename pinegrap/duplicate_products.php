@@ -691,6 +691,7 @@ if (!$_POST) {
                 $output_allowed_zones = '';
                 $output_disallowed_zones = '';
                 $disallowed_zones_sql_where = '';
+                $disallowed_zones_values = array();
 
                 // Get allowed zones
                 $query2 = "SELECT 
@@ -723,14 +724,15 @@ if (!$_POST) {
                     }
 
                     // add zone id to where statement to exclude this zone from disallowed zones
-                    $disallowed_zones_sql_where .= "id != '" . escape($row2['id']) . "'";
+                    $disallowed_zones_sql_where .= "id != ?";
+                    $disallowed_zones_values[] = (string) $row2['id'];
                 }
 
                 // Get disallowed zones
                 $query2 = "SELECT name FROM zones
                           $disallowed_zones_sql_where
                           ORDER BY zones.name ASC";
-                $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+                $result2 = db_q($query2, $disallowed_zones_values) or output_error('Query failed.');
 
                 // loop through and prepare disallowed zones
                 while($row2 = mysqli_fetch_assoc($result2)){

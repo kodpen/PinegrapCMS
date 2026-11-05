@@ -5,12 +5,15 @@ module: shipping_method_list_edit
 ---
 
 ## Which cells change?
-- Every list value `edit_shipping_method.php` changes (`pg_shipping_method_edit_columns()`): Name, Message, Code, Service, Real-Time Rate, Base Rate, the two weight rates, Item Rate, Handling, Transit, Street, PO Box, Protected. Text: the zones (several choices) and Last Modified. `tests/shipping_method_list_edit_test.php` fails for a new column that is neither.
+- Every list value `edit_shipping_method.php` changes (`pg_shipping_method_edit_columns()`): Name, Message, Code, Service, Real-Time Rate, Base Rate, the two weight rates, Item Rate, Handling, Transit, Street, PO Box, Protected, Zones (`multiselect` of every zone, as the screen's Allowed Zones; `pg_shipping_method_quick_zone_options()`). Text: Last Modified. `tests/shipping_method_list_edit_test.php` fails for a new column that is neither.
 - Before, only the base rate and the item rate were fields (the functions sat in `includes/fn/ecommerce.php`).
 
 ## What does Service offer, and how does the real-time rate follow it?
 - The services of the carriers set up (`pg_shipping_method_quick_ready()`, the screen's picker rule), then any other service a method keeps; the write takes only what the row's own picker would offer (`pg_shipping_method_service_choices()`).
 - A blank or FedEx service turns the real-time rate off, as the screen saves it; the answer redraws that cell. A real-time rate without a USPS or UPS service is refused.
+
+## How are the zones written?
+- `pg_shipping_method_quick_zones_write()`: the zones alone through `pg_shipping_method_save_zones()` (includes/fn/shipping_methods.php, shared with the screen's save), the method stamped, a Site Log line, `shipping_method.updated`. Same zones again: nothing written. None chosen is allowed, as on the screen.
 
 ## Which cells stay text on some rows?
 - A pickup method (`stock_location_id` > 0): Service, Real-Time Rate, Base Rate, Street, PO Box, which the screen forces (`pg_stock_pickup_columns()`). A variable base rate: Base Rate (a step per subtotal). `pg_shipping_method_quick_locked()` decides both for the cell and the write.

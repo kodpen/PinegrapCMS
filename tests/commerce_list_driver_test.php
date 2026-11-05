@@ -37,7 +37,7 @@ function test_commerce_list_specs_follow_the_sort_menu_and_quick_edit()
 	$specs = pg_commerce_list_specs(
 		array('name' => array('heading' => 'Name'), 'zones' => array('heading' => 'Zones'), 'rate' => array('heading' => 'Rate', 'kind' => 'money')),
 		array('name' => 'Name', 'rate' => 'Rate'),
-		array('rate' => array('type' => 'money'), 'name' => array('type' => 'textarea')));
+		array('rate' => array('type' => 'money'), 'name' => array('type' => 'colour')));
 
 	pg_assert_false(isset($specs['name']['sortable']), 'a sort menu column keeps its sort');
 	pg_assert_same(false, $specs['zones']['sortable'], 'a column the menu does not offer does not sort');

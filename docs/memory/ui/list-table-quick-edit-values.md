@@ -10,7 +10,7 @@ module: list_table_edit
 ## Products: which cells change?
 - `pg_pb_quick_edit_more_fields()` (product_builder.php), merged into `pg_pb_quick_edit_columns()`: the code (the ID column, field `name`, unique like the product screen: `pg_product_name_holder()`), taxable, product form title, selection type, default quantity (inside the product's min/max), shippable, weight (`decimal`, stored lb, four places), PWP, SWP, container, preparation, free shipping, extra shipping (minor units), Dim (`12 x 3 x 4`, x/×/*, the screen's checks per size, `pg_pb_quick_dimensions_change()`), the labelled custom fields, recurring, start (not with ClearCommerce), number of payments, payment period, allow to schedule, membership days, the two BCC addresses (validated). Shipping fields only while the store ships.
 - Picked from the site (`pg_pb_quick_edit_choice_fields()`, the user's `pg_pb_quick_edit_choices()`: `select_page()`, private `select_folder()`, `select_contact_group()` (a role-3 user's own groups), none = 0): start page and private folder (only on a row that grants private access), e-mail page, contact group. Read only for a view showing one (`pg_product_list_source()`) or an edit of one (`view_products.php`). A cell whose stored id is not among the choices stays text (`pg_pb_quick_cell_editable()`), and the write refuses it.
-- Still text, left on the product screen: allowed/disallowed zones (several choices, an input type the driver lacks) and the order receipt message (rich text). `tests/product_list_driver_test.php` fails for any other column that is not a field.
+- Still text, left on the product screen: allowed/disallowed zones (several choices; the `multiselect` type exists, the product write does not yet) and the order receipt message (rich text). `tests/product_list_driver_test.php` fails for any other column that is not a field.
 - The checks are pure (`pg_pb_quick_more_change()`); `pg_pb_quick_update()` writes them, stamps the change, logs, announces `product.updated`, tells a marketplace about the code and the weight too. The answer's cell is the list's own row read again (`pg_list_table_record_row()` with the session's view, then `pg_list_table_edit_answer()`), so the ID cell keeps its link.
 
 ## Pages: which cells change?
@@ -20,18 +20,16 @@ module: list_table_edit
 - Username, e-mail, role, start page and a User's rights: `list-table-quick-edit-users.md`.
 
 ## Contacts: which cells change?
-- Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
+- Names, company, phones, e-mail, opt-in, the address views' address parts and the groups: `list-table-quick-edit-contacts.md`.
 
 ## Which other lists have quick edit?
 - Every other list with its own `list-table-quick-edit-<list>.md` (the `ui/README.md` index lists them): each says which cells change, which stay text and why. A new list adds its file, not a line here.
 
-## How does a several-line value change?
-- Field type `textarea`: `list-quick-edit-keyboard.md`.
+## How do several-line and several-choice values change?
+- Field types `textarea` and `multiselect`: `list-quick-edit-keyboard.md`.
 
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
-- Contacts: the groups (multi-select). Shipping methods: the zones (multi-select).
-- Key codes and gift cards: notes on several lines still read as one line (gift cards in their own PR).
 - Gift cards: the balance (the driver does not post the value a cell opened with) and store credit (`list-table-quick-edit-gift-cards.md`). Orders: nothing else the order screen saves is a list column (`list-table-quick-edit-orders.md`).
 - Not a driver list: product groups, in the Catalog Manager (`view_folders.php`): renamed in its grid and tree, the rest on the group's screen.
 

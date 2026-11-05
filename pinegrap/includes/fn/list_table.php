@@ -117,7 +117,7 @@ function pg_list_table_kinds()
  */
 function pg_list_table_edit_kinds()
 {
-    return array('text', 'textarea', 'number', 'money', 'select', 'check', 'date');
+    return array('text', 'textarea', 'number', 'money', 'select', 'multiselect', 'check', 'date');
 }
 
 /**
