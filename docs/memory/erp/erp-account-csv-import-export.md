@@ -8,6 +8,7 @@ description: ERP account CSV import wizard (steps, matching, batches, defaults) 
 - Upload: the file waits under `data/temp/` keyed by a session token; delimiter and charset are detected (Windows-1254 → UTF-8).
 - Map and preview: TR/EN header synonyms; the first 20 rows show will-create / already-exists / duplicate / error. A second column mapped to a field another column feeds keeps its choice, is marked "already mapped to the column …" and blocks the run (#5890; it used to fall back to Skip unannounced).
 - Run: batches of 100, one transaction per batch.
+- Layout: Upload and Map use the wide edit layout; the status column holds the notes and the template link, then the file facts, counts and Options (`tests/erp_accounts_import_layout_test.php`).
 - A Start import refused for want of a Name column draws step 2 again from the posted mapping and mode (error key `map`), never `go()` to the address, whose plain visit discards the staged file. Step 2 sends once and says "Importing…" (button-busy-state).
 - Match order: tax number → e-mail → full name (name only when both others are empty).
 - Update writes only the columns the file provides and never touches the balance.
