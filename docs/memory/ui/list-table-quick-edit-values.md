@@ -23,12 +23,12 @@ module: list_table_edit
 - Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
 
 ## Which other lists have quick edit?
-- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes, styles, design files, shipping methods (all but the zones), key codes (all but the offer's message), offers (all but the flow), product attributes, shipping zones, tax zones, arrival dates, referral sources, currencies: each in its own `list-table-quick-edit-<list>.md` (listed in `ui/README.md`), with its cells.
+- Every other list with its own `list-table-quick-edit-<list>.md` (the `ui/README.md` index lists them): each says which cells change, which stay text and why. A new list adds its file, not a line here.
 
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
 - Contacts: the groups (multi-select). Comments and themes: the message, the description (several lines).
-- The commerce lists' columns outside their `pg_*_edit_columns()` (orders, gift cards).
+- The commerce lists' columns outside their `pg_*_edit_columns()` (gift cards). Orders: nothing else the order screen saves is a list column (`list-table-quick-edit-orders.md`).
 - Not a driver list: product groups, in the Catalog Manager (`view_folders.php`): renamed in its grid and tree, the rest on the group's screen.
 
 Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/product-list-paging.md
