@@ -1,11 +1,11 @@
 ---
 name: image-editor-remove-background
-description: The image editor's Remove background (E28c, #6948): subject kept, the rest erased; the erased part's fills (colour, blur, a picture from Files) in the mask step
+description: The image editor's Remove background (E28c, #6948): the subject a layer of its own over the picture erased whole; the erased part's fills (colour, blur, a picture from Files) in the mask step
 module: image_editor
 ---
 
 ## What does Remove background do?
-- A button beside Select subject in the Select area panel (`areaRemoveBackground()` in `pg_image_editor_area.js`). With a subject op in the selection it erases what lies outside the selection's rings within the picture's frame (`M.areaRest()` over `M.pictureBox()`), with the subject's soft edge as `matte`; without one it cuts the subject first (a lone rectangle is the box, as Select subject does) and erases the rest with the default edge (4). One undo step: the erase layer goes in, the selection goes, the layer's panel opens with the Select tool. Refine first with the brushes (`image-editor-subject-brushes.md`): the layer keeps fixed rings and does not follow later strokes.
+- A button beside Select subject in the Select area panel (`areaRemoveBackground()` in `pg_image_editor_area.js`). It takes the subject of a subject op in the selection (its soft edge), or finds it first (a lone rectangle is the box, as Select subject does; edge 4). `areaEraseRest()`, one undo step: the subject becomes a picture layer of its own, the cut-out Cut to a layer makes (`areaCutout(rings, soft)`), over the picture erased whole (one Erase layer of the frame, `M.areaRest([], M.pictureBox())`, locked); the selection goes and the erased area's panel opens with the Select tool. A press on the subject takes the piece, so a drag moves the subject alone and leaves nothing of the picture behind; a drag on the background moves nothing. Before (the owner's report, 2026-11-05) only the rest was erased and the erased area was selected: a drag moved the mask and the background came back, the subject stayed. Refine first with the brushes (`image-editor-subject-brushes.md`): the piece is cut once and does not follow later strokes.
 
 ## What can fill the erased part?
 - The Erase layer's panel, "Fill the erased part": See-through, Colour (`fill`), Blur (`blur`, units, 1-100, first 1 % of the picture's long side) or Picture (`backdrop: { src, fileId, name }`, a picture from Files through the Import list, `openImportFiles(pick)`; shown only where the editor has its API, or when a layer already has one). One of the three fields at a time (`eraseSet()`); every Erase layer has these, not only Remove background's.

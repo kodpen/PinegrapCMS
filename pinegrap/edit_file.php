@@ -256,9 +256,9 @@ if (!isset($_POST['name'])) {
             
             
             // Output version check
+            // The ?v= stamp shows a changed picture; the screen itself goes out
+            // as every panel screen does (private, no-cache, pg_panel_cache_headers()).
             $data_src = OUTPUT_PATH . $file_name . '?v=' . @filemtime(FILE_DIRECTORY_PATH . '/' . $file_name);
-            header("Cache-Control: no-cache, must-revalidate");
-            header("Expires: 0");
         }
         // Set the maximum dimension size for the image.
         $max_dimension = 1920;

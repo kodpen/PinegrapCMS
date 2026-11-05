@@ -822,7 +822,9 @@ function pg_legal_kvkk_settings()
 
     if ($page_name !== '') {
         $settings['url'] = PATH . encode_url_path($page_name);
-        $settings['full_url'] = URL_SCHEME . HOSTNAME . $settings['url'];
+        // full_url is written into the order's kept documents, so it names
+        // the configured host, not the Host header of the checkout request.
+        $settings['full_url'] = URL_SCHEME . HOSTNAME_SETTING . $settings['url'];
     }
 
     $settings['consent'] = trim(pg_config_text('ecommerce_kvkk_consent_text'));

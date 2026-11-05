@@ -342,8 +342,11 @@ function pg_explorer_unsafe_archive_name($name)
 
 // Add a manager folder's files to an open archive, recursing into
 // sub-folders. Pages are database records with no file of their own, so they
-// cannot go in - the caller reports how many were left out.
-function pg_explorer_zip_add_folder($zip, $folder_id, $prefix, $user, &$skipped_pages, $depth = 0)
+// cannot go in - the caller reports how many were left out. Team chat
+// attachments this person may not open stay out (get_file.php's rule);
+// $holds_attachment turns true when a submitted-form or comment upload goes
+// in, so the caller keeps the archive one too.
+function pg_explorer_zip_add_folder($zip, $folder_id, $prefix, $user, &$skipped_pages, $depth = 0, &$holds_attachment = false)
 {
     if ($depth > 20) {
         return 0;
@@ -351,10 +354,16 @@ function pg_explorer_zip_add_folder($zip, $folder_id, $prefix, $user, &$skipped_
 
     $added = 0;
 
-    $files = db_items("SELECT id, name, design FROM files WHERE folder = '" . e($folder_id) . "' ORDER BY name");
+    $files = db_items("SELECT id, name, design, attachment FROM files WHERE folder = '" . e($folder_id) . "' ORDER BY name");
 
     if ($files) {
+        $chat_refused = pg_chat_attachment_refused_ids(array_column($files, 'id'), $user);
+
         foreach ($files as $file) {
+
+            if (in_array((int) $file['id'], $chat_refused, true)) {
+                continue;
+            }
 
             if (($file['design'] == 1) && ($user['role'] > 1)) {
                 continue;
@@ -371,6 +380,10 @@ function pg_explorer_zip_add_folder($zip, $folder_id, $prefix, $user, &$skipped_
             if (is_file($path) && is_readable($path)) {
                 $zip->addFile($path, $prefix . $file['name']);
                 $added++;
+
+                if ((int) $file['attachment'] === 1) {
+                    $holds_attachment = true;
+                }
             }
         }
     }
@@ -396,7 +409,8 @@ function pg_explorer_zip_add_folder($zip, $folder_id, $prefix, $user, &$skipped_
                 $prefix . pg_ascii_file_name($child['folder_name']) . '/',
                 $user,
                 $skipped_pages,
-                $depth + 1);
+                $depth + 1,
+                $holds_attachment);
         }
     }
 
