@@ -26,6 +26,7 @@ include_once('liveform.class.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/theme_file_form.php');
 
 $liveform = new liveform('add_theme_file');
 
@@ -353,28 +354,48 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
                 output_error(lang('The file was empty') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
             }
             
-            // loop through the headings to verify that the columns are not blank, or not valid
-            foreach ($columns as $key => $value) {
-                // if the column is invalid, remove from column list
-                if ($value === FALSE) {
-                    unset($columns[$key]);
-                
-                // else if there is value, then verify that the heading is one of the correct headings,
-                // if it isn't, then output an error
-                } else {
-                    if (preg_match('/area|row|col|module|region_type|region_name|property|value/i', $value) == 0) {
-                        output_error(lang('The file is not a valid System Theme CSV file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-                    }
-                }
+            // The heading names the eight rule columns the export writes; the
+            // column list is built from those names, never from the cells.
+            $rule_columns = pg_theme_csv_import_columns($columns);
+
+            if ($rule_columns === null) {
+                output_error(lang('The file is not a valid System Theme CSV file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
             }
-            
+
             // remove the .csv extension from the name and add .css so that we can use it as the new theme name
             $file_name = mb_strtolower(mb_substr($file_name, 0, mb_strrpos($file_name, '.'))) . '.css';
 
             if (check_name_availability(array('name' => $file_name)) == false) {
                 output_error(lang(array('string'=>'{var:1} already exists','vars'=>h($file_name))). '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
             }
-            
+
+            // The rows are read before anything is written: a file with a
+            // heading and no rules is refused, not stored as an empty theme.
+            // Each row's values are placed in the heading's order; a blank
+            // line is skipped.
+            $rule_rows = array();
+
+            while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
+                if ($row === array(null)) {
+                    continue;
+                }
+
+                $values = array();
+
+                for ($column = 0; $column < 8; $column++) {
+                    $values[] = "'" . escape((string) ($row[$column] ?? '')) . "'";
+                }
+
+                $rule_rows[] = implode(', ', $values);
+            }
+
+            // close the csv file
+            fclose($handle);
+
+            if (!$rule_rows) {
+                output_error(lang('The file was empty') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
+
             // insert file data into files table
             $query =
                 "INSERT INTO files (
@@ -399,40 +420,19 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
                     UNIX_TIMESTAMP())";
             $result = db_q($query, array((string) $file_name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $user['id'])) or output_error('Query failed.');
             $theme_id = mysqli_insert_id(db::$con);
-            
-            $data_list = '';
-            
-            // loop through the columns to build the sql columns to insert into string
-            foreach ($columns as $key => $value) {
-                if ($data_list != '') {
-                    $data_list .= ', ';
-                }
-                
-                // prepare value and add it to the data list
-                $value = escape($value);
-                $data_list .= "$value";
-            }
-            
-            $system_theme_properties_for_sql = '';
-            
-            // loop through the rows in the csv file to create an sql statement that will insert the properties
-            while ($row = fgetcsv($handle, 100000, ",", '"', '\\')) {
-                if ($system_theme_properties_for_sql != '') {
-                    $system_theme_properties_for_sql .= ',';
-                }
-                
-                $system_theme_properties_for_sql .= "('$theme_id', '" . escape($row[0]) . "', '" . escape($row[1]) . "', '" . escape($row[2]) . "', '" . escape($row[3]) . "', '" . escape($row[4]) . "', '" . escape($row[5]) . "', '" . escape($row[6]) . "', '" . escape($row[7]) . "')";
-            }
-            
-            // insert the css properties into the database
+
+            // Insert the rules. A refused insert takes the record back out,
+            // so no theme without rules (and without a file) keeps the name.
             $query =
-                "INSERT INTO system_theme_css_rules 
-                    (file_id, $data_list)
-                VALUES " . $system_theme_properties_for_sql;
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            // close the csv file
-            fclose($handle);
+                "INSERT INTO system_theme_css_rules
+                    (file_id, " . $rule_columns . ")
+                VALUES ('" . (int) $theme_id . "', " . implode("), ('" . (int) $theme_id . "', ", $rule_rows) . ")";
+
+            if (!mysqli_query(db::$con, $query)) {
+                db_q("DELETE FROM system_theme_css_rules WHERE file_id = ?", array((string) $theme_id));
+                db_q("DELETE FROM files WHERE id = ?", array((string) $theme_id));
+                output_error(lang('The file is not a valid System Theme CSV file') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
         }
         
         /* Generate the CSS file */
