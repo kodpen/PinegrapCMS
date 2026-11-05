@@ -322,7 +322,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-quick-edit-countries.md: All Countries list quick edit (includes/fn/country_list_edit.php): the fields, the screen's checks and write path, the new default that redraws the old one
 - list-table-quick-edit-currencies.md: All Currencies list quick edit (includes/fn/currency_list_edit.php): the fields, the screen's checks and write path, the base rate kept as text, the base move that redraws the other rows
 - list-table-quick-edit-design-files.md: All Design Files list quick edit (includes/fn/design_file_list_edit.php): the fields, the design file screen's shared name check and save, the answer that redraws a renamed row
-- list-table-quick-edit-gift-cards.md: All Gift Cards list quick edit (gift_card_list_edit.php): expiration date and notes through the screen's own check and save; balance and store credit stay text
+- list-table-quick-edit-gift-cards.md: All Gift Cards list quick edit (gift_card_list_edit.php): balance (over the one its cell opened with), expiration date and notes through the screen's own check and save; store credit stays text
 - list-table-quick-edit-key-codes.md: All Key Codes list quick edit (includes/fn/key_code_list_edit.php): the fields, the key code screen's own check and save, notes on several lines, who may change them
 - list-table-quick-edit-menus.md: All Menus list quick edit (includes/fn/menu_list_edit.php): the fields, the classes as the chips post them, the menu screen's own check and save, who may change them
 - list-table-quick-edit-offers.md: All Offers list quick edit (offer_list_edit.php): the fields, the editor's whole-offer check and save behind each change, dates and open-ended offers, the row's chip data after a save
