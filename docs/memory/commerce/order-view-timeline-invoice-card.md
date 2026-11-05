@@ -19,6 +19,7 @@ description: Order view timeline events/sources, printable invoice endpoint and 
 ## How is the printable invoice served? (`__order_invoice_pdf_url`, flag `can_print_invoice`)
 - Flag is true only for a logged-in owner; hidden for guest orders. Endpoint `order_invoice_print.php`: GET-only (no state change, no CSRF token), `order_id` required.
 - Ownership: `orders.user_id === USER_ID` or admin (`USER_ROLE === 0`). Page auto-calls `window.print()`.
+- Totals rows: `pg_order_print_totals()`, gift card and instalment charge included (#PR: they did not add up).
 - No dependency: HTML print-CSS is a deliberate choice for this endpoint and the signature receipt; the customer prints from the browser. `order_invoice_print.php` and the signature receipt do NOT use dompdf.
 - The ERP invoice is the exception (2026-09-17): it needs server-side PDF (attached to email, archived, base for e-archive rendering) with an admin-editable template, so `includes/dompdf/` is embedded (docs/memory/erp/erp-invoice-document-pdf.md).
 
