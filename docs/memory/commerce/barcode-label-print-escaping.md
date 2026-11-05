@@ -10,6 +10,6 @@ description: The barcode label print page (LabelEditor buildPrintHTML() in backe
 ## How is each value written now?
 - Numbers (`x`, `y`, `width`, `height`, `rotation`, `scrollX`, `fontSize`, `borderWidth`, `borderRadius`, label `width`/`height`) through `_num()`: a value that is no finite number takes the default.
 - CSS values (`color`, `fontWeight`, `fill`, `borderColor`, label `background`) through `_css()`: only `# a-z 0-9 . , % ( ) -` and spaces, else the default.
-- Text and attribute values (`barcodeType`, the text, the image `src`) through `_esc()`.
+- Text and attribute values (`barcodeType`, the barcode element's `id` in `print-bc-…`, the text, the image `src`) through `_esc()`.
 - The barcode inside the script: `JSON.stringify()` with `<` written as `<`.
 - Test: `tests/barcode_label_print_escape_test.php` (runs the method in Node).

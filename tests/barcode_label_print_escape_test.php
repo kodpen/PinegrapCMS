@@ -65,7 +65,7 @@ function test_barcode_label_print_keeps_values_out_of_the_markup()
 	$template = array(
 		'label' => array('width' => 50, 'height' => 30, 'background' => $attack),
 		'elements' => array(
-			array('id' => 'a', 'type' => 'barcode', 'barcodeType' => $attack, 'x' => 1, 'y' => 1, 'width' => 40, 'height' => 15, 'rotation' => $attack),
+			array('id' => $attack, 'type' => 'barcode', 'barcodeType' => $attack, 'x' => 1, 'y' => 1, 'width' => 40, 'height' => 15, 'rotation' => $attack),
 			array('id' => 'b', 'type' => 'text', 'field' => 'sku', 'x' => '2', 'y' => 18, 'width' => 30, 'height' => 6,
 				'fontSize' => $attack, 'fontWeight' => $attack, 'color' => $attack, 'scrollX' => $attack),
 			array('id' => 'c', 'type' => 'text', 'field' => 'custom', 'text' => $attack, 'x' => 2, 'y' => 24, 'width' => 30, 'height' => 6),

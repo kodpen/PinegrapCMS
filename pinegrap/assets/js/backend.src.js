@@ -9535,7 +9535,7 @@ function bindPageRenameRedirect(ids) {
                     const BC_FONT = 10;
                     const bcH = Math.max(15, h - (el.showText !== false ? BC_FONT + 8 : 4));
                     const baseNoClip = `position:absolute;left:${l}px;top:${t}px;width:${w}px;height:${h}px;box-sizing:border-box;z-index:${elIdx};${rotStyle}`;
-                    elementsHTML += `<div style="${baseNoClip}"><svg id="print-bc-${el.id}" style="display:block;" data-bc-type="${this._esc(el.barcodeType || 'CODE128')}" data-bc-show-text="${el.showText !== false}" data-bc-h="${bcH}" data-bc-fs="${BC_FONT}"></svg></div>`;
+                    elementsHTML += `<div style="${baseNoClip}"><svg id="print-bc-${this._esc(el.id)}" style="display:block;" data-bc-type="${this._esc(el.barcodeType || 'CODE128')}" data-bc-show-text="${el.showText !== false}" data-bc-h="${bcH}" data-bc-fs="${BC_FONT}"></svg></div>`;
                 } else if (el.type === 'text') {
                     let txt = '';
                     if (el.field === 'custom') txt = el.text || '';
