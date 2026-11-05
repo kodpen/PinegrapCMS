@@ -114,8 +114,17 @@ $quick_edit = (!$readonly && $ready) ? erp_account_price_edit_columns() : array(
 // to an edit; the cells are keyed the way the answer names them.
 $list_rows = array();
 
+// Read in the status column: how many products the list holds, and how many
+// of them have a price or a discount of their own.
+$summary_products = 0;
+$summary_priced = 0;
+$summary_discounted = 0;
+
 foreach (erp_account_price_rows($account_id) as $row) {
     $product_id = (int) $row['product_id'];
+    $summary_products++;
+    $summary_priced += ((int) $row['price'] > 0) ? 1 : 0;
+    $summary_discounted += ((float) $row['discount_rate'] > 0) ? 1 : 0;
     $cells = erp_account_price_cells($row);
 
     $list_rows[] = array(
@@ -178,31 +187,12 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 2xl:col-9">
+        <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-
-            <form method="post" action="erp_account_prices.php">
-                ' . get_token_field() . '
-                <input type="hidden" name="account_id" value="' . $account_id . '" />
-                <input type="hidden" name="erp_action" value="save" />
-                <div class="card my-7">
-                    <div class="card-body">
-                        <div class="row g-3 align-items-end">
-                        <div class="col-12 sm:col-6 md:col-4">
-                            <label class="form-label" for="account_discount">' . lang('Discount on everything else (%)') . '</label>
-                            <input type="text" class="form-control text-end' . ($discount_refused ? ' is-invalid' : '') . '" id="account_discount" name="account_discount" value="' . h($liveform->field_in_session('account_discount') ? (string) $liveform->get_field_value('account_discount') : erp_account_rate_input($account['discount_rate'] ?? 0)) . '" inputmode="decimal" placeholder="—"' . ($discount_refused ? ' aria-invalid="true"' : '') . (($readonly || !$ready) ? ' disabled' : '') . ' />
-                        </div>
-                        ' . ((!$readonly && $ready) ? '<div class="col-12 sm:col-auto">
-                            <button type="submit" class="btn btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
-                        </div>' : '') . '
-                        <div class="col-12 md:col form-text">' . lang('Applied on the list price of every product that has no line of its own below. Empty is none.') . '</div>
-                        </div>
-                    </div>
-                </div>
-            </form>
-
+        </div>
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <div class="card my-7" id="erp_prices">
                 ' . ($list_rows ? pg_list_table_html($list['source'], $list['page'], lang('Account prices')) : '<p class="text-center fg-secondary py-7 mb-0">' . lang('No product has a price of its own for this account yet. Find one below and add it.') . '</p>') . '
                 <div class="form-text px-5 pb-5">' . lang('A price replaces the list price; with no price, the discount applies to the list price. Clear both to take the product off the list. Prices are in the catalogue\'s basis, the way the list price is.'). '</div>
@@ -219,6 +209,37 @@ pg_page_shell([
                 </div>
                 ' . $output_found . '
             </div>' : '') . '
+        </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky my-7" style="top:3.3rem;">
+                <form method="post" action="erp_account_prices.php" class="card mb-7">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="account_id" value="' . $account_id . '" />
+                    <input type="hidden" name="erp_action" value="save" />
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Discount')) . '</div>
+                    <div class="card-body">
+                        <div class="form-field">
+                            <label class="form-label" for="account_discount">' . lang('Discount on everything else (%)') . '</label>
+                            <input type="text" class="form-control text-end' . ($discount_refused ? ' is-invalid' : '') . '" id="account_discount" name="account_discount" value="' . h($liveform->field_in_session('account_discount') ? (string) $liveform->get_field_value('account_discount') : erp_account_rate_input($account['discount_rate'] ?? 0)) . '" inputmode="decimal" placeholder="—"' . ($discount_refused ? ' aria-invalid="true"' : '') . (($readonly || !$ready) ? ' disabled' : '') . ' />
+                            <div class="form-text">' . lang('Applied on the list price of every product that has no line of its own below. Empty is none.') . '</div>
+                        </div>
+                        ' . ((!$readonly && $ready) ? '<button type="submit" class="btn btn-solid theme-success w-100 mt-5"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>' : '') . '
+                    </div>
+                </form>
+                <div class="card">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                    <div class="card-body">
+                        <dl class="row small mb-0">
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Products')) . '</dt>
+                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_products, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Account price')) . '</dt>
+                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_priced, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Discount %')) . '</dt>
+                            <dd class="col-4 text-end mb-0">' . pg_format_number($summary_discounted, 0) . '</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </main>
