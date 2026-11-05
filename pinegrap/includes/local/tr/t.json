@@ -2292,6 +2292,7 @@
     "The entry is a page (1 or empty)": "İçerik bir sayfa (1 veya boş)",
     "The entry is published.": "Yazı yayınlandı.",
     "The eraser cuts pen strokes. Delete a shape with Select or the Delete key.": "Silgi kalem çizgilerini keser. Bir şekli Seç aracıyla veya Delete tuşuyla silin.",
+    "The eraser takes away what it passes over from pen strokes, shapes and paths. Locked layers stay as they are.": "Silgi, kalem çizgilerinin, şekillerin ve yolların üzerinden geçtiği kısmını siler. Kilitli katmanlar olduğu gibi kalır.",
     "The error carries an HTTP code": "Hatanın bir HTTP kodu var",
     "The error message the software gives": "Yazılımın verdiği hata mesajı",
     "The error_log files of the software will be permanently deleted.": "Yazılımın error_log dosyaları kalıcı olarak silinecek.",
