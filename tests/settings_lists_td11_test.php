@@ -47,9 +47,12 @@ function test_settings_lists_td11_printed()
 		pg_assert_contains("pg_list_state('" . $list . "'", $screen, $file . ': same name as its session sort');
 		pg_assert_contains("pg_list_table_search_box('" . $list . "')", $source, $file . ': toolbar search box');
 		pg_assert_contains("pg_js_bundle_tags('assets/js/pg_list_table.min.js')", $screen, $file . ': driver loaded');
-		// A list with quick edit draws its cells in its includes/fn module.
-		$modules = array('view_zones' => 'zone_list_edit.php', 'view_tax_zones' => 'tax_zone_list_edit.php');
-		$cells = isset($modules[$list]) ? (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/' . $modules[$list]) : $screen;
+		// A list with quick edit draws its cells in the includes/fn/*_list_edit.php
+		// module the screen loads.
+		$cells = $screen;
+		if (preg_match("~includes/fn/([a-z_]+_list_edit)\\.php~", $screen, $module) === 1) {
+			$cells = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/' . $module[1] . '.php');
+		}
 		pg_assert_contains('data-pg-open', $cells, $file . ': the name opens the record');
 	}
 }
