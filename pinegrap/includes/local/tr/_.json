@@ -1142,6 +1142,7 @@
     "{var:1} must be one of: {var:2}.": "{var:1} şunlardan biri olmalıdır: {var:2}.",
     "{var:1} must be text.": "{var:1} metin olmalıdır.",
     "{var:1} must be true or false.": "{var:1} true veya false olmalıdır.",
+    "{var:1} must hold single values, not lists or objects.": "{var:1} liste ya da nesne değil, tek tek değerler içermelidir.",
     "{var:1} names a record that does not exist.": "{var:1} var olmayan bir kaydı gösteriyor.",
     "{var:1} names the same line twice.": "{var:1} aynı satırı iki kez içeriyor.",
     "{var:1} needs a document for this listing; upload it in the seller panel.": "{var:1} bu ilan için bir belge istiyor; belgeyi satıcı panelinden yükleyin.",

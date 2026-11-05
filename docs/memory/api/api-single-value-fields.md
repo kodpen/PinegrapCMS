@@ -12,6 +12,16 @@ description: The external API refuses a JSON list or object in a field that take
 query string `?q[]=x` and for MCP tool arguments, which pass the same
 validator.
 
+## And the items of a list?
+
+A `list` declared with a one-value item type (`'of' => 'string'` or
+`'integer'`, e.g. webhook `events`, `country_codes`, `ids`) refuses a nested
+list or object as an item with 422 ("… must hold single values, not lists or
+objects."), through `api_list_items_are_single()`. A list whose `of` is a
+field map (objects such as `options`) or that has no `of` is checked by its
+handler. Before, `{"events": [["order.created"]]}` reached the handler's
+`(string)$event` and printed "Array to string conversion" before its 422.
+
 ## Why?
 
 `(string)` on an array gives `"Array"` and a PHP warning. A `string` field
