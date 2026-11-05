@@ -29,7 +29,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 - B8 (after question 4, M): e-mail to the record's person: the e-mail box's recipient may be the order's customer, the form's sender or the booking's guest, never any typed value; commercial ones only with consent.
 
 ## C: flows reaching the rest of the site
-- C1 (free, S): events the site already sends as webhooks (`api_webhook_events()`) but flows cannot start on: product.review.created, order.return.approved/received/refunded, cart_quote.created/ordered, marketplace.order.imported, subscription.failed/renewed/cancelled, form.paid, inventory.changed. Their lines in `ws_events_catalog()` with record, right, filter and outputs. watch.php.
+- C1 (free, S, done #7261): events the site already sends as webhooks (`api_webhook_events()`) but flows cannot start on: product.review.created, order.return.approved/received/refunded, cart_quote.created/ordered, marketplace.order.imported, subscription.failed/renewed/cancelled, form.paid, inventory.changed. Their lines in `ws_events_catalog()` with record, right, filter and outputs. watch.php.
 
 - C2 (free, S): people and content: user.created, customer.consent_changed, mail.bounced, campaign.sent, page.created/updated, calendar_event.reserved, credit.issued/expired. watch.php.
 

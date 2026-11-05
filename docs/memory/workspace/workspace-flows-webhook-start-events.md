@@ -4,7 +4,7 @@ description: Webhook events a flow can start on as well (reviews, returns, cart 
 ---
 
 ## Which webhook events start flows too?
-- `product.review.created`, `order.return.approved` / `.received` / `.refunded`, `cart_quote.created` / `.ordered`, `marketplace.order.imported`, `subscription.renewed` / `.failed` / `.cancelled`, `form.paid`, `inventory.changed` (#PR). Each is in `pg_event_workspace_events()` (kept from `pg_announce()`), `ws_events_catalog()` and `ws_flow_event_outputs()`.
+- `product.review.created`, `order.return.approved` / `.received` / `.refunded`, `cart_quote.created` / `.ordered`, `marketplace.order.imported`, `subscription.renewed` / `.failed` / `.cancelled`, `form.paid`, `inventory.changed` (#7261). Each is in `pg_event_workspace_events()` (kept from `pg_announce()`), `ws_events_catalog()` and `ws_flow_event_outputs()`.
 - All sit in the shop block (`ECOMMERCE`). Reviews, cart quotes, subscriptions and form fees are listed only once their tables exist (`pg_reviews_ready()`, `pg_cart_quotes_ready()`, `pg_subscriptions_ready()`, `pg_form_payment_ready()`), as bookings are.
 
 ## What record and right does each have?
