@@ -398,9 +398,13 @@ function pg_booking_overlaps($start, $service, $busy)
 
 /**
  * The busy ranges of booking rows: a cancelled booking and a hold past its
- * hold_until take no time.
+ * hold_until take no time. A row read with its service's buffer_before and
+ * buffer_after (pg_booking_busy_sql()) takes those minutes too, so the time
+ * kept free around a booking is not given to the next one; a row of a
+ * deleted service takes its own times only.
  *
- * @param array $rows rows with start_at, end_at, status, hold_until
+ * @param array $rows rows with start_at, end_at, status, hold_until and
+ *                    optionally buffer_before, buffer_after (minutes)
  * @param int   $now
  * @return array list of array(start, end)
  */
@@ -411,12 +415,41 @@ function pg_booking_busy_from_rows($rows, $now)
     foreach ((array) $rows as $row) {
 
         if (pg_booking_slot_holder($row, $now) === 'taken') {
-            $busy[] = array((int) $row['start_at'], (int) $row['end_at']);
+            $before = !empty($row['buffer_before']) ? max(0, (int) $row['buffer_before']) * 60 : 0;
+            $after = !empty($row['buffer_after']) ? max(0, (int) $row['buffer_after']) * 60 : 0;
+            $busy[] = array((int) $row['start_at'] - $before, (int) $row['end_at'] + $after);
         }
 
     }
 
     return $busy;
+}
+
+/**
+ * The longest buffer a service may have, in seconds (Settings › Bookings
+ * allows 480 minutes): a booking this far from a range can still reach it
+ * with its buffers, so the overlap reads widen their window by it.
+ *
+ * @return int
+ */
+function pg_booking_buffer_reach()
+{
+    return 480 * 60;
+}
+
+/**
+ * The start of a query reading a staff member's bookings for their busy
+ * times: the columns pg_booking_busy_from_rows() reads, the service's
+ * buffers joined (NULL for a deleted service).
+ *
+ * @return string ends before WHERE
+ */
+function pg_booking_busy_sql()
+{
+    return "SELECT bookings.staff_id, bookings.start_at, bookings.end_at, bookings.status, bookings.hold_until,
+            booking_services.buffer_before, booking_services.buffer_after
+        FROM bookings
+        LEFT JOIN booking_services ON booking_services.id = bookings.service_id";
 }
 
 /**
@@ -612,13 +645,15 @@ function pg_booking_insert($booking, $status, $hold_until, $source, $now)
     $before = isset($service['buffer_before']) ? (int) $service['buffer_before'] * 60 : 0;
     $after = isset($service['buffer_after']) ? (int) $service['buffer_after'] * 60 : 0;
 
+    $reach = pg_booking_buffer_reach();
+
     $rows = db_items(
-        "SELECT start_at, end_at, status, hold_until FROM bookings
+        pg_booking_busy_sql() . "
         WHERE
-            staff_id = '" . $staff_id . "'
-            AND start_at < '" . ($end + $after) . "'
-            AND end_at > '" . ($start - $before) . "'
-            AND status <> 'cancelled'");
+            bookings.staff_id = '" . $staff_id . "'
+            AND bookings.start_at < '" . ($end + $after + $reach) . "'
+            AND bookings.end_at > '" . ($start - $before - $reach) . "'
+            AND bookings.status <> 'cancelled'");
 
     if (pg_booking_overlaps($start, $service, pg_booking_busy_from_rows($rows, $now))) {
         db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");

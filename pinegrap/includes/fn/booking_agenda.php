@@ -619,10 +619,10 @@ function pg_booking_agenda_free_slots($service, $staff, $day, $now)
     $window_until = $from + (2 * 86400);
 
     $rows = db_items(
-        "SELECT start_at, end_at, status, hold_until FROM bookings
-        WHERE staff_id = '" . (int) $staff['id'] . "'
-            AND start_at < '" . $window_until . "' AND end_at > '" . $window_from . "'
-            AND status <> 'cancelled'");
+        pg_booking_busy_sql() . "
+        WHERE bookings.staff_id = '" . (int) $staff['id'] . "'
+            AND bookings.start_at < '" . $window_until . "' AND bookings.end_at > '" . $window_from . "'
+            AND bookings.status <> 'cancelled'");
 
     $busy = array_merge(pg_booking_busy_from_rows($rows, $now), pg_booking_agenda_ws_busy($staff['user_id'], $window_from, $window_until));
 

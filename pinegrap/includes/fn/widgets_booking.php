@@ -530,11 +530,13 @@ function pg_booking_busy_between($staff, $from, $until, $now)
 
     $busy = array();
 
+    $reach = pg_booking_buffer_reach();
+
     foreach ((array) db_items(
-        "SELECT staff_id, start_at, end_at, status, hold_until FROM bookings
-        WHERE staff_id IN (" . implode(',', $ids) . ")
-            AND start_at < '" . (int) $until . "' AND end_at > '" . (int) $from . "'
-            AND status <> 'cancelled'") as $row) {
+        pg_booking_busy_sql() . "
+        WHERE bookings.staff_id IN (" . implode(',', $ids) . ")
+            AND bookings.start_at < '" . ((int) $until + $reach) . "' AND bookings.end_at > '" . ((int) $from - $reach) . "'
+            AND bookings.status <> 'cancelled'") as $row) {
         foreach (pg_booking_busy_from_rows(array($row), $now) as $range) {
             $busy[(int) $row['staff_id']][] = $range;
         }

@@ -18,7 +18,8 @@ module: bookings
 - The day's exception wins over the weekly hours; a holiday closes the day unless an exception sets hours for it.
 - Ranges are walked in real time: a DST spring day offers an hour less, an autumn day an hour more (two 02:00 slots, an hour apart).
 - The service length must fit in the hours; buffers only keep the slot apart from busy ranges (half-open), they do not shorten the hours.
-- Busy from bookings: `pg_booking_busy_from_rows()` skips cancelled rows and holds past `hold_until`. The caller adds Workspace calendar busy times.
+- Busy from bookings: `pg_booking_busy_from_rows()` skips cancelled rows and holds past `hold_until`, and widens each row by its own service's buffers (read with `pg_booking_busy_sql()`, the LEFT JOIN on `booking_services`; a deleted service adds none), so a booking's buffer after is not given to a later booking whose own buffer looks only ahead. Overlap reads widen their window by `pg_booking_buffer_reach()` (480 minutes, the settings limit). The caller adds Workspace calendar busy times.
+- The manage page takes the booking's own range out with its service's buffers (`pg_booking_manage_busy(..., $service)`).
 
 ## How are hold and confirm written?
 - `pg_booking_insert()` runs under `GET_LOCK` per staff member (name carries the database): deletes an expired hold on the same start, refuses a live booking overlapping the slot with the new service's buffers, then one INSERT writing `slot_at` = `start_at`; error 1062 on the unique key is `'taken'` ("just taken"), never `ON DUPLICATE KEY` or a second row.

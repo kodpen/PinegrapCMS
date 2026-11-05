@@ -225,6 +225,54 @@ function test_booking_busy_from_rows()
 		'an expired hold and a cancelled booking take no time');
 }
 
+// A booking keeps its own service's buffers: the time before and after it
+// stays busy, whatever buffers the next booking's service has. A row of a
+// deleted service (no buffer columns) takes its own times only.
+function test_booking_busy_from_rows_buffers()
+{
+	$now = 1000000;
+	$rows = array(
+		array('start_at' => 2000000, 'end_at' => 2003600, 'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => 15, 'buffer_after' => 30),
+		array('start_at' => 2010000, 'end_at' => 2013600, 'status' => 'requested', 'hold_until' => 0, 'buffer_before' => null, 'buffer_after' => null),
+		array('start_at' => 2020000, 'end_at' => 2023600, 'status' => 'cancelled', 'hold_until' => 0, 'buffer_before' => 15, 'buffer_after' => 30),
+	);
+
+	pg_assert_same(array(array(2000000 - 900, 2003600 + 1800), array(2010000, 2013600)), pg_booking_busy_from_rows($rows, $now),
+		'the row widened by its own buffers');
+
+	// A 10:00-11:00 booking with 30 minutes after it: the same service is not
+	// offered at 11:00 although the new slot's own buffer looks only ahead.
+	$zone = 'UTC';
+	$staff = array('hours' => array('1' => array(array('09:00', '14:00'))));
+	$booked = array(array('start_at' => booking_slots_test_at('2026-11-02 10:00', $zone), 'end_at' => booking_slots_test_at('2026-11-02 11:00', $zone),
+		'status' => 'confirmed', 'hold_until' => 0, 'buffer_before' => 0, 'buffer_after' => 30));
+	$busy = pg_booking_busy_from_rows($booked, booking_slots_test_at('2026-11-01 00:00', $zone));
+
+	pg_assert_same(array('11:30', '12:00', '12:30', '13:00'),
+		booking_slots_test_times(pg_booking_slots(booking_slots_test_service(60, 0, 30), $staff, '2026-11-02', $busy, booking_slots_test_at('2026-11-01 00:00', $zone), array('zone' => $zone, 'step_minutes' => 30)), $zone),
+		'the booked buffer after stays free');
+}
+
+// Every busy reader joins the service's buffers and widens its window by
+// the longest one.
+function test_booking_busy_readers_use_buffers()
+{
+	pg_assert_true(strpos(pg_booking_busy_sql(), 'booking_services.buffer_before, booking_services.buffer_after') !== false, 'buffers selected');
+	pg_assert_same(28800, pg_booking_buffer_reach(), 'the settings limit');
+
+	$readers = array(
+		'includes/fn/bookings.php'        => 'pg_booking_insert',
+		'includes/fn/booking_manage.php'  => 'pg_booking_manage_move',
+		'includes/fn/widgets_booking.php' => 'pg_booking_busy_between',
+		'includes/fn/booking_agenda.php'  => 'pg_booking_agenda_free_slots',
+	);
+
+	foreach ($readers as $file => $name) {
+		$body = booking_slots_test_body((string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $name);
+		pg_assert_true(strpos($body, 'pg_booking_busy_sql()') !== false, $name . ' reads the buffers');
+	}
+}
+
 function test_booking_status_moves()
 {
 	pg_assert_same(array('held', 'requested', 'confirmed', 'cancelled', 'no_show', 'done'), pg_booking_statuses());

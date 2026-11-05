@@ -190,22 +190,32 @@ function pg_booking_manage_engine($row)
 
 /**
  * The staff member's busy ranges around a booking with the booking itself
- * taken out: pg_booking_busy_between() lists the bookings' ranges first, so
- * the first range equal to the booking's own times is its own.
+ * taken out: pg_booking_busy_between() lists the bookings' ranges first,
+ * each widened by its service's buffers, so the first range equal to the
+ * booking's own times with its service's buffers is its own.
  *
  * @param array $row
- * @param array $staff booking_staff row
+ * @param array $staff   booking_staff row
  * @param int   $from
  * @param int   $until
  * @param int   $now
+ * @param array $service the booking's booking_services row
  * @return array list of array(start, end)
  */
-function pg_booking_manage_busy($row, $staff, $from, $until, $now)
+function pg_booking_manage_busy($row, $staff, $from, $until, $now, $service = array())
 {
     $busy = pg_booking_busy_between(array($staff), $from, $until, $now);
     $ranges = isset($busy[(int) $staff['id']]) ? array_values($busy[(int) $staff['id']]) : array();
+    $own = pg_booking_busy_from_rows(array(array(
+        'start_at'      => (int) $row['start_at'],
+        'end_at'        => (int) $row['end_at'],
+        'status'        => 'confirmed',
+        'hold_until'    => 0,
+        'buffer_before' => isset($service['buffer_before']) ? $service['buffer_before'] : 0,
+        'buffer_after'  => isset($service['buffer_after']) ? $service['buffer_after'] : 0,
+    )), $now);
 
-    return pg_booking_without_range($ranges, (int) $row['start_at'], (int) $row['end_at']);
+    return pg_booking_without_range($ranges, $own[0][0], $own[0][1]);
 }
 
 /**
@@ -248,7 +258,7 @@ function pg_booking_manage_days($row, $engine, $month, $now)
     $first = new DateTime($month . '-01 00:00:00', new DateTimeZone($policy['zone']));
     $from = $first->getTimestamp() - 86400;
     $until = $first->modify('+1 month')->getTimestamp() + 86400;
-    $busy = array((int) $engine[1]['id'] => pg_booking_manage_busy($row, $engine[1], $from, $until, $now));
+    $busy = array((int) $engine[1]['id'] => pg_booking_manage_busy($row, $engine[1], $from, $until, $now, $engine[0]));
 
     return pg_booking_month_days($engine[0], array($engine[1]), $month, $busy, $now, $policy);
 }
@@ -272,7 +282,7 @@ function pg_booking_manage_times($row, $engine, $day, $now)
     $midnight = new DateTime($day . ' 00:00:00', new DateTimeZone($policy['zone']));
     $from = $midnight->getTimestamp() - 86400;
     $until = $midnight->modify('+1 day')->getTimestamp() + 86400;
-    return pg_booking_slots($engine[0], $engine[1], $day, pg_booking_manage_busy($row, $engine[1], $from, $until, $now), $now, $policy);
+    return pg_booking_slots($engine[0], $engine[1], $day, pg_booking_manage_busy($row, $engine[1], $from, $until, $now, $engine[0]), $now, $policy);
 }
 
 /**
@@ -329,14 +339,16 @@ function pg_booking_manage_move($row, $service, $start, $now)
     $before = (int) $service['buffer_before'] * 60;
     $after = (int) $service['buffer_after'] * 60;
 
+    $reach = pg_booking_buffer_reach();
+
     $rows = db_items(
-        "SELECT start_at, end_at, status, hold_until FROM bookings
+        pg_booking_busy_sql() . "
         WHERE
-            staff_id = '" . $staff_id . "'
-            AND id <> '" . $id . "'
-            AND start_at < '" . ($end + $after) . "'
-            AND end_at > '" . ($start - $before) . "'
-            AND status <> 'cancelled'");
+            bookings.staff_id = '" . $staff_id . "'
+            AND bookings.id <> '" . $id . "'
+            AND bookings.start_at < '" . ($end + $after + $reach) . "'
+            AND bookings.end_at > '" . ($start - $before - $reach) . "'
+            AND bookings.status <> 'cancelled'");
 
     if (pg_booking_overlaps($start, $service, pg_booking_busy_from_rows($rows, $now))) {
         db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
