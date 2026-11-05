@@ -212,6 +212,7 @@ description: Generated from the module field of the memory files: each includes/
 - `subscriptions_account`: [[subscriptions-account]]
 - `subscriptions_operator`: [[subscriptions-operator-screen]], [[subscriptions-operator-words-errors]]
 - `svg_sanitize`: [[image-editor-svg-sanitize]]
+- `tax_zone_list_edit`: [[list-table-quick-edit-tax-zones]]
 - `text_search`: [[capital-i-search-term]], [[find-and-replace-architecture]], [[find-and-replace-results]]
 - `theme_list_edit`: [[list-table-quick-edit-themes]]
 - `translate`: [[error-screen-language-and-status]]
