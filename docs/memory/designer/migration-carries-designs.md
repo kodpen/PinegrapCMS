@@ -12,7 +12,7 @@ module: site_migration
 
 ## What about the design's files?
 - Managed entries (`_file`, `designer_file/create`) of the CSS/JS lists travel with their content (`pg_migration_design_files()`): design files only (`files.design = 1`, not a theme file), not withheld, up to 2 MB. The target writes the ones whose name is free (file, page or folder) into the top folder as design files; a taken name keeps this site's file and is listed in the notice.
-- The install writes every `css`/`js`/`json` entry of the template's asset lists under its own name into the files directory (`pg_designer_sync_asset_files()`), so `pg_migration_design_entry()` drops from the received lists an entry whose `.css`/`.js`/`.json` name has a folder, a leading dot or a refused extension (`pg_migration_design_asset_list()`): a source answering `../../…/backend.min.js` wrote outside the files directory (bug hunt, #PR).
+- The install writes every `css`/`js`/`json` entry of the template's asset lists under its own name into the files directory (`pg_designer_sync_asset_files()`), so `pg_migration_design_entry()` drops from the received lists an entry whose `.css`/`.js`/`.json` name has a folder, a leading dot or a refused extension (`pg_migration_design_asset_list()`): a source answering `../../…/backend.min.js` wrote outside the files directory (#7122).
 - Pictures and other uploads a tree links to (`/files/…` addresses) are not carried; the links point at names the target may not have.
 
 ## Which rows does the classic copy leave out?
