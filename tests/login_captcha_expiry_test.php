@@ -97,3 +97,19 @@ function test_login_captcha_gate_expired_branch_records_no_failure()
 	pg_assert_false(strpos($branch, 'pg_login_record_failure') !== false, 'no failure recorded for an expired question');
 	pg_assert_contains("lang('That answer is not right. Please try the new question.')", substr($body, $failure));
 }
+
+function test_login_captcha_check_array_answer_is_wrong_without_warning()
+{
+	$warnings = array();
+	set_error_handler(function ($errno, $errstr) use (&$warnings) {
+		$warnings[] = $errstr;
+		return true;
+	});
+
+	$result = login_captcha_expiry_test_check(array('answer' => 7, 'issued' => time() - 30), array('7'));
+
+	restore_error_handler();
+
+	pg_assert_same(array('wrong', false), $result);
+	pg_assert_same(array(), $warnings, 'an answer posted as an array raises no warning');
+}
