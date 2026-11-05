@@ -2305,14 +2305,29 @@ function pg_image_edit_masks_imagick($image, $masks, $alpha)
             $fx->setImagePage(0, 0, 0, 0);
         } elseif ($backdrop === 'blur') {
             // The blur reads the picture round the box too, so its edges
-            // carry no seam.
+            // carry no seam. A wide one runs on a copy scaled down to a
+            // radius of 4 pixels and scaled back, as the GD path does: at a
+            // photo's size a full-size Gaussian of that radius takes minutes.
             $halo = (int) ceil(3 * $area['blur']);
             $x0 = max(0, $area['x'] - $halo);
             $y0 = max(0, $area['y'] - $halo);
+            $bw = min($image->getImageWidth(), $area['x'] + $area['w'] + $halo) - $x0;
+            $bh = min($image->getImageHeight(), $area['y'] + $area['h'] + $halo) - $y0;
+            $k = max(1, $area['blur'] / 4);
             $fx = clone $image;
-            $fx->cropImage(min($image->getImageWidth(), $area['x'] + $area['w'] + $halo) - $x0, min($image->getImageHeight(), $area['y'] + $area['h'] + $halo) - $y0, $x0, $y0);
+            $fx->cropImage($bw, $bh, $x0, $y0);
             $fx->setImagePage(0, 0, 0, 0);
-            $fx->gaussianBlurImage(0, $area['blur']);
+
+            if ($k > 1) {
+                $fx->resizeImage(max(1, (int) round($bw / $k)), max(1, (int) round($bh / $k)), Imagick::FILTER_TRIANGLE, 1);
+            }
+
+            $fx->blurImage(0, $area['blur'] / $k);
+
+            if ($k > 1) {
+                $fx->resizeImage($bw, $bh, Imagick::FILTER_TRIANGLE, 1);
+            }
+
             $fx->cropImage($area['w'], $area['h'], $area['x'] - $x0, $area['y'] - $y0);
             $fx->setImagePage(0, 0, 0, 0);
         } elseif ($fill) {
