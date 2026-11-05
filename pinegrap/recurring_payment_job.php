@@ -61,7 +61,7 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
     $current_date = date('Y-m-d');
     
     // get previous date
-    $previous_date = date('Y-m-d', pg_calendar_days_later(-1));
+    $previous_date = date('Y-m-d', time() - 86400);
     
     // get enabled recurring profiles, so we can check if recurring profiles are still enabled
     $query =
