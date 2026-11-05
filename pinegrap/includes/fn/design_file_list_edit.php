@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The All Design Files list (view_design_files.php) and its quick edit:
- * every one-line value the design file screen (edit_design_file.php)
+ * every value the design file screen (edit_design_file.php)
  * changes and the list shows is a field, checked and written by that
  * screen's own code (includes/forms/design_file_form.php).
  *
@@ -36,6 +36,7 @@ function pg_design_file_quick_edit_columns(array $folders = array(), array $fold
     return array(
         'name' => array('type' => 'text', 'label' => lang('Name'), 'max' => 100, 'required' => true),
         'folder' => array('type' => 'select', 'label' => lang('Folder'), 'options' => $folders, 'option_classes' => $folder_classes),
+        'description' => array('type' => 'textarea', 'label' => lang('Description')),
     );
 }
 
@@ -64,9 +65,9 @@ function pg_design_file_quick_folder_choices()
 }
 
 /**
- * The list's columns; each one the screen changes on one line is editable.
- * The description is several lines and stays text; the type, size,
- * thumbnail and optimized state follow the file.
+ * The list's columns; each one the screen changes is editable (the
+ * description over several lines); the type, size, thumbnail and optimized
+ * state follow the file.
  *
  * @param bool $edit whether the list has quick edit
  * @return array key => spec, as pg_list_table_printed() takes them
@@ -80,7 +81,7 @@ function pg_design_file_list_columns($edit)
         'size' => array('heading' => lang('Size'), 'kind' => 'number'),
         'optimized' => array('heading' => lang('Optimized'), 'kind' => 'check'),
         'folder' => array('heading' => lang('Folder'), 'editable' => 'select'),
-        'description' => array('heading' => lang('Description')),
+        'description' => array('heading' => lang('Description'), 'editable' => 'textarea'),
         'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
         'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
     );
@@ -163,6 +164,8 @@ function pg_design_file_quick_post(array $file, $field, $value)
 
     if (in_array($field, array('name', 'folder'), true)) {
         $post[$field] = trim((string) $value);
+    } elseif ($field === 'description') {
+        $post['description'] = (string) $value;
     }
 
     return $post;
@@ -228,7 +231,7 @@ function pg_design_file_list_cells(array $file, array $quick_edit, $optimize_per
             'size' => pg_list_cell(h(convert_bytes_to_string($file['size'], 'auto')), 'align-middle', array('data-pg-sort-value' => (int) $file['size'])),
             'optimized' => pg_list_table_check_cell($file['optimized']),
             'folder' => pg_list_cell(pg_folder_list_name($file['folder_name']), 'align-middle text-wrap', $attributes('folder')),
-            'description' => pg_list_cell('<div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h($file['description'])) . '</div>'),
+            'description' => pg_list_cell('<div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h($file['description'])) . '</div>', 'align-middle', $attributes('description')),
             'last_modified' => pg_list_table_when_cell($file['timestamp'], $file['user_username'] ?? ''),
             'actions' => pg_list_cell($output_optimize_button . $output_edit_image_button
                 . '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Download')) . '" aria-label="' . h(lang('Download')) . '" download="' . h($file['name']) . '" href="' . OUTPUT_PATH . h($file['name']) . '"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i></a>'),

@@ -1,10 +1,14 @@
 ---
 name: list-quick-edit-keyboard
-description: List quick edit (data-pg-edit cells in backend.src.js) from the keyboard: Enter, Escape, Tab to the next row, where focus goes past the last row
+description: List quick edit from the keyboard (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, the several-line textarea type, where focus goes past the last row
 ---
 
 ## Which keys does a quick edit take?
 - Enter and Ctrl+S save and put the focus back on the cell; Escape cancels; Tab saves and opens the same column on the next row (Shift+Tab: the row before), skipping cells still saving (`data-pg-edit-busy`). Used by products, orders, gift cards, key codes, shipping methods and the ERP lists.
+
+## How does a several-line field read and take the keys?
+- Field type `textarea` (`pg_list_edit_parse()`, includes/fn/output.php): line breaks kept as `\n` (`\r\n` and a lone `\r` read as one), tabs and other control characters become spaces, ends trimmed, `required` and `max` as for `text`; list column `'editable' => 'textarea'`; drawn as a `textarea` (`.pg-list-table-field-lines`). `quickChanged()` reads a stored `\r\n` as `\n`, so an untouched field never saves.
+- In the list table driver's quick edit mode (`pg_list_table_edit.js`), a `textarea` column (`'type' => 'textarea'`: comments Message, theme and design file Description) takes Enter and Shift+Enter as a new line; Ctrl+Enter saves and goes on as Enter does in a one-line field, Ctrl+S saves, Tab saves by leaving it (`change`), Escape puts the stored text back.
 
 ## Where does focus go on Tab past the last row?
 - On the edited cell (`td[data-pg-edit]` has `tabindex="0"`). `step()` returns false when no row is left and `commit()` then calls `state.cell.focus()`. Before, the input had already left the page (`send()` or the restored `innerHTML`) and focus fell to `<body>` with nothing announced (`tests/list_edit_focus_test.php`).

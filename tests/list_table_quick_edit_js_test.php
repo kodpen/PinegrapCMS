@@ -87,7 +87,10 @@ console.log(JSON.stringify([
   T.quickValue('select', ' a '),
   T.quickValue('money', '12,50'),
   T.quickChanged('text', ' 5 ', '5'),
-  T.quickChanged('money', '12,50', '12,5')
+  T.quickChanged('money', '12,50', '12,5'),
+  T.quickValue('textarea', ' One\r\ntwo \n'),
+  T.quickChanged('textarea', 'One\ntwo', 'One\r\ntwo'),
+  T.quickChanged('textarea', 'One\ntwo!', 'One\r\ntwo')
 ]));
 JS
 	);
@@ -96,7 +99,7 @@ JS
 		return;
 	}
 
-	pg_assert_same(array('Blue shirt', ' a ', '12,50', false, true), $result);
+	pg_assert_same(array('Blue shirt', ' a ', '12,50', false, true, "One\ntwo", false, true), $result);
 }
 
 /**

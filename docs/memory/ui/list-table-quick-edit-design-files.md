@@ -5,7 +5,7 @@ module: design_file_list_edit
 ---
 
 ## Which cells change?
-- Every one-line value `edit_design_file.php` changes that the list shows (`pg_design_file_quick_edit_columns()`): Name and Folder (the screen's `select_folder()` choices, coloured by access type). Text: Description (several lines), Thumbnail, Type, Size, Optimized (they follow the file), Last Modified, the actions. `tests/design_file_list_edit_test.php` fails for a new column that is neither.
+- Every value `edit_design_file.php` changes that the list shows (`pg_design_file_quick_edit_columns()`): Name, Folder (the screen's `select_folder()` choices, coloured by access type) and Description (`textarea`, may be empty, as on the screen). Text: Thumbnail, Type, Size, Optimized (they follow the file), Last Modified, the actions. `tests/design_file_list_edit_test.php` fails for a new column that is neither.
 - The design and Theme switches are not list columns: the design switch stays on (off would take the file off this list), the Theme switch is written back as stored.
 - A file whose folder the picker does not offer keeps its Folder cell as text.
 

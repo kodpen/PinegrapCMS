@@ -46,12 +46,13 @@ function pg_test_comment_quick_scheduled(array $over = array())
 	return pg_test_comment_quick_row(array_merge(array('published' => '0', 'publish_date_and_time' => '2030-05-06 14:30:00', 'publish_cancel' => '1'), $over));
 }
 
-// Every one-line value the comment screen changes is an editable column of
-// the list with a cell field; the rest are text. A new column fails here
+// Every value the comment screen changes is an editable column of the
+// list with a cell field (the message over several lines); the rest are
+// text. A new column fails here
 // until it is one or the other.
 function test_comment_quick_every_screen_value_is_a_field()
 {
-	$text = array('message', 'submitted', 'go');
+	$text = array('submitted', 'go');
 	$fields = pg_comment_quick_edit_columns();
 	$cells = pg_comment_list_cells(pg_test_comment_quick_scheduled(), $fields);
 
