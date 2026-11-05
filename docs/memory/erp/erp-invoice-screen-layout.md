@@ -1,6 +1,6 @@
 ---
 name: erp-invoice-screen-layout
-description: Invoice create and draft and new quote screens: the columns option of erp_invoice_form_cards(), what the status column holds, why the split starts at 2xl, the save bar column.
+description: Invoice create and draft, new quote and new purchase order screens: the columns option of erp_invoice_form_cards(), what the status column holds, why the split starts at 2xl, the save bar column.
 ---
 
 ## How are the invoice create and draft screens laid out?
@@ -13,4 +13,5 @@ description: Invoice create and draft and new quote screens: the columns option 
 
 ## Do the quote and purchase order editors use it?
 - The new quote (`add_erp_quote.php`) does (#6850): its Quote templates card is the `lead` option, the top of the form column above the Sales quote card, because it fills and keeps the lines; the status column holds only the totals.
-- The quote edit screen and the purchase order screens call the same function without `columns` and keep their layout. `tests/erp_invoice_screen_layout_test.php` pins both.
+- The new purchase order (`add_erp_purchase_order.php`) does too: no lead, the status column holds only the totals.
+- The quote edit screen and the purchase order edit screen call the same function without `columns` and keep their layout. `tests/erp_invoice_screen_layout_test.php` pins both.
