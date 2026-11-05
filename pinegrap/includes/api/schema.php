@@ -2658,7 +2658,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'GiftCard',
 			'summary' => 'Change a gift card',
-			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. A balance is written only over the one the request read: an order spending from the card meanwhile answers 409 balance_changed. A changed balance of store credit is recorded in the audit trail. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
 			'params'  => array(
 				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'balance',    'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 4294967295, 'description' => 'Minor units, zero or more.'),
