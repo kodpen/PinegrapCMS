@@ -184,6 +184,8 @@ function pg_image_editor_config()
         'icons'   => pg_image_editor_icon_urls(),
         // The animation encoder's script, started as a worker.
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
+        // Select subject's cut, started as a worker.
+        'subject' => pg_js_bundle_urls('assets/js/pg_image_editor_subject.min.js'),
         // The largest animation Save to Files takes (0: no limit known).
         'animationLimit' => pg_image_editor_animation_limit(pg_upload_limits()),
     );
@@ -4988,6 +4990,12 @@ function pg_image_editor_strings_area()
         'areaRedact'      => lang('Redact the selection'),
         'areaPolygonNote' => lang('Click to add corners; double-click, or click the first corner, to close the shape.'),
         'areaWandNote'    => lang('The magic wand cannot read this picture.'),
+        'subjectSelect'   => lang('Select subject'),
+        'subjectBusy'     => lang('Finding the subject…'),
+        'subjectNote'     => lang('Finds the subject of the picture; draw a rectangle round it first to help.'),
+        'subjectNone'     => lang('No subject was found; draw a rectangle round it and try again.'),
+        'subjectRead'     => lang('Select subject cannot read this picture.'),
+        'subjectError'    => lang('The subject could not be found.'),
         'areaLimit'       => lang('The selection has as many shapes as it can hold; invert or deselect it to go on.'),
         'areaWith'        => lang('With the selection'),
         'areaErase'       => lang('Erase inside'),

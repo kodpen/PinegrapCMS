@@ -87,7 +87,17 @@ foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_account
 }
 
 $output_rows = '';
+
+// Read in the status column: how many statements were taken in, how many
+// lines they hold and how many of those lines are still to deal with.
+$summary_statements = 0;
+$summary_lines = 0;
+$summary_open = 0;
+
 foreach (erp_bank_statements_list() as $row) {
+    $summary_statements++;
+    $summary_lines += (int) $row['line_count'];
+    $summary_open += (int) $row['open_lines'];
     $output_rows .= '
         <tr>
             <td class="text-nowrap" data-sort="' . (int) $row['created_at'] . '"><a class="pg-link-body-emphasis fw-semibold" href="erp_bank_statement.php?id=' . (int) $row['id'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $row['created_at']), 'date and time')) . '</a></td>
@@ -117,34 +127,13 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 2xl:col-9">
+        <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-
-            ' . (($ready && !$readonly) ? '<form method="post" action="erp_bank_statements.php" enctype="multipart/form-data" class="card my-7" data-erp-send-once>
-                ' . get_token_field() . '
-                <div class="card-body">
-                    <div class="row g-3 align-items-end">
-                    <div class="col-12 md:col-4">
-                        <label class="form-label" for="cash_account_id">' . lang('Bank account') . '</label>
-                        <select class="form-control" id="cash_account_id" name="cash_account_id">' . $tills . '</select>
-                        ' . erp_no_till_hint($till_count) . '
-                    </div>
-                    <div class="col-12 md:col-5">
-                        <label class="form-label" for="statement">' . lang('Statement file (Excel, ODS or CSV)') . '</label>
-                        <input type="file" class="form-control" id="statement" name="statement" accept=".xlsx,.xls,.ods,.csv,.txt,text/csv" required />
-                    </div>
-                    <div class="col-12 md:col-3">
-                        <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Take in') . '</button>
-                    </div>
-                    <p class="col-12 small fg-secondary mb-0" role="status" aria-live="polite" data-erp-send-once-status></p>
-                    <div class="col-12 form-text">' . lang('Download the statement from internet banking as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in as it is; the first sheet is read and the bank\'s title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text($statement_max)))) . '</div>
-                    </div>
-                </div>
-            </form>' : '') . '
-
-            <div class="card my-7">
+        </div>
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            <div class="card my-7" id="erp_bank_statements">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
@@ -158,6 +147,41 @@ pg_page_shell([
                         </thead>
                         <tbody>' . $output_rows . '</tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky my-7" style="top:3.3rem;">
+                ' . (($ready && !$readonly) ? '<form method="post" action="erp_bank_statements.php" enctype="multipart/form-data" class="card mb-7" data-erp-send-once>
+                    ' . get_token_field() . '
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Take in')) . '</div>
+                    <div class="card-body">
+                        <div class="form-field mb-5">
+                            <label class="form-label" for="cash_account_id">' . lang('Bank account') . '</label>
+                            <select class="form-control" id="cash_account_id" name="cash_account_id">' . $tills . '</select>
+                            ' . erp_no_till_hint($till_count) . '
+                        </div>
+                        <div class="form-field">
+                            <label class="form-label" for="statement">' . lang('Statement file (Excel, ODS or CSV)') . '</label>
+                            <input type="file" class="form-control" id="statement" name="statement" accept=".xlsx,.xls,.ods,.csv,.txt,text/csv" required />
+                            <div class="form-text">' . lang('Download the statement from internet banking as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in as it is; the first sheet is read and the bank\'s title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text($statement_max)))) . '</div>
+                        </div>
+                        <button type="submit" class="btn btn-solid theme-primary w-100 mt-5"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Take in')) . '</span></button>
+                        <p class="small fg-secondary mt-3 mb-0" role="status" aria-live="polite" data-erp-send-once-status></p>
+                    </div>
+                </form>' : '') . '
+                <div class="card">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                    <div class="card-body">
+                        <dl class="row small mb-0">
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Bank statements')) . '</dt>
+                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_statements, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Lines')) . '</dt>
+                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_lines, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('To do')) . '</dt>
+                            <dd class="col-4 text-end mb-0">' . pg_format_number($summary_open, 0) . '</dd>
+                        </dl>
+                    </div>
                 </div>
             </div>
         </div>

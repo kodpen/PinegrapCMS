@@ -18,7 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function test_design_file_rename_before_record_update()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_design_file.php');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 
 	$rename = strpos($source, "@rename(FILE_DIRECTORY_PATH . '/' . \$stored_name, FILE_DIRECTORY_PATH . '/' . \$name)");
 	$update = strpos($source, 'UPDATE files');

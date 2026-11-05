@@ -189,34 +189,34 @@ $output_header = '
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                        <div class="col-12 sm:col-6 lg:col-12 my-3">
                             <div class="form-label fg-secondary">' . lang('Date') . '</div>
                             <div>' . h(prepare_form_data_for_output($receipt['doc_date'], 'date')) . '</div>
                         </div>
-                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                        <div class="col-12 sm:col-6 lg:col-12 my-3">
                             <div class="form-label fg-secondary">' . lang('Amount') . '</div>
                             <div class="h5 mb-0 ' . ($is_cancelled ? 'text-decoration-line-through fg-secondary' : '') . '">' . $money((int) $receipt['amount']) . '</div>
                             ' . ($is_foreign ? '<div class="fg-secondary small">' . h(erp_money_out((int) $receipt['amount_base'])) . ' &middot; ' . h(erp_fx_rate_text($receipt['exchange_rate'])) . '</div>' : '') . '
                         </div>
-                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                        <div class="col-12 sm:col-6 lg:col-12 my-3">
                             <div class="form-label fg-secondary">' . lang('Account') . '</div>
                             <div><a href="edit_erp_account.php?id=' . (int) $receipt['account_id'] . '" class="pg-link-body-emphasis">' . h($receipt['account_title']) . '</a></div>
                         </div>
-                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                        <div class="col-12 sm:col-6 lg:col-12 my-3">
                             <div class="form-label fg-secondary">' . lang('Till or Bank Account') . '</div>
                             <div><a href="edit_erp_till.php?id=' . (int) $receipt['cash_account_id'] . '" class="pg-link-body-emphasis">' . h($receipt['cash_account_name']) . '</a></div>
                         </div>
-                        <div class="col-12 sm:col-6 lg:col-3 my-3">
+                        <div class="col-12 sm:col-6 lg:col-12 my-3">
                             <div class="form-label fg-secondary">' . lang('Payment Method') . '</div>
                             <div>' . h(isset($method_labels[$receipt['payment_method']]) ? $method_labels[$receipt['payment_method']] : (string) $receipt['payment_method']) . '</div>
                         </div>
-                        <div class="col-12 lg:col-9 my-3">
+                        <div class="col-12 my-3">
                             <div class="form-label fg-secondary">' . lang('Description') . '</div>
                             <div>' . h($receipt['description']) . '</div>
                         </div>
                     </div>
                     ' . (is_array($reversal) ? '
-                    <div class="alert theme-secondary mt-5 mb-0"><i class="bi bi-arrow-counterclockwise me-3"></i>' . h(lang(array('string' => 'Cancelled on {var:1}', 'vars' => prepare_form_data_for_output($reversal['doc_date'], 'date', false)))) . ' &middot; ' . h($reversal['description']) . '</div>' : '') . '
+                    <div class="alert theme-secondary mt-5 mb-0"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . h(lang(array('string' => 'Cancelled on {var:1}', 'vars' => prepare_form_data_for_output($reversal['doc_date'], 'date', false)))) . ' &middot; ' . h($reversal['description']) . '</div>' : '') . '
                 </div>
             </div>';
 
@@ -357,12 +357,14 @@ if (!$readonly && !$no_allocation && ($unallocated > 0)) {
 // A cheque's or note's movement is not cancelled here: the screen shows
 // why and leads to the cheque, whose steps change it.
 $output_cancel = '';
+// The cheque's note is read with the allocations, not pinned in the save bar.
+$output_cheque_note = '';
 // A receipt dated inside the locked books cannot be cancelled: the button
 // stays visible but disabled, with the reason under it.
 $cancel_locked = ($receipt_cheque === null && !$is_cancelled) ? erp_lock_refusal((string) $receipt['doc_date']) : '';
 
 if ($receipt_cheque !== null) {
-    $output_cancel = '
+    $output_cheque_note = '
             <div class="alert theme-info d-flex flex-wrap align-items-center gap-3 my-7">
                 <i class="bi bi-info-circle" aria-hidden="true"></i>
                 <span class="flex-grow-1">' . h(erp_cheque_receipt_refusal($receipt_cheque)) . '</span>
@@ -372,7 +374,7 @@ if ($receipt_cheque !== null) {
     $output_cancel = '';
 } elseif ($cancel_locked !== '') {
     $output_cancel = '
-            <nav class="buttons navigation text-center position-sticky mb-3" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+            <nav class="buttons navigation text-center mb-3" aria-label="' . h(lang('data edit buttons')) . '">
                 <div class="container">
                     <div class="btn-group flex-wrap justify-content-center">
                         <button type="button" class="btn my-1 btn-outline theme-warning" disabled aria-describedby="erp_receipt_cancel_note"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . ($is_collection ? lang('Cancel the Receipt') : lang('Cancel the Payment')) . '</button>
@@ -382,7 +384,7 @@ if ($receipt_cheque !== null) {
             <p class="small fg-secondary text-center mx-auto mb-7" style="max-width:40rem" id="erp_receipt_cancel_note">' . h($cancel_locked) . '</p>';
 } elseif (!$is_cancelled) {
     $output_cancel = '
-            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                 <div class="container">
                     <div class="btn-group flex-wrap justify-content-center">
                         <button type="button" class="btn my-1 btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#cancel_receipt_modal"><i class="bi bi-arrow-counterclockwise me-3" aria-hidden="true"></i>' . ($is_collection ? lang('Cancel the Receipt') : lang('Cancel the Payment')) . '</button>
@@ -441,9 +443,26 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . (($output_workspace_button !== '') ? '<nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">' . $output_workspace_button . '</nav>' : '') . '
-            ' . $output_header . '
+        </div>
+
+        <!-- The work column: what the money closed and what is left to allocate. -->
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             ' . $output_allocations . '
             ' . $output_allocate . '
+            ' . $output_cheque_note . '
+        </div>
+
+        <!--
+            What is read: the movement itself. Sticky under the fixed header,
+            and after the work column in source order so a phone shows the
+            allocations first.
+        -->
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">' . $output_header . '
+            </div>
+        </div>
+
+        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
             ' . $output_cancel . '
         </div>
     </div>

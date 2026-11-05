@@ -2447,7 +2447,7 @@ function ws_flow_graph_present($graph, $edit = false)
                 $node['config'] = ws_flow_condition_masked($node['config']);
             }
 
-            if (!$edit && in_array((string) $node['kind'], array('row_add', 'row_set'), true)) {
+            if (!$edit && in_array((string) $node['kind'], array('row_add', 'row_set', 'row_get'), true)) {
                 $node['config'] = ws_flow_row_box_masked($node['config']);
             }
 
@@ -2466,13 +2466,18 @@ function ws_flow_graph_present($graph, $edit = false)
  * the values, which may be a customer's data, as a change box's. Cells the
  * server cannot read as a JSON object keep nothing. Pure.
  *
- * @param array $config ws_step_config_normalize() of row_add or row_set
+ * @param array $config ws_step_config_normalize() of row_add, row_set or row_get
  * @return array
  */
 function ws_flow_row_box_masked($config)
 {
     if (array_key_exists('row', $config)) {
         $config['row'] = '';
+    }
+
+    // A box that reads a row has no cells to hide.
+    if (!array_key_exists('cells', $config)) {
+        return $config;
     }
 
     $cells = json_decode((string) ($config['cells'] ?? ''), true);
@@ -3028,6 +3033,9 @@ function ws_flow_js_strings()
         'fl_row_none'         => lang('No table chosen'),
         'fl_kind_row_add'     => lang('Add a row to a table'),
         'fl_kind_row_set'     => lang('Change a row of a table'),
+        'fl_kind_row_get'     => lang('Read a row of a table'),
+        'fl_rows_read_help'   => lang('The tables the flow\'s owner may read; the box reads with their rights.'),
+        'fl_rows_get_row_help' => lang('The row\'s number, or one value, such as {{trigger.row_id}}. A row that is not there gives found 0 and empty cells.'),
         'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
         'fl_rows_row'         => lang('Row'),
         'fl_rows_row_help'    => lang('The row\'s number, or one value, such as the row a box before added.'),
@@ -3134,6 +3142,7 @@ function ws_flow_js_strings()
         'fl_email_body'       => lang('Text of the e-mail'),
         'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
         'fl_values_hint_plain' => lang('Add value puts in what started the run or what an earlier box gave.'),
+        'fl_values_hint_value' => lang('Add value puts in what started the run or what an earlier box gave; {{date}}, {{time}} and {{weekday}} give today\'s date, the time and the day of the week.'),
         'fl_values_add'       => lang('Add value'),
         'fl_values_text'      => lang('What it did'),
         'fl_values_outcome'   => lang('Outcome'),

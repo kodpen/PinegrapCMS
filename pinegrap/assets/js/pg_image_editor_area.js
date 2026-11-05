@@ -4,7 +4,9 @@
  * Image editor: area selection on the picture: rectangle, ellipse, lasso,
  * polygon and magic wand, added (Shift) or taken away (Alt), inverted and
  * feathered, shown as marching ants; and what it does to pixels: Erase,
- * Keep only, Copy to a layer, Adjust inside and Redact.
+ * Keep only, Copy to a layer, Adjust inside and Redact. Select subject
+ * cuts the subject from its background (pg_image_editor_subject.js, in a
+ * worker) into the selection.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor_redact.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -40,6 +42,9 @@
 
     // The wand reads the picture at most this long a side.
     var WAND_SIDE = 1024;
+
+    // Select subject cuts the picture at most this long a side.
+    var SUBJECT_SIDE = 800;
 
     // A copy to a layer is at most this long a side.
     var COPY_SIDE = 4096;
@@ -95,6 +100,141 @@
         var px = this.areaPixelCache, src = this.doc.source;
 
         return px.data ? { w: px.w, h: px.h, data: px.data, m: M.mul(M.placedMatrix(this.doc), M.scale(src.width / px.w, src.height / px.h)) } : null;
+    };
+
+    // The picture's pixels at most side long a side, as areaPixels()
+    // answers; null when it cannot be read back.
+    Editor.prototype.areaPixelsAt = function (side) {
+        var px = this.areaPixels();
+
+        if (!px || (Math.max(px.w, px.h) <= side)) {
+            return px;
+        }
+
+        var k = side / Math.max(px.w, px.h), w = Math.max(1, Math.round(px.w * k)), h = Math.max(1, Math.round(px.h * k));
+        var canvas = document.createElement('canvas'), g;
+
+        canvas.width = w;
+        canvas.height = h;
+        g = canvas.getContext('2d');
+        g.drawImage(this.img, 0, 0, w, h);
+
+        return { w: w, h: h, data: g.getImageData(0, 0, w, h).data, m: M.mul(px.m, M.scale(px.w / w, px.h / h)) };
+    };
+
+    // ---- select subject (pg_image_editor_subject.js) ----
+
+    // The cutter: the worker, or the same code on the page where a site's
+    // policy refuses the worker. Answers run(message) -> a promise of the
+    // answer.
+    function subjectCutter() {
+        var url = (X.config().subject || [])[0], worker = null;
+
+        try {
+            worker = url ? new Worker(url) : null;
+        } catch (err) {
+            worker = null;
+        }
+
+        if (worker) {
+            return Promise.resolve(function (m, transfer) {
+                return new Promise(function (resolve, reject) {
+                    worker.onmessage = function (e) { worker.terminate(); resolve(e.data); };
+                    worker.onerror = function (e) { e.preventDefault(); worker.terminate(); reject(new Error('worker')); };
+                    worker.postMessage(m, transfer);
+                });
+            });
+        }
+
+        return new Promise(function (resolve, reject) {
+            if (window.PgImageSubject || !url) {
+                resolve(window.PgImageSubject);
+                return;
+            }
+
+            var tag = document.createElement('script');
+
+            tag.src = url;
+            tag.onload = function () { resolve(window.PgImageSubject); };
+            tag.onerror = reject;
+            document.head.appendChild(tag);
+        }).then(function (S) {
+            if (!S) {
+                throw new Error('subject');
+            }
+
+            return function (m) {
+                return new Promise(function (resolve) {
+                    setTimeout(function () { S.session(resolve).receive(m); }, 0);
+                });
+            };
+        });
+    }
+
+    // The box a lone rectangle selection draws round the subject, in the
+    // pixels px; null for any other selection.
+    Editor.prototype.subjectBox = function (px) {
+        var sel = this.doc.selection, ops = sel ? (sel.ops || []) : [];
+
+        if ((ops.length !== 1) || (ops[0].kind !== 'rect') || (ops[0].op !== 'add') || sel.invert) {
+            return null;
+        }
+
+        var back = M.inv(px.m), pts = ops[0].ring.map(function (p) { return M.apply(back, p[0], p[1]); });
+        var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+
+        return [Math.min.apply(null, xs), Math.min.apply(null, ys), Math.max.apply(null, xs), Math.max.apply(null, ys)];
+    };
+
+    // Select subject: the cut in the cutter, its rings into the selection.
+    // Inside a lone rectangle it replaces it; else it goes in as the
+    // panel's choice (New, Add, Subtract) says.
+    Editor.prototype.areaSubject = function () {
+        var self = this, px = this.areaPixelsAt(SUBJECT_SIDE);
+
+        this.subjectNote = null;
+
+        if (!px) {
+            this.subjectNote = 'subjectRead';
+            this.render();
+            return;
+        }
+
+        var box = this.subjectBox(px), op = box ? 'new' : this.areaDefaults.mode, data = new Uint8ClampedArray(px.data).buffer;
+        var src = this.img.src;
+
+        this.subjectBusy = true;
+        this.render();
+
+        subjectCutter().then(function (run) {
+            return run({ type: 'cut', data: data, width: px.w, height: px.h, box: box }, [data]);
+        }).then(function (out) {
+            self.subjectBusy = false;
+
+            if (!out || (out.type !== 'mask')) {
+                throw new Error('subject');
+            }
+
+            // Another picture came in while it cut.
+            if (!self.img || (self.img.src !== src) || !self.doc.source) {
+                self.render();
+                return;
+            }
+
+            var rings = M.subjectRings(new Uint8Array(out.mask), px.w, px.h, px.m);
+
+            if (!rings.length) {
+                self.subjectNote = 'subjectNone';
+                self.render();
+                return;
+            }
+
+            self.areaAdd(op, { kind: 'subject', rings: rings, box: out.box });
+        }).then(null, function () {
+            self.subjectBusy = false;
+            self.subjectNote = 'subjectError';
+            self.render();
+        });
     };
 
     // The selection's area in the turned space, kept while the selection
@@ -817,6 +957,13 @@
         if (!has) {
             body.appendChild(el('p', { class: 'pgie-note', text: t('areaIntro') }));
         }
+
+        var subject = button('pgie-btn', t(this.subjectBusy ? 'subjectBusy' : 'subjectSelect'), null, function () { self.areaSubject(); }, true);
+
+        subject.disabled = !!this.subjectBusy;
+        subject.setAttribute('aria-busy', this.subjectBusy ? 'true' : 'false');
+        body.appendChild(el('div', { class: 'pgie-arow' }, [subject]));
+        body.appendChild(el('p', { class: 'pgie-note' + (this.subjectNote ? ' pgie-warn' : ''), text: t(this.subjectNote || 'subjectNote') }));
 
         KINDS.forEach(function (kind) {
             var b = tile(kind[1], t(kind[1]), function () {

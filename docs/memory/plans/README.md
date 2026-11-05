@@ -21,6 +21,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
+- bootstrap-6-redesign-screens-1.md: The first legacy edit screens redone in step B11 of plans/bootstrap-6-redesign.md, each with its PR; the later ones are listed in that plan
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (owner, 2026-11-01)
 - bug-hunt-modules-endpoints-1.md: Module list of plans/bug-hunt.md, part 3: root endpoint groups account to offer by area word, one line each with its state
 - bug-hunt-modules-endpoints-1c.md: Module list of plans/bug-hunt.md, part 3c: root endpoint groups mail, manifest and marketplace, one line each with its state
@@ -56,6 +57,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - image-editor-steps-3.md: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a placed sticker, text to outlines, scissors, shape builder, warp; claim as [plan:image-editor] E<n>
 - image-editor-steps-4.md: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free deformation, area selection, select subject and remove background with an own algorithm, access; claim as [plan:image-editor] E<n>
 - image-editor-steps-5.md: Steps E23b, E30-E32, E31b of plans/image-editor.md: Fotoğraf and Vektör rail groups, the picture as bottom layer, Import, SVG rules for use, a context menu; claim as [plan:image-editor] E<n>
+- image-editor-steps-6.md: Steps E28a-E28c of plans/image-editor.md: select subject (own GrabCut in a worker), Keep and Remove brushes with the soft edge, remove background; claim as [plan:image-editor] E<n>
 - image-editor-steps.md: Steps E1-E10 of plans/image-editor.md: core modal, crop, server save, adjust, layers, shapes, text, stickers, the switch that removes the old editor, redaction; claim as [plan:image-editor] E<n>
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
 - image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound added or detached, layers over video, export with sound; held with image-editor.md

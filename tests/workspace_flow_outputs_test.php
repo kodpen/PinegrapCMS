@@ -161,6 +161,7 @@ function test_workspace_flow_outputs_answered()
 		'mcp'         => array('ws_step_mcp_do'),
 		'row_add'     => array('ws_step_row_do'),
 		'row_set'     => array('ws_step_row_do'),
+		'row_get'     => array('ws_step_row_get_data'),
 	);
 
 	$kinds = array_keys(ws_step_kinds());

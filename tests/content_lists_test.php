@@ -53,13 +53,13 @@ function test_content_lists_check_marks_named()
 	// Printed lists on the list table driver draw their marks with
 	// pg_list_table_check_cell(), which names them.
 	pg_assert_same(1, substr_count(content_lists_source('includes/fn/comment_list_edit.php'), 'pg_list_table_check_cell('), 'comment_list_edit.php: check cells');
-	pg_assert_same(1, substr_count(content_lists_source('view_design_files.php'), 'pg_list_table_check_cell('), 'view_design_files.php: check cells');
+	pg_assert_same(1, substr_count(content_lists_source('includes/fn/design_file_list_edit.php'), 'pg_list_table_check_cell('), 'view_design_files.php: check cells');
 	pg_assert_same(4, substr_count(content_lists_source('includes/fn/region_list.php'), 'pg_list_table_check_cell('), 'region_list.php: check cells');
 }
 
 function test_content_lists_folder_and_home_ligatures()
 {
-	foreach (array('includes/fn/page_list.php', 'view_design_files.php') as $path) {
+	foreach (array('includes/fn/page_list.php', 'includes/fn/design_file_list_edit.php') as $path) {
 		$source = content_lists_source($path);
 		pg_assert_false(strpos($source, '<span class="material-icons d-inline">folder</span>') !== false, $path . ': folder ligature read aloud');
 		pg_assert_contains('pg_folder_list_name($', $source, $path);
@@ -80,7 +80,7 @@ function test_content_lists_row_checkboxes_named()
 
 function test_content_lists_file_download_and_thumbnail()
 {
-	foreach (array('view_design_files.php') as $path) {
+	foreach (array('includes/fn/design_file_list_edit.php') as $path) {
 		$source = content_lists_source($path);
 		pg_assert_false(strpos($source, 'download="\' . h($file[\'type\']) . \'"') !== false, $path . ': file type as download name');
 		pg_assert_contains('download="\' . h($file[\'name\']) . \'"', $source, $path);

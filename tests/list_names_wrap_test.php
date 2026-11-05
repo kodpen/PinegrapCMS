@@ -33,7 +33,7 @@ function test_list_names_wrap_folder_cells()
 {
 	$cells = array(
 		'includes/fn/page_list.php' => 'pg_list_cell(pg_folder_list_name($page[\'folder_name\'], $page[\'folder_access_control_type\']), \'align-middle text-start text-wrap \' . $page[\'folder_access_control_type\'], $quick(\'folder\', pg_page_quick_edit_value(\'folder\', $page)))',
-		'view_design_files.php' => '\'folder\' => pg_list_cell(pg_folder_list_name($file[\'folder_name\']), \'align-middle text-wrap\')',
+		'includes/fn/design_file_list_edit.php' => '\'folder\' => pg_list_cell(pg_folder_list_name($file[\'folder_name\']), \'align-middle text-wrap\', $attributes(\'folder\'))',
 		'includes/fn/theme_list_edit.php' => '\'folder\' => pg_list_cell(pg_folder_list_name((string) $theme[\'folder_name\']) . \'<span class="badge fw-light fg-reset d-inline">(\' . get_access_control_type_name($access) . \')</span>\', \'align-middle text-wrap \' . $access, $attributes(\'folder\'))',
 	);
 	foreach ($cells as $path => $cell) {
@@ -46,7 +46,7 @@ function test_list_names_wrap_folder_cells()
 function test_list_names_wrap_text_cells()
 {
 	$wrap = '<div class="text-wrap text-break" style="max-width:20rem;">';
-	foreach (array('view_design_files.php') as $path) {
+	foreach (array('includes/fn/design_file_list_edit.php') as $path) {
 		$source = list_names_wrap_source($path);
 		pg_assert_contains($wrap . '\' . nl2br(h($file[\'description\'])) . \'</div>\')', $source, $path);
 		pg_assert_false(strpos($source, 'width:200px') !== false, $path . ': no 200px description box');
@@ -58,10 +58,20 @@ function test_list_names_wrap_text_cells()
 	// Information text is rich text that can run to paragraphs: it keeps its cut preview.
 	pg_assert_contains('<span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;" title="\' . h(pg_liveform_message_text($text)) . \'">\' . $text . \'</span>', $fields);
 
-	$shipping = list_names_wrap_source('view_shipping_methods.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_method_list_edit.php');
+	foreach (array('BASE_CURRENCY_SYMBOL' => '$', 'DATE_FORMAT' => 'day_month') as $name => $value) {
+		if (!defined($name)) {
+			define($name, $value);
+		}
+	}
+	$shipping = list_names_wrap_source('includes/fn/shipping_method_list_edit.php');
+	$cells = pg_shipping_method_list_cells(array('id' => 1, 'name' => 'Courier', 'description' => 'Two days', 'timestamp' => 0));
 	// The name and message wrap with a floor width, so the table does not
 	// squeeze them to a word per line next to one-line columns.
-	pg_assert_contains('<span class="d-inline-block text-wrap text-break" style="min-width:12rem;max-width:20rem;">\' . h($row[\'name\']) . \'</span>\'', $shipping);
-	pg_assert_contains('<div class="text-wrap text-break" style="min-width:15rem;max-width:24rem;">\' . h($row[\'description\']) . \'</div>\'', $shipping);
+	pg_assert_contains('<span class="d-inline-block text-wrap text-break" style="min-width:12rem;max-width:20rem;">Courier</span>', $cells['name']['html']);
+	pg_assert_contains('<div class="text-wrap text-break" style="min-width:15rem;max-width:24rem;">Two days</div>', $cells['message']['html']);
 	pg_assert_false(strpos($shipping, 'text-nowrap text-truncate') !== false, 'shipping: no truncated cells');
 }

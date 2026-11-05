@@ -163,9 +163,9 @@ if ($action != 'import') {
             $output_fields =
                 get_token_field() . '
                 <div class="row">
-                    <div class="col-12">
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
                         <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Import Settings') . '</div>
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Import Settings')) . '</div>
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-12 my-3">
@@ -200,9 +200,23 @@ if ($action != 'import') {
                             </div>
                         </div>
                     </div>
-                </div>';
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <div class="card my-7 position-sticky" style="top:3.3rem;">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('What Is Imported')) . '</div>
+                            <div class="card-body">
+                                <ul class="small ps-5 mb-0">
+                                    <li class="mb-2">' . h(lang('Scan lists what was found; nothing is created until you click Import.')) . '</li>
+                                    <li class="mb-2">' . h(lang('Each web page becomes a page with its own custom page style, in a new folder under Import My Site.')) . '</li>
+                                    <li class="mb-2">' . h(lang('Every other file goes to Files; CSS, JavaScript, SVG, font and icon files are marked as design files.')) . '</li>
+                                    <li class="mb-2">' . h(lang('Links between the imported items are rewritten to their new addresses.')) . '</li>
+                                    <li class="mb-2">' . h(lang('With a tag, a file that already has the tagged name is kept as a -backup copy and the imported file takes its name.')) . '</li>
+                                    <li>' . h(lang(array('string' => 'Only addresses on the same host as the website URL are read, at most {var:1} items.', 'vars' => array(pg_format_number(2500, 0))))) . '</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>';
 
-            $output_buttons = '<button type="submit" name="submit_button" value="Scan" class="btn my-1  btn-solid theme-primary"><span class="material-icons me-3">search</span><span class="pg-btn-label">' . lang(array('string'=>'Scan') ) . '</span></button>';
+            $output_buttons = '<button type="submit" name="submit_button" value="Scan" class="btn my-1 btn-solid theme-primary"><i class="bi bi-search me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Scan')) . '</span></button>';
 
             break;
 
@@ -317,15 +331,21 @@ if ($action != 'import') {
         echo '</div>';
     }
 
+    // The settings step lays its cards out as a form column and a status
+    // column; its save bar is the third column of that row, which the
+    // settings markup leaves open. The scan step streams its result in one
+    // full-width card, so its bar stays outside a row.
     echo
-        '       <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+        ($action == '' ? '<div class="col-12 order-3">' : '') . '
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
-                        <div class=" btn-group flex-wrap justify-content-center">
+                        <div class="btn-group flex-wrap justify-content-center">
                             ' . $output_buttons . '
                         </div>
                         ' . ($action == 'scan' ? '<p class="small fg-secondary mt-2 mb-0" id="import_design_status" role="status" aria-live="polite"></p>' : '') . '
                     </div>
                 </nav>
+                ' . ($action == '' ? '</div></div>' : '') . '
             </form>
                 </div>
             </div>

@@ -922,6 +922,9 @@ $active_cus = ($period === 'custom') ? 'active" aria-current="page' : '';
 
 
 // -------------------- PRINT --------------------
+// Form column: period, analytics, the WebP rule, DNS records and logs. Status
+// column: the zone switches and Clear Cache. Each switch and button posts on
+// its own, so the screen has no save bar.
 print pg_page_shell([
     'title'   => lang('Cloudflare Tools'),
     'extra classes' => 'setting',
@@ -931,9 +934,11 @@ print pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
 
-  <div class="row"><div class="col-12">
-
+  <div class="row">
+  <div class="col-12">
     '.$liveform->output_errors().$liveform->get_warnings().$liveform->output_notices().'
+  </div>
+  <div class="col-12 lg:col-8 2xl:col-9 order-1">
 
     <!-- Period Tabs -->
     <ul class="nav nav-tabs mb-5">
@@ -973,93 +978,29 @@ print pg_page_shell([
     ' : '').'
 
     <!-- Analytics -->
-    <div class="row mb-7">
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Requests') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'requests').'</p>
+    <div class="row g-5 mb-5">
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Requests') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'requests').'</div>
       </div></div></div>
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Unique Visitors') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'uniques').'</p>
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Unique Visitors') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'uniques').'</div>
       </div></div></div>
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Bandwidth') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'bandwidth').'</p>
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Bandwidth') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'bandwidth').'</div>
       </div></div></div>
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Percent Cached') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'percent_cached').'</p>
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Percent Cached') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'percent_cached').'</div>
       </div></div></div>
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Cached Data') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'cached_bytes').'</p>
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Cached Data') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'cached_bytes').'</div>
       </div></div></div>
     </div>
     '.$analytics_note.'
-
-    <!-- Settings -->
-    <div class="card my-7">
-      <div class="card-header bg-transparent border-0 fw-bold">
-        <i class="bi bi-sliders"></i> ' . lang('Settings') . '
-      </div>
-      <div class="card-body">
-        <!-- Development Mode -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_dev">
-          <input type="hidden" name="value" value="'.($dev_mode==="on"?"off":"on").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()"'.$switch_focus('cf_dev').' '.($dev_mode==="on"?"checked":"").$switch_unread('cf_dev').'></div>
-            <label class="" for="cf_dev">' . lang('Development Mode') . '</label>
-            '.$switch_unread_note('cf_dev').'
-          </div>
-        </form>
-        <!-- Under Attack Mode -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_uam">
-          <input type="hidden" name="value" value="'.($uam_mode==="under_attack"?"medium":"under_attack").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()"'.$switch_focus('cf_uam').' '.($uam_mode==="under_attack"?"checked":"").$switch_unread('cf_uam').'></div>
-            <label class="" for="cf_uam">' . lang('Under Attack Mode') . '</label>
-            '.$switch_unread_note('cf_uam').'
-          </div>
-        </form>
-        <!-- Always Use HTTPS -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_always_https">
-          <input type="hidden" name="value" value="'.($always_https==="on"?"off":"on").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()"'.$switch_focus('cf_https').' '.($always_https==="on"?"checked":"").$switch_unread('cf_https').'></div>
-            <label class="" for="cf_https">' . lang('Always Use HTTPS') . '</label>
-            '.$switch_unread_note('cf_https').'
-          </div>
-        </form>
-        <!-- Brotli -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_brotli">
-          <input type="hidden" name="value" value="'.($brotli==="on"?"off":"on").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()"'.$switch_focus('cf_brotli').' '.($brotli==="on"?"checked":"").$switch_unread('cf_brotli').'></div>
-            <label class="" for="cf_brotli">' . lang('Brotli') . '</label>
-            '.$switch_unread_note('cf_brotli').'
-          </div>
-        </form>
-        <!-- Rocket Loader -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_rocket">
-          <input type="hidden" name="value" value="'.($rocket==="on"?"off":"on").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()"'.$switch_focus('cf_rocket').' '.($rocket==="on"?"checked":"").$switch_unread('cf_rocket').'></div>
-            <label class="" for="cf_rocket">' . lang('Rocket Loader') . '</label>
-            '.$switch_unread_note('cf_rocket').'
-          </div>
-        </form>
-        <!-- Clear Cache -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="clear_cache">
-          <button type="submit" class="btn btn-solid theme-danger"><i class="bi bi-trash"></i> ' . lang('Clear Cache') . '</button>
-        </form>
-      </div>
-    </div>
 
     '.$image_vary_card.'
 
@@ -1130,7 +1071,73 @@ print pg_page_shell([
       </div>
     </div>
 
-  </div></div>
+  </div>
+  <div class="col-12 lg:col-4 2xl:col-3 order-2">
+    <div class="position-sticky my-7" style="top:3.3rem;">
+      <!-- Settings -->
+      <div class="card">
+      <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Settings') . '</div>
+        <div class="card-body">
+          <!-- Development Mode -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_dev">
+            <input type="hidden" name="value" value="'.($dev_mode==="on"?"off":"on").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()"'.$switch_focus('cf_dev').' '.($dev_mode==="on"?"checked":"").$switch_unread('cf_dev').'></div>
+              <label class="" for="cf_dev">' . lang('Development Mode') . '</label>
+              '.$switch_unread_note('cf_dev').'
+            </div>
+          </form>
+          <!-- Under Attack Mode -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_uam">
+            <input type="hidden" name="value" value="'.($uam_mode==="under_attack"?"medium":"under_attack").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()"'.$switch_focus('cf_uam').' '.($uam_mode==="under_attack"?"checked":"").$switch_unread('cf_uam').'></div>
+              <label class="" for="cf_uam">' . lang('Under Attack Mode') . '</label>
+              '.$switch_unread_note('cf_uam').'
+            </div>
+          </form>
+          <!-- Always Use HTTPS -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_always_https">
+            <input type="hidden" name="value" value="'.($always_https==="on"?"off":"on").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()"'.$switch_focus('cf_https').' '.($always_https==="on"?"checked":"").$switch_unread('cf_https').'></div>
+              <label class="" for="cf_https">' . lang('Always Use HTTPS') . '</label>
+              '.$switch_unread_note('cf_https').'
+            </div>
+          </form>
+          <!-- Brotli -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_brotli">
+            <input type="hidden" name="value" value="'.($brotli==="on"?"off":"on").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()"'.$switch_focus('cf_brotli').' '.($brotli==="on"?"checked":"").$switch_unread('cf_brotli').'></div>
+              <label class="" for="cf_brotli">' . lang('Brotli') . '</label>
+              '.$switch_unread_note('cf_brotli').'
+            </div>
+          </form>
+          <!-- Rocket Loader -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_rocket">
+            <input type="hidden" name="value" value="'.($rocket==="on"?"off":"on").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()"'.$switch_focus('cf_rocket').' '.($rocket==="on"?"checked":"").$switch_unread('cf_rocket').'></div>
+              <label class="" for="cf_rocket">' . lang('Rocket Loader') . '</label>
+              '.$switch_unread_note('cf_rocket').'
+            </div>
+          </form>
+          <!-- Clear Cache -->
+          <form method="post" class="disable_shortcut">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="clear_cache">
+            <button type="submit" class="btn btn-solid theme-danger w-100"><i class="bi bi-trash" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Clear Cache') . '</span></button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
 
 <!-- Add Record Modal -->
 <dialog class="dialog" id="addModal" aria-labelledby="addModal_title">

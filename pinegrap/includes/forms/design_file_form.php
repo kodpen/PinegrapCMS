@@ -181,3 +181,129 @@ function pg_design_file_form_summary_card($top, $rows)
                                 </div>
                             </div>';
 }
+
+/**
+ * Why a design file cannot take this name, '' when it can: a name is
+ * required (prepare_file_name() would turn a blank one into 'file' and
+ * break every link to the stored file); a new name the server would run
+ * (.php, .htaccess, ...) is refused as an upload of it is, before
+ * prepare_file_name() quietly turns its dot into an underscore; the name
+ * must not be ".htaccess" and no other item may hold it. Shared by the
+ * edit screen and the design files list's quick edit. Plain text.
+ *
+ * @param string        $name_posted The trimmed name as typed
+ * @param string        $stored_name The file's stored name
+ * @param int           $id
+ * @param callable|null $available   function ($name, $id): bool, check_name_availability() by default
+ * @return string
+ */
+function pg_design_file_form_refusal($name_posted, $stored_name, $id, $available = null)
+{
+    $name_posted = (string) $name_posted;
+
+    if ($name_posted === '') {
+        return lang('Please enter a name.');
+    }
+
+    if (($name_posted !== (string) $stored_name) && pg_upload_name_blocked($name_posted)) {
+        return pg_upload_blocked_message($name_posted);
+    }
+
+    $name = prepare_file_name($name_posted);
+
+    if ($name == '.htaccess') {
+        return lang('File name is invalid') . '.';
+    }
+
+    if ($available === null) {
+        $available = function ($name, $id) {
+            return check_name_availability(array('name' => $name, 'ignore_item_id' => $id, 'ignore_item_type' => 'file')) != false;
+        };
+    }
+
+    if (!$available($name, (int) $id)) {
+        return lang(array('string' => '{var:1} already exists. Please choose a different file name.', 'vars' => array($name)));
+    }
+
+    return '';
+}
+
+/**
+ * Saves a design file the way its edit screen does, once
+ * pg_design_file_form_refusal() let the name through: the file is renamed
+ * on the disk first when its name changed and it is there (a failed rename
+ * writes nothing, so the record never names a file that is not there);
+ * the record takes the name, its type (the extension), the folder, the
+ * description and the design switch, and a CSS file that is not a system
+ * theme its Theme switch; audit and log lines. Shared by the edit screen
+ * and the design files list's quick edit.
+ *
+ * @param int    $id
+ * @param string $stored_name The file's stored name
+ * @param string $name        prepare_file_name() of the trimmed name
+ * @param array  $post        'folder', 'description', 'design', 'theme' as the screen posts them
+ * @param int    $user_id
+ * @return string '' when saved, else why not (plain text)
+ */
+function pg_design_file_form_save($id, $stored_name, $name, array $post, $user_id)
+{
+    $id = (int) $id;
+    $name = (string) $name;
+    $stored_name = (string) $stored_name;
+    $value = function ($key) use ($post) {
+        return is_scalar($post[$key] ?? '') ? (string) ($post[$key] ?? '') : '';
+    };
+
+    // A name without a dot has no extension, so no type.
+    $file_extension = pg_file_name_extension($name);
+
+    // A CSS file that is not a system theme takes the Theme switch.
+    $sql_theme = '';
+    $values = array($name, $value('folder'), $value('description'), $file_extension, $value('design'));
+
+    if (
+        (mb_strtolower($file_extension) == 'css')
+        && (db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . $id . "'") == 0)
+    ) {
+        $sql_theme = 'theme = ?,';
+        $values[] = $value('theme');
+    }
+
+    if (
+        ($name !== $stored_name)
+        && is_file(FILE_DIRECTORY_PATH . '/' . $stored_name)
+        && !@rename(FILE_DIRECTORY_PATH . '/' . $stored_name, FILE_DIRECTORY_PATH . '/' . $name)
+    ) {
+        return lang('The file could not be renamed on the file system. Check write permission for the file directory.');
+    }
+
+    $audit_before = pg_audit_fetch('files', $id);
+    $values[] = (string) (int) $user_id;
+    $values[] = (string) $id;
+
+    $result = db_q(
+        "UPDATE files
+        SET
+            name = ?,
+            folder = ?,
+            description = ?,
+            type = ?,
+            design = ?,
+            $sql_theme
+            timestamp = UNIX_TIMESTAMP(),
+            user = ?
+        WHERE id = ?",
+        $values
+    );
+
+    if (!$result) {
+        return lang('The value could not be saved.');
+    }
+
+    pg_audit_record('update', 'files', $id, $audit_before);
+
+    log_activity(lang(array('string' => 'design file ({var:1}) was modified', 'vars' => $name)), $_SESSION['sessionusername'] ?? '');
+
+    return '';
+}
+
