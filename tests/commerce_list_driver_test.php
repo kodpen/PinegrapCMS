@@ -22,6 +22,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_method_list_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/key_code_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/key_code_list_edit.php');
 
 function commerce_list_driver_test_source($file)
 {
@@ -67,7 +69,7 @@ function test_commerce_lists_quick_edit_columns_are_columns()
 	$pairs = array(
 		array(pg_order_list_columns(true, 'Member ID'), pg_order_quick_edit_columns(), 'select'),
 		array(pg_gift_card_list_columns(), pg_gift_card_edit_columns(), 'text'),
-		array(pg_key_code_list_columns(), pg_key_code_edit_columns(), 'select'),
+		array(pg_key_code_list_columns(), pg_key_code_edit_columns(), null),
 		array(pg_shipping_method_list_columns(true), pg_shipping_method_edit_columns(), null),
 	);
 
