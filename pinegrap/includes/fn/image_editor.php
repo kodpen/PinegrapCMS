@@ -5048,6 +5048,14 @@ function pg_image_editor_strings_area()
         'layer_adjust'    => lang('Adjusted area'),
         'eraseFill'       => lang('Fill with a colour'),
         'eraseColour'     => lang('Fill colour'),
+        'eraseWith'       => lang('Fill the erased part'),
+        'eraseNone'       => lang('See-through'),
+        'eraseColourKind' => lang('Colour'),
+        'eraseBlur'       => lang('Blur'),
+        'erasePicture'    => lang('Picture'),
+        'eraseBlurAmount' => lang('Blur amount'),
+        'erasePick'       => lang('Choose another picture'),
+        'removeBg'        => lang('Remove background'),
         'eraseJpegNote'   => lang('A JPEG cannot be see-through: saving makes a PNG copy beside it. Choose a fill colour to keep the JPEG.'),
     );
 }

@@ -648,9 +648,12 @@
     };
 
     // "From the site": the Files list of the sticker part (pictures and SVG
-    // files, the newest or by name) over the editor; a press imports one.
-    Editor.prototype.openImportFiles = function () {
+    // files, the newest or by name) over the editor; a press imports one,
+    // or, given pick(file), hands that picture (no SVG) to it.
+    Editor.prototype.openImportFiles = function (pick) {
         var self = this, st = this.importFiles, timer = null;
+
+        st.pick = (typeof pick === 'function') ? pick : null;
         var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('stickerFilesFind'), 'aria-label': t('stickerFilesFind') });
         var close = button('pgie-ibtn', t('close'), 'close', function () { self.closeConfirm(); });
 
@@ -667,7 +670,7 @@
                 st.grid
             ])
         ]);
-        this.confirmReturn = this.importBtn;
+        this.confirmReturn = st.pick ? document.activeElement : this.importBtn;
         this.root.appendChild(this.confirmBox);
         this.loadImportFiles(st.search);
         find.focus();
@@ -677,7 +680,7 @@
         var self = this, st = this.importFiles, ask = ++st.serial;
 
         st.search = search || '';
-        this.request({ action: 'sticker_files', search: st.search, svg: true }).then(function (r) {
+        this.request({ action: 'sticker_files', search: st.search, svg: !st.pick }).then(function (r) {
             if (ask === st.serial) {
                 self.showImportFiles((r && (r.status === 'success')) ? (r.files || []) : null);
             }
@@ -704,7 +707,15 @@
 
         list.forEach(function (f) {
             grid.appendChild(el('button', { type: 'button', class: 'pgie-stkfile', title: f.name, 'aria-label': f.name, onclick: function () {
+                var pick = self.importFiles.pick;
+
                 self.closeConfirm();
+
+                if (pick) {
+                    pick(f);
+                    return;
+                }
+
                 self.toSelect();
 
                 if (f.svg) {
