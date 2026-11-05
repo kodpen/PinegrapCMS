@@ -269,7 +269,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-present.md: Present (AN8): a canvas's scenes full screen, keys, swipes, transitions, reduced motion; PDF in Save animation, a JPEG page per scene from M.pdfFile()
 - image-editor-rail.md: The image editor rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - image-editor-redact.md: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
-- image-editor-remove-background.md: The image editor's Remove background (E28c, #6948): subject kept, the rest erased; the erased part's fills (colour, blur, a picture from Files) in the mask step
+- image-editor-remove-background.md: The image editor's Remove background (E28c, #6948): the subject a layer of its own over the picture erased whole; the erased part's fills (colour, blur, a picture from Files) in the mask step
 - image-editor-render.md: The image editor's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download
 - image-editor-scenes-play.md: Play, the scrub and the clock over every scene of a canvas (AN7b): the whole timeline's hooks, the stage showing the playing scene and its transition, a card dragged to reorder
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas

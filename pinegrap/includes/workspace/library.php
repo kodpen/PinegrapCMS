@@ -490,6 +490,13 @@ function ws_library_file($viewer, $file_id)
         return $missing;
     }
 
+    // A team chat attachment opens only for a side of its conversation or a
+    // role-0 administrator (get_file.php); its channel copy would open for
+    // every member, so anyone else hears that there is no such file.
+    if (pg_chat_attachment_refused($row['id'], $viewer)) {
+        return $missing;
+    }
+
     $open = ws_library_open($viewer);
 
     if (isset($open[(int) $row['folder']])) {

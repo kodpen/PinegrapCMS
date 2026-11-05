@@ -82,6 +82,10 @@ function pg_explorer_handle_zip_create($type, $request, $user)
     $added = 0;
     $skipped_pages = 0;
     $errors = array();
+    // Whether a submitted-form or comment upload went in: the archive then
+    // stays one too (files.attachment), as a pasted copy does, so
+    // get_file.php keeps it to whoever may edit its folder.
+    $holds_attachment = false;
 
     foreach ($items as $item) {
 
@@ -94,7 +98,7 @@ function pg_explorer_handle_zip_create($type, $request, $user)
 
         if ($item_kind == 'file') {
 
-            $file = db_item("SELECT id, name, folder, design FROM files WHERE id = '" . e($item_id) . "'");
+            $file = db_item("SELECT id, name, folder, design, attachment FROM files WHERE id = '" . e($item_id) . "'");
 
             if (!$file) {
                 continue;
@@ -104,6 +108,7 @@ function pg_explorer_handle_zip_create($type, $request, $user)
                 (check_edit_access($file['folder']) == false)
                 || (($file['design'] == 1) && ($user['role'] > 1))
                 || pg_file_withheld($file['name'])
+                || pg_chat_attachment_refused($file['id'], $user)
             ) {
                 $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $file['name']));
                 continue;
@@ -115,6 +120,10 @@ function pg_explorer_handle_zip_create($type, $request, $user)
             if (($source !== '') && is_file($source) && is_readable($source)) {
                 $zip->addFile($source, $file['name']);
                 $added++;
+
+                if ((int) $file['attachment'] === 1) {
+                    $holds_attachment = true;
+                }
             } else {
                 $errors[] = lang(array('string' => 'The file does not exist on the file system ({var:1}).', 'vars' => $file['name']));
             }
@@ -132,7 +141,7 @@ function pg_explorer_handle_zip_create($type, $request, $user)
                 continue;
             }
 
-            $added += pg_explorer_zip_add_folder($zip, $item_id, pg_ascii_file_name($folder['folder_name']) . '/', $user, $skipped_pages);
+            $added += pg_explorer_zip_add_folder($zip, $item_id, pg_ascii_file_name($folder['folder_name']) . '/', $user, $skipped_pages, 0, $holds_attachment);
 
         } elseif ($item_kind == 'page') {
             $skipped_pages++;
@@ -149,7 +158,7 @@ function pg_explorer_handle_zip_create($type, $request, $user)
     }
 
     db(
-        "INSERT INTO files (name, folder, description, type, size, design, optimized, user, timestamp)
+        "INSERT INTO files (name, folder, description, type, size, design, attachment, optimized, user, timestamp)
         VALUES (
             '" . e($zip_name) . "',
             '" . e($target_id) . "',
@@ -157,6 +166,7 @@ function pg_explorer_handle_zip_create($type, $request, $user)
             'zip',
             '" . e(filesize($zip_path)) . "',
             '0',
+            '" . ($holds_attachment ? 1 : 0) . "',
             '0',
             '" . e($user['id']) . "',
             UNIX_TIMESTAMP())");
