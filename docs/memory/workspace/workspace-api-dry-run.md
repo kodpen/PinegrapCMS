@@ -18,6 +18,7 @@ description: Every Workspace write in the external API takes X-Dry-Run; the pane
 - Claude answer: rehearsed in all four places (editor, note, task run, channel); the channel answer runs `ws_message_send_check()`. Claim, answer and fail stay for Claude's application only.
 - Change proposal (`workspace-change-proposals.md`): every check runs, the read scopes and the hourly limit included; nothing is posted, no request or card is kept.
 - Delegate: the run checks (assistant switched on, one run per task, per-person limit) run in the rehearsal; Claude is not fired.
+- Delegate stop: `ws_task_delegation_stop_check($viewer, $task, $undelegate)`; the run's asker may stop it, only an editor takes the task back (`ws_task_delegation_stop_problem()`, PR in the bug hunt of delegation.php). The API's stop rehearsal still calls it without `take_back`.
 - Task create detail carries `warnings` (capacity, department), so a client can show them before creating.
 
 **Why:** an integration or an assistant can try a Workspace write without leaving a task, note or decision behind (queue item q14).
