@@ -150,6 +150,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - send-to-url-safety.md: What pg_send_to_url() refuses (control characters, '//' and '/\' starts, non-paths) and why it matches pg_safe_redirect_path() (PR #3563)
 - session-token-binding.md: How a signed-in session is bound to its auth_tokens row (selector kept in the session), what ends a session server-side, and the rules every sign-in and minting path must follow.
 - sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
+- site-fetch-language.md: Site-side fetch()/XMLHttpRequest calls send the page language (pg_lang from <html data-pg-lang>) themselves: which scripts do it, how the server reads it, the scan test
 - site-log-client-address.md: Which address a site log row records: pg_auth_request_address(), the visitor behind a trusted proxy, in both log_activity() copies and the e-mail-a-friend limit (#2044)
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - sms-consent-box.md: The SMS marketing box beside the e-mail box (PR #3660, #3694 checkout, #3715 custom forms): when it is drawn, how it starts, the consent_log sms rows it writes
