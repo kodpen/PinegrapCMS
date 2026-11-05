@@ -638,6 +638,7 @@
     "Only on the canvas. Visitors see the part that fits them.": "Yalnızca tuvalde. Ziyaretçiler kendilerine uyan kısmı görür.",
     "Only on {var:1}": "Yalnız şu günlerde: {var:1}",
     "Only one option can be chosen in this poll.": "Bu oylamada yalnız bir seçenek seçilebilir.",
+    "Only orders in the chosen date range that match every filter are counted.": "Yalnızca seçilen tarih aralığında olup tüm filtrelere uyan siparişler sayılır.",
     "Only pages with a shopping cart are listed. Disabled while \"Stay on the page\" is on.": "Sadece alışveriş sepeti olan sayfalar listelenir. \"Sayfada kal\" açıkken devre dışıdır.",
     "Only pause, resume and cancel at the end of the period are possible here.": "Burada yalnızca duraklatma, devam ettirme ve dönem sonunda iptal yapılabilir.",
     "Only people in the channel who may write in it can be asked to approve.": "Yalnız kanalda olan ve yazabilen kişilerden onay istenebilir.",
