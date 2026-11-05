@@ -423,10 +423,16 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
 
             // Insert the rules. A refused insert takes the record back out,
             // so no theme without rules (and without a file) keeps the name.
+            $system_theme_properties_for_sql = '';
+
+            foreach ($rule_rows as $rule_row) {
+                $system_theme_properties_for_sql .= (($system_theme_properties_for_sql !== '') ? ', ' : '') . "('" . (int) $theme_id . "', " . $rule_row . ")";
+            }
+
             $query =
                 "INSERT INTO system_theme_css_rules
                     (file_id, " . $rule_columns . ")
-                VALUES ('" . (int) $theme_id . "', " . implode("), ('" . (int) $theme_id . "', ", $rule_rows) . ")";
+                VALUES " . $system_theme_properties_for_sql;
 
             if (!mysqli_query(db::$con, $query)) {
                 db_q("DELETE FROM system_theme_css_rules WHERE file_id = ?", array((string) $theme_id));
