@@ -388,21 +388,46 @@ $undo_card = function ($label) use ($card) {
         <button type="button" id="pg_import_undo" class="btn btn-outline theme-danger"><i class="bi bi-arrow-counterclockwise me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h($label) . '</span></button>');
 };
 
-$body = '';
+// The screen is a form column (what the operator fills or acts on) and a
+// sticky status column written after it (the file, what it holds or what
+// was made); a step with something to send has its buttons in a sticky bar
+// below both. A form wraps the whole row so the bar's buttons submit it.
+$main = '';
+$side = '';
+$buttons = '';
+$form_open = '';
+$form_close = '';
+$before = '';
 $field_list = array();
+
+// One row of the status column's Summary: a label and its plain value.
+$summary_row = function ($label, $value, $last = false) {
+    return '
+                <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                    <dt class="fw-normal">' . h($label) . '</dt>
+                    <dd class="mb-0 fw-bold text-end text-break">' . h($value) . '</dd>
+                </div>';
+};
 
 if ($import === null) {
 
-    $body .= '<form name="form" action="import.php" method="post" enctype="multipart/form-data">
+    $form_open = '<form name="form" action="import.php" method="post" enctype="multipart/form-data">
         ' . get_token_field() . '
-        <input type="hidden" name="action" value="upload">
-        ' . $card(lang('Export file'), '
+        <input type="hidden" name="action" value="upload">';
+    $form_close = '</form>';
+
+    $main .= $card(lang('Export file'), '
             <label for="file" class="form-label">' . h(lang('File')) . '</label>
             <input type="file" id="file" name="file" class="' . $liveform->create_error_class('file', 'form-control') . '" accept=".xml,.csv,.txt,text/xml,application/xml,text/csv" required>
-            ' . pg_upload_limit_hint() . '
-            <p class="small fg-secondary mt-5 mb-12">' . h(lang('A WordPress export (Tools, Export), a WooCommerce products CSV or a Shopify products or customers CSV. The file is read first and nothing is written until you start.')) . '</p>
-            <button type="submit" class="btn btn-solid theme-success"><i class="bi bi-upload me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Upload and check')) . '</span></button>') . '
-    </form>';
+            ' . pg_upload_limit_hint());
+
+    $buttons = '<button type="submit" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Upload and check')) . '</span></button>';
+
+    $side .= $card(lang('What Is Imported'), '
+            <ul class="small ps-5 mb-0">
+                <li class="mb-2">' . h(lang('A WordPress export (Tools, Export), a WooCommerce products CSV or a Shopify products or customers CSV. The file is read first and nothing is written until you start.')) . '</li>
+                <li>' . h(lang('Nothing is overwritten: an item imported already is skipped and named in the report. Everything the import makes can be undone for 30 days.')) . '</li>
+            </ul>');
 
     $list = '';
 
@@ -418,7 +443,7 @@ if ($import === null) {
     }
 
     if ($list !== '') {
-        $body .= $card(lang('Earlier imports'), '<div class="table-responsive"><table class="table"><thead><tr>
+        $main .= $card(lang('Earlier imports'), '<div class="table-responsive"><table class="table"><thead><tr>
             <th scope="col">' . h(lang('File')) . '</th>
             <th scope="col">' . h(lang('Kind')) . '</th>
             <th scope="col">' . h(lang('Status')) . '</th>
@@ -430,35 +455,21 @@ if ($import === null) {
 } else {
 
     $status = $import['status'];
-    $body .= '<p class="mb-0">' . h(lang(array('string' => '{var:1}, {var:2}: {var:3}', 'vars' => array($import['file_name'], $kinds[$import['kind']] ?? $import['kind'], $status_labels[$status] ?? $status)))) . '</p>';
+    $summary = $card(lang('Summary'), '<dl class="mb-0">'
+        . $summary_row(lang('File'), (string) $import['file_name'])
+        . $summary_row(lang('Kind'), (string) ($kinds[$import['kind']] ?? $import['kind']))
+        . $summary_row(lang('Status'), (string) ($status_labels[$status] ?? $status), true) . '
+            </dl>');
 
     if ($status === 'dry_run') {
 
         $dry = (array) ($import['report']['dry'] ?? array());
 
         // The dry run tallies what the writer will refuse under failed.
-        $body .= $card(lang('What the file holds'), $counts_table($dry['counts'] ?? array(), array('made' => lang('New'), 'skipped' => lang('Imported already'), 'failed' => lang('Will be skipped')))
-            . (empty($dry['complete']) ? '<p class="small fg-secondary mb-0">' . h(lang('The file is large; only its first part was counted. The import reads all of it.')) . '</p>' : ''));
-
-        $sample = '';
-
-        foreach ((array) ($dry['lines'] ?? array()) as $line) {
-            $sample .= '<tr>
-                <td>' . h($writer_kinds[$line['kind'] ?? ''] ?? ($line['kind'] ?? '')) . '</td>
-                <td>' . h((string) ($line['title'] ?? '')) . '</td>
-                <td>' . h((string) ($line['detail'] ?? '')) . '</td>
-                <td>' . (!empty($line['seen']) ? h(lang('Imported already')) : h((string) ($line['refusal'] ?? ''))) . '</td>
-            </tr>';
-        }
-
-        if ($sample !== '') {
-            $body .= $card(lang('First items'), '<div class="table-responsive"><table class="table"><thead><tr>
-                <th scope="col">' . h(lang('Kind')) . '</th>
-                <th scope="col">' . h(lang('Title')) . '</th>
-                <th scope="col">' . h(lang('Details')) . '</th>
-                <th scope="col">' . h(lang('Note')) . '</th>
-            </tr></thead><tbody>' . $sample . '</tbody></table></div>');
-        }
+        $side .= $summary . $card(lang('What the file holds'), $counts_table($dry['counts'] ?? array(), array('made' => lang('New'), 'skipped' => lang('Imported already'), 'failed' => lang('Will be skipped')))
+            . (empty($dry['complete']) ? '<p class="small fg-secondary mb-0">' . h(lang('The file is large; only its first part was counted. The import reads all of it.')) . '</p>' : '')
+            . '<p class="small fg-secondary mt-5 mb-0">' . h(lang('Nothing is overwritten: an item imported already is skipped and named in the report. Everything the import makes can be undone for 30 days.')) . '</p>
+            <p class="small fg-secondary mt-3 mb-0">' . h(lang(array('string' => 'An upload that is not started is removed with its file after {var:1} days.', 'vars' => array(PG_IMPORT_UNSTARTED_DAYS)))) . '</p>');
 
         $mapping = '';
 
@@ -466,7 +477,6 @@ if ($import === null) {
         // and fill a field row's select when a form is chosen, keeping the
         // types the row takes: printed as options in every row they weighed
         // a megabyte on a site with many forms.
-        $field_list = array();
         $mapping_rows = $import_mapping_rows($import['kind']);
 
         foreach ($mapping_rows as $name => $row) {
@@ -490,46 +500,73 @@ if ($import === null) {
                 }
             }
 
-            $mapping .= '<div class="row my-5">
-                <label for="map_' . h($name) . '" class="col-12 md:col-4 form-label">' . h((string) ($row['label'] ?? $name)) . '</label>
-                <div class="col-12 md:col-8"><select id="map_' . h($name) . '" name="map[' . h($name) . ']" class="form-control"' . $for . (!empty($row['required']) ? ' required' : '') . '>' . $options . '</select></div>
-            </div>';
+            $mapping .= '
+                <div class="col-12 md:col-6 my-3">
+                    <label for="map_' . h($name) . '" class="form-label">' . h((string) ($row['label'] ?? $name)) . '</label>
+                    <select id="map_' . h($name) . '" name="map[' . h($name) . ']" class="form-control"' . $for . (!empty($row['required']) ? ' required' : '') . '>' . $options . '</select>
+                </div>';
         }
 
-        $body .= '<form action="import.php" method="post">
-            ' . get_token_field() . '
-            <input type="hidden" name="action" value="start">
-            <input type="hidden" name="id" value="' . (int) $import_id . '">
-            ' . $card(lang('Where it goes'), ($mapping !== '' ? $mapping : '<p>' . h(lang('Nothing to choose for this kind of export.')) . '</p>')
-                . '<p class="small fg-secondary">' . h(lang('Nothing is overwritten: an item imported already is skipped and named in the report. Everything the import makes can be undone for 30 days.')) . '</p>
-                <button type="submit" class="btn btn-solid theme-success"><i class="bi bi-play me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start the import')) . '</span></button>') . '
-        </form>
-        <form action="import.php" method="post" class="my-7">
+        // Discard is its own form, outside the start form (forms do not
+        // nest); its button in the bar names it with the form attribute.
+        $before = '<form id="pg_import_discard" action="import.php" method="post">
             ' . get_token_field() . '
             <input type="hidden" name="action" value="discard">
             <input type="hidden" name="id" value="' . (int) $import_id . '">
-            <p class="small fg-secondary">' . h(lang(array('string' => 'An upload that is not started is removed with its file after {var:1} days.', 'vars' => array(PG_IMPORT_UNSTARTED_DAYS)))) . '</p>
-            <button type="submit" class="btn btn-outline theme-secondary"><i class="bi bi-x-lg me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Discard the upload')) . '</span></button>
         </form>';
+
+        $form_open = '<form action="import.php" method="post">
+            ' . get_token_field() . '
+            <input type="hidden" name="action" value="start">
+            <input type="hidden" name="id" value="' . (int) $import_id . '">';
+        $form_close = '</form>';
+
+        $main .= $card(lang('Where it goes'), ($mapping !== '' ? '<div class="row">' . $mapping . '
+            </div>' : '<p class="mb-0">' . h(lang('Nothing to choose for this kind of export.')) . '</p>'));
+
+        $sample = '';
+
+        foreach ((array) ($dry['lines'] ?? array()) as $line) {
+            $sample .= '<tr>
+                <td>' . h($writer_kinds[$line['kind'] ?? ''] ?? ($line['kind'] ?? '')) . '</td>
+                <td>' . h((string) ($line['title'] ?? '')) . '</td>
+                <td>' . h((string) ($line['detail'] ?? '')) . '</td>
+                <td>' . (!empty($line['seen']) ? h(lang('Imported already')) : h((string) ($line['refusal'] ?? ''))) . '</td>
+            </tr>';
+        }
+
+        if ($sample !== '') {
+            $main .= $card(lang('First items'), '<div class="table-responsive"><table class="table"><thead><tr>
+                <th scope="col">' . h(lang('Kind')) . '</th>
+                <th scope="col">' . h(lang('Title')) . '</th>
+                <th scope="col">' . h(lang('Details')) . '</th>
+                <th scope="col">' . h(lang('Note')) . '</th>
+            </tr></thead><tbody>' . $sample . '</tbody></table></div>');
+        }
+
+        $buttons = '<button type="submit" class="btn my-1 btn-solid theme-success"><i class="bi bi-play me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start the import')) . '</span></button>
+                <button type="submit" form="pg_import_discard" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-x-lg me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Discard the upload')) . '</span></button>';
 
     } elseif ($status === 'running') {
 
         $totals = pg_import_totals($import['counts']);
 
-        $body .= $card(lang('Importing'), '
+        $side .= $summary;
+
+        $main .= $card(lang('Importing'), '
             <p id="pg_import_progress" role="status" aria-live="polite">' . h(lang(array('string' => '{var:1} item(s) read: {var:2} made, {var:3} skipped, {var:4} failed.', 'vars' => array((int) $import['cursor'], $totals['made'], $totals['skipped'], $totals['failed'])))) . '</p>
             <p class="small fg-secondary mb-0">' . h(lang('You can leave this screen; the general job carries on.')) . '</p>');
 
-        $body .= $undo_card(lang('Stop and undo the import'));
+        $main .= $undo_card(lang('Stop and undo the import'));
 
     } else {
 
-        $body .= $card(lang('Report'), $counts_table($import['counts'], array('made' => lang('Made'), 'skipped' => lang('Skipped'), 'failed' => lang('Failed'))));
+        $report = $card(lang('Report'), $counts_table($import['counts'], array('made' => lang('Made'), 'skipped' => lang('Skipped'), 'failed' => lang('Failed'))));
 
         $redirects = (int) ($import['counts']['redirect']['made'] ?? 0);
 
         if (($redirects > 0) && ($status !== 'undone')) {
-            $body .= $card(lang('Redirects'), '
+            $main .= $card(lang('Redirects'), '
                 <p>' . h(lang(array('string' => '{var:1} old address(es) now send visitors to what they became (301). They are listed with the short links.', 'vars' => array(pg_format_number($redirects, 0))))) . '</p>
                 <a class="btn btn-outline theme-secondary" href="' . h($screen_url . '?id=' . (int) $import['id'] . '&export=redirects') . '"><i class="bi bi-download me-5" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Download the redirects (CSV)')) . '</span></a>');
         }
@@ -548,7 +585,7 @@ if ($import === null) {
 
         if ($lines !== '') {
             $more = (int) ($import['report']['more'] ?? 0);
-            $body .= $card(lang('Notes, skipped and failed'), '<div class="table-responsive"><table class="table"><thead><tr>
+            $main .= $card(lang('Notes, skipped and failed'), '<div class="table-responsive"><table class="table"><thead><tr>
                 <th scope="col">' . h(lang('Result')) . '</th>
                 <th scope="col">' . h(lang('Kind')) . '</th>
                 <th scope="col">' . h(lang('Item')) . '</th>
@@ -558,7 +595,17 @@ if ($import === null) {
         }
 
         if (pg_import_undo_open($status, $import['finished_at'], time())) {
-            $body .= $undo_card(lang('Undo the import'));
+            $main .= $undo_card(lang('Undo the import'));
+        }
+
+        // The counts sit beside the notes and Undo; with neither (undone,
+        // or past its 30 days with nothing to note) they fill the form
+        // column instead of leaving it empty.
+        if ($main === '') {
+            $main = $report;
+            $side .= $summary;
+        } else {
+            $side .= $summary . $report;
         }
     }
 }
@@ -586,13 +633,30 @@ pg_page_shell(
     )
 ) . '
 <main id="content" class="container-fluid">
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
+    ' . $before . '
+    ' . $form_open . '
     <div class="row">
-        <div class="col-12 lg:col-10 2xl:col-8">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->output_notices() . '
-            ' . $body . '
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            ' . $main . '
         </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">
+                ' . $side . '
+            </div>
+        </div>
+        ' . (($buttons !== '') ? '<div class="col-12 order-3">
+            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="container">
+                    <div class="btn-group flex-wrap justify-content-center">
+                        ' . $buttons . '
+                    </div>
+                </div>
+            </nav>
+        </div>' : '') . '
     </div>
+    ' . $form_close . '
 </main>
 <script>
 (function () {
