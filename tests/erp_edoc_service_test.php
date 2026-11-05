@@ -154,3 +154,37 @@ function test_erp_edoc_provider_cancel_asks_the_driver_after_an_unanswered_send(
 	pg_assert_true(($called !== false) && ($asked < $called) && ($called < $check), 'before the general path');
 	pg_assert_true(($refused !== false) && ($called < $refused), 'the driver\'s refusal stops the cancel');
 }
+
+// The row is marked 'sending' only where it still stands as the gate read
+// it: two sends that both passed the gate (a double click, a bulk send beside
+// the invoice screen) would otherwise both reach the provider and leave two
+// records there. The second one's UPDATE matches no row and it stops.
+function test_erp_edoc_invoice_send_claim_where()
+{
+	$where = erp_edoc_invoice_send_claim_where(array('id' => '42', 'edoc_status' => 'none', 'edoc_external_id' => '', 'updated_at' => '1700000000'));
+	pg_assert_contains("id = '42'", $where);
+	pg_assert_contains("edoc_status = 'none'", $where, 'the status the gate read');
+	pg_assert_contains("edoc_external_id = ''", $where, 'the id the gate read');
+	pg_assert_contains("updated_at = '1700000000'", $where, 'a stalled send is claimed once: the first claim moves updated_at');
+
+	$where = erp_edoc_invoice_send_claim_where(array('id' => 7, 'edoc_status' => 'rejected', 'edoc_external_id' => "50'01", 'updated_at' => 5));
+	pg_assert_contains("edoc_status = 'rejected'", $where);
+	pg_assert_contains("edoc_external_id = '50\\'01'", $where, 'escaped');
+
+	$where = erp_edoc_invoice_send_claim_where(array('id' => 9));
+	pg_assert_contains("edoc_status = 'none'", $where, 'an old row without the columns');
+	pg_assert_contains("updated_at = '0'", $where);
+}
+
+// The send claims the row with that condition and stops when it matched none.
+function test_erp_edoc_invoice_send_stops_when_the_claim_fails()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/edoc/service.php');
+	$start = strpos($source, "\nfunction erp_edoc_invoice_send(");
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 10) - $start);
+	$claim = strpos($body, 'erp_edoc_invoice_send_claim_where($invoice)');
+	$affected = strpos($body, 'mysqli_affected_rows(db::$con) !== 1');
+	$call = strpos($body, "erp_edoc_call('send_invoice'");
+
+	pg_assert_true(($claim !== false) && ($affected !== false) && ($claim < $affected) && ($affected < $call), 'claimed before the provider is called');
+}
