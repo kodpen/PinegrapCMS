@@ -8,8 +8,8 @@ description: The flow templates started by a site event that wait, ask for appro
 - `review_request` (#7113): order.delivered → delay 7 days (`WS_FLOW_DELAY_MAX` is a week) → a task to ask the customer for a review.
 - `restock_approval` (#7113): stock.low → approval in a channel, 48 h → task_open on approved, notify on rejected or expired. Unlike `stock_event`, nothing is ordered before somebody approves.
 - `return_task` (#7113): order.return.requested → a waiting task (due in 2 days, 48 h timeout) and a line at once → notify on timeout.
-- `booking_cancelled`: booking.cancelled → a line and a task to offer another time.
-- `order_cancelled`: order.cancelled (by the customer or the shop) → a line and a task to follow it up.
+- `booking_cancelled` (#7116): booking.cancelled → a line and a task to offer another time.
+- `order_cancelled` (#7116): order.cancelled (by the customer or the shop) → a line and a task to follow it up.
 
 ## Why no template for every received e-mail?
 - `workspace.mail.received` fires on every incoming mail, replies too, and carries no "new conversation" output; the mail module already tells the holder (`mail-notices-and-event.md`). A task per mail would double that and its timeout would fire on tasks left open after the mail was answered. The plan's T5 became `order_cancelled` instead.
