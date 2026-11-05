@@ -2294,6 +2294,8 @@ function workspace_flows_parity_table()
 		'events' => array(
 			array(array('order.created', 'order.status_changed', 'order.shipped', 'order.delivered', 'order.cancelled', 'order.return.requested', 'stock.low'), 3, 'event trigger box: shop events (with the shop only)'),
 			array(array('customer.created', 'customer.updated', 'form.submitted'), 3, 'event trigger box: site events'),
+			array(array('order.return.approved', 'order.return.received', 'order.return.refunded', 'marketplace.order.imported', 'inventory.changed'), 3, 'event trigger box: shop webhook events (with the shop only; a stock change kept only while a rule names it, pg_event_workspace_on_demand())'),
+			array(array('product.review.created', 'cart_quote.created', 'cart_quote.ordered', 'subscription.renewed', 'subscription.failed', 'subscription.cancelled', 'form.paid'), 3, 'event trigger box: shop webhook events once their tables exist (reviews, cart quotes, subscriptions, form fees); a paid form narrowed to one form'),
 			array(array('contact_group.joined'), 3, 'event trigger box: a contact joins a contact group, one start per contact, narrowed to one group'),
 			array(array('booking.created', 'booking.confirmed', 'booking.rescheduled', 'booking.cancelled'), 3, 'event trigger box: staff agenda events (once the booking tables exist), each checked against the bookings the creator\'s agenda shows (ws_events_creator_sees())'),
 			array(array('workspace.task.completed', 'workspace.task.status_changed', 'workspace.task.overdue', 'workspace.approval.decided', 'workspace.guest.message', 'workspace.mail.received'), 3, 'event trigger box: Workspace events, each checked against what the creator reads (ws_events_creator_sees())'),
