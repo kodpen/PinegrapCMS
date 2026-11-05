@@ -7699,28 +7699,17 @@ const StyleDesigner = (function () {
         // ── Ctrl+G exit handler — installed ONCE on the main designer
         // document so it works no matter which pane has focus (canvas
         // iframe forwards via the listener above; properties / tree
-        // panel keys land here directly). Pulls the original frontend
-        // URL from the `send_to` query param the designer was launched
-        // with — same value the Cancel button uses (see edit_system_style.php).
-        // Fallback to history.back when send_to is absent.
+        // panel keys land here directly). Goes to the design's exit
+        // address: the `send_to` the designer was launched with, as the
+        // server checked it with pg_safe_back_url() (designer_screen.php).
+        // The raw query parameter is never read here: a browser drops
+        // spaces and tabs from an address, so " javascript:" or another
+        // host would pass any shorter check. Falls back to history.back
+        // when there is no exit address.
         if (!window._sdExitDesignerBound) {
             window._sdExitDesignerBound = true;
             window._sdExitDesigner = function () {
-                var send_to = '';
-                try {
-                    var sp = new URLSearchParams(window.location.search);
-                    send_to = sp.get('send_to') || '';
-                } catch (_) { send_to = ''; }
-                var target = '';
-                if (send_to) {
-                    // URLSearchParams.get() already decodes percent-encoding,
-                    // so assign directly. Reject obviously dangerous schemes
-                    // (mirror of pg_safe_back_url's PHP guard).
-                    var low = send_to.toLowerCase();
-                    var bad = /^(javascript:|data:|vbscript:)/.test(low) || send_to.indexOf('//') === 0;
-                    if (!bad) target = send_to;
-                }
-                if (!target && _design && _design.exitUrl) target = _design.exitUrl;
+                var target = (_design && _design.exitUrl) ? _design.exitUrl : '';
                 // Same unsaved-changes gate as the back arrow in the tab strip.
                 if (target) { _pgExit(target); return; }
                 var goBack = function () {
