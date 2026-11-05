@@ -83,7 +83,8 @@ function test_audit_add_design_file_records_each_upload()
 function test_audit_edit_design_file_records_save_and_delete()
 {
 	audit_design_file_writers_test_writes('edit_design_file.php', 'DELETE FROM files', 'delete', 1);
-	audit_design_file_writers_test_writes('edit_design_file.php', 'UPDATE files', 'update', 1);
+	audit_design_file_writers_test_writes('edit_design_file.php', 'UPDATE files', 'update', 0);
+	audit_design_file_writers_test_writes('includes/forms/design_file_form.php', 'UPDATE files', 'update', 1);
 }
 
 // The two system-theme paths record after the size UPDATE, the upload path after its INSERT.
