@@ -11,7 +11,7 @@ description: Generated from the module field of the memory files: each includes/
 - `activitypub_comments`: [[activitypub-comments]], [[activitypub-reactions]]
 - `activitypub_inbox`: [[activitypub-inbox]]
 - `activitypub_moderation`: [[activitypub-moderation]]
-- `activitypub_outbox`: [[activitypub-outbox]]
+- `activitypub_outbox`: [[activitypub-outbox]], [[activitypub-outbox-collection]]
 - `activitypub_settings`: [[fediverse-settings]]
 - `address_autocomplete`: [[address-autocomplete]]
 - `ads`: [[api-design-ads]]
