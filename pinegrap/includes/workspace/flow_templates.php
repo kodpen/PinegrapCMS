@@ -428,6 +428,34 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'handle', 'next'), array('start', 'tell', 'next'), array('handle', 'late', 'timeout')));
     }
 
+    // A cancelled booking leaves a free slot and a guest who may still
+    // come: a line in the channel and a task to offer another time.
+    if (in_array('booking.cancelled', $events, true)) {
+        $out[] = array('key' => 'booking_cancelled', 'category' => 'sales', 'icon' => 'bi-calendar-x',
+            'title' => lang('Rebook a cancelled booking'),
+            'help' => lang('When a booking is cancelled, a line in the channel and a task to offer the guest another time.'),
+            'boxes' => array(
+                'start' => $on('booking.cancelled'),
+                'tell'  => $tell(lang('A booking was cancelled: {{record}}')),
+                'offer' => $task(lang('Offer another time for {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'tell', 'next'), array('start', 'offer', 'next')));
+    }
+
+    // A cancelled order, by the customer or the shop: a line in the
+    // channel and a task to find out why and win the customer back.
+    if (in_array('order.cancelled', $events, true)) {
+        $out[] = array('key' => 'order_cancelled', 'category' => 'sales', 'icon' => 'bi-bag-x',
+            'title' => lang('Follow up a cancelled order'),
+            'help' => lang('When an order is cancelled, a line in the channel and a task to find out why and help the customer.'),
+            'boxes' => array(
+                'start' => $on('order.cancelled'),
+                'tell'  => $tell(lang('An order was cancelled: {{record}}')),
+                'ask'   => $task(lang('Follow up the cancellation of {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'tell', 'next'), array('start', 'ask', 'next')));
+    }
+
     // The templates a scheduled action has no form for: tasks that wait for
     // each other, a wait between them, approvals and their outcomes.
 
