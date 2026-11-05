@@ -1970,7 +1970,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 
                 // if there is a previous menu item, then output the previous link
                 if (($current_menu_item_array_index > 0) && isset($menu_sequence[$current_menu_item_array_index - 1]) && (is_array($menu_sequence[$current_menu_item_array_index - 1]) == TRUE)) {
-                    $output_links = '<a href="' . OUTPUT_PATH . h($menu_sequence[$current_menu_item_array_index - 1]['link_page_name']) . '" class="previous">&lt;</a>&nbsp;&nbsp;&nbsp;';
+                    $output_links = '<a href="' . OUTPUT_PATH . h(encode_url_path($menu_sequence[$current_menu_item_array_index - 1]['link_page_name'])) . '" class="previous">&lt;</a>&nbsp;&nbsp;&nbsp;';
                 }
                 
                 $next_menu_item_array_index = 0;
@@ -1981,7 +1981,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 }
                 
                 // build the output
-                $menu_sequence_content = '<div class="software_menu_sequence">' . $output_links . '<a href="' . OUTPUT_PATH . h($menu_sequence[$next_menu_item_array_index]['link_page_name']) . '" class="next">&gt;</a></div>';
+                $menu_sequence_content = '<div class="software_menu_sequence">' . $output_links . '<a href="' . OUTPUT_PATH . h(encode_url_path($menu_sequence[$next_menu_item_array_index]['link_page_name'])) . '" class="next">&gt;</a></div>';
             }
         }
         

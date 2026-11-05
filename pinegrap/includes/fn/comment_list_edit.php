@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The Comments list (view_comments.php) and its quick edit: every
- * one-line value the comment screen (edit_comment.php) changes is a field,
+ * value the comment screen (edit_comment.php) changes is a field,
  * checked and written by that screen's own form code
  * (includes/forms/comment_form.php).
  *
@@ -38,6 +38,7 @@ function pg_comment_quick_edit_columns()
 
     return array(
         'name' => array('type' => 'text', 'label' => lang('Name'), 'max' => 100),
+        'message' => array('type' => 'textarea', 'label' => lang('Message'), 'required' => true),
         'published' => array('type' => 'select', 'label' => lang('Published'), 'options' => $yes_no),
         'featured' => array('type' => 'select', 'label' => lang('Featured'), 'options' => $yes_no),
         'scheduled' => array('type' => 'text', 'label' => lang('At a Scheduled Time'), 'max' => 19),
@@ -47,9 +48,9 @@ function pg_comment_quick_edit_columns()
 }
 
 /**
- * The list's columns; each one the screen changes on one line is editable.
- * The message is several lines and stays text, as do the store's reply and
- * a question's answer, which the list does not show.
+ * The list's columns; each one the screen changes is editable (the message
+ * over several lines). The store's reply and a question's answer are not
+ * list columns; they stay on the comment screen.
  *
  * @param bool $edit whether the list has quick edit
  * @return array key => spec, as pg_list_table_printed() takes them
@@ -63,7 +64,7 @@ function pg_comment_list_columns($edit)
         'scheduled' => array('heading' => lang('At a Scheduled Time'), 'kind' => 'date', 'editable' => 'text'),
         'publish_cancel' => array('heading' => lang('Cancel if Added First'), 'kind' => 'check', 'editable' => 'select'),
         'rating' => array('heading' => lang('Rating'), 'editable' => 'select'),
-        'message' => array('heading' => lang('Message'), 'sortable' => false),
+        'message' => array('heading' => lang('Message'), 'sortable' => false, 'editable' => 'textarea'),
         'submitted' => array('heading' => lang('Submitted'), 'kind' => 'date'),
         'go' => array('heading' => lang('Go To Comment'), 'kind' => 'actions'),
     );
@@ -216,6 +217,7 @@ function pg_comment_quick_form_values(array $comment, $field, $value)
 
     switch ($field) {
         case 'name':
+        case 'message':
         case 'rating':
             $values[$field] = $value;
             break;
@@ -305,7 +307,7 @@ function pg_comment_list_cells(array $comment, array $quick_edit, array $bin_fol
         'scheduled' => pg_list_cell(($scheduled === '') ? '' : '<span class="badge theme-primary fw-light">' . h($scheduled) . '</span>', 'align-middle', $attributes('scheduled', array('data-pg-sort-value' => ($scheduled === '') ? '' : (string) $comment['publish_date_and_time']))),
         'publish_cancel' => $check('publish_cancel'),
         'rating' => pg_list_cell($output_rating, 'align-middle text-nowrap', $attributes('rating', array('data-pg-sort-value' => $rating))),
-        'message' => pg_list_cell($photo . '<p class="mb-0">' . h(truncate($comment['message'], 84, '...')) . '</p>'),
+        'message' => pg_list_cell($photo . '<p class="mb-0">' . h(truncate($comment['message'], 84, '...')) . '</p>', 'align-middle', $attributes('message')),
         'submitted' => pg_list_table_when_cell($comment['created_timestamp'], $comment['created_username'] ?? ''),
         'go' => pg_list_cell($go),
     );
@@ -398,6 +400,7 @@ function pg_comment_quick_update($id, $field, $value, array $user, array $quick_
 
     $columns = array(
         'name' => (string) $form->get_field_value('name'),
+        'message' => (string) $form->get_field_value('message'),
         'featured' => (string) $form->get_field_value('featured'),
     ) + pg_comment_form_publish_columns($form);
 

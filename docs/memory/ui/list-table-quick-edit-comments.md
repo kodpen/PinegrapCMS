@@ -5,7 +5,7 @@ module: comment_list_edit
 ---
 
 ## Which cells change?
-- Every one-line value `edit_comment.php` changes (`pg_comment_quick_edit_columns()`): Name, Published, Featured, At a Scheduled Time (typed in the site's date and time format), Cancel if Added First, Rating (None, 1–5; a new column, sortable). Text: Message (several lines), Submitted, Go To Comment. The store's reply and a question's answer are several lines and not on the list. `tests/comment_list_edit_test.php` fails for a new column that is neither.
+- Every value `edit_comment.php` changes (`pg_comment_quick_edit_columns()`): Name, Message (`textarea`, required as on the screen; the cell shows the first 84 characters, the field the whole text), Published, Featured, At a Scheduled Time (typed in the site's date and time format), Cancel if Added First, Rating (None, 1–5; a new column, sortable). Text: Submitted, Go To Comment. The store's reply and a question's answer are several lines and not on the list. `tests/comment_list_edit_test.php` fails for a new column that is neither.
 - Per row (`pg_comment_quick_row_fields()`): Cancel if Added First only while the comment is scheduled, Rating only while its page rates comments, as the screen draws them; the write refuses the others.
 
 ## How do Published and the schedule map to the screen's publish choice?

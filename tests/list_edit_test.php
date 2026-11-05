@@ -38,6 +38,19 @@ function test_list_edit_text_is_trimmed_and_kept_on_one_line()
 	pg_assert_same('Blue shirt', $read['value'], 'line break and tab became one space, ends trimmed');
 }
 
+function test_list_edit_textarea_keeps_its_lines()
+{
+	$column = array('type' => 'textarea', 'label' => 'Message', 'required' => true, 'max' => 20);
+
+	$read = pg_list_edit_parse($column, "  Blue\r\nshirt\tnow\r\n ");
+	pg_assert_true($read['ok'], 'accepted');
+	pg_assert_same("Blue\nshirt now", $read['value'], 'line breaks kept as \\n, a tab became a space, ends trimmed');
+	pg_assert_same("a\nb", pg_list_edit_parse($column, "a\rb")['value'], 'a lone carriage return is a line break');
+	pg_assert_false(pg_list_edit_parse($column, " \n \n")['ok'], 'only line breaks and spaces is empty');
+	pg_assert_false(pg_list_edit_parse(array('max' => 9) + $column, "Şüphe\nlimi")['ok'], 'ten characters, the break counted, do not fit nine');
+	pg_assert_true(in_array('textarea', pg_list_table_edit_kinds(), true), 'a list column may be a several-line field');
+}
+
 function test_list_edit_text_longer_than_its_column_is_refused()
 {
 	$columns = list_edit_columns();

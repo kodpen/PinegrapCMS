@@ -43,14 +43,6 @@ if ($user_ids === null) {
 
 // if at least one user was selected
 if ($user_ids) {
-    // if user is an administrator, get number of administrators in order to prevent the last administrator from being deleted
-    if ($user['role'] == 0) {
-        $query = "SELECT COUNT(user_id) FROM user WHERE user_role = '0'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-        $row = mysqli_fetch_row($result);
-        $number_of_administrators = $row[0];
-    }
-    
     $number_of_users = 0;
 
     foreach ($user_ids as $user_id) {
@@ -71,22 +63,17 @@ if ($user_ids) {
         // if logged-in user's role is administrator or if logged-in user's role is above this user's role,
         // then logged-in user has access to delete this user, so continue to delete user
         if (($user['role'] == 0) || ($user['role'] < $user_role)) {
-            // if this user is not an administrator or the number of administrators is greater than one, then we can allow this user to be deleted, so prepare checkbox
-            if (($user_role != 0) || ($number_of_administrators > 1)) {
+            // The last enabled administrator is not deleted, the same rule as
+            // the edit screen (pg_user_is_last_admin()): a disabled
+            // administrator cannot sign in, so it does not count as another
+            // one. Asked per user, after the deletions before it.
+            if (($user_role != 0) || !pg_user_is_last_admin($user_id)) {
                 pg_user_delete($user_id);
 
                 $number_of_users++;
-                
-                // if user that was deleted was an administrator, then decrement number of administrators
-                if ($user_role == 0) {
-                    $number_of_administrators--;
-                }
-                
-            // else add notice to notify user that administrator user could not be deleted
+
             } else {
-                if (($user['role'] == 0) && ($number_of_administrators == 1)) {
-                    $liveform_view_users->mark_error('', lang('A user could not be deleted because it was the only administrator.'));
-                }
+                $liveform_view_users->mark_error('', lang('A user could not be deleted because it was the only administrator.'));
             }
         }
     }

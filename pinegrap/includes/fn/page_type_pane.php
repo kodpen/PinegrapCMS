@@ -147,6 +147,25 @@ function pg_page_type_user_may_set($user, $page_type)
 }
 
 /**
+ * The page type a form post names, or $fallback when it names none: a
+ * string that is one of the page types (get_page_type_names()). The column
+ * is an enum, so any other value would fail the write or store an empty
+ * type, and an array would stop the request.
+ *
+ * @param mixed  $posted   The posted type
+ * @param string $fallback The type to keep instead
+ * @return string
+ */
+function pg_page_type_posted($posted, $fallback)
+{
+    if (is_string($posted) && (get_page_type_name($posted) !== null)) {
+        return $posted;
+    }
+
+    return (string) $fallback;
+}
+
+/**
  * The layout type a save leaves on the page, as edit_page.php decides it: a
  * type without a layout keeps what it has; administrators and designers pick
  * either one, everybody else may only go back to the system layout.

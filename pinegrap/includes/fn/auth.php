@@ -5120,7 +5120,8 @@ function pg_login_captcha_check($answer)
         return 'expired';
     }
 
-    $answer = trim((string) $answer);
+    // An answer posted as an array (login_captcha_answer[]=) is a wrong one.
+    $answer = is_scalar($answer) ? trim((string) $answer) : '';
 
     return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $pending['answer'])) ? 'ok' : 'wrong';
 }

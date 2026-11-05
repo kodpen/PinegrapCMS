@@ -3871,8 +3871,9 @@ function pg_pb_variant_sets_screen()
     // Remembered per user, the same way the other list screens do it, so coming
     // back from an edit does not drop the filter the operator was working with.
     foreach (array('status', 'parent') as $filter_key) {
-        if (isset($_GET[$filter_key])) {
-            $_SESSION['software']['ecommerce']['view_products2'][$filter_key] = trim($_GET[$filter_key]);
+        // One value only: trim() of ?status[]=x is a TypeError on PHP 8.
+        if (isset($_GET[$filter_key]) && is_scalar($_GET[$filter_key])) {
+            $_SESSION['software']['ecommerce']['view_products2'][$filter_key] = trim((string) $_GET[$filter_key]);
         }
     }
 

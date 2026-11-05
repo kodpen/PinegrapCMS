@@ -6,7 +6,7 @@ module: image_editor
 
 ## Which layers does a selection make?
 - `type: 'erase'` (optional `fill` '#rrggbb'; see-through without) and `type: 'adjust'` (`adjust`, `filter` as the document's), both `shape: 'area'` of `M.areaLayer()` with the selection's `feather`, as Redact the selection makes. They move, stretch, hide and undo as layers, paint nothing into the overlay, and the stage shows them as the fill, a checkerboard, or the picture again under the area's own colour filter over the core's (`maskNode()` in `pg_image_editor_area.js`, the redact part's shape helpers through `X.areaShapes`).
-- A new one is selected with the Select tool, so its panel shows: Erase has "Fill with a colour"; Adjust inside is the Adjust panel scoped to the layer (`adjustTarget()`: the sliders and filters write to the one selected adjust layer, no vignette or sharpening).
+- A new one is selected with the Select tool, so its panel shows: Erase has its fills (see-through, colour, blur, a picture from Files: `image-editor-remove-background.md`); Adjust inside is the Adjust panel scoped to the layer (`adjustTarget()`: the sliders and filters write to the one selected adjust layer, no vignette or sharpening).
 
 ## What do Keep only and Copy to a layer do?
 - Keep only, one undo step: the crop becomes the selection's box (inside the old crop; an output size scales with it) and an erase layer covers the rest of the box (`M.areaRest()`; none for a rectangle). A straightened picture or one on a canvas keeps its crop, which would move it under its layers: only the rest is erased. The selection goes.

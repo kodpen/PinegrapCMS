@@ -1278,7 +1278,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     //     `/?cat=<group-slug>` — read from $_GET['cat'].
     $segment = '';
     if ($is_homepage_catalog) {
-        $segment = isset($_GET['cat']) ? trim((string)$_GET['cat']) : '';
+        $segment = (isset($_GET['cat']) && is_scalar($_GET['cat'])) ? trim((string)$_GET['cat']) : '';
     } elseif ($page_slug_full !== '' && $_lps_pos !== false) {
         $segment = mb_substr($page_slug_full, $_lps_pos + 1, null, 'UTF-8');
         $next_slash = mb_strpos($segment, '/', 0, 'UTF-8');
@@ -1328,7 +1328,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     }
 
     // ?sort=... — only honored when sort_control_enabled
-    $sort_url_key = ($sort_control_enabled && isset($_GET['sort'])) ? (string)$_GET['sort'] : '';
+    // One value only: ?sort[]=x is no sort (a cast array is a warning).
+    $sort_url_key = ($sort_control_enabled && isset($_GET['sort']) && is_scalar($_GET['sort'])) ? (string)$_GET['sort'] : '';
     if (!in_array($sort_url_key, $valid_sort_options, true)) $sort_url_key = '';
 
     // ?pmin / ?pmax — values are in display units (TL, USD), converted to cents for SQL
@@ -6370,7 +6371,7 @@ function _pg_catalog_listing_resolve_active_group($product_group_id, $page_slug_
 
     $segment = '';
     if ($is_homepage) {
-        $segment = isset($_GET['cat']) ? trim((string)$_GET['cat']) : '';
+        $segment = (isset($_GET['cat']) && is_scalar($_GET['cat'])) ? trim((string)$_GET['cat']) : '';
     } elseif ($page_slug_full !== '' && $slash !== false) {
         $segment = mb_substr($page_slug_full, $slash + 1, null, 'UTF-8');
         $next = mb_strpos($segment, '/', 0, 'UTF-8');

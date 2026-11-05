@@ -1458,6 +1458,7 @@
     "A stylesheet from the file manager, loaded after everything else so it wins over the look and the palette. Shown in the Styles list and the Themes panel.": "Dosya yöneticisinden bir stil dosyası; her şeyden sonra yüklendiği için görünümün ve paletin üzerine yazar. Stiller listesinde ve Temalar panelinde görünür.",
     "A subscription could not be created for an order line.": "Bir sipariş satırı için abonelik oluşturulamadı.",
     "A subscription renewal was reported": "Bir abonelik yenilemesi bildirildi",
+    "A subscription whose renewal payment is still being settled cannot be paused.": "Yenileme ödemesi henüz sonuçlanmamış bir abonelik duraklatılamaz.",
     "A subscription with a payment due cannot be paused: it would stop the payment retries.": "Ödemesi bekleyen bir abonelik duraklatılamaz: ödeme denemeleri durur.",
     "A suite, a bottle of sparkling wine on arrival, a dinner on the terrace and a late check-out.": "Bir süit, gelişte bir şişe köpüklü şarap, terasta bir akşam yemeği ve geç çıkış.",
     "A summary is proposed for the channel the request came from.": "Özet yalnız isteğin geldiği kanal için önerilir.",

@@ -429,11 +429,22 @@ if ($_POST) {
 
 	if ($action === 'push_all' && $account) {
 
-		$queued = mp_enqueue_account($account_id);
+		// This account only, as the shop view's "Send all now": mp_enqueue()
+		// queues every account a product is matched on, so the count named
+		// other accounts' rows and a paused account still queued theirs.
+		$queued = mp_matches_send($account, null);
 
-		$liveform->add_notice($queued
-			? lang(array('string' => '{var:1} product(s) queued. They go out on the next run.', 'vars' => array(pg_format_number($queued, 0))))
-			: lang('Nothing to send: no product is matched and active on this account.'));
+		if ($account['status'] !== 'active') {
+
+			$liveform->add_warning(lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.'));
+
+		} else {
+
+			$liveform->add_notice($queued
+				? lang(array('string' => '{var:1} product(s) queued. They go out on the next run.', 'vars' => array(pg_format_number($queued, 0))))
+				: lang('Nothing to send: no product is matched and active on this account.'));
+
+		}
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-queue');
 

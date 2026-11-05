@@ -1476,9 +1476,7 @@ if (!$_POST) {
         // A type the software does not know would not fit the page_type
         // column, so the page keeps its current type instead. The value is
         // read from $_POST in every step below, so it is corrected there.
-        if (get_page_type_name((string) ($_POST['type'] ?? '')) === null) {
-            $_POST['type'] = $current_page_type;
-        }
+        $_POST['type'] = pg_page_type_posted($_POST['type'] ?? null, $current_page_type);
 
         $form_url = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? ''));
 
@@ -1640,26 +1638,13 @@ if (!$_POST) {
             $sql_page_type = '';
         }
 
-        // If the user is allowed to change the page type property,
-        // and the page type supports a layout,
-        // and the user is an admin or a designer,
-        // or the user just selected the system option,
-        // then use the value that the user selected.
-        if (
-            $sql_page_type
-            && check_if_page_type_supports_layout($_POST['type'])
-            &&
-            (
-                (USER_ROLE < 2)
-                || ($_POST['layout_type'] == 'system')
-            )
-        ) {
-            $layout_type = $_POST['layout_type'];
-
-        // Otherwise use old layout type value.
-        } else {
-            $layout_type = $current_layout_type;
-        }
+        // A user allowed to change the page type sets the layout type too
+        // (pg_page_type_pane_layout_type(): a type with a layout, either value
+        // for an administrator or designer, back to system for anybody else);
+        // otherwise, or for a value that is no layout type, it stays as stored.
+        $layout_type = $sql_page_type
+            ? pg_page_type_pane_layout_type($_POST['type'], $_POST['layout_type'] ?? null, (string) $current_layout_type, USER_ROLE)
+            : $current_layout_type;
         
         // call the function that is responsible for updating the tag cloud table for pages
         update_tag_cloud_keywords_for_page($_POST['id'], $_POST['search'] ?? '', $_POST['search_keywords'] ?? '', $current_page_search, $current_search_keywords);

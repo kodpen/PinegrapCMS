@@ -21,6 +21,13 @@ if (!defined('PG_ERP_ENTRY')) {
     exit;
 }
 
+// What a rendered value's opening brace is written as until the template is
+// done (erp_template_render()): a control character no template or value
+// keeps.
+if (!defined('ERP_TEMPLATE_BRACE_MASK')) {
+    define('ERP_TEMPLATE_BRACE_MASK', "\x01");
+}
+
 /**
  * Render a mustache-style template against an array of data.
  *
@@ -43,6 +50,24 @@ if (!defined('PG_ERP_ENTRY')) {
  */
 function erp_template_render($template, $data)
 {
+    // Values go into the page with their braces masked, and the masks are
+    // undone once every pass has run: a section's output is scanned again by
+    // the enclosing passes, which read a value typed as {{{account.title}}}
+    // (an address from a checkout, say) as a placeholder and printed that
+    // field unescaped.
+    return str_replace(ERP_TEMPLATE_BRACE_MASK, '{', erp_template_render_pass($template, $data));
+}
+
+/**
+ * One pass of erp_template_render(): values come out with their opening
+ * braces masked (ERP_TEMPLATE_BRACE_MASK), so no later pass reads them.
+ *
+ * @param string $template
+ * @param array  $data
+ * @return string
+ */
+function erp_template_render_pass($template, $data)
+{
     $data = is_array($data) ? $data : array();
 
     // Sections first, so the repeated block is rendered against each row before
@@ -55,7 +80,7 @@ function erp_template_render($template, $data)
             $block = $match[3];
 
             if ($inverted) {
-                return erp_template_truthy($value) ? '' : erp_template_render($block, $data);
+                return erp_template_truthy($value) ? '' : erp_template_render_pass($block, $data);
             }
 
             if (!erp_template_truthy($value)) {
@@ -66,7 +91,7 @@ function erp_template_render($template, $data)
                 $output = '';
                 foreach ($value as $row) {
                     $scope = is_array($row) ? array_merge($data, $row) : $data;
-                    $output .= erp_template_render($block, $scope);
+                    $output .= erp_template_render_pass($block, $scope);
                 }
                 return $output;
             }
@@ -75,7 +100,7 @@ function erp_template_render($template, $data)
             // An associative array also becomes the inner scope, so {{title}}
             // inside {{#seller}} reads seller.title.
             $scope = is_array($value) ? array_merge($data, $value) : $data;
-            return erp_template_render($block, $scope);
+            return erp_template_render_pass($block, $scope);
         },
         $template
     );
@@ -85,7 +110,7 @@ function erp_template_render($template, $data)
     $template = preg_replace_callback(
         '/\{\{\{\s*([A-Za-z0-9_.]+)\s*\}\}\}/',
         function ($match) use ($data) {
-            return erp_template_scalar(erp_template_lookup($data, $match[1]));
+            return erp_template_mask(erp_template_scalar(erp_template_lookup($data, $match[1])));
         },
         $template
     );
@@ -93,10 +118,23 @@ function erp_template_render($template, $data)
     return preg_replace_callback(
         '/\{\{\s*([A-Za-z0-9_.]+)\s*\}\}/',
         function ($match) use ($data) {
-            return h(erp_template_scalar(erp_template_lookup($data, $match[1])));
+            return erp_template_mask(h(erp_template_scalar(erp_template_lookup($data, $match[1]))));
         },
         $template
     );
+}
+
+/**
+ * A value with its opening braces masked, for erp_template_render() to undo
+ * once every pass has run. A mask character the value carries itself is
+ * dropped, so the value cannot bring a brace of its own back.
+ *
+ * @param string $value
+ * @return string
+ */
+function erp_template_mask($value)
+{
+    return str_replace('{', ERP_TEMPLATE_BRACE_MASK, str_replace(ERP_TEMPLATE_BRACE_MASK, '', (string) $value));
 }
 
 /**

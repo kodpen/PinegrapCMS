@@ -1493,7 +1493,7 @@ function pg_list_sort_menu($url, $columns, $levels, $default, $query = array(), 
  *
  * A screen describes the columns it lets change once, as field => definition:
  *
- *   'type'     'text', 'integer', 'money' or 'select'
+ *   'type'     'text', 'textarea' (several lines), 'integer', 'money' or 'select'
  *   'label'    the column's heading, for the input's name and the messages
  *   'max'      the longest text, or the highest number
  *   'min'      the lowest number (integer; 0 when not given)
@@ -1635,6 +1635,8 @@ function pg_list_edit_cell_attributes($columns, $field, $id, $value)
  *
  *   text     trimmed, control characters turned into spaces (a one-line
  *            field; a pasted value often brings a line break)
+ *   textarea the same over several lines: line breaks kept as "\n",
+ *            tabs and other control characters turned into spaces
  *   integer  an int, or '' when the column allows empty
  *   money    the digits and separators as typed, spaces taken out
  *   decimal  the same, for a figure that is not an amount (a weight)
@@ -1664,6 +1666,20 @@ function pg_list_edit_parse($column, $raw)
     switch ((string) ($column['type'] ?? '')) {
         case 'text':
             $value = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $value));
+
+            if (($value === '') && !empty($column['required'])) {
+                return $fail(lang(array('string' => '{var:1|c} is required', 'vars' => array($label))));
+            }
+
+            if (isset($column['max']) && (mb_strlen($value, 'UTF-8') > (int) $column['max'])) {
+                return $fail(lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array($label, (int) $column['max']))));
+            }
+
+            return $pass($value);
+
+        case 'textarea':
+            $value = preg_replace('/\r\n?/', "\n", $value);
+            $value = trim(preg_replace('/[\x00-\x09\x0B-\x1F\x7F]+/u', ' ', $value));
 
             if (($value === '') && !empty($column['required'])) {
                 return $fail(lang(array('string' => '{var:1|c} is required', 'vars' => array($label))));

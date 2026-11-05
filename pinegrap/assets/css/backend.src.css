@@ -22178,6 +22178,12 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .pg-list-table-field {
   min-width: 6rem;
 }
+/* A several-line field (a message, a description) is wide enough to read
+   and grows by hand, never wider than its cell. */
+textarea.pg-list-table-field-lines {
+  min-width: 14rem;
+  resize: vertical;
+}
 /* A select in a cell coloured by an access level (.private * and the like)
    keeps the field's own colour; it and each option wear their own level's
    class instead (the Pages list's folders, tintSelect()). */

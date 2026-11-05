@@ -240,6 +240,10 @@ if (!$_POST) {
     
 } else {
     validate_token_field();
+
+    // Every check below reads the type: one that is no page type is a
+    // standard page, as the form offers it first.
+    $_POST['type'] = pg_page_type_posted($_POST['type'] ?? null, 'standard');
     
     // verify that user has access to create page in the requested folder
     if (check_edit_access($_POST['folder']) == false) {
@@ -247,7 +251,7 @@ if (!$_POST) {
         output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    $name = trim($_POST['name']);
+    $name = (isset($_POST['name']) && is_string($_POST['name'])) ? trim($_POST['name']) : '';
     
     // If the page name field is blank.
     if ($name == '') {
@@ -309,18 +313,9 @@ if (!$_POST) {
     // A type the user was not given is saved as a standard page.
     $type = pg_page_type_user_may_set($user, $_POST['type']) ? $_POST['type'] : 'standard';
 
-    // If the page type supports a layout, and if the user is an admin or designer,
-    // then use layout type value that user selected.
-    if (
-        check_if_page_type_supports_layout($type)
-        && (USER_ROLE < 2)
-    ) {
-        $layout_type = $_POST['layout_type'];
-
-    // Otherwise force layout type to be system.
-    } else {
-        $layout_type = 'system';
-    }
+    // An administrator or designer picks the layout type of a type that has
+    // one; everybody else, and every other type, starts on the system layout.
+    $layout_type = pg_page_type_pane_layout_type($type, $_POST['layout_type'] ?? null, 'system', USER_ROLE);
     
     // An unchecked box is absent from the POST and stored as 0, and so is
     // the box of a type that is never in the site map (its row is hidden

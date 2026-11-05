@@ -48,12 +48,12 @@ function pg_test_design_file_quick_cells(array $over = array())
 	return pg_design_file_list_cells(pg_test_design_file_quick_row($over), pg_test_design_file_quick_fields(), false, '/pinegrap/view_design_files.php');
 }
 
-// Every one-line value the design file screen changes and the list shows
-// is an editable column with a cell field; the rest follow the file or
-// are several lines. A new column fails here until it is one or the other.
+// Every value the design file screen changes and the list shows is an
+// editable column with a cell field (the description over several lines);
+// the rest follow the file. A new column fails here until it is one or the other.
 function test_design_file_quick_every_screen_value_is_a_field()
 {
-	$text = array('thumbnail', 'type', 'size', 'optimized', 'description', 'last_modified', 'actions');
+	$text = array('thumbnail', 'type', 'size', 'optimized', 'last_modified', 'actions');
 	$fields = pg_test_design_file_quick_fields();
 	$built = pg_test_design_file_quick_cells();
 
@@ -106,7 +106,8 @@ function test_design_file_quick_post_changes_one_value()
 
 	pg_assert_same('', pg_design_file_quick_post(pg_test_design_file_quick_row(array('theme' => '0')), 'name', 'x.css')['theme'], 'an unchecked Theme switch posts nothing');
 	pg_assert_same('new.css', pg_design_file_quick_post($file, 'name', '  new.css ')['name'], 'the name is trimmed');
-	pg_assert_same("Main\nstyles", pg_design_file_quick_post($file, 'description', 'x')['description'], 'the description is not a quick edit field');
+	pg_assert_same("Two\nlines", pg_design_file_quick_post($file, 'description', "Two\nlines")['description'], 'the description as typed, its lines kept');
+	pg_assert_same('site.css', pg_design_file_quick_post($file, 'description', 'x')['name'], 'a description change keeps the name');
 }
 
 function test_design_file_form_refusal()

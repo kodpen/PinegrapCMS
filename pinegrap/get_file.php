@@ -131,7 +131,9 @@ if (!empty($_SERVER['HTTP_HOST'])) {
 }
 
 $file = array();
-$file['name'] = $_GET['name'];
+// A missing or array-valued name (?name[]=x) is no file: escape() takes a
+// string only.
+$file['name'] = (isset($_GET['name']) && is_string($_GET['name'])) ? $_GET['name'] : '';
 
 // Check to see if file exists in database and get file info.
 // We get the official name of the file, even though we already have the name
@@ -421,7 +423,7 @@ if (
             // then forward user to registration entrance screen with guest option
             if (
                 (USER_LOGGED_IN == FALSE)
-                && ($_SESSION['software']['guest'] !== TRUE)
+                && (($_SESSION['software']['guest'] ?? false) !== TRUE)
             ) {
                 get_file_sign_in_redirect('registration_entrance.php?allow_guest=true');
             }

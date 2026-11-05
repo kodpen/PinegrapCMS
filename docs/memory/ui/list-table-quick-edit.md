@@ -11,7 +11,7 @@ description: Quick edit mode of the list table driver (assets/js/pg_list_table_e
 
 ## How does the mode behave?
 - The button or F2 (in the list, or anywhere when the page has one such list; inside a field F2 too) turns it on and off. On: every such cell holds an input or a select; rows loaded later get theirs (`quickRows()` from `take()`). Off: the cells show what was stored; a field with focus is saved first.
-- A field saves on `change` (leaving it), Enter (then the same column on the next row; Shift+Enter the row before) or Ctrl+S; Escape puts the stored value back. A field's keys never reach the rows (Space, arrows, Ctrl+A, Escape stay in the field).
+- A field saves on `change` (leaving it), Enter (then the same column on the next row; Shift+Enter the row before) or Ctrl+S; Escape puts the stored value back. A `textarea` field keeps Enter for a new line; Ctrl+Enter goes on (`list-quick-edit-keyboard.md`). A field's keys never reach the rows (Space, arrows, Ctrl+A, Escape stay in the field).
 - A refusal keeps the typed value in the field, marks it (`is-invalid`, `aria-invalid`) and puts the server's reason under it (`.pg-list-table-field-note`, `aria-describedby`) and in the live region. Nothing was saved.
 - The details panel shows a field's cell as stored (`cell.pgQuickHtml`), not the input.
 

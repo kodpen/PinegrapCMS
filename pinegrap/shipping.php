@@ -251,6 +251,7 @@ function get_delivery_date($properties) {
         if (!$shipping_method) {
             return array(
                 'status' => 'error',
+                'delivery_date' => '',
                 'message' => 'Sorry, the shipping method could not be found.');
         }
     }
@@ -274,8 +275,9 @@ function get_delivery_date($properties) {
         'excluded_transit_dates' => $excluded_transit_dates
     ));
 
+    // A ship date error carries no delivery date; every caller reads one.
     if ($response['status'] == 'error') {
-        return $response;
+        return $response + array('delivery_date' => '');
     }
 
     $ship_date = $response['ship_date'];
@@ -297,6 +299,7 @@ function get_delivery_date($properties) {
             if (mb_strlen($zip_code) < 5) {
                 return array(
                     'status' => 'error',
+                    'delivery_date' => '',
                     'message' => 'Sorry, the zip code is invalid. It has less than 5 characters.');
             }
 
@@ -411,6 +414,7 @@ function get_delivery_date($properties) {
     if ($only_from_carrier) {
         return array(
             'status' => 'error',
+            'delivery_date' => '',
             'message' => 'Sorry, the delivery date could not be found from the carrier, and the request specified that we should not manually calculate a general delivery date.');
     }
 
@@ -446,6 +450,7 @@ function get_delivery_date($properties) {
     if (!$delivery_date) {
         return array(
             'status' => 'error',
+            'delivery_date' => '',
             'message' => 'Sorry, the delivery date could not be found.');
     }
 

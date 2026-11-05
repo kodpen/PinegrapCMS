@@ -8,7 +8,8 @@
  *
  * With the mode on, every cell of an editable column that carries its
  * data-pg-edit field is a field. A changed field is saved as soon as it is
- * left (or on Enter, which goes on to the same column of the next row);
+ * left (or on Enter, which goes on to the same column of the next row;
+ * in a several-line field Enter starts a new line and Ctrl+Enter goes on);
  * Escape puts the stored value back. The value goes to the screen's
  * pg_list_edit_request() endpoint, one cell per request, and the answer
  * draws the cell (and the other cells of the row it names) from what was
@@ -108,14 +109,25 @@
         });
     }
 
-    /** The value a field sends: trimmed, a choice as it is. */
+    /**
+     * The value a field sends: trimmed, a choice as it is; several lines
+     * with their breaks as "\n" (a stored value may carry "\r\n").
+     */
     function quickValue(type, raw) {
-        return (type === 'select') ? String(raw) : String(raw).trim();
+        if (type === 'select') {
+            return String(raw);
+        }
+
+        if (type === 'textarea') {
+            return String(raw).replace(/\r\n?/g, '\n').trim();
+        }
+
+        return String(raw).trim();
     }
 
     /** Whether a field holds something else than the stored value. */
     function quickChanged(type, raw, stored) {
-        return quickValue(type, raw) !== String(stored);
+        return quickValue(type, raw) !== ((type === 'textarea') ? quickValue(type, stored) : String(stored));
     }
 
     /**
@@ -358,6 +370,16 @@
             });
 
             tintSelect(control);
+        } else if (def.type === 'textarea') {
+            control = document.createElement('textarea');
+            control.className = 'form-control form-control-sm pg-list-table-field pg-list-table-field-lines';
+            control.rows = 2;
+            control.value = quickValue('textarea', value);
+            control.autocomplete = 'off';
+
+            if (def.max) {
+                control.maxLength = def.max;
+            }
         } else {
             control = document.createElement('input');
             control.type = 'text';
@@ -427,13 +449,16 @@
 
         event.stopPropagation();
 
-        if (event.key === 'Enter') {
+        if ((event.key === 'Enter') && (quick.control.tagName === 'TEXTAREA') && !event.ctrlKey && !event.metaKey) {
+            // A new line in the field; Ctrl+Enter goes on as Enter elsewhere.
+            return;
+        } else if (event.key === 'Enter') {
             event.preventDefault();
             this.quickSave(cell);
             this.fieldStep(cell, event.shiftKey ? -1 : 1);
         } else if (event.key === 'Escape') {
             event.preventDefault();
-            quick.control.value = cell.getAttribute('data-pg-edit-value') || '';
+            quick.control.value = (quick.control.tagName === 'TEXTAREA') ? quickValue('textarea', cell.getAttribute('data-pg-edit-value') || '') : (cell.getAttribute('data-pg-edit-value') || '');
 
             if (quick.control.tagName === 'SELECT') {
                 tintSelect(quick.control);

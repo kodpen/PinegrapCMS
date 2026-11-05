@@ -18,6 +18,26 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/state_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/state_list_edit.php');
+
+// Every value the state's screen changes is a field; Country offers the
+// countries of the screen's picker.
+$quick_edit = pg_state_edit_columns(pg_state_quick_countries());
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen, with the state screen's rights (validate_ecommerce_access()) and
+// checks (pg_state_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_state_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 // Every state is printed: the list table driver sorts and searches them in
 // the browser (browser mode) and keeps a heading's sort.
@@ -49,26 +69,12 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified' => 'states.timestamp',
 ));
 
-$query = "SELECT
-            states.id,
-            states.name,
-            states.code,
-            countries.name as country_name,
-            countries.code as country_code,
-            user.user_username as user,
-            states.timestamp
-        FROM states
-        LEFT JOIN countries ON states.country_id = countries.id
-        LEFT JOIN user ON states.user = user.user_id
-        ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, pg_state_list_sql() . " ORDER BY $order_by") or output_error('Query failed.');
 $state_rows = array();
 
 while ($row = mysqli_fetch_assoc($result)) {
     // The country in the panel's language.
-    $row['country_label'] = ($row['country_name'] !== null) ? pg_geo_country_label($row['country_name'], $row['country_code']) : '';
-    $state_rows[] = $row;
+    $state_rows[] = pg_state_list_labelled($row);
 }
 
 // Sorted by country first: by the country name on screen in the panel
@@ -91,27 +97,15 @@ if (isset($label_keys[$first_sort]) && $state_rows) {
 }
 
 foreach ($state_rows as $row) {
-    $list_rows[] = array(
-        'id' => (int) $row['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_state.php?id=' . (int) $row['id'] . '" data-pg-open>' . h($row['name']) . '</a>'),
-            'code' => pg_list_cell(h($row['code'])),
-            'country' => pg_list_cell(h($row['country_label'])),
-            'last_modified' => pg_list_table_when_cell($row['timestamp'], (string) $row['user']),
-        ),
-    );
+    $list_rows[] = array('id' => (int) $row['id'], 'cells' => pg_state_list_cells($row, $quick_edit));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_states',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'code' => array('heading' => lang('Code')),
-        'country' => array('heading' => lang('Country')),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_state_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_states.php', 'columns' => $quick_edit),
 ));
 
 print

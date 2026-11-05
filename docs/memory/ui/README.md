@@ -222,6 +222,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - form-field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php: wide layout with the type first, a Summary (form, type, name, Last Modified), what stays in the screens
 - form-item-view-layout.md: edit_form_item_view.php in the wide layout (B11) through includes/forms/form_item_view_form.php: layout card, sticky Summary and variables, save bar; what stays in the screen
 - form-item-view-variables.md: Variables a form item view layout (and form e-mail subject/body) can use: ^^field^^, conditional blocks, date and check box formats, and where the edit screen's clickable list comes from
+- form-list-view-carried-query.md: How a form list view's browse filter and pagination links carry the current query string, and the nested-list crash it fixed
 - form-list-view-field-columns.md: Which order-by and filter fields a form list view can store, the address_name ENUM widening and the screen's refusal of other values
 - form-mail-link-variables.md: ^^email_preferences_url^^ and ^^confirm_subscription_url^^ in form e-mails: who gets a link, where and in which order they are filled in, why they are not standard fields (PR #1385)
 - form-names-distinct.md: A form field name is unique within its form as the database compares it (no case, no diacritics); every custom form picker tells same-named forms apart and marks binned ones
@@ -265,6 +266,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-present.md: Present (AN8): a canvas's scenes full screen, keys, swipes, transitions, reduced motion; PDF in Save animation, a JPEG page per scene from M.pdfFile()
 - image-editor-rail.md: The image editor rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - image-editor-redact.md: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
+- image-editor-remove-background.md: The image editor's Remove background (E28c, #6948): subject kept, the rest erased; the erased part's fills (colour, blur, a picture from Files) in the mask step
 - image-editor-render.md: The image editor's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download
 - image-editor-scenes-play.md: Play, the scrub and the clock over every scene of a canvas (AN7b): the whole timeline's hooks, the stage showing the playing scene and its transition, a card dragged to reorder
 - image-editor-scenes.md: A canvas's scenes (AN7a): doc.scenes and the open scene, the strip, the scene panel, transitions, frames across scenes, the save's cap, a canvas animation tied to its canvas
@@ -296,7 +298,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - list-period-order.md: List date ranges: default a month ago to today on every request (pg_list_period_state(), PR #4463), reversed range swapped; Site Log presets in calendar days
 - list-period-week.md: Week's first day (Monday in Turkish, Sunday otherwise) for the list screens' period navigator (#2039) and the get_calendar() grids (#3328)
-- list-quick-edit-keyboard.md: List quick edit (data-pg-edit cells in backend.src.js) from the keyboard: Enter, Escape, Tab to the next row, where focus goes past the last row
+- list-quick-edit-keyboard.md: List quick edit from the keyboard (backend.src.js cells, the list table driver): Enter, Escape, Tab to the next row, the several-line textarea type, where focus goes past the last row
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
@@ -327,6 +329,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-quick-edit-ship-date-adjustments.md: All Ship Date Adjustments list quick edit (ship_date_adjustment_list_edit.php): prefix, shipping method and signed days as fields, the adjustment screen's checks and save
 - list-table-quick-edit-shipping-methods.md: All Shipping Methods list quick edit (shipping_method_list_edit.php): the fields, service and real-time rate, cells a pickup method or variable base rate keeps as text
 - list-table-quick-edit-short-links.md: Short links list quick edit (includes/fn/short_link_list_edit.php): fields per destination type, the split destination columns, the edit screen's own checks and save
+- list-table-quick-edit-states.md: All States list quick edit (includes/fn/state_list_edit.php): name, code and country change with the state screen's checks; a state whose country is gone keeps the Country cell as text
 - list-table-quick-edit-styles.md: All Page Styles list quick edit (includes/fn/style_list_edit.php): the fields, which rows stay text, the custom style screen's shared check and save
 - list-table-quick-edit-submitted-forms.md: Submitted forms list quick edit (includes/fn/submitted_form_list_edit.php): Status and Form Editor, the required-field check before completing, the screen's rights and side effects
 - list-table-quick-edit-tax-zones.md: All Tax Zones list quick edit (tax_zone_list_edit.php): the name and the rate, the tax zone screen's checks and save, the countries and states kept
