@@ -145,6 +145,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - recycle-bin-offline.md: Everything inside the Recycle Bin folder is offline for visitors, whatever the access type a binned folder carries itself
 - registration-gate-form-submitter.md: The registration folder gate in get_page.php lets a visitor without a session reach a custom form's confirmation page with the code of a form this session submitted (PR #4959, bug #4804)
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
+- reset-link-revoked-on-change.md: A pending password reset or set password link (user.token) is cleared when the owner changes the password or the e-mail address on the site.
 - sdt-designer-js-text-rules.md: How visible text in style_designer.src.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
 - security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle.
 - send-to-url-safety.md: What pg_send_to_url() refuses (control characters, '//' and '/\' starts, non-paths) and why it matches pg_safe_redirect_path() (PR #3563)
