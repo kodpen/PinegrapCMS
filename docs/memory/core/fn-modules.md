@@ -92,6 +92,7 @@ description: Generated from the module field of the memory files: each includes/
 - `form_payments`: [[custom-form-payment]], [[custom-form-payment-staff]]
 - `forms`: [[csv-import-headings]], [[explorer-page-type-name]], [[form-data-output-escape-flag]], [[form-date-whole-value]], [[form-list-view-carried-query]], [[form-list-view-field-columns]], [[form-view-newest-comment-cut]], [[forms-api-request-checks]], [[page-form-lazy-page-pickers]], [[report-dynamic-date-filter]]
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]
+- `gift_card_list_edit`: [[list-table-quick-edit-gift-cards]]
 - `google_analytics`: [[google-analytics-card]]
 - `google_reviews`: [[google-reviews-widget]]
 - `graph_canvas`: [[graph-canvas-core-module]]

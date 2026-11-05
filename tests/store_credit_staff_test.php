@@ -101,7 +101,7 @@ function test_store_credit_staff_gift_card_info()
 	pg_assert_contains('pg_credit_staff_gift_card_info_html(', $edit, 'the gift card screen draws it');
 	pg_assert_contains("pg_audit('update', 'store_credit'", $edit, 'a balance edit of credit is audited');
 
-	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_gift_cards.php');
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/gift_card_list_edit.php');
 	pg_assert_contains("pg_list_status_word(lang('Store credit'))", $list, 'the list marks credit under the code');
 	pg_assert_contains("'<span hidden>' . h(\$gift_card['code']) . '</span>'", $list, 'the search finds the code without dashes');
 }

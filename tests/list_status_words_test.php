@@ -89,7 +89,7 @@ function test_arrival_dates_and_gift_cards_name_their_state()
 	$src = list_status_words_source('includes/fn/arrival_date_list_edit.php');
 	pg_assert_contains("pg_list_status_word(lang('Inactive'))", $src, 'an arrival date outside its window says Inactive');
 
-	$src = list_status_words_source('view_gift_cards.php');
+	$src = list_status_words_source('includes/fn/gift_card_list_edit.php');
 	pg_assert_contains("pg_list_status_word(lang('Expired'))", $src, 'an expired gift card says Expired');
 	pg_assert_contains("pg_list_status_word(lang('No balance'))", $src, 'a used-up gift card says No balance');
 }

@@ -4,7 +4,8 @@
  *
  * Tests for the lists that take quick edit beside products and minimum
  * stock: an ERP account's price list (includes/erp/price_lists.php), the key
- * codes and the gift cards (includes/fn/ecommerce.php). The shipping methods
+ * codes (includes/fn/ecommerce.php) and the gift cards
+ * (includes/fn/gift_card_list_edit.php). The shipping methods
  * are in shipping_method_list_edit_test.php.
  * What their columns accept and how the cells the answer redraws are drawn.
  *
@@ -19,6 +20,8 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/price_lists.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/gift_card_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/gift_card_list_edit.php');
 
 if (!defined('BASE_CURRENCY_SYMBOL')) {
 	define('BASE_CURRENCY_SYMBOL', '$');
@@ -93,7 +96,6 @@ function test_list_edit_gift_card_notes_column_takes_one_line()
 {
 	$columns = pg_gift_card_edit_columns();
 
-	pg_assert_same(array('notes'), array_keys($columns), 'only the notes; the balance stays on the card');
 	pg_assert_same('text', $columns['notes']['type'], 'a text');
 	pg_assert_same('', pg_list_edit_parse($columns['notes'], '   ')['value'], 'notes can be cleared');
 	pg_assert_same('sent to Ayşe', pg_list_edit_parse($columns['notes'], " sent to Ayşe ")['value'], 'kept as typed, trimmed');

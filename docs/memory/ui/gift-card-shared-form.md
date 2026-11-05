@@ -17,8 +17,8 @@ description: add_gift_card.php and edit_gift_card.php draw the Gift Card Options
 
 ## What stays in the screens?
 - Create: the hidden `limit`, the quantity checks (1,000 limit, `limit=false` bypass), the INSERT loop, log and notice.
-- The list (`view_gift_cards.php`) draws the notes cell through `pg_gift_card_list_cells()` inside a `text-wrap text-break` box of `max-width:20rem`, so the quick-edit answer keeps the wrap; a long note used to widen the table to thousands of pixels (#5531).
-- Edit: the not-found guard, the row load, the hidden `id` and `balance_was` fields, the stale-save guard (`commerce/gift-card-balance-edit.md`), the order info and redemption history cards, delete.
+- Edit: the not-found guard, the row load, the hidden `id` and `balance_was` fields, the order info and redemption history cards, delete. Its save is the shared `pg_gift_card_form_write()`, the one UPDATE of balance, date and notes, also the list's quick edit (`list-table-quick-edit-gift-cards.md`, `commerce/gift-card-balance-edit.md`).
+- The list draws the notes in a `text-wrap text-break` box of `max-width:20rem` (`pg_gift_card_list_cells()`); a long note widened the table (#5531).
 
 ## How are the screens laid out?
 - The edit screen layout (`edit-screen-wide-layout.md`, B11): the card in the form column (`lg:col-8 2xl:col-9`), the save bar in its own sticky `order-3` column. Edit adds Redemption History under the card and Order Info in the sticky status column. Create has nothing to read, so no status column; the form column keeps its width.
