@@ -123,7 +123,7 @@ function test_kept_columns_update_path_only()
 
 	pg_assert_contains('pg_pb_drop_undrawn_columns(', $body, 'the update drops the columns the screen did not draw');
 	pg_assert_true(
-		(bool) preg_match('/if \(\$shipping_on\) \{\s*db\("DELETE FROM products_zones_xref/', $body),
+		(bool) preg_match('/if \(\$shipping_on\) \{\s*pg_pb_save_zones\(/', $body),
 		'the zone rows are rewritten only while shipping is on');
 
 	pg_assert_false(strpos(pg_kept_function_body('pg_pb_save_new_product'), 'pg_pb_drop_undrawn_columns(') !== false,
