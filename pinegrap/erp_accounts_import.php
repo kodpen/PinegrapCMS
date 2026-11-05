@@ -175,37 +175,50 @@ function erp_import_step_upload($liveform, $kind_options)
             <form name="form" action="erp_accounts_import.php" method="post" enctype="multipart/form-data">
                 ' . get_token_field() . '
                 <input type="hidden" name="step" value="upload" />
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('Import CSV') . '
+                <div class="row">
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . h(lang('Import CSV')) . '
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-12 my-3">
+                                        <label for="file" class="form-label">' . h(lang('CSV file')) . '</label>
+                                        ' . $liveform->output_field(array('type' => 'file', 'id' => 'file', 'name' => 'file', 'class' => 'form-control', 'accept' => '.csv,.txt,text/csv')) . '
+                                        <div class="form-text">' . h(lang('Upload a CSV file. The first row must hold the column names.')) . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_IMPORT_MAX_BYTES))))) . '</div>
+                                    </div>
+                                    <div class="col-12 lg:col-6 my-3">
+                                        <label for="default_kind" class="form-label">' . h(lang('Default type for rows without one')) . '</label>
+                                        ' . $liveform->output_field(array('type' => 'select', 'id' => 'default_kind', 'name' => 'default_kind', 'class' => 'form-control', 'options' => $kind_options)) . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 lg:col-8 my-3">
-                                <label for="file" class="form-label">' . lang('CSV file') . '</label>
-                                ' . $liveform->output_field(array('type' => 'file', 'id' => 'file', 'name' => 'file', 'class' => 'form-control', 'accept' => '.csv,.txt,text/csv')) . '
-                                <div class="form-text">' . lang('Upload a CSV file. The first row must hold the column names.') . ' ' . lang('The delimiter and the character set are detected; Excel files saved as CSV in Turkish work as they are.') . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_IMPORT_MAX_BYTES))))) . '</div>
-                            </div>
-                            <div class="col-12 lg:col-4 my-3">
-                                <label for="default_kind" class="form-label">' . lang('Default type for rows without one') . '</label>
-                                ' . $liveform->output_field(array('type' => 'select', 'id' => 'default_kind', 'name' => 'default_kind', 'class' => 'form-control', 'options' => $kind_options)) . '
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 my-3">
-                                <div class="form-text">' . lang('Columns are matched by name; you can correct the matching in the next step.') . ' <a href="erp_accounts_import.php?template=1" class="pg-link-body-emphasis"><i class="bi bi-download me-1"></i>' . lang('Download template') . '</a></div>
-                                <div class="form-text">' . lang('Opening balances are not imported; enter them on the account.') . '</div>
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <div class="card my-7 position-sticky" style="top:3.3rem;">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('What Is Imported')) . '</div>
+                            <div class="card-body">
+                                <ul class="small ps-5 mb-3">
+                                    <li class="mb-2">' . h(lang('The delimiter and the character set are detected; Excel files saved as CSV in Turkish work as they are.')) . '</li>
+                                    <li class="mb-2">' . h(lang('Columns are matched by name; you can correct the matching in the next step.')) . '</li>
+                                    <li>' . h(lang('Opening balances are not imported; enter them on the account.')) . '</li>
+                                </ul>
+                                <a href="erp_accounts_import.php?template=1" class="pg-link-body-emphasis small"><i class="bi bi-download me-1" aria-hidden="true"></i>' . h(lang('Download template')) . '</a>
                             </div>
                         </div>
+                    </div>
+                    <div class="col-12 order-3">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                            <div class="container">
+                                <div class="btn-group flex-wrap justify-content-center">
+                                    <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Continue')) . '</span></button>
+                                </div>
+                            </div>
+                        </nav>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_upload" value="Continue" class="btn my-1 btn-solid theme-success"><i class="bi bi-upload me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Continue')) . '</span></button>
-                        </div>
-                    </div>
-                </nav>
             </form>';
 }
 
@@ -317,10 +330,10 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                                     </tr>';
     }
 
-    $output_summary = '<span class="me-5"><span class="badge theme-success">' . (int) $counts['create'] . '</span> ' . h(lang('Will be created')) . '</span>'
-        . '<span class="me-5"><span class="badge theme-warning">' . (int) $counts['match'] . '</span> ' . h(lang('Already on file')) . '</span>'
-        . '<span class="me-5"><span class="badge theme-secondary">' . (int) $counts['duplicate'] . '</span> ' . h(lang('Repeated in the file')) . '</span>'
-        . '<span class="me-5"><span class="badge theme-danger">' . (int) $counts['error'] . '</span> ' . h(lang('Error')) . '</span>';
+    $output_summary = '<span><span class="badge theme-success">' . (int) $counts['create'] . '</span> ' . h(lang('Will be created')) . '</span>'
+        . '<span><span class="badge theme-warning">' . (int) $counts['match'] . '</span> ' . h(lang('Already on file')) . '</span>'
+        . '<span><span class="badge theme-secondary">' . (int) $counts['duplicate'] . '</span> ' . h(lang('Repeated in the file')) . '</span>'
+        . '<span><span class="badge theme-danger">' . (int) $counts['error'] . '</span> ' . h(lang('Error')) . '</span>';
 
     $title_warning = $has_title ? '' : '<div class="alert theme-warning">' . h(lang('Map a column to Name to continue.')) . '</div>';
 
@@ -329,82 +342,88 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                 ' . get_token_field() . '
                 <input type="hidden" name="step" value="map" />
                 <input type="hidden" name="import_token" value="' . h($staged['token']) . '" />
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('Column mapping') . '
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 my-3">
-                                <div class="form-text"><i class="bi bi-file-earmark-text me-1"></i>' . h($staged['name']) . ' — ' . h(lang(array('string' => '{var:1} data rows', 'vars' => $total_rows))) . ' — ' . h(lang(array('string' => 'Detected delimiter: {var:1}', 'vars' => $delimiter_name))) . '</div>
+                <div class="row">
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . h(lang('Column mapping')) . '
+                            </div>
+                            <div class="card-body">
+                                <div class="row">' . $output_mapping . '
+                                </div>
+                                ' . $title_warning . '
                             </div>
                         </div>
-                        <div class="row">' . $output_mapping . '
-                        </div>
-                        ' . $title_warning . '
-                    </div>
-                </div>
 
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('Options') . '
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . h(lang(array('string' => 'Preview (first {var:1} rows)', 'vars' => count($plan)))) . '
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle mb-0" data-pg-sort>
+                                        <thead>
+                                            <tr>
+                                                <th class="text-end">' . h(lang('Row')) . '</th>
+                                                <th>' . h(lang('Result')) . '</th>
+                                                ' . $output_head . '
+                                            </tr>
+                                        </thead>
+                                        <tbody>' . $output_rows . '
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="form-text mt-3">' . h(lang('Only the first rows are shown; the whole file is checked the same way when the import runs.')) . '</div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 lg:col-6 my-3">
-                                <fieldset>
-                                    <legend class="form-label fs-md">' . lang('If the account already exists') . '</legend>
-                                    <div class="form-field">
-                                        <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_update" value="update"' . (($mode === 'update') ? ' checked="checked"' : '') . '>
-                                        <label class="" for="duplicate_mode_update">' . lang('Update it') . '</label>
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <div class="position-sticky" style="top:3.3rem;">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                                <div class="card-body">
+                                    <p class="small mb-1 text-break"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . h($staged['name']) . '</p>
+                                    <p class="small fg-secondary mb-3">' . h(lang(array('string' => '{var:1} data rows', 'vars' => $total_rows))) . ' — ' . h(lang(array('string' => 'Detected delimiter: {var:1}', 'vars' => $delimiter_name))) . '</p>
+                                    <div class="small d-flex flex-column gap-2">' . $output_summary . '</div>
+                                </div>
+                            </div>
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . h(lang('Options')) . '
+                                </div>
+                                <div class="card-body">
+                                    <fieldset class="my-3">
+                                        <legend class="form-label fs-md">' . lang('If the account already exists') . '</legend>
+                                        <div class="form-field">
+                                            <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_update" value="update"' . (($mode === 'update') ? ' checked="checked"' : '') . '>
+                                            <label class="" for="duplicate_mode_update">' . h(lang('Update it')) . '</label>
+                                        </div>
+                                        <div class="form-field">
+                                            <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_skip" value="skip"' . (($mode !== 'update') ? ' checked="checked"' : '') . '>
+                                            <label class="" for="duplicate_mode_skip">' . h(lang('Skip it')) . '</label>
+                                        </div>
+                                    </fieldset>
+                                    <div class="form-text">' . h(lang('Matched by tax number, then e-mail, then exact name.')) . ' ' . h(lang('An update writes only the columns the file supplies; balances are never touched.')) . '</div>
+                                    <div class="my-3">
+                                        <label for="default_kind" class="form-label">' . h(lang('Default type for rows without one')) . '</label>
+                                        <select name="default_kind" id="default_kind" class="form-control">' . $output_kind_options . '</select>
                                     </div>
-                                    <div class="form-field">
-                                        <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_skip" value="skip"' . (($mode !== 'update') ? ' checked="checked"' : '') . '>
-                                        <label class="" for="duplicate_mode_skip">' . lang('Skip it') . '</label>
-                                    </div>
-                                </fieldset>
-                                <div class="form-text">' . lang('Matched by tax number, then e-mail, then exact name.') . ' ' . lang('An update writes only the columns the file supplies; balances are never touched.') . '</div>
-                            </div>
-                            <div class="col-12 lg:col-6 my-3">
-                                <label for="default_kind" class="form-label">' . lang('Default type for rows without one') . '</label>
-                                <select name="default_kind" id="default_kind" class="form-control">' . $output_kind_options . '</select>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang(array('string' => 'Preview (first {var:1} rows)', 'vars' => count($plan))) . '
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-5 small">' . $output_summary . '</div>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle mb-0" data-pg-sort>
-                                <thead>
-                                    <tr>
-                                        <th class="text-end">' . lang('Row') . '</th>
-                                        <th>' . lang('Result') . '</th>
-                                        ' . $output_head . '
-                                    </tr>
-                                </thead>
-                                <tbody>' . $output_rows . '
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="form-text mt-3">' . lang('Only the first rows are shown; the whole file is checked the same way when the import runs.') . '</div>
+                    <div class="col-12 order-3">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                            <div class="container">
+                                <div class="btn-group flex-wrap justify-content-center">
+                                    <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Re-check')) . '</span></button>
+                                    <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-solid theme-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Start import')) . '</span></button>
+                                </div>
+                                <p class="small fg-secondary mt-2 mb-0" id="erp_import_map_status" role="status" aria-live="polite"></p>
+                            </div>
+                        </nav>
                     </div>
                 </div>
-
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Re-check')) . '</span></button>
-                            <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-solid theme-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Start import')) . '</span></button>
-                        </div>
-                        <p class="small fg-secondary mt-2 mb-0" id="erp_import_map_status" role="status" aria-live="polite"></p>
-                    </div>
-                </nav>
             </form>
             <script>
             (function () {
