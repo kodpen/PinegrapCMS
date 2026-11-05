@@ -72,10 +72,19 @@ function pg_subscription_customer_actions($row)
         return array();
     }
 
+    // A running row with next_charge_at 0 is held until the payment service
+    // reports a renewal's outcome. It is not paused: the paid report settles
+    // only an active or past_due row (pg_subscription_renewal_is_held()), and
+    // a held row resumed would never be due again.
+    $held = isset($row['next_charge_at']) && ((int) $row['next_charge_at'] === 0);
     $actions = array();
 
     foreach ($by_status[$status] as $action) {
         $to = pg_subscription_customer_action_status($action);
+
+        if (($action === 'pause') && $held) {
+            continue;
+        }
 
         // A move the status rules refuse is never offered.
         if (($to === '') || pg_subscription_transition_allowed($status, $to)) {
@@ -168,6 +177,8 @@ function pg_subscription_customer_io()
         'event' => function ($id, $kind, $detail) {
             return pg_subscription_event_write($id, $kind, 0, 0, '', $detail);
         },
+        // The first order: iyzico's card page names the buyer by its e-mail.
+        'first_order' => 'pg_subscription_renewal_first_order',
         'call' => function ($driver, $operation, $driver_row) {
             return pg_payment_call((string) $driver, $operation, array($driver_row));
         },
@@ -218,6 +229,12 @@ function pg_subscription_customer_action($user_id, $id, $action, $return_url, $i
     if ($action === 'update_card') {
         $driver_row = pg_subscription_driver_row($row);
         $driver_row['return_url'] = (string) $return_url;
+        $first = isset($io['first_order']) ? call_user_func($io['first_order'], $row) : null;
+
+        if (is_array($first) && isset($first['order'])) {
+            $driver_row['order'] = $first['order'];
+        }
+
         $answer = $io['call']((string) $row['driver'], 'update_card', $driver_row);
         $url = (string) ($answer['redirect_url'] ?? '');
 

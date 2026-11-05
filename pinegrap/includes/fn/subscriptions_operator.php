@@ -97,6 +97,10 @@ function pg_subscription_operator_refusal($row, $action)
         return lang('A subscription with a payment due cannot be paused: it would stop the payment retries.');
     }
 
+    if (($action === 'pause') && ($status === 'active')) {
+        return lang('A subscription whose renewal payment is still being settled cannot be paused.');
+    }
+
     if ($action === 'pause') {
         return lang('The subscription is already paused.');
     }
