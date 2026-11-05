@@ -144,6 +144,7 @@
         row_add: { name: 'fl_kind_row_add', group: 'system', into: true, out: ['done', 'failed'] },
         row_set: { name: 'fl_kind_row_set', group: 'system', into: true, out: ['done', 'failed'] },
         row_get: { name: 'fl_kind_row_get', group: 'system', into: true, out: ['done', 'failed'] },
+        record_get: { name: 'fl_kind_record_get', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
@@ -210,6 +211,7 @@
         ['row_add', 'fl_kind_row_add'],
         ['row_set', 'fl_kind_row_set'],
         ['row_get', 'fl_kind_row_get'],
+        ['record_get', 'fl_kind_record_get'],
         ['approval', 'fl_kind_approval'],
         ['end', 'fl_add_end'],
         ['constants', 'fl_kind_constants'],
@@ -545,6 +547,7 @@
             repeats: steps.repeats || {},
             events: steps.events || null,
             tables: steps.tables || [],
+            reads: steps.reads || [],
             no_order: !!steps.no_order,
             mcp: steps.mcp || []
         };
@@ -692,6 +695,10 @@
 
         if ((node.kind === 'row_add') || (node.kind === 'row_set') || (node.kind === 'row_get')) {
             return rowWriteMeta(node);
+        }
+
+        if (node.kind === 'record_get') {
+            return recordGetMeta(node);
         }
 
         if (node.kind === 'join') {
@@ -3063,6 +3070,7 @@
         mcp: [['arguments', 'fl_mcp_arguments', 20000]],
         row_set: [['row', 'fl_rows_row', 200]],
         row_get: [['row', 'fl_rows_row', 200]],
+        record_get: [['id', 'fl_record_id', 200]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
@@ -3988,6 +3996,7 @@
         return PALETTE.filter(function (item) {
             return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && (((item[0] !== 'row') && (item[0] !== 'row_get')) || tables)
                 && ((item[0] !== 'no_order') || stepLists().no_order)
+                && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
     }
@@ -4783,6 +4792,13 @@
         // (ws_step_outputs()).
         if (node.kind === 'row_get') {
             rowCellValues(node.config).forEach(function (item) { add(prefix, item); });
+        }
+
+        // A box that reads a record gives the fields of its kind.
+        if (node.kind === 'record_get') {
+            var read = recordRead(node.config);
+
+            (read ? read.outputs : []).forEach(function (item) { add(prefix, item); });
         }
 
         if (node.kind === 'report') {
@@ -5740,6 +5756,10 @@
 
         if (node.kind === 'row_get') {
             rowGetFields(box, node);
+        }
+
+        if (node.kind === 'record_get') {
+            recordGetFields(box, node);
         }
 
         if (node.kind === 'condition') {
@@ -7393,6 +7413,54 @@
         }, false, t('fl_rows_get_row_help')));
     }
 
+    // The kind of record a read box reads, as the person may read it
+    // (ws_flow_record_get_kinds()), or null.
+    function recordRead(config) {
+        return stepLists().reads.filter(function (item) { return item.kind === config.record; })[0] || null;
+    }
+
+    // Its kind, and the record it names by its number or its value.
+    function recordGetMeta(node) {
+        var config = node.config;
+        var read = recordRead(config);
+        var id = (config.id || '').trim();
+        var named = /^\d+$/.test(id) ? null : valueNames(node)[id];
+
+        if (!config.record) {
+            return t('fl_record_none');
+        }
+
+        var name = read ? read.label : config.record;
+
+        return id ? t('fl_record_meta', name, named ? named.label : id) : name;
+    }
+
+    // A box that reads a record: a kind the person reads, as
+    // ws_step_record_get_check() asks it, and the record, by its number or
+    // one value. Its fields are offered to the boxes after it (boxValues()).
+    function recordGetFields(box, node) {
+        var config = node.config;
+        var options = [['', t('fl_record_kind_pick')]].concat(stepLists().reads.map(function (item) { return [item.kind, item.label]; }));
+
+        if (config.record && !recordRead(config)) {
+            options.push([config.record, config.record]);
+        }
+
+        var pick = K.select(options, config.record || '');
+
+        pick.setAttribute('data-refocus', 'record-kind-' + node.id);
+        pick.addEventListener('change', function () {
+            config.record = pick.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_record_kind'), pick, t('fl_record_kind_help')));
+        box.appendChild(valueField(node, t('fl_record_id'), config.id, 200, function (value) {
+            config.id = value;
+            refreshNode(node);
+        }, false, t('fl_record_id_help')));
+    }
+
     // A box that adds or changes a row: its table, the row a change names,
     // then a field per column. Cells the form cannot show (a table not
     // among those the person changes, or a text that is no JSON object)
@@ -8664,6 +8732,8 @@
             var readable = stepLists().tables;
 
             config = { table_id: (readable.length === 1) ? readable[0].id : 0, row: '' };
+        } else if (kind === 'record_get') {
+            config = { record: '', id: '' };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };

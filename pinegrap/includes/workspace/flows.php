@@ -2451,6 +2451,11 @@ function ws_flow_graph_present($graph, $edit = false)
                 $node['config'] = ws_flow_row_box_masked($node['config']);
             }
 
+            // The record a read box names may be out of the reader's reach.
+            if (!$edit && ((string) $node['kind'] === 'record_get')) {
+                $node['config']['id'] = '';
+            }
+
             $node['config'] = (object) $node['config'];
 
             return $node;
@@ -3042,6 +3047,12 @@ function ws_flow_js_strings()
         'fl_kind_row_set'     => lang('Change a row of a table'),
         'fl_kind_row_get'     => lang('Read a row of a table'),
         'fl_rows_read_help'   => lang('The tables the flow\'s owner may read; the box reads with their rights.'),
+        'fl_kind_record_get'  => lang('Read a record'),
+        'fl_record_kind'      => lang('Kind of record'),
+        'fl_record_kind_pick' => lang('Choose a kind of record'),
+        'fl_record_kind_help' => lang('The kinds of record the flow\'s owner may read; the box reads with their rights.'),
+        'fl_record_id'        => lang('Record'),
+        'fl_record_id_help'   => lang('The record\'s number, or one value, such as {{trigger.record_id}}. A record that is not there, or one the owner may not read, gives found 0 and empty fields.'),
         'fl_rows_get_row_help' => lang('The row\'s number, or one value, such as {{trigger.row_id}}. A row that is not there gives found 0 and empty cells.'),
         'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
         'fl_rows_row'         => lang('Row'),
@@ -3062,6 +3073,8 @@ function ws_flow_js_strings()
         'fl_rows_link_kind'   => lang('Kind of record'),
         'fl_rows_link_id'     => lang('Record number'),
         'fl_rows_meta'        => ws_js_template('{var:1} · row {var:2}', 2),
+        'fl_record_meta'      => ws_js_template('{var:1} · {var:2}', 2),
+        'fl_record_none'      => lang('No kind of record chosen'),
         'fl_day_mon'         => lang('Monday'),
         'fl_day_tue'         => lang('Tuesday'),
         'fl_day_wed'         => lang('Wednesday'),
@@ -3497,7 +3510,7 @@ function ws_flow_js_config($viewer, $mode)
     $member = ws_flow_js_member(ws_flow_builder_kind($viewer));
     $build = ws_flows_ready() && (ws_can_schedule($viewer) || ($member['member'] && ws_flow_member($viewer)));
     $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
-        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null, 'tables' => array(), 'mcp' => array());
+        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null, 'tables' => array(), 'reads' => array(), 'mcp' => array());
 
     // The boxes that may try again on their own after a failure, and how
     // many times at most (flow_runs.php).
@@ -3531,6 +3544,9 @@ function ws_flow_js_config($viewer, $mode)
 
         // The workflow tables a row box may start on, with their columns.
         $steps['tables'] = function_exists('ws_flow_row_tables') ? ws_flow_row_tables($viewer) : array();
+
+        // The kinds of record a read box may read, with the values each gives.
+        $steps['reads'] = function_exists('ws_flow_record_get_kinds') ? ws_flow_record_get_kinds($viewer) : array();
 
         // A box on customers who stopped ordering, to whoever reads orders
         // and contacts.

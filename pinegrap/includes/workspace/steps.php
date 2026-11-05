@@ -144,6 +144,9 @@ function ws_step_kinds()
         // Its cells follow from the table's columns (ws_step_outputs()).
         'row_get'   => array('label' => lang('Read a row of a table'), 'type' => 'row_get', 'texts' => array('row'), 'lines' => array('row'),
             'outputs' => array($number('row_id', lang('Row')), $number('found', lang('Row found (1 or 0)')))),
+        // Its fields follow from the kind of record it reads (ws_step_outputs()).
+        'record_get' => array('label' => lang('Read a record'), 'type' => 'record_get', 'texts' => array('id'), 'lines' => array('id'),
+            'outputs' => array($number('record_id', lang('Record')), $number('found', lang('Record found (1 or 0)')))),
     );
 }
 
@@ -161,7 +164,7 @@ function ws_step_kinds()
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'record_get' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
 }
 
 /**
@@ -229,6 +232,11 @@ function ws_step_outputs($kind, $config, $labels = array())
         }
     }
 
+    // A box that reads a record gives the fields of its kind.
+    if (($kind === 'record_get') && function_exists('ws_flow_record_get_outputs')) {
+        $out = array_merge($out, ws_flow_record_get_outputs((string) ($config['record'] ?? '')));
+    }
+
     if ($kind !== 'report') {
         return $out;
     }
@@ -272,7 +280,9 @@ function ws_step_result_data($kind, $config, $done)
 
         // A cell read is kept as the text it fills in (ws_flow_row_cell_text()):
         // a number cell may have decimals.
-        if (($kind === 'row_get') && (strpos($key, 'cell_') === 0)) {
+        // So is a record's field: money has decimals.
+        if ((($kind === 'row_get') && (strpos($key, 'cell_') === 0))
+            || (($kind === 'record_get') && !in_array($key, array('record_id', 'found'), true))) {
             $value = is_scalar($value) ? (string) $value : '';
         } elseif ($output['type'] === 'number') {
             $value = (is_numeric($value) && !is_string($value)) ? (int) $value : null;
@@ -342,6 +352,9 @@ function ws_step_outcomes()
  * row_set:   table_id, row (the row's id, or one value such as
  *            {{trigger.row_id}}), cells
  * row_get:   table_id, row (as row_set's)
+ * record_get: record (a kind of ws_flow_record_get_fields(), '' for
+ *            another), id (the record's id, or one value such as
+ *            {{trigger.record_id}})
  *
  * @param string $kind
  * @param mixed  $config
@@ -557,6 +570,15 @@ function ws_step_config_normalize($kind, $config)
 
         case 'row_get':
             return array('table_id' => $number($config['table_id'] ?? 0), 'row' => ws_flow_line($config['row'] ?? '', 200));
+
+        case 'record_get':
+            $record = is_string($config['record'] ?? null) ? $config['record'] : '';
+            $id = $config['id'] ?? '';
+
+            return array(
+                'record' => isset(ws_flow_record_get_fields()[$record]) ? $record : '',
+                'id'     => ws_flow_line(is_int($id) ? (string) $id : $id, 200),
+            );
     }
 
     return array();
@@ -749,6 +771,21 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             }
 
             break;
+
+        // A box that reads a record names its kind and the record as a row
+        // box names its row.
+        case 'record_get':
+            if ($config['record'] === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the kind of record it reads.', 'vars' => $name));
+            }
+
+            if (trim($config['id']) === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the record it reads.', 'vars' => $name));
+            } elseif (!ws_step_row_names_row($config['id'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} names its record by its id or by one value, such as {{trigger.record_id}}.', 'vars' => $name));
+            }
+
+            break;
     }
 
     return $problems;
@@ -804,6 +841,10 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 
     if ($kind === 'row_get') {
         return ws_step_row_get_check($viewer, ws_step_config_normalize('row_get', $config));
+    }
+
+    if ($kind === 'record_get') {
+        return ws_step_record_get_check($viewer, ws_step_config_normalize('record_get', $config));
     }
 
     $check = ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
@@ -1191,6 +1232,7 @@ function ws_step_fill_target($kind, $action)
         case 'row_add':
         case 'row_set':
         case 'row_get':
+        case 'record_get':
             return 'json';
     }
 
@@ -1605,8 +1647,14 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get', 'record_get'), true) || ((string) $text === '')) {
         return (string) $text;
+    }
+
+    // The record may be one the reader does not reach: its kind and id
+    // stay back.
+    if ((string) $kind === 'record_get') {
+        return ((string) $outcome === 'done') ? lang('A record was read.') : lang('No record was read.');
     }
 
     if ((string) $kind === 'row_get') {
@@ -1877,6 +1925,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_row_do($owner, $action);
     } elseif ($kind === 'row_get') {
         $done = ws_step_row_get_do($owner, $action);
+    } elseif ($kind === 'record_get') {
+        $done = ws_step_record_get_do($owner, $action);
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
     }
@@ -2045,6 +2095,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_row_text($action);
         } elseif ($kind === 'row_get') {
             $said = ws_step_row_get_text($action);
+        } elseif ($kind === 'record_get') {
+            $said = ws_step_record_get_text($action);
         } else {
             $said = ws_scheduled_action_text($owner, $action);
         }
