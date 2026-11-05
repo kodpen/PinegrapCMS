@@ -24,10 +24,12 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_method_list_edit.php');
 
 // Every value of the list the shipping method's screen changes is a field;
 // the Service field offers the services of the carriers that are set up and
-// any other one a method keeps.
+// any other one a method keeps, the Zones field every zone, as the screen's
+// Allowed Zones picker.
 $quick_edit = pg_shipping_method_edit_columns(pg_shipping_method_quick_services(
     pg_shipping_method_quick_ready(),
-    db_values("SELECT DISTINCT service FROM shipping_methods WHERE service != ''")));
+    db_values("SELECT DISTINCT service FROM shipping_methods WHERE service != ''")),
+    pg_shipping_method_quick_zone_options());
 
 // A value changed in place on the list (pg_list_edit_request() in
 // includes/fn/output.php). Answered in JSON, before anything below draws the
