@@ -5345,6 +5345,20 @@ function pg_offer_best_order_discount($candidates, $subtotal)
     return $best;
 }
 
+// The statement that stores an order's order discount offer: the winner
+// apply_offers_to_cart() found, or 0 when none applies. Clearing touches only
+// an order that still names an offer, so a cart without one is not written
+// on every view.
+function pg_order_discount_offer_update_sql($order_id, $offer_id)
+{
+    $order_id = ctype_digit((string) $order_id) ? (int) $order_id : 0;
+    $offer_id = ctype_digit((string) $offer_id) ? (int) $offer_id : 0;
+    if ($offer_id > 0) {
+        return "UPDATE orders SET discount_offer_id = '" . $offer_id . "' WHERE id = '" . $order_id . "'";
+    }
+    return "UPDATE orders SET discount_offer_id = '0' WHERE (id = '" . $order_id . "') AND (discount_offer_id != '0')";
+}
+
 // Conditions about the cart that do not fit the offer_rules row. The answer
 // depends on what is in the basket right now, and apply_offers_to_cart() moves
 // the basket while it runs, so nothing here is cached.
@@ -6441,16 +6455,15 @@ function apply_offers_to_cart()
         }
         list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($qualified_candidates, $final_subtotal);
     }
-    // if there is an order discount, then add order discount to order
+    // The order keeps the winning offer, or none. A stored offer is cleared
+    // also when the session holds no amount for it: a cart retrieved in a new
+    // session (a saved cart link, the order history) still names the offer
+    // its earlier session won, which the cart would list as applied and the
+    // usage limit would count once the order is placed without the discount.
+    db(pg_order_discount_offer_update_sql($_SESSION['ecommerce']['order_id'] ?? 0, $best_order_discount_offer_id));
     if ($best_order_discount_offer_id != 0) {
-        $query = "UPDATE orders SET discount_offer_id = ? WHERE id = ?";
-        $result = db_q($query, array((string) $best_order_discount_offer_id, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         $_SESSION['ecommerce']['order_discount'] = $best_order_discount;
-        // else there is not an order discount, so if there was before, then remove it
-    } else if (isset($_SESSION['ecommerce']['order_discount']) == true) {
-        // remove order discount until we find out below if there is an order discount
-        $query = "UPDATE orders SET discount_offer_id = '0' WHERE id = ?";
-        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
+    } else {
         unset($_SESSION['ecommerce']['order_discount']);
     }
     // if shipping is on, then loop through discounted ship tos in order to discount them
