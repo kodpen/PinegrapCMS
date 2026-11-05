@@ -105,6 +105,24 @@ function test_sms_queue_list_row()
 	pg_assert_contains('retry:3', $html);
 }
 
+// Every kind the SMS layer queues has a label on the screen: a back-in-stock
+// text is not shown under its raw key, and the cash-on-delivery code shares
+// the otp kind with the sign-in code, so that label names neither alone.
+function test_sms_queue_list_kinds_cover_the_layer()
+{
+	pg_assert_same(array(), array_values(array_diff(array_keys(pg_sms_kinds()), array_keys(pg_sms_queue_list_kinds()))), 'a label for every kind');
+
+	$kinds = pg_sms_queue_list_kinds();
+	pg_assert_same(lang('One-time code'), $kinds['otp']);
+
+	$row = array(
+		'id' => '4', 'created_at' => '1', 'send_after' => '0', 'expires_at' => '0', 'status' => 'sent',
+		'attempts' => '1', 'last_error' => '', 'sent_at' => '2', 'kind' => 'stock', 'recipient' => '905551112233',
+		'body' => 'Back', 'reference' => '', 'provider' => '', 'provider_id' => '',
+	);
+	pg_assert_contains(h(lang('Back in stock')), pg_sms_queue_list_row($row, 3)['cells']['kind']['html']);
+}
+
 // Both queues are lists of the list table driver: the screen prints the
 // first rows, the next come from list_table_rows, so a message past the
 // 100th can be found, retried and deleted.
