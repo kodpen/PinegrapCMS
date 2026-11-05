@@ -206,6 +206,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_prompts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_messages.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_codes.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mailchimp_key.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/address_autocomplete.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/places.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/captcha.php');

@@ -814,6 +814,7 @@
     "The API URL must be a valid http or https address.": "API URL'si geçerli bir http ya da https adresi olmalıdır.",
     "The API is not installed on this site yet. Run the software upgrade to finish it.": "API bu sitede henüz kurulmadı. Tamamlamak için yazılım yükseltmesini çalıştırın.",
     "The API is switched off for this site.": "Bu site için API kapalı.",
+    "The API key must end with its data center, like -us6.": "API anahtarı, -us6 gibi veri merkeziyle bitmelidir.",
     "The API key or the Place ID is missing or not valid.": "API anahtarı ya da Yer Kimliği eksik veya geçersiz.",
     "The API trigger": "API tetikleyicisi",
     "The API, MCP and OAuth endpoints": "API, MCP ve OAuth uçları",

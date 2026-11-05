@@ -47,8 +47,9 @@ function mailchimp_init() {
     define('MAILCHIMP_SYNC_DAYS', $config['mailchimp_sync_days']);
     define('MAILCHIMP_SYNC_LIMIT', $config['mailchimp_sync_limit']);
 
-    // Get the datacenter which is after the dash in the key.
-    define('MAILCHIMP_DC', substr(MAILCHIMP_KEY, strpos(MAILCHIMP_KEY, '-') + 1));
+    // The data center after the dash in the key, '' for a key that does not
+    // end in a plain host label (pg_mailchimp_dc()).
+    define('MAILCHIMP_DC', pg_mailchimp_dc(MAILCHIMP_KEY));
 }
 
 mailchimp_init();
@@ -1119,8 +1120,8 @@ function mailchimp_request($request) {
 
         $key = $request['key'];
 
-        // Get the datacenter which is after the dash in the key.
-        $dc = substr($key, strpos($key, '-') + 1);
+        // The data center after the dash in the key.
+        $dc = pg_mailchimp_dc($key);
 
     // Otherwise the key was not passed in the request, so use values from settings.
     } else {
@@ -1136,6 +1137,12 @@ function mailchimp_request($request) {
         $quiet = $request['quiet'];
     } else {
         $quiet = false;
+    }
+
+    // A key without a data center names no Mailchimp host: nothing is sent,
+    // so the key never reaches a host written into it.
+    if ($dc === '') {
+        return error_response(lang('Sorry, the API key is not valid') . '.');
     }
 
     $url = 'https://' . $dc . '.api.mailchimp.com/3.0' . $path;
