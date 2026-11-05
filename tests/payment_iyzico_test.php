@@ -641,6 +641,40 @@ function test_payment_iyzico_installment_charge_keeps_the_rate_reachable()
 	pg_assert_same(5997, $answer['amount']);
 }
 
+// A count iyzico quoted no price for (not offered for the card, a posted
+// count off the list, or a failed quote) is refused before the card is
+// charged: sent as is it was taken in instalments with no charge, the store
+// paying the instalment cost.
+function test_payment_iyzico_unquoted_installment_is_refused_before_the_charge()
+{
+	$quoted = payment_iyzico_test_success(array('installmentDetails' => array(array('installmentPrices' => array(
+		array('installmentNumber' => 1, 'totalPrice' => '107.14'),
+		array('installmentNumber' => 3, 'totalPrice' => '110.35'),
+		array('installmentNumber' => 6, 'totalPrice' => '115.99'))))));
+
+	foreach (array(
+		'count off the list' => array(4, $quoted),
+		'failed quote'       => array(6, array('status' => 'failure', 'errorCode' => '1', 'errorMessage' => 'Sistem hatası')),
+		'no answer'          => array(3, null),
+	) as $case => $data) {
+		$answers = array('/payment/auth' => payment_iyzico_test_success(array('paymentId' => '556', 'fraudStatus' => 1)));
+		if ($data[1] !== null) $answers['/payment/iyzipos/installment'] = $data[1];
+		$http = payment_iyzico_test_http($answers);
+
+		$answer = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment(array('installment' => $data[0])));
+
+		pg_assert_false($answer['success'], $case);
+		pg_assert_same(lang('The selected number of installments is not offered for this card. Please choose another number of installments.'), $answer['error'], $case);
+		pg_assert_same(array('/payment/iyzipos/installment'), array_column($http->posts, 'path'), $case . ': no charge sent');
+	}
+
+	// A single payment needs no quoted price.
+	$http = payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array('paymentId' => '557', 'fraudStatus' => 1))));
+	$answer = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment(array('installment' => 1)));
+	pg_assert_true($answer['success']);
+	pg_assert_same(1, $answer['installments']);
+}
+
 function test_payment_iyzico_installment_above_the_limit_is_refused_before_iyzico()
 {
 	$http = payment_iyzico_test_http();
