@@ -24,3 +24,6 @@ Related: docs/memory/commerce/cart-widget-rows-and-groups.md, docs/memory/commer
 
 ## Which line does adding a product raise? (PR #6030)
 - Only the shopper's own line: `add_order_item()` finds it (`added_by_offer = '0'`) and updates its quantity or donation price by its id. Before, the UPDATEs matched by product and recipient, so an offer's gift line of the same product in the same recipient was raised too; the AJAX add (`add_to_cart.php`, no offer pass) showed the extra gift units in the mini-cart's count and total (`offer-gift-lines.md`).
+
+## In which language does the remove link answer an error?
+- The site's: `remove_item_from_cart.php` passes its four refusals (no active cart, no `order_item_id`, line not found, line of another cart) and "Query failed." through `lang()`. Before, they were raw English on every site, e.g. a remove link followed twice (back button) showed "It might have already been removed." in English on a Turkish shop.
