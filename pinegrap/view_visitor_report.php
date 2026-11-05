@@ -982,7 +982,7 @@ if (!$_POST) {
             $export_summarize_bys[$i] = $summarize_by;
             $export_headers[] = isset($summarize_by_labels[$summarize_by]) ? $summarize_by_labels[$summarize_by] : $summarize_by;
         }
-        fputcsv($out, array_merge($export_headers, pg_visitor_report_export_columns(array(
+        fwrite($out, pg_visitor_report_csv_line(array_merge($export_headers, pg_visitor_report_export_columns(array(
             lang('Visitor Number'),
             lang('Date'),
             lang('Page Views'),
@@ -992,7 +992,7 @@ if (!$_POST) {
             lang('Order Checked Out'),
             lang('Order Completed'),
             lang('Order Total'),
-        ), $output_order_cells)), ',', '"', '\\');
+        ), $output_order_cells))));
 
         $query =
             "SELECT
@@ -1032,7 +1032,7 @@ if (!$_POST) {
                 $line[] = pg_csv_formula_guard($cell);
             }
 
-            fputcsv($out, array_merge($line, pg_visitor_report_export_columns(array(
+            fwrite($out, pg_visitor_report_csv_line(array_merge($line, pg_visitor_report_export_columns(array(
                 $row['id'],
                 get_absolute_time(array('timestamp' => $row['start_timestamp'], 'type' => 'date and time', 'timezone_type' => 'site', 'format' => 'plain_text')),
                 $row['page_views'],
@@ -1042,7 +1042,7 @@ if (!$_POST) {
                 $row['order_checked_out'],
                 $row['order_completed'],
                 number_format($row['order_total'] / 100, 2, '.', ''),
-            ), $output_order_cells)), ',', '"', '\\');
+            ), $output_order_cells))));
 
             // Push each batch down the wire rather than letting it pile up in
             // PHP's output buffer, which would recreate the memory problem in

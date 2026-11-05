@@ -79,10 +79,13 @@ if ($liveform->check_form_errors() == false) {
     
     // if the visitor does not have edit rights to the page's folder, then check to see if the user has reached the usage limit for this feature
     if ($edit_rights == false) {
-        // The visitor's address may send ten e-mails a day, counted in the
-        // firewall's rate store (scope 'eaf', kept past the hourly sweep by
-        // waf_rate_long_scopes()). Fails open where the store is not loaded.
-        if (function_exists('waf_rate_hits') && (waf_rate_hits(pg_auth_request_address(), 'eaf', 86400) >= 10)) {
+        // The visitor's address (an IPv6 /64) may send ten e-mails a day,
+        // counted in the firewall's rate store (scope 'eaf', kept past the
+        // hourly sweep by waf_rate_long_scopes()) before the mail goes, so
+        // parallel requests cannot all pass. Fails open where the store is
+        // not loaded.
+        if (pg_eaf_limit_take(pg_auth_request_address())) {
+            pg_eaf_limit_log(pg_auth_request_address());
             $liveform->mark_error('', lang('You have sent the maximum number of e-mails that you are allowed to send in one day. Please try again later.'));
         }
     }
@@ -148,11 +151,6 @@ email(array(
     'reply_to' => $from_email_address,
     'subject' => $subject,
     'body' => $body));
-
-// count the sent e-mail on the visitor's daily limit
-if (function_exists('waf_rate_record')) {
-    waf_rate_record(pg_auth_request_address(), 'eaf', 86400);
-}
 
 // log that the user e-mailed a page to a friend
 log_activity(pg_log_lang(array('string' => '{var:1} e-mailed a link ({var:2}) to a friend', 'vars' => array($from_email_address, $link_url))), $_SESSION['sessionusername']);

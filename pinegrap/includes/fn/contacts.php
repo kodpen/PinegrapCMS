@@ -1848,6 +1848,22 @@ function pg_affiliate_approval_code($existing, $generate = 'generate_affiliate_c
 }
 
 /**
+ * An affiliate's link: the site's configured address with the code as the
+ * ?a= parameter, as the My Account page shows it. Pure. A mail built from
+ * the request's Host header would point wherever the sender's request said.
+ *
+ * @param string $scheme   URL_SCHEME
+ * @param string $hostname HOSTNAME_SETTING
+ * @param string $path     PATH
+ * @param string $code     contacts.affiliate_code
+ * @return string
+ */
+function pg_affiliate_link($scheme, $hostname, $path, $code)
+{
+    return (string) $scheme . (string) $hostname . (string) $path . '?a=' . urlencode((string) $code);
+}
+
+/**
  * What affiliate.approved carries: the contact and its code. Pure.
  *
  * @param int    $contact_id

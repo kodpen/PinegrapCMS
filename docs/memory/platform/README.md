@@ -48,6 +48,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
 - ca-bundle-panel-update.md: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): https-only source, validation checks, atomic write to data/cacert.pem.
 - ca-store-choice.md: pg_ca_bundle_effective() chooses the CA store: the CURL_CA_BUNDLE override, the shipped data/cacert.pem when PHP has no store or the probe failed, else the server's store; the probe record.
+- cache-control-shared-caches.md: Which answers may carry a Cache-Control a CDN or proxy keeps; pg_cache_control_shared_safe() and the guard test over literal header('Cache-Control: …') lines
 - chat-attachment-access.md: Panel team chat attachments open only for the conversation's sides or a role-0 administrator, served private, no-store, whatever their folder allows (#5973)
 - clean-up-tool-file-list.md: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
 - cloud-file-picker-onedrive.md: OneDrive in Upload File's cloud picker (#3261): the v8 picker with OneDrive/SharePoint tokens per resource, the Graph download through its pre-authenticated address, the Entra setup
@@ -70,6 +71,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - encryption-key-reseal-registry.md: Reset Encryption Key re-seals what pg_reseal_registry() lists, last in the same save; the entries, kinds and JSON fields, done/skipped/failed counts, the $key parameters of the sealing helpers
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
+- file-copy-chat-attachments.md: File Manager paste, folder copy, zip archives and the Workspace file picker refuse a team chat attachment to anyone get_file.php refuses it to; an archive holding a form upload stays an attachment
 - file-manager-page-where-used.md: The File Manager's "Where used" for a page (explorer_page_usage): menu items, short links, links in content, page settings, products/offers/events and site settings that point at it
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, what it reads by id, the cap, the answer
@@ -128,6 +130,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - not-found-log.md: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are recorded and which not, bots and verified crawlers, the end-of-request write, row cap and 90 days, the screen and its Create redirect
 - notification-channels-delivery.md: Slack, Teams and Telegram delivery: targets in the sealed notify_channels entry, api_webhook_queue rows with webhook_id 0, the retry ladder, secrets masked
 - notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
+- object-storage-active-types.md: A stored HTML, XHTML, SVG or XML file is redirected to the object store as an attachment, never inline: the store cannot send the sandbox policy get_file.php adds to a local answer
 - object-storage-client.md: The S3-compatible client (aws_sign.php SigV4, object_storage.php put/get/head/delete/list/multipart/presign), its answers, where its settings live, the Storage card and its test (PR #5349)
 - object-storage-decisions.md: What binds the S3-compatible object storage for backups and uploaded files: legacy sites unchanged, same addresses, access checks in get_file.php, redirect only, the storage columns (#5037)
 - object-storage-health.md: Object store health: failed calls counted for the ops alert storage_unreachable, the Storage card's last test result, the System Status tile with the move job's failures
