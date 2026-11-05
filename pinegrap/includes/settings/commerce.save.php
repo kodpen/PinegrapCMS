@@ -328,15 +328,29 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $query = "LOCK TABLES next_order_number WRITE";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-        if ((int) db_value("SELECT COUNT(*) FROM next_order_number") > 0) {
-            db_q("UPDATE next_order_number SET next_order_number = ?", array($ecommerce_next_order_number)) or output_error('Query failed.');
-        } else {
-            db_q("INSERT INTO next_order_number VALUES (?)", array($ecommerce_next_order_number)) or output_error('Query failed.');
+        // Read again under the lock: an order may have taken a number since
+        // the check above, and its number must not be given out twice.
+        $next_order_number_row = db_item("SELECT next_order_number FROM next_order_number LIMIT 1");
+        $next_order_number_current = is_array($next_order_number_row) ? (int) $next_order_number_row['next_order_number'] : null;
+        $next_order_number_moved = pg_next_order_number_set_back($ecommerce_next_order_number, $next_order_number_was, $next_order_number_current);
+
+        // Set back, it writes nothing; the warning waits for the unlock, as
+        // no other table may be touched under it.
+        if (!$next_order_number_moved) {
+            if ($next_order_number_current !== null) {
+                db_q("UPDATE next_order_number SET next_order_number = ?", array($ecommerce_next_order_number)) or output_error('Query failed.');
+            } else {
+                db_q("INSERT INTO next_order_number VALUES (?)", array($ecommerce_next_order_number)) or output_error('Query failed.');
+            }
         }
 
         // release lock on table
         $query = "UNLOCK TABLES";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        if ($next_order_number_moved) {
+            $liveform->add_warning(lang(array('string' => 'Orders took numbers while this screen was open, so the Next Order Number was not changed; it is {var:1} now.', 'vars' => array($next_order_number_current))));
+        }
     }
 
     // Points to store credit: two config_text rows, only when the reward

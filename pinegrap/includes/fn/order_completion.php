@@ -4234,3 +4234,37 @@ function pg_next_order_number_refusal($posted, $last_order_number)
 
     return '';
 }
+
+/**
+ * Whether an accepted Next Order Number must not be written after all: asked
+ * again under the counter's lock, with the counter as it is now.
+ * pg_next_order_number_refusal() runs before the lock against the orders
+ * written so far, so an order completed in between, or one that took its
+ * number and has not stored it yet, is not in that MAX(); written over the
+ * moved counter, the typed value would hand that number out again. A counter
+ * still at the value the screen was opened with is the operator's own to set
+ * (the check before the lock holds it above every stored order); a counter
+ * that moved meanwhile is never set back below where it is. Pure: the caller
+ * holds a table lock under which nothing else may be queried.
+ *
+ * @param string      $posted  the typed value, already accepted
+ * @param string|null $was     the value the screen was opened with, null when
+ *                             it was not posted
+ * @param int|null    $current the counter read under the lock, null for no row
+ * @return bool
+ */
+function pg_next_order_number_set_back($posted, $was, $current)
+{
+    if ($current === null) {
+        return false;
+    }
+
+    $current = (int) $current;
+    $was = ($was === null) ? '' : trim((string) $was);
+
+    if (ctype_digit($was) && ((int) $was === $current)) {
+        return false;
+    }
+
+    return (int) trim((string) $posted) < $current;
+}
