@@ -152,6 +152,22 @@ $liveform->remove_form();
         $_POST['parent_id'] = 0;
     }
 
+    // The parent list was drawn when the screen opened: a parent deleted or
+    // moved to the recycle bin since then, or an id the list never offered,
+    // would store the new group outside the live tree, where no screen or
+    // catalog page reaches it.
+    if (!function_exists('pg_catalog_group_map')) {
+        require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+    }
+
+    if (!pg_product_group_form_parent_ok(pg_catalog_group_map(), 0, $_POST['parent_id'], 0)) {
+        $liveform->mark_error('parent_id', lang('The selected parent product group no longer exists.'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_product_group.php');
+        exit();
+    }
+
+    $_POST['parent_id'] = (int) $_POST['parent_id'];
+
     // The address is made from the address name, the short description or the name.
     $address_name = pg_product_group_form_address_source($_POST);
     
