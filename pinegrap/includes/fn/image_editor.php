@@ -1809,14 +1809,18 @@ function pg_image_editor_mask_color($adjust, $filter)
  * The selection's areas of a save (Erase and Adjust inside layers, E27b),
  * checked and their masks written next to $prefix: each { op, x, y, mask }
  * with the mask a PNG data: URL whose opaque pixels are the area, its box
- * at x, y inside the output; an erase takes fill ('#rrggbb' or null), a
- * colour area adjust and filter as the document's.
+ * at x, y inside the output; an erase takes at most one of fill
+ * ('#rrggbb'), blur (the picture under it blurred, a radius of 0.5-250
+ * output pixels) or picture (a PNG or JPEG data: URL the browser drew at
+ * the mask's size, Remove background's picture from Files); a colour area
+ * adjust and filter as the document's.
  *
  * @param mixed  $areas  the request's masks list
  * @param array  $edit   the recipe of pg_image_edit_validate()
  * @param string $prefix path the mask files start with
  * @return array|false the engine's masks list (op, x, y, w, h, mask, fill,
- *                     color), an empty one for none; false when refused
+ *                     blur, picture, color), an empty one for none; false
+ *                     when refused
  *                     (masks already written are removed)
  */
 function pg_image_editor_take_masks($areas, $edit, $prefix)
@@ -1836,6 +1840,8 @@ function pg_image_editor_take_masks($areas, $edit, $prefix)
         $x = isset($area['x']) ? pg_image_edit_number($area['x'], 0, $edit['out_w'] - 1) : null;
         $y = isset($area['y']) ? pg_image_edit_number($area['y'], 0, $edit['out_h'] - 1) : null;
         $fill = null;
+        $blur = null;
+        $picture = null;
         $color = null;
         $ok = (($op === 'erase') || ($op === 'color')) && ($x !== null) && ($y !== null) && ($x == floor($x)) && ($y == floor($y))
             && is_string(isset($area['mask']) ? $area['mask'] : null) && (strncmp($area['mask'], 'data:image/png;', 15) === 0);
@@ -1843,6 +1849,16 @@ function pg_image_editor_take_masks($areas, $edit, $prefix)
         if ($ok && ($op === 'erase') && isset($area['fill'])) {
             $ok = is_string($area['fill']) && preg_match('/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i', $area['fill'], $m);
             $fill = $ok ? array(hexdec($m[1]), hexdec($m[2]), hexdec($m[3])) : null;
+        }
+
+        if ($ok && ($op === 'erase') && isset($area['blur'])) {
+            $blur = pg_image_edit_number($area['blur'], 0.5, 250);
+            $ok = ($blur !== null) && !$fill;
+        }
+
+        // The picture is taken once the mask's size is known.
+        if ($ok && ($op === 'erase') && isset($area['picture'])) {
+            $ok = is_string($area['picture']) && !$fill && ($blur === null);
         }
 
         if ($ok && ($op === 'color')) {
@@ -1857,8 +1873,19 @@ function pg_image_editor_take_masks($areas, $edit, $prefix)
 
         $path = $prefix . '.' . $i . '.mask.tmp';
         $size = $ok ? pg_image_editor_take_picture($area['mask'], $path) : false;
+        $ok = $size && ($x + $size[0] <= $edit['out_w']) && ($y + $size[1] <= $edit['out_h']);
 
-        if (!$size || ($x + $size[0] > $edit['out_w']) || ($y + $size[1] > $edit['out_h'])) {
+        if ($ok && isset($area['picture'])) {
+            $picture = $prefix . '.' . $i . '.fill.tmp';
+            $fill_size = pg_image_editor_take_picture($area['picture'], $picture);
+            $ok = $fill_size && ((int) $fill_size[0] === (int) $size[0]) && ((int) $fill_size[1] === (int) $size[1]);
+
+            if ($fill_size && !$ok) {
+                @unlink($picture);
+            }
+        }
+
+        if (!$ok) {
             if ($size) {
                 @unlink($path);
             }
@@ -1867,7 +1894,8 @@ function pg_image_editor_take_masks($areas, $edit, $prefix)
             return false;
         }
 
-        $list[] = array('op' => $op, 'x' => (int) $x, 'y' => (int) $y, 'w' => (int) $size[0], 'h' => (int) $size[1], 'mask' => $path, 'fill' => $fill, 'color' => $color);
+        $list[] = array('op' => $op, 'x' => (int) $x, 'y' => (int) $y, 'w' => (int) $size[0], 'h' => (int) $size[1], 'mask' => $path, 'fill' => $fill,
+            'blur' => $blur, 'picture' => $picture, 'color' => $color);
     }
 
     return $list;
@@ -1879,6 +1907,10 @@ function pg_image_editor_drop_redactions($list)
 {
     foreach ((array) $list as $region) {
         @unlink($region['mask']);
+
+        if (!empty($region['picture'])) {
+            @unlink($region['picture']);
+        }
     }
 }
 

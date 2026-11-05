@@ -6,7 +6,8 @@
  * sends are checked before any pixel work (pg_image_editor_take_masks()),
  * and the engine's mask step under GD and Imagick erases to see-through or
  * to a fill colour (white in a JPEG without one) and colours only inside
- * its mask; one pixel's colour step as the browser's applyColor() does it.
+ * its mask, or (Remove background) to a blur of the picture or a picture
+ * from Files; one pixel's colour step as the browser's applyColor() does it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -243,3 +244,102 @@ function test_image_editor_area_adjust_inside()
 	}
 }
 
+
+// A w x h picture of one colour as a data: URL, PNG or JPEG.
+function image_editor_area_pixels_fill($width, $height, $rgb, $jpeg)
+{
+	$image = imagecreatetruecolor($width, $height);
+	imagefilledrectangle($image, 0, 0, $width - 1, $height - 1, imagecolorallocate($image, $rgb[0], $rgb[1], $rgb[2]));
+	ob_start();
+
+	if ($jpeg) {
+		imagejpeg($image, null, 95);
+	} else {
+		imagepng($image);
+	}
+
+	pg_image_destroy($image);
+
+	return 'data:image/' . ($jpeg ? 'jpeg' : 'png') . ';base64,' . base64_encode((string) ob_get_clean());
+}
+
+// Remove background's fills: blur and a picture the browser drew are
+// checked (one fill at a time, the picture at the mask's size).
+function test_image_editor_area_backdrops_are_checked()
+{
+	$edit = pg_image_edit_validate(image_editor_area_pixels_doc())['edit'];
+	$prefix = tempnam(sys_get_temp_dir(), 'pgiemask');
+	$mask = image_editor_area_pixels_mask(40, 30);
+	$picture = image_editor_area_pixels_fill(40, 30, array(200, 0, 0), true);
+
+	try {
+		$list = pg_image_editor_take_masks(array(
+			array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'blur' => 6),
+			array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'picture' => $picture)), $edit, $prefix);
+		pg_assert_same(2, count($list), 'a blur and a picture');
+		pg_assert_same(array(6.0, null), array($list[0]['blur'], $list[0]['picture']), 'the blur radius');
+		pg_assert_true(is_file($list[1]['picture']), 'the picture on the disk');
+		pg_image_editor_drop_redactions($list);
+		pg_assert_false(is_file($list[1]['picture']), 'and removed with its mask');
+
+		$bad = array(
+			'a blur of nothing' => array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'blur' => 0),
+			'a blur too wide' => array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'blur' => 300),
+			'a blur as a string' => array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'blur' => '6'),
+			'a blur and a fill' => array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'blur' => 6, 'fill' => '#ffffff'),
+			'a blur and a picture' => array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'blur' => 6, 'picture' => $picture),
+			'a picture of another size' => array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'picture' => image_editor_area_pixels_fill(41, 30, array(0, 0, 0), true)),
+			'a picture that is no picture' => array('op' => 'erase', 'x' => 0, 'y' => 0, 'mask' => $mask, 'picture' => 'data:image/gif;base64,AAAA'));
+
+		foreach ($bad as $label => $area) {
+			pg_assert_same(false, pg_image_editor_take_masks(array($area), $edit, $prefix), $label . ' is refused');
+		}
+
+		pg_assert_same(array(), glob($prefix . '.*'), 'nothing is left on the disk');
+	} finally {
+		@unlink($prefix);
+	}
+}
+
+// Remove background's fills under GD and Imagick: the erased half takes the
+// picture from Files, or the picture under it blurred (a sharp edge under
+// the mask becomes a ramp); the clear half and the outside stay.
+function test_image_editor_area_erase_backdrops()
+{
+	if (!function_exists('imagecreatetruecolor')) {
+		pg_assert_true(true, 'GD is not loaded; skipped');
+		return;
+	}
+
+	$path = tempnam(sys_get_temp_dir(), 'pgiemask') . '.png';
+	$prefix = tempnam(sys_get_temp_dir(), 'pgiemask');
+	// Black on the left of x 40, white from it.
+	$image = imagecreatetruecolor(120, 80);
+	imagefilledrectangle($image, 0, 0, 39, 79, imagecolorallocate($image, 0, 0, 0));
+	imagefilledrectangle($image, 40, 0, 119, 79, imagecolorallocate($image, 255, 255, 255));
+	imagepng($image, $path);
+	pg_image_destroy($image);
+
+	try {
+		foreach (image_editor_area_pixels_libraries() as $library) {
+			$out = image_editor_area_pixels_run($library, $path, IMAGETYPE_PNG, array(array('op' => 'erase', 'x' => 20, 'y' => 20, 'mask' => image_editor_area_pixels_mask(40, 40),
+				'picture' => image_editor_area_pixels_fill(40, 40, array(20, 160, 60), false))), $prefix);
+			pg_assert_same(array(20, 160, 60, 0), image_editor_area_pixels_at($out, 30, 30), $library . ': the picture fills the erased part');
+			pg_assert_same(array(255, 255, 255, 0), image_editor_area_pixels_at($out, 50, 30), $library . ': the clear half keeps the picture');
+			pg_image_destroy($out);
+
+			$out = image_editor_area_pixels_run($library, $path, IMAGETYPE_PNG, array(array('op' => 'erase', 'x' => 20, 'y' => 20, 'mask' => image_editor_area_pixels_mask(40, 40), 'blur' => 8.0)), $prefix);
+			$near = image_editor_area_pixels_at($out, 38, 40);
+			$far = image_editor_area_pixels_at($out, 21, 40);
+			pg_assert_true(($near[0] > 40) && ($near[0] < 215), $library . ': beside the edge the blur mixes black and white (' . $near[0] . ')');
+			pg_assert_true($far[0] < $near[0], $library . ': farther from the edge it is darker (' . $far[0] . ')');
+			pg_assert_same(0, $near[3], $library . ': the blur stays opaque');
+			pg_assert_same(array(0, 0, 0, 0), image_editor_area_pixels_at($out, 5, 40), $library . ': outside the box is left alone');
+			pg_assert_same(array(255, 255, 255, 0), image_editor_area_pixels_at($out, 41, 40), $library . ': the clear half is left alone');
+			pg_image_destroy($out);
+		}
+	} finally {
+		@unlink($path);
+		@unlink($prefix);
+	}
+}
