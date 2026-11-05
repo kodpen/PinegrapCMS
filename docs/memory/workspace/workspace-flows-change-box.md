@@ -16,5 +16,6 @@ description: The change box of a flow (F4b3, PR #1957): the scheduled change ste
 
 ## Who reads what?
 - A change box names a record the reader may not open and values that may be a customer's data. `ws_flow_graph_present($graph, $edit)` gives a reader without edit the kind, the action and the field names only (id 0, values ''), on the screen, the API and a run's graph, as it masks a hook's address (`workspace-flows-steps.md`).
+- Pinegrap AI's `read_flow` tells the model the same: `ws_flow_ai_read_graph()` (flow_draft.php, pure) gives an editor the draft, anybody else the live version (the draft of a flow never published) through `ws_flow_graph_present()`. Before PR #NNNN it gave a view or run reader the whole draft, hook address and change values included, which the answer could post in the channel (`tests/workspace_flow_ai_read_test.php`).
 - In a run, `ws_step_result_shown()` (through `ws_api_flow_run_step_present($step, $graph, $edit)`) replaces a change box's sentence for a non-editor with "The change was made." or "The change could not be made.". The owner's end notice and `{{node.ID.text}}` keep the whole sentence.
 - Tests: `tests/workspace_flow_steps_test.php` (`…_change_config`, `…_change_is_kept_back`), `tests/workspace_flow_change_starter_test.php`. The parity table already maps the change step and its kinds to this box.

@@ -2207,7 +2207,8 @@ function ws_flow_ai_read($asker, $args)
             return array('error' => 'There is no such flow, or the person who asked may not read it.');
         }
 
-        $graph = ws_flow_graph_of($flow);
+        $version = ((int) $flow['version_id'] > 0) ? ws_flow_version((int) $flow['version_id']) : null;
+        $graph = ws_flow_ai_read_graph($flow, is_array($version) ? ws_flow_graph_of($version) : null);
         $boxes = array();
 
         foreach ($graph['nodes'] as $node) {
@@ -2241,6 +2242,32 @@ function ws_flow_ai_read($asker, $args)
     }
 
     return array('results' => $found, 'note' => empty($found) ? 'No flow matched. Try one shorter word.' : 'Read one with read_flow and its id before you change it.');
+}
+
+/**
+ * The graph read_flow tells the model of one flow, as the Flows screen
+ * gives it to the same person (ws_flow_detail()): whoever may change the
+ * flow reads its draft whole; anybody else reads its live version, or the
+ * draft of a flow never published, with a webhook's address, a change or
+ * table box's record and values and a condition's value kept back
+ * (ws_flow_graph_present()). The answer may be posted where others read it.
+ * Box settings stay arrays. Pure.
+ *
+ * @param array      $flow ws_flow_for() row (access, draft)
+ * @param array|null $live the live version's graph, null when never published
+ * @return array v, nodes, edges, notes
+ */
+function ws_flow_ai_read_graph($flow, $live)
+{
+    $edit = ((string) ($flow['access'] ?? '') === 'edit');
+    $graph = ($edit || !is_array($live)) ? ws_flow_graph_of($flow) : $live;
+    $shown = ws_flow_graph_present($graph, $edit);
+
+    foreach ($shown['nodes'] as $index => $node) {
+        $shown['nodes'][$index]['config'] = (array) $node['config'];
+    }
+
+    return $shown;
 }
 
 /**
