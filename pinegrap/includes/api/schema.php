@@ -289,7 +289,7 @@ function api_schema() {
 			'handler' => 'api_inventory_list',
 			'returns' => array('list' => 'StockLevel'),
 			'summary' => 'Stock levels per location',
-			'description' => 'The products that track stock, by id, cursor paged, with quantity (the total, the figure GET /products shows and marketplaces receive) and locations: the units at each location, 0 where the product holds none. A product that has not been changed since the first location was added holds its whole quantity at the default location. On a site without locations, locations is empty.',
+			'description' => 'The products that track stock, by id, cursor paged, left out while in the Recycle Bin as GET /products leaves them out, with quantity (the total, the figure GET /products shows and marketplaces receive) and locations: the units at each location, 0 where the product holds none. A product that has not been changed since the first location was added holds its whole quantity at the default location. On a site without locations, locations is empty.',
 			'params'  => array(
 				array('name' => 'location',      'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only this location\'s units in locations (0 or left out: every location). An id that is not a location is refused with 422 location.'),
 				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product.'),
