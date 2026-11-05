@@ -1,7 +1,6 @@
 ---
 name: workspace-guest-cleared-room
 description: A guest's requests on one message (file address, tick, reaction, vote) reach only the room's current conversation, after its clear floor, as the guest page lists it
-module: includes/workspace/guests.php
 ---
 
 ## What does a guest reach after a room is cleared?
