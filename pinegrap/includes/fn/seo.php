@@ -5727,12 +5727,14 @@ function pg_sitemap_catalog_item_path($item, $path, $catalog_page_name, $detail_
  * show a record or a product only through the address (the records and
  * products themselves are listed under their own addresses).
  *
- * @param array $page_type_widgets legacy page type => widget type
+ * @param array         $page_type_widgets legacy page type => widget type
+ * @param string[]|null $listed            the page types the list keeps;
+ *                                         null for pg_sitemap_page_types()
  * @return string[]
  */
-function pg_sitemap_unlisted_widget_types($page_type_widgets)
+function pg_sitemap_unlisted_widget_types($page_type_widgets, $listed = null)
 {
-    $listed = pg_sitemap_page_types();
+    $listed = ($listed === null) ? pg_sitemap_page_types() : array_map('strval', (array) $listed);
     $types = array('error_page', 'form_item_view', 'catalog_item_view');
 
     foreach ((array) $page_type_widgets as $page_type => $widget_type) {
