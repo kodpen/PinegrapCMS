@@ -1718,7 +1718,7 @@ if ($liveform->check_form_errors() == false) {
     // parameter in query string, so that message can be outputted.
     if (pg_cf_confirmation_shows_message($confirmation_type, $confirmation_page_id)) {
         $url = build_url(array(
-            'url' => $send_to,
+            'url' => pg_safe_redirect_path($send_to, PATH . get_page_name($_POST['page_id'])),
             'scheme' => URL_SCHEME,
             'hostname' => HOSTNAME,
             'parameters' => array($_POST['page_id'] . '_confirmation' => 'true')));
