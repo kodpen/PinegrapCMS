@@ -15,7 +15,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `prototype_links`: clean
 - `qr`: clean
 - `record_revisions`: clean
-- `returns`: clean (#4619)
+- `returns`: clean (#4619); second round taken by Arzu V5 worker
 - `reviews`: taken by LC, #4597
 - `search_console`: #4852
 - `seo`: #4870

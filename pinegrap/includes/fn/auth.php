@@ -4812,13 +4812,107 @@ function pg_login_throttle_subjects($identifier)
         $subjects['a'] = $address_subject;
     }
 
-    $identifier = trim((string) $identifier);
+    $account = pg_login_throttle_account_subject($identifier);
 
-    if ($identifier !== '') {
-        $subjects['u'] = mb_strtolower($identifier);
+    if ($account !== '') {
+        $subjects['u'] = $account;
     }
 
     return $subjects;
+}
+
+/**
+ * The account subject of a typed name: the key the user table's collation
+ * sorts it under (WEIGHT_STRING()), so every spelling the sign-in query
+ * takes for the same account counts on one counter. Lower case alone left
+ * "ádmin", "ADMİN" or a full-width "ａdmin" a fresh counter each, while
+ * validate_login() found the account "admin" for all of them: the account
+ * limit, the one that stops guessing spread over many addresses, never
+ * closed. A made-up name is folded the same way, so the counting tells
+ * nothing about which names exist. '' for an empty name.
+ *
+ * @param mixed $identifier the email address or username typed
+ * @return string
+ */
+function pg_login_throttle_account_subject($identifier)
+{
+    static $keys = array();
+
+    $identifier = is_scalar($identifier) ? trim((string) $identifier) : '';
+
+    if ($identifier === '') {
+        return '';
+    }
+
+    if (isset($keys[$identifier])) {
+        return $keys[$identifier];
+    }
+
+    $key = '';
+    $collation = pg_login_identifier_collation();
+
+    if ($collation !== '') {
+        $charset = substr($collation, 0, strpos($collation . '_', '_'));
+        $result = db_q("SELECT HEX(WEIGHT_STRING(CONVERT(_utf8mb4? USING " . $charset . ") COLLATE " . $collation . "))", array($identifier));
+        $row = $result ? mysqli_fetch_row($result) : null;
+
+        if (is_array($row) && isset($row[0]) && ((string) $row[0] !== '')) {
+            $key = 'w:' . strtolower((string) $row[0]);
+        }
+    }
+
+    // No database to ask (the test runner) or no answer: the same folding
+    // done in PHP, without case, the marks a letter decomposes into and
+    // compatibility forms.
+    if ($key === '') {
+        $folded = $identifier;
+
+        if (class_exists('Normalizer')) {
+            $decomposed = Normalizer::normalize($folded, Normalizer::FORM_KD);
+
+            if (is_string($decomposed)) {
+                $folded = (string) preg_replace('/\p{Mn}+/u', '', $decomposed);
+            }
+        }
+
+        $key = 'f:' . mb_strtolower($folded, 'UTF-8');
+    }
+
+    $keys[$identifier] = $key;
+
+    return $key;
+}
+
+/**
+ * The collation of user.user_username, the one validate_login() compares
+ * the typed name with, read once per request; '' when there is no
+ * connection to ask or the answer is not a collation name.
+ *
+ * @return string
+ */
+function pg_login_identifier_collation()
+{
+    static $collation = null;
+
+    if ($collation !== null) {
+        return $collation;
+    }
+
+    $collation = '';
+
+    if (!class_exists('db', false) || !isset(db::$con) || !db::$con) {
+        return $collation;
+    }
+
+    $result = @mysqli_query(db::$con, "SHOW FULL COLUMNS FROM user WHERE Field = 'user_username'");
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+    $name = (is_array($row) && isset($row['Collation'])) ? (string) $row['Collation'] : '';
+
+    if (preg_match('/^[a-z0-9]+_[a-z0-9_]+$/', $name) === 1) {
+        $collation = $name;
+    }
+
+    return $collation;
 }
 
 /**
@@ -6000,8 +6094,10 @@ function pg_login_unlock($username, $email)
 }
 
 /**
- * The distinct counter subjects one account can be held under, folded to lower
- * case the same way pg_login_throttle_subjects() folds them.
+ * The distinct counter subjects one account can be held under, folded the
+ * same way pg_login_throttle_subjects() folds them, and the lower case form
+ * counters were opened under before that folding, until their lockout runs
+ * out.
  */
 function pg_login_lock_identifiers($username, $email)
 {
@@ -6015,6 +6111,7 @@ function pg_login_lock_identifiers($username, $email)
             continue;
         }
 
+        $subjects[pg_login_throttle_account_subject($identifier)] = true;
         $subjects[mb_strtolower($identifier)] = true;
     }
 
