@@ -14264,6 +14264,12 @@ $(document).on('submit', 'form', function (event) {
         if (row) {
             refreshSearch(state.table, row);
         }
+
+        // A screen whose row holds more than its cells (filter data, a
+        // button's name) follows the saved answer from here.
+        if (typeof window.CustomEvent === 'function') {
+            cell.dispatchEvent(new window.CustomEvent('pg:list-edit-saved', { bubbles: true, detail: data }));
+        }
     }
 
     function send(state, value, shown) {
