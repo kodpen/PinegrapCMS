@@ -25,6 +25,9 @@ module: list_table_edit
 ## Short links, containers, menus, comments, submitted forms, themes, styles?
 - Short links (`list-table-quick-edit-short-links.md`), containers (`…-containers.md`), menus (`…-menus.md`), comments: all but the message (`…-comments.md`), submitted forms: Status and Form Editor (`…-submitted-forms.md`), themes: name, folder, activation (`…-themes.md`), styles: a custom style's name, collection, layout type (`…-styles.md`); each file says which cells change.
 
+## Offers?
+- Code, message, how, status, start and end date through the offer editor's own check and save: `list-table-quick-edit-offers.md`. The flow stays text.
+
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
 - Contacts: the groups (multi-select). Comments and themes: the message, the description (several lines).
