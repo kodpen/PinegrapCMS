@@ -58,7 +58,7 @@ function test_rate_boxes_tax_zone_saves_read_the_rate()
 {
 	foreach (array('add_tax_zone.php', 'edit_tax_zone.php') as $file) {
 		$source = rate_boxes_store_typed_test_source($file);
-		pg_assert_contains("\$tax_rate = parse_tax_rate(\$_POST['tax_rate'] ?? '');", $source, $file . ' reads the rate through parse_tax_rate()');
+		pg_assert_contains("\$tax_rate = parse_tax_rate(\$values['tax_rate']);", $source, $file . ' reads the rate through parse_tax_rate()');
 		pg_assert_contains("output_error(lang('Enter a tax rate between 0 and 100.')", $source, $file . ' refuses a blank or unreadable rate');
 		rate_boxes_store_typed_test_lacks("(string) (\$_POST['tax_rate'] ?? '')", $source, $file . ' no longer writes the raw text');
 	}

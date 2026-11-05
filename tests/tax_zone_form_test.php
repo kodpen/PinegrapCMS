@@ -70,7 +70,10 @@ function test_tax_zone_form_both_screens_draw_the_shared_cards()
 		pg_assert_contains('pg_store_tax_zone_save(', $source, $file . ' writes through the shared tax zone function');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps its gate');
+		pg_assert_contains('parse_tax_rate($values[\'tax_rate\'])', $source, $file . ' reads the rate the form has read');
+		pg_assert_same(0, substr_count($source, '$_POST[\'tax_rate\']'), $file . ' never casts a raw posted rate (a list would warn)');
 	}
+	pg_assert_same(0, substr_count((string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_tax_zone.php'), '(string) ($_POST[\'name\']'), 'a deleted zone name sent as a list is no warning');
 }
 
 function test_tax_zone_form_post_values()

@@ -102,19 +102,23 @@ if (!$_POST || $errors) {
 } else {
     // tax_zones.tax_rate is NOT NULL: a blank or unreadable rate is refused
     // before the zone's countries and states are dropped, and "8,25" is read
-    // as 8.25, not 8.
+    // as 8.25, not 8. The form's own reading is used: a rate sent as a list
+    // is blank there, not a warning.
     $tax_rate = NULL;
     if (($_POST['submit_delete'] ?? '') != 'Delete') {
-        $tax_rate = parse_tax_rate($_POST['tax_rate'] ?? '');
+        $tax_rate = parse_tax_rate($values['tax_rate']);
         if ($tax_rate === NULL) {
             output_error(lang('Enter a tax rate between 0 and 100.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
 
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        pg_store_tax_zone_delete($id, (string) ($_POST['name'] ?? '')) or output_error('Query failed.');
+        // The name only labels the log line; a name sent as a list is none.
+        $deleted_name = is_scalar($_POST['name'] ?? null) ? (string) $_POST['name'] : '';
 
-        log_activity(lang(array('string' => 'tax zone ({var:1}) was deleted', 'vars' => (string) ($_POST['name'] ?? ''))), $_SESSION['sessionusername']);
+        pg_store_tax_zone_delete($id, $deleted_name) or output_error('Query failed.');
+
+        log_activity(lang(array('string' => 'tax zone ({var:1}) was deleted', 'vars' => $deleted_name)), $_SESSION['sessionusername']);
 
     } else {
         pg_store_tax_zone_save($id, $values['name'], $tax_rate, $values['allowed_countries'], $values['allowed_states'], (int) $user['id']) or output_error('Query failed.');
