@@ -14,7 +14,7 @@ description: How the software update check reports a failed answer (HTTP status,
 ## What happens with SOFTWARE_UPDATE_CHECK false?
 - `software_update_check()` returns the `checks_off` error before any request, on both the api2 and the Kodpen API path; the manual "Check for Updates" screen says checks are off in data/config.php instead of "There is no update available." Repair Software refuses the same way (`pg_update_repair_decision()`).
 - Before, the api2 path still posted the site's details to kodpen.com and then showed "no update".
-- The update steps' `check` (`pg_panel_software_update()`, `includes/panel/software.php`) answers the same `checks_off` sentence before any request on the api2 path too; before #PR it posted to kodpen.com and then warned on an undefined `$software_update_available`.
+- The update steps' `check` (`pg_panel_software_update()`, `includes/panel/software.php`) answers the same `checks_off` sentence before any request on the api2 path too; before #6991 it posted to kodpen.com and then warned on an undefined `$software_update_available`.
 
 ## How many "update available" bell rows does a check leave?
 - At most one. A version answer on the api2 path deletes the `software_update` notification before it decides (`software_update_check.php`), as the Kodpen API path does (`vendor-api-update.md`): an answer offering an update writes one row, an answer offering nothing leaves none.
