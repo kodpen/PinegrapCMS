@@ -2738,6 +2738,12 @@ function build_url($properties)
         $url_path = '/';
     }
 
+    // Behind a host the path must start with a slash: "@evil.example/x" or
+    // ".evil.example/x" glued to the host changes where the address goes.
+    if (($url_hostname != '') && ($url_path != '') && ($url_path[0] !== '/')) {
+        $url_path = '/' . $url_path;
+    }
+
     return $url_scheme . $url_hostname . $url_path . $url_query_string . $url_fragment;
 }
 

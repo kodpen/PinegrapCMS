@@ -691,7 +691,8 @@ function pg_ap_digest_matches($header, $body)
 
 /**
  * The public key in a fetched actor (or key) document: the one whose id is
- * $key_id, or the only one.
+ * $key_id, or the only one. Refused when its owner is on another host than
+ * $key_id, the address the document was fetched from.
  *
  * @param array  $document
  * @param string $key_id
@@ -718,6 +719,14 @@ function pg_ap_key_from_document($document, $key_id)
 
         if ((count($candidates) === 1) || (isset($candidate['id']) && ($candidate['id'] === $key_id))) {
             $owner = isset($candidate['owner']) ? (string) $candidate['owner'] : (isset($document['id']) ? (string) $document['id'] : '');
+
+            // The document came from the key id's host; it may only speak
+            // for an actor on that host, or any server could sign as anyone.
+            $key_host = strtolower((string) parse_url((string) $key_id, PHP_URL_HOST));
+
+            if (($owner !== '') && (($key_host === '') || (strtolower((string) parse_url($owner, PHP_URL_HOST)) !== $key_host))) {
+                return false;
+            }
 
             return array('pem' => (string) $candidate['publicKeyPem'], 'owner' => $owner);
         }
@@ -747,7 +756,11 @@ function pg_ap_remote_key($key_id, $fresh = false)
     if (!$fresh && is_file($file) && ((time() - (int) @filemtime($file)) < PG_AP_KEY_CACHE_TTL)) {
         $cached = json_decode((string) @file_get_contents($file), true);
 
-        if (!empty($cached['pem'])) {
+        // Read back through the same rule, so an entry cached before the
+        // owner check is not trusted.
+        $cached = is_array($cached) ? pg_ap_key_from_document(array('publicKeyPem' => isset($cached['pem']) ? $cached['pem'] : '', 'owner' => isset($cached['owner']) ? (string) $cached['owner'] : ''), $key_id) : false;
+
+        if ($cached) {
             return array('pem' => (string) $cached['pem'], 'owner' => (string) $cached['owner'], 'cached' => true);
         }
     }
