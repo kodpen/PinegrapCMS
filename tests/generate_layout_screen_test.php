@@ -40,7 +40,7 @@ function test_generate_layout_has_form_status_and_save_bar_columns()
 	$status_markup = substr($source, $status, $bar - $status);
 	pg_assert_contains("lang('Summary')", $status_markup, 'the status column holds the Summary');
 	pg_assert_contains("lang('Page Type')", $status_markup, 'with the page type');
-	pg_assert_contains("lang('Lines')", $status_markup, 'and the code length');
+	pg_assert_contains("lang('Lines of Code')", $status_markup, 'and the code length');
 }
 
 function test_generate_layout_save_bar_copies_and_links_edit_layout()

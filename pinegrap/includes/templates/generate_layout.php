@@ -57,7 +57,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 <dd class="mb-0 fw-bold text-end text-break"><?=h(($page['layout_type'] === 'custom') ? lang('Custom') : lang('System'))?></dd>
                             </div>
                             <div class="d-flex justify-content-between gap-3 py-2">
-                                <dt class="fw-normal"><?=h(lang('Lines'))?></dt>
+                                <dt class="fw-normal"><?=h(lang('Lines of Code'))?></dt>
                                 <dd class="mb-0 fw-bold text-end text-break"><?=(int) $layout_lines?></dd>
                             </div>
                         </dl>
