@@ -4461,6 +4461,7 @@
     "The signature could not be read. Sign again.": "İmza okunamadı. Yeniden imzalayın.",
     "The signature could not be saved.": "İmza kaydedilemedi.",
     "The signature embedded in the document, for the img src": "Belgeye gömülü imza, img src için",
+    "The signature file was replaced or removed after it was signed, so the drawing shown is not the one that was signed.": "İmza dosyası imzalandıktan sonra değiştirilmiş ya da silinmiş; gösterilen çizim imzalanan çizim değil.",
     "The signature of the update could not be verified, so nothing was installed.": "Güncellemenin imzası doğrulanamadı, bu yüzden hiçbir şey kurulmadı.",
     "The signature record is intact.": "İmza kaydı bozulmamış.",
     "The signature record or its drawing was changed after it was written.": "İmza kaydı ya da çizimi yazıldıktan sonra değiştirilmiş.",

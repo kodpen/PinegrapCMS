@@ -645,6 +645,27 @@ function pg_signature_image_matches($record)
     return hash_equals((string) $record['image_hash'], hash_file('sha256', $path));
 }
 
+// The verdicts a stored signature is shown with: the record seal, the document
+// and the drawing on disk, each from its own check. A screen that prints only
+// the first two calls a replaced drawing intact, because the seal covers the
+// file's id and not its contents. The drawing's verdict is left out for a
+// record written before its digest was kept ($image === null).
+function pg_signature_verdicts($verified, $document, $image)
+{
+    $verdicts = array(
+        $verified ? lang('Record intact') : lang('Record does not match its seal'),
+        $document === null
+            ? lang('Document not recorded')
+            : ($document ? lang('Document unchanged') : lang('Document changed since it was signed')),
+    );
+
+    if ($image !== null) {
+        $verdicts[] = $image ? lang('Signature file unchanged') : lang('Signature file changed since it was signed');
+    }
+
+    return $verdicts;
+}
+
 // A stored signature, shown rather than offered. Every screen that displays a
 // submitted form uses this: once signed there is no control anywhere, because a
 // signature that can be redrawn is not evidence of anything.
@@ -675,8 +696,10 @@ function pg_signature_display($record, $options = array())
     <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/signature_receipt.php?form_id=' . (int) $record['form_id'] . '&field_id=' . (int) $record['form_field_id']) . '" target="_blank" style="display:inline-block;margin:.35rem 0 0 1rem">' . h(lang('Evidence receipt')) . '</a>';
 
     if (empty($options['image_only'])) {
-        $verified = pg_signature_verify($record);
-        $document = pg_signature_document_matches($record);
+        $verdicts = pg_signature_verdicts(
+            pg_signature_verify($record),
+            pg_signature_document_matches($record),
+            pg_signature_image_matches($record));
 
         $output .= '
     <small style="display:block;margin-top:.35rem">'
@@ -688,10 +711,7 @@ function pg_signature_display($record, $options = array())
                 'vars' => date(get_date_format_code() . '/Y H:i', $signed),
             )))
             . ' &middot; ' . h($record['ip_address'])
-            . ' &middot; ' . h($verified ? lang('Record intact') : lang('Record does not match its seal'))
-            . ' &middot; ' . h($document === null
-                ? lang('Document not recorded')
-                : ($document ? lang('Document unchanged') : lang('Document changed since it was signed')))
+            . ' &middot; ' . implode(' &middot; ', array_map('h', $verdicts))
             . '</small>';
     }
 
@@ -748,6 +768,7 @@ function pg_signature_receipt_html($record)
 
     $verified = pg_signature_verify($record);
     $document_matches = pg_signature_document_matches($record);
+    $image_matches = pg_signature_image_matches($record);
     $parts = pg_signature_document_parts($record);
 
     $file = db_item("SELECT name FROM files WHERE id = '" . e((int) $record['file_id']) . "' LIMIT 1");
@@ -775,6 +796,10 @@ function pg_signature_receipt_html($record)
 
     if (!$verified) {
         $warnings .= '<p class="warn">' . h(lang('The stored record does not match its seal, so it was edited after it was written.')) . '</p>';
+    }
+
+    if ($image_matches === false) {
+        $warnings .= '<p class="warn">' . h(lang('The signature file was replaced or removed after it was signed, so the drawing shown is not the one that was signed.')) . '</p>';
     }
 
     $document = '';
@@ -829,8 +854,6 @@ function pg_signature_receipt_html($record)
         array(lang('Browser'), h($record['user_agent'])),
     );
 
-    $image_matches = pg_signature_image_matches($record);
-
     $checks = array(
         array(lang('Document fingerprint (SHA-256)'), '<span class="mono">' . h($record['document_hash']) . '</span>'),
         array(lang('Document'), h($document_matches === null
@@ -839,9 +862,9 @@ function pg_signature_receipt_html($record)
         array(lang('Signature file fingerprint (SHA-256)'), $record['image_hash'] === ''
             ? '<span class="muted">&mdash;</span>'
             : '<span class="mono">' . h($record['image_hash']) . '</span>'),
-        array(lang('Signature file'), h($image_matches === null
-            ? lang('Document not recorded')
-            : ($image_matches ? lang('Signature file unchanged') : lang('Signature file changed since it was signed')))),
+        array(lang('Signature file'), $image_matches === null
+            ? '<span class="muted">&mdash;</span>'
+            : h($image_matches ? lang('Signature file unchanged') : lang('Signature file changed since it was signed'))),
         array(lang('Record seal'), h($verified ? lang('Record intact') : lang('Record does not match its seal'))),
     );
 

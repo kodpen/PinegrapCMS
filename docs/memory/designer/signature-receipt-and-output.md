@@ -6,6 +6,12 @@ description: Signature evidence receipt, the ^^field^^ token output, the h() amp
 ## What must the evidence receipt show?
 - `signature_receipt.php` -> `pg_signature_receipt_html()` shows exactly the set the hash covers, no more: for the "document unchanged" line to mean anything, shown == hashed. `pg_signature_document_parts()` and `pg_signature_document_matches()` do the same read. If you add something to the hash, add it to the receipt.
 - If the document changed, the warning goes at the very top: the rest of the receipt is the document's current state, and the reader must know that is not what was signed before reading it.
+- A replaced or removed drawing (`pg_signature_image_matches()` false) gets its own warning at the top too; a record from before the digest was kept shows a dash on the "Signature file" row.
+
+## Which checks must a screen that prints an integrity verdict run?
+- All three: seal (`pg_signature_verify()`), document (`pg_signature_document_matches()`), drawing (`pg_signature_image_matches()`). The seal covers the file id, not its bytes, so seal + document alone call a swapped PNG "Record intact · Document unchanged".
+- Submitted-form views print `pg_signature_verdicts()` through `pg_signature_display()`; until #PR_NUMBER the display skipped the drawing check and only the receipt caught a swapped file.
+- ERP: the quote screen reads seal && drawing as "intact"; `erp_signature_document_block()` prints no signature in the PDF unless document, seal and drawing all match (same PR). The external API's `seal_valid` is the seal alone.
 
 ## How does a `^^field_name^^` token render a signature?
 - It prints the signature, not its name. Single point: the `signature` branch of `prepare_form_data_for_output()`; submission view, list view and confirmation screen all pass through it.
