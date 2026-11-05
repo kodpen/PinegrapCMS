@@ -1808,7 +1808,7 @@ function ws_api_routes()
             'handler'     => 'ws_api_refs_get',
             'returns'     => 'WorkspaceRefs',
             'summary'     => 'Where a record was talked about',
-            'description' => 'The messages and the tasks that point at one record - an order, a product or product group, an offer, a cart quote, a contact, a user, a current account, an invoice, a delivery note, a cash receipt, an incoming e-invoice, a sales quote, a form submission, a calendar event, a file or a page - in the channels the owner may read. For a contact, the channels tied to them as well. notes are the notes that tag the record, where the owner may read the note; rows are the rows of workflow tables whose record-link cells point at it, where the owner reaches the table.',
+            'description' => 'The messages and the tasks that point at one record - an order, a product or product group, an offer, a cart quote, a contact, a user, a current account, an invoice, a delivery note, a cash receipt, an incoming e-invoice, a sales quote, a form submission, a calendar event, a file or a page - in the channels the owner may read; tasks only with tasks:read, empty without it. For a contact, the channels tied to them as well. notes are the notes that tag the record, where the owner may read the note; rows are the rows of workflow tables whose record-link cells point at it, where the owner reaches the table.',
             'params'      => array(
                 array('name' => 'type', 'in' => 'query', 'type' => 'enum', 'values' => ws_record_type_keys(), 'required' => true),
                 array('name' => 'id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'required' => true),

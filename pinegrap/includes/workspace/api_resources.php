@@ -4394,10 +4394,13 @@ function ws_api_refs_get($params)
         );
     }
 
+    // Tasks need tasks:read, as every other Workspace read of tasks.
     $tasks = array();
 
-    foreach ($refs['tasks'] as $task) {
-        $tasks[] = (int) $task['id'];
+    if (api_has_scope(api_current_scopes(), 'tasks:read')) {
+        foreach ($refs['tasks'] as $task) {
+            $tasks[] = (int) $task['id'];
+        }
     }
 
     $channels = array();
