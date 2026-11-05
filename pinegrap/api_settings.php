@@ -990,6 +990,14 @@ $app_rows = '';
 
 $app_data = array();
 
+// The status column's Summary: how many applications are in each state and
+// what all of them asked for in the last 24 hours.
+$summary_counts = array('on' => 0, 'off' => 0, 'expired' => 0, 'unused' => 0);
+
+$summary_requests = 0;
+
+$summary_failures = 0;
+
 foreach ($apps as $app) {
 
 	$granted = json_decode((string)$app['scopes'], true);
@@ -1043,6 +1051,20 @@ foreach ($apps as $app) {
 		$status_label = lang('Not in use');
 
 	}
+
+	if ($status_class === 'warn') {
+
+		$summary_counts[($status_label === lang('Not in use')) ? 'unused' : 'expired']++;
+
+	} else {
+
+		$summary_counts[$status_class]++;
+
+	}
+
+	$summary_requests += $stats['requests'];
+
+	$summary_failures += $stats['failures'];
 
 	$signed_in_number = isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0;
 
@@ -1676,10 +1698,11 @@ echo pg_page_shell(array(
    scrollbar instead - which is also what a spreadsheet does with the same
    problem. Stacking each row into a block was the other option and was rejected
    here: five applications would become thirty lines, and the whole point of
-   this screen is scanning them side by side. */
+   this screen is scanning them side by side. 720px is what the list column
+   beside the status column holds on a 1280px screen without a scrollbar. */
 .api-scroll { overflow-x: auto; overflow-y: hidden; }
 .api-head, .api-row { display: grid; grid-template-columns: 1.9fr 1.5fr .85fr 1.15fr .9fr 34px;
-	gap: 14px; align-items: center; min-width: 900px; }
+	gap: 14px; align-items: center; min-width: 720px; }
 .api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
 .api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); }
@@ -1799,11 +1822,11 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			data-none="' . h(lang('Nothing found.')) . '"></div>',
 	), array('class' => 'mb-5')) . '
 
+	<div class="row">
+	<div class="col-12 lg:col-8 2xl:col-9 order-1">
 	<div class="card">
 		<div class="card-header d-flex align-items-center">
 			<i class="bi bi-key me-3"></i><b>' . lang('Applications') . '</b>
-			<span class="ms-auto small opacity-75 d-none lg:d-inline">'
-				. lang('Every application has its own key and secret. The secret is shown only when it is made.') . '</span>
 		</div>
 		<div class="card-body px-3 py-5">
 			<div class="api-scroll">
@@ -1821,11 +1844,46 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	' . $oauth_clients_card . '
 
 	' . $webhook_card . '
+	</div>
 
-	<p class="small fg-2 mt-5">
-		<i class="bi bi-info-circle me-1"></i>'
-		. lang('The key is not shown in the list, only its prefix. The secret cannot be read back anywhere.') . '
-	</p>
+	<!-- Status column: what is read, not filled. Written after the list so that
+	     on a narrow screen the applications come first. -->
+	<div class="col-12 lg:col-4 2xl:col-3 order-2">
+		<div class="position-sticky mt-5 lg:mt-0" style="top:3.3rem;">
+			<div class="card" id="api_summary">
+				<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+				<div class="card-body">
+					<dl class="row small mb-0">
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Applications')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number(count($apps), 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Active')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['on'], 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Disabled')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['off'], 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Expired')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['expired'], 0) . '</dd>'
+						. ($summary_counts['unused'] > 0 ? '
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Not in use')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['unused'], 0) . '</dd>' : '') . '
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Requests in 24 hours')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_requests, 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Errors in 24 hours')) . '</dt>
+						<dd class="col-4 text-end mb-2' . ($summary_failures > 0 ? ' fg-danger' : '') . '">' . pg_format_number($summary_failures, 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Event notifications')) . '</dt>
+						<dd class="col-4 text-end mb-0">' . pg_format_number(count($webhook_all), 0) . '</dd>
+					</dl>
+				</div>
+			</div>
+			<p class="small fg-2 mt-5 mb-2">
+				<i class="bi bi-info-circle me-1" aria-hidden="true"></i>'
+				. lang('Every application has its own key and secret. The secret is shown only when it is made.') . '
+			</p>
+			<p class="small fg-2 mb-0">'
+				. lang('The key is not shown in the list, only its prefix. The secret cannot be read back anywhere.') . '
+			</p>
+		</div>
+	</div>
+	</div>
 </main>
 
 <!-- The drawer. One of them, filled from the row that was clicked: a drawer per
