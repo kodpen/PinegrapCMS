@@ -4,4 +4,4 @@ description: Module list of plans/bug-hunt.md, migrations part: the open version
 ---
 
 ## Which migration files are hunted?
-- Taken: 2026.11.0 (`includes/migrations/2026.11.0.php`, with `runner.php`'s `install_heavy_tables()` entry) by the 2026.11.0 migration worker; found: the preflight list missed shipping_tracking_numbers, user and files.
+- Done: 2026.11.0 (`includes/migrations/2026.11.0.php`, with `runner.php`'s `install_heavy_tables()` entry) #7032: the preflight list missed shipping_tracking_numbers, user and files; every other step clean.
