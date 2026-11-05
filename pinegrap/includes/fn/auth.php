@@ -1661,6 +1661,49 @@ function pg_session_cookie_allow_cross_site()
     }
 }
 
+/**
+ * Whether a browser sent this request from a page of another site. The
+ * session-only JSON actions (api.php's public site actions, booking_slots.php)
+ * carry no form token and lean on the Lax session cookie, which a cross-site
+ * POST does not carry; but once pg_session_cookie_allow_cross_site() has
+ * re-issued the cookie as SameSite=None, it does, and a page elsewhere can
+ * post a text/plain body that decodes as their JSON. Sec-Fetch-Site decides
+ * when the browser sends it (same-site is a sibling subdomain, kept); else
+ * an Origin naming another host and port, or the opaque "null", is
+ * cross-site. A request with neither header is not a browser's cross-site
+ * request.
+ *
+ * @param array $server $_SERVER
+ * @return bool
+ */
+function pg_request_cross_site(array $server)
+{
+    if (isset($server['HTTP_SEC_FETCH_SITE']) && is_string($server['HTTP_SEC_FETCH_SITE']) && (trim($server['HTTP_SEC_FETCH_SITE']) !== '')) {
+        return (strtolower(trim($server['HTTP_SEC_FETCH_SITE'])) === 'cross-site');
+    }
+
+    $origin = (isset($server['HTTP_ORIGIN']) && is_string($server['HTTP_ORIGIN'])) ? trim($server['HTTP_ORIGIN']) : '';
+
+    if ($origin === '') {
+        return false;
+    }
+
+    if (strtolower($origin) === 'null') {
+        return true;
+    }
+
+    $host = (isset($server['HTTP_HOST']) && is_string($server['HTTP_HOST'])) ? strtolower(trim($server['HTTP_HOST'])) : '';
+    $parts = parse_url($origin);
+
+    if (($host === '') || !is_array($parts) || empty($parts['host'])) {
+        return true;
+    }
+
+    $from = strtolower($parts['host']) . (isset($parts['port']) ? ':' . $parts['port'] : '');
+
+    return !hash_equals($host, $from);
+}
+
 // Non-remember logins get a session-scoped token only so they can be counted
 // against the device limit; it dies with the browser and is swept afterwards.
 function pg_device_limit_strict()

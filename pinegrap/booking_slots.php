@@ -86,6 +86,14 @@ if (strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? '')) !== 'POST') {
     booking_slots_answer(array('error' => 'method', 'message' => lang('Method not allowed.')), 405);
 }
 
+// The JSON actions carry no form token: a hold, a confirmation or a release
+// from a page of another site would act on the visitor's booking once a
+// checkout has re-issued the session cookie as SameSite=None
+// (pg_request_cross_site()).
+if (pg_request_cross_site($_SERVER)) {
+    booking_slots_answer(array('error' => 'request', 'message' => lang('Invalid request.')), 403);
+}
+
 $request = json_decode((string) file_get_contents('php://input', false, null, 0, 16384), true);
 $action = (is_array($request) && isset($request['action']) && is_string($request['action'])) ? $request['action'] : '';
 
