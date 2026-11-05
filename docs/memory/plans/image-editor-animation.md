@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-01): image editor animation, layers and scenes 
 - A step that waits on an open question says so in its line.
 
 ## What is it?
-- Layers move: an entrance, a loop and an exit per layer from a set of presets, with delay, duration and easing, on a timeline the user plays, scrubs and then times on tracks; keyframes for a path of a layer's own come later.
+- Layers move: an entrance, a loop and an exit per layer from a set of presets, with delay, duration and easing, on a timeline the user plays, scrubs and then times on tracks; keyframes for a path of a layer's own, set one by one or recorded by dragging the layer while the clock runs (AN12).
 - A document may hold scenes with transitions: an animated post, a short clip or a presentation.
 - Outputs: GIF, APNG, animated WebP; MP4 or WebM where the browser can encode video; a PDF with a page per scene; animated SVG (what E19 was). A still save keeps working: every layer at rest.
 - The document stays in the file's versions (E11), so a later open edits layers and motion, never frames.
@@ -21,7 +21,7 @@ description: Plan (owner 2026-11-01): image editor animation, layers and scenes 
 ## Which files hold the rest?
 - `image-editor-animation-design.md`: motion fields, presets, `M.motionAt()`, the preview, the frame renderer, the base.
 - `image-editor-animation-output.md`: the encoders and their limits, the save into Files, re-editing, scenes and Present.
-- `image-editor-animation-steps.md`: steps AN0-AN11, their order and what runs side by side.
+- `image-editor-animation-steps.md`: steps AN0-AN11, their order and what runs side by side; `image-editor-animation-steps-2.md`: AN12 on (a move recorded by dragging, owner 2026-11-05).
 
 ## Which questions are decided? (owner 2026-11-01; `workflow/decisions-made-product-18.md`)
 1. Presentation (#4714): editor only. Scenes with transitions, a full-screen Present mode in the editor, exports as PDF (a page per scene), video and GIF; nothing on the live site (no share link, no widget). AN7 and AN8 are free.
