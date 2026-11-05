@@ -25,4 +25,4 @@ description: Incoming e-invoices (4.67): reading the provider's list into erp_ed
 - A line's unit price is `erp_decimal_text()` (its own decimals, panel format), the VAT rate `erp_percent_text()` (#5754).
 
 ## Which product is a line linked to?
-- `erp_edoc_inbox_line_product()`: the buyer's code as barcode or SKU, else the supplier's code as barcode only; never a product in the catalogue's Recycle Bin (`pg_catalog_product_binned()`), as the ERP product search leaves it out. Symptom it fixed (#PRNUM): a binned product's SKU on a supplier invoice linked the draft line to it, and issuing the purchase moved stock into a product nobody sees.
+- `erp_edoc_inbox_line_product()`: the buyer's code as barcode or SKU, else the supplier's code as barcode only; never a product in the catalogue's Recycle Bin (`pg_catalog_product_binned()`), as the ERP product search leaves it out. Symptom it fixed (#7242): a binned product's SKU on a supplier invoice linked the draft line to it, and issuing the purchase moved stock into a product nobody sees.
