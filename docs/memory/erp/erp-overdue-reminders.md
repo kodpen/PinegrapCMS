@@ -18,7 +18,7 @@ description: ERP overdue receivable reminders (erp_overdue_check): thresholds, o
 ## How is it scheduled?
 - Two ways: registry job `erp_overdue_job` (86400) plus an hourly attempt from the dashboard that calls `erp_overdue_check()` (WAF bot list pattern, `config.erp_overdue_notify_checked`). The job script does not wait for the hour.
 - The period is computed from "now" (`erp_overdue_notify_slot`): a late check does not skip a period, an early one does not send twice.
-- `erp_overdue_calendar_slot()` steps back by calendar days with `mktime()`, never `86400` seconds: across a clock change the slot sat an hour late, so a digest sent at the hour counted as unsent and went out twice on the autumn change (PR #PRNUM, tests/erp_overdue_notify_slot_test.php).
+- `erp_overdue_calendar_slot()` steps back by calendar days with `mktime()`, never `86400` seconds: across a clock change the slot sat an hour late, so a digest sent at the hour counted as unsent and went out twice on the autumn change (PR #7029, tests/erp_overdue_notify_slot_test.php).
 
 ## How does an overdue invoice become a Workspace task? (#1860)
 - Only with `define('ERP_OVERDUE_FOLLOWUP', true);` in config.php and the Workspace on; the reminder must be on too (it supplies the threshold and the once-stamp). A Settings switch or person picker would need a `config` column (schema), so both are config.php constants, as the quote follow-up (erp-alerts.md).
