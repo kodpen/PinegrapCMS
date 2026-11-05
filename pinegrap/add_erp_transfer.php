@@ -41,9 +41,20 @@ if (!$_POST) {
     $till_count = 0;
     $till_options[lang('Choose a till or bank account')] = '';
 
-    foreach ((array) db_items("SELECT id, name, currency FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
+    // The status column reads each till's balance, so the operator sees what
+    // the From till holds before moving money out of it.
+    $balance_rows = '';
+
+    foreach ((array) db_items("SELECT id, name, currency, balance FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
         $till_options[h($till['name'] . ($fx_on ? (' (' . strtoupper(trim((string) $till['currency'])) . ')') : ''))] = (string) (int) $till['id'];
         $till_count++;
+
+        $balance = (int) $till['balance'];
+        $balance_rows .= '
+                            <li class="list-group-item d-flex justify-content-between align-items-baseline gap-3 px-0">
+                                <span class="text-break">' . h($till['name']) . '</span>
+                                <span class="text-nowrap ' . (($balance < 0) ? 'fg-danger' : '') . '">' . h(erp_money_out_currency($balance, ($fx_on ? (string) $till['currency'] : erp_base_currency()))) . '</span>
+                            </li>';
     }
 
     echo
@@ -60,71 +71,102 @@ if (!$_POST) {
         ),
     ]) . '
 <main id="content" class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->get_warnings() . '
-            ' . $liveform->output_notices() . '
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
 
-            <form name="form" action="add_erp_transfer.php" method="post">
-                ' . get_token_field() . '
+    <form name="form" action="add_erp_transfer.php" method="post">
+        ' . get_token_field() . '
+        <div class="row">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Transfer') . '
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-12 lg:col-4 my-3">
-                                <label for="from_id" class="form-label">' . lang('From till') . '</label>
-                                ' . $liveform->output_field(array(
-                                    'type' => 'select', 'id' => 'from_id', 'name' => 'from_id',
-                                    'class' => 'form-control', 'options' => $till_options, 'required' => 'required')) . '
-                            </div>
-                            <div class="col-12 lg:col-4 my-3">
-                                <label for="to_id" class="form-label">' . lang('To till') . '</label>
-                                ' . $liveform->output_field(array(
-                                    'type' => 'select', 'id' => 'to_id', 'name' => 'to_id',
-                                    'class' => 'form-control', 'options' => $till_options, 'required' => 'required'))
-                                . erp_no_till_hint($till_count, 'transfer') . '
-                            </div>
-                            <div class="col-12 sm:col-6 lg:col-4 my-3">
-                                <label for="amount" class="form-label">' . lang('Amount') . '</label>
-                                <label class="form-control form-adorn form-adorn-end">
-                                    <span class="form-adorn-text" aria-hidden="true">' . ($fx_on ? lang('in the till currency') : BASE_CURRENCY_SYMBOL) . '</span>
+                            <div class="col-12 md:col-6 my-3">
+                                <div class="form-field">
+                                    <label for="from_id" class="form-label">' . lang('From till') . '</label>
                                     ' . $liveform->output_field(array(
-                                        'type' => 'text', 'id' => 'amount', 'name' => 'amount',
-                                        'class' => 'form-ghost text-end', 'maxlength' => '15',
-                                        'inputmode' => 'decimal', 'autocomplete' => 'off', 'required' => 'required')) . '
-                                </label>
+                                        'type' => 'select', 'id' => 'from_id', 'name' => 'from_id',
+                                        'class' => 'form-control', 'options' => $till_options, 'required' => 'required')) . '
+                                </div>
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 sm:col-4 lg:col-3 my-3">
-                                <label for="doc_date" class="form-label">' . lang('Date') . '</label>
-                                ' . $liveform->output_field(array(
-                                    'type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date',
-                                    'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
-                                    'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
-                            <div class="col-12 lg:col-9 my-3">
-                                <label for="description" class="form-label">' . lang('Description') . '</label>
-                                ' . $liveform->output_field(array(
-                                    'type' => 'text', 'id' => 'description', 'name' => 'description',
-                                    'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
+                            <div class="col-12 md:col-6 my-3">
+                                <div class="form-field">
+                                    <label for="to_id" class="form-label">' . lang('To till') . '</label>
+                                    ' . $liveform->output_field(array(
+                                        'type' => 'select', 'id' => 'to_id', 'name' => 'to_id',
+                                        'class' => 'form-control', 'options' => $till_options, 'required' => 'required'))
+                                    . erp_no_till_hint($till_count, 'transfer') . '
+                                </div>
+                            </div>
+                            <div class="col-12 sm:col-6 my-3">
+                                <div class="form-field">
+                                    <label for="amount" class="form-label">' . lang('Amount') . '</label>
+                                    <label class="form-control form-adorn form-adorn-end">
+                                        <span class="form-adorn-text" aria-hidden="true">' . ($fx_on ? lang('in the till currency') : BASE_CURRENCY_SYMBOL) . '</span>
+                                        ' . $liveform->output_field(array(
+                                            'type' => 'text', 'id' => 'amount', 'name' => 'amount',
+                                            'class' => 'form-ghost text-end', 'maxlength' => '15',
+                                            'inputmode' => 'decimal', 'autocomplete' => 'off', 'required' => 'required')) . '
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-12 sm:col-6 my-3">
+                                <div class="form-field">
+                                    <label for="doc_date" class="form-label">' . lang('Date') . '</label>
+                                    ' . $liveform->output_field(array(
+                                        'type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date',
+                                        'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
+                                        'autocomplete' => 'off')) . '
+                                    ' . get_date_picker_format() . pg_fields_script() . '
+                                </div>
+                            </div>
+                            <div class="col-12 my-3">
+                                <div class="form-field">
+                                    <label for="description" class="form-label">' . lang('Description') . '</label>
+                                    ' . $liveform->output_field(array(
+                                        'type' => 'text', 'id' => 'description', 'name' => 'description',
+                                        'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+            </div>
+            <!--
+                What is read, not filled: the balance of every till. After the
+                form column in source order so a phone shows it below the form.
+            -->
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                <div class="position-sticky" style="top:3.3rem;">
+                    <div class="card my-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('Till Balances') . '
+                        </div>
+                        <div class="card-body">
+                            ' . (($balance_rows !== '')
+                                ? '<ul class="list-group list-group-flush mb-0">' . $balance_rows . '
+                            </ul>'
+                                : '<p class="fg-secondary mb-0">' . lang('There are no active tills yet.') . '</p>') . '
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>
-            </form>
+            </div>
         </div>
-    </div>
+    </form>
 </main>' .
     output_footer();
 
