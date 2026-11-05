@@ -270,8 +270,12 @@ if (!$_POST) {
             $sql_update_username_values = array();
         }
 
+        // A pending reset or set password link went to the old address: a new
+        // address ends it, so the old mailbox cannot set the password.
+        $sql_clear_reset_link = ($liveform->get_field_value('email_address') != $current_email_address) ? " token = NULL, token_timestamp = 0," : '';
+
         // update user
-        $query = "UPDATE user SET user_email = ?,$sql_update_username user_contact = ? WHERE user_id = ?";
+        $query = "UPDATE user SET user_email = ?,$sql_update_username$sql_clear_reset_link user_contact = ? WHERE user_id = ?";
         $result = db_q($query, array_merge(
             array((string) $liveform->get_field_value('email_address')),
             $sql_update_username_values,
