@@ -859,10 +859,11 @@ function pg_contact_list_source($user, $params)
     $list = pg_contact_list_filter($user, $filter, $groups);
     $shows_groups = pg_contact_list_shows_groups($filter);
     $duplicates = ($filter == 'all_duplicate_contacts');
+    $quick_edit = pg_contact_quick_edit_columns($filter, pg_contact_quick_group_options($user));
 
     return pg_list_table_source(array(
         'list' => 'view_contacts',
-        'columns' => pg_contact_list_columns($filter, $shows_groups),
+        'columns' => pg_contact_list_editable_columns(pg_contact_list_columns($filter, $shows_groups), $quick_edit),
         'from' => $list['tables'],
         'where' => $list['condition'],
         'params' => $list['params'],
@@ -880,8 +881,28 @@ function pg_contact_list_source($user, $params)
         'params_out' => array('filter' => $filter),
         // The cells that change in place (pg_contact_quick_edit_columns()),
         // written by the list's own screen with the contact screen's checks.
-        'edit' => array('url' => 'view_contacts.php?filter=' . rawurlencode($filter), 'columns' => pg_contact_quick_edit_columns($filter)),
+        'edit' => array('url' => 'view_contacts.php?filter=' . rawurlencode($filter), 'columns' => $quick_edit),
     ));
+}
+
+/**
+ * The list's columns with each one a quick edit field writes marked
+ * editable, by the field's input. Without the mark the driver offers no
+ * quick edit (pg_list_table_edit_spec()). Pure.
+ *
+ * @param array $columns    pg_contact_list_columns()
+ * @param array $quick_edit pg_contact_quick_edit_columns()
+ * @return array
+ */
+function pg_contact_list_editable_columns(array $columns, array $quick_edit)
+{
+    foreach ($quick_edit as $field => $definition) {
+        if (isset($columns[$field])) {
+            $columns[$field]['editable'] = (string) $definition['type'];
+        }
+    }
+
+    return $columns;
 }
 
 /**
@@ -1013,6 +1034,7 @@ function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
     }
 
     $rows = array();
+    $group_options = $shows_groups ? pg_contact_quick_group_options($user) : array();
 
     foreach ($contacts as $contact) {
         $group_names = array();
@@ -1025,7 +1047,8 @@ function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
             }
         }
 
-        $rows[] = pg_contact_list_row($contact, $user, $filter, implode(',<br />', $group_names), pg_contact_picture_name($contact['file_id'], $files));
+        $rows[] = pg_contact_list_row($contact, $user, $filter, implode(',<br />', $group_names), pg_contact_picture_name($contact['file_id'], $files),
+            $memberships[(int) $contact['id']] ?? array(), $group_options);
     }
 
     return $rows;
@@ -1080,9 +1103,14 @@ function pg_contact_list_row_name($contact)
  * @param string $filter
  * @param string $group_names the contact's groups, escaped
  * @param string $file_name   the picture's file name when the picture is a file
+ * @param array  $member_ids  the ids of every group the contact is in, read
+ *                            when the list shows the groups
+ * @param array  $group_options the groups field's choices
+ *                            (pg_contact_quick_group_options()), empty
+ *                            when the groups are not a field
  * @return array array('id', 'class', 'cells' => key => pg_list_cell())
  */
-function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
+function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name, array $member_ids = array(), array $group_options = array())
 {
     $id = (int) $contact['id'];
     $address_view = (pg_contact_list_address_prefix($filter) !== '');
@@ -1158,12 +1186,14 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
     $cells['last_modified'] = pg_list_cell(pg_list_when($contact['timestamp'], $contact['last_modified_username'] ?? ''));
 
     // A cell that changes in place carries its field; the rest stay text.
-    $quick_edit = pg_contact_quick_edit_columns($filter);
+    // The groups are a field only where the list read them.
+    $quick_edit = pg_contact_quick_edit_columns($filter, $group_options);
 
     foreach (array_keys($quick_edit) as $field) {
         if (isset($cells[$field])) {
+            $value = ($field === 'groups') ? pg_contact_quick_group_value($member_ids, $group_options) : pg_contact_quick_edit_value($field, $contact, $filter);
             $cells[$field] = pg_list_cell($cells[$field]['html'], $cells[$field]['class'],
-                pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_contact_quick_edit_value($field, $contact, $filter)));
+                pg_list_edit_cell_attributes($quick_edit, $field, $id, $value));
         }
     }
 

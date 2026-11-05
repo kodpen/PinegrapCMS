@@ -43,19 +43,23 @@ function pg_test_shipping_quick_method(array $over = array())
 	);
 }
 
-function test_shipping_quick_edit_every_column_but_zones_and_last_modified_is_a_field()
+function test_shipping_quick_edit_every_column_but_last_modified_is_a_field()
 {
-	$columns = pg_shipping_method_edit_columns(array('ups_ground'));
+	$columns = pg_shipping_method_edit_columns(array('ups_ground'), array('2' => 'Europe'));
 	$fields = array_keys($columns);
 	sort($fields);
 
 	$text = array_diff(array_keys(pg_shipping_method_list_columns(true)), $fields);
 	sort($text);
 
-	pg_assert_same(array('last_modified', 'zones'), array_values($text), 'only the zones (several choices) and the last change stay text');
+	pg_assert_same(array('last_modified'), array_values($text), 'only the last change stays text');
+	pg_assert_same('multiselect', $columns['zones']['type'], 'the zones are several choices');
+	pg_assert_same(array('2' => 'Europe'), $columns['zones']['options']);
+	pg_assert_false(isset(pg_shipping_method_edit_columns(array('ups_ground'))['zones']), 'no zones, no field');
+	pg_assert_same('multiselect', pg_commerce_list_specs(pg_shipping_method_list_columns(true), array(), $columns)['zones']['editable'], 'the column is marked editable');
 	$named = array_keys(pg_shipping_method_quick_column_names());
 	sort($named);
-	pg_assert_same($fields, $named, 'each field names its column');
+	pg_assert_same(array_values(array_diff($fields, array('zones'))), $named, 'each one-column field names its column; the zones are written beside the method');
 	pg_assert_same(array('' => '–', 'ups_ground' => get_shipping_service_name('ups_ground')), $columns['service']['options'], 'no service, or one offered');
 	pg_assert_same(50, $columns['name']['max'], 'the screen\'s name length');
 	pg_assert_same(65535, $columns['handling']['max'], 'handling is SMALLINT UNSIGNED');
@@ -138,7 +142,13 @@ function test_shipping_quick_cells_carry_the_values_their_fields_open_with()
 	pg_assert_same('1', $cells['street']['attributes']['data-pg-edit-value'], 'a switch on');
 	pg_assert_same('0', $cells['po_box']['attributes']['data-pg-edit-value'], 'a switch off');
 	pg_assert_same('&lt;Zone&gt;', $cells['zones']['html'], 'the zones escaped');
-	pg_assert_false(isset($cells['zones']['attributes']['data-pg-edit']), 'and not a field');
+	pg_assert_false(isset($cells['zones']['attributes']['data-pg-edit']), 'not a field without choices');
+
+	$zones = pg_shipping_method_edit_columns(array(), array('5' => 'Asia', '2' => 'Europe', '8' => 'World'));
+	$cells = pg_shipping_method_list_cells(pg_test_shipping_quick_method(), array('2' => 'Europe', '5' => 'Asia'), $zones);
+	pg_assert_same('zones', $cells['zones']['attributes']['data-pg-edit'], 'a field with choices');
+	pg_assert_same('5,2', $cells['zones']['attributes']['data-pg-edit-value'], 'the method\'s zones in the choices\' order');
+	pg_assert_same('Europe,<br>Asia', $cells['zones']['html'], 'drawn by name as stored');
 	pg_assert_contains('&lt;b&gt;ayse&lt;/b&gt;', $cells['last_modified']['html'], 'the username escaped');
 
 	$plain = pg_shipping_method_list_cells(pg_test_shipping_quick_method(), array(), array());
