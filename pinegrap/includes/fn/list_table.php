@@ -1073,6 +1073,7 @@ function pg_list_table_printed_lists()
         'view_contact_groups', 'view_calendars', 'view_calendar_event_locations', 'view_auto_dialogs',
         'view_email_campaigns', 'view_email_campaign_history', 'view_email_campaign_profiles', 'view_sms_campaigns', 'view_visitor_reports', 'view_not_found_log',
         'backups', 'cloudflare_dns', 'database_engine',
+        'view_offers', 'editor_select_page_or_file',
     );
 }
 
