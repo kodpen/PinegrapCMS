@@ -71,7 +71,7 @@ function pg_sms_queue_list_statuses()
 }
 
 /**
- * The label of each text message kind.
+ * The label of each text message kind, one for every pg_sms_kinds() key.
  *
  * @return array kind => label
  */
@@ -81,8 +81,9 @@ function pg_sms_queue_list_kinds()
         'test'      => lang('Test'),
         'order'     => lang('Order'),
         'shipping'  => lang('Shipping update'),
-        'otp'       => lang('Sign-in code'),
+        'otp'       => lang('One-time code'),
         'reminder'  => lang('Reminder'),
+        'stock'     => lang('Back in stock'),
         'booking'   => lang('Booking'),
         'marketing' => lang('Marketing'),
     );
