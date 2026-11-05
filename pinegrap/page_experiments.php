@@ -44,73 +44,12 @@ $shell = function () use (&$heading, &$crumb) {
 };
 
 $stop = function ($message) use ($shell, $liveform) {
-    // What the status column reads: the page and how many of its experiments
-// are in each state.
-$summary_total = count($experiments);
-$summary_running = 0;
-$summary_ended = 0;
-
-foreach ($experiments as $experiment) {
-    if ($experiment['status'] === 'running') {
-        $summary_running++;
-    } elseif ($experiment['status'] === 'ended') {
-        $summary_ended++;
-    }
-}
-
-// The save bar is drawn only with the New experiment form: while an
-// experiment is open the screen has nothing to save.
-$output_save_bar = ($output_form !== '') ? '
-        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
-            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
-                <div class="container">
-                    <div class="btn-group flex-wrap justify-content-center">
-                        <button type="submit" form="page_experiment_new" class="btn my-1 btn-solid theme-primary"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Set up the experiment')) . '</span></button>
-                    </div>
-                </div>
-            </nav>
-        </div>' : '';
-
-echo $shell() . '
+    echo $shell() . '
 <main id="content" class="container-fluid">
-    ' . $liveform->output_errors() . '
-    ' . $liveform->output_notices() . '
-    <div class="row">
-        <div class="col-12 lg:col-8 2xl:col-9 order-1">
-            <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
-                <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_page_edit_url_by_id($live['page_id'])) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit the live page')) . '</a>
-                <a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . encode_url_path($live['page_name'])) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View the page')) . '</a>
-                <a class="btn btn-sm btn-text theme-secondary" href="experiments.php"><i class="bi bi-bar-chart-line me-1" aria-hidden="true"></i>' . h(lang('All experiments')) . '</a>
-                <div class="pg-toolbar-grow"></div>
-            </nav>
-            ' . $output_form . $output_experiments . '
-        </div>
-        <div class="col-12 lg:col-4 2xl:col-3 order-2">
-            <div class="position-sticky my-7" style="top:3.3rem;">
-                <div class="card">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
-                    <div class="card-body pt-0">
-                        <div class="fw-semibold text-break mb-5">' . h($live['page_name']) . '</div>
-                        <dl class="row small mb-0">
-                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Experiments')) . '</dt>
-                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_total, 0) . '</dd>
-                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Running')) . '</dt>
-                            <dd class="col-4 text-end mb-2' . ($summary_running ? ' fg-success fw-semibold' : '') . '">' . pg_format_number($summary_running, 0) . '</dd>
-                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Ended')) . '</dt>
-                            <dd class="col-4 text-end mb-0">' . pg_format_number($summary_ended, 0) . '</dd>
-                        </dl>
-                        <div class="form-text mt-5">' . h($has_open
-                            ? lang('A page has one open experiment at a time; end or delete it to set up the next one.')
-                            : lang('Search engines and signed-in staff always see the live page.')) . '</div>
-                    </div>
-                </div>
-            </div>
-        </div>' . $output_save_bar . '
-    </div>
-</main>
-' . output_footer();
+    <div class="alert theme-warning my-7"><i class="bi bi-exclamation-triangle me-3" aria-hidden="true"></i>' . h($message) . '</div>
+</main>' . output_footer();
 
-$liveform->remove_form();
+    $liveform->remove_form();
     exit();
 };
 
@@ -442,12 +381,39 @@ if (!$has_open) {
             </div>';
 }
 
+// What the status column reads: the page and how many of its experiments
+// are in each state.
+$summary_total = count($experiments);
+$summary_running = 0;
+$summary_ended = 0;
+
+foreach ($experiments as $experiment) {
+    if ($experiment['status'] === 'running') {
+        $summary_running++;
+    } elseif ($experiment['status'] === 'ended') {
+        $summary_ended++;
+    }
+}
+
+// The save bar is drawn only with the New experiment form: while an
+// experiment is open the screen has nothing to save.
+$output_save_bar = ($output_form !== '') ? '
+        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="container">
+                    <div class="btn-group flex-wrap justify-content-center">
+                        <button type="submit" form="page_experiment_new" class="btn my-1 btn-solid theme-primary"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Set up the experiment')) . '</span></button>
+                    </div>
+                </div>
+            </nav>
+        </div>' : '';
+
 echo $shell() . '
 <main id="content" class="container-fluid">
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
     <div class="row">
-        <div class="col-12">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->output_notices() . '
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_page_edit_url_by_id($live['page_id'])) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit the live page')) . '</a>
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . encode_url_path($live['page_name'])) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View the page')) . '</a>
@@ -456,6 +422,27 @@ echo $shell() . '
             </nav>
             ' . $output_form . $output_experiments . '
         </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky my-7" style="top:3.3rem;">
+                <div class="card">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                    <div class="card-body pt-0">
+                        <div class="fw-semibold text-break mb-5">' . h($live['page_name']) . '</div>
+                        <dl class="row small mb-0">
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Experiments')) . '</dt>
+                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_total, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Running')) . '</dt>
+                            <dd class="col-4 text-end mb-2' . ($summary_running ? ' fg-success fw-semibold' : '') . '">' . pg_format_number($summary_running, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Ended')) . '</dt>
+                            <dd class="col-4 text-end mb-0">' . pg_format_number($summary_ended, 0) . '</dd>
+                        </dl>
+                        <div class="form-text mt-5">' . h($has_open
+                            ? lang('A page has one open experiment at a time; end or delete it to set up the next one.')
+                            : lang('Search engines and signed-in staff always see the live page.')) . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>' . $output_save_bar . '
     </div>
 </main>
 ' . output_footer();
