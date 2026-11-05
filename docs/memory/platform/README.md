@@ -128,6 +128,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - not-found-log.md: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are recorded and which not, bots and verified crawlers, the end-of-request write, row cap and 90 days, the screen and its Create redirect
 - notification-channels-delivery.md: Slack, Teams and Telegram delivery: targets in the sealed notify_channels entry, api_webhook_queue rows with webhook_id 0, the retry ladder, secrets masked
 - notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button
+- object-storage-active-types.md: A stored HTML, XHTML, SVG or XML file is redirected to the object store as an attachment, never inline: the store cannot send the sandbox policy get_file.php adds to a local answer
 - object-storage-client.md: The S3-compatible client (aws_sign.php SigV4, object_storage.php put/get/head/delete/list/multipart/presign), its answers, where its settings live, the Storage card and its test (PR #5349)
 - object-storage-decisions.md: What binds the S3-compatible object storage for backups and uploaded files: legacy sites unchanged, same addresses, access checks in get_file.php, redirect only, the storage columns (#5037)
 - object-storage-health.md: Object store health: failed calls counted for the ops alert storage_unreachable, the Storage card's last test result, the System Status tile with the move job's failures

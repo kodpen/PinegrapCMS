@@ -168,7 +168,8 @@ function pg_file_serve_plan($local_exists, $copy, $presigned)
  * The Content-Disposition the store is asked to answer with: inline for a
  * type the browser shows, attachment otherwise, the name stripped of quotes,
  * backslashes and line breaks as get_file.php strips it, and the UTF-8 name
- * in filename* (RFC 6266) beside an ASCII fallback. Pure.
+ * in filename* (RFC 6266) beside an ASCII fallback. A document type the
+ * browser would run (HTML, SVG, XML) is always an attachment. Pure.
  *
  * @param string $name
  * @param bool $inline
@@ -177,6 +178,16 @@ function pg_file_serve_plan($local_exists, $copy, $presigned)
 function pg_file_serve_disposition($name, $inline)
 {
     $name = preg_replace('/["\\\\\r\n]/', '', (string) $name);
+
+    // HTML, XHTML, SVG and XML run as documents when opened by their own
+    // address. A local answer drops them into a sandbox (Content-Security-
+    // Policy in get_file.php); the store cannot be asked for that header, so
+    // they download instead of running on the store's host. An <img> or CSS
+    // reference ignores the disposition and keeps showing an SVG.
+    if ($inline && preg_match('/\.(html?|xhtml|xht|svgz?|xml|xsl)$/i', $name)) {
+        $inline = false;
+    }
+
     // One underscore a letter; a name that is not UTF-8 is cut byte by byte.
     $ascii = preg_replace('/[^\x20-\x7e]/u', '_', $name);
 
