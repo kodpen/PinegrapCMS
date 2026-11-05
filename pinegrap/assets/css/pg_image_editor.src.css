@@ -2419,6 +2419,11 @@
   cursor: move;
 }
 
+/* Free deformation: the pins over the selected layer; the chosen one filled. */
+.pgie-sh.pgie-pin.on {
+  background: var(--pgie-sel);
+}
+
 /* Small screens. Below 768 px wide or 500 px tall the dialog fills the
    screen and the panel becomes a sheet: over the right of the stage between
    600 and 767 px and on a phone held sideways, above a bottom tool bar below
