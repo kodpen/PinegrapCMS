@@ -127,9 +127,11 @@ function api_subscriptions_list($params) {
 
 	$out = array();
 
+	$order_data = api_subscription_order_data_shown(api_current_scopes());
+
 	foreach ($rows as $row) {
 
-		$out[] = api_subscription_present($row);
+		$out[] = api_subscription_present($row, $order_data);
 
 	}
 
@@ -159,6 +161,6 @@ function api_subscriptions_get($params) {
 
 	}
 
-	api_ok(api_subscription_present($row));
+	api_ok(api_subscription_present($row, api_subscription_order_data_shown(api_current_scopes())));
 
 }
