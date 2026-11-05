@@ -1388,6 +1388,7 @@
     "Orders read up to {var:1}": "Siparişler {var:1} tarihine kadar okundu",
     "Orders retrieved successfully.": "Siparişler başarıyla getirildi.",
     "Orders today": "Bugünkü siparişler",
+    "Orders took numbers while this screen was open, so the Next Order Number was not changed; it is {var:1} now.": "Bu ekran açıkken siparişler numara aldı, bu yüzden Sonraki Sipariş Numarası değiştirilmedi; şu an {var:1}.",
     "Orders usually leave within three working days": "Siparişler genellikle üç iş günü içinde yola çıkar",
     "Orders usually leave within three working days and arrive two to five working days later; made-to-order pieces say their own time.": "Siparişler genellikle üç iş günü içinde yola çıkar ve iki ila beş iş günü sonra ulaşır; siparişe özel parçalar kendi süresini belirtir.",
     "Orders, books and customers are handled in the control panel. The blog, the events, the staff directory and the conversations with readers are kept here.": "Siparişler, kitaplar ve müşteriler kontrol panelinde yönetilir. Blog, etkinlikler, personel rehberi ve okurlarla görüşmeler burada durur.",
