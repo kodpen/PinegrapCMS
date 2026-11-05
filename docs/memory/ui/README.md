@@ -323,7 +323,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-quick-edit-submitted-forms.md: Submitted forms list quick edit (includes/fn/submitted_form_list_edit.php): Status and Form Editor, the required-field check before completing, the screen's rights and side effects
 - list-table-quick-edit-themes.md: All Themes list quick edit (includes/fn/theme_list_edit.php): the fields, the shared theme check and save, the answer that redraws the replaced theme
 - list-table-quick-edit-users.md: Users list quick edit (includes/fn/user_list_edit.php): which cells are fields for whom and in which view, how a username, e-mail, role, start page or right is checked and written
-- list-table-quick-edit-values.md: Which values of each driver list change in quick edit (products, pages, containers …), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
+- list-table-quick-edit-values.md: Which values of each driver list change in quick edit, which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 - list-table-quick-edit-zones.md: All Shipping Zones list quick edit (zone_list_edit.php): name and the four rates as fields, the zone screen's checks and save, rates not edited written as stored
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - list-table-region-lists.md: Regions, ads and form fields on the list table driver (TD9c): printed whole, list names, quick edit fields and checks, what stays on the edit screen; menu items stay a plain table

@@ -1,6 +1,6 @@
 ---
 name: list-table-quick-edit-values
-description: Which values of each driver list change in quick edit (products, pages, containers …), which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
+description: Which values of each driver list change in quick edit, which stay text and why, how such an edit is checked, written and drawn (includes/fn/list_table_edit.php)
 module: list_table_edit
 ---
 
@@ -29,5 +29,6 @@ module: list_table_edit
 - Products: zones and order receipt message (above).
 - Contacts: the groups (multi-select). Comments and themes: the message, the description (several lines).
 - The commerce lists' columns outside their `pg_*_edit_columns()` (orders, gift cards).
+- Not a driver list: product groups, in the Catalog Manager (`view_folders.php`): renamed in its grid and tree, the rest on the group's screen.
 
 Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/product-list-paging.md
