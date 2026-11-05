@@ -21,7 +21,7 @@ description: pg_order_status_move(), the one order status rule the API and the W
 ## Which paths cancel and restore?
 - Cancel, only `process_order_cancellation()`: `cancel_order.php`, `edit_orders.php` bulk, the order screen's Cancel and full refund, the API, the Workspace, the marketplace sync.
 - Restore, only `pg_order_restore_cancelled()`: the order screen's Restore, the API, the Workspace. Each caller writes the `restore` audit line and announces `order.status_changed`.
-- The other status writes are plain moves: the order list's quick edit (`pg_order_quick_update()`, guarded), the exports (`view_orders.php`, `shipworks.php`: complete → exported), the checkout and the local sale (a cart becomes `complete`).
+- The other status writes are plain moves: the order list's quick edit (`pg_order_quick_update()`, guarded), the exports (`view_orders.php`, `shipworks.php`: complete → exported by `pg_order_export_mark_sql()`, guarded on `complete`: one cancelled mid-export stays so), the checkout and the local sale (a cart becomes `complete`).
 
 ## What did the Workspace do before? (PR #1500)
 - It took an order out of `cancelled` with a plain `UPDATE orders SET status`: `cancelled_at`, `cancelled_by`, the reason and an unfinished refund flag stayed, and the gift cards the cancellation expired stayed expired. It also moved an order to or from `incomplete`.
