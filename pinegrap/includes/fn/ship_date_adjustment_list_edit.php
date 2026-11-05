@@ -92,7 +92,7 @@ function pg_ship_date_adjustment_list_columns($edit)
     $columns = array(
         'zip_code_prefix' => array('heading' => lang('Zip Code Prefix'), 'editable' => 'text'),
         'shipping_method' => array('heading' => lang('Shipping Method'), 'editable' => 'select'),
-        'adjustment' => array('heading' => lang('Adjustment'), 'editable' => 'integer'),
+        'adjustment' => array('heading' => lang('Adjustment'), 'editable' => 'number'),
         'created' => array('heading' => lang('Created'), 'kind' => 'date'),
         'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
     );

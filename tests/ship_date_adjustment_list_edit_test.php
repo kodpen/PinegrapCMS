@@ -44,6 +44,10 @@ function test_ship_date_adjustment_quick_edit_every_column_but_the_times_is_a_fi
 	$text = array();
 	foreach (pg_ship_date_adjustment_list_columns(true) as $key => $column) {
 		pg_assert_same(isset($column['editable']), isset($cells[$key]['attributes']['data-pg-edit']), $key . ': editable column and field agree');
+		if (isset($column['editable'])) {
+			// The driver keeps only the kinds it has an input for.
+			pg_assert_true(pg_list_table_column($key, $column)['editable'] !== '', $key . ': the driver opens a field for it');
+		}
 		if (!isset($column['editable'])) {
 			$text[] = $key;
 		}
