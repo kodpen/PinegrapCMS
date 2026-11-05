@@ -309,75 +309,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     }
     else
     {
-        // A blank name would become 'file' in prepare_file_name() and break
-        // every link to the stored file.
-        if ($name_posted === '') {
-            output_error(lang('Please enter a name.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        // The name is required, not one the server would run, not
+        // ".htaccess" and free (pg_design_file_form_refusal()); the file is
+        // renamed on the disk before the record takes the new name.
+        $refusal = pg_design_file_form_refusal($name_posted, $stored_name, $id);
+
+        if ($refusal === '') {
+            $refusal = pg_design_file_form_save($id, $stored_name, $name, $_POST, (int) $user['id']);
         }
 
-        // A new name the server would run (.php, .htaccess, ...) is refused
-        // as an upload of it is, before prepare_file_name() quietly turns
-        // its dot into an underscore and breaks every link to the file.
-        if (($name_posted !== $stored_name) && pg_upload_name_blocked($name_posted)) {
-            output_error(h(pg_upload_blocked_message($name_posted)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        if ($refusal !== '') {
+            output_error(h($refusal) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-
-        // if file name is invalid, output error
-        if ($name == '.htaccess') {
-            output_error(lang('File name is invalid') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        if (check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file')) == false) {
-            output_error( lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)) )) . '  <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        // A name without a dot has no extension, so no type.
-        $file_extension = pg_file_name_extension($name);
-
-        $sql_theme = "";
-
-        // If this is a CSS file and this is not a system theme,
-        // then update theme property.
-        if (
-            (mb_strtolower($file_extension) == 'css')
-            && (db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id'] ?? '') . "'") == 0)
-        ) {
-            $sql_theme = "theme = '" . escape($_POST['theme'] ?? '') . "',";
-        }
-        
-        // Rename the file first when its name changed and it is on the disk
-        // (a file recorded here but missing from the disk has nothing to
-        // rename). A failed rename stops the save, so the record never takes
-        // a name the disk does not have.
-        if (
-            ($name !== $stored_name)
-            && is_file(FILE_DIRECTORY_PATH . '/' . $stored_name)
-            && !@rename(FILE_DIRECTORY_PATH . '/' . $stored_name, FILE_DIRECTORY_PATH . '/' . $name)
-        ) {
-            output_error(lang('The file could not be renamed on the file system. Check write permission for the file directory.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        // update file
-        $audit_before = pg_audit_fetch('files', (int) $id);
-        $query =
-            "UPDATE files 
-            SET 
-                name = '" . escape($name) . "',
-                folder = '" . escape($_POST['folder'] ?? '') . "', 
-                description = '" . escape($_POST['description'] ?? '') . "',
-                type = '" . escape($file_extension) . "',
-                design = '" . escape($_POST['design'] ?? '') . "',
-                $sql_theme
-                timestamp = UNIX_TIMESTAMP(), 
-                user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        
-        $result=mysqli_query(db::$con, $query) or output_error('Query failed');
-        pg_audit_record('update', 'files', (int) $id, $audit_before);
-        
-
-
-        log_activity(lang(array('string'=>'design file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
 
         $notice = lang('The design file was edited successfully.');
 
