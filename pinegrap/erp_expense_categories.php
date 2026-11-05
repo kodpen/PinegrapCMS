@@ -115,6 +115,12 @@ $refused_id = (int) ($sent['id'] ?? 0);
 
 $output_rows = '';
 
+// Read in the status column: how many categories there are, how many are
+// still offered, and how many expenses they hold.
+$summary_total = 0;
+$summary_offered = 0;
+$summary_expenses = 0;
+
 foreach ($ready ? erp_expense_categories() : array() as $category) {
     $category_id = (int) $category['id'];
     $field = 'categories[' . $category_id . ']';
@@ -129,6 +135,10 @@ foreach ($ready ? erp_expense_categories() : array() as $category) {
             $category['tax_deductible'] = !empty($typed['tax_deductible']) ? 1 : 0;
         }
     }
+
+    $summary_total++;
+    $summary_offered += ((int) $category['is_active'] === 1) ? 1 : 0;
+    $summary_expenses += (int) ($counts[$category_id] ?? 0);
 
     $name_invalid = ($category_id === $refused_id);
 
@@ -168,13 +178,15 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 2xl:col-9">
+        <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
             <form method="post" action="erp_expense_categories.php">
                 ' . get_token_field() . '
+                <div class="row">
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
                     <div class="card-body p-0 table-responsive">
                         <table class="table align-middle mb-0">
@@ -205,13 +217,32 @@ pg_page_shell([
                             </tbody>
                         </table>
                     </div>
-                    <div class="form-text px-5 pb-5">' . lang('The account code is optional: the number the accountant books the category under (for example 770 for general expenses). It goes into the accountant\'s pack with each expense. A category switched off is no longer offered for new expenses; the ones already in it keep it.') . ($with_deductible ? ' ' . lang('"Tax taken back" is where a new expense of the category starts: switch it off for spending whose tax cannot be deducted (ask your accountant which). Each expense can still be changed, and the expenses already written keep theirs.') : '') . '</div>
                 </div>
+                </div>
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <div class="card my-7 position-sticky" style="top:3.3rem;">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                        <div class="card-body">
+                            <dl class="row small mb-0">
+                                <dt class="col-8 fw-normal fg-secondary">' . h(lang('Categories')) . '</dt>
+                                <dd class="col-4 text-end mb-2">' . pg_format_number($summary_total, 0) . '</dd>
+                                <dt class="col-8 fw-normal fg-secondary">' . h(lang('Offered')) . '</dt>
+                                <dd class="col-4 text-end mb-2">' . pg_format_number($summary_offered, 0) . '</dd>
+                                <dt class="col-8 fw-normal fg-secondary">' . h(lang('Expenses')) . '</dt>
+                                <dd class="col-4 text-end mb-0">' . pg_format_number($summary_expenses, 0) . '</dd>
+                            </dl>
+                            <div class="form-text mt-5 mb-0">' . lang('The account code is optional: the number the accountant books the category under (for example 770 for general expenses). It goes into the accountant\'s pack with each expense. A category switched off is no longer offered for new expenses; the ones already in it keep it.') . ($with_deductible ? ' ' . lang('"Tax taken back" is where a new expense of the category starts: switch it off for spending whose tax cannot be deducted (ask your accountant which). Each expense can still be changed, and the expenses already written keep theirs.') : '') . '</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 order-3">
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-solid theme-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-3" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
+                        <button type="submit" class="btn my-1 btn-solid theme-success"' . ($ready ? '' : ' disabled') . '><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Save')) . '</span></button>
                     </div>
                 </nav>
+                </div>
+                </div>
             </form>
         </div>
     </div>
