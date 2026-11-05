@@ -3020,13 +3020,15 @@ function create_or_update_page_type_record($page_type, $properties)
 {
     $page_type_table_name = str_replace(' ', '_', $page_type) . '_pages';
     $sql_collection = "";
+    $collection_values = array();
     // If this is a form list or item view, then deal with the collection.
     if ($page_type == 'form list view' or $page_type == 'form item view') {
         // If the collection is not set, then set to default collection A.
         if (!$properties['collection']) {
             $properties['collection'] = 'a';
         }
-        $sql_collection = "AND (collection = '" . e($properties['collection']) . "')";
+        $sql_collection = "AND (collection = ?)";
+        $collection_values[] = (string) $properties['collection'];
     }
     // check to see if there is already a page type record
     $query = "SELECT COUNT(*)
@@ -3035,34 +3037,38 @@ function create_or_update_page_type_record($page_type, $properties)
 
         WHERE
 
-            (page_id = '" . e($properties['page_id']) . "')
+            (page_id = ?)
 
             $sql_collection";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array_merge(array((string) $properties['page_id']), $collection_values)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_row($result);
     $number_of_records = $row[0];
     // if a record does not exist, create record
     if ($number_of_records == 0) {
         $count = 1;
         $columns = '';
-        $values = '';
+        $placeholders = '';
+        $insert_values = array();
         foreach ($properties as $field => $value) {
             $columns .= $field;
-            $values .= "'" . e(isset($value) ? $value : '') . "'";
+            $placeholders .= "?";
+            $insert_values[] = (string) (isset($value) ? $value : '');
             if ($count < count($properties)) {
                 $columns .= ', ';
-                $values .= ', ';
+                $placeholders .= ', ';
             }
             $count++;
         }
-        $query = "INSERT INTO $page_type_table_name ($columns) VALUES ($values)";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "INSERT INTO $page_type_table_name ($columns) VALUES ($placeholders)";
+        $result = db_q($query, $insert_values) or output_error(lang('Query failed.'));
         // else a record exists, so update record
     } else {
         $count = 1;
         $sql_update = '';
+        $update_values = array();
         foreach ($properties as $field => $value) {
-            $sql_update .= "$field = '" . e($value) . "'";
+            $sql_update .= "$field = ?";
+            $update_values[] = (string) $value;
             if ($count < count($properties)) {
                 $sql_update .= ', ';
             }
@@ -3074,10 +3080,10 @@ function create_or_update_page_type_record($page_type, $properties)
 
             WHERE
 
-                (page_id = '" . e($properties['page_id']) . "')
+                (page_id = ?)
 
                 $sql_collection";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $result = db_q($query, array_merge($update_values, array((string) $properties['page_id']), $collection_values)) or output_error(lang('Query failed.'));
     }
 }
 /**
