@@ -32,7 +32,7 @@ module: list_table_edit
 - Products: zones and order receipt message (above).
 - Contacts: the groups (multi-select). Shipping methods: the zones (multi-select).
 - Key codes and gift cards: notes on several lines still read as one line (gift cards in their own PR).
-- Gift cards: the balance (the driver does not post the value a cell opened with, which the balance guard needs) and store credit (`list-table-quick-edit-gift-cards.md`). Orders: nothing else the order screen saves is a list column (`list-table-quick-edit-orders.md`).
+- Gift cards: the balance (the driver does not post the value a cell opened with) and store credit (`list-table-quick-edit-gift-cards.md`). Orders: nothing else the order screen saves is a list column (`list-table-quick-edit-orders.md`).
 - Not a driver list: product groups, in the Catalog Manager (`view_folders.php`): renamed in its grid and tree, the rest on the group's screen.
 
 Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/product-list-paging.md
