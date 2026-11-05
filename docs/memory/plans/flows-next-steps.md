@@ -9,7 +9,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 ## A: decided by the architect first
 - A1 (after #7015, M): the answer of an approval box (a note or a number read by the workspace calculator) as outputs for later boxes. flow approval box, workspace_approvals.js.
 
-- A2 (after #7016, S): a Calculate rule in the derived value box with `ws_calc_evaluate()`. flow_values.php, the value form.
+- A2 (done under flows-calc-and-answers FA1, #7260, S): a Calculate rule in the derived value box with `ws_calc_evaluate()`. flow_values.php, the value form.
 
 ## B: new boxes (what other tools have)
 - B1 (free, M): Read a record (`record_get`): an order, product, contact, booking, task or form submission by id (a value), its fields as outputs, read with the run owner's rights as the change box checks them; `found` 0/1 instead of failing. As Zapier's Find and Make's Search steps. new flow_record_get.php, steps.php, the form.
