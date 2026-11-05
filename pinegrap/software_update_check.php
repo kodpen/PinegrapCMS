@@ -172,40 +172,9 @@ function software_update_check($return_details = false)
     // nothing left the old one standing.
     db("DELETE FROM notifications WHERE action = 'software_update'");
 
-    // figure out if new version is greater than old version
-
-    $new_version = trim($response['version']);
-    $new_version_parts = explode('.', $new_version);
-
-    $old_version = VERSION;
-    $old_version_parts = explode('.', $old_version);
-
-    // assume that new version is not greater than old version, until we find out otherwise
-    $new_version_is_greater_than_old_version = FALSE;
-
-    // if the major number of the new version is greater than the major number of the old version,
-    // then the new version is greater than the old version
-    if ($new_version_parts[0] > $old_version_parts[0]) {
-        $new_version_is_greater_than_old_version = TRUE;
-
-        // else if the major number of the new version is equal to the major number of the old version,
-        // then continue to check
-    } elseif ($new_version_parts[0] == $old_version_parts[0]) {
-        // if the minor number of the new version is greater than the minor number of the old version,
-        // then the new version is greater than the old version
-        if ($new_version_parts[1] > $old_version_parts[1]) {
-            $new_version_is_greater_than_old_version = TRUE;
-
-            // else if the minor number of the new version is equal to the minor number of the old version,
-            // then continue to check
-        } elseif ($new_version_parts[1] == $old_version_parts[1]) {
-            // if the maintenance number of the new version is greater than the maintenance number of the old version,
-            // then the new version is greater than the old version
-            if ($new_version_parts[2] > $old_version_parts[2]) {
-                $new_version_is_greater_than_old_version = TRUE;
-            }
-        }
-    }
+    // Numerically, part by part, and without a warning when either version
+    // has fewer than three parts (pg_update_version_newer()).
+    $new_version_is_greater_than_old_version = pg_update_version_newer($response['version'], VERSION);
 
     // assume that there is not an available software update until we find out otherwise
     $software_update_available = 0;

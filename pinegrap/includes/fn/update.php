@@ -1951,6 +1951,34 @@ function pg_update_repair_decision($server_version, $installed, $checks_enabled)
     );
 }
 
+/**
+ * Whether the version the update server offers is newer than the installed
+ * one: numerically, part by part, whatever the number of parts. A version of
+ * fewer than three parts (the 2026 release) once made the three-part
+ * comparison read a part that is not there and warn. Anything that is not
+ * digits and dots (an empty answer, an error page, a list) offers nothing.
+ *
+ * No database or network access.
+ *
+ * @param mixed  $server_version what the update server offers
+ * @param string $installed      VERSION
+ * @return bool
+ */
+function pg_update_version_newer($server_version, $installed)
+{
+    if (!is_scalar($server_version)) {
+        return false;
+    }
+
+    $server_version = trim((string) $server_version);
+
+    if (preg_match('/^\d+(\.\d+)*$/', $server_version) !== 1) {
+        return false;
+    }
+
+    return version_compare($server_version, trim((string) $installed), '>');
+}
+
 // ----------------------------------------------------------------------------
 // The Kodpen API's release check (GET /releases/latest)
 // ----------------------------------------------------------------------------
