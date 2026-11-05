@@ -173,6 +173,29 @@ function pg_tr_robots_says_noindex($html)
 }
 
 /**
+ * Whether a drawn page names its language versions in its head: only for a
+ * page with an address of its own that the search engines may index, and
+ * that does not name them already. A page that says noindex (page.noindex,
+ * a language's policy) is left out of sitemap.xml under every policy, so its
+ * head offers no alternates either; under "all" it used to name its own
+ * noindex copies in the other languages.
+ *
+ * @param string $html      the page
+ * @param string $canonical the page's own address, '' when it has none
+ * @return bool
+ */
+function pg_tr_head_alternates_wanted($html, $canonical)
+{
+    $html = (string) $html;
+
+    if (((string) $canonical === '') || preg_match('~<link\b[^>]*\shreflang=~i', $html)) {
+        return false;
+    }
+
+    return !pg_tr_robots_says_noindex($html);
+}
+
+/**
  * Whether the schema keeps what a page answered (page_translations.indexable,
  * 2026.4.9). Code that runs before the database upgrade asks first.
  *
