@@ -105,6 +105,30 @@ function test_image_editor_actions_for_picture_and_area()
 	pg_assert_same(array('-redact', 'invert', 'deselect'), $r['noRedact'], 'Redact off without the redaction part');
 }
 
+// A corner keeps the proportions with a finger or a pen whatever the type;
+// with the mouse a picture's does and a shape's does not, Shift doing the
+// other. An unknown pointer counts as the mouse.
+function test_image_editor_actions_keep_ratio()
+{
+	$r = image_editor_actions_node(
+		'console.log(JSON.stringify(['
+		. ' M.keepRatio("touch", false, false), M.keepRatio("touch", true, true), M.keepRatio("pen", false, false),'
+		. ' M.keepRatio("mouse", false, false), M.keepRatio("mouse", true, false), M.keepRatio("mouse", false, true), M.keepRatio("mouse", true, true),'
+		. ' M.keepRatio("", false, false), M.keepRatio(undefined, true, false)'
+		. ']));'
+	);
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'runs');
+	pg_assert_same(array(true, true, true), array_slice($r, 0, 3), 'a finger or a pen keeps it');
+	pg_assert_same(array(false, true, true, false), array_slice($r, 3, 4), 'the mouse: the type, Shift the other way');
+	pg_assert_same(array(false, true), array_slice($r, 7, 2), 'an unknown pointer as the mouse');
+}
+
 // The part is bundled, has its labels, and each command it draws has a
 // label (most are the owning parts').
 function test_image_editor_actions_part()

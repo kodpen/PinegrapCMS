@@ -64,7 +64,7 @@ function test_copy_buttons_status_region()
 		// Connected accounts shows its status: a refused copy has to be
 		// seen, not only heard.
 		$region = ($screen[1] === 'connections.php')
-			? 'class="form-text mb-5 connections-copy-status" role="status" aria-live="polite"'
+			? 'class="form-text mb-0 connections-copy-status" role="status" aria-live="polite"'
 			: 'class="visually-hidden" role="status" aria-live="polite"';
 
 		pg_assert_contains($region, $source, $screen[1]);
