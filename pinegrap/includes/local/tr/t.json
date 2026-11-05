@@ -1112,6 +1112,7 @@
     "The active offer/discount descriptions are listed here.": "Aktif teklif/indirim açıklamaları burada listelenir.",
     "The ad has been created.": "Reklam oluşturuldu.",
     "The ad region has been created.": "Reklam bölgesi oluşturuldu.",
+    "The additional head content goes just before the closing head tag on every page that uses this style; the source shows where.": "Ek head içeriği, bu stili kullanan her sayfada kapanan head etiketinin hemen önüne eklenir; kaynak, yerini gösterir.",
     "The additional head content has been saved.": "Ek baş içeriği kaydedildi.",
     "The additional page bcc e-mail address is invalid. <a href=\"javascript:history.go(-1);\">Go back</a>.": "Ek sayfa gizli kopya e-posta adresi geçersiz. <a href=\"javascript:history.go(-1);\">Geri git</a>.",
     "The address": "Adres",
