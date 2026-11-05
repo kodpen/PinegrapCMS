@@ -259,3 +259,42 @@ function test_seo_ai_crawlers_router_dispatch()
 	pg_assert_true(($dispatch !== false) && ($files !== false) && ($dispatch < $files), 'before the file check');
 	pg_assert_contains("(\$lower == 'llms.txt')", $router, 'language directory');
 }
+
+// llms.txt reads the same page types as before; a designed page whose system
+// widget stands in for a type it leaves out (sign-in, error page, cart,
+// checkout, search results, a bare detail page) is left out with it.
+function test_seo_ai_crawlers_llms_widget_types()
+{
+	pg_assert_same(array('standard', 'folder view', 'photo gallery', 'custom form', 'form list view', 'form view directory', 'calendar view', 'catalog'), pg_llms_txt_page_types());
+
+	$types = pg_sitemap_unlisted_widget_types(array(
+		'login'          => 'login_form',
+		'shopping cart'  => 'shopping_cart',
+		'search results' => 'search_results',
+		'express order'  => 'express_order',
+		'calendar view'  => 'calendar_view',
+	), pg_llms_txt_page_types());
+
+	foreach (array('error_page', 'form_item_view', 'catalog_item_view', 'login_form', 'shopping_cart', 'search_results', 'express_order') as $type) {
+		pg_assert_true(in_array($type, $types, true), $type);
+	}
+
+	pg_assert_false(in_array('calendar_view', $types, true), 'calendar_view');
+
+	// The sitemap's own list is unchanged: it lists the cart and the search.
+	pg_assert_false(in_array('shopping_cart', pg_sitemap_unlisted_widget_types(array('shopping cart' => 'shopping_cart')), true), 'sitemap cart');
+}
+
+// A page a left-out widget is on is dropped; the home page stays, as in the
+// sitemap.
+function test_seo_ai_crawlers_llms_drop_widget_pages()
+{
+	$pages = array(
+		array('id' => 1, 'home' => 'yes'),
+		array('id' => 2, 'home' => 'no'),
+		array('id' => 3, 'home' => 'no'),
+	);
+
+	pg_assert_same(array(1, 3), array_column(pg_llms_txt_drop_pages($pages, array(1 => true, 2 => true)), 'id'));
+	pg_assert_same(array(1, 2, 3), array_column(pg_llms_txt_drop_pages($pages, array()), 'id'));
+}

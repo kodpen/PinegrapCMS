@@ -528,6 +528,42 @@ function pg_llms_txt_page_views($days)
 }
 
 /**
+ * The page types llms.txt lists: the sitemap's (pg_sitemap_page_types())
+ * without the cart, the order forms and the search results.
+ *
+ * @return string[]
+ */
+function pg_llms_txt_page_types()
+{
+    return array('standard', 'folder view', 'photo gallery', 'custom form', 'form list view', 'form view directory', 'calendar view', 'catalog');
+}
+
+/**
+ * The pages without those a left-out system widget is on: a page built in the
+ * visual editor is page type standard, and its widget makes it a sign-in,
+ * error, cart, checkout, search or bare detail page. The home page is kept,
+ * as in the sitemap.
+ *
+ * @param array $pages       rows with id and home ('yes'/'no')
+ * @param array $widget_ids  page id => true
+ * @return array
+ */
+function pg_llms_txt_drop_pages($pages, $widget_ids)
+{
+    $out = array();
+
+    foreach ((array) $pages as $page) {
+        if (($page['home'] !== 'yes') && isset($widget_ids[(int) $page['id']])) {
+            continue;
+        }
+
+        $out[] = $page;
+    }
+
+    return $out;
+}
+
+/**
  * The pages llms.txt lists: those the sitemap lists that a reader of the site
  * would start from, at most $limit of them (pg_llms_txt_rank_pages()). The
  * cart, the order forms and the search results are left out; they are steps
@@ -557,7 +593,7 @@ function pg_llms_txt_pages($limit = 50)
             (page.sitemap = '1')
             $sql_noindex
             AND (folder.folder_archived = '0')
-            AND (page.page_type IN ('standard', 'folder view', 'photo gallery', 'custom form', 'form list view', 'form view directory', 'calendar view', 'catalog'))
+            AND (page.page_type IN ('" . implode("', '", pg_llms_txt_page_types()) . "'))
             " . pg_designer_not_binned_sql('page.page_folder'));
 
     if (!is_array($rows)) {
@@ -589,6 +625,20 @@ function pg_llms_txt_pages($limit = 50)
             'description' => (string) $row['page_meta_description'],
         );
     }
+
+    // The designed pages whose system widget does the work of a left-out
+    // page type, as get_sitemap_info() leaves them out.
+    $widget_ids = array();
+
+    if (function_exists('pg_sw_widget_pages') && function_exists('pg_sw_page_type_widgets')) {
+        foreach (pg_sitemap_unlisted_widget_types(pg_sw_page_type_widgets(), pg_llms_txt_page_types()) as $widget_type) {
+            foreach (pg_sw_widget_pages($widget_type) as $row) {
+                $widget_ids[(int) $row['page_id']] = true;
+            }
+        }
+    }
+
+    $pages = pg_llms_txt_drop_pages($pages, $widget_ids);
 
     $site_url = URL_SCHEME . HOSTNAME_SETTING . PATH;
     $list = array();
