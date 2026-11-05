@@ -26,6 +26,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
+- claude-draft-decide-once.md: A task Claude or Pinegrap AI proposes in a channel (ws_ai_drafts) is accepted or dismissed once: conditional UPDATE on the pending row, checked by affected rows, before the task is opened.
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs
 - mail-api.md: Workspace e-mail conversations in the external API and MCP (api_mail.php, G7): routes, which are tools, who may answer, errors, the workspace.mail.received webhook, a mail message's mail object
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
