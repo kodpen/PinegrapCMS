@@ -899,6 +899,24 @@ function ws_guest_offence()
 }
 
 /**
+ * A string of the guest's request (its JSON body or its cookie) as text: a
+ * number reads as its digits, a list, an object, true or null as ''. The
+ * page is open to anyone, so a value it never sends is read without a PHP
+ * warning. Pure.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function ws_guest_request_text($value)
+{
+    if (is_string($value)) {
+        return $value;
+    }
+
+    return (is_int($value) || is_float($value)) ? (string) $value : '';
+}
+
+/**
  * The guest behind this request: session, guest and room, all still open.
  *
  * @param bool $fresh read again rather than from this request's first look
@@ -913,7 +931,7 @@ function ws_guest_context($fresh = false)
     }
 
     $context = null;
-    $secret = (string) ($_COOKIE[WS_GUEST_COOKIE] ?? '');
+    $secret = ws_guest_request_text($_COOKIE[WS_GUEST_COOKIE] ?? '');
 
     if (!ws_guests_ready() || !preg_match('/^[a-f0-9]{64}$/', $secret)) {
         return null;
@@ -1692,7 +1710,7 @@ function ws_guest_handle($action, $request)
         $context = ws_guest_context();
 
         if (!$context) {
-            $claimed = ws_guest_claim((string) ($request['token'] ?? ''));
+            $claimed = ws_guest_claim(ws_guest_request_text($request['token'] ?? ''));
 
             if (!$claimed['ok']) {
                 return array('status' => 'refused', 'message' => $claimed['error']);
@@ -1716,7 +1734,7 @@ function ws_guest_handle($action, $request)
         return $ended;
     }
 
-    if (!hash_equals((string) $context['session']['csrf'], (string) ($request['csrf'] ?? ''))) {
+    if (!hash_equals((string) $context['session']['csrf'], ws_guest_request_text($request['csrf'] ?? ''))) {
         return array('status' => 'error', 'message' => lang('The page has expired. Please reload it.'));
     }
 
@@ -1727,15 +1745,15 @@ function ws_guest_handle($action, $request)
     switch ($action) {
 
         case 'state':
-            return ws_guest_state($context, (string) ($request['signature'] ?? ''));
+            return ws_guest_state($context, ws_guest_request_text($request['signature'] ?? ''));
 
         case 'send':
-            $sent = ws_guest_send($context, (string) ($request['text'] ?? ''), (int) ($request['parent_id'] ?? 0));
+            $sent = ws_guest_send($context, ws_guest_request_text($request['text'] ?? ''), (int) ($request['parent_id'] ?? 0));
 
             return $sent['ok'] ? ws_guest_state($context) : array('status' => 'error', 'message' => $sent['error']);
 
         case 'react':
-            $reacted = ws_guest_react($context, (int) ($request['message_id'] ?? 0), (string) ($request['emoji'] ?? ''));
+            $reacted = ws_guest_react($context, (int) ($request['message_id'] ?? 0), ws_guest_request_text($request['emoji'] ?? ''));
 
             return $reacted['ok'] ? ws_guest_state($context) : array('status' => 'error', 'message' => $reacted['error']);
 
