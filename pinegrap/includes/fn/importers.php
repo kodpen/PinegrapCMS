@@ -657,9 +657,28 @@ function pg_import_write($import, $related, $item)
             kind = '" . e($kind) . "',
             item_id = '" . (int) $answer['id'] . "',
             source_key = '" . e($key) . "'");
+
+        // The general job works an import outside a signed-in request, and
+        // most writers announce nothing the page cache hears.
+        if (pg_import_kind_dirties_pages($kind) && function_exists('pg_page_cache_mark_dirty')) {
+            pg_page_cache_mark_dirty();
+        }
     }
 
     return $answer;
+}
+
+/**
+ * Whether a made item of this kind may show on a stored page: records,
+ * pages, files, comments, products and redirects do; contacts and authors
+ * appear on none. Pure.
+ *
+ * @param string $kind
+ * @return bool
+ */
+function pg_import_kind_dirties_pages($kind)
+{
+    return in_array((string) $kind, array('record', 'page', 'file', 'comment', 'product', 'redirect'), true);
 }
 
 /**
