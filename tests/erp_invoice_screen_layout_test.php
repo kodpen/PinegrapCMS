@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the layout of the invoice create and draft screens and the new
- * quote screen: the shared
+ * quote and new purchase order screens: the shared
  * editor (includes/erp/invoice_form.php) lays them out as a form column, a
  * status column with the totals and a sticky save bar, splitting only from
  * 2xl because the lines table needs the width.
@@ -37,7 +37,7 @@ function test_erp_invoice_editor_columns()
 
 function test_erp_invoice_screens_use_the_columns()
 {
-	foreach (array('add_erp_manual_invoice.php', 'edit_erp_invoice_draft.php', 'add_erp_quote.php') as $file) {
+	foreach (array('add_erp_manual_invoice.php', 'edit_erp_invoice_draft.php', 'add_erp_quote.php', 'add_erp_purchase_order.php') as $file) {
 		$source = erp_invoice_screen_layout_test_source($file);
 
 		pg_assert_contains("'columns' => true,", $source, $file . ': the columns');
@@ -49,8 +49,8 @@ function test_erp_invoice_screens_use_the_columns()
 	pg_assert_contains('\'lead\' => $output_templates,', erp_invoice_screen_layout_test_source('add_erp_quote.php'), 'the templates above the quote');
 	pg_assert_contains('<div class="col-12 2xl:col-9 order-1">\' . ((string) ($options[\'lead\'] ?? \'\'))', erp_invoice_screen_layout_test_source('includes/erp/invoice_form.php'), 'lead at the top of the form column');
 
-	// The quote edit and purchase order screens keep their own layout.
-	foreach (array('edit_erp_quote.php', 'add_erp_purchase_order.php', 'edit_erp_purchase_order.php') as $file) {
+	// The quote edit and purchase order edit screens keep their own layout.
+	foreach (array('edit_erp_quote.php', 'edit_erp_purchase_order.php') as $file) {
 		pg_assert_true(strpos(erp_invoice_screen_layout_test_source($file), "'columns' => true") === false, $file . ': not laid out in columns');
 	}
 }

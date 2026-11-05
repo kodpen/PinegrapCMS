@@ -261,30 +261,29 @@ pg_page_shell([
     ),
 ]) . '
 <main id="content" class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->get_warnings() . '
-            ' . $liveform->output_notices() . '
-            ' . $output_download . '
-
-            <form name="form" action="erp_export.php" method="post">
-                ' . get_token_field() . '
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
+    ' . $output_download . '
+    <form name="form" action="erp_export.php" method="post">
+        ' . get_token_field() . '
+        <div class="row">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Format') . '
-                    </div>
-                    <div class="card-body">
+                    </h2>
+                    <div class="card-body pt-0">
                         <div class="row">
-                            <div class="col-12 lg:col-6 my-3">
+                            <div class="col-12 xl:col-6 my-3">
                                 <label for="profile" class="form-label">' . lang('Format') . '</label>
-                                <select name="profile" id="profile" class="form-control">' . $output_profile_options . '</select>
-                                <div class="form-text">' . lang('The generic CSV files load back through the import screens. The Paraşüt files are that program\'s own import templates, filled from their fourth row.') . '</div>
+                                <select name="profile" id="profile" class="form-control" aria-describedby="profile_help">' . $output_profile_options . '</select>
+                                <div class="form-text" id="profile_help">' . lang('The generic CSV files load back through the import screens. The Paraşüt files are that program\'s own import templates, filled from their fourth row.') . '</div>
                             </div>
-                            <div class="col-12 lg:col-6 my-3">
+                            <div class="col-12 xl:col-6 my-3">
                                 <label for="direction" class="form-label">' . lang('Direction') . '</label>
-                                ' . $liveform->output_field(array('type' => 'select', 'id' => 'direction', 'name' => 'direction', 'class' => 'form-control', 'options' => $direction_options)) . '
-                                <div class="form-text">' . lang('Only the generic invoice CSV writes purchase invoices.') . '</div>
+                                ' . $liveform->output_field(array('type' => 'select', 'id' => 'direction', 'name' => 'direction', 'class' => 'form-control', 'options' => $direction_options, 'aria-describedby' => 'direction_help')) . '
+                                <div class="form-text" id="direction_help">' . lang('Only the generic invoice CSV writes purchase invoices.') . '</div>
                             </div>
                             <script>
                                 (function () {
@@ -312,82 +311,90 @@ pg_page_shell([
                     </div>
                 </div>
 
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Filters') . '
-                    </div>
-                    <div class="card-body">
+                    </h2>
+                    <div class="card-body pt-0">
                         <div class="row">
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 sm:col-6 my-3">
                                 <label for="from" class="form-label">' . lang('Start') . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'from', 'data-pg-date' => '', 'name' => 'from', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off')) . '
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'from', 'data-pg-date' => '', 'name' => 'from', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off', 'aria-describedby' => 'dates_help')) . '
                             </div>
-                            <div class="col-12 sm:col-6 lg:col-3 my-3">
+                            <div class="col-12 sm:col-6 my-3">
                                 <label for="to" class="form-label">' . lang('End') . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'to', 'data-pg-date' => '', 'name' => 'to', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
-                            <div class="col-12 lg:col-6 my-3">
-                                <div class="form-text lg:pt-7">' . lang('The document date for invoices and receipts. Accounts are not filtered by date.') . '</div>
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'to', 'data-pg-date' => '', 'name' => 'to', 'class' => 'form-control', 'size' => '10', 'maxlength' => '10', 'autocomplete' => 'off', 'aria-describedby' => 'dates_help')) . '
+                                ' . get_date_picker_format() . pg_fields_script() . '
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 lg:col-6 my-3">
-                                <div class="form-field">
-                                    <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'not_exported', 'name' => 'not_exported', 'value' => '1', 'class' => 'no-bs')) . '</div>
-                                    <label class="" for="not_exported">' . lang('Only records not yet exported in this format') . '</label>
-                                </div>
-                                <div class="form-field">
-                                    <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'mark_exported', 'name' => 'mark_exported', 'value' => '1', 'class' => 'no-bs')) . '</div>
-                                    <label class="" for="mark_exported">' . lang('Record this run, so the next one can leave these out') . '</label>
-                                </div>
-                            </div>
-                            <div class="col-12 lg:col-6 my-3">
-                                <div class="form-field">
-                                    <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'include_drafts', 'name' => 'include_drafts', 'value' => '1', 'class' => 'no-bs')) . '</div>
-                                    <label class="" for="include_drafts">' . lang('Include draft invoices') . '</label>
-                                </div>
-                                <div class="form-field">
-                                    <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'include_passive', 'name' => 'include_passive', 'value' => '1', 'class' => 'no-bs')) . '</div>
-                                    <label class="" for="include_passive">' . lang('Include passive accounts') . '</label>
-                                </div>
-                                <div class="form-text">' . lang('Cancelled invoices are never exported. Return documents are counted and left out.') . '</div>
+                            <div class="col-12">
+                                <div class="form-text" id="dates_help">' . lang('The document date for invoices and receipts. Accounts are not filtered by date.') . '</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        ' . lang('Recent exports') . '
+                    </h2>
+                    <div class="card-body pt-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0" id="export_runs" data-pg-sort>
+                                <thead>
+                                    <tr>
+                                        <th>' . lang('Date') . '</th>
+                                        <th>' . lang('Format') . '</th>
+                                        <th class="text-end">' . lang('Records') . '</th>
+                                        <th>' . lang('User') . '</th>
+                                    </tr>
+                                </thead>
+                                <tbody>' . $output_runs . '
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                <div class="position-sticky" style="top:3.3rem;">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('Options') . '
+                        </h2>
+                        <div class="card-body pt-0">
+                            <div class="form-field">
+                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'not_exported', 'name' => 'not_exported', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                <label class="" for="not_exported">' . lang('Only records not yet exported in this format') . '</label>
+                            </div>
+                            <div class="form-field">
+                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'mark_exported', 'name' => 'mark_exported', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                <label class="" for="mark_exported">' . lang('Record this run, so the next one can leave these out') . '</label>
+                            </div>
+                            <div class="form-field">
+                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'include_drafts', 'name' => 'include_drafts', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                <label class="" for="include_drafts">' . lang('Include draft invoices') . '</label>
+                            </div>
+                            <div class="form-field">
+                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'include_passive', 'name' => 'include_passive', 'value' => '1', 'class' => 'no-bs')) . '</div>
+                                <label class="" for="include_passive">' . lang('Include passive accounts') . '</label>
+                            </div>
+                            <div class="form-text">' . lang('Cancelled invoices are never exported. Return documents are counted and left out.') . '</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" name="submit_export" value="Export" class="btn my-1 btn-solid theme-success"><i class="bi bi-box-arrow-up me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create the file')) . '</span></button>
                         </div>
                     </div>
                 </nav>
-            </form>
-
-            <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                    ' . lang('Recent exports') . '
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" id="export_runs" data-pg-sort>
-                            <thead>
-                                <tr>
-                                    <th>' . lang('Date') . '</th>
-                                    <th>' . lang('Format') . '</th>
-                                    <th class="text-end">' . lang('Records') . '</th>
-                                    <th>' . lang('User') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_runs . '
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
             </div>
         </div>
-    </div>
+    </form>
 </main>' .
 output_footer();
 

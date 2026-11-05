@@ -25,9 +25,9 @@ function file_list_links_encoding_source($file)
 function test_file_lists_encode_send_to_and_file_name()
 {
 	$cases = array(
-		'view_design_files.php' => array(
+		'includes/fn/design_file_list_edit.php' => array(
 			"data-pg-image-edit=\"' . h(\$file['name']) . '\"",
-			"edit_design_file.php?id=' . (int) \$file['id'] . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '\"",
+			"edit_design_file.php?id=' . \$id . '&amp;send_to=' . h(urlencode(\$send_to)) . '\"",
 		),
 	);
 
