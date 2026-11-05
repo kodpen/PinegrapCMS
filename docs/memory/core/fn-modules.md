@@ -176,7 +176,7 @@ description: Generated from the module field of the memory files: each includes/
 - `shipment_labels`: [[shipment-label-api]], [[shipment-label-pickup]], [[shipment-label-pickup-drivers]], [[shipment-label-returns]], [[shipment-labels]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `shipment_tracking`: [[shipment-tracking]]
-- `shipping`: [[address-form-places]], [[address-labels-by-country]], [[address-labels-in-editor]], [[checkout-requested-arrival-date]], [[n11-old-address-order]], [[order-address-postcode-note]], [[tr-district-carriers]], [[tr-district-plate-code]]
+- `shipping`: [[address-form-places]], [[address-labels-by-country]], [[address-labels-in-editor]], [[checkout-arrival-date-offered]], [[checkout-requested-arrival-date]], [[n11-old-address-order]], [[order-address-postcode-note]], [[tr-district-carriers]], [[tr-district-plate-code]]
 - `shipping_method_list_edit`: [[list-table-quick-edit-shipping-methods]]
 - `shipping_methods`: [[api-store-shipping-method-writes]]
 - `short_link_list_edit`: [[list-table-quick-edit-short-links]]
