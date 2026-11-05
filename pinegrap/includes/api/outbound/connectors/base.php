@@ -697,32 +697,6 @@ function mp_enqueue($product_id, $operation = 'stock_price', $priority = 5) {
 
 }
 
-// Queue every mapped product on an account. The "send everything" button.
-function mp_enqueue_account($account_id, $operation = 'stock_price') {
-
-	$account_id = (int) $account_id;
-
-	if (!$account_id) {
-
-		return 0;
-
-	}
-
-	$products = (array) db_items("SELECT product_id FROM marketplace_product_map
-		WHERE (account_id = '" . e($account_id) . "') AND (status = 'active')");
-
-	$written = 0;
-
-	foreach ($products as $row) {
-
-		$written += mp_enqueue((int)$row['product_id'], $operation);
-
-	}
-
-	return $written;
-
-}
-
 // How long to wait before trying a failed row again.
 //
 // Minutes, doubling: 2, 4, 8, 16, 32, 64. Six attempts covers a couple of hours
