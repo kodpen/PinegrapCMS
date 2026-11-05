@@ -92,16 +92,16 @@ foreach (erp_accounts(array('status' => 'active')) as $account) {
 
 $step_form = function ($step, $title, $button, $class, $fields, $note) use ($cheque_id, $self_action) {
     return '
-        <form method="post" action="' . $self_action . '" class="card my-5">
+        <form method="post" action="' . $self_action . '" class="card my-7">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $cheque_id . '" />
             <input type="hidden" name="step" value="' . $step . '" />
-            <div class="card-body">
+            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . $title . '</h2>
+            <div class="card-body pt-0">
+                ' . (($note !== '') ? '<p class="fg-secondary mb-4">' . $note . '</p>' : '') . '
                 <div class="row g-3 align-items-start">
-                <div class="col-12 fw-semibold">' . $title . '</div>
                 ' . $fields . '
-                <div class="col-12 md:col-3"><div class="form-label small d-none md:d-block" aria-hidden="true">&nbsp;</div><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
-                ' . (($note !== '') ? '<div class="col-12 form-text">' . $note . '</div>' : '') . '
+                <div class="col-12 md:col-auto md:ms-auto"><div class="form-label small d-none md:d-block" aria-hidden="true">&nbsp;</div><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
                 </div>
             </div>
         </form>';
@@ -168,9 +168,20 @@ if (!empty($left)) {
             </div>';
 }
 
+// One fact of the status column: two side by side on a phone and a tablet,
+// one per line beside the form column.
 $fact = function ($label, $value) {
-    return ((string) $value !== '') ? '<div class="col-6 md:col-3"><div class="small fg-secondary">' . $label . '</div><div>' . h((string) $value) . '</div></div>' : '';
+    return ((string) $value !== '') ? '<div class="col-6 sm:col-4 lg:col-12 my-3"><div class="form-label fg-secondary">' . $label . '</div><div class="text-break">' . h((string) $value) . '</div></div>' : '';
 };
+
+// A closed cheque has no step left; the form column says so rather than
+// standing empty when it has no movement either.
+if (($output_steps === '') && !$readonly) {
+    $output_steps = '
+            <div class="card my-7">
+                <div class="card-body fg-secondary">' . lang('The cheque is closed: no step is left.') . '</div>
+            </div>';
+}
 
 echo
 pg_page_shell([
@@ -187,38 +198,59 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 2xl:col-9">
+        <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . $output_left . '
+        </div>
 
-            <div class="card my-7">
-                <div class="card-body">
-                    <div class="row g-5">
-                    <div class="col-6 md:col-3"><div class="small fg-secondary">' . lang('Status') . '</div><div><span class="badge theme-' . h($state[1]) . '">' . h($state[0]) . '</span></div></div>
-                    ' . $fact(lang('Direction'), $received ? lang('Taken from a customer') : lang('Given to a supplier')) . '
-                    ' . $fact(lang('Account'), (string) $cheque['account_title']) . '
-                    ' . $fact(lang('Amount'), erp_money_out_currency((int) $cheque['amount'], (string) $cheque['currency'])) . '
-                    ' . $fact(lang('Due Date'), prepare_form_data_for_output((string) $cheque['due_date'], 'date', false)) . '
-                    ' . $fact(lang('Date'), prepare_form_data_for_output((string) $cheque['doc_date'], 'date', false)) . '
-                    ' . $fact(lang('Bank'), (string) $cheque['bank_name']) . '
-                    ' . $fact(lang('Branch'), (string) $cheque['branch']) . '
-                    ' . $fact(lang('Drawn by'), (string) $cheque['drawer']) . '
-                    ' . $fact(lang('Kept in'), (string) $cheque['portfolio_name']) . '
-                    ' . $fact(lang('Bank account'), (string) $cheque['bank_till_name']) . '
-                    ' . $fact(lang('Passed on to'), (string) $cheque['endorsed_title']) . '
-                    ' . $fact(lang('Notes'), (string) $cheque['notes']) . '
+        <!--
+            The form column: the steps the cheque can take next, then the cash
+            movements it made. Each step is its own form with its own button,
+            so there is no shared save bar.
+        -->
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+            ' . $output_steps . '
+
+            ' . (($movements !== '') ? '<div class="card my-7">
+                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Movements') . '</h2>
+                <div class="card-body p-0 table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Date') . '</th><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal">' . lang('Till') . '</th><th class="fw-normal text-end">' . lang('Amount') . '</th></tr></thead><tbody>' . $movements . '</tbody></table></div>
+            </div>' : '') . '
+        </div>
+
+        <!--
+            What is read, not filled. Sticky under the fixed header, and after
+            the form column in source order so a phone shows it below the steps.
+        -->
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">
+                <div class="card my-7">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Status') . '</div>
+                                <div><span class="badge theme-' . h($state[1]) . '">' . h($state[0]) . '</span></div>
+                            </div>
+                            <div class="col-6 sm:col-4 lg:col-12 my-3">
+                                <div class="form-label fg-secondary">' . lang('Amount') . '</div>
+                                <div class="h4 mb-0">' . h(erp_money_out_currency((int) $cheque['amount'], (string) $cheque['currency'])) . '</div>
+                            </div>
+                            ' . $fact(lang('Due Date'), prepare_form_data_for_output((string) $cheque['due_date'], 'date', false)) . '
+                            ' . $fact(lang('Direction'), $received ? lang('Taken from a customer') : lang('Given to a supplier')) . '
+                            ' . $fact(lang('Account'), (string) $cheque['account_title']) . '
+                            ' . $fact(lang('Date'), prepare_form_data_for_output((string) $cheque['doc_date'], 'date', false)) . '
+                            ' . $fact(lang('Bank'), (string) $cheque['bank_name']) . '
+                            ' . $fact(lang('Branch'), (string) $cheque['branch']) . '
+                            ' . $fact(lang('Drawn by'), (string) $cheque['drawer']) . '
+                            ' . $fact(lang('Kept in'), (string) $cheque['portfolio_name']) . '
+                            ' . $fact(lang('Bank account'), (string) $cheque['bank_till_name']) . '
+                            ' . $fact(lang('Passed on to'), (string) $cheque['endorsed_title']) . '
+                            ' . $fact(lang('Notes'), (string) $cheque['notes']) . '
+                        </div>
                     </div>
                 </div>
             </div>
-
-            ' . (($movements !== '') ? '<div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Movements') . '</div>
-                <div class="card-body p-0 table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Date') . '</th><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal">' . lang('Till') . '</th><th class="fw-normal text-end">' . lang('Amount') . '</th></tr></thead><tbody>' . $movements . '</tbody></table></div>
-            </div>' : '') . '
-
-            ' . $output_steps . '
         </div>
     </div>
 </main>
