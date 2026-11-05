@@ -1,6 +1,6 @@
 ---
 name: flows-calc-and-answers
-description: Plan (2026-11-05): a Calculate rule in the derived value box (#7016) and, once #7015 is decided, an answer from the people an approval box asks; claim as [plan:flows-calc-and-answers] FA<n>
+description: Plan (2026-11-05): the Calculate rule of the derived value box (#7016), then an answer from the people an approval box asks (#7015); claim as [plan:flows-calc-and-answers] FA<n>
 ---
 
 ## What is this plan?
