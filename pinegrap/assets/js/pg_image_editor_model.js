@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'vector', 'scissors', 'warp', 'builder', 'frame', 'motion'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'puppet', 'builder', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'vector', 'scissors', 'warp', 'puppet', 'builder', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'artboard', 'image', 'export', 'motion',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'puppet', 'builder', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -190,7 +190,7 @@
     // at the top of its panel, in the switch's order.
     var RAIL_GROUPS = {
         photo: ['crop', 'adjust', 'redact', 'area', 'frame'],
-        vectors: ['vector', 'scissors', 'builder', 'warp']
+        vectors: ['vector', 'scissors', 'builder', 'warp', 'puppet']
     };
 
     // The group a tool belongs to, or ''.
@@ -1357,7 +1357,7 @@
     function shapePath(l) {
         var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, maxRadius(l)), d = '';
 
-        if (warpOn(l)) {
+        if (warpOn(l) || puppetOn(l)) {
             return warpShape(l);
         }
 
@@ -1387,7 +1387,7 @@
     function outline(l) {
         var w = l.w, h = l.h, out = [], i, n = 48;
 
-        if (warpOn(l)) {
+        if (warpOn(l) || puppetOn(l)) {
             return warpOutline(l);
         }
 
@@ -4710,6 +4710,7 @@
         var bare = Object.assign({}, l), out;
 
         delete bare.warp;
+        delete bare.puppet;
 
         if (l.type !== 'path') {
             return [shapeKnots(bare)];
@@ -4725,9 +4726,10 @@
     }
 
     // The warped contours: [{ pts, closed }] in the box's frame; a closed
-    // one does not repeat its first point.
+    // one does not repeat its first point. The free deformation's pins
+    // (l.puppet) move the points after the warp.
     function warpContours(l) {
-        var w = l.w, h = l.h;
+        var w = l.w, h = l.h, warped = warpOn(l), pins = puppetOn(l) ? puppetPins(l) : null;
 
         return warpSource(l).map(function (c) {
             var pts = flattenKnots(c.knots, c.closed && (c.knots.length > 2)), closed = c.closed && (c.knots.length > 2);
@@ -4738,7 +4740,11 @@
 
             return {
                 closed: closed,
-                pts: pts.map(function (p) { return warpPoint(l.warp, w, h, w ? p[0] / w : 0, h ? p[1] / h : 0); })
+                pts: pts.map(function (p) {
+                    var q = warped ? warpPoint(l.warp, w, h, w ? p[0] / w : 0, h ? p[1] / h : 0) : [p[0], p[1]];
+
+                    return pins ? mlsRigid(pins, q) : q;
+                })
             };
         });
     }
@@ -4795,6 +4801,144 @@
         WARP_STYLES: WARP_STYLES, MESH_MIN: MESH_MIN, MESH_MAX: MESH_MAX, warpable: warpable, warpOn: warpOn, meshGrid: meshGrid,
         meshAt: meshAt, meshResize: meshResize, warpPoint: warpPoint, flattenKnots: flattenKnots, warpContours: warpContours,
         warpShape: warpShape, warpOutline: warpOutline, warpExpand: warpExpand
+    };
+
+    // ---- free deformation ----
+
+    // Pins on a path or a drawn shape, kept as l.puppet { pins: [{ rest,
+    // at }] } (each [u, v] as parts of the box, before the mirror): a pin
+    // dragged from rest to at bends the outline around the others by rigid
+    // moving least squares (Schaefer, McPhail, Warren 2006). It is drawn on
+    // the outline the warp gives, through warpContours().
+
+    var PUPPET_MAX = 32;
+
+    function pinValid(p) {
+        var ok = function (a) { return Array.isArray(a) && (a.length === 2) && isFinite(a[0]) && isFinite(a[1]); };
+
+        return !!p && ok(p.rest) && ok(p.at);
+    }
+
+    // Whether the layer's drawing goes through its pins.
+    function puppetOn(l) {
+        var pp = l && l.puppet;
+
+        return !!pp && warpable(l) && Array.isArray(pp.pins) && (pp.pins.length > 0) && (pp.pins.length <= PUPPET_MAX) && pp.pins.every(pinValid);
+    }
+
+    // The pins in the box's pixels: [{ p: rest, q: moved }].
+    function puppetPins(l) {
+        return l.puppet.pins.map(function (pin) {
+            return { p: [pin.rest[0] * l.w, pin.rest[1] * l.h], q: [pin.at[0] * l.w, pin.at[1] * l.h] };
+        });
+    }
+
+    // Where the pins take the point v: the rotation and shift that best
+    // carry the pins near v (weights 1 / distance squared) to their moved
+    // places. One pin shifts everything; on a pin, its moved place.
+    function mlsRigid(pins, v) {
+        var sw = 0, px = 0, py = 0, qx = 0, qy = 0, dot = 0, crs = 0, spread = 0, i, w, dx, dy, a, b, c, d;
+        var ws = [];
+
+        if (!pins.length) {
+            return [v[0], v[1]];
+        }
+
+        for (i = 0; i < pins.length; i++) {
+            dx = pins[i].p[0] - v[0];
+            dy = pins[i].p[1] - v[1];
+            w = dx * dx + dy * dy;
+
+            if (w < 1e-12) {
+                return [pins[i].q[0], pins[i].q[1]];
+            }
+
+            w = 1 / w;
+            ws.push(w);
+            sw += w;
+            px += w * pins[i].p[0];
+            py += w * pins[i].p[1];
+            qx += w * pins[i].q[0];
+            qy += w * pins[i].q[1];
+        }
+
+        px /= sw;
+        py /= sw;
+        qx /= sw;
+        qy /= sw;
+
+        for (i = 0; i < pins.length; i++) {
+            a = pins[i].p[0] - px;
+            b = pins[i].p[1] - py;
+            c = pins[i].q[0] - qx;
+            d = pins[i].q[1] - qy;
+            dot += ws[i] * (a * c + b * d);
+            crs += ws[i] * (a * d - b * c);
+            spread += ws[i] * (a * a + b * b);
+        }
+
+        // Pins on one spot (or one pin) give no turn, only the shift:
+        // rounding would otherwise pick a random angle.
+        var len = (spread / sw > 1e-8) ? Math.hypot(dot, crs) : 0, cos = len ? dot / len : 1, sin = len ? crs / len : 0;
+
+        dx = v[0] - px;
+        dy = v[1] - py;
+
+        return [cos * dx - sin * dy + qx, sin * dx + cos * dy + qy];
+    }
+
+    // The rest place (parts of the box) of the drawn point u, v of a w x h
+    // box under its pins: the deformation undone by a few fixed-point
+    // steps, so a pin added to a bent shape sits where it was pressed.
+    function puppetRest(l, u, v) {
+        var pins = puppetOn(l) ? puppetPins(l) : [], w = l.w || 1, h = l.h || 1, goal = [u * w, v * h], r = goal.slice(), i, f;
+
+        for (i = 0; pins.length && (i < 24); i++) {
+            f = mlsRigid(pins, r);
+            r = [r[0] + goal[0] - f[0], r[1] + goal[1] - f[1]];
+
+            if (Math.hypot(goal[0] - f[0], goal[1] - f[1]) < 0.01) {
+                break;
+            }
+        }
+
+        return [frac(r[0], w), frac(r[1], h)];
+    }
+
+    // The puppet with a pin added where the drawn point u, v is (nothing
+    // moves), or the same puppet when it holds the most pins.
+    function puppetAdd(l, u, v) {
+        var pp = (l.puppet && Array.isArray(l.puppet.pins)) ? clone(l.puppet) : { pins: [] };
+
+        if (pp.pins.length >= PUPPET_MAX) {
+            return pp;
+        }
+
+        pp.pins.push({ rest: puppetRest(l, u, v), at: [frac(u, 1), frac(v, 1)] });
+
+        return pp;
+    }
+
+    // The pin nearest to the drawn point x, y (the box's pixels) within
+    // slack pixels, or -1.
+    function puppetHit(l, x, y, slack) {
+        var best = -1, near = slack, pins = (l.puppet && Array.isArray(l.puppet.pins)) ? l.puppet.pins : [];
+
+        pins.forEach(function (pin, i) {
+            var dd = pinValid(pin) ? Math.hypot(pin.at[0] * l.w - x, pin.at[1] * l.h - y) : Infinity;
+
+            if (dd <= near) {
+                near = dd;
+                best = i;
+            }
+        });
+
+        return best;
+    }
+
+    var PUPPET = {
+        PUPPET_MAX: PUPPET_MAX, puppetOn: puppetOn, puppetPins: puppetPins, mlsRigid: mlsRigid, puppetRest: puppetRest,
+        puppetAdd: puppetAdd, puppetHit: puppetHit
     };
 
     // -- scenes (pg_image_editor_scenes.js) --
@@ -7669,7 +7813,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
