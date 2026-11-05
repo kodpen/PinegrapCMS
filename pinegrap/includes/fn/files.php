@@ -345,6 +345,53 @@ function pg_file_name_reserved($name, $role)
     return pg_file_withheld($name) && (($role === null) || ((int) $role >= 3));
 }
 
+// Whether the file manager may hand out a file's contents (the Office
+// preview, the file window's text) to this person, on top of the folder
+// check the reader already made. Readers that send the bytes in the answer
+// must refuse what get_file.php refuses: a submitted-form or comment
+// attachment needs edit rights on its folder (#1989, a form upload may be a
+// CV in the public default upload folder), and a team chat attachment opens
+// only for a side of its conversation or a role-0 administrator, whatever
+// the folder allows (#5973).
+//
+// $attachment is files.attachment, $can_edit_folder check_edit_access() on
+// the file's folder, $chat_conversations pg_file_chat_conversations().
+function pg_file_panel_content_verdict($attachment, $can_edit_folder, $user_id, $role, $chat_conversations)
+{
+    if ($chat_conversations && !pg_chat_attachment_access_verdict($user_id, $role, $chat_conversations)) {
+        return false;
+    }
+
+    if (((int) $attachment === 1) && !$can_edit_folder) {
+        return false;
+    }
+
+    return true;
+}
+
+// The panel chat conversations whose messages carry this file, as
+// get_file.php reads them. Before the chat tables or the attachment column
+// exist the query fails and the file is no chat attachment.
+function pg_file_chat_conversations($file_id)
+{
+    $conversations = array();
+
+    if ((int) $file_id <= 0) {
+        return $conversations;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT c.initiator_user_id, c.target_user_id
+        FROM chat_messages m
+        INNER JOIN chat_conversations c ON c.id = m.conversation_id AND c.channel = 'backend'
+        WHERE m.attachment_file_id = '" . (int) $file_id . "'");
+
+    while (($result !== false) && ($row = mysqli_fetch_assoc($result))) {
+        $conversations[] = $row;
+    }
+
+    return $conversations;
+}
+
 // The one sentence every door says when it refuses such a file.
 function pg_upload_blocked_message($name = '')
 {
