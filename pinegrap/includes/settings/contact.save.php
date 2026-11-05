@@ -132,7 +132,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
     // would leave the site's own settings saved and the integration's refused,
     // with one Save button reporting both.
     $mailchimp_post            = post_value('mailchimp') ? 1 : 0;
-    $mailchimp_key_post        = trim((string) post_value('mailchimp_key'));
+    // The key is never printed back into the form: an empty box keeps the
+    // stored key, the tick removes it.
+    $mailchimp_key_post        = pg_mailchimp_key_for_save(post_value('mailchimp_key'), (string) db_value("SELECT mailchimp_key FROM config"), (bool) post_value('mailchimp_key_clear'));
     $mailchimp_list_post       = trim((string) post_value('mailchimp_list_id'));
     $mailchimp_store_post      = trim((string) post_value('mailchimp_store_id'));
     $mailchimp_days_post       = pg_parse_whole_number(post_value('mailchimp_sync_days'), 65535);
@@ -143,6 +145,12 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
 
         if ($mailchimp_key_post === '') {
             $liveform->mark_error('mailchimp_key', lang(array('string' => '{var:1} is required.', 'vars' => lang('API Key'))));
+        }
+
+        // The data center at the end of the key is the host the key is sent
+        // to; a key without a plain one is refused before any request.
+        if (($mailchimp_key_post !== '') && (pg_mailchimp_dc($mailchimp_key_post) === '')) {
+            $liveform->mark_error('mailchimp_key', lang('The API key must end with its data center, like -us6.'));
         }
 
         if ($mailchimp_list_post === '') {
