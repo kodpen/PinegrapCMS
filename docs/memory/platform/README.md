@@ -55,6 +55,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - cloudflare-dns-dialog.md: Cloudflare Tools Add/Edit DNS Record dialogs (#3628): hidden type groups are disabled so only the visible priority box is posted, MX priority is carried into Edit, Content is required where shown
 - cloudflare-image-vary-rule.md: WebP at the own address through a CDN: Cloudflare Tools Cache Rule (Vary Accept), the token-free self-test that sets bit 8 only on cache hits, or picks private or original (#5536, #6144, #6667)
 - cloudflare-tools-failed-reads.md: Cloudflare Tools says why a Cloudflare read or action failed: unread zone switches disabled, firewall and analytics reasons, Cloudflare's text on every failed action
+- comment-attachment-upload-refusal.md: The comment form's attachment (add_comment.php) refuses a file PHP did not take in whole before the comment is written, and writes a files row only after a successful copy.
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus
