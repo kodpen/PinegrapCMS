@@ -350,6 +350,13 @@ if (!$_POST) {
         $liveform->remove_form();
     }
 
+    // The Summary's Last Modified: the field's own change time and author.
+    $last_change = (array) db_item(
+        "SELECT user.user_username AS username
+        FROM user
+        WHERE user.user_id = '" . (int) $field['user'] . "'");
+    $last_change['timestamp'] = $field['timestamp'];
+
     // A custom form's submitted data goes with the field.
     $delete_data_warning = ($form_type == 'custom') ? lang(' and ALL SUBMITTED FORM DATA for this field') : '';
     
@@ -369,33 +376,25 @@ if (!$_POST) {
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
             <div class="col-12">
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                        <p class="p-0 m-0">' . $output_form_designer_subnav_subheading . '</p>
-                    </div>
-                </div>
                 <form name="form" action="edit_field.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <input type="hidden" id="' . h($form_type_identifier_id) . '" name="' . h($form_type_identifier_id) . '" value="' . h(${$form_type_identifier_id}) . '" />
-                    ' . pg_field_form_cards($liveform, $field, array(
-                        'form_type' => $form_type,
-                        'quiz' => $quiz ?? '',
-                        'position' => $position,
-                        'form_id' => ${$form_type_identifier_id},
-                        'page_type' => $page_type,
-                        'upload_folder_row' => true,
-                    )) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('field') . $delete_data_warning))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_field_form_layout(
+                        pg_field_form_cards($liveform, $field, array(
+                            'form_type' => $form_type,
+                            'quiz' => $quiz ?? '',
+                            'position' => $position,
+                            'form_id' => ${$form_type_identifier_id},
+                            'page_type' => $page_type,
+                            'form_label' => trim($output_form_designer_subnav_subheading),
+                            'status_rows' => pg_field_form_status_row(lang('Last Modified'), get_relative_time(array('timestamp' => (int) ($last_change['timestamp'] ?? 0))) . ((string) ($last_change['username'] ?? '') !== '' ? ' ' . h($last_change['username']) : '')),
+                            'upload_folder_row' => true,
+                        )),
+                        '
+                                        <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('field') . $delete_data_warning))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>') . '
                 </form>
             </div>
         </div>

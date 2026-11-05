@@ -126,15 +126,15 @@ function pg_dashboard_v2_visitmap_data($countries, $cities, $period, $maps_url, 
             $rows[] = array('text' => $place['text'], 'value' => $place['visits'], 'note' => pg_format_number($place['visits'], 0));
         }
     } else {
-        $names = pg_sales_map_iso_countries();
-
+        // Countries in the panel language (pg_geo_country_name(): intl, else
+        // the English name): the language shards name only a few of them,
+        // so lang() left "Germany" beside "Türkiye".
         foreach (array_slice($by_country, 0, $limit, true) as $code => $n) {
-            $rows[] = array('text' => isset($names[$code]) ? lang($names[$code]) : (string) $code, 'value' => (int) $n, 'note' => pg_format_number($n, 0));
+            $rows[] = array('text' => pg_geo_country_name($code), 'value' => (int) $n, 'note' => pg_format_number($n, 0));
         }
     }
 
-    $names = pg_sales_map_iso_countries();
-    $home_name = isset($names[$home]) ? lang($names[$home]) : $home;
+    $home_name = ($home !== '') ? pg_geo_country_name($home) : '';
 
     return array(
         'figure'     => pg_format_number($visits, 0),

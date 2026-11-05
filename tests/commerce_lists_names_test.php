@@ -35,27 +35,30 @@ function test_commerce_lists_names_state_filter_label()
 function test_commerce_lists_names_countries_translated()
 {
 	$source = commerce_lists_names_source('view_verified_shipping_addresses.php');
+	// The list's query and cells are in includes/fn/verified_shipping_address_list_edit.php.
+	$cells = commerce_lists_names_source('includes/fn/verified_shipping_address_list_edit.php');
 
-	pg_assert_contains("countries.code AS country_code", $source);
+	pg_assert_contains("countries.code AS country_code", $cells);
 	pg_assert_contains("foreach (pg_geo_state_option_labels(\$states, \$foreign_states) as \$state)", $source);
 	pg_assert_contains("pg_list_label_order('countries.code', \$country_labels)", $source);
-	pg_assert_contains("h(pg_geo_country_label(\$address['country_name'], \$address['country_code']))", $source);
-	pg_assert_true(strpos($source, "h(\$address['country_name'])") === false, 'raw country name in the Country column');
+	pg_assert_contains("h(pg_geo_country_label(\$row['country_name'], \$row['country_code']))", $cells);
+	pg_assert_true(strpos($cells, "h(\$row['country_name'])") === false, 'raw country name in the Country column');
 	pg_assert_true(strpos($source, "h(\$state['country_name'])") === false, 'raw country name in the state filter');
 }
 
 function test_commerce_lists_names_tax_rate_percent()
 {
-	$source = commerce_lists_names_source('view_tax_zones.php');
+	// The list's cells are drawn by includes/fn/tax_zone_list_edit.php.
+	$source = commerce_lists_names_source('includes/fn/tax_zone_list_edit.php');
 
-	pg_assert_contains("format_tax_rate(\$tax_zone['tax_rate'])", $source);
+	pg_assert_contains("format_tax_rate(\$row['tax_rate'])", $source);
 	pg_assert_contains("lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(", $source);
-	pg_assert_true(strpos($source, "h(\$tax_zone['tax_rate']) . '%") === false, 'tax rate printed as stored');
+	pg_assert_true(strpos($source, "h(\$row['tax_rate']) . '%") === false, 'tax rate printed as stored');
 }
 
 function test_commerce_lists_names_shipping_marks_read_yes()
 {
-	$source = commerce_lists_names_source('view_shipping_methods.php');
+	$source = commerce_lists_names_source('includes/fn/shipping_method_list_edit.php');
 
 	pg_assert_true(strpos($source, '<span class="material-icons">task_alt</span>') === false, 'bare task_alt ligature');
 	pg_assert_contains("<span class=\"material-icons\" aria-hidden=\"true\">task_alt</span><span class=\"visually-hidden\">' . h(lang('Yes')) . '</span>", $source);

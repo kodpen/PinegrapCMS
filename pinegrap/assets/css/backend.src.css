@@ -793,7 +793,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --bs-body-bg: rgb(var(--pg-body-bg-rgb));
   --bs-card-bg: var(--pg-card-bg);
   --dt-row-selected-text: unset;
-  --pg-logo-fallback-color: var(--pg-logo-color-1);
 
   /* Ink printed on every filled accent. The pastel fills below sit between
      0.30 and 0.70 relative luminance, where white text tops out near 2.9:1;
@@ -947,10 +946,12 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
      a blurred glyph rather than a lit one. */
   --clock-glow: rgba(219, 39, 119, 0.28);
   --clock-bloom: 7px;
-  /* Logo gradient stops. Single source of truth: the CSS text gradient and the
-     inline SVG logo in the navbar both read these two colors. */
-  --pg-logo-color-1: rgb(23 73 177);
-  --pg-logo-color-2: rgb(207 105 0);
+  /* Logo gradient stops: blue, purple in the middle (3) and pink, the colours
+     of the mascot's nebula, deep enough to read on white. The inline wordmark
+     and the CSS text gradient read them. */
+  --pg-logo-color-1: #3D5AFE;
+  --pg-logo-color-2: #FF3D72;
+  --pg-logo-color-3: #B44DFF;
   --pg-card-bg: rgb(245, 245, 245);
 }
 
@@ -1009,8 +1010,9 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --clock-gradient: linear-gradient(100deg, #22d3ee 0%, #818cf8 50%, #f472b6 100%);
   --clock-glow: rgba(244, 114, 182, 0.5);
   --clock-bloom: 14px;
-  --pg-logo-color-1: rgb(142 179 255);
-  --pg-logo-color-2: rgb(255 188 119);
+  --pg-logo-color-1: #7D8FFF;
+  --pg-logo-color-2: #FF7096;
+  --pg-logo-color-3: #C37CFF;
   --pg-card-bg: rgb(12, 13, 15);
 }
 
@@ -5151,6 +5153,12 @@ table.chart .text-truncate.overflow-hidden * {
   vertical-align: bottom;
 }
 
+/* A cell that wraps a long unbroken word (with .text-break) keeps this
+   width, so the table's auto layout cannot squeeze it to a sliver. */
+.pg-cell-wrap {
+  min-width: 8rem;
+}
+
 table.dataTable.dt-checkboxes-select tbody tr,
 table.dataTable thead th.dt-checkboxes-select-all,
 table.dataTable tbody td.dt-checkboxes-cell {
@@ -5455,6 +5463,35 @@ table.monthly_calendar .calendar-event a {
 
 table.monthly_calendar .calendar-event a:hover {
   text-decoration: underline;
+}
+
+/* A removed instance of a repeating event (get_calendar()): struck through
+   and muted, so it no longer looks like a live one. */
+.calendar_event_exception,
+.calendar_event_exception a,
+table.monthly_calendar .calendar-event .calendar_event_exception a {
+  color: var(--pg-secondary-ink);
+  text-decoration: line-through;
+}
+
+/* Reservation dot before an event's name: open or closed, with its text in
+   a title and for screen readers. */
+.pg-cal-avail {
+  font-size: 130%;
+  font-weight: 700;
+  line-height: 1;
+  margin-inline-end: .25em;
+}
+.pg-cal-avail.is-open {
+  color: var(--pg-success-ink);
+}
+.pg-cal-avail.is-closed {
+  color: var(--pg-secondary-ink);
+}
+
+/* Weekly list: one card per day. */
+.pg-cal-day .card-body > p:last-child {
+  margin-bottom: 0;
 }
 
 table.chart th,
@@ -8548,16 +8585,18 @@ html[data-bs-theme="dark"] .pg-next {
 }
 
 /* ──────────────────────────────────────────────────────────────────────
-   Navbar brand: inline SVG logo lockup (icon + Pinegrap wordmark)
+   Navbar brand: the mascot's window and the Pinegrap wordmark
    ────────────────────────────────────────────────────────────────────
    Layout-shift notes — every rule here earns its place:
-   - The lockup is inline-flex with line-height:1 so the SVG never sits on a
-     text baseline. An inline SVG defaults to display:inline, which reserves
-     descender space below it and pushes the 50px navbar row around.
-   - .pinegrap-logo carries an explicit width AND height derived from one
-     variable, so the box is known before the SVG paints (no CLS) and the
-     version pill next to it never jumps.
-   - Below md the header hides the lockup altogether (#header .pg-brand-item).
+   - The lockup is inline-flex with line-height:1 so nothing sits on a text
+     baseline and pushes the 50px navbar row around.
+   - The mascot (a muted loop over its still poster) and the inline wordmark
+     carry explicit sizes from one variable, so the box is known before they
+     paint (no CLS).
+   - The wordmark's view box keeps room above the letters as large as the
+     descenders below, so centring it centres the letters on the mascot.
+   - Below md the header shows the mascot alone: a narrow place gets the
+     square, a wide one the whole lockup.
    ──────────────────────────────────────────────────────────────────── */
 .pinegrap-logo-lockup {
   display: inline-flex;
@@ -8566,44 +8605,64 @@ html[data-bs-theme="dark"] .pg-next {
   line-height: 1;
 }
 
+/* Only knob worth touching: --pg-logo-h, the mascot's side (32px in the
+   header); the wordmark follows. A wrapper sets it for a larger lockup
+   (installer, theme designer, loading curtain). */
 .pinegrap-logo {
-  /* Only knob worth touching: everything below scales off this. */
-  --pg-logo-h: 30px;
-  /* viewBox 530.44 x 142.47 -> full lockup aspect ratio */
-  --pg-logo-w: calc(var(--pg-logo-h) * 3.7232);
-
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--pg-logo-h, 32px) * 0.22);
   flex: 0 0 auto;
-  height: var(--pg-logo-h);
-  width: var(--pg-logo-w);
-  overflow: hidden;
+  height: var(--pg-logo-h, 32px);
   line-height: 0;
-  color: var(--pg-logo-fallback-color);
 }
 
-.pinegrap-logo > svg {
+/* A square video (the loop, its poster): the window's corners are rounded
+   here, at the mascot drawing's 116/512. */
+.pinegrap-logo-mark {
   display: block;
-  height: 100%;
-  width: var(--pg-logo-w);
-  fill: url(#pgLogoGradient);
+  flex: none;
+  width: var(--pg-logo-h, 32px);
+  height: var(--pg-logo-h, 32px);
+  border-radius: 22.6%;
+  object-fit: cover;
+  background: #0E1440;
 }
 
-/* Below md the full lockup no longer fits beside the menu button and the
-   right hand cluster, and the bar had room only for a sliver of the logo and
-   three letters of the page name. Both give way there, so the menu button
-   and the controls opposite keep the whole row; from md up nothing changes. */
+.pinegrap-logo-word {
+  display: block;
+  flex: none;
+}
+
+/* viewBox 958 x 375: the letters' height is 0.62 of the mascot's side. */
+.pinegrap-logo-word > svg {
+  display: block;
+  height: calc(var(--pg-logo-h, 32px) * 1.345);
+  width: calc(var(--pg-logo-h, 32px) * 3.436);
+}
+
+/* Below md the lockup no longer fits beside the menu button and the right
+   hand cluster: the mascot stays as the square logo, the wordmark and the
+   page heading give way, so the controls keep the row. From md up nothing
+   changes. */
 @media (max-width: 767.98px) {
-  #header .pg-brand-item,
+  #header .pinegrap-logo-word,
   #header .pg-navhead {
     display: none;
   }
+
+  #header .pg-brand-item > a {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
 }
 
-.pinegrap-version {
-  font-size: 0.65em;
-    position: absolute;
-    bottom: -5px;
-    left: 18px;
+/* The row of controls needs 348px; the mascot adds 40. Below 390px it gives
+   way too rather than push the site link off the bar. */
+@media (max-width: 389.98px) {
+  #header .pg-brand-item {
+    display: none;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -9275,8 +9334,8 @@ html.pg-is-leaving * { cursor: progress !important; }
     display: flex;
     animation: pg-preloader-appear .45s ease .3s forwards;
 }
-.pg-preloader-logo { display: block; width: min(210px, 46vw); }
-.pg-preloader-logo svg { display: block; width: 100%; height: auto; }
+.pg-preloader-logo { display: block; }
+.pg-preloader-logo { --pg-logo-h: min(56px, 13vw); }
 .pg-preloader-dots {
     display: flex; gap: 7px;
 }
@@ -11713,16 +11772,11 @@ body.workspace *:focus-visible,
 
 /* Drawers and the overview's cards sit on the scale too: a drawer's inner
    corners rounded and the panel lifted on the soft shadow instead of a
-   hairline, a home card the same. */
+   hairline. */
 body.workspace .drawer.drawer-end,
 [id^="ws-"].drawer.drawer-end {
   border-left: 0;
   border-radius: var(--ws-radius-lg) 0 0 var(--ws-radius-lg);
-  box-shadow: var(--ws-shadow);
-}
-.ws-home-card.card {
-  border-color: transparent;
-  border-radius: var(--ws-radius-lg);
   box-shadow: var(--ws-shadow);
 }
 
@@ -11738,30 +11792,27 @@ body.workspace .card .table {
   margin-top: 0;
 }
 /* The workspace screens run to the edges of the page (their main area has
-   no padding). The channel screen is one panel and fills it; the others keep
-   their toolbar across the whole width and give what is under it the
-   toolbar's own side padding, so the rounded cards do not meet the edge and
-   line up with the first button above them. The settings, MCP connections,
-   channel template, calendar subscription and tables screens put their columns straight into
-   .ws-shell-main, with no #ws-root around them: they give the main area
-   that padding themselves, so their columns keep their gutter. */
-body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) #content.p-0 > .row,
-body.workspace:not(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > .row {
+   no padding). The channel screen is one panel and fills it. Every other
+   screen sits in .ws-shell-main, which gives what it holds the side padding
+   of the panel's toolbar, so the rounded cards do not meet the edge of the
+   page and line up with the first button above them. The padding is on the
+   shared wrapper, never on a list of screens: a row in it keeps its own
+   gutter (its negative margins fall inside the padding), and a screen drawn
+   in #ws-root by its script gets the same edge as one drawn by the server.
+   The toolbar runs across the whole width over that padding. */
+body.workspace #content.p-0 > .row {
   --bs-gutter-x: 0;
 }
-body.workspace:not(.workspace_channels) #ws-root {
+body.workspace .ws-shell-main {
   padding: 0 .75rem .75rem;
 }
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main {
-  padding: 0 .75rem .75rem;
-}
-body.workspace:not(.workspace_channels) #ws-root > .pg-toolbar,
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > #button_bar {
+body.workspace .ws-shell-main #ws-root > .pg-toolbar,
+body.workspace .ws-shell-main > #button_bar {
   max-width: none;
   margin-left: -.75rem;
   margin-right: -.75rem;
 }
-body.workspace:is(.workspace_settings, .workspace_mcp, .workspace_template, .workspace_calendar_feed, .workspace_wtables) .ws-shell-main > #button_bar {
+body.workspace .ws-shell-main > #button_bar {
   padding: .5rem .75rem;
   border-bottom: 1px solid var(--pg-border-color-translucent);
 }
@@ -13375,9 +13426,16 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   border: 1px solid transparent;
   border-radius: var(--ws-radius);
 }
-.btn-check:checked + .ws-status-choice {
+/* A v6 label.btn-check wrapping its radio: the checked choice keeps its
+   tint and takes an outline in its own colour, not the button fill; the
+   focus ring is the panel's. */
+.ws-status-choice.btn-check:has(input:checked) {
   border-color: currentColor;
   box-shadow: 0 0 0 1px currentColor;
+}
+.ws-status-choice.btn-check:has(input:focus-visible) {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
 }
 .ws-checkin {
   max-width: 34rem;
@@ -14149,28 +14207,6 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-msg-quote:hover {
   color: var(--pg-fg-body);
   border-left-color: var(--ws-accent);
-}
-/* The overview: the pressing tasks lead, marked by their priority. */
-.ws-home-hot {
-  margin-left: auto;
-  font-weight: 600;
-  color: var(--pg-danger-fg-emphasis);
-  text-decoration: none;
-}
-.ws-home-hot:hover {
-  text-decoration: underline;
-}
-.ws-home-row.ws-home-row-hot {
-  box-shadow: inset 3px 0 0 var(--pg-warning);
-}
-.ws-home-row.ws-home-row-urgent {
-  box-shadow: inset 3px 0 0 var(--pg-danger);
-}
-.ws-home-hot-icon {
-  color: var(--pg-warning-fg-emphasis);
-}
-.ws-home-row-urgent .ws-home-hot-icon {
-  color: var(--pg-danger);
 }
 /* A task's priority badge (high or urgent) in the Today card and every
    task list (homeDue(), taskRows() in workspace.js). */
@@ -18489,9 +18525,8 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
   flex: 1 1 auto;
   min-width: 0;
 }
-/* The overview as drawn: the greeting with the ways to start, three cards
-   (waiting, due, today's calendar), two (the channels' news, the latest
-   decisions), then the channels to join and what this place is. */
+/* The Today page's scroll area (showHome() in workspace.js); the cards
+   inside are styled by ws_today.src.css. */
 .ws-home {
   flex: 1 1 auto;
   min-height: 0;
@@ -18502,346 +18537,6 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
   max-width: 74rem;
   margin-right: auto;
   margin-left: auto;
-}
-.ws-home-hello {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-.ws-home-hello-text {
-  flex: 1 1 22rem;
-  min-width: 0;
-}
-.ws-home-date {
-  margin: 0 0 .2rem;
-  font-size: .82rem;
-  color: var(--pg-fg-2);
-}
-.ws-home-greeting {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 800;
-  letter-spacing: -.02em;
-  overflow-wrap: anywhere;
-}
-.ws-home-lead {
-  margin: .35rem 0 0;
-  font-size: .92rem;
-  color: var(--pg-fg-2);
-}
-.ws-home-lead-part {
-  display: inline-block;
-  max-width: 100%;
-}
-.ws-home-grid {
-  display: grid;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.ws-home-grid-3 {
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-}
-/* min() lets the one column of a phone shrink below 22rem with the page. */
-.ws-home-grid-2 {
-  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
-}
-.ws-home-grid > .ws-home-card {
-  min-width: 0;
-  margin: 0;
-}
-.ws-home-count {
-  margin-left: .4rem;
-  vertical-align: middle;
-}
-.ws-home-count.ws-home-count-hot {
-  background: var(--ws-accent);
-  color: #fff;
-}
-html[data-bs-theme="dark"] .ws-home-count.ws-home-count-hot {
-  color: var(--pg-on-accent);
-}
-.ws-home-sub {
-  padding: .1rem .5rem .25rem;
-  font-size: .72rem;
-  font-weight: 700;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--pg-fg-2);
-}
-/* Today's calendar: the hour, a bar, the title. */
-.ws-home-event {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  padding: .4rem .5rem;
-}
-.ws-home-event-time {
-  flex: 0 0 3rem;
-  font-size: .82rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.ws-home-event-bar {
-  flex: 0 0 3px;
-  align-self: stretch;
-  border-radius: 2px;
-  background: var(--ws-accent);
-}
-.ws-home-event-now .ws-home-event-bar {
-  background: var(--pg-success);
-}
-.ws-home-event-past {
-  opacity: .6;
-}
-.ws-home-event-past .ws-home-event-bar {
-  background: var(--pg-border-color);
-}
-.ws-home-event .ws-home-row-title {
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-/* A task due: the box that ticks it off, then the rest opens it. */
-.ws-home-task:hover {
-  background: var(--pg-bg-2);
-}
-.ws-home-done {
-  flex: none;
-  margin-top: .2rem;
-}
-.ws-home-task-open {
-  display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-}
-/* The title shortens, the priority badge beside it never does. */
-.ws-home-task-head {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-}
-.ws-home-task-head .ws-home-row-title {
-  min-width: 0;
-}
-.ws-home-task-head .ws-priority {
-  flex: none;
-}
-/* The due tasks the card has no room for. */
-.ws-home-more {
-  display: block;
-  padding: .35rem .5rem;
-  font-size: .85rem;
-}
-.ws-home-task-done .ws-home-row-title {
-  color: var(--pg-fg-2);
-  text-decoration: line-through;
-}
-/* The channels' news: the channel's sign, its name and count, the last
-   message. */
-.ws-home-digest-icon {
-  display: inline-flex;
-  flex: 0 0 2rem;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: .55rem;
-  background: color-mix(in srgb, var(--ws-ch, var(--ws-accent)) 14%, transparent);
-  color: var(--ws-ch, var(--ws-accent));
-}
-.ws-home-new {
-  margin-left: .45rem;
-  padding: 0 .4rem;
-  border-radius: 999px;
-  background: var(--pg-bg-2);
-  color: var(--pg-fg-2);
-  font-size: .7rem;
-  font-weight: 700;
-  vertical-align: middle;
-}
-.ws-home-new.ws-home-new-mention {
-  background: var(--ws-soft);
-  color: var(--ws-accent);
-}
-.ws-home-digest-time {
-  flex: none;
-  padding-top: .1rem;
-  color: var(--pg-fg-2);
-  white-space: nowrap;
-}
-.ws-home-card .card-header {
-  background: transparent;
-}
-.ws-home-counts {
-  display: flex;
-  gap: .75rem;
-  padding: .1rem .5rem .35rem;
-  font-size: .8rem;
-  color: var(--pg-fg-2);
-}
-.ws-home-empty {
-  padding: .5rem;
-  font-size: .85rem;
-  color: var(--pg-fg-2);
-}
-.ws-home-row,
-.ws-home-tl-item {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: .6rem;
-  width: 100%;
-  border: 0;
-  border-radius: var(--ws-radius-sm);
-  background: transparent;
-  color: var(--pg-fg-body);
-  text-align: left;
-  padding: .45rem .5rem;
-}
-button.ws-home-row:hover,
-.ws-home-tl-item:hover {
-  background: var(--pg-bg-2);
-}
-.ws-home-row > .bi {
-  margin-top: .15rem;
-}
-.ws-home-row-text {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.ws-home-row-title {
-  font-size: .9rem;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ws-home-row-meta {
-  overflow-wrap: anywhere;
-  color: var(--pg-fg-2);
-}
-.ws-home-row-meta b {
-  color: var(--pg-fg-body);
-}
-.ws-home-row-quote {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  font-size: .85rem;
-}
-.ws-home-unread .ws-home-row-meta b::after {
-  content: "";
-  display: inline-block;
-  width: .45rem;
-  height: .45rem;
-  margin-left: .3rem;
-  border-radius: 50%;
-  background: var(--pg-danger);
-  vertical-align: middle;
-}
-.ws-home-face .avatar {
-  --bs-avatar-size: 1.75rem;
-}
-/* An approval's or a read receipt's sign in a box the size of a face, so
-   every row's text starts at the same line. */
-.ws-home-waiting .ws-home-row > .bi:first-child {
-  display: inline-flex;
-  flex: 0 0 1.75rem;
-  align-items: center;
-  justify-content: center;
-  height: 1.75rem;
-  margin-top: 0;
-  border-radius: .5rem;
-  background: var(--pg-bg-2);
-}
-.ws-home-about.card {
-  margin-top: 1rem;
-  border-color: transparent;
-  border-radius: var(--ws-radius-lg);
-  box-shadow: var(--ws-shadow);
-}
-.ws-home-about > summary {
-  cursor: pointer;
-  list-style: none;
-  font-size: .9rem;
-  font-weight: 600;
-  background: transparent;
-}
-.ws-home-about:not([open]) > summary {
-  border-bottom: 0;
-}
-.ws-home-about > summary::-webkit-details-marker {
-  display: none;
-}
-.ws-home-about > summary::after {
-  content: "\F282";
-  float: right;
-  font-family: bootstrap-icons;
-  transition: transform .15s ease;
-}
-.ws-home-about[open] > summary::after {
-  transform: rotate(180deg);
-}
-.ws-home-tile {
-  height: 100%;
-  padding: .6rem .75rem;
-  border-radius: var(--ws-radius-sm);
-  background: var(--ws-soft);
-}
-.ws-home-tile-title {
-  margin-bottom: .2rem;
-  font-size: .88rem;
-  font-weight: 600;
-}
-.ws-home-start {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: .5rem;
-}
-.ws-home-tl {
-  position: relative;
-}
-.ws-home-tl::before {
-  content: "";
-  position: absolute;
-  top: 1rem;
-  bottom: 1rem;
-  left: calc(1.2rem - 1px);
-  width: 2px;
-  background: var(--pg-border-color);
-}
-.ws-home-tl-dot {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 50%;
-  border: 2px solid var(--pg-success);
-  background: var(--pg-bg-body);
-  color: var(--pg-success-ink);
-  font-size: .7rem;
-}
-.ws-home-tl-item.ws-tl-by-claude .ws-home-tl-dot {
-  border-color: var(--ws-accent);
-  color: var(--ws-accent);
-}
-.ws-home-join .btn {
-  flex: 0 0 auto;
-  align-self: center;
 }
 /* Worked-out figures: a formula cell and a hesap block show their value,
    the formula in the tooltip. */
@@ -22006,7 +21701,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
     .ws-format-tool.active,
     .btn-check:checked + .pg-role-card,
-    .btn-check:checked + .ws-status-choice
+    .ws-status-choice.btn-check:has(input:checked)
   ) {
     forced-color-adjust: none;
     background-color: Highlight;
@@ -22031,9 +21726,9 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .pg-sale-method[aria-pressed="true"],
     .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
     .ws-format-tool.active,
-    .btn-check:checked + .pg-role-card,
-    .btn-check:checked + .ws-status-choice
-  ) * {
+    .btn-check:checked + .pg-role-card
+  ) *,
+  .ws-status-choice.btn-check > i {
     color: inherit;
     background-color: transparent;
     border-color: currentcolor;
@@ -22482,6 +22177,33 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .pg-list-table-field {
   min-width: 6rem;
+}
+/* A select in a cell coloured by an access level (.private * and the like)
+   keeps the field's own colour; it and each option wear their own level's
+   class instead (the Pages list's folders, tintSelect()). */
+select.pg-list-table-field,
+select.pg-list-table-field option {
+  color: var(--pg-fg-body);
+}
+select.pg-list-table-field.public,
+select.pg-list-table-field option.public {
+  color: var(--pg-access-public);
+}
+select.pg-list-table-field.guest,
+select.pg-list-table-field option.guest {
+  color: var(--pg-access-guest);
+}
+select.pg-list-table-field.registration,
+select.pg-list-table-field option.registration {
+  color: var(--pg-access-registration);
+}
+select.pg-list-table-field.membership,
+select.pg-list-table-field option.membership {
+  color: var(--pg-access-membership);
+}
+select.pg-list-table-field.private,
+select.pg-list-table-field option.private {
+  color: var(--pg-access-private);
 }
 .pg-list-table-grid > tbody > tr > td[aria-busy="true"] > .pg-list-table-field {
   opacity: 0.6;

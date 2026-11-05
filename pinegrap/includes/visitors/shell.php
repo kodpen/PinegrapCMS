@@ -114,7 +114,7 @@ function pg_visitors_change($now, $before, $lower_is_better = false)
     }
 
     if ($change['direction'] === 'same') {
-        return '<span class="pg-visitors-change is-same" title="' . h(lang('No change')) . '"><span aria-hidden="true">0 %</span>'
+        return '<span class="pg-visitors-change is-same" title="' . h(lang('No change')) . '"><span aria-hidden="true">' . h(pg_visitors_percent(0, 0)) . '</span>'
             . '<span class="visually-hidden">' . h(lang('No change')) . '</span></span>';
     }
 
@@ -123,7 +123,20 @@ function pg_visitors_change($now, $before, $lower_is_better = false)
     return '<span class="pg-visitors-change ' . ($change['good'] ? 'is-good' : 'is-bad') . '">'
         . '<i class="bi ' . ($up ? 'bi-arrow-up-right' : 'bi-arrow-down-right') . '" aria-hidden="true"></i>'
         . '<span class="visually-hidden">' . h($up ? lang('Up') : lang('Down')) . ' </span>'
-        . h(pg_format_number(abs($change['percent']), 0)) . ' %</span>';
+        . h(pg_visitors_percent(abs($change['percent']), 0)) . '</span>';
+}
+
+/**
+ * A percent as the panel writes one: through the '{var:1}%' key, which
+ * Turkish words as "%12". A sign or an arrow stays outside it. Pure.
+ *
+ * @param int|float $value    the percent (12.5 for 12.5 %)
+ * @param int       $decimals
+ * @return string text
+ */
+function pg_visitors_percent($value, $decimals = 1)
+{
+    return lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($value, $decimals))));
 }
 
 /**
@@ -400,8 +413,10 @@ function pg_visitors_block($title, $body, $class = '')
  *   type     'line' (default) or 'bar'
  *   labels   the x-axis labels (text)
  *   series   list of array('label' => text, 'data' => list of numbers or
- *            null, 'dashed' => bool, 'axis' => 'right' for a second axis)
- *   notes    one more tooltip line for each label (text, '' for none)
+ *            null, 'dashed' => bool, 'axis' => 'right' for a second axis,
+ *            'unit' => a unit written after each figure, as 's')
+ *   notes    more tooltip text for each label, lines split by "\n" ('' for
+ *            none)
  *   caption  the hidden table's caption
  *   height   CSS height of the drawing, '16rem' by default
  *
@@ -424,6 +439,7 @@ function pg_visitors_chart($id, array $config)
             'data'   => array_values($one['data']),
             'dashed' => !empty($one['dashed']),
             'axis'   => (isset($one['axis']) && ($one['axis'] === 'right')) ? 'right' : 'left',
+            'unit'   => isset($one['unit']) ? (string) $one['unit'] : '',
         );
     }
 
@@ -433,6 +449,14 @@ function pg_visitors_chart($id, array $config)
         $head .= '<th scope="col">' . h($one['label']) . '</th>';
     }
 
+    // The tooltip lines are read out with the figures they go with.
+    $notes = isset($config['notes']) ? array_values($config['notes']) : array();
+    $has_notes = (count(array_filter($notes, 'strlen')) > 0);
+
+    if ($has_notes) {
+        $head .= '<th scope="col">' . h(lang('Notes')) . '</th>';
+    }
+
     $rows = '';
 
     foreach ($labels as $index => $label) {
@@ -440,7 +464,13 @@ function pg_visitors_chart($id, array $config)
 
         foreach ($series as $one) {
             $value = isset($one['data'][$index]) ? $one['data'][$index] : null;
-            $rows .= '<td>' . (($value === null) ? '–' : h(pg_format_number($value, (floor((float) $value) == (float) $value) ? 0 : 1))) . '</td>';
+            $rows .= '<td>' . (($value === null)
+                ? '–'
+                : h(pg_format_number($value, (floor((float) $value) == (float) $value) ? 0 : 1) . (($one['unit'] !== '') ? ' ' . $one['unit'] : ''))) . '</td>';
+        }
+
+        if ($has_notes) {
+            $rows .= '<td>' . h(isset($notes[$index]) ? str_replace("\n", '; ', (string) $notes[$index]) : '') . '</td>';
         }
 
         $rows .= '</tr>';

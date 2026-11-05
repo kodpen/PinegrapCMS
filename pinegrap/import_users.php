@@ -115,7 +115,7 @@ if (!$_POST) {
             }
 
             $output_contact_groups_for_contact .= '
-            <div class="col-12 md:col-4 my-1">
+            <div class="col-12 md:col-6 xl:col-4 my-1">
                 <div class="form-field">
                     <div class="switch"><input type="checkbox" name="contact_group_for_contact_' . $contact_group['id'] . '" id="contact_group_for_contact_' . $contact_group['id'] . '" value="1" class=""/></div>
                     <label class="" for="contact_group_for_contact_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . '</label>
@@ -125,6 +125,24 @@ if (!$_POST) {
     }
 
     $permission_panels['contact_groups'] = $output_contact_groups;
+
+    // A site without a static contact group has nothing to import into, so
+    // the card is left out rather than drawn empty.
+    $output_contact_groups_card = '';
+
+    if ($output_contact_groups_for_contact !== '') {
+        $output_contact_groups_card = '
+                    <div class="card mb-5">
+                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
+                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Select Contact Groups to Import into') . '</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                ' . $output_contact_groups_for_contact . '
+                            </div>
+                        </div>
+                    </div>';
+    }
 
     $permission_ui = pg_user_permission_ui(array(
         'values' => array('create_pages' => '1', 'delete_pages' => '1', 'publish_calendar_events' => 'yes'),
@@ -176,13 +194,14 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
+                    ' . pg_user_form_layout('
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Import CSV') . '</span>
+                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Import CSV') . '</h2>
                         </div>
                         <div class="card-body">
                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                            ' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'size'=>'60', 'id'=>'file', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                            ' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'size'=>'60', 'id'=>'file', 'class'=>'form-control', 'required'=>'required')) . '
                             <div class="form-text">' . lang('The first row holds the column names: email_address (or email) is required, username is optional, and the other columns fill the contact, such as first_name, last_name and company.') . '</div>
                             ' . pg_upload_limit_hint() . '
                         </div>
@@ -190,7 +209,7 @@ if (!$_POST) {
 
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Role') . '</span>
+                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Role') . '</h2>
                             <span class="small fg-secondary">' . lang('Every imported user gets this role and these rights.') . '</span>
                         </div>
                         <div class="card-body">
@@ -200,16 +219,16 @@ if (!$_POST) {
 
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Account') . '</span>
+                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Account') . '</h2>
                         </div>
                         <div class="card-body">
                             <div class="row g-5">
-                                <div class="col-12 lg:col-5">
+                                <div class="col-12 xl:col-7">
                                     <label for="home_page" class="form-label">' . lang('User Start Page') . '</label>
                                     <select class="form-control" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page() . '</select>
                                     <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                 </div>
-                                <div class="col-12 sm:col-6 lg:col-4">
+                                <div class="col-12 sm:col-6 xl:col-5">
                                     <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
                                     <input type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
                                 </div>
@@ -218,59 +237,31 @@ if (!$_POST) {
                                         <div class="switch"><input type="checkbox" id="badge" name="badge" value="1" class="collapse-switcher" data-bs-target="#badge_row"/></div>
                                         <label class="" for="badge">' . lang('Show badge next to username') . '</label>
                                     </div>
-                                    <div class="collapse ms-7 mt-1 mb-3" id="badge_row" style="max-width:22rem">
+                                    <div class="collapse ms-7 mt-1" id="badge_row" style="max-width:22rem">
                                         <input type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" aria-label="' . h(lang('Badge Label')) . '" class="form-control form-control-sm" value="" size="20" maxlength="100" />
                                         ' . $output_badge_label_info . '
-                                    </div>
-                                    <div class="form-field">
-                                        <div class="switch"><input type="checkbox" id="notify_user" name="notify_user" value="1" class=""/></div>
-                                        <label class="" for="notify_user">' . lang('Notify User: e-mail a link to set a password') . '</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="card mb-5 d-none" id="pg_permissions_everything">
-                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
-                        </div>
-                        <div class="card-body">
-                            ' . pg_user_permission_everything() . '
-                        </div>
-                    </div>
-
-                    <div class="card mb-5" id="pg_permissions_block">
-                        <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
-                            <span class="small fg-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
-                        </div>
-                        <div class="card-body p-0">
-                            <div class="pg-perms" id="pg_permissions" data-pg-empty="' . h(lang('No selection')) . '">' . $permission_ui['rows'] . '
-                            </div>
-                        </div>
-                    </div>
-
+                    ' . pg_user_form_rights_cards($permission_ui['rows']) . '
+                    ' . $output_contact_groups_card, '
                     <div class="card mb-5">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Select Contact Groups to Import into') . '</span>
+                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Password') . '</h2>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                ' . $output_contact_groups_for_contact . '
+                            <div class="form-field">
+                                <div class="switch"><input type="checkbox" id="notify_user" name="notify_user" value="1" class=""/></div>
+                                <label class="" for="notify_user">' . lang('Notify User: e-mail a link to set a password') . '</label>
                             </div>
                         </div>
-                    </div>
+                    </div>', '
+                                        <button type="submit" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Users') ) . '</span></button>') . '
 
                     ' . $permission_ui['panels'] . '
-
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Users') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
                 </form>
             </div>
         </div>

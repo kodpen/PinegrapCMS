@@ -14,9 +14,11 @@
  * the selection: the artwork stays where it is and the board slides over
  * it. On a picture the same tool grows or trims its canvas around the crop
  * box (doc.canvas, the rest in a fill), which the server's save lays the
- * picture on; an outward frame grows it too. The Image tool adds pictures as
- * layers, from this computer, Files, a drop or the clipboard; a save keeps
- * those from this computer as files in the target folder.
+ * picture on; an outward frame grows it too. Import in the top bar adds
+ * pictures as layers and SVG files as SVG layers, from this computer or
+ * Files (a drop and the clipboard too); a caller that names the Image tool
+ * gets its panel. A save keeps pictures from this computer as files in the
+ * target folder.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -518,12 +520,237 @@
 
             e.preventDefault();
             Array.prototype.forEach.call(e.dataTransfer.files || [], function (f) {
-                if (/^image\//.test(f.type)) {
-                    self.addPicture(f);
-                }
+                self.importFile(f);
             });
         });
     };
+
+    // ---- Import in the top bar ----
+
+    X.icons['import'] = 'M12 15V4M7.5 8.5L12 4l4.5 4.5M4.5 15v4.5h15V15';
+
+    function isSvgFile(f) {
+        return /^image\/svg\+xml$/i.test(f.type || '') || /\.svg$/i.test(f.name || '');
+    }
+
+    // Whether Files can be listed and an SVG passed through the server's
+    // sanitizer: the editor's API, not a caller's own save.
+    Editor.prototype.importApi = function () {
+        return !!X.config().api && (this.saveMode !== 'callback');
+    };
+
+    // A file from this computer or a drop: an SVG becomes one SVG layer
+    // (svgImport(), through the sanitizer), any other picture a picture
+    // layer as the Image tool makes it.
+    Editor.prototype.importFile = function (f) {
+        var self = this;
+
+        if (isSvgFile(f) && this.svgImport && this.importApi()) {
+            var reader = new FileReader();
+
+            reader.onload = function () {
+                self.importSvgRequest({ svg: String(reader.result) }, f.name || '');
+            };
+            reader.readAsText(f);
+        } else if (/^image\//.test(f.type || '')) {
+            this.addPicture(f);
+        }
+    };
+
+    // The sanitized SVG from the server, made a layer; a refusal is shown.
+    Editor.prototype.importSvgRequest = function (body, name) {
+        var self = this;
+
+        body.action = 'svg_import';
+        this.request(body).then(function (r) {
+            if (self.finished) {
+                return;
+            }
+
+            if (!r || (r.status !== 'success') || !self.svgImport(r.svg, name || r.name || '')) {
+                self.showMessage((r && r.message) || t('importError'), true);
+            }
+        }, function () {
+            self.showMessage(t('importError'), true);
+        });
+    };
+
+    Editor.prototype.pickImports = function () {
+        var self = this, input = el('input', { type: 'file', accept: 'image/*,.svg', multiple: true, hidden: true });
+
+        input.addEventListener('change', function () {
+            Array.prototype.forEach.call(input.files || [], function (f) {
+                self.importFile(f);
+            });
+            input.parentNode.removeChild(input);
+        });
+        this.root.appendChild(input);
+        input.click();
+    };
+
+    Editor.prototype.toggleImportMenu = function (open) {
+        var self = this, ib = this.importBox;
+
+        open = (open === undefined) ? !this.importMenu : open;
+
+        if (this.importMenu) {
+            ib.removeChild(this.importMenu);
+            this.importMenu = null;
+            document.removeEventListener('pointerdown', this.importOutside, true);
+        }
+
+        this.importBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        if (!open) {
+            return;
+        }
+
+        var item = function (label, fn) {
+            return el('button', { type: 'button', role: 'menuitem', text: label, onclick: function () {
+                self.toggleImportMenu(false);
+                fn();
+            } });
+        };
+        var items = [item(t('importComputer'), function () { self.pickImports(); })];
+
+        if (this.importApi()) {
+            items.push(item(t('importSite'), function () { self.openImportFiles(); }));
+        }
+
+        this.importMenu = el('div', { class: 'pgie-menu pgie-importmenu', role: 'menu', 'aria-label': t('import') }, items);
+
+        // Arrows move between the items; the editor's keys stay out.
+        this.importMenu.addEventListener('keydown', function (e) {
+            var list = Array.prototype.slice.call(self.importMenu.querySelectorAll('button')), at = list.indexOf(document.activeElement);
+
+            if ((e.key === 'Escape') || (e.key === 'Tab')) {
+                return;
+            }
+
+            e.stopPropagation();
+
+            if ((e.key === 'ArrowDown') || (e.key === 'ArrowUp')) {
+                e.preventDefault();
+                list[(at + ((e.key === 'ArrowDown') ? 1 : list.length - 1)) % list.length].focus();
+            } else if ((e.key === 'Home') || (e.key === 'End')) {
+                e.preventDefault();
+                list[(e.key === 'Home') ? 0 : list.length - 1].focus();
+            }
+        });
+        this.importOutside = function (e) {
+            if (self.importMenu && !ib.contains(e.target)) {
+                self.toggleImportMenu(false);
+            }
+        };
+        document.addEventListener('pointerdown', this.importOutside, true);
+        ib.appendChild(this.importMenu);
+        items[0].focus();
+    };
+
+    // "From the site": the Files list of the sticker part (pictures and SVG
+    // files, the newest or by name) over the editor; a press imports one.
+    Editor.prototype.openImportFiles = function () {
+        var self = this, st = this.importFiles, timer = null;
+        var find = el('input', { type: 'search', class: 'pgie-input pgie-stkfind', value: st.search, placeholder: t('stickerFilesFind'), 'aria-label': t('stickerFilesFind') });
+        var close = button('pgie-ibtn', t('close'), 'close', function () { self.closeConfirm(); });
+
+        st.grid = el('div', { class: 'pgie-stkfiles pgie-importfiles' });
+        find.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () { self.loadImportFiles(find.value); }, 350);
+        });
+
+        this.confirmBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-import-title' }, [
+            el('div', { class: 'pgie-confirm-box pgie-importbox' }, [
+                el('div', { class: 'pgie-importhead' }, [el('h2', { id: 'pgie-import-title', text: t('importSite') }), close]),
+                find,
+                st.grid
+            ])
+        ]);
+        this.confirmReturn = this.importBtn;
+        this.root.appendChild(this.confirmBox);
+        this.loadImportFiles(st.search);
+        find.focus();
+    };
+
+    Editor.prototype.loadImportFiles = function (search) {
+        var self = this, st = this.importFiles, ask = ++st.serial;
+
+        st.search = search || '';
+        this.request({ action: 'sticker_files', search: st.search, svg: true }).then(function (r) {
+            if (ask === st.serial) {
+                self.showImportFiles((r && (r.status === 'success')) ? (r.files || []) : null);
+            }
+        }, function () {
+            if (ask === st.serial) {
+                self.showImportFiles(null);
+            }
+        });
+    };
+
+    Editor.prototype.showImportFiles = function (list) {
+        var self = this, grid = this.importFiles.grid;
+
+        if (!grid || !this.confirmBox || !this.confirmBox.contains(grid)) {
+            return;
+        }
+
+        grid.textContent = '';
+
+        if (!list || !list.length) {
+            grid.appendChild(el('p', { class: 'pgie-note', text: t(list ? 'stickerFilesNone' : 'stickerFilesError') }));
+            return;
+        }
+
+        list.forEach(function (f) {
+            grid.appendChild(el('button', { type: 'button', class: 'pgie-stkfile', title: f.name, 'aria-label': f.name, onclick: function () {
+                self.closeConfirm();
+                self.toSelect();
+
+                if (f.svg) {
+                    self.importSvgRequest({ file_id: f.id }, f.name);
+                } else {
+                    self.addFilePicture(f);
+                }
+            } }, [
+                el('img', { src: f.url, alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' })
+            ]));
+        });
+    };
+
+    // The Import button, before Save, where layers can be added: not on the
+    // mini bar or a file being optimised.
+    Editor.topItems.push(function () {
+        var self = this;
+
+        if (this.tools.list.indexOf('select') < 0) {
+            return null;
+        }
+
+        this.importBtn = el('button', { type: 'button', class: 'pgie-btn pgie-importbtn', title: t('import'), 'aria-haspopup': 'menu', 'aria-expanded': 'false', onclick: function () {
+            self.toggleImportMenu();
+        } }, [X.icon('import'), el('span', { class: 'pgie-vlabel', text: t('import') })]);
+        this.importBox = el('div', { class: 'pgie-importwrap' }, [this.importBtn]);
+
+        return this.importBox;
+    });
+
+    Editor.inits.push(function () {
+        this.importMenu = null;
+        this.importFiles = { search: '', serial: 0, grid: null };
+    });
+
+    // Escape closes the menu first, the focus back on its button.
+    Editor.escapes.unshift(function () {
+        if (!this.importMenu) {
+            return false;
+        }
+
+        this.toggleImportMenu(false);
+        this.importBtn.focus();
+
+        return true;
+    });
 
     // ---- the New image dialog ----
 
@@ -788,7 +1015,9 @@
         if (b.pic && h && b.picEl && b.picEl.contains(e.target)) {
             this.drag = { kind: 'picture', h: h, start: box, doc: M.clone(this.doc) };
         } else {
-            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k);
+            // An erased or redacted area takes the press only inside its
+            // outline: in an erased background's hole the picture is hit.
+            hit = M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, M.areaHit);
 
             if (hit || (p[0] < box.x) || (p[1] < box.y) || (p[0] > box.x + box.w) || (p[1] > box.y + box.h)) {
                 b.pic = false;

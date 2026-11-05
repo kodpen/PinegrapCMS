@@ -2513,9 +2513,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // The container is a polite live region, so a notice added to it is
         // read; a failure is an alert, read at once.
         if (ok === false) { element.setAttribute('role', 'alert'); }
-        element.innerHTML = '<div class="d-flex"><div class="toast-body"></div>' +
+        element.innerHTML = '<div class="d-flex"><div class="toast-body flex-grow-1"></div>' +
             (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
-            '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + L.close + '"></button></div>';
+            '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0" data-bs-dismiss="toast" aria-label="' + L.close + '"></button></div>';
         if (options.html) {
             element.querySelector('.toast-body').innerHTML = message;
         } else {

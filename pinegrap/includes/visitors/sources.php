@@ -237,7 +237,7 @@ function pg_visitors_sources_stack(array $rows, array $labels)
 
         $name = isset($labels[$row['channel']]) ? $labels[$row['channel']] : $row['channel'];
         $class = preg_replace('/[^a-z0-9_]/', '', strtolower($row['channel']));
-        $share = pg_format_number($row['share'], 1) . ' %';
+        $share = pg_visitors_percent($row['share'], 1);
 
         $segments .= '<span class="pg-visitors-sources-segment is-' . h($class) . '" style="width:' . h(sprintf('%.1F', $row['share'])) . '%" title="' . h($name . ': ' . $share) . '"></span>';
     }
@@ -271,7 +271,7 @@ function pg_visitors_sources_channel_table(array $rows, array $labels, $compare)
         $cells = array(
             array('html' => '<span class="pg-visitors-sources-swatch is-' . h($class) . '" aria-hidden="true"></span>' . h($name)),
             array('html' => h(pg_format_number($row['visits'], 0)), 'sort' => $row['visits']),
-            array('html' => h(pg_format_number($row['share'], 1) . ' %'), 'sort' => $row['share']),
+            array('html' => h(pg_visitors_percent($row['share'], 1)), 'sort' => $row['share']),
         );
 
         if ($compare) {

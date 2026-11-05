@@ -71,7 +71,8 @@ function ws_flow_member($viewer)
  * The kinds of box a role-3 member's flow may hold: started by hand, at a
  * time or on an event they see; tasks, approvals, waits, conditions, value
  * boxes; posts, notices, a summary of counts and the task e-mail over their
- * own reach; rows added or changed in workflow tables they edit; a record
+ * own reach; rows added or changed in workflow tables they edit, read in
+ * those they read; a record
  * change, only as a proposal its owner approves before it is written
  * (ws_flow_change_asks()). No call to another system (webhook, web check,
  * MCP), no e-mail to addresses, no other flow or scheduled action started.
@@ -85,7 +86,7 @@ function ws_flow_member_kinds()
         'manual', 'schedule', 'event', 'no_order', 'end',
         'task', 'approval', 'delay', 'condition', 'constants', 'value',
         'post', 'notify', 'task_open', 'report', 'task_digest',
-        'row_add', 'row_set', 'change',
+        'row_add', 'row_set', 'row_get', 'change',
     );
 }
 

@@ -7374,10 +7374,16 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_end_time_container').style.display = 'none';
 
         // Turn both date and time fields into date fields that keep only
-        // the date of what they held.
+        // the date of what they held. The time is kept on the field, so
+        // switching all day off again brings it back.
         ['start_time', 'end_time'].forEach(function (id) {
             var field = document.getElementById(id);
-            var date = pgDateTimeField.get(field).slice(0, 10);
+            var value = pgDateTimeField.get(field);
+            var date = value.slice(0, 10);
+
+            if (/ \d{1,2}:\d{2}$/.test(value)) {
+                field.setAttribute('data-calendar-time', value.slice(11));
+            }
 
             pgFields.switchKind(field, 'date');
             pgDatePicker.set(field, date);
@@ -7396,9 +7402,21 @@ function toggle_calendar_event_all_day() {
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 
-        // Date and time pickers on both fields; the dates they hold stay.
-        pgFields.switchKind(document.getElementById('start_time'), 'datetime');
-        pgFields.switchKind(document.getElementById('end_time'), 'datetime');
+        // Date and time pickers on both fields. A field that was a date field
+        // gets its date back with the time it had before all day was switched
+        // on (or the start or end of the day), so the store holds a full date
+        // and time and the box shows what is posted. A field that already is a
+        // date and time field (the call on page load) is left as it is.
+        [['start_time', '00:00'], ['end_time', '23:59']].forEach(function (pair) {
+            var field = document.getElementById(pair[0]);
+            var date = field.hasAttribute('data-pg-date') ? pgDatePicker.get(field) : '';
+
+            pgFields.switchKind(field, 'datetime');
+
+            if (date) {
+                pgDateTimeField.set(field, date + ' ' + (field.getAttribute('data-calendar-time') || pair[1]));
+            }
+        });
 
         // Update the size and maxlength of the fields to support both a date and time.
         $('#start_time').attr('size', 19);
@@ -10025,8 +10043,9 @@ function pg_poll_while_visible(poll, ms) {
     }
 
     /**
-     * pgToast({message, variant, delay})
+     * pgToast({message, variant, delay, link})
      * variant: success | danger | warning | info (default: info)
+     * link: optional {url, label} drawn after the text
      * delay: ms (default: 4000), success and info only: a danger or warning
      * toast stays until its Close button is used, so a keyboard or
      * magnifier user can still reach it, and the same one is not stacked.
@@ -10053,6 +10072,12 @@ function pg_poll_while_visible(poll, ms) {
             pgUI.hostLayer(container);
         }
         placeToastContainer(container);
+        // An optional link after the text ({url, label}): a site path or http(s) only.
+        var linkHtml = '';
+        if (opts.link && opts.link.url && opts.link.label && /^(https?:\/\/|\/(?!\/))/i.test(String(opts.link.url))) {
+            linkHtml = ' <a class="fw-semibold text-decoration-underline ms-1" style="color: inherit" href="' +
+                escapeHtml(String(opts.link.url)) + '">' + escapeHtml(String(opts.link.label)) + '</a>';
+        }
         var key = variant + '\n' + message;
         if (sticky) {
             for (var i = 0; i < container.children.length; i++) {
@@ -10070,11 +10095,12 @@ function pg_poll_while_visible(poll, ms) {
         el.setAttribute('aria-atomic', 'true');
         el.innerHTML =
             '<div class="d-flex">' +
-                '<div class="toast-body">' +
+                '<div class="toast-body flex-grow-1">' +
                     '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
+                    linkHtml +
                 '</div>' +
-                '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
+                '<button type="button" class="btn-close ms-2 me-3 my-auto flex-shrink-0" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
             '</div>';
         container.appendChild(el);
 
@@ -14238,6 +14264,12 @@ $(document).on('submit', 'form', function (event) {
         if (row) {
             refreshSearch(state.table, row);
         }
+
+        // A screen whose row holds more than its cells (filter data, a
+        // button's name) follows the saved answer from here.
+        if (typeof window.CustomEvent === 'function') {
+            cell.dispatchEvent(new window.CustomEvent('pg:list-edit-saved', { bubbles: true, detail: data }));
+        }
     }
 
     function send(state, value, shown) {
@@ -14462,5 +14494,43 @@ $(document).on('submit', 'form', function (event) {
         document.addEventListener('DOMContentLoaded', addStyle);
     } else {
         addStyle();
+    }
+})();
+
+// The mascot in the panel's logo (pg_logo_markup()) plays as a short muted
+// loop. Reduced motion, a data saver or a small device keep its still poster,
+// and so does a browser that refuses to play it: the video is only fetched
+// once play() is called.
+(function () {
+    function pgLogoVideos() {
+        var still = true;
+
+        try {
+            var connection = navigator.connection;
+
+            still = (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+                || !!(connection && connection.saveData)
+                || !!(navigator.deviceMemory && (navigator.deviceMemory < 2));
+        } catch (e) {
+            still = true;
+        }
+
+        if (still) {
+            return;
+        }
+
+        Array.prototype.forEach.call(document.querySelectorAll('video[data-pg-logo-video]'), function (video) {
+            var playing = video.play ? video.play() : null;
+
+            if (playing && playing.catch) {
+                playing.catch(function () {});
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', pgLogoVideos);
+    } else {
+        pgLogoVideos();
     }
 })();

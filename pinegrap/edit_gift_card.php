@@ -236,6 +236,18 @@ if (!$_POST) {
         $output_order_info_rows = $gift_card['order_id'] ? $output_credit_info . $output_order_info_rows : $output_credit_info;
     }
 
+    // Store credit has no Delete: it is voided on the customer's screen.
+    $delete_refusal = pg_gift_card_form_delete_refusal($gift_card);
+
+    if ($delete_refusal === '') {
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>';
+    } else {
+        $void_link = (((string) $gift_card['credit_username'] !== '') && pg_can_open_user($user, $gift_card['credit_user_role']))
+            ? ' <a href="edit_user.php?id=' . $credit_user_id . '&amp;send_to=' . h(urlencode($request_uri)) . '#store_credit">' . lang('Open the customer\'s store credit') . '</a>'
+            : '';
+        $output_delete_button = '<span class="small fg-secondary align-self-center ms-5 my-1">' . h($delete_refusal) . $void_link . '</span>';
+    }
+
     $output_redemption_history = '';
 
     $redemptions = db_items(
@@ -254,22 +266,17 @@ if (!$_POST) {
 
     // If there is at least one redemption, then output them.
     if ($redemptions) {
+        // A ledger: newest first, each row with the balance it left, so the
+        // order is its meaning and it stays a plain table (no sorting).
         $output_redemption_history_rows = '';
 
-        
         foreach ($redemptions as $redemption) {
-            $output_link_url = 'view_order.php?id=' . $redemption['order_id'] . '&amp;send_to=' . h(urlencode($request_uri));
             $output_redemption_history_rows .=
                 '<tr>
-                    <td class="align-middle text-start">
-                        <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                        <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                    </td>
-                    <td class="align-middle">' . h($redemption['order_number']) . '</td>
-                    <td class="align-middle text-end"><span class=" badge theme-secondary  fw-lighter">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td class="align-middle text-end"><span class=" badge theme-primary  fw-lighter">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
-                    <td>' . get_relative_time(array('timestamp' => $redemption['order_date'])) . '</td>
-                    <td></td>
+                    <td class="align-middle"><a href="view_order.php?id=' . (int) $redemption['order_id'] . '&amp;send_to=' . h(urlencode($request_uri)) . '">' . h($redemption['order_number']) . '</a></td>
+                    <td class="align-middle text-end">' . pg_format_money($redemption['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="align-middle text-end">' . pg_format_money($redemption['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="align-middle">' . get_relative_time(array('timestamp' => $redemption['order_date'])) . '</td>
                 </tr>';
         }
 
@@ -278,17 +285,15 @@ if (!$_POST) {
                     <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Redemption History') . '
                     </h2>
-                    <div class="card-body">
-                        <div class="row">
-                            <table class="chart table-hover table " style="width:100%;display:none">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
                                 <thead>
                                     <tr>
-                                        <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                        <th>' . lang('Order') . '</th>
-                                        <th class="text-end">' . lang('Amount') . '</th>
-                                        <th class="text-end">' . lang('Remaining Balance') . '</th>
-                                        <th>' . lang('Redeemed On') . '</th>
-                                        <th class="noVis"></th>
+                                        <th scope="col">' . lang('Order') . '</th>
+                                        <th scope="col" class="text-end">' . lang('Amount') . '</th>
+                                        <th scope="col" class="text-end">' . lang('Remaining Balance') . '</th>
+                                        <th scope="col">' . lang('Redeemed On') . '</th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_redemption_history_rows . '</tbody>
@@ -354,7 +359,7 @@ if (!$_POST) {
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                            <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>
+                            ' . $output_delete_button . '
                         </div>
                     </div>
                 </nav>
@@ -375,6 +380,12 @@ if (!$_POST) {
     
     // If the user selected to delete this gift card, then delete it.
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
+        // Store credit is voided on the customer's screen, never deleted.
+        if (($refusal = pg_gift_card_form_delete_refusal($gift_card)) !== '') {
+            $liveform->mark_error('', $refusal);
+            go($_SERVER['PHP_SELF'] . '?id=' . (int) $gift_card['id']);
+        }
+
         db("DELETE FROM gift_cards WHERE id = '" . e($liveform->get_field_value('id')) . "'");
         
         log_activity(lang(array('string'=>'gift card ({var:1}) was deleted','vars'=>output_gift_card_code($gift_card['code']))), $_SESSION['sessionusername']);

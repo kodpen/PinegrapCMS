@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Law Firm", its consultation and careers: the
- * consultation request, the consultation's own page with its messages, My
- * Consultations and the staff's list, the privacy page the consent boxes
- * link, the careers page with the application form, the application's page
- * and the staff's list, their e-mails and the widgets that draw them.
+ * consultation request, the online booking page (the booking widget),
+ * the consultation's own page with its messages, My Consultations and the
+ * staff's list, the privacy page the consent boxes link, the careers page
+ * with the application form, the application's page and the staff's list,
+ * their e-mails and the widgets that draw them.
  * Included after parts.php and mail.php in the same scope; returns
  * array('pages' => ..., 'widgets' => ...).
  *
@@ -85,6 +86,11 @@ $consultation_pages[] = array(
                         )),
                     ), '', '8'),
                     $col(array(
+                        $el('div', 'p-4 rounded-3 border border-primary-subtle mb-4', lang('Book a Free Time'), array(
+                            $heading('h2', lang('Pick a free time now'), 'h5 fw-semibold mb-2'),
+                            $para(lang('Choose the kind of meeting, the lawyer and one of the free times; the time is yours at once.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Book Online'), '{{page:book_online}}', 'btn btn-sm btn-outline-primary rounded-pill px-3'),
+                        )),
                         $el('div', 'p-4 rounded-3 bg-body-tertiary mb-4', lang('How It Works'), array(
                             $heading('h2', lang('What happens next'), 'h5 fw-semibold mb-3'),
                             $el('ol', 'small text-body-secondary ps-3 mb-0', lang('List'), array(
@@ -99,6 +105,43 @@ $consultation_pages[] = array(
                                 $span(lang('Confidential'), '', lang('Text')),
                             )),
                             $para(lang('Only the firm\'s lawyers and staff read what you send, and it stays under professional secrecy whether or not we take the matter.'), 'small text-body-secondary mb-0'),
+                        )),
+                        $el('div', 'p-4 rounded-3 border', lang('Office hours'), array(
+                            $heading('h2', lang('Office hours'), 'h5 fw-semibold mb-3'),
+                            $hours(),
+                        )),
+                    ), '', '4'),
+                ), '4', '', 'g-lg-5'),
+            )),
+        )),
+    ), false),
+);
+
+// Online booking: the booking widget shows the meetings set up in
+// Settings › Bookings, the lawyers' free days and times, and holds the
+// chosen time while the client writes their details. The consultation
+// request stays beside it for a new matter the firm reads first.
+$consultation_pages[] = array(
+    'key'              => 'book_online',
+    'name'             => lang('book-online'),
+    'folder'           => 'public',
+    'title'            => lang('Book Online'),
+    'meta_description' => lang('Choose the kind of meeting, a lawyer and a free time, and book your meeting in a minute.'),
+    'tree'             => $page(array(
+        $page_header(lang('Book Online'), lang('Choose the kind of meeting, a lawyer and one of the free times. The time is yours as soon as you confirm.')),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'card border-0 shadow-sm rounded-3', lang('Booking Card'), array(
+                            $el('div', 'card-body p-4 p-lg-5', lang('Card Body'), array($widget('booking_slots'))),
+                        )),
+                    ), '', '8'),
+                    $col(array(
+                        $el('div', 'p-4 rounded-3 bg-body-tertiary mb-4', lang('New Matter'), array(
+                            $heading('h2', lang('A new matter?'), 'h5 fw-semibold mb-2'),
+                            $para(lang('Tell us about it first: we check for a conflict of interest before the first meeting, and a time booked here may be moved if one shows.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Book a Consultation'), '{{page:consultation}}', 'btn btn-sm btn-outline-primary rounded-pill px-3'),
                         )),
                         $el('div', 'p-4 rounded-3 border', lang('Office hours'), array(
                             $heading('h2', lang('Office hours'), 'h5 fw-semibold mb-3'),
@@ -520,6 +563,16 @@ $mail_detail = function ($page, $form, $missing) {
 };
 
 $consultation_widgets = array(
+
+    // Online booking: the widget's starter layout (meeting, lawyer, day
+    // and time, details, confirmation); the meetings and hours come from
+    // Settings › Bookings.
+    'booking_slots' => array(
+        'page'   => 'book_online',
+        'slug'   => lang('booking'),
+        'config' => array('regionType' => 'booking'),
+        'tree'   => 'starter',
+    ),
 
     // The consultation request: the fields are the page's form. The Status
     // is the staff's (office use only): a visitor never sees it, and every

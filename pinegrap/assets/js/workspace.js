@@ -204,6 +204,7 @@
         mcp: ['M5.5 1.5v3M10.5 1.5v3', 'M3.5 4.5h9v2.25a4.5 4.5 0 0 1-9 0z', 'M8 11.25v3.25'],
         row_add: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M13 9.5v5M10.5 12h5'],
         row_set: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M13 8.5l1.75 1.75L10 15H8.25v-1.75z'],
+        row_get: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M10 12.25a2 2 0 1 0 4 0a2 2 0 1 0 -4 0', 'M13.5 13.75l1.25 1.25'],
         approval: ['M8 1.5l5.5 2v4c0 3.5-2.5 6-5.5 7c-3-1-5.5-3.5-5.5-7v-4z', 'M5.5 8l1.75 1.75l3.5-3.5'],
         condition: ['M8 14.5V9L3.5 4.5M8 9l4.5-4.5', 'M3 7.5V4h3.5M13 7.5V4H9.5'],
         delay: ['M4 1.75h8M4 14.25h8', 'M5 1.75c0 3 6 3.5 6 6.25s-6 3.25-6 6.25M11 1.75c0 3-6 3.5-6 6.25s6 3.25 6 6.25'],
@@ -569,7 +570,7 @@
         box.setAttribute('role', 'status');
 
         var row = el('div', 'd-flex');
-        var text = el('div', 'toast-body', message);
+        var text = el('div', 'toast-body flex-grow-1', message);
 
         // A way to what was just done: the note kept, the channel made.
         if (action && action.href) {
@@ -580,7 +581,7 @@
 
         row.appendChild(text);
 
-        var close = button('btn-close me-3 m-auto', '', '', t('close'));
+        var close = button('btn-close ms-2 me-3 my-auto flex-shrink-0', '', '', t('close'));
         close.setAttribute('data-bs-dismiss', 'toast');
         row.appendChild(close);
         box.appendChild(row);
@@ -3455,7 +3456,9 @@
     function blockPuller(onPick) {
         var node = offcanvas('ws-block-pull', t('pull_title'));
         var body = clear(node.querySelector('.drawer-body'));
-        var search = el('input', 'form-control form-control-sm mb-3');
+        // The drawer body is a scrolling flex column: without flex-shrink-0 a
+        // long list squeezes the input to a thin line.
+        var search = el('input', 'form-control form-control-sm flex-shrink-0 mb-3');
         var list = el('div', 'ws-pull-list');
         var serial = 0;
 
@@ -3514,7 +3517,9 @@
     function libraryPicker(onPick) {
         var node = offcanvas('ws-library', t('lib_from_manager'));
         var body = clear(node.querySelector('.drawer-body'));
-        var search = el('input', 'form-control form-control-sm mb-3');
+        // The drawer body is a scrolling flex column: without flex-shrink-0 a
+        // long list squeezes the input to a thin line.
+        var search = el('input', 'form-control form-control-sm flex-shrink-0 mb-3');
         var trail = el('nav', 'ws-lib-trail');
         var list = el('div', 'ws-pull-list');
         var serial = 0;
@@ -5931,17 +5936,35 @@
         }).catch(fail);
     }
 
-    // A card of the overview: a title, a link to the whole list, a body.
-    function homeCard(title, iconName, moreUrl, moreLabel) {
-        var node = el('section', 'card ws-home-card');
-        var head = el('div', 'card-header d-flex align-items-center gap-3');
-        var heading = el('h3', 'h6 mb-0 flex-grow-1');
-        heading.appendChild(icon(iconName, 'me-1'));
-        heading.appendChild(document.createTextNode(title));
+    // A card of Today in the new dashboard's frame (pg_dash.js frame()):
+    // the category's icon chip, the title, a count badge kept hidden until
+    // there is one, the link to the whole list at the end, then the body.
+    // Today's cards are fixed, so the frame has no period, grip or menu.
+    function todayCard(id, title, iconName, width, category, moreUrl, moreLabel) {
+        var node = el('section', 'card pg-dash-card pg-dash-cardbox ws-today-card');
+        var titleId = 'ws_today_card_' + id;
+
+        node.setAttribute('data-card', id);
+        node.setAttribute('data-width', width);
+        node.setAttribute('data-category', category);
+        node.setAttribute('aria-labelledby', titleId);
+
+        var head = el('header', 'pg-dash-card-head');
+        var chip = el('span', 'pg-dash-card-icon');
+        chip.setAttribute('aria-hidden', 'true');
+        chip.appendChild(icon(iconName));
+        head.appendChild(chip);
+
+        var heading = el('h2', 'pg-dash-card-title', title);
+        heading.id = titleId;
         head.appendChild(heading);
 
+        var badge = el('span', 'pg-dash-card-badge ws-today-count');
+        badge.hidden = true;
+        head.appendChild(badge);
+
         if (moreUrl) {
-            var more = el('a', 'small text-decoration-none text-nowrap', moreLabel);
+            var more = el('a', 'ws-today-more', moreLabel);
             more.href = moreUrl;
             more.appendChild(icon('bi-arrow-right-short'));
             head.appendChild(more);
@@ -5949,10 +5972,10 @@
 
         node.appendChild(head);
 
-        var body = el('div', 'card-body p-3');
+        var body = el('div', 'pg-dash-card-body');
         node.appendChild(body);
 
-        return { node: node, body: body };
+        return { node: node, head: head, badge: badge, body: body };
     }
 
     // What the feature files draw with (workspace_approvals.js,
@@ -5963,7 +5986,7 @@
             api: api, t: t, el: el, icon: icon, button: button, avatar: avatar, avatarStack: avatarStack, clear: clear,
             offcanvas: offcanvas, showOffcanvas: showOffcanvas, hideOffcanvas: hideOffcanvas,
             formRow: formRow, select: select, nextId: nextId, ask: ask, fail: fail, toast: toast,
-            richField: richField, peoplePicker: peoplePicker, homeCard: homeCard, touchScreen: touchScreen,
+            richField: richField, peoplePicker: peoplePicker, touchScreen: touchScreen,
             cfg: CFG, dateField: pgDateField,
             openTask: function (taskId) { taskDrawer.open(taskId, null, taskDrawer.onSaved); }
         };
@@ -7495,97 +7518,142 @@
             });
         },
 
-        // The overview as drawn: the greeting, only here, with the ways to
-        // start; then what waits for the person, their tasks due today or
-        // before, today's calendar; then what happened in their channels and
-        // the latest decisions; the channels to join and what this place is
-        // for at the end.
+        // Today as drawn, in the new dashboard's design: the greeting card,
+        // only here, with the ways to start; then the cards in a fixed order
+        // (what waits for the person, their tasks due today or before,
+        // today's calendar, what happened in their channels, the latest
+        // decisions, the channels to join, what this place is for).
         drawHome: function (body, data) {
             var self = this;
+            var look = CFG.today_look || {};
 
             clear(body);
 
             var waitingCount = (data.talk || []).filter(function (item) { return item.unread; }).length
                 + (data.approvals || []).length + (data.acks || []).length;
 
-            var hello = el('div', 'ws-home-hello');
-            var words = el('div', 'ws-home-hello-text');
+            // The new dashboard's container: its columns follow this width,
+            // its palette and the person's card face apply inside it.
+            var page = el('div', 'pg-dash ws-today' + (look.calm ? ' pg-dash-calm' : ''));
+            page.setAttribute('data-widget-theme', look.style || 'flat');
 
-            words.appendChild(el('p', 'ws-home-date', data.date));
-            words.appendChild(el('h1', 'ws-home-greeting', t('home_greeting', data.greeting || '', data.name)));
+            var top = el('div', 'pg-dash-top');
+            var hello = el('section', 'card pg-dash-card pg-dash-greeting ws-today-greeting');
+            hello.setAttribute('aria-labelledby', 'ws_today_greeting');
+
+            hello.appendChild(el('p', 'pg-dash-greeting-when', data.date));
+
+            // The translated sentence, the name in it drawn in the gradient.
+            var greeting = el('h1', 'pg-dash-greeting-title');
+            var words = t('home_greeting', data.greeting || '', data.name);
+            var at = data.name ? words.lastIndexOf(data.name) : -1;
+
+            greeting.id = 'ws_today_greeting';
+
+            if (at < 0) {
+                greeting.textContent = words;
+            } else {
+                greeting.appendChild(document.createTextNode(words.slice(0, at)));
+                greeting.appendChild(el('span', 'pg-dash-name', data.name));
+                greeting.appendChild(document.createTextNode(words.slice(at + data.name.length)));
+            }
+
+            hello.appendChild(greeting);
+
             // The counts as parts that wrap whole, each dot at a line's end.
-            var lead = el('p', 'ws-home-lead');
+            var lead = el('p', 'ws-today-lead');
             var parts = data.lead || [];
 
             parts.forEach(function (part, index) {
                 var last = (index === parts.length - 1);
 
-                lead.appendChild(el('span', 'ws-home-lead-part', last ? part : part + ' ·'));
+                lead.appendChild(el('span', 'ws-today-lead-part', last ? part : part + ' ·'));
 
                 if (!last) {
                     lead.appendChild(document.createTextNode(' '));
                 }
             });
 
-            words.appendChild(lead);
-            hello.appendChild(words);
+            hello.appendChild(lead);
 
             // A way to start, always in sight.
-            var start = el('div', 'ws-home-start');
+            var start = el('nav', 'pg-dash-actions ws-today-start');
             var created = function (id) { self.reloadChannels(id); };
-            var publicButton = button('btn btn-sm btn-solid theme-primary rounded-pill px-4', t('home_new_channel'), 'bi-plus-lg');
+            start.setAttribute('aria-label', t('home_start'));
+
+            var publicButton = button('pg-dash-btn pg-dash-btn-main', t('home_new_channel'), 'bi-plus-lg');
             publicButton.addEventListener('click', function () { channelForm(null, { kind: 'public' }, created); });
             start.appendChild(publicButton);
 
-            var privateButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('home_new_private'), 'bi-lock');
+            var privateButton = button('pg-dash-btn', t('home_new_private'), 'bi-lock');
             privateButton.addEventListener('click', function () { channelForm(null, { kind: 'private' }, created); });
             start.appendChild(privateButton);
 
             if ((CFG.guests || {}).can_host) {
-                var guestButton = button('btn btn-sm btn-outline theme-secondary rounded-pill px-4', t('guest_start'), 'bi-door-open');
+                var guestButton = button('pg-dash-btn', t('guest_start'), 'bi-door-open');
                 guestButton.addEventListener('click', function () { guestForm(created); });
                 start.appendChild(guestButton);
             }
 
             hello.appendChild(start);
-            body.appendChild(hello);
+            top.appendChild(hello);
+            page.appendChild(top);
 
-            var first = el('div', 'ws-home-grid ws-home-grid-3');
-            first.appendChild(self.homeWaiting(data, waitingCount));
-            first.appendChild(self.homeDue(data));
-            first.appendChild(self.homeCalendar(data));
-            body.appendChild(first);
+            var grid = el('div', 'pg-dash-grid ws-today-grid');
+            grid.appendChild(self.homeWaiting(data, waitingCount));
+            grid.appendChild(self.homeDue(data));
+            grid.appendChild(self.homeCalendar(data));
+            grid.appendChild(self.homeDigest(data));
+            grid.appendChild(self.homeDecisions(data));
 
-            var second = el('div', 'ws-home-grid ws-home-grid-2');
-            second.appendChild(self.homeDigest(data));
-
-            // Beside it: the latest decisions, unfiltered.
-            var decisions = homeCard(t('home_decisions'), 'bi-clock-history', CFG.urls.timeline, t('nav_timeline'));
-
-            if (!data.decisions.length) {
-                decisions.body.appendChild(el('div', 'ws-home-empty', t('home_decisions_empty')));
+            // Public channels the person is not in yet, only when there are.
+            if (data.join.length) {
+                grid.appendChild(self.homeJoin(data));
             }
 
-            var line = el('div', 'ws-home-tl');
+            grid.appendChild(self.homeAbout(data));
+            page.appendChild(grid);
+            body.appendChild(page);
+        },
 
-            data.decisions.forEach(function (item) {
-                var row = button('ws-home-tl-item' + (item.claude ? ' ws-tl-by-claude' : ''));
-                var dot = el('span', 'ws-home-tl-dot');
-                dot.appendChild(icon(item.claude ? 'bi-stars' : 'bi-patch-check'));
-                row.appendChild(dot);
+        // The latest decisions, unfiltered, as the dashboard's Activity line:
+        // a dot per decision (Claude's in the accent), the decision's words,
+        // the channel under them as the way to the message, the day at the
+        // end; a link to the Decision Timeline. The words may hold links, so
+        // the row itself is no button: the channel line is, and a press
+        // anywhere else on the row opens the message too.
+        homeDecisions: function (data) {
+            var self = this;
+            var card = todayCard('decisions', t('home_decisions'), 'bi-clock-history', 'S', 'general', CFG.urls.timeline, t('nav_timeline'));
+            var items = data.decisions || [];
 
-                var text = el('span', 'ws-home-row-text');
-                var meta = el('small', 'ws-home-row-meta');
-                meta.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
-                meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.day_label + ' ' + item.time));
-                text.appendChild(meta);
+            if (!items.length) {
+                card.body.appendChild(el('p', 'pg-dash-card-empty', t('home_decisions_empty')));
 
-                var quote = el('span', 'ws-home-row-quote ws-msg-body');
-                setHtml(quote, item.html);
-                text.appendChild(quote);
-                row.appendChild(text);
+                return card.node;
+            }
+
+            var line = el('ol', 'pg-dash-timeline ws-today-decisions');
+
+            items.forEach(function (item) {
+                var row = el('li', 'pg-dash-event ws-today-decision');
+                row.setAttribute('data-kind', item.claude ? 'claude' : 'decision');
+
+                var main = el('div', 'pg-dash-event-main');
+                var words = el('div', 'pg-dash-event-text ws-today-decision-text ws-msg-body');
+                setHtml(words, item.html);
+                main.appendChild(words);
+
+                var open = button('pg-dash-event-note ws-today-decision-open');
+                open.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
+                open.appendChild(el('span', 'ws-today-decision-channel', item.channel.name));
+                open.addEventListener('click', function () { self.open(item.channel.id, item.id); });
+                main.appendChild(open);
+                row.appendChild(main);
+
+                row.appendChild(el('span', 'pg-dash-event-when', item.day_label + ' ' + item.time));
                 row.addEventListener('click', function (event) {
-                    if (event.target.closest('a')) {
+                    if (event.target.closest('a, button')) {
                         return;
                     }
 
@@ -7594,54 +7662,73 @@
                 line.appendChild(row);
             });
 
-            decisions.body.appendChild(line);
-            second.appendChild(decisions.node);
+            card.body.appendChild(line);
 
-            body.appendChild(second);
+            return card.node;
+        },
 
-            // Public channels the person is not in yet.
-            if (data.join.length) {
-                var join = homeCard(t('home_join'), 'bi-door-open');
+        // Public channels the person is not in yet, each with Join: the
+        // channel's sign, its name, topic and member count, the button at
+        // the end; the badge counts them.
+        homeJoin: function (data) {
+            var self = this;
+            var join = todayCard('join', t('home_join'), 'bi-door-open', 'S', 'general');
+            var list = el('ul', 'ws-today-join-list');
 
-                data.join.forEach(function (channel) {
-                    var row = el('div', 'ws-home-row ws-home-join');
-                    row.appendChild(icon('bi-hash', 'fg-secondary'));
+            data.join.forEach(function (channel) {
+                var row = el('li', 'ws-today-join-row');
+                var sign = el('span', 'ws-today-join-sign');
+                sign.appendChild(icon('bi-hash'));
+                row.appendChild(sign);
 
-                    var text = el('span', 'ws-home-row-text');
-                    text.appendChild(el('span', 'ws-home-row-title', channel.name));
-                    text.appendChild(el('small', 'fg-secondary', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
-                    row.appendChild(text);
+                var text = el('span', 'ws-today-join-text');
+                text.appendChild(el('span', 'ws-today-join-name', channel.name));
+                text.appendChild(el('small', 'ws-today-join-meta', (channel.topic ? channel.topic + ' · ' : '') + t('home_members', channel.members)));
+                row.appendChild(text);
 
-                    var joinButton = button('btn btn-sm btn-outline theme-primary rounded-pill', t('join'));
-                    joinButton.addEventListener('click', function () {
-                        joinButton.disabled = true;
-                        api('ws_channel_join', { channel_id: channel.id }).then(function () {
-                            self.reloadChannels(channel.id);
-                        }).catch(function (error) {
-                            joinButton.disabled = false;
-                            fail(error);
-                        });
+                var joinButton = button('pg-dash-btn ws-today-join-btn', t('join'));
+                joinButton.setAttribute('aria-label', t('join') + ': ' + channel.name);
+                joinButton.addEventListener('click', function () {
+                    joinButton.disabled = true;
+                    api('ws_channel_join', { channel_id: channel.id }).then(function () {
+                        self.reloadChannels(channel.id);
+                    }).catch(function (error) {
+                        joinButton.disabled = false;
+                        fail(error);
                     });
-                    row.appendChild(joinButton);
-                    join.body.appendChild(row);
                 });
+                row.appendChild(joinButton);
+                list.appendChild(row);
+            });
 
-                body.appendChild(join.node);
-            }
-            // What this place is for: open for somebody who has not written
-            // anything yet, folded for the others.
-            var about = el('details', 'card ws-home-about');
+            join.body.appendChild(list);
+            self.homeCount(join, data.join.length);
+
+            return join.node;
+        },
+
+        // What this place is for: open for somebody who has not written
+        // anything yet, folded for the others. The whole row of the grid,
+        // its summary in the card head's look, one dashboard tile per part.
+        homeAbout: function (data) {
+            var about = el('details', 'card pg-dash-card pg-dash-cardbox ws-today-card ws-home-about');
+            about.setAttribute('data-card', 'about');
+            about.setAttribute('data-width', 'L');
+            about.setAttribute('data-category', 'general');
             about.open = !!data.newcomer;
 
-            var summary = el('summary', 'card-header');
-            summary.appendChild(icon('bi-info-circle', 'me-1'));
-            summary.appendChild(document.createTextNode(t('home_about')));
+            var summary = el('summary', 'pg-dash-card-head');
+            var chip = el('span', 'pg-dash-card-icon');
+            chip.setAttribute('aria-hidden', 'true');
+            chip.appendChild(icon('bi-info-circle'));
+            summary.appendChild(chip);
+            summary.appendChild(el('span', 'pg-dash-card-title', t('home_about')));
             about.appendChild(summary);
 
-            var aboutBody = el('div', 'card-body');
-            aboutBody.appendChild(el('p', 'mb-5', t('home_about_text')));
+            var aboutBody = el('div', 'pg-dash-card-body');
+            aboutBody.appendChild(el('p', 'ws-today-about-text', t('home_about_text')));
 
-            var tiles = el('div', 'row g-3');
+            var tiles = el('ul', 'pg-dash-tiles ws-today-about-tiles');
             var tileList = [
                 ['bi-hash', t('channels'), t('home_about_channels')],
                 ['bi-check2-square', t('nav_work'), t('home_about_tasks')],
@@ -7657,28 +7744,32 @@
             }
 
             tileList.forEach(function (tile) {
-                var col = el('div', 'sm:col-6');
-                var box = el('div', 'ws-home-tile');
-                var name = el('div', 'ws-home-tile-title');
-                name.appendChild(icon(tile[0], 'me-1'));
+                var item = el('li');
+                var box = el('div', 'pg-dash-tile ws-today-about-tile');
+                var name = el('span', 'ws-today-about-tile-title');
+                name.appendChild(icon(tile[0]));
                 name.appendChild(document.createTextNode(tile[1]));
                 box.appendChild(name);
-                box.appendChild(el('div', 'small fg-secondary', tile[2]));
-                col.appendChild(box);
-                tiles.appendChild(col);
+                box.appendChild(el('span', 'pg-dash-tile-note', tile[2]));
+                item.appendChild(box);
+                tiles.appendChild(item);
             });
 
             aboutBody.appendChild(tiles);
             about.appendChild(aboutBody);
-            body.appendChild(about);
 
+            return about;
         },
 
-        // A card's heading with the count of what is in it, when there is
-        // any; in the accent for what waits for an answer.
+        // A card's count of what is in it, when there is any, in the frame's
+        // badge; in the accent for what waits for an answer. The badge
+        // shows at most 99+, its label the whole number.
         homeCount: function (card, count, hot) {
             if (count > 0) {
-                card.node.querySelector('h3').appendChild(el('span', 'ws-count ws-home-count' + (hot ? ' ws-home-count-hot' : ''), count > 99 ? '99+' : String(count)));
+                card.badge.textContent = count > 99 ? '99+' : String(count);
+                card.badge.title = String(count);
+                card.badge.classList.toggle('ws-today-count-hot', !!hot);
+                card.badge.hidden = false;
             }
         },
 
@@ -7686,18 +7777,21 @@
         // (workspace_approvals.js, workspace_acks.js), then the replies to
         // their messages and the mentions of them, the unread ones marked;
         // the ones already read only while the card has fewer than five rows.
+        // Every row starts with a sign of the same size (a face or an
+        // icon), so the texts line up.
         homeWaiting: function (data, count) {
             var self = this;
-            var card = homeCard(t('home_waiting'), 'bi-inbox');
+            var card = todayCard('waiting', t('home_waiting'), 'bi-inbox', 'S', 'team');
             var helpers = featureHelpers();
+            var list = el('div', 'ws-today-rows');
             var rows = 0;
 
-            card.node.classList.add('ws-home-waiting');
+            card.node.classList.add('ws-today-waiting');
             self.homeCount(card, count, true);
 
             [window.PGWsApprovals, window.PGWsAcks].forEach(function (feature) {
                 if (feature && feature.homeRows) {
-                    rows += feature.homeRows(data, self, helpers, card.body);
+                    rows += feature.homeRows(data, self, helpers, list);
                 }
             });
 
@@ -7706,28 +7800,26 @@
                     return;
                 }
 
-                var row = button('ws-home-row' + (item.unread ? ' ws-home-unread' : ''));
-                var face = el('span', 'ws-home-face');
+                var row = button('ws-today-row' + (item.unread ? ' ws-today-unread' : ''));
+                var face = el('span', 'ws-today-sign ws-today-face');
                 face.appendChild(avatar(item.sender));
                 row.appendChild(face);
 
-                var text = el('span', 'ws-home-row-text');
-                var meta = el('small', 'ws-home-row-meta');
+                var text = el('span', 'ws-today-row-text');
+                var meta = el('small', 'ws-today-row-meta');
                 meta.appendChild(el('b', '', item.sender ? item.sender.name : ''));
                 meta.appendChild(document.createTextNode(' ' + (item.kind === 'reply' ? t('home_reply') : t('home_mention')) + ' · '));
                 meta.appendChild(icon(item.channel.private ? 'bi-lock' : 'bi-hash'));
                 meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time));
                 text.appendChild(meta);
-                text.appendChild(el('span', 'ws-home-row-quote', item.text));
+                text.appendChild(el('span', 'ws-today-row-quote', item.text));
                 row.appendChild(text);
                 row.addEventListener('click', function () { self.open(item.channel.id, item.id); });
-                card.body.appendChild(row);
+                list.appendChild(row);
                 rows++;
             });
 
-            if (!rows) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_waiting_empty')));
-            }
+            card.body.appendChild(rows ? list : el('p', 'pg-dash-card-empty', t('home_waiting_empty')));
 
             return card.node;
         },
@@ -7735,26 +7827,29 @@
         // The person's tasks due today or before, the earliest first; with
         // none, the ones coming up. Each is ticked off from here, as in the
         // task lists, or opened. Under them how many are open, overdue and
-        // pressing.
+        // pressing, as the dashboard's chips; the pressing one links to the
+        // pressing list (?urgent=1).
         homeDue: function (data) {
             var self = this;
-            var card = homeCard(t('home_due'), 'bi-check2-square', CFG.urls.tasks, t('my_tasks'));
+            var card = todayCard('due', t('home_due'), 'bi-check2-square', 'S', 'team', CFG.urls.tasks, t('my_tasks'));
             var list = (data.due && data.due.length) ? data.due : data.tasks;
+            var rows = el('div', 'ws-today-rows');
 
+            card.node.classList.add('ws-today-due');
             self.homeCount(card, data.tasks_due || 0);
 
             if (!(data.due && data.due.length) && data.tasks.length) {
-                card.body.appendChild(el('div', 'ws-home-sub', t('home_tasks')));
+                card.body.appendChild(el('div', 'pg-dash-rows-title', t('home_tasks')));
             }
 
             if (!list.length) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_tasks_empty')));
+                card.body.appendChild(el('p', 'pg-dash-card-empty', t('home_tasks_empty')));
             }
 
             list.forEach(function (task) {
                 var hot = (task.priority === 'urgent' || task.priority === 'high');
-                var row = el('div', 'ws-home-row ws-home-task' + (hot ? ' ws-home-row-hot ws-home-row-' + task.priority : ''));
-                var done = el('input', 'check ws-home-done');
+                var row = el('div', 'ws-today-row ws-today-task' + (hot ? ' ws-today-task-' + task.priority : ''));
+                var done = el('input', 'check ws-today-done');
 
                 done.type = 'checkbox';
                 done.title = t('mark_done');
@@ -7765,59 +7860,66 @@
                     }
 
                     done.disabled = true;
-                    row.classList.add('ws-home-task-done');
+                    row.classList.add('ws-today-task-done');
                     api('ws_task_status', { task_id: task.id, status: 'done' }).then(function () {
                         toast(t('task_saved'), 'success');
                         self.showHome(false);
                     }).catch(function (error) {
                         done.checked = false;
                         done.disabled = false;
-                        row.classList.remove('ws-home-task-done');
+                        row.classList.remove('ws-today-task-done');
                         fail(error);
                     });
                 });
                 row.appendChild(done);
 
-                var open = button('ws-home-task-open');
-                var text = el('span', 'ws-home-row-text');
+                var open = button('ws-today-task-open');
+                var text = el('span', 'ws-today-row-text');
                 // The badge sits beside the shortened title, never inside
                 // it, so a long title cannot cut it off.
-                var head = el('span', 'ws-home-task-head');
-                head.appendChild(el('span', 'ws-home-row-title', task.title));
+                var head = el('span', 'ws-today-task-head');
+                head.appendChild(el('span', 'ws-today-row-title', task.title));
 
                 if (hot) {
                     head.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
                 }
 
                 text.appendChild(head);
-                text.appendChild(el('small', task.overdue ? 'fg-danger' : 'fg-secondary', task.number + ' · ' + task.due_label));
+                text.appendChild(el('small', 'ws-today-row-meta' + (task.overdue ? ' ws-today-late' : ''), task.number + ' · ' + task.due_label));
                 open.appendChild(text);
                 open.addEventListener('click', function () {
                     taskDrawer.open(task.id, null, function () { self.showHome(false); });
                 });
                 row.appendChild(open);
-                card.body.appendChild(row);
+                rows.appendChild(row);
             });
+
+            if (list.length) {
+                card.body.appendChild(rows);
+            }
 
             // The due ones the card has no room for, a link to all of them.
             if (data.due && data.due.length && ((data.tasks_due || 0) > data.due.length)) {
-                var more = el('a', 'ws-home-more', t('home_tasks_more', data.tasks_due - data.due.length));
+                var more = el('a', 'ws-today-due-more', t('home_tasks_more', data.tasks_due - data.due.length));
                 more.href = CFG.urls.tasks;
                 card.body.appendChild(more);
             }
 
             if (data.tasks_open) {
-                var counts = el('div', 'ws-home-counts');
-                counts.appendChild(el('span', '', t('home_tasks_count', data.tasks_open)));
+                var counts = el('div', 'pg-dash-chips ws-today-chips');
+                counts.appendChild(el('span', 'pg-dash-chip', t('home_tasks_count', data.tasks_open)));
 
                 if (data.tasks_overdue) {
-                    counts.appendChild(el('span', 'fg-danger', t('home_tasks_overdue', data.tasks_overdue)));
+                    var late = el('span', 'pg-dash-chip', t('home_tasks_overdue', data.tasks_overdue));
+                    late.setAttribute('data-tone', 'bad');
+                    counts.appendChild(late);
                 }
 
                 // The pressing ones, a link to all of them.
                 if (data.tasks_hot) {
-                    var hotLink = el('a', 'ws-home-hot');
+                    var hotLink = el('a', 'pg-dash-chip ws-today-hot');
                     hotLink.href = CFG.urls.tasks + '?urgent=1';
+                    hotLink.setAttribute('data-tone', 'warn');
                     hotLink.appendChild(icon('bi-fire', 'me-1'));
                     hotLink.appendChild(document.createTextNode(t('home_tasks_hot', data.tasks_hot)));
                     counts.appendChild(hotLink);
@@ -7830,73 +7932,105 @@
         },
 
         // Today's plan items about the person and their own calendars'
-        // events (home.php): the hour, a bar, the title; the one going on
-        // now marked, the ones over dimmed, a meeting's call to join.
+        // events (home.php) as the new dashboard's list rows: a time box
+        // (the start hour, or "all day") in front of the title and its
+        // span; the one going on now framed in the accent with its badge and
+        // a meeting's call to join, the ones over dimmed.
         homeCalendar: function (data) {
-            var card = homeCard(t('home_calendar'), 'bi-calendar-event', CFG.urls.calendar || '', t('home_calendar_more'));
+            var card = todayCard('calendar', t('home_calendar'), 'bi-calendar-event', 'S', 'team', CFG.urls.calendar || '', t('home_calendar_more'));
             var items = data.calendar || [];
 
             if (!items.length) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_calendar_empty')));
+                card.body.appendChild(el('p', 'pg-dash-item-none', t('home_calendar_empty')));
+                return card.node;
             }
 
+            this.homeCount(card, items.length);
+
+            var list = el('ul', 'pg-dash-items ws-today-events');
+
             items.forEach(function (item) {
-                var row = el('div', 'ws-home-event' + (item.now ? ' ws-home-event-now' : '') + (item.past ? ' ws-home-event-past' : ''));
+                var row = el('li', 'pg-dash-item ws-today-event' + (item.now ? ' is-now' : '') + (item.past ? ' is-past' : ''));
 
-                row.appendChild(el('span', 'ws-home-event-time', item.all_day ? t('home_all_day') : item.time));
-                row.appendChild(el('span', 'ws-home-event-bar'));
+                // The time box is the start alone; under a timed title the
+                // span says it in full, so only "all day" is read from the box.
+                var when = el('span', 'ws-today-event-time' + (item.all_day ? ' is-all-day' : ''), item.all_day ? t('home_all_day') : item.time);
 
-                var text = el('span', 'ws-home-row-text');
-                var title = el(item.url ? 'a' : 'span', 'ws-home-row-title', item.title);
+                if (!item.all_day) {
+                    when.setAttribute('aria-hidden', 'true');
+                }
+
+                row.appendChild(when);
+
+                var main = el('div', 'pg-dash-item-main');
+                var title = el(item.url ? 'a' : 'span', 'pg-dash-item-text', item.title);
 
                 // A booking opens on the agenda.
                 if (item.url) {
                     title.href = item.url;
                 }
 
-                text.appendChild(title);
+                title.title = item.title;
+                main.appendChild(title);
 
-                if (!item.all_day || item.layer) {
-                    text.appendChild(el('small', 'fg-secondary', [item.all_day ? '' : item.time + '–' + item.until, item.layer].filter(Boolean).join(' · ')));
+                var note = [item.all_day ? '' : item.time + '–' + item.until, item.layer].filter(Boolean).join(' · ');
+
+                if (note) {
+                    main.appendChild(el('span', 'pg-dash-item-note', note));
                 }
 
-                row.appendChild(text);
+                row.appendChild(main);
 
                 if (item.now) {
-                    row.appendChild(el('span', 'badge rounded-pill theme-success', t('home_now')));
+                    var now = el('span', 'pg-dash-chip ws-today-event-now', t('home_now'));
+                    now.setAttribute('data-tone', 'good');
+                    row.appendChild(now);
                 }
 
                 // A call link is followed only when it is a web address.
                 if (item.meeting_url && /^https?:/i.test(item.meeting_url) && !item.past) {
-                    var call = el('a', 'btn btn-sm btn-outline theme-secondary rounded-pill', t('join'));
+                    var call = el('a', 'pg-dash-btn pg-dash-item-action ws-today-event-join', t('join'));
                     call.href = item.meeting_url;
                     call.target = '_blank';
                     call.rel = 'noopener noreferrer';
+                    call.setAttribute('aria-label', t('join') + ': ' + item.title);
+                    call.insertBefore(icon('bi-camera-video'), call.firstChild);
                     row.appendChild(call);
                 }
 
-                card.body.appendChild(row);
+                list.appendChild(row);
             });
+
+            card.body.appendChild(list);
 
             return card.node;
         },
 
         // What happened in the person's channels: the ones with messages
-        // they have not read, the latest first, each with its count and its
-        // last message.
+        // they have not read, the latest first, each with the channel's sign
+        // in its colour, its count ("3 new", in the accent with a mention),
+        // the last message and its time. The badge counts the channels, in
+        // the accent when one of them mentions the person.
         homeDigest: function (data) {
             var self = this;
-            var card = homeCard(t('home_digest'), 'bi-chat-square-text');
+            var card = todayCard('digest', t('home_digest'), 'bi-chat-square-text', 'M', 'general');
             var items = data.digest || [];
 
+            self.homeCount(card, items.length, items.some(function (item) { return item.mentions > 0; }));
+
             if (!items.length) {
-                card.body.appendChild(el('div', 'ws-home-empty', t('home_digest_empty')));
+                card.body.appendChild(el('p', 'pg-dash-card-empty', t('home_digest_empty')));
+
+                return card.node;
             }
+
+            var list = el('ul', 'ws-today-digest');
 
             items.forEach(function (item) {
                 var channel = (BOOT.channels || []).filter(function (one) { return one.id === item.id; })[0] || item;
-                var row = button('ws-home-row ws-home-digest');
-                var tile = el('span', 'ws-home-digest-icon');
+                var entry = el('li', 'ws-today-digest-item');
+                var row = button('ws-today-digest-row');
+                var tile = el('span', 'ws-today-digest-icon');
 
                 tile.setAttribute('aria-hidden', 'true');
                 tile.appendChild(channelIcon(channel));
@@ -7907,28 +8041,31 @@
 
                 row.appendChild(tile);
 
-                var text = el('span', 'ws-home-row-text');
-                var name = el('span', 'ws-home-row-title');
-                name.appendChild(document.createTextNode(item.name));
-                name.appendChild(el('span', 'ws-home-new' + (item.mentions ? ' ws-home-new-mention' : ''), t('home_digest_new', item.unread > 99 ? '99+' : item.unread)));
-                text.appendChild(name);
+                var text = el('span', 'ws-today-digest-text');
+                var head = el('span', 'ws-today-digest-head');
+                head.appendChild(el('span', 'ws-today-digest-name', item.name));
+                head.appendChild(el('span', 'ws-today-new' + (item.mentions ? ' ws-today-new-mention' : ''), t('home_digest_new', item.unread > 99 ? '99+' : item.unread)));
+                text.appendChild(head);
 
                 if (item.text || item.sender) {
-                    var last = el('span', 'ws-home-row-quote');
+                    var last = el('span', 'ws-today-digest-last');
 
                     if (item.sender) {
                         last.appendChild(el('b', '', item.sender + ': '));
                     }
 
-                    last.appendChild(document.createTextNode(item.text));
+                    last.appendChild(document.createTextNode(item.text || ''));
                     text.appendChild(last);
                 }
 
                 row.appendChild(text);
-                row.appendChild(el('small', 'ws-home-digest-time', item.time));
+                row.appendChild(el('span', 'ws-today-digest-time', item.time));
                 row.addEventListener('click', function () { self.open(item.id, 0); });
-                card.body.appendChild(row);
+                entry.appendChild(row);
+                list.appendChild(entry);
             });
+
+            card.body.appendChild(list);
 
             return card.node;
         },

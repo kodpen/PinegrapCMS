@@ -212,8 +212,12 @@
         return g;
     }
 
+    // The area helpers for the selection's layers (pg_image_editor_area.js).
+    X.areaShapes = { node: areaShape, paint: paintShape, box: areaBox };
+
     Editor.layerTypes.redact = {
         node: redactNode,
+        hit: function (l, p) { return M.areaHit(l, p); },
         name: function (l) { return t('layer_redact') + ' · ' + t(MODE_LABELS[l.mode] || 'redactPixel'); },
         panel: function (body, layers) { this.redactStyle(body, layers); }
     };

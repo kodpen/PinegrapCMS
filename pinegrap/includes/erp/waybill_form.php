@@ -211,13 +211,16 @@ function erp_waybill_form_prefill($liveform, $data)
  * @param liveform $liveform
  * @param array    $options  lines (display rows), order (the orders row when
  *                           the note is for an order), invoice (the
- *                           erp_invoices row when the note is for an invoice)
+ *                           erp_invoices row when the note is for an invoice),
+ *                           aside (false leaves out the order or invoice note
+ *                           and the Notes card, drawn by
+ *                           erp_waybill_form_aside_cards() in a status column)
  * @return string  HTML
  */
 function erp_waybill_form_cards($liveform, $options = array())
 {
     $lines = isset($options['lines']) ? (array) $options['lines'] : erp_waybill_form_lines($liveform);
-    $order = isset($options['order']) && is_array($options['order']) ? $options['order'] : null;
+    $with_aside = !isset($options['aside']) || $options['aside'];
 
     $account_options = array();
     $account_options[lang('Choose an account')] = '';
@@ -234,25 +237,7 @@ function erp_waybill_form_cards($liveform, $options = array())
 
     $output_template = erp_waybill_form_line_row($liveform, '__INDEX__', erp_waybill_form_line(array()));
 
-    $invoice = isset($options['invoice']) && is_array($options['invoice']) ? $options['invoice'] : null;
-
-    $output_order = '';
-    if ($order !== null) {
-        $output_order = '
-                <div class="col-12 my-3">
-                    <div class="alert theme-secondary mb-0 py-3">
-                        <i class="bi bi-cart me-3"></i>' . h(lang(array('string' => 'For order #{var:1}. The goods and the address are the order\'s; the ship date and the carrier are what the order screen recorded. Correct anything that differs from what left the door.', 'vars' => (string) $order['order_number'])))
-                        . (($invoice !== null) ? ' ' . h(lang(array('string' => 'The note is tied to invoice {var:1}.', 'vars' => (string) $invoice['full_number']))) : '') . '
-                    </div>
-                </div>';
-    } elseif ($invoice !== null) {
-        $output_order = '
-                <div class="col-12 my-3">
-                    <div class="alert theme-secondary mb-0 py-3">
-                        <i class="bi bi-receipt me-3"></i>' . h(lang(array('string' => 'For invoice {var:1}. The goods are its lines; the address is the account\'s. Say how they went and correct what differs.', 'vars' => (string) $invoice['full_number']))) . '
-                    </div>
-                </div>';
-    }
+    $output_order = $with_aside ? erp_waybill_form_source($options, 'alert') : '';
 
     return '
     <div id="erp_waybill_editor"
@@ -274,21 +259,21 @@ function erp_waybill_form_cards($liveform, $options = array())
         </div>
         <div class="card-body">
             <div class="row">' . $output_order . '
-                <div class="col-12 lg:col-6 my-3">
+                <div class="col-12 2xl:col-6 my-3">
                     <label for="account_id" class="form-label">' . lang('Account') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'account_id', 'name' => 'account_id',
                         'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $account_options)) . '
                     ' . erp_account_quick_link('#account_id', 'customer') . '
                 </div>
-                <div class="col-6 lg:col-2 my-3">
+                <div class="col-6 md:col-4 2xl:col-2 my-3">
                     <label for="issue_date" class="form-label">' . lang('Date') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'issue_date', 'data-pg-date' => '', 'name' => 'issue_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-6 lg:col-2 my-3">
+                <div class="col-6 md:col-4 2xl:col-2 my-3">
                     <label for="ship_date" class="form-label">' . lang('Shipment Date') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_date', 'data-pg-date' => '', 'name' => 'ship_date',
@@ -296,7 +281,7 @@ function erp_waybill_form_cards($liveform, $options = array())
                         'autocomplete' => 'off')) . '
                     <div class="form-text">' . lang('Empty means the date above.') . '</div>
                 </div>
-                <div class="col-6 lg:col-2 my-3">
+                <div class="col-6 md:col-4 2xl:col-2 my-3">
                     <label for="ship_time" class="form-label">' . lang('Shipment Time') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_time', 'data-pg-time' => 'hh:mm', 'name' => 'ship_time',
@@ -328,25 +313,25 @@ function erp_waybill_form_cards($liveform, $options = array())
                 </div>
             </div>
             <div class="row">
-                <div class="col-12 sm:col-6 lg:col-3 my-3"' . pg_places_input_attrs('ship_to_country', 'ship_to_city') . '>
+                <div class="col-12 sm:col-6 xl:col-3 my-3"' . pg_places_input_attrs('ship_to_country', 'ship_to_city') . '>
                     <label for="ship_to_district" class="form-label">' . lang('District') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_district', 'name' => 'ship_to_district',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 lg:col-3 my-3">
+                <div class="col-12 sm:col-6 xl:col-3 my-3">
                     <label for="ship_to_city" class="form-label" data-label-tr="' . h(lang('Province')) . '" data-label-other="' . h(lang('City')) . '">' . h(lang(erp_address_city_label_key((string) $liveform->get_field_value('ship_to_country')))) . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_city', 'name' => 'ship_to_city',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 lg:col-3 my-3' . ((strtoupper((string) $liveform->get_field_value('ship_to_country')) === 'TR') ? ' d-none' : '') . '" id="ship_to_state_box">
+                <div class="col-12 sm:col-6 xl:col-3 my-3' . ((strtoupper((string) $liveform->get_field_value('ship_to_country')) === 'TR') ? ' d-none' : '') . '" id="ship_to_state_box">
                     <label for="ship_to_state" class="form-label">' . lang('State / Province') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_state', 'name' => 'ship_to_state',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 lg:col-3 my-3">
+                <div class="col-12 sm:col-6 xl:col-3 my-3">
                     <label for="ship_to_country" class="form-label">' . lang('Country') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'select', 'id' => 'ship_to_country', 'name' => 'ship_to_country',
@@ -379,21 +364,21 @@ function erp_waybill_form_cards($liveform, $options = array())
         </div>
         <div class="card-body">
             <div class="row">
-                <div class="col-12 lg:col-5 my-3">
+                <div class="col-12 xl:col-5 my-3">
                     <label for="carrier_title" class="form-label">' . lang('Carrier') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'carrier_title', 'name' => 'carrier_title',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                     <div class="form-text">' . lang('The shipping company, or the store itself when its own vehicle delivers.') . '</div>
                 </div>
-                <div class="col-12 sm:col-6 lg:col-3 my-3">
+                <div class="col-12 sm:col-6 xl:col-3 my-3">
                     <label for="carrier_vkn" class="form-label">' . ((erp_account_country('') === 'TR') ? lang('Carrier VKN') : lang('Carrier tax number')) . '</label>
                     ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'carrier_vkn', 'name' => 'carrier_vkn',
                         'class' => 'form-control', 'maxlength' => (erp_account_country('') === 'TR') ? '11' : '32', 'autocomplete' => 'off'),
                         (erp_account_country('') === 'TR') ? array('inputmode' => 'numeric') : array())) . '
                 </div>
-                <div class="col-12 sm:col-6 lg:col-4 my-3">
+                <div class="col-12 sm:col-6 xl:col-4 my-3">
                     <label for="plate" class="form-label">' . lang('Plate') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'plate', 'name' => 'plate',
@@ -401,13 +386,13 @@ function erp_waybill_form_cards($liveform, $options = array())
                 </div>
             </div>
             <div class="row">
-                <div class="col-12 lg:col-5 my-3">
+                <div class="col-12 xl:col-5 my-3">
                     <label for="driver_name" class="form-label">' . lang('Driver') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'driver_name', 'name' => 'driver_name',
                         'class' => 'form-control', 'maxlength' => '100', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 lg:col-3 my-3">
+                <div class="col-12 sm:col-6 xl:col-3 my-3">
                     <label for="driver_tckn" class="form-label">' . lang('Driver ID No') . '</label>
                     ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'driver_tckn', 'name' => 'driver_tckn',
@@ -446,6 +431,64 @@ function erp_waybill_form_cards($liveform, $options = array())
         </div>
     </div>
 
+    ' . ($with_aside ? erp_waybill_form_notes_card($liveform) : '') . '
+    </div>
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/erp_invoice_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/erp_invoice_editor.js') . '"></script>';
+}
+
+/**
+ * What the note is for, when it is for an order or an invoice.
+ *
+ * @param array  $options  order, invoice: as erp_waybill_form_cards() takes them
+ * @param string $kind     alert: a row of the Delivery Note card; card: a
+ *                         card of its own for a status column
+ * @return string  HTML, empty for a note written by hand
+ */
+function erp_waybill_form_source($options, $kind = 'alert')
+{
+    $order = isset($options['order']) && is_array($options['order']) ? $options['order'] : null;
+    $invoice = isset($options['invoice']) && is_array($options['invoice']) ? $options['invoice'] : null;
+
+    if ($order !== null) {
+        $icon = 'bi-cart';
+        $text = h(lang(array('string' => 'For order #{var:1}. The goods and the address are the order\'s; the ship date and the carrier are what the order screen recorded. Correct anything that differs from what left the door.', 'vars' => (string) $order['order_number'])))
+            . (($invoice !== null) ? ' ' . h(lang(array('string' => 'The note is tied to invoice {var:1}.', 'vars' => (string) $invoice['full_number']))) : '');
+    } elseif ($invoice !== null) {
+        $icon = 'bi-receipt';
+        $text = h(lang(array('string' => 'For invoice {var:1}. The goods are its lines; the address is the account\'s. Say how they went and correct what differs.', 'vars' => (string) $invoice['full_number'])));
+    } else {
+        return '';
+    }
+
+    if ($kind === 'card') {
+        return '
+    <div class="card my-7">
+        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            ' . lang('Source') . '
+        </div>
+        <div class="card-body">
+            <i class="bi ' . $icon . ' me-3" aria-hidden="true"></i>' . $text . '
+        </div>
+    </div>';
+    }
+
+    return '
+                <div class="col-12 my-3">
+                    <div class="alert theme-secondary mb-0 py-3">
+                        <i class="bi ' . $icon . ' me-3"></i>' . $text . '
+                    </div>
+                </div>';
+}
+
+/**
+ * The Notes card: one free text box, short enough for a status column.
+ *
+ * @param liveform $liveform
+ * @return string  HTML
+ */
+function erp_waybill_form_notes_card($liveform)
+{
+    return '
     <div class="card my-7">
         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Notes') . '
@@ -457,9 +500,20 @@ function erp_waybill_form_cards($liveform, $options = array())
                 'aria-label' => lang('Notes'))) . '
             <div class="form-text">' . lang('Printed at the foot of the document.') . '</div>
         </div>
-    </div>
-    </div>
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/erp_invoice_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/erp_invoice_editor.js') . '"></script>';
+    </div>';
+}
+
+/**
+ * The cards of a status column beside erp_waybill_form_cards() drawn with
+ * aside false: what the note is for, then its Notes.
+ *
+ * @param liveform $liveform
+ * @param array    $options  order, invoice: as erp_waybill_form_cards() takes them
+ * @return string  HTML
+ */
+function erp_waybill_form_aside_cards($liveform, $options = array())
+{
+    return erp_waybill_form_source($options, 'card') . erp_waybill_form_notes_card($liveform);
 }
 
 /**

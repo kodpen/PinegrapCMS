@@ -1195,6 +1195,8 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         ),
         'condition.rule' => array('hint' => ws_flow_ai_rule_shape()),
         'approval.approvers' => array('hint' => 'user ids from the list of people, the ones who answer; the person who asked when the request says I or me'),
+        'value.a' => array('hint' => 'the value it works from; {{date}} (Y-m-d), {{time}} (H:i) and {{weekday}} are the moment the box is worked out, as in "{{date}} {{time}}" for date_format or add_days'),
+        'for_each.count' => array('hint' => 'with mode count, how many times the body repeats: a whole number from 1 to ' . WS_FLOW_LOOP_ITEMS_MAX . ' or one value; index and item are then 1 to the count, and list, path and fields are not read'),
         'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b'),
     );
     // The same two settings on every step box.
@@ -1205,6 +1207,7 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
     $kinds = array(
         'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
         'post'     => 'only says something in a channel; it never waits for an answer',
+        'row_get'  => 'reads one row of a workflow table, named by its id or one value such as {{trigger.row_id}}; it gives found (1, or 0 when the row is not there) and cell_COLUMN_ID for each column',
     );
 
     foreach ($catalogue as $at => $kind) {

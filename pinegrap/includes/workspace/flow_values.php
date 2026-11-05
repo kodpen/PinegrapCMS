@@ -580,19 +580,45 @@ function ws_flow_derived_fill($text, $values)
 }
 
 /**
+ * The date words a derived value box's typed inputs may hold, at the moment
+ * $now in the site's zone: {{date}} as Y-m-d and {{time}} as H:i, the shapes
+ * the date rules read (ws_flow_derived_date()), and {{weekday}} the day's
+ * name. A scheduled action's text writes the date for people instead
+ * (ws_scheduled_fill()). Pure for a given $now.
+ *
+ * @param int $now Unix time
+ * @return array word => text, for strtr()
+ */
+function ws_flow_derived_words($now)
+{
+    $names = function_exists('ws_recurrence_weekday_names') ? ws_recurrence_weekday_names() : array();
+
+    return array(
+        '{{date}}'    => date('Y-m-d', $now),
+        '{{time}}'    => date('H:i', $now),
+        '{{weekday}}' => (string) ($names[(int) date('N', $now)] ?? ''),
+    );
+}
+
+/**
  * The values the value boxes of a graph give, by box, as
  * ws_step_node_values() gives a settled box's: read when a box that reads
  * them runs, never a run row. A derived value box works its value out from
  * the run's values so far ($values: the settled boxes' and what started the
  * run), a value box's and another derived box's; one that reads itself
- * gives an empty value. Pure.
+ * gives an empty value. {{date}}, {{time}} and {{weekday}} in its typed
+ * inputs are the moment $now (ws_flow_derived_words()), filled before the
+ * values so a value holding such a word is never read again. Pure.
  *
- * @param array $graph  ws_flow_graph_normalize()
- * @param array $values ws_step_node_values() of the run, the trigger's under WS_STEP_TRIGGER
+ * @param array    $graph  ws_flow_graph_normalize()
+ * @param array    $values ws_step_node_values() of the run, the trigger's under WS_STEP_TRIGGER
+ * @param int|null $now    the moment the date words read, time() when null
  * @return array node id => key => value (the value boxes only)
  */
-function ws_flow_pure_values($graph, $values = array())
+function ws_flow_pure_values($graph, $values = array(), $now = null)
 {
+    $words = ws_flow_derived_words(($now === null) ? time() : (int) $now);
+
     $out = array();
     $derived = array();
 
@@ -630,15 +656,16 @@ function ws_flow_pure_values($graph, $values = array())
             }
 
             $known = $out + (array) $values;
-            $out[$id] = array('value' => ws_flow_derived_value($config, ws_flow_derived_fill($config['a'], $known), ws_flow_derived_fill($config['b'], $known)));
+            $a = ws_flow_derived_fill(strtr($config['a'], $words), $known);
+            $b = ws_flow_derived_fill(strtr($config['b'], $words), $known);
+            $out[$id] = array('value' => ws_flow_derived_value($config, $a, $b));
             unset($derived[$id]);
             $added = true;
         }
 
         if (!$added) {
             foreach (array_keys($derived) as $id) {
-                $known = $out + (array) $values;
-            $out[$id] = array('value' => '');
+                $out[$id] = array('value' => '');
             }
 
             break;

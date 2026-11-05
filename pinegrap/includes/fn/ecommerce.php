@@ -37,6 +37,46 @@ function pg_featured_sort_order_value($value)
     return (int) $value;
 }
 
+// The Summary of Edit Featured & New Items, from the rows the screen lists
+// (get_items_that_can_be_featured_and_new()): the product groups and the
+// distinct products under them, the rows featured and the rows with a New on
+// Date as stored, and the disabled ones. The root product group has no boxes
+// and is not counted; a product in two groups is one product but two rows.
+function pg_featured_new_summary_counts($items)
+{
+    $counts = array('product_groups' => 0, 'products' => 0, 'featured' => 0, 'new' => 0, 'disabled' => 0);
+    $products = array();
+
+    foreach ((array) $items as $item) {
+        if (!is_array($item) || (int) ($item['parent_product_group_id'] ?? 0) === 0) {
+            continue;
+        }
+
+        if (($item['type'] ?? '') === 'product group') {
+            $counts['product_groups']++;
+        } else {
+            $products[(int) ($item['id'] ?? 0)] = true;
+        }
+
+        if ((int) ($item['featured'] ?? 0) === 1) {
+            $counts['featured']++;
+        }
+
+        $new_date = (string) ($item['new_date'] ?? '');
+        if ($new_date !== '' && $new_date !== '0000-00-00') {
+            $counts['new']++;
+        }
+
+        if ((int) ($item['enabled'] ?? 0) !== 1) {
+            $counts['disabled']++;
+        }
+    }
+
+    $counts['products'] = count($products);
+
+    return $counts;
+}
+
 // The quantity a product enters the cart with when the visitor gives none
 // (a checked or auto-selected product, a quick add, a donation without a
 // quantity box): products.default_quantity, at least 1. The column is NULL on
@@ -45,6 +85,17 @@ function pg_product_default_quantity($default_quantity)
 {
     $quantity = is_numeric($default_quantity) ? (int) $default_quantity : 0;
     return max(1, $quantity);
+}
+
+// The quantity the order form's drop-down layout posts (commas already
+// removed): a whole number of at least one, else 0 for refused. Zero passes a
+// plain digit check but would write a cart line of quantity 0.
+function pg_order_form_posted_quantity($raw)
+{
+    if (!is_string($raw) || preg_match('/^\d+$/', $raw) !== 1) {
+        return 0;
+    }
+    return max(0, (int) $raw);
 }
 function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add_name, $calendar_event_id = 0, $recurrence_number = 0)
 {
@@ -56,7 +107,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             shippable,
             selection_type,
             submit_form,
-            form
+            form,
+            gift_card
         FROM products
         WHERE
             (id = ?)
@@ -80,7 +132,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     }
     // find out if product has already been added to order
     // ignore order items that have been added by offers because they might be discounted and we don't want to mess with that
-    $query = "SELECT id
+    $query = "SELECT id, quantity
         FROM order_items
         WHERE
             (order_id = ?)
@@ -90,12 +142,20 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             AND (recurrence_number = ?)
             AND (added_by_offer = '0')" . pg_order_item_active_sql();
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+    $row = mysqli_fetch_assoc($result);
+    // A gift card line issues one card per unit up to a limit; a line over it
+    // would be charged for cards it never issues, so the add is refused and
+    // the caller shows pg_gift_card_line_quantity_error().
+    if (($product['gift_card'] == 1) && ($product['selection_type'] != 'donation')
+        && !pg_gift_card_line_quantity_allowed((int) ($row['quantity'] ?? 0) + (int) $quantity)) {
+        pg_gift_card_quantity_refusal(true);
+        return false;
+    }
     // if product has already been added to order, update order item
-    if (mysqli_num_rows($result) > 0) {
+    if ($row) {
         // The shopper's own line found above; the update goes to it by id, so
         // a gift line an offer put in the same recipient for the same product
         // (added_by_offer = 1) keeps its quantity and price.
-        $row = mysqli_fetch_assoc($result);
         $order_item_id = $row['id'];
         // if this product is a donation product, update price
         if ($product['selection_type'] == 'donation') {
@@ -10749,166 +10809,6 @@ function get_shipping_service_name($service)
 }
 
 /**
- * The shipping method list's columns that change in place
- * (pg_list_edit_table()): the base rate and the item rate, the two that move
- * with the carrier's prices. An empty box is no charge, the way the method's
- * own screen saves it.
- *
- * @return array field => definition
- */
-function pg_shipping_method_edit_columns()
-{
-    return array(
-        'base_rate' => array('type' => 'money', 'label' => lang('Base Rate'), 'empty' => true),
-        'item_rate' => array('type' => 'money', 'label' => lang('Item Rate'), 'empty' => true),
-    );
-}
-
-/**
- * The shipping method list's cells a quick edit changes, drawn the one way
- * the list and the answer to an edit both use. A variable base rate shows
- * every step with the subtotal it starts at.
- *
- * @param array $method a shipping_methods row with base_rate,
- *                      variable_base_rate, base_rate_2..4 and their
- *                      _subtotal, item_rate, timestamp and user (the
- *                      username of the last change, or empty)
- * @return array 'base_rate', 'item_rate' and 'last_modified' => array('html', 'class')
- */
-function pg_shipping_method_list_cells($method)
-{
-    $money = function ($cents) {
-        return pg_format_money(((int) $cents) / 100, BASE_CURRENCY_SYMBOL);
-    };
-
-    if (!empty($method['variable_base_rate'])) {
-        $base_rate = $money($method['base_rate']) . ' (@' . $money(0) . ')';
-
-        for ($number = 2; $number <= 4; $number++) {
-            if (!empty($method['base_rate_' . $number . '_subtotal'])) {
-                $base_rate .= '<br>' . $money($method['base_rate_' . $number]) . ' (@' . $money($method['base_rate_' . $number . '_subtotal']) . ')';
-            }
-        }
-    } else {
-        $base_rate = $money($method['base_rate']);
-    }
-
-    return array(
-        'base_rate'     => array('html' => $base_rate, 'class' => 'align-middle text-end'),
-        'item_rate'     => array('html' => $money($method['item_rate']), 'class' => 'align-middle text-end'),
-        'last_modified' => array(
-            'html'  => get_relative_time(array('timestamp' => $method['timestamp']))
-                . (((string) ($method['user'] ?? '') !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h((string) $method['user'])))) : ''),
-            'class' => 'align-middle',
-        ),
-    );
-}
-
-/**
- * Write one quick edit from the shipping method list the way the method's
- * screen (edit_shipping_method.php) writes the same box: the amount read by
- * pg_normalize_amount() and kept in cents, the last change stamped with who
- * made it, a line in the Site Log.
- *
- * A variable base rate has a step for each order subtotal; the list does not
- * offer it, and a request for it is refused, since one box cannot say which
- * step it means.
- *
- * @param int    $method_id
- * @param string $field   a key of pg_shipping_method_edit_columns()
- * @param string $value   as pg_list_edit_parse() read it, '' for no charge
- * @param int    $user_id
- * @return array the answer for pg_list_edit_reply()
- */
-function pg_shipping_method_quick_update($method_id, $field, $value, $user_id)
-{
-    $method_id = (int) $method_id;
-    $columns = pg_shipping_method_edit_columns();
-
-    if (!isset($columns[$field])) {
-        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
-    }
-
-    $read = function () use ($method_id) {
-        return db_item(
-            "SELECT
-                shipping_methods.id,
-                shipping_methods.name,
-                shipping_methods.base_rate,
-                shipping_methods.variable_base_rate,
-                shipping_methods.base_rate_2,
-                shipping_methods.base_rate_2_subtotal,
-                shipping_methods.base_rate_3,
-                shipping_methods.base_rate_3_subtotal,
-                shipping_methods.base_rate_4,
-                shipping_methods.base_rate_4_subtotal,
-                shipping_methods.item_rate,
-                shipping_methods.timestamp,
-                user.user_username AS user
-            FROM shipping_methods
-            LEFT JOIN user ON shipping_methods.user = user.user_id
-            WHERE shipping_methods.id = '" . $method_id . "'");
-    };
-
-    $current = $read();
-
-    if (!$current) {
-        return array('ok' => false, 'code' => 'not_found', 'message' => lang('The shipping method could not be found.'));
-    }
-
-    if (($field === 'base_rate') && !empty($current['variable_base_rate'])) {
-        return array('ok' => false, 'code' => 'variable', 'message' => lang('This shipping method has a base rate for each order subtotal. Change it in the shipping method.'));
-    }
-
-    $cents = (trim((string) $value) === '') ? 0 : round(((float) pg_normalize_amount($value)) * 100);
-
-    // The rate columns are INT UNSIGNED.
-    if ($cents > 4294967295) {
-        return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns[$field]['label']))));
-    }
-
-    $cents = (int) $cents;
-
-    // The same amount again writes nothing and logs nothing; the list is
-    // still redrawn from what is stored.
-    if ((int) $current[$field] !== $cents) {
-        db("UPDATE shipping_methods
-            SET " . (($field === 'item_rate') ? 'item_rate' : 'base_rate') . " = '" . $cents . "',
-                user = '" . (int) $user_id . "',
-                timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . $method_id . "'");
-
-        log_activity(
-            lang(array(
-                'string' => 'shipping method ({var:1}) was changed on the shipping method list: {var:2} from "{var:3}" to "{var:4}"',
-                'vars'   => array((string) $current['name'], $columns[$field]['label'], pg_format_number(((int) $current[$field]) / 100, 2), pg_format_number($cents / 100, 2)),
-            )),
-            $_SESSION['sessionusername'] ?? '');
-    }
-
-    $method = $read();
-    $cells = pg_shipping_method_list_cells($method);
-
-    return array('ok' => true, 'value' => pg_format_input_amount(((int) $method[$field]) / 100))
-        + $cells[$field]
-        + array('cells' => array('last_modified' => $cells['last_modified']));
-}
-
-/**
- * The key code list's columns that change in place (pg_list_edit_table()):
- * whether the code is enabled, the switch an operator turns most often
- * without the rest of the key code's screen.
- *
- * @return array field => definition
- */
-function pg_key_code_edit_columns()
-{
-    return array(
-        'enabled' => array('type' => 'select', 'label' => lang('Enabled'), 'options' => array('1' => lang('Enabled'), '0' => lang('Disabled'))),
-    );
-}
-
-/**
  * Whether a key code works at checkout on the given day: enabled, not
  * expired, and the offer it names enabled and running. The list colours the
  * code by it.
@@ -10977,86 +10877,6 @@ function pg_key_code_list_cells($key_code, $today)
             'class' => 'align-middle',
         ),
     );
-}
-
-/**
- * Write one quick edit from the key code list the way the key code's screen
- * (edit_key_code.php) writes the same field: the flag, the last change
- * stamped with who made it, a line in the Site Log.
- *
- * @param int    $key_code_id
- * @param string $field       a key of pg_key_code_edit_columns()
- * @param string $value       as pg_list_edit_parse() read it
- * @param int    $user_id
- * @return array the answer for pg_list_edit_reply()
- */
-function pg_key_code_quick_update($key_code_id, $field, $value, $user_id)
-{
-    $key_code_id = (int) $key_code_id;
-    $columns = pg_key_code_edit_columns();
-
-    if (!isset($columns[$field]['options'][(string) $value])) {
-        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
-    }
-
-    // Two offers can share a code; the list joins them the same way and
-    // colours the row by the first.
-    $read = function () use ($key_code_id) {
-        return db_item(
-            "SELECT
-                key_codes.id,
-                key_codes.code,
-                key_codes.enabled,
-                key_codes.expiration_date,
-                key_codes.timestamp AS last_modified_timestamp,
-                last_modified_user.user_username AS last_modified_username,
-                offers.status AS offer_status,
-                offers.start_date AS offer_start_date,
-                offers.end_date AS offer_end_date
-            FROM key_codes
-            LEFT JOIN offers ON key_codes.offer_code = offers.code
-            LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
-            WHERE key_codes.id = '" . $key_code_id . "'
-            LIMIT 1");
-    };
-
-    $current = $read();
-
-    if (!$current) {
-        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
-    }
-
-    $previous = !empty($current['enabled']) ? '1' : '0';
-    $enabled = ((string) $value === '1') ? '1' : '0';
-
-    // The same value again writes nothing and logs nothing; the row is still
-    // redrawn from what is stored.
-    if ($previous !== $enabled) {
-        db("UPDATE key_codes
-            SET enabled = '" . $enabled . "',
-                user = '" . (int) $user_id . "',
-                timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . $key_code_id . "'");
-
-        log_activity(
-            lang(array(
-                'string' => 'Key code ({var:1}) was changed on the key code list: {var:2} from "{var:3}" to "{var:4}".',
-                'vars'   => array((string) $current['code'], $columns[$field]['label'], $columns[$field]['options'][$previous], $columns[$field]['options'][$enabled]),
-            )),
-            $_SESSION['sessionusername'] ?? '');
-    }
-
-    $key_code = $read();
-
-    if (!$key_code) {
-        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
-    }
-
-    $cells = pg_key_code_list_cells($key_code, date('Y-m-d'));
-
-    return array('ok' => true, 'value' => !empty($key_code['enabled']) ? '1' : '0')
-        + $cells['enabled']
-        + array('cells' => array('code' => $cells['code'], 'last_modified' => $cells['last_modified']));
 }
 
 /**

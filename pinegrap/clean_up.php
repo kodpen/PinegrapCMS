@@ -212,6 +212,9 @@ $file_list = array(
     'assets/templates',
     'assets/tiny_mce_3_5_10',
     'assets/vendor',
+    // The logo of the third-party image editor the software used before its
+    // own; nothing shows it since the image editor became pg_image_editor.js.
+    'assets/images/icon_image_editor.png',
 );
 
 // Everything the software drops in data/temp is a cache or a scratch file that is written
@@ -270,6 +273,9 @@ if (!$_POST) {
     $output_counter_info = '';
     $folder_counter = 0;
     $file_counter = 0;
+    // The Summary shows the expired payment records on their own row; the
+    // counts sentence and the confirm text count them with the files.
+    $record_counter = null;
     foreach($file_directory_files_diff as $file){
         $file_counter++;
         $files .= pg_clean_up_list_row('insert_drive_file', $file);
@@ -295,6 +301,7 @@ if (!$_POST) {
             $row_3ds = mysqli_fetch_row($result_3ds);
             $expired_3ds_count = (int)$row_3ds[0];
         }
+        $record_counter = $expired_3ds_count;
         if ($expired_3ds_count > 0) {
             $file_counter++;
             $files .= '<li class="list-group-item bg-reset border-0 fg-danger"><span class="material-icons me-5">storage</span>iyzipay_3ds_state &mdash; ' . $expired_3ds_count . ' ' . lang(array('string' => 'expired record{suffix}', 'suffix' => ($expired_3ds_count != 1 ? 's' : ''))) . ' (&gt;30 ' . lang('days') . ')</li>';
@@ -303,7 +310,7 @@ if (!$_POST) {
 
     // if there is at least 1 folder or file.
     if($folder_counter != 0 || $file_counter != 0){
-        $output_counter_info = '<div class="alert theme-success">' . pg_clean_up_count_text('Found{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that can be cleaned.', $folder_counter, $file_counter) . '</div>';
+        $output_counter_info = '<p class="mb-5">' . pg_clean_up_count_text('Found{var:1}{suffix:1}{var:2}{var:3}{suffix:2} that can be cleaned.', $folder_counter, $file_counter) . '</p>';
 
         // The delete is permanent, so the panel's click handler asks first
         // (data-confirm-content) and the button wears the danger colour.
@@ -326,38 +333,38 @@ if (!$_POST) {
         'heading_description' => lang('Tool to remove obsolete files and folders inside the software folder.'),
     ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
-                <form name="form" action="" method="post" class="disable_shortcut">
-                    ' . get_token_field() . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            ' . $output_counter_info . '
-                                            <div class="overflow-auto position-relative mb-5 w-100" style="max-height:500px">
-                                                <ul class="list-group bg-reset">' . $files . '</ul>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+    <form name="form" action="" method="post" class="disable_shortcut">
+        ' . get_token_field() . '
+        <div class="row">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        ' . lang('Items to Delete') . '
+                    </h2>
+                    <div class="card-body pt-0">
+                        ' . $output_counter_info . '
+                        <div class="overflow-auto position-relative w-100" style="max-height:500px">
+                            <ul class="list-group bg-reset">' . $files . '</ul>
                         </div>
-                    </div>          
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                ' . $output_delete_button . '
-                            </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                <div class="position-sticky" style="top:3.3rem;">' . pg_clean_up_summary($folder_counter, ($record_counter > 0) ? $file_counter - 1 : $file_counter, $record_counter) . '
+                </div>
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            ' . $output_delete_button . '
                         </div>
-                    </nav>
-                </form>
+                    </div>
+                </nav>
             </div>
         </div>
-    
+    </form>
 </main>' . output_footer();
 
 }else{

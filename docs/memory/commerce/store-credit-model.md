@@ -25,4 +25,4 @@ module: store_credit
 - `pg_audit('create' | 'revoke', 'store_credit', id, …)` with user_id, kind, amount, balance, reason, issued_by, expires_at (and `void_reason` on revoke); label is the code with all but the last 4 digits as `*`. The audit screen names the type "Store credit" and links `edit_gift_card.php`.
 
 ## What about personal data?
-- The privacy export takes cards by `user_id` as well (code cut to its end as before). Erasure does not touch `user_id`: the row holds no personal data beyond the id; whether erasing a customer should void their credit is open (SC6 or a decision question).
+- The privacy export takes cards by `user_id` as well (code cut to its end as before). Erasure voids the cards and clears `user_id` (`api/api-customer-credit.md`).

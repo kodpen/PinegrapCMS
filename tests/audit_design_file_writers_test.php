@@ -83,7 +83,8 @@ function test_audit_add_design_file_records_each_upload()
 function test_audit_edit_design_file_records_save_and_delete()
 {
 	audit_design_file_writers_test_writes('edit_design_file.php', 'DELETE FROM files', 'delete', 1);
-	audit_design_file_writers_test_writes('edit_design_file.php', 'UPDATE files', 'update', 1);
+	audit_design_file_writers_test_writes('edit_design_file.php', 'UPDATE files', 'update', 0);
+	audit_design_file_writers_test_writes('includes/forms/design_file_form.php', 'UPDATE files', 'update', 1);
 }
 
 // The two system-theme paths record after the size UPDATE, the upload path after its INSERT.
@@ -106,6 +107,9 @@ function test_audit_edit_theme_file_records_save_delete_and_deactivation()
 {
 	$file = 'edit_theme_file.php';
 	audit_design_file_writers_test_writes($file, 'DELETE FROM files', 'delete', 1);
+
+	// The save is shared with the All Themes list's quick edit.
+	$file = 'includes/forms/theme_file_form.php';
 	audit_design_file_writers_test_writes($file, 'UPDATE files', 'update', 3);
 	$source = audit_design_file_writers_test_source($file);
 	pg_assert_same(2, substr_count($source, "pg_audit_record('update', 'files', (int) \$old_activated_theme_id, "), $file . ': both deactivations record the old theme');

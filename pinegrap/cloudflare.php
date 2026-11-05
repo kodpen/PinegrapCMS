@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 // Administrators only, like the settings menu entry that leads here.
 validate_area_access($user, 'administrator');
@@ -833,7 +834,28 @@ $analytics_note = $analytics_reasons
 
 
 // -------------------- DNS TABLE --------------------
-$table_rows = '';
+// Every record is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort. A row's Delete asks,
+// then posts the one form below the list (no form inside a row).
+$dns_columns = array(
+    'name' => array('heading' => lang('Name')),
+    'type' => array('heading' => lang('Type'), 'kind' => 'badge'),
+    'content' => array('heading' => lang('Content')),
+    'ttl' => array('heading' => lang('TTL'), 'kind' => 'number'),
+    'proxied' => array('heading' => lang('Proxied'), 'kind' => 'badge'),
+    'actions' => array('heading' => lang('Actions'), 'kind' => 'actions'),
+);
+$dns_sort_columns = array();
+
+foreach ($dns_columns as $key => $spec) {
+    if ($key !== 'actions') {
+        $dns_sort_columns[$key] = $spec['heading'];
+    }
+}
+
+$dns_state = pg_list_state('cloudflare_dns', $dns_sort_columns, array('sort' => 'type', 'order' => 'asc'));
+$dns_rows = array();
+
 foreach ($records as $r) {
     $data_content = isset($r['content']) ? $r['content'] : (isset($r['data']['target']) ? $r['data']['target'] : '');
         $attrs = 'data-id="'.htmlspecialchars((string)$r['id'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401).'" 
@@ -870,25 +892,26 @@ foreach ($records as $r) {
     }
 
 
-    $table_rows .= '<tr>
-        <td>
-            <button class="btn btn-sm btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#editModal" aria-label="' . h(lang('Edit')) . '" '.$attrs.'>
-                <i class="bi bi-pencil-square"></i>
-            </button>
-            <form method="post" style="display:inline" onsubmit="event.preventDefault(); var f=this; pgConfirm({title:\'' . h(escape_javascript(lang('Delete'))) . '\', message:\'' . h(escape_javascript(lang('Are you sure you want to delete this record?'))) . '\', confirmText:\'' . h(escape_javascript(lang('Delete'))) . '\', cancelText:\'' . h(escape_javascript(lang('Cancel'))) . '\', variant:\'danger\'}).then(function(ok){if(ok) f.submit();}); return false;">
-                '.get_token_field().'
-                <input type="hidden" name="action" value="delete_record">
-                <input type="hidden" name="id" value="' . htmlspecialchars((string)$r['id'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '">
-                <button type="submit" class="btn btn-sm btn-outline theme-danger" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash"></i></button>
-            </form>
-        </td>
-        <td><span class="badge theme-info">' . htmlspecialchars((string)$r['type'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '</span></td>
-        <td>' . h(truncate($r['name'], 50)) . '</td>
-        <td>' . h(truncate($data_content, 50)) . '</td>
-        <td>'.(($r['ttl'] == 1) ? lang('Auto') : (int)$r['ttl']).'</td>
-        <td>'.(!empty($r['proxied']) ? '<span class="badge theme-success">' . lang('Yes') . '</span>' : '<span class="badge theme-secondary">' . lang('No') . '</span>').'</td>
-    </tr>';
+    $dns_rows[] = array(
+        'id' => (string) $r['id'],
+        'cells' => array(
+            'name' => pg_list_cell(h(truncate($r['name'], 50)), 'align-middle', array('data-pg-sort-value' => (string) $r['name'])),
+            'type' => pg_list_cell('<span class="badge theme-info">' . h((string) $r['type']) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) $r['type'])),
+            'content' => pg_list_cell(h(truncate($data_content, 50)), 'align-middle', array('data-pg-sort-value' => (string) $data_content)),
+            'ttl' => pg_list_cell(($r['ttl'] == 1) ? lang('Auto') : (string) (int) $r['ttl'], 'align-middle', array('data-pg-sort-value' => (int) $r['ttl'])),
+            'proxied' => pg_list_cell(!empty($r['proxied']) ? '<span class="badge theme-success">' . lang('Yes') . '</span>' : '<span class="badge theme-secondary">' . lang('No') . '</span>', 'align-middle', array('data-pg-sort-value' => !empty($r['proxied']) ? 1 : 0)),
+            'actions' => pg_list_cell('<button type="button" class="btn btn-sm btn-outline theme-warning" data-bs-toggle="dialog" data-bs-target="#editModal" aria-label="' . h(lang('Edit')) . '" ' . $attrs . '><i class="bi bi-pencil-square" aria-hidden="true"></i></button>'
+                . ' <button type="button" class="btn btn-sm btn-outline theme-danger pg-cf-delete" data-id="' . h((string) $r['id']) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>', 'align-middle text-nowrap'),
+        ),
+    );
 }
+
+$dns_list = pg_list_table_printed(array(
+    'list' => 'cloudflare_dns',
+    'columns' => $dns_columns,
+    'levels' => $dns_state['sorts'],
+    'rows' => $dns_rows,
+));
 
 // -------------------- TABS ACTIVE --------------------
 $active_24h = ($period === '24h') ? 'active" aria-current="page' : '';
@@ -899,6 +922,9 @@ $active_cus = ($period === 'custom') ? 'active" aria-current="page' : '';
 
 
 // -------------------- PRINT --------------------
+// Form column: period, analytics, the WebP rule, DNS records and logs. Status
+// column: the zone switches and Clear Cache. Each switch and button posts on
+// its own, so the screen has no save bar.
 print pg_page_shell([
     'title'   => lang('Cloudflare Tools'),
     'extra classes' => 'setting',
@@ -908,9 +934,11 @@ print pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
 
-  <div class="row"><div class="col-12">
-
+  <div class="row">
+  <div class="col-12">
     '.$liveform->output_errors().$liveform->get_warnings().$liveform->output_notices().'
+  </div>
+  <div class="col-12 lg:col-8 2xl:col-9 order-1">
 
     <!-- Period Tabs -->
     <ul class="nav nav-tabs mb-5">
@@ -933,226 +961,306 @@ print pg_page_shell([
 
     '.(($period === 'custom') ? '
     <!-- Custom Date Range -->
-    <form method="get" class="mb-5">
-      <input type="hidden" name="period" value="custom">
-      <div class="row g-3">
-        <div class="md:col-4">
-          <input type="date" data-pg-date name="start_date" value="' . h((isset($_REQUEST['start_date']) && is_string($_REQUEST['start_date'])) ? $_REQUEST['start_date'] : '') . '" class="form-control" required>
-        </div>
-        <div class="md:col-4">
-          <input type="date" data-pg-date name="end_date" value="' . h((isset($_REQUEST['end_date']) && is_string($_REQUEST['end_date'])) ? $_REQUEST['end_date'] : '') . '" class="form-control" required>
-        </div>
-        <div class="md:col-4">
-          <button type="submit" class="btn btn-solid theme-primary">' . lang('Apply') . '</button>
+    <form method="get" class="card mb-5">
+      <div class="card-body">
+        <input type="hidden" name="period" value="custom">
+        <input type="hidden" name="log_start" value="'.$log_start_val.'">
+        <input type="hidden" name="log_end" value="'.$log_end_val.'">
+        <div class="row g-5 align-items-end">
+          <div class="col-12 md:col-5">
+            <div class="form-field">
+              <label for="cf_start_date" class="form-label">' . lang('Start Date') . '</label>
+              <input type="date" data-pg-date id="cf_start_date" name="start_date" value="' . h((isset($_REQUEST['start_date']) && is_string($_REQUEST['start_date'])) ? $_REQUEST['start_date'] : '') . '" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-12 md:col-5">
+            <div class="form-field">
+              <label for="cf_end_date" class="form-label">' . lang('End Date') . '</label>
+              <input type="date" data-pg-date id="cf_end_date" name="end_date" value="' . h((isset($_REQUEST['end_date']) && is_string($_REQUEST['end_date'])) ? $_REQUEST['end_date'] : '') . '" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-12 md:col-2">
+            <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Apply') . '</button>
+          </div>
         </div>
       </div>
     </form>
     ' : '').'
 
     <!-- Analytics -->
-    <div class="row mb-7">
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Requests') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'requests').'</p>
+    <div class="row g-5 mb-5">
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Requests') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'requests').'</div>
       </div></div></div>
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Unique Visitors') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'uniques').'</p>
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Unique Visitors') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'uniques').'</div>
       </div></div></div>
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Bandwidth') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'bandwidth').'</p>
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Bandwidth') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'bandwidth').'</div>
       </div></div></div>
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Percent Cached') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'percent_cached').'</p>
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Percent Cached') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'percent_cached').'</div>
       </div></div></div>
-      <div class="md:col-2"><div class="card text-center"><div class="card-body">
-        <h6>' . lang('Cached Data') . '</h6>
-        <p>'.pg_cloudflare_analytics_card($analytics, 'cached_bytes').'</p>
+      <div class="col-6 md:col-4 xl:col"><div class="card h-100"><div class="card-body">
+        <div class="small fg-secondary">' . lang('Cached Data') . '</div>
+        <div class="fs-xl fw-bold">'.pg_cloudflare_analytics_card($analytics, 'cached_bytes').'</div>
       </div></div></div>
     </div>
     '.$analytics_note.'
 
-    <!-- Settings -->
-    <div class="card my-7">
-      <div class="card-header bg-transparent border-0 fw-bold">
-        <i class="bi bi-sliders"></i> ' . lang('Settings') . '
-      </div>
-      <div class="card-body">
-        <!-- Development Mode -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_dev">
-          <input type="hidden" name="value" value="'.($dev_mode==="on"?"off":"on").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()"'.$switch_focus('cf_dev').' '.($dev_mode==="on"?"checked":"").$switch_unread('cf_dev').'></div>
-            <label class="" for="cf_dev">' . lang('Development Mode') . '</label>
-            '.$switch_unread_note('cf_dev').'
-          </div>
-        </form>
-        <!-- Under Attack Mode -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_uam">
-          <input type="hidden" name="value" value="'.($uam_mode==="under_attack"?"medium":"under_attack").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()"'.$switch_focus('cf_uam').' '.($uam_mode==="under_attack"?"checked":"").$switch_unread('cf_uam').'></div>
-            <label class="" for="cf_uam">' . lang('Under Attack Mode') . '</label>
-            '.$switch_unread_note('cf_uam').'
-          </div>
-        </form>
-        <!-- Always Use HTTPS -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_always_https">
-          <input type="hidden" name="value" value="'.($always_https==="on"?"off":"on").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()"'.$switch_focus('cf_https').' '.($always_https==="on"?"checked":"").$switch_unread('cf_https').'></div>
-            <label class="" for="cf_https">' . lang('Always Use HTTPS') . '</label>
-            '.$switch_unread_note('cf_https').'
-          </div>
-        </form>
-        <!-- Brotli -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_brotli">
-          <input type="hidden" name="value" value="'.($brotli==="on"?"off":"on").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()"'.$switch_focus('cf_brotli').' '.($brotli==="on"?"checked":"").$switch_unread('cf_brotli').'></div>
-            <label class="" for="cf_brotli">' . lang('Brotli') . '</label>
-            '.$switch_unread_note('cf_brotli').'
-          </div>
-        </form>
-        <!-- Rocket Loader -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="toggle_rocket">
-          <input type="hidden" name="value" value="'.($rocket==="on"?"off":"on").'">
-          <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()"'.$switch_focus('cf_rocket').' '.($rocket==="on"?"checked":"").$switch_unread('cf_rocket').'></div>
-            <label class="" for="cf_rocket">' . lang('Rocket Loader') . '</label>
-            '.$switch_unread_note('cf_rocket').'
-          </div>
-        </form>
-        <!-- Clear Cache -->
-        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
-          <input type="hidden" name="action" value="clear_cache">
-          <button type="submit" class="btn btn-solid theme-danger"><i class="bi bi-trash"></i> ' . lang('Clear Cache') . '</button>
-        </form>
-      </div>
-    </div>
-
     '.$image_vary_card.'
 
     <!-- DNS Records -->
-    <div class="card my-7">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <label class="form-label mb-0 fw-bold"><i class="bi bi-hdd-network"></i> ' . lang('DNS Records') . '</label>
-        <button class="btn btn-solid theme-primary btn-sm" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle"></i> ' . lang('Add Record') . '</button>
+    <section class="card my-7" aria-labelledby="cf_dns_title">
+      <div class="card-header bg-reset border-0 d-flex flex-wrap gap-3 justify-content-between align-items-center">
+        <h2 id="cf_dns_title" class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('DNS Records') . '</h2>
+        <div class="ms-auto d-flex flex-wrap justify-content-end gap-3 align-items-center">
+          ' . pg_list_table_search_box('cloudflare_dns') . '
+          <button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#addModal"><i class="bi bi-plus-circle" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Add Record') . '</span></button>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        ' . pg_list_table_html($dns_list['source'], $dns_list['page'], lang('DNS Records')) . '
+      </div>
+    </section>
+    <form method="post" id="pg-cf-delete-form" class="d-none">
+      ' . get_token_field() . '
+      <input type="hidden" name="action" value="delete_record">
+      <input type="hidden" name="id" value="">
+    </form>
+
+    <!-- Zone Logs: the date range filters this card; it keeps a custom
+         analytics period, whose dates are not kept in the session. -->
+    <section class="card my-7" aria-labelledby="cf_logs_title">
+      <div class="card-header bg-reset border-0">
+        <h2 id="cf_logs_title" class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Zone Logs') . '</h2>
       </div>
       <div class="card-body">
-        <table class="table chart table-striped w-100">
-          <thead ><tr><th>' . lang('Actions') . '</th><th>' . lang('Type') . '</th><th>' . lang('Name') . '</th><th>' . lang('Content') . '</th><th>' . lang('TTL') . '</th><th>' . lang('Proxied') . '</th></tr></thead>
-          <tbody>'.$table_rows.'</tbody>
-        </table>
-      </div>
-    </div>
 
-    <!-- Zone Logs -->
-    <div class="card my-7">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <label class="form-label mb-0 fw-bold"><i class="bi bi-list-columns-reverse"></i> ' . lang('Zone Logs') . '</label>
-      </div>
-      <div class="card-body">
-
-        <!-- Log Date Range Filter -->
-        <form method="get" class="mb-7">
-          <div class="row g-3 align-items-end">
-            <div class="md:col-3">
-              <label class="form-label small">' . lang('Start Date') . '</label>
-              <input type="date" data-pg-date name="log_start" value="'.$log_start_val.'" class="form-control" required>
+        <form method="get" class="mb-7">'.$period_fields.'
+          <div class="row g-5 align-items-end">
+            <div class="col-12 md:col-5">
+              <div class="form-field">
+                <label for="cf_log_start" class="form-label">' . lang('Start Date') . '</label>
+                <input type="date" data-pg-date id="cf_log_start" name="log_start" value="'.$log_start_val.'" class="form-control" required>
+              </div>
             </div>
-            <div class="md:col-3">
-              <label class="form-label small">' . lang('End Date') . '</label>
-              <input type="date" data-pg-date name="log_end" value="'.$log_end_val.'" class="form-control" required>
+            <div class="col-12 md:col-5">
+              <div class="form-field">
+                <label for="cf_log_end" class="form-label">' . lang('End Date') . '</label>
+                <input type="date" data-pg-date id="cf_log_end" name="log_end" value="'.$log_end_val.'" class="form-control" required>
+              </div>
             </div>
-            <div class="md:col-2">
-              <button type="submit" class="btn btn-solid theme-primary btn-sm"><i class="bi bi-arrow-clockwise"></i> ' . lang('Refresh Logs') . '</button>
+            <div class="col-12 md:col-2">
+              <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Refresh Logs') . '</span></button>
             </div>
           </div>
         </form>
 
-        <!-- Audit Logs -->
-        <h6 class="mb-5"><i class="bi bi-shield-check"></i> ' . lang('Audit Logs') . ' <small class="fg-secondary">(' . lang('Account Activity') . ')</small></h6>
+        <h3 class="h6 mb-5"><i class="bi bi-shield-check" aria-hidden="true"></i> ' . lang('Audit Logs') . ' <small class="fg-secondary">(' . lang('Account Activity') . ')</small></h3>
         <div class="table-responsive mb-7">
           <table class="table table-sm table-striped w-100">
-            <thead><tr><th>' . lang('Timestamp') . '</th><th>' . lang('Action') . '</th><th>' . lang('Actor') . '</th><th>' . lang('Resource') . '</th><th>' . lang('Zone') . '</th></tr></thead>
-
-
-
+            <thead><tr><th scope="col">' . lang('Timestamp') . '</th><th scope="col">' . lang('Action') . '</th><th scope="col">' . lang('Actor') . '</th><th scope="col">' . lang('Resource') . '</th><th scope="col">' . lang('Zone') . '</th></tr></thead>
             <tbody>'.$audit_rows.'</tbody>
           </table>
         </div>
 
-        <!-- Firewall Events -->
-        <h6 class="mb-5"><i class="bi bi-shield-exclamation"></i> ' . lang('Firewall Events') . ' <small class="fg-secondary">(' . lang('Security Events') . ')</small></h6>
+        <h3 class="h6 mb-5"><i class="bi bi-shield-exclamation" aria-hidden="true"></i> ' . lang('Firewall Events') . ' <small class="fg-secondary">(' . lang('Security Events') . ')</small></h3>
         <div class="table-responsive">
           <table class="table table-sm table-striped w-100">
-            <thead><tr><th>' . lang('Time') . '</th><th>' . lang('Action') . '</th><th>' . lang('Client IP') . '</th><th>' . lang('Requests') . '</th><th>' . lang('Ray ID') . '</th></tr></thead>
+            <thead><tr><th scope="col">' . lang('Time') . '</th><th scope="col">' . lang('Action') . '</th><th scope="col">' . lang('Client IP') . '</th><th scope="col">' . lang('Requests') . '</th><th scope="col">' . lang('Ray ID') . '</th></tr></thead>
             <tbody>'.$fw_rows.'</tbody>
           </table>
         </div>
 
       </div>
+    </section>
+
+  </div>
+  <div class="col-12 lg:col-4 2xl:col-3 order-2">
+    <div class="position-sticky my-7" style="top:3.3rem;">
+      <!-- Settings -->
+      <div class="card">
+      <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Settings') . '</div>
+        <div class="card-body">
+          <!-- Development Mode -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_dev">
+            <input type="hidden" name="value" value="'.($dev_mode==="on"?"off":"on").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()"'.$switch_focus('cf_dev').' '.($dev_mode==="on"?"checked":"").$switch_unread('cf_dev').'></div>
+              <label class="" for="cf_dev">' . lang('Development Mode') . '</label>
+              '.$switch_unread_note('cf_dev').'
+            </div>
+          </form>
+          <!-- Under Attack Mode -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_uam">
+            <input type="hidden" name="value" value="'.($uam_mode==="under_attack"?"medium":"under_attack").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()"'.$switch_focus('cf_uam').' '.($uam_mode==="under_attack"?"checked":"").$switch_unread('cf_uam').'></div>
+              <label class="" for="cf_uam">' . lang('Under Attack Mode') . '</label>
+              '.$switch_unread_note('cf_uam').'
+            </div>
+          </form>
+          <!-- Always Use HTTPS -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_always_https">
+            <input type="hidden" name="value" value="'.($always_https==="on"?"off":"on").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()"'.$switch_focus('cf_https').' '.($always_https==="on"?"checked":"").$switch_unread('cf_https').'></div>
+              <label class="" for="cf_https">' . lang('Always Use HTTPS') . '</label>
+              '.$switch_unread_note('cf_https').'
+            </div>
+          </form>
+          <!-- Brotli -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_brotli">
+            <input type="hidden" name="value" value="'.($brotli==="on"?"off":"on").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()"'.$switch_focus('cf_brotli').' '.($brotli==="on"?"checked":"").$switch_unread('cf_brotli').'></div>
+              <label class="" for="cf_brotli">' . lang('Brotli') . '</label>
+              '.$switch_unread_note('cf_brotli').'
+            </div>
+          </form>
+          <!-- Rocket Loader -->
+          <form method="post" class="disable_shortcut mb-5">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="toggle_rocket">
+            <input type="hidden" name="value" value="'.($rocket==="on"?"off":"on").'">
+            <div class="form-field">
+              <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()"'.$switch_focus('cf_rocket').' '.($rocket==="on"?"checked":"").$switch_unread('cf_rocket').'></div>
+              <label class="" for="cf_rocket">' . lang('Rocket Loader') . '</label>
+              '.$switch_unread_note('cf_rocket').'
+            </div>
+          </form>
+          <!-- Clear Cache -->
+          <form method="post" class="disable_shortcut">'.get_token_field().$period_fields.'
+            <input type="hidden" name="action" value="clear_cache">
+            <button type="submit" class="btn btn-solid theme-danger w-100"><i class="bi bi-trash" aria-hidden="true"></i> <span class="pg-btn-label">' . lang('Clear Cache') . '</span></button>
+          </form>
+        </div>
+      </div>
     </div>
+  </div>
+  </div>
 
-  </div></div>
-
-<!-- Add Record Modal -->
+<!-- Add Record dialog -->
 <dialog class="dialog" id="addModal" aria-labelledby="addModal_title">
     <form method="post" class="d-contents">
       '.get_token_field().'
       <input type="hidden" name="action" value="add_record">
       <div class="dialog-header"><h5 class="dialog-title" id="addModal_title">' . lang('Add DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button></div>
       <div class="dialog-body">
-        <div class="mb-5"><label class="form-label" for="add_type">' . lang('Type') . '</label>
-          <select name="type" id="add_type" class="form-control" required>
-            <option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option>
-            <option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option>
-            <option value="SRV">SRV</option><option value="CAA">CAA</option>
-          </select>
-        </div>
-        <div class="mb-5"><label class="form-label" for="add_name">' . lang('Name') . '</label><input type="text" name="name" id="add_name" class="form-control" required></div>
-        <div class="mb-5 common-content"><label class="form-label" for="add_content">' . lang('Content') . '</label><input type="text" name="content" id="add_content" class="form-control"></div>
-        <div class="mb-5"><label class="form-label" for="add_ttl">' . lang('TTL') . '</label>
-          <select name="ttl" id="add_ttl" class="form-control"><option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option><option value="3600" selected>' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option></select>
-        </div>
-        <div class="form-field proxied-only"><input class="check" type="checkbox" name="proxied" id="add_proxied"><label class="" for="add_proxied">' . lang('Proxied') . '</label></div>
-        <!-- MX extra -->
-        <div class="mb-5 type-extra type-mx d-none"><label class="form-label" for="add_priority">' . lang('Priority') . '</label><input type="number" name="priority" id="add_priority" class="form-control" min="0" max="65535"></div>
-        <!-- SRV extra -->
-        <div class="type-extra type-srv d-none">
-          <div class="mb-5"><label for="add_service">' . lang('Service') . '</label><input type="text" name="service" id="add_service" class="form-control"></div>
-          <div class="mb-5"><label for="add_proto">' . lang('Protocol') . '</label><input type="text" name="proto" id="add_proto" class="form-control"></div>
-          <div class="mb-5"><label for="add_priority2">' . lang('Priority') . '</label><input type="number" name="priority" id="add_priority2" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="add_weight">' . lang('Weight') . '</label><input type="number" name="weight" id="add_weight" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="add_port">' . lang('Port') . '</label><input type="number" name="port" id="add_port" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="add_target">' . lang('Target') . '</label><input type="text" name="target" id="add_target" class="form-control"></div>
-        </div>
-        <!-- CAA extra -->
-        <div class="type-extra type-caa d-none">
-          <div class="mb-5"><label for="add_flags">' . lang('Flags') . '</label><input type="number" name="flags" id="add_flags" class="form-control" min="0" max="255"></div>
-          <div class="mb-5"><label for="add_tag">' . lang('Tag') . '</label>
-            <select name="tag" id="add_tag" class="form-control">
-              <option value="issue">issue</option>
-              <option value="issuewild">issuewild</option>
-              <option value="iodef">iodef</option>
-            </select>
+        <div class="row g-5">
+          <div class="col-12 md:col-6">
+            <div class="form-field">
+              <label for="add_type" class="form-label">' . lang('Type') . '</label>
+              <select name="type" id="add_type" class="form-control" required><option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option><option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option><option value="SRV">SRV</option><option value="CAA">CAA</option></select>
+            </div>
           </div>
-          <div class="mb-5"><label for="add_value">' . lang('Value') . '</label><input type="text" name="value" id="add_value" class="form-control"></div>
+          <div class="col-12 md:col-6">
+            <div class="form-field">
+              <label for="add_ttl" class="form-label">' . lang('TTL') . '</label>
+              <select name="ttl" id="add_ttl" class="form-control"><option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option><option value="3600" selected>' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option></select>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="form-field">
+              <label for="add_name" class="form-label">' . lang('Name') . '</label>
+              <input type="text" name="name" id="add_name" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-12 common-content">
+            <div class="form-field">
+              <label for="add_content" class="form-label">' . lang('Content') . '</label>
+              <input type="text" name="content" id="add_content" class="form-control">
+            </div>
+          </div>
+          <div class="col-12 proxied-only">
+            <div class="form-field"><input class="check" type="checkbox" name="proxied" id="add_proxied"><label for="add_proxied">' . lang('Proxied') . '</label></div>
+          </div>
+          <!-- MX -->
+          <div class="col-12 type-extra type-mx d-none">
+            <div class="form-field">
+              <label for="add_priority" class="form-label">' . lang('Priority') . '</label>
+              <input type="number" name="priority" id="add_priority" class="form-control" min="0" max="65535">
+            </div>
+          </div>
+          <!-- SRV -->
+          <div class="col-12 type-extra type-srv d-none">
+            <div class="row g-5">
+              <div class="col-12 md:col-6">
+                <div class="form-field">
+                  <label for="add_service" class="form-label">' . lang('Service') . '</label>
+                  <input type="text" name="service" id="add_service" class="form-control">
+                </div>
+              </div>
+              <div class="col-12 md:col-6">
+                <div class="form-field">
+                  <label for="add_proto" class="form-label">' . lang('Protocol') . '</label>
+                  <input type="text" name="proto" id="add_proto" class="form-control">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="add_priority2" class="form-label">' . lang('Priority') . '</label>
+                  <input type="number" name="priority" id="add_priority2" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="add_weight" class="form-label">' . lang('Weight') . '</label>
+                  <input type="number" name="weight" id="add_weight" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="add_port" class="form-label">' . lang('Port') . '</label>
+                  <input type="number" name="port" id="add_port" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-field">
+                  <label for="add_target" class="form-label">' . lang('Target') . '</label>
+                  <input type="text" name="target" id="add_target" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- CAA -->
+          <div class="col-12 type-extra type-caa d-none">
+            <div class="row g-5">
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="add_flags" class="form-label">' . lang('Flags') . '</label>
+                  <input type="number" name="flags" id="add_flags" class="form-control" min="0" max="255">
+                </div>
+              </div>
+              <div class="col-12 md:col-8">
+                <div class="form-field">
+                  <label for="add_tag" class="form-label">' . lang('Tag') . '</label>
+                  <select name="tag" id="add_tag" class="form-control"><option value="issue">issue</option><option value="issuewild">issuewild</option><option value="iodef">iodef</option></select>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-field">
+                  <label for="add_value" class="form-label">' . lang('Value') . '</label>
+                  <input type="text" name="value" id="add_value" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="dialog-footer"><button type="submit" class="btn btn-solid theme-primary">' . lang('Add') . '</button></div>
     </form>
 </dialog>
 
-<!-- Edit Record Modal -->
+<!-- Edit Record dialog -->
 <dialog class="dialog" id="editModal" aria-labelledby="editModal_title">
     <form method="post" class="d-contents">
       '.get_token_field().'
@@ -1160,44 +1268,105 @@ print pg_page_shell([
       <input type="hidden" name="id" id="edit_id">
       <div class="dialog-header"><h5 class="dialog-title" id="editModal_title">' . lang('Edit DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button></div>
       <div class="dialog-body">
-        <div class="mb-5"><label for="edit_type">' . lang('Type') . '</label>
-          <select name="type" id="edit_type" class="form-control" required>
-            <option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option>
-            <option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option>
-            <option value="SRV">SRV</option><option value="CAA">CAA</option>
-          </select>
-        </div>
-        <div class="mb-5"><label for="edit_name">' . lang('Name') . '</label><input type="text" name="name" id="edit_name" class="form-control" required></div>
-        <div class="mb-5 common-content"><label for="edit_content">' . lang('Content') . '</label><input type="text" name="content" id="edit_content" class="form-control"></div>
-        <div class="mb-5"><label for="edit_ttl">' . lang('TTL') . '</label>
-          <select name="ttl" id="edit_ttl" class="form-control">
-            <option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option>
-            <option value="3600">' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option>
-          </select>
-        </div>
-        <div class="form-field proxied-only"><input class="check" type="checkbox" name="proxied" id="edit_proxied"><label class="" for="edit_proxied">' . lang('Proxied') . '</label></div>
-        <!-- MX extra -->
-        <div class="mb-5 type-extra type-mx d-none"><label for="edit_priority">' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority" class="form-control" min="0" max="65535"></div>
-        <!-- SRV extra -->
-        <div class="type-extra type-srv d-none">
-          <div class="mb-5"><label for="edit_service">' . lang('Service') . '</label><input type="text" name="service" id="edit_service" class="form-control"></div>
-          <div class="mb-5"><label for="edit_proto">' . lang('Protocol') . '</label><input type="text" name="proto" id="edit_proto" class="form-control"></div>
-          <div class="mb-5"><label for="edit_priority2">' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority2" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="edit_weight">' . lang('Weight') . '</label><input type="number" name="weight" id="edit_weight" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="edit_port">' . lang('Port') . '</label><input type="number" name="port" id="edit_port" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="edit_target">' . lang('Target') . '</label><input type="text" name="target" id="edit_target" class="form-control"></div>
-        </div>
-        <!-- CAA extra -->
-        <div class="type-extra type-caa d-none">
-          <div class="mb-5"><label for="edit_flags">' . lang('Flags') . '</label><input type="number" name="flags" id="edit_flags" class="form-control" min="0" max="255"></div>
-          <div class="mb-5"><label for="edit_tag">' . lang('Tag') . '</label>
-            <select name="tag" id="edit_tag" class="form-control">
-              <option value="issue">issue</option>
-              <option value="issuewild">issuewild</option>
-              <option value="iodef">iodef</option>
-            </select>
+        <div class="row g-5">
+          <div class="col-12 md:col-6">
+            <div class="form-field">
+              <label for="edit_type" class="form-label">' . lang('Type') . '</label>
+              <select name="type" id="edit_type" class="form-control" required><option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option><option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option><option value="SRV">SRV</option><option value="CAA">CAA</option></select>
+            </div>
           </div>
-          <div class="mb-5"><label for="edit_value">' . lang('Value') . '</label><input type="text" name="value" id="edit_value" class="form-control"></div>
+          <div class="col-12 md:col-6">
+            <div class="form-field">
+              <label for="edit_ttl" class="form-label">' . lang('TTL') . '</label>
+              <select name="ttl" id="edit_ttl" class="form-control"><option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option><option value="3600">' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option></select>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="form-field">
+              <label for="edit_name" class="form-label">' . lang('Name') . '</label>
+              <input type="text" name="name" id="edit_name" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-12 common-content">
+            <div class="form-field">
+              <label for="edit_content" class="form-label">' . lang('Content') . '</label>
+              <input type="text" name="content" id="edit_content" class="form-control">
+            </div>
+          </div>
+          <div class="col-12 proxied-only">
+            <div class="form-field"><input class="check" type="checkbox" name="proxied" id="edit_proxied"><label for="edit_proxied">' . lang('Proxied') . '</label></div>
+          </div>
+          <!-- MX -->
+          <div class="col-12 type-extra type-mx d-none">
+            <div class="form-field">
+              <label for="edit_priority" class="form-label">' . lang('Priority') . '</label>
+              <input type="number" name="priority" id="edit_priority" class="form-control" min="0" max="65535">
+            </div>
+          </div>
+          <!-- SRV -->
+          <div class="col-12 type-extra type-srv d-none">
+            <div class="row g-5">
+              <div class="col-12 md:col-6">
+                <div class="form-field">
+                  <label for="edit_service" class="form-label">' . lang('Service') . '</label>
+                  <input type="text" name="service" id="edit_service" class="form-control">
+                </div>
+              </div>
+              <div class="col-12 md:col-6">
+                <div class="form-field">
+                  <label for="edit_proto" class="form-label">' . lang('Protocol') . '</label>
+                  <input type="text" name="proto" id="edit_proto" class="form-control">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="edit_priority2" class="form-label">' . lang('Priority') . '</label>
+                  <input type="number" name="priority" id="edit_priority2" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="edit_weight" class="form-label">' . lang('Weight') . '</label>
+                  <input type="number" name="weight" id="edit_weight" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="edit_port" class="form-label">' . lang('Port') . '</label>
+                  <input type="number" name="port" id="edit_port" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-field">
+                  <label for="edit_target" class="form-label">' . lang('Target') . '</label>
+                  <input type="text" name="target" id="edit_target" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- CAA -->
+          <div class="col-12 type-extra type-caa d-none">
+            <div class="row g-5">
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="edit_flags" class="form-label">' . lang('Flags') . '</label>
+                  <input type="number" name="flags" id="edit_flags" class="form-control" min="0" max="255">
+                </div>
+              </div>
+              <div class="col-12 md:col-8">
+                <div class="form-field">
+                  <label for="edit_tag" class="form-label">' . lang('Tag') . '</label>
+                  <select name="tag" id="edit_tag" class="form-control"><option value="issue">issue</option><option value="issuewild">issuewild</option><option value="iodef">iodef</option></select>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-field">
+                  <label for="edit_value" class="form-label">' . lang('Value') . '</label>
+                  <input type="text" name="value" id="edit_value" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="dialog-footer"><button type="submit" class="btn btn-solid theme-warning">' . lang('Save') . '</button></div>
@@ -1237,6 +1406,20 @@ document.addEventListener("DOMContentLoaded", function() {
     toggleExtraFields(editType, "edit");
   }
 
+  // Delete of a record: confirmed, then the one form below the list is
+  // posted. Delegated, since the list table driver draws its rows again.
+  document.addEventListener("click", function (event) {
+    var button = event.target && event.target.closest ? event.target.closest(".pg-cf-delete") : null;
+    if (!button) return;
+    event.preventDefault();
+    pgConfirm({title: ' . json_encode(lang('Delete')) . ', message: ' . json_encode(lang('Are you sure you want to delete this record?')) . ', confirmText: ' . json_encode(lang('Delete')) . ', cancelText: ' . json_encode(lang('Cancel')) . ', variant: "danger"}).then(function (ok) {
+      if (!ok) return;
+      var form = document.getElementById("pg-cf-delete-form");
+      form.elements["id"].value = button.getAttribute("data-id") || "";
+      form.submit();
+    });
+  });
+
   var editModal = document.getElementById("editModal");
   pgUI.dialog.on(editModal, "show", function (event) {
     var button = event.relatedTarget;
@@ -1275,7 +1458,7 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 
 </main>
-' . get_date_picker_format() . pg_fields_script() . output_footer();
+' . get_date_picker_format() . pg_fields_script() . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
 
 $liveform->remove_form();
 ?>

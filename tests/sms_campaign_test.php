@@ -241,8 +241,9 @@ function test_sms_campaign_cancel_and_read_only_view()
 
 	$list = file_get_contents(PG_FUNCTIONS_DIR . '/view_sms_campaigns.php');
 
-	pg_assert_contains('mb_substr($name, 0, 50)', $list, 'the name is cut');
-	pg_assert_contains("array('string' => 'Edit {var:1}', 'vars' => array(\$name))", $list, 'the edit label keeps the whole name');
+	// The name opens the campaign; the list table driver keeps a long name
+	// on one line and shows it whole in the details panel.
+	pg_assert_contains('<a href="edit_sms_campaign.php?id=\' . (int) $campaign[\'id\'] . \'" data-pg-open>\' . h($name) . \'</a>', $list, 'the name opens the campaign');
 }
 
 // A scheduled campaign and a queued one read as two states in Turkish.

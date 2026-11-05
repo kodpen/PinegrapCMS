@@ -18,6 +18,23 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/referral_source_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/referral_source_list_edit.php');
+
+$quick_edit = pg_referral_source_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the referral source screen's (validate_ecommerce_access()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ((int) $user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_referral_source_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 // Every referral source is printed: the list table driver sorts and searches
 // them in the browser (browser mode) and keeps a heading's sort.
@@ -49,46 +66,22 @@ $sort_levels = $list_state['sorts'];
 // What each sort code orders by. Only codes pg_list_state() let through
 // reach pg_list_order_by(), and it writes nothing but these.
 $order_by = pg_list_order_by($sort_levels, array(
-    'name'          => 'name',
-    'code'          => 'code',
+    'name'          => 'referral_sources.name',
+    'code'          => 'referral_sources.code',
     'sort_order'    => 'referral_sources.sort_order',
-    'last_modified' => 'timestamp',
+    'last_modified' => 'referral_sources.timestamp',
 ));
 
-$query = "SELECT
-            referral_sources.id as id,
-            referral_sources.name as name,
-            referral_sources.code as code,
-            referral_sources.sort_order as sort_order,
-            user.user_username as user,
-            referral_sources.timestamp as timestamp
-        FROM referral_sources
-        LEFT JOIN user ON referral_sources.user = user.user_id
-        ORDER BY $order_by, referral_sources.name";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-while ($row = mysqli_fetch_assoc($result)) {
-    $list_rows[] = array(
-        'id' => (int) $row['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_referral_source.php?id=' . (int) $row['id'] . '" data-pg-open>' . h($row['name']) . '</a>'),
-            'code' => pg_list_cell(h($row['code'])),
-            'sort_order' => pg_list_cell((string) (int) $row['sort_order']),
-            'last_modified' => pg_list_table_when_cell($row['timestamp'], (string) $row['user']),
-        ),
-    );
+foreach ((array) db_items(pg_referral_source_list_sql() . " ORDER BY " . $order_by . ", referral_sources.name") as $source) {
+    $list_rows[] = array('id' => (int) $source['id'], 'cells' => pg_referral_source_list_cells($source, $quick_edit));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_referral_sources',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'code' => array('heading' => lang('Code')),
-        'sort_order' => array('heading' => lang('Sort Order'), 'kind' => 'number'),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_referral_source_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_referral_sources.php', 'columns' => $quick_edit),
 ));
 
 print

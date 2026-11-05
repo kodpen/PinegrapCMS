@@ -1950,6 +1950,108 @@ function pg_order_gift_card_count($quantity)
 }
 
 /**
+ * Whether a gift card line may hold this quantity: no more units than
+ * pg_order_gift_card_count() issues cards for, so a line is never charged for
+ * cards it does not issue. Pure.
+ *
+ * @param int $quantity the line's quantity
+ * @return bool
+ */
+function pg_gift_card_line_quantity_allowed($quantity)
+{
+    return pg_order_gift_card_count($quantity) === (int) $quantity;
+}
+
+/**
+ * The one error every door shows when a gift card line would hold more units
+ * than pg_gift_card_line_quantity_allowed() takes.
+ *
+ * @return string
+ */
+function pg_gift_card_line_quantity_error()
+{
+    return lang('A gift card line can hold at most 100 units');
+}
+
+/**
+ * Whether an order line may take this quantity: always for a product that is
+ * not a gift card, for a gift card only through
+ * pg_gift_card_line_quantity_allowed(). A quantity inside the limit needs no
+ * query.
+ *
+ * @param int|string $order_item_id the cart line
+ * @param int $quantity the quantity it would hold
+ * @return bool
+ */
+function pg_order_item_quantity_allowed($order_item_id, $quantity)
+{
+    if (pg_gift_card_line_quantity_allowed($quantity)) {
+        return true;
+    }
+
+    $gift_card = db_value(
+        "SELECT products.gift_card
+        FROM order_items
+        JOIN products ON products.id = order_items.product_id
+        WHERE order_items.id = '" . e($order_item_id) . "'");
+
+    return $gift_card != 1;
+}
+
+/**
+ * Remembers, for this request, that add_order_item() refused a gift card line
+ * over its unit limit (pg_gift_card_quantity_refusal_take() reads it).
+ *
+ * @param bool|null $set true records a refusal; null only reads
+ * @return bool whether a refusal is recorded
+ */
+function pg_gift_card_quantity_refusal($set = null)
+{
+    static $refused = false;
+
+    if ($set !== null) {
+        $refused = (bool) $set;
+    }
+
+    return $refused;
+}
+
+/**
+ * Whether the last add_order_item() calls refused a gift card line over its
+ * unit limit; clears the record, so the error is shown once.
+ *
+ * @return bool
+ */
+function pg_gift_card_quantity_refusal_take()
+{
+    $refused = pg_gift_card_quantity_refusal();
+    pg_gift_card_quantity_refusal(false);
+
+    return $refused;
+}
+
+/**
+ * How many active gift card lines of an order hold more units than
+ * pg_gift_card_line_quantity_allowed() takes: a cart filled before the limit
+ * existed is refused at checkout until the quantity is lowered.
+ *
+ * @param int|string $order_id
+ * @return int
+ */
+function pg_order_gift_card_lines_over_limit($order_id)
+{
+    return (int) db_value(
+        "SELECT COUNT(*)
+        FROM order_items
+        JOIN products ON products.id = order_items.product_id
+        WHERE
+            (order_items.order_id = '" . e($order_id) . "')
+            AND (products.gift_card = '1')
+            AND (order_items.quantity > " . pg_order_gift_card_count(PHP_INT_MAX) . ")"
+            . pg_order_item_active_sql());
+}
+
+/**
  * The day a gift card ends: the validity days counted from its delivery
  * date, or from today when it is sent at once ('0000-00-00'); '' when the
  * store sets no validity days. Pure.
@@ -3682,7 +3784,7 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
 
         // A gift card of this system.
         if ($applied_gift_card['givex'] == 0) {
-            $result = db_q("SELECT id, balance FROM gift_cards WHERE id = ?", array((string) $applied_gift_card['gift_card_id'])) or output_error('Query failed.');
+            $result = db_q("SELECT id, balance" . pg_credit_owner_select_sql() . " FROM gift_cards WHERE id = ?", array((string) $applied_gift_card['gift_card_id'])) or output_error('Query failed.');
 
             // the card was deleted after it was applied
             $gift_card = mysqli_fetch_assoc($result) ?: array('id' => '');
@@ -3733,6 +3835,11 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
                     array((string) $amount, (string) $new_balance, (string) $applied_gift_card['id'])) or output_error('Query failed.');
 
                 $current_redemption_amount = $current_redemption_amount + $amount;
+
+                // A customer's store credit announces what the order took.
+                if (((int) ($gift_card['user_id'] ?? 0) > 0) && ($amount > 0)) {
+                    pg_credit_announce('credit.used', (int) $gift_card['id'], array('order_id' => (int) $order_id, 'amount_used' => (int) round($amount)));
+                }
             }
 
         // A Givex gift card: the service takes the amount.

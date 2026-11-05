@@ -30,28 +30,27 @@ function email_campaign_list_names_screens()
 
 function test_email_campaign_list_row_checkboxes_named()
 {
-	foreach (array('view_email_campaigns.php', 'view_email_campaign_history.php') as $path) {
-		$source = email_campaign_list_names_source($path);
-		pg_assert_contains("name=\"email_campaigns[]\" value=\"' . \$email_campaign['id'] . '\" aria-label=\"' . h(lang(array('string'=>'Select {var:1}','vars'=>array(\$email_campaign['subject'])))) . '\" />", $source, $path);
-		pg_assert_false(strpos($source, 'class="checkbox"') !== false, $path . ': duplicate class attribute');
-	}
+	// The list table driver draws the row checkboxes, each named by the
+	// row's record; the selection reaches the bulk endpoint as email_campaigns[].
+	pg_assert_contains("'ids_field' => 'email_campaigns[]'", email_campaign_list_names_source('includes/fn/email_campaign_list.php'));
+	// The profiles list has no bulk endpoint, so it has no selection.
 	$source = email_campaign_list_names_source('view_email_campaign_profiles.php');
-	pg_assert_contains("name=\"fake_checkbox[]\" value=\"1\" aria-label=\"' . h(lang(array('string'=>'Select {var:1}','vars'=>array(\$email_campaign_profile['name'])))) . '\">", $source);
+	pg_assert_false(strpos($source, 'fake_checkbox') !== false, 'no disabled select boxes');
+	pg_assert_false(strpos($source, "'ids_field'") !== false, 'no selection posted');
 }
 
 function test_email_campaign_list_progress_percent_translated()
 {
-	foreach (array('view_email_campaigns.php', 'view_email_campaign_history.php') as $path) {
-		$source = email_campaign_list_names_source($path);
-		pg_assert_false(strpos($source, "\$progress_percentage . '%") !== false, $path . ': percent sign glued in English order');
-		pg_assert_contains("lang(array('string'=>'{var:1}%','vars'=>array(\$progress_percentage)))", $source, $path);
-	}
+	$source = email_campaign_list_names_source('includes/fn/email_campaign_list.php');
+	pg_assert_false(strpos($source, "\$percentage . '%") !== false, 'percent sign glued in English order');
+	pg_assert_contains("lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number(\$percentage, 0))))", $source);
 }
 
 function test_email_campaign_profiles_enabled_mark_named()
 {
 	$source = email_campaign_list_names_source('view_email_campaign_profiles.php');
-	pg_assert_contains("<span class=\"material-icons\" aria-hidden=\"true\">task_alt</span><span class=\"visually-hidden\">' . lang('Yes') . '</span>", $source);
+	// pg_list_table_check_cell() draws the mark, named Yes.
+	pg_assert_contains("'enabled' => pg_list_table_check_cell(", $source);
 }
 
 function test_email_campaign_list_ligatures_hidden_and_landmarks_translated()
@@ -65,9 +64,6 @@ function test_email_campaign_list_ligatures_hidden_and_landmarks_translated()
 		// Every live ligature span carries aria-hidden; commented-out markup is ignored.
 		$live = preg_replace('/<!--.*?-->/s', '', $source);
 		pg_assert_false((bool) preg_match('/<span class="material-icons[^"]*">/', $live), $path . ': ligature span read aloud');
-	}
-	foreach (array('view_email_campaigns.php', 'view_email_campaign_history.php') as $path) {
-		pg_assert_contains("aria-label=\"' . h(lang('data edit buttons')) . '\"", email_campaign_list_names_source($path), $path);
 	}
 }
 

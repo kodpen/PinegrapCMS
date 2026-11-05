@@ -93,8 +93,8 @@ if (!$_POST || $errors) {
         ' . pg_zone_form_layout(
             pg_zone_form_cards($values, $choices['countries'], $choices['states'], $errors, array('countries' => $choices['country_count'], 'states' => $choices['state_count'], 'products' => $usage[0], 'methods' => $usage[1])),
             '
-                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(implode(' ', array_map('lang', pg_zone_form_delete_confirm(...$usage)))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . h(implode(' ', array_map('lang', pg_zone_form_delete_confirm(...$usage)))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
         ) . '
         <input type="hidden" name="id" value="' . h($id) . '">
     </form>

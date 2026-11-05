@@ -7,7 +7,7 @@
 ![Lisans](https://img.shields.io/badge/Lisans-MIT-green?style=flat-square)
 ![Durum](https://img.shields.io/badge/Durum-Aktif%20Geli%C5%9Ftirme-success?style=flat-square)
 
-Pinegrap, PHP ile yazılmış, açık kaynaklı, hepsi bir arada bir web sitesi platformudur. Kendi tasarımıyla bir web sitesi, online mağaza, ön muhasebe (ERP), ekip çalışma alanı ve dış API tek kod tabanında yer alır; hazır bir tasarım şablonuyla yeni bir site dakikalar içinde yayına hazır olur.
+Pinegrap, PHP ile yazılmış, açık kaynaklı, hepsi bir arada bir web sitesi platformudur. Kendi tasarımıyla bir web sitesi, online mağaza, ön muhasebe (ERP), ekip çalışma alanı ve dış API tek kod tabanında yer alır; hazır bir tasarım şablonuyla yeni bir site dakikalar içinde yayına hazır olur. Yerleşik MCP sunucusu sayesinde Claude ve ChatGPT gibi yapay zekâ uygulamaları siteye kişinin kendi yetkileriyle bağlanıp çalışabilir.
 
 Pinegrap, LiveSite'tan doğdu ve 2017'den beri Kodpen tarafından geliştirilmektedir. Paylaşımlı bir cPanel hesabından özel bir IIS sunucusuna kadar PHP'nin çalıştığı her yerde çalışır; Composer adımı, build pipeline ya da kurulacak bir dış hizmet gerekmez.
 
@@ -140,7 +140,7 @@ Pinegrap, hayatına 2001'den itibaren Camelback Web Architects tarafından geli�
 
 ## Katkı ve güvenlik
 
-Katkılar memnuniyetle karşılanır: kurulum, iş bitirme ölçütleri ve issue kuralları için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın. Pull request'ler `development` dalına açılır. Güvenlik bulguları [SECURITY.md](SECURITY.md) içinde anlatıldığı gibi gizli kanaldan bildirilir; lütfen bunlar için herkese açık issue açmayın.
+Hata bildirimleri, çeviriler, tasarım şablonları ve küçük düzeltmeler memnuniyetle karşılanır. Çekirdeği (güvenlik duvarı, giriş, ödeme, muhasebe ve görsel sayfa editörü) bakımcılar değiştirir; küçük bir düzeltmeden büyük her değişiklik önce bir issue olarak açılır, böylece kod yazılmadan yaklaşımda anlaşırız. Neleri kabul ettiğimiz, kurulum, iş bitirme ölçütleri ve issue kuralları için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın. Pull request'ler `development` dalına açılır. Güvenlik bulguları [SECURITY.md](SECURITY.md) içinde anlatıldığı gibi gizli kanaldan bildirilir; lütfen bunlar için herkese açık issue açmayın.
 
 ---
 

@@ -5,7 +5,7 @@ description: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/p
 
 ## What is it for?
 - A screen's look is a path no unit test reaches; Bootstrap 6 PRs show screens before and after (`plans/bootstrap-6-panel.md`).
-- Images are never committed: the script refuses an output folder inside the repository. They are shown on a private page the PR links.
+- PR images are never committed (the script refuses an output folder in the repository).
 
 ## How do I run it?
 1. `bash tools/setup_sandbox.sh` (a few minutes; MariaDB, installer, `127.0.0.1:8000`). It rewrites `pinegrap/data/config.php`: never commit it (leave it out of `git add`).
@@ -19,7 +19,7 @@ description: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/p
 - Every screen: `sweep.js <out> [base]` loads each root file calling `pg_page_shell()` (no `delete_`/`duplicate_`/`remove_`, no repair screen): status, landing page, script errors, classes Bootstrap 5 defines that no loaded sheet does.
 
 ## How are the images shown?
-- Publish the output folder as a private Artifact: `index.html` as the page, the PNGs as its files (relative paths already match). Link it in the PR; never attach or commit images.
+- As a private Artifact of the output folder (`index.html` the page, the PNGs its files), linked in the PR; never attached or committed. Only a look note's reference pictures are committed (`ui/visitors-screen-look/`, owner 2026-11-04), renewed when that look changes.
 
 ## What do seed.php and screens.json hold?
 - `tools/screenshots/seed.php` adds what the `turkish_default` starter lacks: a second user (`ayse.yilmaz`, role 3), Workspace on, a channel `urun-lansmani` with four messages and tasks. Found by fixed name; any database but `pinegrap_sandbox` is refused (`PG_SCREENSHOT_SEED_ANY_DB=1` overrides). Last line: JSON ids (`user_id`, `channel_id`, `product_id`, `offer_id`, `product_group_id`).

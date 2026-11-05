@@ -90,7 +90,7 @@ function test_geo_country_label_used_by_the_country_lists()
 		pg_assert_true(strpos($source, 'pg_geo_sort_by_label(') !== false, $file . ' orders by the label');
 	}
 
-	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_countries.php');
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/country_list_edit.php');
 	pg_assert_true(strpos($list, "pg_geo_country_label(\$row['name'], \$row['code'])") !== false, 'the countries list names the country');
 }
 

@@ -64,15 +64,22 @@ if (!$_POST) {
             ads.ad_region_id,
             ads.label,
             ads.sort_order,
-            ad_regions.name as ad_region_name
+            ads.last_modified_timestamp,
+            ad_regions.name as ad_region_name,
+            user.user_username
         FROM ads
         LEFT JOIN ad_regions ON ads.ad_region_id = ad_regions.id
+        LEFT JOIN user ON ads.last_modified_user_id = user.user_id
         WHERE ads.id = ?";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     
     $name = $row['name'];
     $ad_region_name = $row['ad_region_name'];
+    // An ad stored before the column was written has no time: show a dash.
+    $last_modified = ((int) $row['last_modified_timestamp'] > 0)
+        ? get_relative_time(array('timestamp' => (int) $row['last_modified_timestamp'])) . ((string) $row['user_username'] !== '' ? ' ' . h($row['user_username']) : '')
+        : '&mdash;';
     
     // if the form has not been submitted yet, pre-populate fields with data
     if ($liveform->field_in_session('id') == false) {
@@ -117,15 +124,12 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                         <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
-                        ' . pg_ad_form_cards($liveform) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_ad_form_layout(
+                            pg_ad_form_cards($liveform) . pg_ad_form_status($liveform, pg_ad_form_status_row(lang('Last Modified'), $last_modified)),
+                            '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+                        ) . '
                     </form>
                 </div>
             </div>

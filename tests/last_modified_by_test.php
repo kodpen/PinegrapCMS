@@ -20,7 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function last_modified_by_files()
 {
 	return array(
-		'view_countries.php' => "pg_list_table_when_cell(\$row['timestamp'], (string) \$row['user'])",
+		'includes/fn/country_list_edit.php' => "pg_list_table_when_cell(\$country['timestamp'] ?? 0, (string) (\$country['user'] ?? ''))",
 		'includes/fn/field_list.php' => "pg_list_table_when_cell(\$row['timestamp'], (string) (\$row['username'] ?? ''))",
 	);
 }

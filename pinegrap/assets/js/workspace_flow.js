@@ -143,6 +143,7 @@
         mcp: { name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed', 'rejected', 'expired', 'withdrawn'] },
         row_add: { name: 'fl_kind_row_add', group: 'system', into: true, out: ['done', 'failed'] },
         row_set: { name: 'fl_kind_row_set', group: 'system', into: true, out: ['done', 'failed'] },
+        row_get: { name: 'fl_kind_row_get', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
@@ -208,6 +209,7 @@
         ['mcp', 'fl_kind_mcp'],
         ['row_add', 'fl_kind_row_add'],
         ['row_set', 'fl_kind_row_set'],
+        ['row_get', 'fl_kind_row_get'],
         ['approval', 'fl_kind_approval'],
         ['end', 'fl_add_end'],
         ['constants', 'fl_kind_constants'],
@@ -639,6 +641,12 @@
             return delayText(config);
         }
 
+        if ((node.kind === 'for_each') && (config.mode === 'count')) {
+            var times = (config.count || '').trim();
+
+            return times ? t('fl_loop_count_meta', /^\d+$/.test(times) ? times : valueLabel(node, times)) : t('fl_loop_no_count');
+        }
+
         if (node.kind === 'for_each') {
             return config.list ? valueLabel(node, config.list) : t('fl_loop_no_list');
         }
@@ -682,7 +690,7 @@
             return t('fl_no_order_meta', config.days || 30);
         }
 
-        if ((node.kind === 'row_add') || (node.kind === 'row_set')) {
+        if ((node.kind === 'row_add') || (node.kind === 'row_set') || (node.kind === 'row_get')) {
             return rowWriteMeta(node);
         }
 
@@ -3054,12 +3062,13 @@
         webhook: [['text', 'fl_post_body', 4000], ['url', 'fl_url', 2000]],
         mcp: [['arguments', 'fl_mcp_arguments', 20000]],
         row_set: [['row', 'fl_rows_row', 200]],
+        row_get: [['row', 'fl_rows_row', 200]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
         approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]],
         value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]],
-        for_each: [['list', 'fl_loop_list', 200]],
+        for_each: [['list', 'fl_loop_list', 200], ['count', 'fl_loop_count', 200]],
         for_each_end: [['collect', 'fl_loop_collect', 200]]
     };
 
@@ -3193,7 +3202,10 @@
             ? [{ key: 'cells', label: t('fl_rows_cells'), text: config.cells }] : [];
 
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
-            return typeof config[item[0]] === 'string';
+            return (typeof config[item[0]] === 'string')
+                // A For each box reads its list, or in count mode its count
+                // (ws_flow_loop_source_key()).
+                && ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list')));
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: config[item[0]] };
         }).concat(cells);
@@ -3214,7 +3226,7 @@
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
             return (node.kind !== 'value') || (item[0] !== 'b') || derivedRule(config.rule).two;
         }).filter(function (item) {
-            return !kindOf(node).loop || !config[item[0]];
+            return ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list'))) && (!kindOf(node).loop || !config[item[0]]);
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
         });
@@ -3963,7 +3975,8 @@
 
     // What the palette offers: an MCP box only while there is a server the
     // person may call with a tool that reads (ws_step_mcp_form_servers()), a
-    // row box only while there is a table they read (ws_flow_row_tables()),
+    // row box or a box that reads a row only while there is a table they
+    // read (ws_flow_row_tables()),
     // a box that adds or changes a row only while there is one they change,
     // a box on customers who stopped ordering only to whoever reads orders
     // and contacts (ws_flow_no_order_refusal()).
@@ -3973,7 +3986,7 @@
         var writable = rowWriteTables().length > 0;
 
         return PALETTE.filter(function (item) {
-            return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables)
+            return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && (((item[0] !== 'row') && (item[0] !== 'row_get')) || tables)
                 && ((item[0] !== 'no_order') || stepLists().no_order)
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
@@ -4766,6 +4779,12 @@
             });
         }
 
+        // A box that reads a row gives each cell of its table
+        // (ws_step_outputs()).
+        if (node.kind === 'row_get') {
+            rowCellValues(node.config).forEach(function (item) { add(prefix, item); });
+        }
+
         if (node.kind === 'report') {
             (node.config.metrics || []).forEach(function (item) {
                 var key = String(item.key || '') + (((parseInt(item.param, 10) || 0) > 0) ? '_' + parseInt(item.param, 10) : '');
@@ -5043,6 +5062,11 @@
             return listValue(source);
         }
 
+        // A count is a number.
+        if ((node.kind === 'for_each') && (key === 'count')) {
+            return source.value.type === 'number';
+        }
+
         if ((node.kind === 'for_each_end') && (key === 'collect')) {
             var loop = flowLoops()[node.config.for_each || ''];
 
@@ -5060,7 +5084,7 @@
     // Does a field take a "When empty, write" text? A loop's list and the
     // value its End box gathers are read as they are (ws_step_value_single()).
     function fieldFallback(node, key) {
-        return !(((node.kind === 'for_each') && (key === 'list')) || ((node.kind === 'for_each_end') && (key === 'collect')));
+        return !(((node.kind === 'for_each') && ((key === 'list') || (key === 'count'))) || ((node.kind === 'for_each_end') && (key === 'collect')));
     }
 
     // An address with a value put at its end: after its path's "/" when it
@@ -5389,13 +5413,29 @@
         return input;
     }
 
+    // The kinds whose texts the run fills with {{date}} and the other words
+    // of scheduled actions (ws_step_scheduled_texts() and a task's
+    // ws_flow_task_texts()). A derived value fills only {{date}}, {{time}}
+    // and {{weekday}} (ws_flow_derived_words()). In any other box such a
+    // word stays as typed: a table cell, MCP arguments, a check-in's question.
+    var WORD_KINDS = ['post', 'email', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
+
+    // The help under a value field: the words named only where they work.
+    function valuesHint(node) {
+        if (node.kind === 'value') {
+            return t('fl_values_hint_value');
+        }
+
+        return t((WORD_KINDS.indexOf(node.kind) >= 0) ? 'fl_values_hint' : 'fl_values_hint_plain');
+    }
+
     // A field of a box's text with "Add value": the list of what started the
     // run and the boxes before it, each value a chip put in the text; with
     // `takes`, only the values it accepts ({ node, value }); `bare`: it takes
     // no "When empty, write" text.
     function valueField(node, label, value, max, onInput, multi, help, takes, bare) {
         var input = valueInput(node, value, max, onInput, multi, bare);
-        var wrap = field(label, input, help ? help + ' ' + t('fl_values_hint') : t('fl_values_hint'));
+        var wrap = field(label, input, help ? help + ' ' + valuesHint(node) : valuesHint(node));
         var caption = wrap.querySelector('label');
 
         // A label names a form control only; the text box is a div.
@@ -5696,6 +5736,10 @@
 
         if ((node.kind === 'row_add') || (node.kind === 'row_set')) {
             rowWriteFields(box, node);
+        }
+
+        if (node.kind === 'row_get') {
+            rowGetFields(box, node);
         }
 
         if (node.kind === 'condition') {
@@ -6513,11 +6557,39 @@
         box.appendChild(field(t('fl_chain_flow'), pick, t('fl_chain_help')));
     }
 
-    // A For each box: the one value holding the list, where the list sits in
-    // it, and the fields of an item it gives by name
-    // (ws_flow_loop_normalize()).
+    // A For each box: what it goes through (a list, or a count: Repeat N
+    // times); for a list the one value holding it, where the list sits in
+    // it and the fields of an item it gives by name; for a count the number
+    // of times, 1 to 50, or one value (ws_flow_loop_normalize()).
     function loopFields(box, node) {
         var config = node.config;
+        var mode = K.select([['list', t('fl_loop_mode_list')], ['count', t('fl_loop_mode_count')]], (config.mode === 'count') ? 'count' : 'list');
+
+        mode.setAttribute('data-refocus', 'loop-mode-' + node.id);
+        mode.addEventListener('change', function () {
+            config.mode = mode.value;
+
+            // An item of a count has no fields to name.
+            if (config.mode === 'count') {
+                config.fields = [];
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_loop_mode'), mode));
+
+        if (config.mode === 'count') {
+            box.appendChild(valueField(node, t('fl_loop_count'), config.count || '', 200, function (value) {
+                config.count = value.trim();
+                refreshNode(node);
+            }, false, t('fl_loop_count_help'), function (source) {
+                return fieldTakes(node, 'count', source);
+            }, !fieldFallback(node, 'count')));
+
+            return;
+        }
+
         var fields = textInput((config.fields || []).join(', '), 400, function (value) {
             config.fields = [];
             value.split(',').forEach(function (part) {
@@ -7143,7 +7215,8 @@
         return (cells && (typeof cells === 'object') && !Array.isArray(cells)) ? cells : null;
     }
 
-    // Its table, and the row a change names by its number or its value.
+    // Its table, and the row a change or a read names by its number or its
+    // value.
     function rowWriteMeta(node) {
         var config = node.config;
         var table = rowTable(config);
@@ -7156,7 +7229,7 @@
         var name = table ? table.name : '#' + config.table_id;
         var named = /^\d+$/.test(row) ? null : valueNames(node)[row];
 
-        return ((node.kind === 'row_set') && row) ? t('fl_rows_meta', name, named ? named.label : row) : name;
+        return (((node.kind === 'row_set') || (node.kind === 'row_get')) && row) ? t('fl_rows_meta', name, named ? named.label : row) : name;
     }
 
     // Money's decimals, as the table keeps its column (2 unless it says).
@@ -7292,6 +7365,32 @@
         }, false));
 
         return wrap;
+    }
+
+    // A box that reads a row: a table the person reads (ws_flow_row_tables(),
+    // as ws_step_row_get_check() asks at view) and the row, by its number or
+    // one value. Its cells are offered to the boxes after it (boxValues()).
+    function rowGetFields(box, node) {
+        var config = node.config;
+        var options = [[0, t('fl_row_table_pick')]].concat(stepLists().tables.map(function (item) { return [item.id, item.name]; }));
+
+        if (config.table_id && !rowTable(config)) {
+            options.push([config.table_id, '#' + config.table_id]);
+        }
+
+        var pick = K.select(options, config.table_id || 0);
+
+        pick.setAttribute('data-refocus', 'rows-table-' + node.id);
+        pick.addEventListener('change', function () {
+            config.table_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_row_table'), pick, t('fl_rows_read_help')));
+        box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
+            config.row = value;
+            refreshNode(node);
+        }, false, t('fl_rows_get_row_help')));
     }
 
     // A box that adds or changes a row: its table, the row a change names,
@@ -8531,7 +8630,7 @@
         } else if (kind === 'start_flow') {
             config = { flow_id: 0 };
         } else if (kind === 'for_each') {
-            config = { list: '', path: '', fields: [] };
+            config = { list: '', path: '', fields: [], mode: 'list', count: '' };
         } else if (kind === 'for_each_end') {
             // The loop that has no End box yet, when there is one such.
             var loops = flowLoops();
@@ -8561,6 +8660,10 @@
             if (kind === 'row_set') {
                 config.row = '';
             }
+        } else if (kind === 'row_get') {
+            var readable = stepLists().tables;
+
+            config = { table_id: (readable.length === 1) ? readable[0].id : 0, row: '' };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };

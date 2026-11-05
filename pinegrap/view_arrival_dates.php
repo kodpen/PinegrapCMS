@@ -19,6 +19,23 @@
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/arrival_date_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/arrival_date_list_edit.php');
+
+$quick_edit = pg_arrival_date_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn,
+// with the arrival date screen's rights (validate_ecommerce_access()) and
+// checks (pg_arrival_date_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_arrival_date_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 // Every arrival date is printed: the list table driver sorts and searches
 // them in the browser (browser mode) and keeps a heading's sort.
@@ -57,77 +74,16 @@ $order_by = pg_list_order_by($sort_levels, array(
 // Get the current date so that later we can figure out if arrival dates are active.
 $current_date = date('Y-m-d');
 
-$query = "SELECT
-            arrival_dates.id as id,
-            arrival_dates.name as name,
-            arrival_dates.arrival_date as arrival_date,
-            arrival_dates.status as status,
-            arrival_dates.start_date as start_date,
-            arrival_dates.end_date as end_date,
-            arrival_dates.custom as custom,
-            user.user_username as user,
-            arrival_dates.timestamp as timestamp
-        FROM arrival_dates
-        LEFT JOIN user ON arrival_dates.user = user.user_id
-        ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-while ($row = mysqli_fetch_array($result)) {
-
-    $id = $row['id'];
-    $name = $row['name'];
-    // An unset date (AT-ONCE, or one the customer enters) is not 0/0/0000.
-    $arrival_date = pg_arrival_date_form_date_text($row['arrival_date']);
-    if (($arrival_date === '') && ($row['custom'] == 1)) {
-        $arrival_date = lang('Chosen by the customer');
-    }
-    $status = $row['status'];
-    $start_date = pg_arrival_date_form_date_text($row['start_date']);
-    $end_date = pg_arrival_date_form_date_text($row['end_date']);
-    $username = $row['user'];
-    $timestamp = $row['timestamp'];
-    
-    $output_link_url = 'edit_arrival_date.php?id=' . (int) $id;
-
-    // An enabled arrival date outside its dates is not offered: the name
-    // says Inactive under it, as the Status badge still reads Enabled.
-    if (
-        ($row['status'] == 'enabled')
-        && ($row['start_date'] <= $current_date)
-        && ($row['end_date'] >= $current_date)
-    ) {
-        $output_status_class = 'status_enabled';
-        $output_state = '';
-    } else {
-        $output_status_class = 'status_disabled';
-        $output_state = pg_list_status_word(lang('Inactive'));
-    }
-
-    $list_rows[] = array(
-        'id' => (int) $id,
-        'cells' => array(
-            'name' => pg_list_cell('<a href="' . h($output_link_url) . '" class="' . $output_status_class . '" data-pg-open>' . h($name) . '</a>' . $output_state),
-            'arrival_date' => pg_list_cell(h($arrival_date), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) str_replace('-', '', (string) $row['arrival_date']))),
-            'status' => pg_list_cell('<span class="badge fg-white fw-light ' . (($status == 'enabled') ? 'theme-success' : 'theme-danger') . '">' . h(lang(ucwords($status))) . '</span>'),
-            'start_date' => pg_list_cell(h($start_date), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) str_replace('-', '', (string) $row['start_date']))),
-            'end_date' => pg_list_cell(h($end_date), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) str_replace('-', '', (string) $row['end_date']))),
-            'last_modified' => pg_list_table_when_cell($timestamp, (string) $username),
-        ),
-    );
+foreach ((array) db_items(pg_arrival_date_list_sql() . " ORDER BY " . $order_by) as $row) {
+    $list_rows[] = array('id' => (int) $row['id'], 'cells' => pg_arrival_date_list_cells($row, $quick_edit, $current_date));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_arrival_dates',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'arrival_date' => array('heading' => lang('Arrival Date'), 'kind' => 'date'),
-        'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
-        'start_date' => array('heading' => lang('Start Date'), 'kind' => 'date'),
-        'end_date' => array('heading' => lang('End Date'), 'kind' => 'date'),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_arrival_date_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_arrival_dates.php', 'columns' => $quick_edit),
 ));
 
 print 

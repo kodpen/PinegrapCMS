@@ -87,47 +87,7 @@ $short_link_file_id = $short_link['file_id'];
 if (!$_POST) {
     // If the form has not been submitted at all yet, pre-populate fields with data.
     if ($liveform->field_in_session('id') == FALSE) {
-        $liveform->assign_field_value('name', $short_link['name']);
-        $liveform->assign_field_value('destination_type', $short_link['destination_type']);
-
-        // Set the page field differently based on the destination type.
-        switch ($liveform->get_field_value('destination_type')) {
-            case 'page':
-                $liveform->assign_field_value('page_id', $short_link['page_id']);
-                break;
-            
-            case 'product_group':
-                // If the page is a catalog page, then set page for that field.
-                if ($short_link['page_type'] == 'catalog') {
-                    $liveform->assign_field_value('catalog_page_id', $short_link['page_id']);
-
-                // Otherwise the page is a catalog detail page, so set page for that field.
-                } else {
-                    $liveform->assign_field_value('catalog_detail_page_id', $short_link['page_id']);
-                }
-
-                break;
-
-            case 'product':
-                $liveform->assign_field_value('catalog_detail_page_id', $short_link['page_id']);
-                break;
-
-            case 'url':
-                $liveform->assign_field_value('url', $short_link['url']);
-                break;
-
-            case 'file':
-                $liveform->assign_field_value('file', $short_link['file_id']);
-                break;
-        }
-
-        $liveform->assign_field_value('product_group_id', $short_link['product_group_id']);
-        $liveform->assign_field_value('product_id', $short_link['product_id']);
-        $liveform->assign_field_value('tracking_code', $short_link['tracking_code']);
-
-        if (isset($short_link['redirect_code'])) {
-            $liveform->assign_field_value('redirect_code', (string) (int) $short_link['redirect_code']);
-        }
+        pg_short_link_form_fill($liveform, $short_link);
     }
 
     // A name with a * stands for many addresses: there is no one address to
@@ -276,45 +236,7 @@ if (!$_POST) {
             exit();
         }
 
-        $short_link_sql_answer = '';
-        $short_link_answer_values = array();
-
-        foreach ($short_link_answer['columns'] as $answer_column => $answer_value) {
-            $short_link_sql_answer .= $answer_column . " = ?,
-                ";
-            $short_link_answer_values[] = (string) (int) $answer_value;
-        }
-
-        // Only the destination's own column holds its target; the others
-        // are cleared.
-        $destination = array('product_group_id' => '', 'product_id' => '', 'url' => '', 'file_id' => '');
-        $destination_column = pg_short_link_form_destination_column($liveform->get_field_value('destination_type'));
-
-        if ($destination_column !== null) {
-            $destination[$destination_column[0]] = $liveform->get_field_value($destination_column[1]);
-        }
-
-        // Update short link.
-        $query =
-            "UPDATE short_links
-            SET
-                name = ?,
-                destination_type = ?,
-                page_id = ?,
-                product_group_id = ?,
-                product_id = ?,
-                url = ?,
-                tracking_code = ?,
-                file_id = ?,
-                " . $short_link_sql_answer . "last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array_merge(
-            array((string) $name, (string) $liveform->get_field_value('destination_type'), (string) $page_id, (string) $destination['product_group_id'], (string) $destination['product_id'], (string) $destination['url'], (string) $liveform->get_field_value('tracking_code'), (string) $destination['file_id']),
-            $short_link_answer_values,
-            array((string) USER_ID, (string) $liveform->get_field_value('id'))
-        )) or output_error('Query failed.');
-        
+        pg_short_link_form_save($liveform, $liveform->get_field_value('id'), $name, $page_id, $short_link_answer, USER_ID) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'short link ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
 

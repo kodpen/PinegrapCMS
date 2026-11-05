@@ -61,6 +61,8 @@
         sticker: 'M3.5 11.8V4.6a1.1 1.1 0 0 1 1.1-1.1h7.2l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.1 6.1a1.5 1.5 0 0 1-2.1 0zM8 8h.01',
         frame: 'M3.5 3.5h17v17h-17zM7 7h10v10H7z',
         vector: 'M5 18.5C6 10 13 6 19 5.5M3.5 17h3v3h-3zM17.5 4h3v3h-3zM11 6.5l-5 1.5',
+        photo: 'M3.5 8h3.5l2-2.5h6L17 8h3.5v11h-17zM12 10.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z',
+        vectors: 'M12 3.5l5.5 8.5-5.5 8.5-5.5-8.5zM12 3.5v7M12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z',
         image: 'M3.5 5.5h17v13h-17zM3.5 15.5l5-5 4.5 4.5 2.5-2.5 5 5M15.5 9.5h.01',
         artboard: 'M7 3v4M3 7h4M17 3v4M21 7h-4M7 21v-4M3 17h4M17 21v-4M21 17h-4M7 7h10v10H7z',
         export: 'M12 4v11M7.5 10.5L12 15l4.5-4.5M4.5 15v4.5h15V15',
@@ -292,6 +294,8 @@
         this.layersDirty = true;
         this.tools = M.resolveTools(opts.blank ? (opts.profile || 'canvas') : opts.profile, opts.tools);
         this.tool = this.tools.list[0];
+        // The mode each rail group opened last (group id to tool).
+        this.railLast = {};
         // On a small screen the panel is a sheet (pg_image_editor.src.css):
         // open for a tool, closed for Select until it is asked for.
         this.sheetOpen = (this.tool !== 'select');
@@ -992,11 +996,14 @@
 
         host.textContent = '';
         this.toolButtons = {};
+        // The rail joins the photo tools and the vector tools in one item
+        // each (M.railItems()); the mini bar keeps a button per tool.
+        this.railItems = this.tools.mini ? this.tools.list.map(function (id) { return { id: id, modes: [id] }; }) : M.railItems(this.tools.list);
 
-        this.tools.list.forEach(function (id) {
-            var b = button(self.tools.mini ? 'pgie-mtool' : 'pgie-tool', t('tool_' + id), id, function () { self.pickTool(id); }, true);
+        this.railItems.forEach(function (item) {
+            var b = button(self.tools.mini ? 'pgie-mtool' : 'pgie-tool', t('tool_' + item.id), item.id, function () { self.pickItem(item); }, true);
 
-            self.toolButtons[id] = b;
+            self.toolButtons[item.id] = b;
             host.appendChild(b);
         });
 
@@ -1041,6 +1048,37 @@
         });
     };
 
+    // A rail item: the tool it shows again (its sheet toggles), else the
+    // mode it opened last, its first the first time.
+    Editor.prototype.pickItem = function (item) {
+        this.pickTool((item.modes.indexOf(this.tool) >= 0) ? this.tool : M.railOpen(item, this.railLast));
+    };
+
+    // The switch at the top of a rail group's panel: a button per mode,
+    // the one shown pressed. Null for a tool that is an item of its own.
+    Editor.prototype.modeSwitch = function () {
+        var self = this, item = M.railItemOf(this.railItems, this.tool);
+
+        if (!item || (item.modes.length < 2)) {
+            return null;
+        }
+
+        var strings = config().strings || {};
+        var seg = el('div', { class: 'pgie-seg pgie-modes', role: 'group', 'aria-label': t('railMode') });
+
+        item.modes.forEach(function (m) {
+            var on = (m === self.tool), label = t((strings['mode_' + m] !== undefined) ? 'mode_' + m : 'tool_' + m);
+
+            seg.appendChild(el('button', { type: 'button', class: on ? 'on' : '', 'aria-pressed': on ? 'true' : 'false', text: label, onclick: function () {
+                if (m !== self.tool) {
+                    self.pickTool(m);
+                }
+            } }));
+        });
+
+        return seg;
+    };
+
     Editor.prototype.pickTool = function (id) {
         if (this.tools.list.indexOf(id) < 0) {
             return;
@@ -1082,6 +1120,12 @@
         var body = el('div', { class: 'pgie-pb' });
         var header = (!this.layersOpen && Editor.headers[this.tool]) ? Editor.headers[this.tool].call(this) : null;
 
+        var modes = this.layersOpen ? null : this.modeSwitch();
+
+        if (modes) {
+            body.appendChild(modes);
+        }
+
         if (this.layersOpen) {
             this.layerList(body);
         } else if (Editor.panels[this.tool]) {
@@ -1105,11 +1149,18 @@
     };
 
     Editor.prototype.render = function () {
-        var self = this;
+        var self = this, group = M.railItemOf(this.railItems, this.tool);
 
-        // While the layers list is open its button is the one pressed.
-        Object.keys(this.toolButtons || {}).forEach(function (id) {
-            var on = (id === self.tool) && !self.layersOpen;
+        // A group reopens the mode shown last, however it was reached (its
+        // switch, a letter, leaving Crop).
+        if (group && (group.modes.length > 1)) {
+            this.railLast[group.id] = this.tool;
+        }
+
+        // While the layers list is open its button is the one pressed; a
+        // group's is pressed in each of its modes.
+        (this.railItems || []).forEach(function (item) {
+            var id = item.id, on = (item.modes.indexOf(self.tool) >= 0) && !self.layersOpen;
 
             self.toolButtons[id].classList.toggle('on', on);
             self.toolButtons[id].setAttribute('aria-pressed', on ? 'true' : 'false');

@@ -150,3 +150,56 @@ function test_ad_region_form_numbers_take_no_minus_and_no_decimal()
 		pg_assert_contains('pg_ad_region_form_validate_behavior($liveform)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' checks the behaviour values');
 	}
 }
+
+function test_ad_region_form_columns_and_save_bar()
+{
+	_test_ad_region_form_with_session(function ($liveform) {
+		$card = pg_ad_region_form_card($liveform, '', $liveform->prefill());
+		$status = pg_ad_region_form_status($liveform, $liveform->prefill());
+		$layout = pg_ad_region_form_layout($card . $status, '<button>x</button>');
+
+		pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $card, 'the form column');
+		pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $status, 'the status column');
+		pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $status, 'the status box sticks under the top bar');
+		pg_assert_contains('col-12 order-3 position-sticky', $layout, 'the sticky save bar');
+		pg_assert_true(strpos($layout, 'order-1') < strpos($layout, 'order-2'), 'the status column comes after the form column');
+	});
+
+	foreach (array('add_ad_region.php', 'edit_ad_region.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_ad_region_form_layout(', $source, $file . ' draws the shared layout');
+		pg_assert_contains('pg_ad_region_form_status($liveform, ', $source, $file . ' draws the Summary');
+		pg_assert_false(strpos($source, 'pg_screen_toolbar(') !== false, $file . ' has no toolbar: the body tag is in the Summary');
+	}
+}
+
+function test_ad_region_form_summary_follows_the_values()
+{
+	_test_ad_region_form_with_session(function ($liveform) {
+		$status = pg_ad_region_form_status($liveform, true);
+
+		pg_assert_contains('id="ad_region_summary_display">' . h(lang('Static')) . '</dd>', $status, 'a new region is static');
+		pg_assert_true((bool) preg_match('/border-bottom d-none">\s*<dt class="fw-normal">' . preg_quote(h(lang('Transition Type')), '/') . '/', $status), 'a static region hides the transition');
+
+		$saved_request = $_REQUEST;
+		$_REQUEST = array('name' => 'top<b>', 'display_type' => 'dynamic', 'transition_type' => 'fade', 'slideshow' => '1', 'slideshow_interval' => '7');
+		$liveform->add_fields_to_session();
+		$_REQUEST = $saved_request;
+
+		$status = pg_ad_region_form_status($liveform, false, pg_ad_region_form_status_row('Ads', '3'));
+
+		pg_assert_contains('<code id="ad_region_summary_tag">' . h('<ad>top<b></ad>') . '</code>', $status, 'the body tag is escaped');
+		pg_assert_contains('id="ad_region_summary_display">' . h(lang('Dynamic')) . '</dd>', $status, 'a dynamic region');
+		pg_assert_contains('id="ad_region_summary_transition">' . h(lang('Fade')) . '</dd>', $status, 'the transition');
+		pg_assert_contains('id="ad_region_summary_autoplay">' . h(lang('On') . ' (7 ' . lang('seconds') . ')') . '</dd>', $status, 'autoplay with its interval');
+		pg_assert_false(strpos($status, ' d-none"') !== false, 'a dynamic region shows every row');
+		pg_assert_contains('<dt class="fw-normal">Ads</dt>', $status, 'the screen rows follow');
+	});
+}
+
+function test_ad_region_form_autoplay_text()
+{
+	pg_assert_same(lang('Off'), pg_ad_region_form_autoplay_text(false, '5'), 'off');
+	pg_assert_same(lang('On'), pg_ad_region_form_autoplay_text(true, ''), 'on without an interval');
+	pg_assert_same(lang('On') . ' (12 ' . lang('seconds') . ')', pg_ad_region_form_autoplay_text(true, '012'), 'on with an interval');
+}

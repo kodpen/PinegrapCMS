@@ -8,6 +8,19 @@ commit messages and UI source strings are English; user-facing text reaches
 the interface through `lang()` and is translated in `includes/local/tr/` (keys
 added with `php tools/tr_add.php "English" "Türkçe"`, never by hand).
 
+## What we accept
+
+- **Welcome:** bug reports with reproduction steps, translations of the
+  control panel and of the design templates, new design templates and
+  blocks, and small, focused fixes.
+- **Changed by the maintainers:** the firewall (`waf.php`), sign-in and
+  sessions, payments, accounting (ERP) and e-documents, the authorization of
+  the external API, and the visual page editor. Problems there are welcome as
+  issues; the changes come from the maintainers.
+- **Anything larger than a small fix** starts as an issue. Agree on the
+  approach there before writing code; a pull request outside this scope may
+  be closed with a note.
+
 ## Setting up
 
 There is nothing to install. Pinegrap has no Composer step and no build

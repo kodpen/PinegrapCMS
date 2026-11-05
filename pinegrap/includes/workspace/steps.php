@@ -141,6 +141,9 @@ function ws_step_kinds()
             'outputs' => array($number('row_id', lang('Row')))),
         'row_set'   => array('label' => lang('Change a row of a table'), 'type' => 'row_set', 'texts' => array('row', 'cells'), 'lines' => array('row'),
             'outputs' => array($number('row_id', lang('Row')))),
+        // Its cells follow from the table's columns (ws_step_outputs()).
+        'row_get'   => array('label' => lang('Read a row of a table'), 'type' => 'row_get', 'texts' => array('row'), 'lines' => array('row'),
+            'outputs' => array($number('row_id', lang('Row')), $number('found', lang('Row found (1 or 0)')))),
     );
 }
 
@@ -149,7 +152,7 @@ function ws_step_kinds()
  * its sentence is (ws_step_result_shown()): a change box's record and the
  * run a start-a-flow box started (all its values), a webhook's or an MCP
  * tool's answer, which may carry what the service tells only the flow's
- * owner, the row a table box wrote, in a table the reader may not
+ * owner, the row a table box wrote or read, in a table the reader may not
  * reach, and what a loop read from such an answer: a For each box's items
  * and an End for each box's list.
  *
@@ -158,7 +161,7 @@ function ws_step_kinds()
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
 }
 
 /**
@@ -195,7 +198,10 @@ function ws_step_output_types()
  * check those of its mode; a report, beside its message, each count it is
  * set to send, keyed by the count (and its channel or threshold: open tasks
  * of channel 4 is tasks_open_4), labelled from the counts given, else by
- * its key. Pure.
+ * its key; a box reading a row, beside the row and whether it was found,
+ * one value per column of its table (cell_<column id>, the columns read
+ * from the store unless $config['columns'] gives them). Pure but for those
+ * columns.
  *
  * @param string $kind
  * @param array  $config ws_step_config_normalize()
@@ -211,6 +217,15 @@ function ws_step_outputs($kind, $config, $labels = array())
         if (!isset($output['mode']) || ($output['mode'] === $mode)) {
             unset($output['mode']);
             $out[] = $output;
+        }
+    }
+
+    // A box that reads a row gives each cell of its table's columns.
+    if (($kind === 'row_get') && function_exists('ws_flow_row_columns')) {
+        foreach (ws_flow_row_outputs(ws_flow_row_columns($config)) as $output) {
+            if (strpos($output['key'], 'cell_') === 0) {
+                $out[] = $output;
+            }
         }
     }
 
@@ -255,7 +270,11 @@ function ws_step_result_data($kind, $config, $done)
         $key = $output['key'];
         $value = isset($output['count']) ? ($given['counts'][$output['count']] ?? null) : ($given[$key] ?? ($done[$key] ?? null));
 
-        if ($output['type'] === 'number') {
+        // A cell read is kept as the text it fills in (ws_flow_row_cell_text()):
+        // a number cell may have decimals.
+        if (($kind === 'row_get') && (strpos($key, 'cell_') === 0)) {
+            $value = is_scalar($value) ? (string) $value : '';
+        } elseif ($output['type'] === 'number') {
             $value = (is_numeric($value) && !is_string($value)) ? (int) $value : null;
 
             if (($value !== null) && ($value <= 0) && (substr($key, -3) === '_id')) {
@@ -322,6 +341,7 @@ function ws_step_outcomes()
  *            written as its JSON)
  * row_set:   table_id, row (the row's id, or one value such as
  *            {{trigger.row_id}}), cells
+ * row_get:   table_id, row (as row_set's)
  *
  * @param string $kind
  * @param mixed  $config
@@ -534,6 +554,9 @@ function ws_step_config_normalize($kind, $config)
             }
 
             return $out + array('cells' => ws_flow_lines($cells, WS_STEP_ROW_CELLS_MAX));
+
+        case 'row_get':
+            return array('table_id' => $number($config['table_id'] ?? 0), 'row' => ws_flow_line($config['row'] ?? '', 200));
     }
 
     return array();
@@ -711,6 +734,21 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             }
 
             break;
+
+        // A box that reads a row names its table and its row as a change
+        // does.
+        case 'row_get':
+            if ((int) $config['table_id'] <= 0) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the table it reads.', 'vars' => $name));
+            }
+
+            if (trim($config['row']) === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the row it reads.', 'vars' => $name));
+            } elseif (!ws_step_row_names_row($config['row'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} names its row by its id or by one value, such as {{trigger.row_id}}.', 'vars' => $name));
+            }
+
+            break;
     }
 
     return $problems;
@@ -762,6 +800,10 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
     // Nor is a table box: it writes through the table's store.
     if (in_array($kind, ws_step_row_kinds(), true)) {
         return ws_step_row_check($viewer, $kind, ws_step_config_normalize($kind, $config));
+    }
+
+    if ($kind === 'row_get') {
+        return ws_step_row_get_check($viewer, ws_step_config_normalize('row_get', $config));
     }
 
     $check = ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
@@ -1148,6 +1190,7 @@ function ws_step_fill_target($kind, $action)
         case 'mcp':
         case 'row_add':
         case 'row_set':
+        case 'row_get':
             return 'json';
     }
 
@@ -1550,7 +1593,7 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  * box's sentence names the record and the values it wrote, a condition box's
  * the record, the value and the count it looked at (ws_flow_graph_present()
  * keeps them back the same way), a start box's the flow it started, a table
- * box's the table and its columns: only whoever may change the flow reads
+ * box's the table and its columns (a box reading a row, its cells): only whoever may change the flow reads
  * them; everybody else reads that a change was made, or not.
  * Pure.
  *
@@ -1562,8 +1605,12 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get'), true) || ((string) $text === '')) {
         return (string) $text;
+    }
+
+    if ((string) $kind === 'row_get') {
+        return ((string) $outcome === 'done') ? lang('A row of a table was read.') : lang('No row of the table was read.');
     }
 
     // The table may be one the reader does not reach: its name and its
@@ -1828,6 +1875,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_mcp_do($owner, $action);
     } elseif (in_array($kind, ws_step_row_kinds(), true)) {
         $done = ws_step_row_do($owner, $action);
+    } elseif ($kind === 'row_get') {
+        $done = ws_step_row_get_do($owner, $action);
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
     }
@@ -1994,6 +2043,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_change_ask_said(ws_scheduled_action_text($owner, $action), (string) $action['channel_name']);
         } elseif (in_array($kind, ws_step_row_kinds(), true)) {
             $said = ws_step_row_text($action);
+        } elseif ($kind === 'row_get') {
+            $said = ws_step_row_get_text($action);
         } else {
             $said = ws_scheduled_action_text($owner, $action);
         }

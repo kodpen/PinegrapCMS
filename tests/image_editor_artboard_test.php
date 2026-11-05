@@ -323,3 +323,18 @@ function test_image_editor_artboard_save_order()
 	pg_assert_true(strpos($canvas, 'pg_image_editor_pictures_saved(') < strpos($canvas, 'pg_image_editor_canvas_keep('), 'pictures before the document is kept');
 	pg_assert_contains("if (\$mode === 'replace') {\n        \$record = pg_image_editor_pictures_saved(", $save, 'a picture keeps its pictures as files on a replace only');
 }
+
+// A canvas written over a file (replace) keeps the pixels it overwrites as a
+// version first, as a picture's replace does: a PNG photo whose picture was
+// deleted, or a canvas changed outside the editor, could not be restored.
+function test_image_editor_artboard_replace_keeps_overwritten_pixels()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
+	$canvas = substr($source, (int) strpos($source, 'function pg_image_editor_save_canvas('));
+	$canvas = substr($canvas, 0, (int) strpos($canvas, "\n}\n"));
+	$kept = strpos($canvas, 'pg_file_versions_keep_current(');
+
+	pg_assert_true($kept !== false, 'the overwritten pixels are kept');
+	pg_assert_true($kept < strpos($canvas, '@rename($temporary, $path)'), 'kept before the file is written over');
+	pg_assert_true(function_exists('pg_file_versions_keep_current'), 'the helper exists');
+}

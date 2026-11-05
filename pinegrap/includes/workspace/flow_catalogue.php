@@ -70,6 +70,7 @@ function ws_flow_setting_values()
         'value.rule'         => array_values(array_unique(array_merge(array('join'), array_keys(ws_flow_derived_rules())))),
         'value.op'           => ws_flow_derived_operators(),
         'value.format'       => ws_flow_derived_formats(),
+        'for_each.mode'      => array('list', 'count'),
     );
 }
 

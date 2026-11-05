@@ -320,7 +320,14 @@ function erp_invoice_form_keep_account($account_options, $account)
  * @param array    $options  lines (display rows), invoice_id, quote (bool),
  *                           valid_days, purchase_order (bool),
  *                           keep_account_id (the stored account an edit
- *                           screen keeps listed when it is passive)
+ *                           screen keeps listed when it is passive),
+ *                           columns (bool: lay the editor out as a form
+ *                           column and a status column holding the totals),
+ *                           status (HTML under the totals in the status
+ *                           column), save_bar (the save bar's nav, drawn in
+ *                           the row's last column, which is the sticky one),
+ *                           lead (HTML at the top of the form column, above
+ *                           the document card)
  * @return string  HTML
  */
 function erp_invoice_form_cards($liveform, $options = array())
@@ -402,8 +409,10 @@ function erp_invoice_form_cards($liveform, $options = array())
 
     $date_format = (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) ? 'month_day' : 'day_month';
 
+    $columns = !empty($options['columns']);
+
     return '
-    <div id="erp_invoice_editor"
+    <div id="erp_invoice_editor"' . ($columns ? ' class="row"' : '') . '
          data-erp-editor
          data-products-url="get_erp_products.php"
          data-rate-url="get_erp_rate.php"
@@ -429,7 +438,11 @@ function erp_invoice_form_cards($liveform, $options = array())
          data-text-account-discount="' . h(lang('The account\'s discount: {var:1}')) . '"
          data-text-percent="' . h(lang('{var:1}%')) . '"
          data-decimal-mark="' . h(erp_number_separators()['decimal']) . '"
-         data-text-max-lines="' . lang(array('string' => 'An invoice can carry at most {var:1} lines.', 'vars' => ERP_MANUAL_MAX_LINES)) . '">
+         data-text-max-lines="' . lang(array('string' => 'An invoice can carry at most {var:1} lines.', 'vars' => ERP_MANUAL_MAX_LINES)) . '">' . ($columns
+        // The columns split only from 2xl: the lines table needs about
+        // 1,060px and scrolled sideways in an lg:col-8 at 1280px.
+        ? '
+    <div class="col-12 2xl:col-9 order-1">' . ((string) ($options['lead'] ?? '')) : '') . '
     <div class="card my-7">
         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . ($is_quote ? lang('Sales quote') : ($is_order ? lang('Purchase order') : lang('Invoice'))) . '
@@ -552,10 +565,15 @@ function erp_invoice_form_cards($liveform, $options = array())
             <div class="form-text">' . lang('Amounts are in the document currency. Empty rows are ignored. Picking a product fills the line; everything on it stays editable.') . '</div>
         </div>
     </div>
-
+    ' . ($columns ? '</div>
+    <div class="col-12 2xl:col-3 order-2">
+        <div class="position-sticky my-7" style="top:3.3rem">
+    <div class="row">
+        <div class="col-12 lg:col-5 2xl:col-12 ms-auto">
+            <div class="card mb-7" data-erp-totals>' : '
     <div class="row">
         <div class="col-12 lg:col-5 ms-auto">
-            <div class="card my-7" data-erp-totals>
+            <div class="card my-7" data-erp-totals>') . '
                 <div class="card-body">
                     <div class="d-flex justify-content-between py-1">
                         <span>' . lang('Subtotal') . '</span><b data-erp-total="subtotal">&mdash;</b>
@@ -584,6 +602,10 @@ function erp_invoice_form_cards($liveform, $options = array())
             </div>
         </div>
     </div>
+    ' . ($columns ? ((string) ($options['status'] ?? '')) . '
+        </div>
+    </div>
+    <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">' . ((string) ($options['save_bar'] ?? '')) . '</div>' : '') . '
     </div>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/erp_invoice_editor.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/erp_invoice_editor.js') . '"></script>';
 }

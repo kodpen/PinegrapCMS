@@ -25,6 +25,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/recurrence.php');
 
 // A box of the graph.
 function ws_flow_values_test_node($id, $kind, $config = array())
@@ -217,6 +218,38 @@ function test_workspace_flow_derived_values_in_a_run()
 // A derived box has no place among the arrows: its own reads are never "not
 // before"; the box that reads it is checked against what it reads, at any
 // depth. A loop and a missing input are its own problems.
+// {{date}}, {{time}} and {{weekday}} in a derived box's typed inputs read
+// the moment given, in the shapes the date rules read; a value holding such
+// a word is not read again.
+function test_workspace_flow_derived_date_words()
+{
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('UTC');
+
+	// Wednesday 2026-11-04 09:05 UTC.
+	$now = gmmktime(9, 5, 0, 11, 4, 2026);
+	$graph = array(
+		'nodes' => array(
+			ws_flow_values_test_node('manual_1', 'manual'),
+			ws_flow_values_test_node('value_1', 'value', array('rule' => 'join', 'a' => '{{date}} {{time}}', 'b' => '{{weekday}}')),
+			ws_flow_values_test_node('value_2', 'value', array('rule' => 'add_days', 'a' => '{{date}}', 'b' => '3')),
+			ws_flow_values_test_node('value_3', 'value', array('rule' => 'date_format', 'a' => '{{date}} {{time}}', 'format' => 'd.m.Y H:i')),
+			ws_flow_values_test_node('value_4', 'value', array('rule' => 'join', 'a' => '{{trigger.note}}', 'b' => '')),
+		),
+		'edges' => array(),
+	);
+	$values = ws_flow_pure_values($graph, array(WS_STEP_TRIGGER => array('note' => '{{date}}')), $now);
+	$words = ws_flow_derived_words($now);
+
+	date_default_timezone_set($zone);
+
+	pg_assert_same('2026-11-04 09:05 Wednesday', $values['value_1']['value']);
+	pg_assert_same('2026-11-07', $values['value_2']['value'], 'a date rule reads {{date}}');
+	pg_assert_same('04.11.2026 09:05', $values['value_3']['value']);
+	pg_assert_same('{{date}}', $values['value_4']['value'], 'a filled value is never read again');
+	pg_assert_same(array('{{date}}' => '2026-11-04', '{{time}}' => '09:05', '{{weekday}}' => 'Wednesday'), $words);
+}
+
 function test_workspace_flow_derived_in_the_graph_check()
 {
 	$graph = function ($body, $a, $edges, $more = array()) {

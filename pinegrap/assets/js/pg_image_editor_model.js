@@ -151,7 +151,7 @@
 
     var PROFILES = {
         photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'warp', 'builder', 'frame', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'vector', 'scissors', 'warp', 'builder', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
@@ -184,6 +184,71 @@
         }
 
         return { profile: profile, list: list, mini: mini };
+    }
+
+    // Rail items that hold several tools, each a mode of the item's switch
+    // at the top of its panel, in the switch's order.
+    var RAIL_GROUPS = {
+        photo: ['crop', 'adjust', 'redact', 'area', 'frame'],
+        vectors: ['vector', 'scissors', 'builder', 'warp']
+    };
+
+    // The group a tool belongs to, or ''.
+    function railGroup(tool) {
+        var keys = Object.keys(RAIL_GROUPS);
+
+        for (var i = 0; i < keys.length; i++) {
+            if (RAIL_GROUPS[keys[i]].indexOf(tool) >= 0) {
+                return keys[i];
+            }
+        }
+
+        return '';
+    }
+
+    // The rail's items for a call's tools, each { id, modes }: a group
+    // stands where the first of its tools stands in the list and opens the
+    // ones the list has; a group with one of them is that tool's own item.
+    function railItems(list) {
+        var items = [], seen = {};
+
+        (list || []).forEach(function (tool) {
+            var g = railGroup(tool), modes;
+
+            if (!g) {
+                items.push({ id: tool, modes: [tool] });
+                return;
+            }
+
+            if (seen[g]) {
+                return;
+            }
+
+            seen[g] = true;
+            modes = RAIL_GROUPS[g].filter(function (m) { return list.indexOf(m) >= 0; });
+            items.push({ id: (modes.length > 1) ? g : modes[0], modes: modes });
+        });
+
+        return items;
+    }
+
+    // The rail item whose modes hold tool, or null.
+    function railItemOf(items, tool) {
+        for (var i = 0; i < (items || []).length; i++) {
+            if (items[i].modes.indexOf(tool) >= 0) {
+                return items[i];
+            }
+        }
+
+        return null;
+    }
+
+    // The tool a press on item opens: its mode used last (last: item id to
+    // tool), else its first.
+    function railOpen(item, last) {
+        var m = last && last[item.id];
+
+        return (m && (item.modes.indexOf(m) >= 0)) ? m : item.modes[0];
     }
 
     // ---- document ----
@@ -3058,9 +3123,102 @@
             + (defs || '') + fill + bodies.join('') + '</svg>';
     }
 
+    // -- SVG import (Import in the top bar, pg_image_editor_svg.js) --
+
+    // New ids for an imported SVG's ids, none of them already in the
+    // document (taken): each id gets the prefix i<n>- with the smallest n
+    // that clashes with nothing, so a file imported twice keeps apart.
+    function svgIdMap(ids, taken) {
+        var seen = {}, list = [], map = {}, n = 1;
+
+        (ids || []).forEach(function (id) {
+            id = String(id);
+
+            if (id && !seen[id]) {
+                seen[id] = true;
+                list.push(id);
+            }
+        });
+
+        var used = {};
+
+        (taken || []).forEach(function (id) { used[String(id)] = true; });
+
+        var clash = function (k) {
+            return list.some(function (id) { return used['i' + k + '-' + id]; });
+        };
+
+        while (clash(n)) {
+            n++;
+        }
+
+        list.forEach(function (id) { map[id] = 'i' + n + '-' + id; });
+
+        return map;
+    }
+
+    // An attribute value with its references renamed: a whole "#id" (href)
+    // and every url(#id) (fill, clip-path, filter, a style attribute).
+    function svgRenameValue(value, map) {
+        var s = String(value === undefined || value === null ? '' : value), whole = /^\s*#([^\s]+)\s*$/.exec(s);
+
+        if (whole && Object.prototype.hasOwnProperty.call(map, whole[1])) {
+            return '#' + map[whole[1]];
+        }
+
+        return s.replace(/url\(\s*(['"]?)#([^'")\s]+)\1\s*\)/g, function (all, q, id) {
+            return Object.prototype.hasOwnProperty.call(map, id) ? 'url(' + q + '#' + map[id] + q + ')' : all;
+        });
+    }
+
+    // A style sheet with its references renamed: #id in the selectors (the
+    // sanitizer's scope among them) and url(#id) in the declarations; a
+    // colour such as #fff inside a rule is left alone.
+    function svgRenameCss(text, map) {
+        var s = String(text || ''), out = '', depth = 0, from = 0, i;
+        var selectors = function (part) {
+            return part.replace(/#(-?[_a-zA-Z][-_a-zA-Z0-9]*)/g, function (all, id) {
+                return Object.prototype.hasOwnProperty.call(map, id) ? '#' + map[id] : all;
+            });
+        };
+
+        for (i = 0; i <= s.length; i++) {
+            var c = s.charAt(i);
+
+            if ((i === s.length) || (c === '{') || (c === '}')) {
+                var part = s.slice(from, i);
+
+                out += (depth > 0) ? svgRenameValue(part, map) : selectors(part);
+                out += c;
+                depth += (c === '{') ? 1 : ((c === '}') ? -1 : 0);
+                depth = Math.max(0, depth);
+                from = i + 1;
+            }
+        }
+
+        return out;
+    }
+
+    // An imported picture's box: w x h scaled to share of the visible rect
+    // vr and centred in it; a picture is never made larger than its size,
+    // a drawing (grow) is.
+    function svgFit(w, h, vr, share, grow) {
+        w = Math.max(1, Number(w) || 1);
+        h = Math.max(1, Number(h) || 1);
+
+        var k = Math.min(share * vr.w / w, share * vr.h / h);
+
+        if (!grow) {
+            k = Math.min(1, k);
+        }
+
+        return { x: vr.x + (vr.w - w * k) / 2, y: vr.y + (vr.h - h * k) / 2, w: w * k, h: h * k };
+    }
+
     var SVG = {
         svgLength: svgLength, svgNumbers: svgNumbers, svgRoot: svgRoot, svgTransform: svgTransform, svgOwnBox: svgOwnBox,
-        svgPlace: svgPlace, svgMatrix: svgMatrix, svgMatrixText: svgMatrixText, svgEscape: svgEscape, svgFile: svgFile
+        svgPlace: svgPlace, svgMatrix: svgMatrix, svgMatrixText: svgMatrixText, svgEscape: svgEscape, svgFile: svgFile,
+        svgIdMap: svgIdMap, svgRenameValue: svgRenameValue, svgRenameCss: svgRenameCss, svgFit: svgFit
     };
 
     // ---- motion (pg_image_editor_motion.js) ----
@@ -4017,6 +4175,163 @@
     }
 
     var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
+
+    // -- The selection's commands (pg_image_editor_actions.js) --
+
+    // The commands the bar over a small screen's stage offers for what is
+    // selected, in order, as [{ name, off }]. s.layers and s.free: the
+    // selected layers (with a tool that selects layers) and how many of them
+    // are unlocked; s.picture: the picture selected; s.area: an area
+    // selected with Select area; s.sheet: a closed panel sheet that Options
+    // opens; s.can: which of the area's commands the editor has. Options
+    // comes first; the rest keep the panel's order. Short enough for a
+    // phone's width: what does not fit (arrange, align) is in the panel.
+    function actionList(s) {
+        var can = s.can || {}, out = [];
+        var add = function (name, off) { out.push({ name: name, off: !!off }); };
+
+        if (!s.layers && !s.picture && !s.area) {
+            return out;
+        }
+
+        if (s.sheet) {
+            add('options');
+        }
+
+        if (s.layers) {
+            add('duplicate');
+            add('remove', !s.free);
+        } else if (s.picture) {
+            add('lockPicture');
+            add('removePicture');
+        } else {
+            ['erase', 'keep', 'copy', 'cutToLayer', 'adjust'].forEach(function (name) {
+                if (can[name]) {
+                    add(name);
+                }
+            });
+            add('redact', !can.redact);
+            add('invert');
+            add('deselect');
+        }
+
+        return out;
+    }
+
+    var ACTIONS = { actionList: actionList };
+
+    // -- The context menu (pg_image_editor_menu.js) --
+
+    // The layers' order and alignment and the shapes' combinations, as the
+    // panel offers them.
+    var MENU_ORDER = ['front', 'forward', 'backward', 'back'];
+    var MENU_ALIGN = ['alignLeft', 'alignCenter', 'alignRight', 'alignTop', 'alignMiddle', 'alignBottom', 'distX', 'distY'];
+    var MENU_COMBINE = ['unite', 'minusFront', 'intersect', 'exclude', 'divide'];
+
+    // The items of the menu a right click, a long press or the menu key
+    // opens, in order: [{ name, off, sub, mode, on }], a separator as
+    // { sep: true }. s.at: 'stage', 'rail' or 'scene'.
+    // On the stage the selection's commands start from actionList() (s.layers,
+    // s.free, s.picture, s.area, s.can as there) and the menu adds the rest:
+    // s.clip (layers to paste), s.locked and s.hidden (every selected layer
+    // is), s.areas (selected unlocked shapes with an area), s.texts, s.warp
+    // (one warped layer), s.svg (one imported SVG), s.count (the layers),
+    // s.imports (the Import button is there) and s.site (Import from the
+    // site), s.canvas (the Canvas tool is offered).
+    // On a rail item: s.modes, its tools, and s.tool; one mode has no menu.
+    // On a scene: s.index, s.count and s.max of the scenes.
+    function menuList(s) {
+        var out = [], acts;
+        var item = function (name, off, extra) {
+            var it = { name: name, off: !!off };
+
+            Object.keys(extra || {}).forEach(function (k) { it[k] = extra[k]; });
+            out.push(it);
+        };
+        var sep = function () {
+            if (out.length && !out[out.length - 1].sep) {
+                out.push({ sep: true });
+            }
+        };
+        var sub = function (names, off) {
+            return names.map(function (n) { return { name: n, off: !!(off && off(n)) }; });
+        };
+
+        if (s.at === 'rail') {
+            return ((s.modes || []).length > 1) ? s.modes.map(function (m) { return { name: 'mode', mode: m, on: m === s.tool, off: false }; }) : out;
+        }
+
+        if (s.at === 'scene') {
+            item('sceneDuplicate', s.count >= s.max);
+            item('sceneDelete', s.count < 2);
+            item('sceneEarlier', s.index <= 0);
+            item('sceneLater', s.index >= s.count - 1);
+
+            return out;
+        }
+
+        acts = actionList({ layers: s.layers, free: s.free, picture: s.picture, area: s.area, sheet: false, can: s.can });
+
+        if (s.layers) {
+            item('cut', !s.free);
+            item('copyLayers');
+            item('paste', !s.clip);
+            acts.forEach(function (a) { item(a.name, a.off); });
+            sep();
+            item('order', false, { sub: sub(MENU_ORDER) });
+            item('align', !s.free, { sub: sub(MENU_ALIGN, function (n) { return (n === 'distX' || n === 'distY') && (s.free < 3); }) });
+            item(s.locked ? 'unlock' : 'lock');
+            item(s.hidden ? 'show' : 'hide');
+            sep();
+
+            if (s.areas >= 2) {
+                item('combine', false, { sub: sub(MENU_COMBINE) });
+            }
+
+            if (s.texts) {
+                item('outlines');
+            }
+
+            if (s.warp) {
+                item('expandWarp');
+            }
+
+            if (s.svg) {
+                item('breakApart');
+            }
+        } else if (s.picture || s.area) {
+            acts.forEach(function (a) { item(a.name, a.off); });
+
+            if (s.picture) {
+                sep();
+                item('paste', !s.clip);
+            }
+        } else {
+            item('paste', !s.clip);
+            item('selectAll', !s.count);
+            sep();
+
+            if (s.imports && s.site) {
+                item('import', false, { sub: sub(['importComputer', 'importSite']) });
+            } else if (s.imports) {
+                item('importFile');
+            }
+
+            if (s.canvas) {
+                item('canvasSize');
+            }
+
+            item('fit');
+        }
+
+        if (out.length && out[out.length - 1].sep) {
+            out.pop();
+        }
+
+        return out;
+    }
+
+    var MENU = { menuList: menuList };
 
     // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
 
@@ -6740,8 +7055,17 @@
     // space, or kind wand with the seed point (at, turned space),
     // tolerance (0-100) and contiguous. A wand's outline is worked out from
     // the picture each time the document opens, so only its seed is kept.
+    // Kind subject (pg_image_editor_subject.js) keeps its rings (rings) and
+    // the box the cut started from, since the cut takes too long to redo;
+    // its Keep and Remove brushes (strokes: [{ keep, r, pts }], turned
+    // space) the cut ran again from, and its soft edge (edge, units, 0 or
+    // none for hard) that layers made from the selection take as matte.
 
     var AREA_MAX_POINTS = 4000, AREA_MAX_OPS = 40;
+
+    // A subject op keeps at most this many brush strokes; its soft edge is
+    // at most SUBJECT_EDGE_MAX units, the guided filter's eps MATTE_EPS.
+    var SUBJECT_MAX_STROKES = 60, SUBJECT_EDGE_MAX = 20, MATTE_EPS = 1e-4;
 
     function areaRound(v) {
         return Math.round(v * 100) / 100;
@@ -6986,7 +7310,7 @@
         }
 
         (sel.ops || []).slice(0, AREA_MAX_OPS).forEach(function (o, i) {
-            var rings = (o.kind === 'wand') ? (wands && wands[i]) : (o.ring ? [o.ring] : null);
+            var rings = (o.kind === 'wand') ? (wands && wands[i]) : (o.rings || (o.ring ? [o.ring] : null));
 
             if (!rings || !rings.length) {
                 return;
@@ -7033,15 +7357,306 @@
         return (l.area || []).map(function (r) { return r.map(function (p) { return apply(m, p[0] * l.w, p[1] * l.h); }); });
     }
 
+    // Whether p, in an area layer's own frame (as M.hitLayer() passes it),
+    // lies inside its outline. An erased background's hole is not the
+    // layer's, so a press there reaches what is under it. Other shapes are
+    // hit anywhere in their box.
+    function areaHit(l, p) {
+        if ((l.shape !== 'area') || !l.area || !l.w || !l.h) {
+            return true;
+        }
+
+        return insideRings([p[0] / l.w, p[1] / l.h], l.area);
+    }
+
+    // What lies in frame { x, y, w, h } outside the selection's rings: the
+    // part Keep only erases.
+    function areaRest(rings, frame) {
+        var all = [[frame.x, frame.y], [frame.x + frame.w, frame.y], [frame.x + frame.w, frame.y + frame.h], [frame.x, frame.y + frame.h]];
+
+        return (rings && rings.length) ? clipRings(nestRings([all]), rings, 'difference') : nestRings([all]);
+    }
+
+    // A closed ring with the points that lie within tol of the line between
+    // their neighbours kept dropped (Douglas-Peucker from its two farthest
+    // points apart).
+    function simplifyRing(r, tol) {
+        if (r.length < 5) {
+            return r.slice();
+        }
+
+        var far = 0, best = -1, keep = new Uint8Array(r.length);
+
+        r.forEach(function (p, i) {
+            var d = Math.hypot(p[0] - r[0][0], p[1] - r[0][1]);
+
+            if (d > best) {
+                best = d;
+                far = i;
+            }
+        });
+
+        var run = function (a, b) {
+            var stack = [[a, b]];
+
+            while (stack.length) {
+                var s = stack.pop(), i0 = s[0], i1 = s[1], p0 = r[i0 % r.length], p1 = r[i1 % r.length];
+                var dx = p1[0] - p0[0], dy = p1[1] - p0[1], len = Math.hypot(dx, dy), top = -1, at = -1;
+
+                for (var i = i0 + 1; i < i1; i++) {
+                    var p = r[i % r.length];
+                    var d = len ? Math.abs(dx * (p[1] - p0[1]) - dy * (p[0] - p0[0])) / len : Math.hypot(p[0] - p0[0], p[1] - p0[1]);
+
+                    if (d > top) {
+                        top = d;
+                        at = i;
+                    }
+                }
+
+                if (top > tol) {
+                    keep[at % r.length] = 1;
+                    stack.push([i0, at], [at, i1]);
+                }
+            }
+        };
+
+        keep[0] = keep[far] = 1;
+        run(0, far);
+        run(far, r.length);
+
+        return r.filter(function (p, i) { return keep[i]; });
+    }
+
+    // The rings of a subject's mask (a byte a pixel, w x h) in the turned
+    // space through the matrix m: specks and holes under 0.05 % of the
+    // picture go, the pixel steps are smoothed within 0.75 px.
+    function subjectRings(mask, w, h, m) {
+        var least = Math.max(4, w * h * 0.0005);
+        var rings = maskRings(mask, w, h).filter(function (r) { return Math.abs(ringArea(r)) >= least; }).map(function (r) {
+            return simplifyRing(r, 0.75);
+        }).filter(function (r) { return r.length > 2; });
+
+        return nestRings(mapRings(rings, m).map(function (r) {
+            return r.map(function (p) { return [areaRound(p[0]), areaRound(p[1])]; });
+        }));
+    }
+
+    // The subject op whose brushes and soft edge the panel shows: the last
+    // op of kind subject in the selection; -1 for none.
+    function subjectIndex(sel) {
+        var ops = (sel && sel.ops) || [], i;
+
+        for (i = Math.min(ops.length, AREA_MAX_OPS) - 1; i >= 0; i--) {
+            if (ops[i] && (ops[i].kind === 'subject')) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // The soft edge a layer of the selection takes (its subject's edge, in
+    // the turned space's units); 0 for a hard one.
+    function selectionMatte(sel) {
+        var i = subjectIndex(sel), e = (i >= 0) ? Number(sel.ops[i].edge) : 0;
+
+        return (isFinite(e) && (e > 0)) ? Math.min(SUBJECT_EDGE_MAX, e) : 0;
+    }
+
+    // A brush stroke kept on a subject op: its path thinned to points at
+    // least a quarter of its radius apart (at most AREA_MAX_POINTS), in the
+    // turned space; null without a point.
+    function subjectStroke(keep, r, pts) {
+        var out = [], step = Math.max(0.25, r / 4);
+
+        (pts || []).forEach(function (p) {
+            var last = out[out.length - 1];
+
+            if (!last || (Math.hypot(p[0] - last[0], p[1] - last[1]) >= step)) {
+                out.push([areaRound(p[0]), areaRound(p[1])]);
+            }
+        });
+
+        if (!out.length || !(r > 0)) {
+            return null;
+        }
+
+        if (out.length > AREA_MAX_POINTS) {
+            var every = out.length / AREA_MAX_POINTS;
+
+            out = out.filter(function (p, i) { return Math.floor(i / every) !== Math.floor((i - 1) / every); });
+        }
+
+        return { keep: keep ? 1 : 0, r: areaRound(r), pts: out };
+    }
+
+    // The mean of src (w x h) over a (2r + 1) square round each pixel, the
+    // square cut at the edges, into out.
+    function boxMean(src, w, h, r, out, tmp) {
+        var x, y, s, a, b;
+
+        for (y = 0; y < h; y++) {
+            var row = y * w;
+
+            s = 0;
+
+            for (x = 0; x < Math.min(r, w); x++) {
+                s += src[row + x];
+            }
+
+            for (x = 0; x < w; x++) {
+                a = x + r;
+                b = x - r - 1;
+
+                if (a < w) {
+                    s += src[row + a];
+                }
+
+                if (b >= 0) {
+                    s -= src[row + b];
+                }
+
+                tmp[row + x] = s / (Math.min(w - 1, a) - Math.max(0, b + 1) + 1);
+            }
+        }
+
+        for (x = 0; x < w; x++) {
+            s = 0;
+
+            for (y = 0; y < Math.min(r, h); y++) {
+                s += tmp[y * w + x];
+            }
+
+            for (y = 0; y < h; y++) {
+                a = y + r;
+                b = y - r - 1;
+
+                if (a < h) {
+                    s += tmp[a * w + x];
+                }
+
+                if (b >= 0) {
+                    s -= tmp[b * w + x];
+                }
+
+                out[y * w + x] = s / (Math.min(h - 1, a) - Math.max(0, b + 1) + 1);
+            }
+        }
+
+        return out;
+    }
+
+    // The guided filter (He, Sun and Tang) of the alpha p (0-1, w x h) with
+    // the colour picture guide (RGBA bytes) as its guide, radius r, eps
+    // the smoothing in (0-1)^2 colour units: the alpha follows the
+    // picture's edges within r of its own.
+    function guidedFilter(guide, p, w, h, r, eps) {
+        var n = w * h, I = [new Float32Array(n), new Float32Array(n), new Float32Array(n)], tmp = new Float32Array(n), i, c;
+        var mean = function (src) { return boxMean(src, w, h, r, new Float32Array(n), tmp); };
+        var prod = function (a, b) { var o = new Float32Array(n); for (var k = 0; k < n; k++) { o[k] = a[k] * b[k]; } return o; };
+
+        for (i = 0; i < n; i++) {
+            for (c = 0; c < 3; c++) {
+                I[c][i] = guide[i * 4 + c] / 255;
+            }
+        }
+
+        var mI = I.map(mean), mp = mean(p), cIp = I.map(function (ch) { return mean(prod(ch, p)); });
+        var vRR = mean(prod(I[0], I[0])), vRG = mean(prod(I[0], I[1])), vRB = mean(prod(I[0], I[2]));
+        var vGG = mean(prod(I[1], I[1])), vGB = mean(prod(I[1], I[2])), vBB = mean(prod(I[2], I[2]));
+        var A = [new Float32Array(n), new Float32Array(n), new Float32Array(n)], B = new Float32Array(n);
+
+        for (i = 0; i < n; i++) {
+            var m0 = mI[0][i], m1 = mI[1][i], m2 = mI[2][i], mpi = mp[i];
+            var c0 = cIp[0][i] - m0 * mpi, c1 = cIp[1][i] - m1 * mpi, c2 = cIp[2][i] - m2 * mpi;
+            var s00 = vRR[i] - m0 * m0 + eps, s01 = vRG[i] - m0 * m1, s02 = vRB[i] - m0 * m2;
+            var s11 = vGG[i] - m1 * m1 + eps, s12 = vGB[i] - m1 * m2, s22 = vBB[i] - m2 * m2 + eps;
+            var i00 = s11 * s22 - s12 * s12, i01 = s02 * s12 - s01 * s22, i02 = s01 * s12 - s02 * s11;
+            var i11 = s00 * s22 - s02 * s02, i12 = s01 * s02 - s00 * s12, i22 = s00 * s11 - s01 * s01;
+            var det = s00 * i00 + s01 * i01 + s02 * i02;
+            var a0 = (c0 * i00 + c1 * i01 + c2 * i02) / det, a1 = (c0 * i01 + c1 * i11 + c2 * i12) / det, a2 = (c0 * i02 + c1 * i12 + c2 * i22) / det;
+
+            A[0][i] = a0;
+            A[1][i] = a1;
+            A[2][i] = a2;
+            B[i] = mpi - a0 * m0 - a1 * m1 - a2 * m2;
+        }
+
+        var mA = A.map(mean), mB = mean(B), q = new Float32Array(n);
+
+        for (i = 0; i < n; i++) {
+            q[i] = Math.max(0, Math.min(1, mA[0][i] * I[0][i] + mA[1][i] * I[1][i] + mA[2][i] * I[2][i] + mB[i]));
+        }
+
+        return q;
+    }
+
+    // The soft edge of a mask: its alpha (RGBA bytes, w x h, the alpha
+    // byte) guided by the picture under it (guide, RGBA bytes of the same
+    // size) with radius r pixels, in place. The work goes tile by tile and
+    // skips a tile whose alpha is one value 2r round it, where the filter
+    // changes nothing, so a large mask costs only its edge.
+    function matteMask(mask, guide, w, h, r) {
+        r = Math.max(1, Math.round(r));
+
+        var T = 256, halo = 2 * r, tx, ty;
+
+        for (ty = 0; ty < h; ty += T) {
+            for (tx = 0; tx < w; tx += T) {
+                var x0 = Math.max(0, tx - halo), y0 = Math.max(0, ty - halo), x1 = Math.min(w, tx + T + halo), y1 = Math.min(h, ty + T + halo);
+                var tw = x1 - x0, th = y1 - y0, first = mask[(y0 * w + x0) * 4 + 3], flat = true, x, y;
+
+                for (y = y0; (y < y1) && flat; y++) {
+                    for (x = x0; x < x1; x++) {
+                        if (mask[(y * w + x) * 4 + 3] !== first) {
+                            flat = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (flat) {
+                    continue;
+                }
+
+                var p = new Float32Array(tw * th), g = new Uint8ClampedArray(tw * th * 4);
+
+                for (y = 0; y < th; y++) {
+                    for (x = 0; x < tw; x++) {
+                        var at = ((y0 + y) * w + x0 + x) * 4, k = y * tw + x;
+
+                        p[k] = mask[at + 3] / 255;
+                        g[k * 4] = guide[at];
+                        g[k * 4 + 1] = guide[at + 1];
+                        g[k * 4 + 2] = guide[at + 2];
+                    }
+                }
+
+                var q = guidedFilter(g, p, tw, th, r, MATTE_EPS);
+
+                for (y = ty; y < Math.min(h, ty + T); y++) {
+                    for (x = tx; x < Math.min(w, tx + T); x++) {
+                        mask[(y * w + x) * 4 + 3] = Math.round(q[(y - y0) * tw + x - x0] * 255);
+                    }
+                }
+            }
+        }
+
+        return mask;
+    }
+
     var SELECTION = {
         AREA_MAX_OPS: AREA_MAX_OPS, areaDragged: areaDragged, areaRect: areaRect, areaEllipse: areaEllipse, areaLasso: areaLasso, wandMask: wandMask,
-        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints
+        maskRings: maskRings, mapRings: mapRings, selectionRings: selectionRings, areaLayer: areaLayer, areaPoints: areaPoints, areaRest: areaRest, areaHit: areaHit,
+        simplifyRing: simplifyRing, subjectRings: subjectRings, subjectIndex: subjectIndex, selectionMatte: selectionMatte, subjectStroke: subjectStroke,
+        guidedFilter: guidedFilter, matteMask: matteMask, SUBJECT_MAX_STROKES: SUBJECT_MAX_STROKES, SUBJECT_EDGE_MAX: SUBJECT_EDGE_MAX
     };
 
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
         PROFILES: PROFILES, TOOLS: TOOLS, resolveTools: resolveTools,
+        RAIL_GROUPS: RAIL_GROUPS, railGroup: railGroup, railItems: railItems, railItemOf: railItemOf, railOpen: railOpen,
         clone: clone, sameDocument: sameDocument, newDocument: newDocument, docSize: docSize, History: History,
         RATIOS: RATIOS, givenRatio: givenRatio, cropRatios: cropRatios, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
@@ -7054,7 +7669,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

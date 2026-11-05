@@ -270,6 +270,32 @@ function test_image_editor_area_redaction_layer()
 	pg_assert_same(null, $r['none'], 'no selection: no area');
 }
 
+// An area layer takes a press only inside its outline: in an inverted
+// area's hole (an erased background around a kept subject) the press
+// reaches what lies under it. Other shapes are hit anywhere in their box.
+function test_image_editor_area_hit()
+{
+	$r = image_editor_area_node(
+		'var frame = [[0, 0], [100, 0], [100, 100], [0, 100]], hole = [[40, 40], [60, 40], [60, 60], [40, 60]];' . "\n"
+		. 'var l = M.areaLayer([frame, hole]), small = M.areaLayer([hole]);' . "\n"
+		. 'console.log(JSON.stringify({ edge: M.areaHit(l, [10, 10]), hole: M.areaHit(l, [50, 50]), inside: M.areaHit(small, [10, 10]), outside: M.areaHit(Object.assign({}, small, { w: 40, h: 40 }), [39, 1]),'
+		. ' box: M.areaHit({ shape: "box", w: 10, h: 10 }, [5, 5]), bare: M.areaHit({ shape: "area", w: 10, h: 10 }, [5, 5]) }));'
+	);
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not available');
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'runs');
+	pg_assert_true($r['edge'], 'the erased part is the layer\'s');
+	pg_assert_false($r['hole'], 'the hole is not');
+	pg_assert_true($r['inside'], 'inside a plain area');
+	pg_assert_true($r['outside'], 'a plain square area fills its box');
+	pg_assert_true($r['box'], 'a box shape is hit anywhere in its box');
+	pg_assert_true($r['bare'], 'an area without rings keeps its box');
+}
+
 // The part is bundled after the redaction it uses, sits in the photo
 // profile after Redact, and has its strings.
 function test_image_editor_area_part()
@@ -289,4 +315,25 @@ function test_image_editor_area_part()
 	$model = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_model.js');
 	pg_assert_contains("'redact', 'area', 'sticker'", $model, 'in the photo profile after Redact');
 	pg_assert_contains("'redact', 'area', 'sticker', 'frame', 'vector'", $model, 'a tool a caller may name');
+}
+
+// Keep only erases what lies in the frame outside the selection: a frame
+// less the selection, nothing for a selection that fills the frame.
+function test_image_editor_area_rest()
+{
+	$r = image_editor_area_node(
+		'var frame = { x: 0, y: 0, w: 100, h: 80 };' . "\n"
+		. 'var disc = M.selectionRings({ ops: [{ op: "add", kind: "ellipse", ring: M.areaEllipse([20, 20], [60, 60]) }] }, [], frame);' . "\n"
+		. 'var all = M.selectionRings({ ops: [{ op: "add", kind: "rect", ring: M.areaRect([0, 0], [100, 80]) }] }, [], frame);' . "\n"
+		. 'console.log(JSON.stringify({ disc: area(disc), rest: area(M.areaRest(disc, frame)), none: area(M.areaRest(all, frame)), empty: area(M.areaRest([], frame)) }));');
+
+	if ($r === null) {
+		pg_assert_true(true, 'Node is not installed; skipped');
+		return;
+	}
+
+	pg_assert_true(!isset($r['error']), 'the script runs: ' . (isset($r['error']) ? $r['error'] : ''));
+	pg_assert_same(8000 - $r['disc'], $r['rest'], 'the frame less the disc');
+	pg_assert_same(0, $r['none'], 'nothing outside a selection of the whole frame');
+	pg_assert_same(8000, $r['empty'], 'everything outside no selection');
 }

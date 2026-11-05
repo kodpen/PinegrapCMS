@@ -88,7 +88,7 @@ function test_custom_style_form_screens_use_shared_form()
 
 function test_custom_style_screens_refuse_a_blank_name()
 {
-	$queries = array('add_custom_style.php' => 'INSERT INTO style', 'edit_custom_style.php' => 'UPDATE style SET');
+	$queries = array('add_custom_style.php' => 'INSERT INTO style', 'edit_custom_style.php' => 'pg_custom_style_form_update(');
 
 	foreach ($queries as $file => $query) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
@@ -151,7 +151,7 @@ function test_style_layout_type_label()
 	pg_assert_same(lang('Custom'), pg_style_layout_type_label('custom'), 'custom');
 	pg_assert_same('', pg_style_layout_type_label(''), 'no override');
 
-	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_styles.php');
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/style_list_edit.php');
 	pg_assert_contains("h(pg_style_layout_type_label(\$style['layout_type']))", $list, 'the list column is translated');
 	pg_assert_false(strpos($list, "ucwords(\$style['layout_type'])") !== false, 'no raw enum in the list');
 }
@@ -196,9 +196,9 @@ function test_custom_style_screens_refuse_a_taken_or_long_name()
 	pg_assert_contains('can be at most', pg_region_form_name_refusal(str_repeat('ş', 101), false), 'over 100 characters');
 	pg_assert_same('', pg_region_form_name_refusal(str_repeat('ş', 100), false), '100 characters fit');
 
-	foreach (array('add_custom_style.php' => 'pg_style_name_taken($name)', 'edit_custom_style.php' => 'pg_style_name_taken($name, $id)') as $file => $call) {
+	foreach (array('add_custom_style.php' => 'pg_region_form_name_refusal($name, pg_style_name_taken($name))', 'edit_custom_style.php' => 'pg_custom_style_form_name_refusal($name, $id)') as $file => $call) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-		pg_assert_contains('pg_region_form_name_refusal($name, ' . $call . ')', $source, $file . ' refuses a taken or long name');
+		pg_assert_contains($call, $source, $file . ' refuses a taken or long name');
 		pg_assert_contains("mark_error('name', \$name_error)", $source, $file . ' shows it under the name');
 		pg_assert_contains(', $name_error)', $source, $file . ' draws the error');
 	}
@@ -231,4 +231,34 @@ function test_view_system_style_source_returns_to_the_style()
 	pg_assert_contains("pg_safe_back_url(\$liveform->get_field_value('send_to'), \$edit_style_path)", $source, 'Cancel goes back to the style');
 	pg_assert_contains("PATH . SOFTWARE_DIRECTORY . '/' . \$edit_style_path", $source, 'Save & Return goes back to the style');
 	pg_assert_false(strpos($source, "'view_styles.php'") !== false, 'not to the list without designs');
+}
+
+function test_custom_style_form_wide_layout()
+{
+	$new = pg_custom_style_form_cards(pg_custom_style_form_defaults(), true);
+	$form = strpos($new, 'col-12 lg:col-8 2xl:col-9 order-1');
+	$status = strpos($new, 'col-12 lg:col-4 2xl:col-3 order-2');
+	pg_assert_true($form !== false && $status !== false, 'a form column and a status column');
+	pg_assert_true($form < $status, 'the status column comes after the form column');
+	pg_assert_true(strpos($new, 'id="code"') < $status, 'the code editor is in the form column');
+	pg_assert_true(strpos($new, 'id="layout_type"') > $status, 'the options are in the status column');
+	pg_assert_contains('position-sticky" style="top:3.3rem;"', $new, 'the status box sticks under the top bar');
+	pg_assert_false(strpos($new, lang('Summary')) !== false, 'no Summary on create');
+
+	$edit = pg_custom_style_form_cards(pg_custom_style_form_defaults(), false, '', pg_custom_style_form_edit_status_rows(2, 7, 'today <b>x</b>'));
+	pg_assert_contains(lang('Summary'), $edit, 'a Summary on edit');
+	pg_assert_contains('<dt class="fw-normal">' . h(lang('Folders')) . '</dt>', $edit, 'the folders row');
+	pg_assert_contains('>7</dd>', $edit, 'the page count');
+	pg_assert_contains('today <b>x</b></dd>', $edit, 'the last change as given');
+
+	$layout = pg_custom_style_form_layout('<!--cards-->', '<button>Go</button>');
+	pg_assert_true(strpos($layout, '<!--cards-->') < strpos($layout, 'col-12 order-3 position-sticky'), 'the save bar after the columns');
+	pg_assert_contains('<button>Go</button>', $layout, 'the buttons in the bar');
+
+	foreach (array('add_custom_style.php', 'edit_custom_style.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_custom_style_form_layout(', $source, $file . ' uses the shared layout');
+	}
+	$edit_source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_custom_style.php');
+	pg_assert_contains('pg_custom_style_form_edit_status_rows($folders_using_style, $pages_using_style,', $edit_source, 'the edit screen fills the Summary');
 }

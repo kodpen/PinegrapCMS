@@ -119,11 +119,11 @@ function test_send_window_closes_without_an_opener()
 
 function test_email_campaign_lists_drop_old_icons()
 {
-	foreach (array('view_email_campaigns.php', 'view_email_campaign_history.php') as $file) {
-		$source = email_campaign_panel_fixes_source($file);
-		pg_assert_false(strpos($source, '<!--<button') !== false, $file . ' prints no commented-out button');
-		pg_assert_contains('<span class="bi bi-trash me-3" aria-hidden="true"></span>', $source, $file . ' Delete Selected icon');
+	foreach (array('view_email_campaigns.php', 'view_email_campaign_history.php', 'includes/fn/email_campaign_list.php') as $file) {
+		pg_assert_false(strpos(email_campaign_panel_fixes_source($file), '<!--<button') !== false, $file . ' prints no commented-out button');
 	}
+
+	pg_assert_contains('<i class="bi bi-trash me-1" aria-hidden="true"></i>', email_campaign_panel_fixes_source('includes/fn/email_campaign_list.php'), 'Delete Selected icon');
 
 	pg_assert_contains('<span class="bi bi-save me-3" aria-hidden="true"></span>', email_campaign_panel_fixes_source('edit_email_campaign.php'), 'the Save icon');
 }

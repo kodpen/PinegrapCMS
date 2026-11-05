@@ -990,6 +990,14 @@ $app_rows = '';
 
 $app_data = array();
 
+// The status column's Summary: how many applications are in each state and
+// what all of them asked for in the last 24 hours.
+$summary_counts = array('on' => 0, 'off' => 0, 'expired' => 0, 'unused' => 0);
+
+$summary_requests = 0;
+
+$summary_failures = 0;
+
 foreach ($apps as $app) {
 
 	$granted = json_decode((string)$app['scopes'], true);
@@ -1043,6 +1051,20 @@ foreach ($apps as $app) {
 		$status_label = lang('Not in use');
 
 	}
+
+	if ($status_class === 'warn') {
+
+		$summary_counts[($status_label === lang('Not in use')) ? 'unused' : 'expired']++;
+
+	} else {
+
+		$summary_counts[$status_class]++;
+
+	}
+
+	$summary_requests += $stats['requests'];
+
+	$summary_failures += $stats['failures'];
 
 	$signed_in_number = isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0;
 
@@ -1199,7 +1221,7 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 	$metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
 
 	$box = function ($id, $value) use ($button_class) {
-		return '<div class="api-secret-box mb-1"><code id="' . $id . '">' . h($value) . '</code>
+		return '<div class="api-secret-box"><code id="' . $id . '">' . h($value) . '</code>
 			' . api_settings_copy_button($id, $id . '_label', $button_class) . '</div>';
 	};
 
@@ -1275,17 +1297,23 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 	}
 
 	return '
-	<label class="form-label small" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
-	' . $box($id_prefix . '_mcp', $mcp_file) . '
-	<div class="form-text mb-5">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
+	<div class="form-field mb-5">
+		<label class="form-label small" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
+		' . $box($id_prefix . '_mcp', $mcp_file) . '
+		<div class="form-text">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
+	</div>
 
-	<label class="form-label small" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
-	' . $box($id_prefix . '_mcp_short', $mcp_short) . '
-	<div class="form-text mb-5">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
+	<div class="form-field mb-5">
+		<label class="form-label small" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
+		' . $box($id_prefix . '_mcp_short', $mcp_short) . '
+		<div class="form-text">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
+	</div>
 
-	<label class="form-label small" id="' . $id_prefix . '_meta_label">' . lang('Discovery address') . '</label>
-	' . $box($id_prefix . '_meta', $metadata_url) . '
-	<div class="form-text mb-5">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
+	<div class="form-field mb-5">
+		<label class="form-label small" id="' . $id_prefix . '_meta_label">' . lang('Discovery address') . '</label>
+		' . $box($id_prefix . '_meta', $metadata_url) . '
+		<div class="form-text">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
+	</div>
 
 	<div class="api-guide">
 		<div class="api-guide-title"><i class="bi bi-signpost-2 me-1"></i>' . lang('How to connect') . '</div>
@@ -1676,10 +1704,11 @@ echo pg_page_shell(array(
    scrollbar instead - which is also what a spreadsheet does with the same
    problem. Stacking each row into a block was the other option and was rejected
    here: five applications would become thirty lines, and the whole point of
-   this screen is scanning them side by side. */
+   this screen is scanning them side by side. 720px is what the list column
+   beside the status column holds on a 1280px screen without a scrollbar. */
 .api-scroll { overflow-x: auto; overflow-y: hidden; }
 .api-head, .api-row { display: grid; grid-template-columns: 1.9fr 1.5fr .85fr 1.15fr .9fr 34px;
-	gap: 14px; align-items: center; min-width: 900px; }
+	gap: 14px; align-items: center; min-width: 720px; }
 .api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
 .api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); }
@@ -1799,11 +1828,11 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			data-none="' . h(lang('Nothing found.')) . '"></div>',
 	), array('class' => 'mb-5')) . '
 
+	<div class="row">
+	<div class="col-12 lg:col-8 2xl:col-9 order-1">
 	<div class="card">
 		<div class="card-header d-flex align-items-center">
 			<i class="bi bi-key me-3"></i><b>' . lang('Applications') . '</b>
-			<span class="ms-auto small opacity-75 d-none lg:d-inline">'
-				. lang('Every application has its own key and secret. The secret is shown only when it is made.') . '</span>
 		</div>
 		<div class="card-body px-3 py-5">
 			<div class="api-scroll">
@@ -1821,11 +1850,46 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 	' . $oauth_clients_card . '
 
 	' . $webhook_card . '
+	</div>
 
-	<p class="small fg-2 mt-5">
-		<i class="bi bi-info-circle me-1"></i>'
-		. lang('The key is not shown in the list, only its prefix. The secret cannot be read back anywhere.') . '
-	</p>
+	<!-- Status column: what is read, not filled. Written after the list so that
+	     on a narrow screen the applications come first. -->
+	<div class="col-12 lg:col-4 2xl:col-3 order-2">
+		<div class="position-sticky mt-5 lg:mt-0" style="top:3.3rem;">
+			<div class="card" id="api_summary">
+				<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+				<div class="card-body">
+					<dl class="row small mb-0">
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Applications')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number(count($apps), 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Active')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['on'], 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Disabled')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['off'], 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Expired')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['expired'], 0) . '</dd>'
+						. ($summary_counts['unused'] > 0 ? '
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Not in use')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_counts['unused'], 0) . '</dd>' : '') . '
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Requests in 24 hours')) . '</dt>
+						<dd class="col-4 text-end mb-2">' . pg_format_number($summary_requests, 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Errors in 24 hours')) . '</dt>
+						<dd class="col-4 text-end mb-2' . ($summary_failures > 0 ? ' fg-danger' : '') . '">' . pg_format_number($summary_failures, 0) . '</dd>
+						<dt class="col-8 fw-normal fg-secondary">' . h(lang('Event notifications')) . '</dt>
+						<dd class="col-4 text-end mb-0">' . pg_format_number(count($webhook_all), 0) . '</dd>
+					</dl>
+				</div>
+			</div>
+			<p class="small fg-2 mt-5 mb-2">
+				<i class="bi bi-info-circle me-1" aria-hidden="true"></i>'
+				. lang('Every application has its own key and secret. The secret is shown only when it is made.') . '
+			</p>
+			<p class="small fg-2 mb-0">'
+				. lang('The key is not shown in the list, only its prefix. The secret cannot be read back anywhere.') . '
+			</p>
+		</div>
+	</div>
+	</div>
 </main>
 
 <!-- The drawer. One of them, filled from the row that was clicked: a drawer per
@@ -1864,21 +1928,21 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		<div class="drawer-body tab-content flex-grow-1 overflow-auto">
 
 			<div class="tab-pane fade show active" id="d_general">
-				<div class="mb-5">
-					<label class="form-label small">' . lang('Name') . '</label>
+				<div class="form-field mb-5">
+					<label class="form-label small" for="d_name">' . lang('Name') . '</label>
 					<input type="text" class="form-control form-control-sm" name="name" id="d_name" maxlength="190">
 				</div>
-				<div class="mb-5">
-					<label class="form-label small">' . lang('Description') . '</label>
+				<div class="form-field mb-5">
+					<label class="form-label small" for="d_description">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" id="d_description" maxlength="500">
 				</div>
-				<div class="mb-5">
+				<div class="form-field mb-5">
 					<label class="form-label small" id="d_key_label">' . lang('API Key') . '</label>
 					<div class="api-secret-box"><code id="d_key"></code>
 						' . api_settings_copy_button('d_key', 'd_key_label', 'btn-outline theme-secondary') . '</div>
 					<div class="form-text">' . lang('Public identifier. Safe to share with the integrator.') . '</div>
 				</div>
-				<div class="mb-5" id="d_secret_block">
+				<div class="form-field mb-5" id="d_secret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
 					<div class="api-secret-box"><code id="d_hint" class="fg-2"></code>
 						<button type="submit" class="btn btn-sm btn-outline theme-warning" name="api_action" value="rotate" id="d_rotate">
@@ -1886,9 +1950,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<div class="form-text">'
 						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
 				</div>
-				<div class="mb-5 d-none" id="d_nosecret_block">
+				<div class="form-field mb-5 d-none" id="d_nosecret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
-					<div class="form-text mt-0">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
+					<div class="form-text">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
 				</div>
 				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_locked_note">
 					<i class="bi bi-lock me-1"></i>' . h(lang('This application belongs to an account above yours, so only that account or one above it can change it.')) . '
@@ -1896,7 +1960,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_unused_note">
 					<i class="bi bi-exclamation-triangle me-1"></i>' . h(lang('Not in use: the oldest OAuth app applies. The site serves one OAuth app, so the scopes chosen here reach no connection; change them on the app in use, or delete this one.')) . '
 				</div>
-				<div class="mb-5" id="d_device_block">
+				<div class="form-field mb-5" id="d_device_block">
 					<label class="form-label small" id="d_login_label">' . lang('Signing in') . '</label>
 					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
 						' . api_settings_copy_button('d_login', 'd_login_label', 'btn-outline theme-secondary') . '</div>
@@ -1906,7 +1970,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<div class="mb-5" id="d_oauth_block">
 					' . api_settings_oauth_guide('d_oauth', 'btn-outline theme-secondary') . '
 				</div>
-				<div class="mb-5" id="d_auth_block">
+				<div class="form-field mb-5" id="d_auth_block">
 					<label class="form-label small" id="d_curl_label">' . lang('Authentication') . '</label>
 					<div class="api-secret-box"><code id="d_curl">curl -u APPLICATION_KEY:SECRET_KEY "'
 						. h($api_base_url) . '/meta"</code>
@@ -1934,8 +1998,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			</div>
 
 			<div class="tab-pane fade" id="d_security">
-				<div class="mb-5">
-					<label class="form-label small">' . lang('Allowed addresses') . '</label>
+				<div class="form-field mb-5">
+					<label class="form-label small" for="d_ip">' . lang('Allowed addresses') . '</label>
 					<input type="text" class="form-control tagin min-height-tagin" name="ip_allowlist" id="d_ip" data-pg-chips
 						data-placeholder="' . lang('Add an address') . '" value="">' . get_date_picker_format() . pg_fields_script() . '
 					<div class="form-text">'
@@ -1943,13 +2007,13 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						. '<br>' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . '</div>
 				</div>
 				<div class="row g-5">
-					<div class="col-6">
+					<div class="col-12 sm:col-6 form-field">
 						<label class="form-label small" for="d_expires">' . lang('Expires on') . '</label>
 						<input type="date" data-pg-date class="form-control form-control-sm" name="expires_at" id="d_expires">
 						<div class="form-text">' . lang('After this date the key stops working. Leave empty for a key that does not expire.') . '</div>
 					</div>
-					<div class="col-6">
-						<label class="form-label small">' . lang('Requests per minute') . '</label>
+					<div class="col-12 sm:col-6 form-field">
+						<label class="form-label small" for="d_rate">' . lang('Requests per minute') . '</label>
 						<input type="number" class="form-control form-control-sm" name="rate_limit_per_min" id="d_rate" min="1" max="6000">
 						<div class="form-text">' . lang('When an application asks for more than this in one minute, the rest of that minute is refused and it is told how long to wait.') . '</div>
 					</div>
@@ -2022,35 +2086,37 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<div class="dialog-body">
-				<div class="mb-5">
+				<div class="form-field mb-5">
 					<label class="form-label small" for="n_name">' . lang('Name') . '</label>
 					<input type="text" class="form-control form-control-sm" name="name" id="n_name" maxlength="190" required
 						placeholder="' . lang('For example: marketplace sync') . '">
 				</div>
-				<div class="mb-5">
+				<div class="form-field mb-5">
 					<label class="form-label small" for="n_description">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" id="n_description" maxlength="500">
 				</div>
-				<div class="mb-7">
-					<label class="form-label small">' . lang('Who connects') . '</label>
-					<div class="form-field">
-						<input class="radio" type="radio" name="kind" value="server" id="n_kind_server" checked>
-						<label class="small" for="n_kind_server"><b>' . lang('An integration') . '</b><br>
-							<span class="opacity-75">' . lang('An outside system calls with a key and a secret, with the rights of the account that creates it.') . '</span></label>
+				<fieldset class="mb-7">
+					<legend class="form-label small">' . lang('Who connects') . '</legend>
+					<div class="form-field form-field-card">
+						<input class="radio" type="radio" name="kind" value="server" id="n_kind_server" aria-describedby="n_kind_server_help" checked>
+						<label class="small fw-bold" for="n_kind_server">' . lang('An integration') . '</label>
+						<div class="form-text mt-0" id="n_kind_server_help">' . lang('An outside system calls with a key and a secret, with the rights of the account that creates it.') . '</div>
 					</div>
-					<div class="form-field mt-3">
-						<input class="radio" type="radio" name="kind" value="device" id="n_kind_device">
-						<label class="small" for="n_kind_device"><b>' . lang('Team devices') . '</b><br>
-							<span class="opacity-75">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</span></label>
+					<div class="form-field form-field-card">
+						<input class="radio" type="radio" name="kind" value="device" id="n_kind_device" aria-describedby="n_kind_device_help">
+						<label class="small fw-bold" for="n_kind_device">' . lang('Team devices') . '</label>
+						<div class="form-text mt-0" id="n_kind_device_help">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</div>
 					</div>
-					<div class="form-field mt-3">
-						<input class="radio" type="radio" name="kind" value="oauth" id="n_kind_oauth">
-						<label class="small" for="n_kind_oauth"><b>' . lang('Connected apps (OAuth)') . '</b><br>
-							<span class="opacity-75">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</span></label>
+					<div class="form-field form-field-card">
+						<input class="radio" type="radio" name="kind" value="oauth" id="n_kind_oauth" aria-describedby="n_kind_oauth_help">
+						<label class="small fw-bold" for="n_kind_oauth">' . lang('Connected apps (OAuth)') . '</label>
+						<div class="form-text mt-0" id="n_kind_oauth_help">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</div>
 					</div>
+				</fieldset>
+				<div role="group" aria-labelledby="n_scope_title">
+					<div class="form-label small" id="n_scope_title">' . lang('Permissions') . '</div>
+					' . api_settings_permission_rows('scope', 'n_scope') . '
 				</div>
-				<label class="form-label small">' . lang('Permissions') . '</label>
-				' . api_settings_permission_rows('scope', 'n_scope') . '
 			</div>
 			<div class="dialog-footer">
 				<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
@@ -2104,16 +2170,20 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 			<div class="dialog-body">
 				<p class="mb-5">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
 
-				<label class="form-label small text-uppercase opacity-75" id="nc_login_label">' . lang('Sign-in address') . '</label>
-				<div class="api-secret-box mb-5">
-					<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
-					' . api_settings_copy_button('nc_login', 'nc_login_label', 'btn-outline theme-primary') . '
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_login_label">' . lang('Sign-in address') . '</label>
+					<div class="api-secret-box">
+						<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
+						' . api_settings_copy_button('nc_login', 'nc_login_label', 'btn-outline theme-primary') . '
+					</div>
 				</div>
 
-				<label class="form-label small text-uppercase opacity-75" id="nc_key_label">client_key</label>
-				<div class="api-secret-box mb-5">
-					<code id="nc_key">' . h($new_credentials['key']) . '</code>
-					' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_key_label">client_key</label>
+					<div class="api-secret-box">
+						<code id="nc_key">' . h($new_credentials['key']) . '</code>
+						' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+					</div>
 				</div>
 
 				<div class="alert theme-primary py-3 px-5 small mb-0">
@@ -2149,16 +2219,20 @@ if ($new_credentials !== null) {
 					<span class="small opacity-75">'
 					. lang('Only a verification hash is stored. If it is lost, issue a new one.') . '</span></p>
 
-				<label class="form-label small text-uppercase opacity-75" id="nc_key_label">' . lang('Key') . '</label>
-				<div class="api-secret-box mb-5">
-					<code id="nc_key">' . h($new_credentials['key']) . '</code>
-					' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_key_label">' . lang('Key') . '</label>
+					<div class="api-secret-box">
+						<code id="nc_key">' . h($new_credentials['key']) . '</code>
+						' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+					</div>
 				</div>
 
-				<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">' . lang('Secret') . '</label>
-				<div class="api-secret-box mb-5">
-					<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
-					' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'btn-outline theme-primary') . '
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">' . lang('Secret') . '</label>
+					<div class="api-secret-box">
+						<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
+						' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'btn-outline theme-primary') . '
+					</div>
 				</div>
 
 				<div class="alert theme-warning py-3 px-5 small mb-0">

@@ -27,12 +27,10 @@ if (!$_POST) {
     $output_design_rows = '';
     if ($user['role'] <= 1) {
         $output_design_rows = '
-        <div class="col-12 my-3">
-            <div class="form-field">
-                <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1"></div>
-                <label class="" for="design">' . lang('Design File') . '</label>
-            </div>
-        </div>';
+                                        <div class="form-field my-5">
+                                            <div class="switch"><input type="checkbox" id="design" name="design" value="1"></div>
+                                            <label for="design">' . lang('Design File') . '</label>
+                                        </div>';
     }
 
     echo  pg_page_shell(array(
@@ -47,90 +45,90 @@ if (!$_POST) {
         ),
     )) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                    ' . $liveform->output_errors() . '
-                    ' . $liveform->output_notices() . '
-                
-                <form action="create_file.php" method="post">
-                    ' . get_token_field() . '
-                    <div class="row justify-content-center">
-                        <div class="col-12 md:col">
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Main Informations') . '</div>
-                                        <div class="card-body">
-                                            <div class="row">
-                                                <div class="col-12 my-3">
-                                                    <div class="input-group">
-                                                        <input type="text" name="name" id="name" aria-label="' . h(lang('File Name')) . '" class="form-control " style="width:70%"/>
-                                                        <select class="form-control" id="type" aria-label="' . h(lang('File Type')) . '" name="type" required>
-                                                            <option value="txt" selected>.txt</option>
-                                                            <option value="json">.json</option>
-                                                            <option value="svg">.svg</option>
-                                                            <option value="xml">.xml</option>
-                                                            <option value="css">.css</option>
-                                                            <option value="js">.js</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('File Access Control') . '</div>
-                                        <div class="card-body">
-                                            <div class="col-12 my-3">
-                                                <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                <select class="form-control" id="folder" name="folder">' . select_folder(0, 0) . '</select>
-                                            </div>
-                                            ' . $output_design_rows . '
-                                        </div>
-                                    </div>
-
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Description') . '</div>
-                                        <div class="card-body">
-                                            <div class="col-12 my-3">
-                                                <label for="description" class="form-label">' . lang('File Description') . '</label>
-                                                <textarea class="form-control" id="description" name="description" style="min-height:85px;"></textarea>
-                                            </div>
-                                        </div>
-                                    </div>
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
+    <form action="create_file.php" method="post">
+        ' . get_token_field() . '
+        <div class="row">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Main Informations') . '</h2>
+                    <div class="card-body pt-0">
+                        <div class="row">
+                            <div class="col-12 my-5">
+                                <label for="name" class="form-label">' . lang('File Name') . '</label>
+                                <div class="input-group">
+                                    <input type="text" name="name" id="name" aria-label="' . h(lang('File Name')) . '" class="form-control" required />
+                                    <select class="form-control flex-grow-0 w-auto" id="type" aria-label="' . h(lang('File Type')) . '" name="type" required>
+                                        <option value="txt" selected>.txt</option>
+                                        <option value="json">.json</option>
+                                        <option value="svg">.svg</option>
+                                        <option value="xml">.xml</option>
+                                        <option value="css">.css</option>
+                                        <option value="js">.js</option>
+                                    </select>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12 md:col-8">
-                            <div class="card my-7" id="code_block" style="display:block;">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('File Content') . '</div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="code" class="form-label">' . lang('Code') . '</label>
-                                        <textarea name="code" id="code" rows="25" class="form-control"></textarea>
-                                    </div>
-                                </div>
+                            <div class="col-12 my-5">
+                                <label for="description" class="form-label">' . lang('File Description') . '</label>
+                                <textarea class="form-control" id="description" name="description" rows="3"></textarea>
                             </div>
                         </div>
-
                     </div>
-
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" class="btn my-1 btn-solid theme-success">
-                                    <span class="bi bi-plus-circle me-3"></span>
-                                    <span class="pg-btn-label">' . lang('Create File') . '</span>
-                                </button>
-                            </div>
+                </div>
+                <div class="card mb-7" id="code_block">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('File Content') . '</h2>
+                    <div class="card-body pt-0">
+                        <div class="my-5">
+                            <label for="code" class="form-label">' . lang('Code') . '</label>
+                            <textarea name="code" id="code" rows="25" class="form-control"></textarea>
                         </div>
-                    </nav>
-                </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                <div class="position-sticky" style="top:3.3rem;">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</h2>
+                        <div class="card-body pt-0">
+                            <dl class="mb-0">
+                                <div class="d-flex justify-content-between gap-5 py-3 border-bottom">
+                                    <dt class="fw-normal">' . lang('File Name') . '</dt>
+                                    <dd class="mb-0 fw-bold text-end text-break" id="create_file_summary_name">.txt</dd>
+                                </div>
+                                <div class="d-flex justify-content-between gap-5 py-3">
+                                    <dt class="fw-normal">' . lang('Folder') . '</dt>
+                                    <dd class="mb-0 fw-bold text-end text-break" id="create_file_summary_folder"></dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('File Access Control') . '</h2>
+                        <div class="card-body pt-0">
+                            <div class="my-5">
+                                <label for="folder" class="form-label">' . lang('Folder') . '</label>
+                                <select class="form-control" id="folder" name="folder">' . select_folder(0, 0) . '</select>
+                            </div>' . $output_design_rows . '
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" class="btn my-1 btn-solid theme-success">
+                                <span class="bi bi-plus-circle me-5" aria-hidden="true"></span>
+                                <span class="pg-btn-label">' . lang('Create File') . '</span>
+                            </button>
+                        </div>
+                    </div>
+                </nav>
             </div>
         </div>
+    </form>
 
     ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'text')) . '
 
@@ -165,6 +163,21 @@ if (!$_POST) {
             document.getElementById("code_block").style.display = editable.includes(val) ? "block" : "none";
             updateMode(val);
         });
+
+        // The Summary follows the name, the type and the folder as they are
+        // chosen: the file is stored under that name, made unique on save.
+        function showSummary() {
+            var folder = document.getElementById("folder");
+            var option = folder.options[folder.selectedIndex];
+            document.getElementById("create_file_summary_name").textContent = document.getElementById("name").value.trim() + "." + document.getElementById("type").value;
+            document.getElementById("create_file_summary_folder").textContent = option ? option.text.trim() : "";
+        }
+
+        ["name", "type", "folder"].forEach(function (id) {
+            document.getElementById(id).addEventListener("input", showSummary);
+            document.getElementById(id).addEventListener("change", showSummary);
+        });
+        showSummary();
 
         // The editor arrives after the page; a type chosen before then is
         // applied when it does.

@@ -34,10 +34,27 @@ function test_visitors_site_search_report_draws_figures()
 
 	pg_assert_contains('&lt;b&gt;kahve&lt;/b&gt;', $html, 'a term is escaped');
 	pg_assert_false(strpos($html, '<b>kahve') !== false);
-	pg_assert_contains('data-order="40"', $html);
+	pg_assert_contains('data-sort="40"', $html);
 	pg_assert_contains('çay', $html);
+	pg_assert_contains('<td class="text-end">' . h(pg_visitors_percent(50, 1)) . '</td>', $html, 'through the language\'s percent form');
+	pg_assert_contains(h(lang('Most searched terms')), $html);
 	pg_assert_false(strpos($html, 'search_promote') !== false, 'no promote button without the right');
 	pg_assert_false(strpos($html, h(lang('Nothing was searched for in this period.'))) !== false);
+	pg_assert_false(strpos($html, 'pg-visitors-more') !== false, 'a short list shows whole');
+}
+
+function test_visitors_site_search_report_folds_long_lists()
+{
+	$top = array();
+
+	for ($i = 1; $i <= 40; $i++) {
+		$top[] = array('term' => 'term ' . $i, 'searches' => 100 - $i, 'zero_results' => 0, 'clicks' => 1);
+	}
+
+	$html = pg_site_search_report(array('summary' => array('searches' => 4000), 'top' => $top, 'zero' => array()), true);
+
+	pg_assert_same(40 - PG_VISITORS_LIST_ROWS, substr_count($html, 'class="pg-visitors-extra"'), 'only the first rows show at first');
+	pg_assert_contains(h(lang(array('string' => 'Show all ({var:1})', 'vars' => array(pg_format_number(40, 0))))), $html);
 }
 
 function test_visitors_site_search_report_empty_period()

@@ -37,9 +37,12 @@ $ship_date_adjustment = db_item(
     "SELECT
         zip_code_prefix,
         shipping_method_id,
-        adjustment
+        adjustment,
+        last_modified_timestamp,
+        user.user_username AS last_modified_username
     FROM ship_date_adjustments
-    WHERE id = '" . $id . "'");
+    LEFT JOIN user ON user.user_id = ship_date_adjustments.last_modified_user_id
+    WHERE ship_date_adjustments.id = '" . $id . "'");
 
 // If the form has not been submitted, then output it.
 if (!$_POST) {
@@ -53,6 +56,10 @@ if (!$_POST) {
         }
     }
 
+    // The Summary's last change: relative time and user.
+    $last_modified = get_relative_time(array('timestamp' => (int) $ship_date_adjustment['last_modified_timestamp']))
+        . ((string) $ship_date_adjustment['last_modified_username'] !== '' ? ' ' . h($ship_date_adjustment['last_modified_username']) : '');
+
     echo
         pg_page_shell([
             'title'=> lang('Edit Ship Date Adjustment'),
@@ -65,26 +72,17 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Ship Date Adjustments'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ship_date_adjustments.php'), array('label' => lang('Edit Ship Date Adjustment'))),
         ]) . '
 <main id="content" class="container-fluid">
-                    <div class="row">
-                <div class="col-12">
                     ' . $liveform->output_errors() . '
-                    
                     <form action="edit_ship_date_adjustment.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '">
-                        ' . pg_ship_date_adjustment_form_card($liveform) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('ship date adjustment')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_ship_date_adjustment_form_layout(
+                            pg_ship_date_adjustment_form_card($liveform, pg_ship_date_adjustment_form_status_row(lang('Last Modified'), $last_modified)),
+                            '
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('ship date adjustment')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>'
+                        ) . '
                     </form>
-                </div>
-            </div>
-        
 </main>' .
         output_footer();
 

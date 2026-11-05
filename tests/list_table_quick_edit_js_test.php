@@ -128,3 +128,40 @@ JS
 
 	pg_assert_same(array('6579-6686-6645-5163 Expired', 'Blue shirts', ''), $result);
 }
+
+/**
+ * A select whose options carry a class (the Pages list's folders, coloured
+ * by their access type) wears the chosen option's class, and only that one:
+ * it used to take the cell's colour for itself and every option.
+ */
+function test_list_table_quick_edit_select_tint()
+{
+	$result = list_table_js_test_node(<<<'JS'
+var list = function (names) {
+  var set = names.slice();
+  return {
+    add: function (n) { if (set.indexOf(n) < 0) { set.push(n); } },
+    remove: function (n) { set = set.filter(function (m) { return m !== n; }); },
+    all: function () { return set.slice(); }
+  };
+};
+var select = { classList: list(['form-control', 'pg-list-table-field']), selectedIndex: 1,
+  options: [{ className: 'public' }, { className: 'private' }, { className: '' }] };
+var out = {};
+T.tintSelect(select); out.first = select.classList.all();
+select.selectedIndex = 0; T.tintSelect(select); out.changed = select.classList.all();
+select.selectedIndex = 2; T.tintSelect(select); out.plain = select.classList.all();
+select.selectedIndex = -1; T.tintSelect(select); out.none = select.classList.all();
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('form-control', 'pg-list-table-field', 'private'), $result['first'], 'the chosen option\'s class');
+	pg_assert_same(array('form-control', 'pg-list-table-field', 'public'), $result['changed'], 'the old class goes when the choice changes');
+	pg_assert_same(array('form-control', 'pg-list-table-field'), $result['plain'], 'an option without a class leaves the select plain');
+	pg_assert_same(array('form-control', 'pg-list-table-field'), $result['none'], 'nothing chosen');
+}

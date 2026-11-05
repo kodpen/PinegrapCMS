@@ -225,7 +225,7 @@ function test_dashboard_v2_shop_salesmap_data_names_every_place()
 	pg_assert_same("Adana\n" . lang('No sales'), $places[2]['text']);
 	pg_assert_same(array(), array_filter(array_column($places, 'url')), 'nothing opens without the orders screen');
 	pg_assert_same(array(), array_filter(array_column($data['rows'], 'url')), 'nor do the rows');
-	pg_assert_same(lang(array('string' => 'Sales by region in {var:1}, last 30 days', 'vars' => lang('Turkey'))), $data['map_label'], 'the country in the reader\'s language');
+	pg_assert_same(lang(array('string' => 'Sales by region in {var:1}, last 30 days', 'vars' => pg_geo_country_name('TR'))), $data['map_label'], 'the country in the reader\'s language');
 }
 
 // For a person who may work the orders, a province that sold and its row
@@ -251,7 +251,8 @@ function test_dashboard_v2_shop_salesmap_data_links_the_orders()
 	parse_str((string) parse_url($data['rows'][1]['url'], PHP_URL_QUERY), $query);
 
 	pg_assert_same(array(), $data['places'], 'no map, no places');
-	pg_assert_same('Germany', $query['billing_country'], 'a country row opens its country');
+	pg_assert_same(pg_geo_country_label('Germany', 'DE'), $data['rows'][1]['text'], 'a country row in the panel language');
+	pg_assert_same('Germany', $query['billing_country'], 'a country row opens its country by the stored name');
 	pg_assert_false(isset($query['billing_state']));
 }
 

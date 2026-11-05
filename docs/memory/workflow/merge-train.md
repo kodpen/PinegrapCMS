@@ -15,7 +15,7 @@ description: Working rule (2026-10-25) for the merging session: one merger, one 
 - A PR that changes only `docs/`, `CLAUDE.md` or `.github/` lands alone as soon as it is green, outside the windows: every new session reads the rules from `development`, so a rules PR behind a train means sessions working under old rules. It gets its own `--no-ff` merge commit `<PR title> (#n)` on `origin/development` (indexes regenerated with `php tools/memory_index.php`), pushed fast-forward. When a train is already waiting and both regenerate the same index, it rides that train instead, so `development` does not move under the train.
 
 ## Which PRs go into a train?
-- Open PRs whose CI is green on their head and that carry the `ready` label, or that have had no push for an hour while green. Smaller first, up to about 12 a train. A PR over the size limit (`working-mode.md`) goes into a train of its own or with small PRs: a red train is then easy to blame.
+- Open PRs whose CI is green on their head and that carry the `ready` label, or that have had no push for an hour while green; never one from a fork, which no session merges ([[merge-train-forks]]). Smaller first, up to about 12 a train. A PR over the size limit (`working-mode.md`) goes into a train of its own or with small PRs: a red train is then easy to blame.
 
 ## How is the train built?
 - `php tools/merge_train.php` does it ([[merge-train-tool]]); by hand when it stops.
@@ -25,4 +25,4 @@ description: Working rule (2026-10-25) for the merging session: one merger, one 
 4. A conflict in logic, or a semantic clash found in the review, takes that PR out of the train (`merge-review.md`).
 5. Push the train and open it as a draft PR to `development` (a pushed branch runs no CI, and of the drafts only `merge-train/*` heads get it), titled "Merge train <time>: #a #b #c". Then [[merge-train-landing]].
 
-Related: docs/memory/workflow/merge-train-tool.md, docs/memory/workflow/merge-train-landing.md, docs/memory/workflow/merge-review.md, docs/memory/workflow/session-lifecycle.md
+Related: merge-train-tool.md, merge-train-landing.md, merge-review.md, session-lifecycle.md

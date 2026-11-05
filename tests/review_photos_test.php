@@ -78,7 +78,7 @@ function test_review_photos_wiring()
 	pg_assert_contains("if (!empty(\$comments_read['review']) && (\$output_file_attachment !== '') && pg_comment_file_is_image(", $page, 'the classic list shows a review photo');
 
 	pg_assert_contains('pg_comment_file_is_image($file_name)', review_photos_test_file('edit_comment.php'), 'moderation');
-	pg_assert_contains("pg_comment_file_is_image(\$comment['file_name'] ?? '')", review_photos_test_file('view_comments.php'), 'the moderation list');
+	pg_assert_contains("pg_comment_file_is_image(\$comment['file_name'] ?? '')", review_photos_test_file('includes/fn/comment_list_edit.php'), 'the moderation list');
 
 	pg_assert_contains("define('REVIEW_PHOTOS', (int) (\$row['review_photos'] ?? 0) == 1);", review_photos_test_file('init.php'), 'the constant, off before the upgrade');
 	pg_assert_contains("pg_schema_has('config', 'review_photos')", review_photos_test_file('includes/settings/commerce.save.php'), 'saved once the column is there');

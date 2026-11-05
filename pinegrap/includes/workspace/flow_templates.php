@@ -716,10 +716,10 @@ function ws_flow_template_apply($template, $graph, $values)
 
 /**
  * A row box's settings without those that belong to its table: the column
- * a row start waits on, the cells a box writes (column ids), a row change's
- * row given by its number. Pure.
+ * a row start waits on, the cells a box writes (column ids), the row a box
+ * changes or reads given by its number. Pure.
  *
- * @param string $kind   row | row_add | row_set
+ * @param string $kind   row | row_add | row_set | row_get
  * @param array  $config the box's settings
  * @return array
  */
@@ -733,7 +733,7 @@ function ws_flow_template_table_cleared($kind, $config)
         $config['cells'] = '';
     }
 
-    if (($kind === 'row_set') && preg_match('/^\s*\d+\s*$/', (string) ($config['row'] ?? ''))) {
+    if (in_array($kind, array('row_set', 'row_get'), true) && preg_match('/^\s*\d+\s*$/', (string) ($config['row'] ?? ''))) {
         $config['row'] = '';
     }
 
@@ -743,7 +743,8 @@ function ws_flow_template_table_cleared($kind, $config)
 /**
  * How far the person must reach the table a template asks: change (edit)
  * once one of its boxes adds or changes rows (ws_step_row_check()), read
- * (view) for a row start alone (ws_flow_row_check()); '' when it asks no
+ * (view) for a row start or a box that reads a row alone
+ * (ws_flow_row_check(), ws_step_row_get_check()); '' when it asks no
  * table. Pure.
  *
  * @param array $template ws_flow_templates() entry

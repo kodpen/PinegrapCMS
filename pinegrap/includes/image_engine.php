@@ -623,7 +623,11 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *                         gamma; Imagick only, reason no_color under GD),
  *                         sharpen, vignette, redact (areas burned in:
  *                         mode pixel, blur or solid, block, sigma, the box
- *                         x, y, w, h and its mask PNG's path), extend (the
+ *                         x, y, w, h and its mask PNG's path), masks (the
+ *                         selection's areas before the redaction: op erase
+ *                         or color, the box x, y, w, h, its mask PNG's path,
+ *                         fill array(r, g, b) or null, color of
+ *                         pg_image_edit_color()), extend (the
  *                         canvas: w, h, the picture's x, y on it, fill
  *                         array(r, g, b) or null for transparent), overlay
  *                         (a PNG's path, the canvas's size),
@@ -1694,6 +1698,11 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         $vignette->destroy();
     }
 
+    // The selection's areas, before the redaction burns in over them.
+    if (!empty($edit['masks'])) {
+        pg_image_edit_masks_imagick($image, $edit['masks'], $alpha);
+    }
+
     if (!empty($edit['redact'])) {
         pg_image_edit_redact_imagick($image, $edit['redact']);
     }
@@ -1900,6 +1909,11 @@ function pg_image_edit_gd($image, $edit, $alpha)
     }
 
     if (!empty($edit['vignette']) && !pg_image_edit_vignette_gd($out, $edit['vignette'])) {
+        pg_image_destroy($out);
+        return false;
+    }
+
+    if (!empty($edit['masks']) && !pg_image_edit_masks_gd($out, $edit['masks'], $alpha)) {
         pg_image_destroy($out);
         return false;
     }
@@ -2208,6 +2222,169 @@ function pg_image_edit_redact_gd($image, $regions)
         }
 
         pg_image_destroy($fx);
+        pg_image_destroy($mask);
+    }
+
+    return true;
+}
+
+/**
+ * The gamma of a colour step as a table of the 256 values it maps, so a
+ * pixel loop looks it up instead of calling pow(). Pure.
+ *
+ * @param float $gamma the exponent of pg_image_edit_color()
+ * @return int[] 0-255 => 0-255
+ */
+function pg_image_edit_gamma_table($gamma)
+{
+    $table = array();
+
+    for ($i = 0; $i < 256; $i++) {
+        $table[$i] = (int) round(255 * pow($i / 255, $gamma));
+    }
+
+    return $table;
+}
+
+/**
+ * One pixel through a colour step of pg_image_edit_color(): the matrix on
+ * 0-255 values, rounded and kept in range, then the gamma, as applyColor()
+ * of assets/js/pg_image_editor_model.js does it. Pure.
+ *
+ * @param array      $color matrix (20 numbers) and gamma
+ * @param int[]|null $table pg_image_edit_gamma_table() of the gamma, made
+ *                          here when not given
+ * @return array r, g, b
+ */
+function pg_image_edit_color_pixel($color, $r, $g, $b, $table = null)
+{
+    $m = $color['matrix'];
+    $table = $table ? $table : pg_image_edit_gamma_table($color['gamma']);
+    $out = array();
+
+    foreach (array(0, 5, 10) as $row) {
+        $v = $m[$row] * $r + $m[$row + 1] * $g + $m[$row + 2] * $b + $m[$row + 4] * 255;
+        $out[] = $table[($v < 0) ? 0 : (($v > 255) ? 255 : (int) round($v))];
+    }
+
+    return $out;
+}
+
+/**
+ * The mask step under Imagick, in place, after the colour step and before
+ * the redaction: each selection area of the editor (an Erase or an Adjust
+ * inside layer) at its box x, y, w, h, where its mask PNG is opaque. Erase
+ * makes the pixels see-through, or the fill colour (white for a format
+ * without alpha); a colour area takes its own colour step there.
+ *
+ * @param Imagick $image
+ * @param array   $masks op erase or color, x, y, w, h, mask, fill, color
+ * @param bool    $alpha the written format keeps transparency
+ * @return void
+ */
+function pg_image_edit_masks_imagick($image, $masks, $alpha)
+{
+    foreach ($masks as $area) {
+        $mask = new Imagick($area['mask']);
+        $fill = ($area['op'] === 'erase') ? ($area['fill'] ? $area['fill'] : ($alpha ? null : array(255, 255, 255))) : null;
+
+        if (($area['op'] === 'erase') && !$fill) {
+            $image->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+            $image->compositeImage($mask, Imagick::COMPOSITE_DSTOUT, $area['x'], $area['y']);
+            $mask->clear();
+            $mask->destroy();
+            continue;
+        }
+
+        if ($fill) {
+            $fx = new Imagick();
+            $fx->newImage($area['w'], $area['h'], new ImagickPixel(sprintf('rgb(%d,%d,%d)', $fill[0], $fill[1], $fill[2])), 'png');
+        } else {
+            $m = $area['color']['matrix'];
+            $fx = clone $image;
+            $fx->cropImage($area['w'], $area['h'], $area['x'], $area['y']);
+            $fx->setImagePage(0, 0, 0, 0);
+            $fx->colorMatrixImage(array(
+                $m[0], $m[1], $m[2], 0, 0, $m[4],
+                $m[5], $m[6], $m[7], 0, 0, $m[9],
+                $m[10], $m[11], $m[12], 0, 0, $m[14],
+                0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 1, 0,
+                0, 0, 0, 0, 0, 1));
+
+            if (method_exists($fx, 'clampImage')) {
+                $fx->clampImage();
+            }
+
+            if ((float) $area['color']['gamma'] != 1.0) {
+                $fx->gammaImage(1 / $area['color']['gamma']);
+            }
+        }
+
+        $fx->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+        $fx->compositeImage($mask, Imagick::COMPOSITE_DSTIN, 0, 0);
+        $image->compositeImage($fx, Imagick::COMPOSITE_OVER, $area['x'], $area['y']);
+        $fx->clear();
+        $fx->destroy();
+        $mask->clear();
+        $mask->destroy();
+    }
+}
+
+/**
+ * The mask step under GD, in place, as pg_image_edit_masks_imagick(): each
+ * pixel of an area changes by its mask's opacity. GD has no colour matrix,
+ * so a colour area is worked out per pixel (pg_image_edit_color_pixel()).
+ *
+ * @param resource|GdImage $image truecolor, alpha kept
+ * @return bool false when a mask could not be read
+ */
+function pg_image_edit_masks_gd($image, $masks, $alpha)
+{
+    foreach ($masks as $area) {
+        $mask = @imagecreatefrompng($area['mask']);
+
+        if (!$mask) {
+            return false;
+        }
+
+        $fill = ($area['op'] === 'erase') ? ($area['fill'] ? $area['fill'] : ($alpha ? null : array(255, 255, 255))) : null;
+        $table = ($area['op'] === 'color') ? pg_image_edit_gamma_table($area['color']['gamma']) : null;
+        $w = min($area['w'], imagesx($image) - $area['x'], imagesx($mask));
+        $h = min($area['h'], imagesy($image) - $area['y'], imagesy($mask));
+
+        for ($y = 0; $y < $h; $y++) {
+            for ($x = 0; $x < $w; $x++) {
+                $a = 1 - ((imagecolorat($mask, $x, $y) >> 24) & 0x7f) / 127;
+
+                if ($a <= 0) {
+                    continue;
+                }
+
+                $d = imagecolorat($image, $area['x'] + $x, $area['y'] + $y);
+                $opacity = (127 - (($d >> 24) & 0x7f)) / 127;
+                $rgb = array(($d >> 16) & 0xff, ($d >> 8) & 0xff, $d & 0xff);
+
+                if (($area['op'] === 'erase') && !$fill) {
+                    $to = $rgb;
+                    $opacity *= 1 - $a;
+                } else {
+                    $to = $fill ? $fill : pg_image_edit_color_pixel($area['color'], $rgb[0], $rgb[1], $rgb[2], $table);
+
+                    // A fill covers the see-through part as well.
+                    if ($fill) {
+                        $opacity += (1 - $opacity) * $a;
+                    }
+                }
+
+                for ($c = 0; $c < 3; $c++) {
+                    $rgb[$c] = (int) round($to[$c] * $a + $rgb[$c] * (1 - $a));
+                }
+
+                imagesetpixel($image, $area['x'] + $x, $area['y'] + $y, ((127 - (int) round($opacity * 127)) << 24) | ($rgb[0] << 16) | ($rgb[1] << 8) | $rgb[2]);
+            }
+        }
+
         pg_image_destroy($mask);
     }
 

@@ -1120,7 +1120,9 @@ if (!$_POST) {
         <body class="design coloron">
             <div id="theme_designer_toolbar">
                 <div id="header" style="    height: 50px;line-height: 50px;">
-                    <img style="height:inherit;height: 37px;width: auto;margin-left: 1rem;" src="' . h(LOGO_URL) . '" width="auto" border="0" alt="logo" title="" /><br />
+                    ' . ((defined('PRIVATE_LABEL') && PRIVATE_LABEL)
+                        ? '<img style="height: 37px;width: auto;margin-left: 1rem;" src="' . h(LOGO_URL) . '" alt="logo" />'
+                        : '<span style="--pg-logo-h: 28px;display: inline-flex;vertical-align: middle;margin-left: 1rem;">' . pg_logo_markup('-td') . '</span>') . '<br />
                 </div>
                 <div id="subnav" style="font-weight: bold">
                     ' . h($file_name) . '

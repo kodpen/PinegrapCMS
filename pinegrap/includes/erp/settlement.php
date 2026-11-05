@@ -103,6 +103,64 @@ function erp_invoice_open_amount($invoice)
 }
 
 /**
+ * Whether a stored date column holds no date.
+ *
+ * @param mixed $date
+ * @return bool
+ */
+function erp_invoice_date_empty($date)
+{
+    $date = (string) $date;
+
+    return ($date === '') || ($date === '0000-00-00');
+}
+
+/**
+ * The payment date an invoice should store after its paid figure was worked
+ * out again, or '' when the stored one stays.
+ *
+ * The day the invoice was paid off is the day of the receipt that closed it,
+ * filled in only when the document does not already state one. An invoice
+ * that is no longer paid (its closing receipt was cancelled) loses a date
+ * that a receipt gave it, so the receipt that closes it next dates it again;
+ * kept, the cancelled receipt's date would stay on the document, the API and
+ * the e-document for good. An internet sale keeps its date, which the gateway
+ * gave and no receipt did. A cancelled or draft invoice keeps its status, so
+ * there only an invoice left with no money at all loses its date.
+ *
+ * @param string $status            The status just worked out
+ * @param int    $paid              The allocated total, minor units
+ * @param string $stored            The stored payment_date
+ * @param int    $is_internet_sale
+ * @param string $closing_date      The latest allocation's doc_date ('' when not looked up)
+ * @return string  'Y-m-d', '0000-00-00' to clear it, or '' to keep the stored one
+ */
+function erp_invoice_payment_date_next($status, $paid, $stored, $is_internet_sale, $closing_date)
+{
+    $status = (string) $status;
+
+    if ($status === 'paid') {
+        if (erp_invoice_date_empty($stored) && !erp_invoice_date_empty($closing_date)) {
+            return (string) $closing_date;
+        }
+
+        return '';
+    }
+
+    if (((int) $is_internet_sale !== 0) || erp_invoice_date_empty($stored)) {
+        return '';
+    }
+
+    $unpaid = (($status === 'issued') || ($status === 'partially_paid'));
+
+    if ($unpaid || ((int) $paid <= 0)) {
+        return '0000-00-00';
+    }
+
+    return '';
+}
+
+/**
  * Work the paid figure out again from the allocations, and set the status to match.
  *
  * Derived rather than incremented, like the balances: a counter that is only ever
@@ -154,23 +212,14 @@ function erp_invoice_refresh_paid($invoice_id)
         }
     }
 
-    // The day the invoice was paid off is the day of the receipt that closed
-    // it. Only filled in when the document does not already state one: an
-    // internet sale carries the gateway's date from the order.
-    $payment_date = '';
-    if (($status === 'paid') && ((string) ($invoice['payment_date'] ?? '0000-00-00') === '0000-00-00')) {
-        $payment_date = (string) db_value("SELECT COALESCE(MAX(doc_date), '') FROM erp_settlements
+    $closing_date = '';
+    if (($status === 'paid') && erp_invoice_date_empty($invoice['payment_date'] ?? '')) {
+        $closing_date = (string) db_value("SELECT COALESCE(MAX(doc_date), '') FROM erp_settlements
             WHERE invoice_id = '" . $invoice_id . "'");
     }
 
-    // The date came from a receipt, and the receipt is gone: nothing was
-    // collected any more, so the invoice does not say when it was paid. An
-    // internet sale keeps its date, which the gateway gave and no receipt
-    // did. The order's own paid mark is not touched either way.
-    if (($paid <= 0) && ((int) ($invoice['is_internet_sale'] ?? 0) === 0)
-        && ((string) ($invoice['payment_date'] ?? '0000-00-00') !== '0000-00-00')) {
-        $payment_date = '0000-00-00';
-    }
+    $payment_date = erp_invoice_payment_date_next($status, $paid,
+        (string) ($invoice['payment_date'] ?? ''), (int) ($invoice['is_internet_sale'] ?? 0), $closing_date);
 
     $updated = (erp_query("UPDATE erp_invoices
         SET paid_total = '" . $paid . "',

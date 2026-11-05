@@ -9,6 +9,10 @@
  * stage draws it, pictures embedded, fonts by name. The server passes it
  * through pg_svg_sanitize() before it touches the disk.
  *
+ * Import in the top bar brings an SVG file into any document as one layer
+ * (its ids made unique), which Break apart turns into a layer per element.
+ * An SVG layer paints on a save's canvas as a picture of its own markup.
+ *
  * A part of window.PgImageEditor, bundled after pg_image_editor.js
  * (pg_js_bundles()); it hangs its code on the editor through
  * PgImageEditor.parts (docs/memory/ui/image-editor-parts.md).
@@ -204,6 +208,197 @@
         this.render();
     };
 
+    // ---- Import (the top bar's, pg_image_editor_artboard.js) ----
+
+    // Every id in a document's SVG layers and definitions, which an import
+    // must not take again.
+    function takenIds(doc) {
+        var text = (doc.svgDefs || '') + doc.layers.map(function (l) { return (l.type === 'svg') ? l.markup : ''; }).join(''), ids = [], re = /\sid="([^"]*)"/g, m;
+
+        while ((m = re.exec(text)) !== null) {
+            ids.push(m[1]);
+        }
+
+        if (doc.svgRootId) {
+            ids.push(doc.svgRootId);
+        }
+
+        return ids;
+    }
+
+    // Ids and the references to them renamed through map, in node and
+    // below: ids, url(#…) and #… in attributes, style sheets' selectors.
+    function renameIds(node, map) {
+        [node].concat(Array.prototype.slice.call(node.querySelectorAll('*'))).forEach(function (n) {
+            Array.prototype.slice.call(n.attributes).forEach(function (a) {
+                var v = (a.name === 'id') ? (Object.prototype.hasOwnProperty.call(map, a.value) ? map[a.value] : a.value) : M.svgRenameValue(a.value, map);
+
+                if (v !== a.value) {
+                    if (a.namespaceURI) {
+                        n.setAttributeNS(a.namespaceURI, a.name, v);
+                    } else {
+                        n.setAttribute(a.name, v);
+                    }
+                }
+            });
+
+            if (n.localName === 'style') {
+                n.textContent = M.svgRenameCss(n.textContent, map);
+            }
+        });
+    }
+
+    // A sanitized SVG's text as one SVG layer (a group) in the middle of
+    // the visible stage, its ids made unique in the document, the file's
+    // view box fitted into the layer's box; false when it does not parse.
+    // The group's id is the root's, which its style rules are scoped to.
+    Editor.prototype.svgImport = function (text, name) {
+        var parsedDoc = new DOMParser().parseFromString(String(text || ''), 'image/svg+xml'), root = parsedDoc.documentElement;
+
+        if (!root || (root.localName !== 'svg') || parsedDoc.getElementsByTagName('parsererror').length) {
+            return false;
+        }
+
+        if (!root.getAttribute('id')) {
+            root.setAttribute('id', 'svg');
+        }
+
+        var ids = Array.prototype.map.call(root.querySelectorAll('[id]'), function (n) { return n.getAttribute('id'); });
+
+        renameIds(root, M.svgIdMap([root.getAttribute('id')].concat(ids), takenIds(this.doc)));
+
+        var size = M.svgRoot(root.getAttribute('width'), root.getAttribute('height'), root.getAttribute('viewBox'));
+        var top = document.createElementNS(SVGNS, 'g'), inner = document.createElementNS(SVGNS, 'g');
+
+        top.setAttribute('id', root.getAttribute('id'));
+        inner.setAttribute('transform', M.svgMatrixText(size.m));
+        INHERITED.forEach(function (a) {
+            if (root.hasAttribute(a)) {
+                inner.setAttribute(a, root.getAttribute(a));
+            }
+        });
+        Array.prototype.slice.call(root.children).forEach(function (child) {
+            if (SKIP.indexOf(child.localName) < 0) {
+                inner.appendChild(document.importNode(child, true));
+            }
+        });
+        top.appendChild(inner);
+
+        var box = M.svgFit(size.w, size.h, this.viewRect(), 0.6, true);
+        var l = { type: 'svg', kind: 'g', imported: true, markup: serialize(top), vb: { x: 0, y: 0, w: size.w, h: size.h }, x: box.x, y: box.y, w: box.w, h: box.h, rot: 0, opacity: 1 };
+
+        if (name) {
+            l.fileName = String(name);
+        }
+
+        this.toSelect();
+        this.addLayers([l], 0);
+
+        return true;
+    };
+
+    // An imported SVG broken apart: a layer per element as an opened SVG
+    // gets them (svgLayers()), each where it was drawn; its definitions
+    // join the document's, its style rules scoped to the document's root
+    // id. One undo step.
+    Editor.prototype.svgBreakApart = function (id) {
+        var l = this.layer(id), top = l && (l.type === 'svg') && l.imported ? markupNode(l.markup) : null, inner = top && top.firstElementChild;
+
+        if (!inner) {
+            return;
+        }
+
+        var scope = top.getAttribute('id') || '', svg = document.createElementNS(SVGNS, 'svg'), m = inner.getAttribute('transform') || '';
+
+        svg.setAttribute('width', l.vb.w);
+        svg.setAttribute('height', l.vb.h);
+
+        if (scope) {
+            svg.setAttribute('id', scope);
+        }
+
+        INHERITED.forEach(function (a) {
+            if (inner.hasAttribute(a)) {
+                svg.setAttribute(a, inner.getAttribute(a));
+            }
+        });
+        Array.prototype.slice.call(inner.children).forEach(function (child) {
+            var n = child.cloneNode(true);
+
+            if ((DEFS.indexOf(n.localName) < 0) && m) {
+                n.setAttribute('transform', (m + ' ' + (n.getAttribute('transform') || '')).trim());
+            }
+
+            svg.appendChild(n);
+        });
+
+        var got = this.svgLayers(serialize(svg));
+
+        if (!got || !got.layers.length) {
+            return;
+        }
+
+        var place = M.svgMatrix(l), opacity = (l.opacity === undefined) ? 1 : l.opacity, added = [];
+        var parts = got.layers.map(function (s) {
+            var own = M.svgMatrix(s), box = M.svgPlace(s.vb, M.mul(place, own));
+            var out = { type: 'svg', kind: s.kind, markup: s.markup, vb: s.vb, opacity: opacity };
+
+            // Turned and stretched at once the element skews: it keeps its
+            // place inside a group as large as the import.
+            if (!box) {
+                out.kind = (s.kind === 'kept') ? 'kept' : 'g';
+                out.markup = '<g transform="' + M.svgMatrixText(own) + '">' + s.markup + '</g>';
+                out.vb = M.clone(l.vb);
+                box = { x: l.x, y: l.y, w: l.w, h: l.h, rot: l.rot || 0 };
+
+                if (l.mirror) {
+                    box.mirror = true;
+                }
+            }
+
+            if (s.locked) {
+                out.locked = true;
+            }
+
+            return Object.assign(out, box);
+        });
+
+        this.change(function (doc) {
+            var at = doc.layers.findIndex(function (x) { return x.id === id; });
+
+            if (at < 0) {
+                return;
+            }
+
+            doc.layers.splice(at, 1);
+            parts.forEach(function (p, i) {
+                p.id = M.newId(doc);
+                doc.layers.splice(at + i, 0, p);
+                added.push(p.id);
+            });
+
+            if (got.defs) {
+                var defs = markupNode(got.defs);
+
+                if (doc.svgRootId && scope && (doc.svgRootId !== scope)) {
+                    var map = {};
+
+                    map[scope] = doc.svgRootId;
+                    renameIds(defs, map);
+                }
+
+                var body = Array.prototype.map.call(defs.children, serialize).join('');
+
+                doc.svgDefs = doc.svgDefs ? doc.svgDefs.replace(/<\/defs>\s*$/, body + '</defs>') : '<defs>' + body + '</defs>';
+            }
+
+            if (!doc.svgRootId && scope) {
+                doc.svgRootId = scope;
+            }
+        });
+        this.select(added);
+    };
+
     // ---- the layer type ----
 
     function svgNode(l) {
@@ -283,6 +478,13 @@
             body.appendChild(el('p', { class: 'pgie-note', text: t('svgKeptNote') }));
         }
 
+        // An imported SVG is one layer until it is broken apart.
+        if ((layers.length === 1) && (open.length === 1) && layers[0].imported) {
+            body.appendChild(el('div', { class: 'pgie-btnrow' }, [
+                X.button('pgie-btn', t('svgBreakApart'), 'layers', function () { self.svgBreakApart(layers[0].id); }, true)
+            ]));
+        }
+
         var painted = open.filter(function (l) { return PAINTED.indexOf(l.kind) >= 0; });
 
         if (!painted.length) {
@@ -337,9 +539,31 @@
         }
     };
 
+    // A layer as an SVG picture of its own box (the document's definitions
+    // and root id with it, so gradients and scoped rules draw), for the
+    // canvas a save paints on.
+    function svgPictureSrc(doc, l) {
+        var vb = l.vb, text = '<svg xmlns="' + SVGNS + '" xmlns:xlink="http://www.w3.org/1999/xlink"' + (doc.svgRootId ? ' id="' + M.svgEscape(doc.svgRootId) + '"' : '')
+            + ' width="' + Math.max(1, Math.round(l.w)) + '" height="' + Math.max(1, Math.round(l.h)) + '" viewBox="' + [vb.x, vb.y, vb.w, vb.h].join(' ') + '" preserveAspectRatio="none">'
+            + (doc.svgDefs || '') + l.markup + '</svg>';
+
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(text);
+    }
+
+    function svgPaint(g, l) {
+        var img = this.pictures[svgPictureSrc(this.doc, l)], m = M.svgMatrix(l);
+
+        if (img && img.complete) {
+            g.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
+            g.drawImage(img, l.vb.x, l.vb.y, l.vb.w, l.vb.h);
+        }
+    }
+
     Editor.layerTypes.svg = {
         node: svgNode,
-        name: function (l) { return t('svgKind_' + l.kind); },
+        paint: svgPaint,
+        ready: function (l) { return this.picture(svgPictureSrc(this.doc, l)).catch(function () { return null; }); },
+        name: function (l) { return l.fileName || t('svgKind_' + l.kind); },
         panel: function (body, layers) { this.svgPanel(body, layers); }
     };
 

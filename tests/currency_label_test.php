@@ -42,11 +42,12 @@ function test_currency_label_starter_names_are_translated()
 // the list writes the rate like the card does.
 function test_currency_screens_use_the_label()
 {
-	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_currencies.php');
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/currency_list_edit.php');
 	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_16.php');
 
-	pg_assert_contains('h(pg_currency_label($currency[\'name\']))', $list, 'the list names by label');
-	pg_assert_contains('pg_format_number((float) $currency[\'exchange_rate\'], 5)', $list, 'the list formats the rate');
+	pg_assert_contains('h(pg_currency_label((string) ($currency[\'name\'] ?? \'\')))', $list, 'the list names by label');
+	pg_assert_contains('$rate = (float) ($currency[\'exchange_rate\'] ?? 0);', $list, 'the list reads the rate as a number');
+	pg_assert_contains('pg_format_number($rate, 5)', $list, 'the list formats the rate');
 	pg_assert_contains('h(pg_currency_label($currency[\'name\']))', $card, 'the card names by label');
 }
 

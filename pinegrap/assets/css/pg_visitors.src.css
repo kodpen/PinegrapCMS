@@ -184,22 +184,6 @@
     text-align: start;
   }
 
-  .pg-visitors-spark {
-    margin-bottom: 1rem;
-  }
-
-  .pg-visitors-spark .pg-visitors-note {
-    margin: 0 0 .5rem;
-  }
-
-  .pg-visitors-spark-dates {
-    display: flex;
-    justify-content: space-between;
-    margin-top: .375rem;
-    font-size: .75rem;
-    color: var(--pg-fg-2);
-  }
-
   /* ── Tiles and change ───────────────────────────────────────────────── */
 
   .pg-visitors-tiles {
@@ -350,6 +334,27 @@
   .pg-visitors-table td.text-end {
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* A button in a row keeps the row as low as its text. */
+  .pg-visitors-table .btn {
+    padding-block: 0;
+  }
+
+  /* A second, quieter line under a cell's text. */
+  .pg-visitors-cell-note {
+    display: block;
+    font-size: .75rem;
+    line-height: 1.35;
+    color: var(--pg-fg-2);
+  }
+
+  /* On a phone a wide table scrolls sideways in its box; the name column
+     keeps room enough not to break a name at every hyphen. */
+  @media (max-width: 575.98px) {
+    .pg-visitors-table > tbody > tr > td:first-child {
+      min-width: 8.5rem;
+    }
   }
 
   .pg-visitors-table.is-collapsed .pg-visitors-extra {
@@ -636,6 +641,25 @@
   }
 
   /* ── Section: ai ────────────────────────────────────────────────────── */
+
+  /* A bot's most-read pages on one line each, wrapping as a whole. */
+  .pg-visitors-reads {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .125rem 1rem;
+  }
+
+  .pg-visitors-read {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .pg-visitors-read-count {
+    margin-inline-start: .125rem;
+    font-size: .8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--pg-fg-2);
+  }
 
   /* ── Section: places ────────────────────────────────────────────────── */
 

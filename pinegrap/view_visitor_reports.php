@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 validate_visitors_access($user);
 
@@ -30,11 +31,6 @@ if ((defined('STATS_URL') == true) && (STATS_URL != '')) {
 	$output_web_statistics_link = '<a class="btn btn-sm btn-text theme-secondary" href="' . h(STATS_URL) . '" target="_blank"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Website Analytics') . '</a>';
 }
 
-
-$keys_and_values = '';
-
-// The page asked for, a whole number of 1 or more (pg_list_page_number()).
-$screen = pg_list_page_number($_REQUEST['screen'] ?? '');
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -58,9 +54,6 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified' => 'visitor_reports.last_modified_timestamp',
 ));
 
-$my_visitor_reports = 0;
-$all_visitor_reports = 0;
-
 // get all visitor reports
 $query =
     "SELECT
@@ -77,46 +70,31 @@ $query =
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-$visitor_reports = array();
+// Every saved report is printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
 while ($row = mysqli_fetch_assoc($result)) {
-    $visitor_reports[] = $row;
-    // Add one to all visitor reports
-    $all_visitor_reports++;
-    // Add one to my visitor reports
-    $my_visitor_reports++;
+    $list_rows[] = array(
+        'id' => (int) $row['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="view_visitor_report.php?id=' . (int) $row['id'] . '" data-pg-open>' . h($row['name']) . '</a>'),
+            'created' => pg_list_table_when_cell($row['created_timestamp'], (string) $row['created_username']),
+            'last_modified' => pg_list_table_when_cell($row['last_modified_timestamp'], (string) $row['last_modified_username']),
+        ),
+    );
 }
 
-$output_rows = '';
-
-// if there is at least one result to display
-if ($visitor_reports) {
-    foreach ($visitor_reports as $visitor_report) {
-
-        $created_username = '';
-            
-        if ($visitor_report['created_username']) {
-            $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($visitor_report['created_username']) ) ) );
-        }
-        
-        $last_modified_username = '';
-        
-        if ($visitor_report['last_modified_username']) {
-            $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($visitor_report['last_modified_username']) ) ) );
-        }
-
-        $output_link_url  = 'view_visitor_report.php?id=' . $visitor_report['id'];
-        $output_rows .=
-            '<tr>
-                <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('View') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye"></i></button>
-                </td>
-                <td class="chart_label">' . h($visitor_report['name']) . '</td>
-                <td>' . get_relative_time(array('timestamp' => $visitor_report['created_timestamp'])) . ' ' . $created_username . '</td>
-                <td>' . get_relative_time(array('timestamp' => $visitor_report['last_modified_timestamp'])) . ' ' . $last_modified_username . '</td>
-            </tr>';
-    }
-}
+$list = pg_list_table_printed(array(
+    'list' => 'view_visitor_reports',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 print
 
@@ -140,27 +118,13 @@ print
             ' . pg_screen_toolbar(array(
                 'primary'   => array('label' => lang('Create'), 'url' => 'view_visitor_report.php', 'icon' => 'bi-plus-circle'),
                 'secondary' => array(array('label' => lang('Overview'), 'url' => 'visitors.php', 'icon' => 'bi-graph-up'), $output_web_statistics_link),
-                'search'    => pg_list_sort_menu('view_visitor_reports.php', $sort_columns, $sort_levels, $sort_default),
+                'search'    => array(pg_list_table_search_box('view_visitor_reports'), pg_list_sort_menu('view_visitor_reports.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('Saved visitor reports')) . '
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();
