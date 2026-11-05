@@ -181,6 +181,36 @@ function test_oauth_registration_refusals()
 	pg_assert_same('invalid_redirect_uri', $script['error'], 'script address');
 }
 
+// A JSON value that is not text, where one word is expected, is refused
+// like an unknown method, with no "Array to string conversion" warning.
+function test_oauth_registration_refuses_a_method_that_is_not_text()
+{
+	$list = pg_oauth_registration_validate(array('redirect_uris' => array('https://a.example/cb'), 'token_endpoint_auth_method' => array('none')));
+
+	pg_assert_same('invalid_client_metadata', $list['error'], 'a list as the method');
+
+	$object = pg_oauth_registration_validate(array('redirect_uris' => array('https://a.example/cb'), 'token_endpoint_auth_method' => array('a' => 'b')));
+
+	pg_assert_same('invalid_client_metadata', $object['error'], 'an object as the method');
+}
+
+// A form field of the token and revocation endpoints sent as a list
+// (code[]=x) counts as not given, with no "Array to string conversion"
+// warning; text is read as sent.
+function test_oauth_form_value_reads_only_text()
+{
+	$saved = $_POST;
+
+	$_POST = array('code' => array('x'), 'grant_type' => 'authorization_code', 'scope' => array('a' => 'b'));
+
+	pg_assert_same('', pg_oauth_form_value('code'), 'a list');
+	pg_assert_same('', pg_oauth_form_value('scope'), 'an object');
+	pg_assert_same('', pg_oauth_form_value('token'), 'missing');
+	pg_assert_same('authorization_code', pg_oauth_form_value('grant_type'), 'text');
+
+	$_POST = $saved;
+}
+
 // RFC 7636 appendix B.
 function test_oauth_pkce_matches_the_rfc_example()
 {
