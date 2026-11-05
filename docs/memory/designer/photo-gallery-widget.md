@@ -15,6 +15,7 @@ module: widgets_photo_gallery
 
 ## How does ?folder_id= open an album?
 - On the same page, as the classic page, only for a folder below the top (`pg_gal_folder_shown()` walks the parents) that the visitor may view; else the top. The walk stops at the Recycle Bin, and the bin is never an album (`_pg_gal_read()`), so a gallery on the root never opens binned folders. The classic page sent a visitor without access to sign in; the widget shows the top. Several galleries read one `folder_id`: each opens it only when below its own top. A background render ignores the address.
+- Classic album list: a membership album is listed by edit rights to that album, as opening it checks (before #PR the folder shown was asked, hiding it from its own editors).
 - `__back_url`: the album above (no `folder_id` at the top); flag `in_album`.
 
 ## Which files are photos, with what alt?
