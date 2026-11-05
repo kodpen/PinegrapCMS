@@ -233,6 +233,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - form-screen-names-escaping.md: Form panel screens escape form names, field labels and pick list choice labels; liveform select option labels are printed raw, option values stay raw
 - form-time-24-hour.md: Form time values: validate_time() and prepare_form_data_for_input() read 12- and 24-hour time (PR #1698); prepare_form_data_for_output() and the time help follow the site clock
 - form-view-newest-comment-cut.md: ^^newest_comment^^ in classic form item / list views and content variables is cut to 100 characters before escaping, never after
+- generate-layout-screen.md: Generate Layout (generate_layout.php, includes/templates/generate_layout.php) in the edit screen pattern: the read-only code, the Summary, Copy the code and Edit Layout in the save bar
 - gift-card-shared-form.md: add_gift_card.php and edit_gift_card.php draw the Gift Card Options card and check its amount and date through includes/forms/gift_card_form.php; what each screen keeps
 - graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas
 - graph-canvas-core-sizes-ports.md: Graph canvas core slice 4 for the Prototype view: size per box, lower zoom, named ports, spread arrow ends, other targets, stable arrow ids, partial redraw, thumbnails
