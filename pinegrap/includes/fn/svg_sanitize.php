@@ -192,18 +192,61 @@ function pg_svg_sanitize_style($value)
 }
 
 /**
- * The selectors of a rule that stay, each under the root's id: names,
- * classes and ids joined by descendant or child combinators. Attribute
- * selectors, pseudo-classes, pseudo-elements, the universal selector and
- * the sibling combinators go, and so does a selector starting at the root's
- * own element name, which a scoped rule cannot match.
+ * A name with the file's prefix ($context['prefix']) when it is renamed: an
+ * id other than the root's, or a class a kept rule names
+ * ($context['classes']); a name that already carries a file prefix (a file
+ * this sanitizer wrote) keeps it.
+ *
+ * @return string
+ */
+function pg_svg_sanitize_name($name, $context, $class = false)
+{
+    $prefix = isset($context['prefix']) ? $context['prefix'] : '';
+
+    if (($prefix === '') || ($name === '') || preg_match('/^pgsvg-[0-9a-f]{10}-/', $name)
+        || ($class ? !isset($context['classes'][$name]) : ($name === $context['root_id']))) {
+        return $name;
+    }
+
+    return $prefix . $name;
+}
+
+/**
+ * A value with every url(#id) renamed by pg_svg_sanitize_name().
+ *
+ * @return string
+ */
+function pg_svg_sanitize_rename_urls($value, $context)
+{
+    return preg_replace_callback('/url\(\s*(["\']?)#([^"\')\s]+)\1\s*\)/', function ($m) use ($context) {
+        return 'url(' . $m[1] . '#' . pg_svg_sanitize_name($m[2], $context) . $m[1] . ')';
+    }, $value);
+}
+
+/**
+ * The selectors of a rule that stay: names, classes and ids joined by
+ * descendant or child combinators. Attribute selectors, pseudo-classes,
+ * pseudo-elements, the universal selector and the sibling combinators go,
+ * and so does a selector starting at the root's own element name, which a
+ * scoped rule cannot match.
+ *
+ * With a file prefix ($context['prefix']) ids and classes are renamed
+ * (pg_svg_sanitize_name()) and a selector whose every compound names one
+ * of them is left unscoped: what a <use> draws matches selectors inside the
+ * use's own tree, where a rule under the root's id never reaches, and the
+ * prefix already keeps such a rule to this file. Any other selector goes
+ * under the root's id.
+ *
+ * @param array $classes set to the class names the kept selectors name
  *
  * @return string the kept selectors, comma separated, or ''
  */
-function pg_svg_sanitize_selectors($prelude, $root_id)
+function pg_svg_sanitize_selectors($prelude, $context, &$classes = null)
 {
+    $root_id = $context['root_id'];
     $compound = '(?:[a-zA-Z][a-zA-Z0-9_-]*(?:[.#][a-zA-Z_-][a-zA-Z0-9_-]*)*|(?:[.#][a-zA-Z_-][a-zA-Z0-9_-]*)+)';
     $kept = array();
+    $classes = array();
 
     foreach (explode(',', $prelude) as $part) {
         $part = preg_replace('/\s*>\s*/', ' > ', trim(preg_replace('/\s+/', ' ', $part)));
@@ -217,24 +260,49 @@ function pg_svg_sanitize_selectors($prelude, $root_id)
             continue;
         }
 
-        $kept[] = '#' . $root_id . ' ' . $part;
+        $scoped = true;
+
+        if (isset($context['prefix']) && ($context['prefix'] !== '')) {
+            $scoped = false;
+
+            foreach (explode(' ', str_replace(' > ', ' ', $part)) as $item) {
+                $item = preg_replace('/#' . preg_quote($root_id, '/') . '(?![a-zA-Z0-9_-])/', '', $item);
+
+                if (strpbrk($item, '.#') === false) {
+                    $scoped = true;
+                }
+            }
+
+            $part = preg_replace_callback('/([.#])([a-zA-Z_-][a-zA-Z0-9_-]*)/', function ($m) use ($context) {
+                return $m[1] . pg_svg_sanitize_name($m[2], $context, $m[1] === '.');
+            }, $part);
+        }
+
+        if (preg_match_all('/\.([a-zA-Z_-][a-zA-Z0-9_-]*)/', $part, $found)) {
+            $classes += array_flip($found[1]);
+        }
+
+        $kept[] = ($scoped ? '#' . $root_id . ' ' : '') . $part;
     }
 
     return implode(', ', $kept);
 }
 
 /**
- * A style sheet rebuilt from its plain rules: each rule's selectors scoped
- * to the root's id (pg_svg_sanitize_selectors()), its declarations kept as
- * a style attribute's are (pg_svg_sanitize_style()). Comments, at-rules
+ * A style sheet rebuilt from its plain rules: each rule's selectors renamed
+ * and scoped (pg_svg_sanitize_selectors()), its declarations kept as a
+ * style attribute's are (pg_svg_sanitize_style()) with url(#id) renamed. Comments, at-rules
  * (@import, @media, @keyframes, @font-face) and any rule left without a
  * selector or a declaration go; an inline drawing's sheet then reaches
  * nothing outside its own root.
  *
+ * @param array $classes set to the class names the kept rules name
+ *
  * @return string|null the sheet, or null when no rule is left
  */
-function pg_svg_sanitize_sheet($text, $root_id)
+function pg_svg_sanitize_sheet($text, $context, &$classes = null)
 {
+    $classes = array();
     $text = preg_replace('#/\*.*?(\*/|$)#s', ' ', (string) $text);
     $length = strlen($text);
     $depth = 0;
@@ -270,11 +338,12 @@ function pg_svg_sanitize_sheet($text, $root_id)
                     continue;
                 }
 
-                $selectors = pg_svg_sanitize_selectors($prelude, $root_id);
-                $style = pg_svg_sanitize_style($declarations);
+                $selectors = pg_svg_sanitize_selectors($prelude, $context, $named);
+                $style = pg_svg_sanitize_rename_urls(pg_svg_sanitize_style($declarations), $context);
 
                 if (($selectors !== '') && ($style !== '')) {
                     $rules[] = $selectors . '{' . $style . '}';
+                    $classes += $named;
                 }
             }
         } elseif (($c === ';') && ($depth === 0)) {
@@ -315,10 +384,26 @@ function pg_svg_sanitize_copy($source, $target, $out, $elements, $common, &$cont
 
         if (($key === 'href') || ($key === 'xlink:href')) {
             $value = pg_svg_sanitize_href($value);
+
+            if (strpos($value, '#') === 0) {
+                $value = '#' . pg_svg_sanitize_name(substr($value, 1), $context);
+            }
         } elseif ($key === 'style') {
-            $value = pg_svg_sanitize_style($value);
+            $value = pg_svg_sanitize_rename_urls(pg_svg_sanitize_style($value), $context);
         } elseif (!pg_svg_sanitize_value_ok($value)) {
             $value = '';
+        } elseif (($key === 'id') && ($source !== $context['root'])) {
+            $value = pg_svg_sanitize_name($value, $context);
+        } elseif ($key === 'class') {
+            $names = array();
+
+            foreach (preg_split('/\s+/', trim($value)) as $item) {
+                $names[] = pg_svg_sanitize_name($item, $context, true);
+            }
+
+            $value = implode(' ', $names);
+        } else {
+            $value = pg_svg_sanitize_rename_urls($value, $context);
         }
 
         if ($value === '') {
@@ -356,7 +441,7 @@ function pg_svg_sanitize_copy($source, $target, $out, $elements, $common, &$cont
         }
 
         if ($child->localName === 'style') {
-            $sheet = pg_svg_sanitize_sheet($child->textContent, $context['root_id']);
+            $sheet = pg_svg_sanitize_sheet($child->textContent, $context);
 
             if ($sheet === null) {
                 continue;
@@ -380,7 +465,9 @@ function pg_svg_sanitize_copy($source, $target, $out, $elements, $common, &$cont
  * An SVG rebuilt from the allowlist: listed elements and attributes only,
  * href to an id of the file or an embedded raster picture, no script, event
  * handler, foreignObject, link, animation, outside url(), @import, document
- * type or entity; style sheets keep only plain rules, scoped to the root's id.
+ * type or entity; style sheets keep only plain rules, scoped to the root's id
+ * or, with ids and classes given the file's prefix, left to reach <use>
+ * copies (pg_svg_sanitize_selectors()).
  *
  * @param string $svg the SVG's text
  * @return string the sanitized SVG starting at its <svg> root, or '' when
@@ -420,9 +507,30 @@ function pg_svg_sanitize($svg)
     // Style sheets are scoped to the root's id: its own when it is a plain
     // name, else one made from the file.
     $id = $root->getAttribute('id');
+    $hash = substr(sha1($svg), 0, 10);
     $context = array(
-        'root_id' => preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,63}$/', $id) ? $id : 'pgsvg-' . substr(sha1($svg), 0, 10),
+        'root'    => $root,
+        'root_id' => preg_match('/^[A-Za-z][A-Za-z0-9_-]{0,63}$/', $id) ? $id : 'pgsvg-' . $hash,
+        'prefix'  => '',
+        'classes' => array(),
         'sheet'   => false);
+
+    // A file with a rule left gets the prefix of its ids and of the classes
+    // its rules name, so those rules can reach <use> copies unscoped.
+    $classes = array();
+    $rules = false;
+
+    foreach ($root->getElementsByTagNameNS('http://www.w3.org/2000/svg', 'style') as $style) {
+        if (pg_svg_sanitize_sheet($style->textContent, $context, $named) !== null) {
+            $classes += $named;
+            $rules = true;
+        }
+    }
+
+    if ($rules) {
+        $context['prefix'] = 'pgsvg-' . $hash . '-';
+        $context['classes'] = $classes;
+    }
 
     $out = new DOMDocument('1.0', 'UTF-8');
     $element = $out->createElementNS('http://www.w3.org/2000/svg', 'svg');
