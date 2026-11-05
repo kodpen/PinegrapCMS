@@ -56,7 +56,8 @@ function pg_sw_list_menu_sources()
 // link_url, link_target, security), in sort order. As the classic menu
 // draws them: an item with security on that links to a page the visitor
 // may not view is left out with everything under it ($can_view(folder id),
-// null: every page may be viewed); the address is the page's, else the
+// null: every page may be viewed); the address is the page's (its name
+// encoded as a path: it may hold ?, # or %), else the
 // URL, else '#'; a new window only for an item that links somewhere. The
 // item of the page shown is the first by id that links to $page_id; the
 // items above it hold it. $name_of translates a name (null: as stored).
@@ -103,7 +104,7 @@ function pg_sw_list_menu_rows($items, $page_id, $can_view = null, $name_of = nul
             }
             $walk($id);
             $url  = isset($item['link_url']) ? (string)$item['link_url'] : '';
-            $href = ($page !== '') ? $base . $page : (($url !== '') ? $url : '');
+            $href = ($page !== '') ? $base . encode_url_path($page) : (($url !== '') ? $url : '');
             $name = isset($item['name']) ? (string)$item['name'] : '';
             if ($name_of !== null) $name = (string)call_user_func($name_of, $name);
             $out[$parent][] = array(

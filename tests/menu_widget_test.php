@@ -65,6 +65,13 @@ function test_menu_widget_rows()
 	pg_assert_same('https://example.com/help?a=1&b=2', $help['__menu_item_url'], 'a URL, raw: the pass escapes it');
 	pg_assert_same('_blank', $help['__menu_item_target'], 'a new window');
 	pg_assert_same('', $shop['__menu_item_target'], 'never for an item that links nowhere');
+
+	// A page name may hold ?, # or %: it is encoded as a path, as the
+	// classic menu links it.
+	$items = _mw_items();
+	$items[0]['link_page_name'] = 'faq?#100%';
+	$rows = pg_sw_list_menu_rows($items, 0);
+	pg_assert_same(_mw_base() . 'faq%3F%23100%25', $rows[0][0]['__menu_item_url'], 'a page name encoded as a path');
 }
 
 function test_menu_widget_rows_access_and_names()

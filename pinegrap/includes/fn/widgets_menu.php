@@ -232,9 +232,9 @@ function pg_mw_sequence_values($sequence, $page_id, $name_of = null)
         ),
         'tokens' => array(
             '__previous_name'     => $prev ? $name($prev) : '',
-            '__previous_url'      => $prev ? $base . $prev['page'] : '',
+            '__previous_url'      => $prev ? $base . encode_url_path($prev['page']) : '',
             '__next_name'         => $next ? $name($next) : '',
-            '__next_url'          => $next ? $base . $next['page'] : '',
+            '__next_url'          => $next ? $base . encode_url_path($next['page']) : '',
             '__sequence_position' => ($at !== null) ? (string)($at + 1) : '',
             '__sequence_count'    => (string)count($seq),
         ),

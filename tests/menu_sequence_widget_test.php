@@ -65,6 +65,14 @@ function test_menu_sequence_widget_values()
 	$v = pg_mw_sequence_values($seq, 99);
 	pg_assert_true($v['flags']['not_in_sequence'] && !$v['flags']['in_sequence'], 'a page the menu does not link to');
 	pg_assert_same('', $v['tokens']['__next_url'] . $v['tokens']['__previous_url'], 'gets no links');
+
+	// A page name may hold ?, # or %: it is encoded as a path.
+	$items = _msw_items();
+	$items[2]['link_page_name'] = 'shoes?#50%';
+	$v = pg_mw_sequence_values(pg_mw_sequence($items), 10);
+	pg_assert_same($base . 'shoes%3F%2350%25', $v['tokens']['__next_url'], 'a page name encoded as a path');
+	$v = pg_mw_sequence_values(pg_mw_sequence($items), 40);
+	pg_assert_same($base . 'shoes%3F%2350%25', $v['tokens']['__previous_url'], 'the page before too');
 }
 
 function test_menu_sequence_widget_registered()
