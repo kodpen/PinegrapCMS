@@ -27,4 +27,4 @@ module: booking_deposit_pay
 Related: docs/memory/commerce/booking-deposits.md, docs/memory/designer/custom-form-payment-step.md, docs/memory/designer/booking-widget-confirm.md
 
 ## Why does keeping the hold take the staff lock?
-- `pg_booking_pay_keep_hold()` runs under `pg_booking_lock_name()` like `pg_booking_insert()`, re-reads the row there and is true only when its UPDATE kept a `held` row. An expired hold counts as free for other visitors, so unlocked, a hold on an overlapping start could be written between its check and its write (double booking), and a row cancelled meanwhile was still "kept" and charged (bug hunt, PR #PRNUM).
+- `pg_booking_pay_keep_hold()` runs under `pg_booking_lock_name()` like `pg_booking_insert()`, re-reads the row there and is true only when its UPDATE kept a `held` row. An expired hold counts as free for other visitors, so unlocked, a hold on an overlapping start could be written between its check and its write (double booking), and a row cancelled meanwhile was still "kept" and charged (bug hunt, PR #7082).
