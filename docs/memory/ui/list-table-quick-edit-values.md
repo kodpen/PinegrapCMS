@@ -23,7 +23,7 @@ module: list_table_edit
 - Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
 
 ## Which other lists have quick edit?
-- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes (name, folder, activation), styles (a custom style's name, collection, layout type), design files (name, folder), shipping methods (all but the zones), offers (all but the flow, via the editor's check and save), product attributes (name, label): each in `list-table-quick-edit-<list>.md` (`short-links`, `containers`, `menus`, `comments`, `submitted-forms`, `themes`, `styles`, `design-files`, `shipping-methods`, `offers`, `product-attributes`), which says which cells change.
+- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes (name, folder, activation), styles (a custom style's name, collection, layout), design files (name, folder), shipping methods (all but the zones), offers (all but the flow), product attributes (name, label), shipping zones (name, rates): each in `list-table-quick-edit-<list>.md` (`short-links`, `containers`, `menus`, `comments`, `submitted-forms`, `themes`, `styles`, `design-files`, `shipping-methods`, `offers`, `product-attributes`, `zones`), saying which cells change.
 
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
