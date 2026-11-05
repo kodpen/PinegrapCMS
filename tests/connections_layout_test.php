@@ -55,7 +55,7 @@ function test_connections_application_fields_are_form_field_boxes()
 	$form = substr($source, (int) strpos($source, '$app_form = \''), 6000);
 
 	foreach (array('redirect_', 'client_id_', 'client_secret_') as $id) {
-		pg_assert_true(preg_match('~<div class="form-field">\s*<label class="form-label" for="' . preg_quote($id, '~') . '~', $form) === 1, $id . ' sits in a form-field box');
+		pg_assert_true(preg_match('~<div class="form-field[^"]*">\s*<label class="form-label" for="' . preg_quote($id, '~') . '~', $form) === 1, $id . ' sits in a form-field box');
 	}
 
 	pg_assert_true(strpos($source, 'form-control-sm') === false, 'the fields use the regular control size');
