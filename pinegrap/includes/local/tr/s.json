@@ -2769,6 +2769,7 @@
     "Sorry, you may not duplicate the root folder.": "Üzgünüz, kök klasörü çoğaltamazsınız.",
     "Sorry, you may not enter a space in the URL.": "Üzgünüz, URL'de boşluk giremezsiniz.",
     "Sorry, you may not reserve this event because the event has ended.": "Üzgünüz, etkinlik sona erdiği için bu etkinliğe rezervasyon yapamazsınız.",
+    "Sorry, you may not reserve this event because this date does not take place.": "Üzgünüz, bu tarih gerçekleşmediği için bu etkinliğe rezervasyon yapamazsınız.",
     "Sorry, you may not select 'before action'.  Try setting 'after action'.": "Üzgünüz, 'eylem öncesi' seçeneğini seçemezsiniz. 'Eylemden sonra'yı ayarlamayı deneyin.",
     "Sorry, you must enter a required subtotal or select a required product.": "Üzgünüz, gerekli bir ara toplam girmeli veya gerekli bir ürünü seçmelisiniz.",
     "Sorry, you need to sign in to view this file.": "Üzgünüz, bu dosyayı görüntülemek için oturum açmanız gerekiyor.",

@@ -44,6 +44,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - booking-retention.md: How long bookings are kept (cancelled rows pruned after 400 days by the general job) and what the personal data export and erasure do with a person's bookings (#5032)
 - bookings-decisions.md: Lasting rules of appointment bookings (plan closed in BK10): UTC times, no account needed, no new calendar engine, deposits via the form payment step, open retention work
 - bookings-model.md: Appointment bookings model and slot engine: the three tables (11.0.157), hours JSON, slot rules (DST, buffers, lead, horizon, holidays), hold/confirm on the unique key, manage token
+- calendar-reserve-occurrence.md: Which occurrence of a calendar event a visitor may reserve through reserve_calendar_event.php, and why a posted number is checked
 - card-brand-switches.md: How the checkout reads the accepted card brand switches (Visa, MasterCard, American Express, ...) and why American Express was never counted
 - card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
 - card-surcharge-rounding.md: Card surcharge (ECOMMERCE_SURCHARGE_PERCENTAGE) as a figure: pg_percent_of() in minor units, the same on every PHP version; the classic pages post what submit_order() charges (PR #1388)
