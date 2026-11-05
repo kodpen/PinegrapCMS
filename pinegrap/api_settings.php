@@ -1221,7 +1221,7 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 	$metadata_url = URL_SCHEME . pg_oauth_host() . PATH . '.well-known/' . ((PATH === '/') ? 'oauth-authorization-server' : 'openid-configuration');
 
 	$box = function ($id, $value) use ($button_class) {
-		return '<div class="api-secret-box mb-1"><code id="' . $id . '">' . h($value) . '</code>
+		return '<div class="api-secret-box"><code id="' . $id . '">' . h($value) . '</code>
 			' . api_settings_copy_button($id, $id . '_label', $button_class) . '</div>';
 	};
 
@@ -1297,17 +1297,23 @@ function api_settings_oauth_guide($id_prefix, $button_class) {
 	}
 
 	return '
-	<label class="form-label small" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
-	' . $box($id_prefix . '_mcp', $mcp_file) . '
-	<div class="form-text mb-5">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
+	<div class="form-field mb-5">
+		<label class="form-label small" id="' . $id_prefix . '_mcp_label">' . lang('MCP server address') . '</label>
+		' . $box($id_prefix . '_mcp', $mcp_file) . '
+		<div class="form-text">' . lang('Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server\'s own file, so it works on every server.') . '</div>
+	</div>
 
-	<label class="form-label small" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
-	' . $box($id_prefix . '_mcp_short', $mcp_short) . '
-	<div class="form-text mb-5">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
+	<div class="form-field mb-5">
+		<label class="form-label small" id="' . $id_prefix . '_mcp_short_label">' . lang('Short address') . '</label>
+		' . $box($id_prefix . '_mcp_short', $mcp_short) . '
+		<div class="form-text">' . lang('The same server at the site\'s own address. It works wherever the site\'s page addresses work; if an application cannot reach it, use the address above.') . '</div>
+	</div>
 
-	<label class="form-label small" id="' . $id_prefix . '_meta_label">' . lang('Discovery address') . '</label>
-	' . $box($id_prefix . '_meta', $metadata_url) . '
-	<div class="form-text mb-5">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
+	<div class="form-field mb-5">
+		<label class="form-label small" id="' . $id_prefix . '_meta_label">' . lang('Discovery address') . '</label>
+		' . $box($id_prefix . '_meta', $metadata_url) . '
+		<div class="form-text">' . lang('Applications find this on their own from the MCP server address. It is shown for checking the setup.') . '</div>
+	</div>
 
 	<div class="api-guide">
 		<div class="api-guide-title"><i class="bi bi-signpost-2 me-1"></i>' . lang('How to connect') . '</div>
@@ -2080,35 +2086,37 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<div class="dialog-body">
-				<div class="mb-5">
+				<div class="form-field mb-5">
 					<label class="form-label small" for="n_name">' . lang('Name') . '</label>
 					<input type="text" class="form-control form-control-sm" name="name" id="n_name" maxlength="190" required
 						placeholder="' . lang('For example: marketplace sync') . '">
 				</div>
-				<div class="mb-5">
+				<div class="form-field mb-5">
 					<label class="form-label small" for="n_description">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" id="n_description" maxlength="500">
 				</div>
-				<div class="mb-7">
-					<label class="form-label small">' . lang('Who connects') . '</label>
-					<div class="form-field">
-						<input class="radio" type="radio" name="kind" value="server" id="n_kind_server" checked>
-						<label class="small" for="n_kind_server"><b>' . lang('An integration') . '</b><br>
-							<span class="opacity-75">' . lang('An outside system calls with a key and a secret, with the rights of the account that creates it.') . '</span></label>
+				<fieldset class="mb-7">
+					<legend class="form-label small">' . lang('Who connects') . '</legend>
+					<div class="form-field form-field-card">
+						<input class="radio" type="radio" name="kind" value="server" id="n_kind_server" aria-describedby="n_kind_server_help" checked>
+						<label class="small fw-bold" for="n_kind_server">' . lang('An integration') . '</label>
+						<div class="form-text mt-0" id="n_kind_server_help">' . lang('An outside system calls with a key and a secret, with the rights of the account that creates it.') . '</div>
 					</div>
-					<div class="form-field mt-3">
-						<input class="radio" type="radio" name="kind" value="device" id="n_kind_device">
-						<label class="small" for="n_kind_device"><b>' . lang('Team devices') . '</b><br>
-							<span class="opacity-75">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</span></label>
+					<div class="form-field form-field-card">
+						<input class="radio" type="radio" name="kind" value="device" id="n_kind_device" aria-describedby="n_kind_device_help">
+						<label class="small fw-bold" for="n_kind_device">' . lang('Team devices') . '</label>
+						<div class="form-text mt-0" id="n_kind_device_help">' . lang('Staff sign in on a mobile app with their own panel account. There is no secret; the permissions below are the most any device may reach.') . '</div>
 					</div>
-					<div class="form-field mt-3">
-						<input class="radio" type="radio" name="kind" value="oauth" id="n_kind_oauth">
-						<label class="small" for="n_kind_oauth"><b>' . lang('Connected apps (OAuth)') . '</b><br>
-							<span class="opacity-75">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</span></label>
+					<div class="form-field form-field-card">
+						<input class="radio" type="radio" name="kind" value="oauth" id="n_kind_oauth" aria-describedby="n_kind_oauth_help">
+						<label class="small fw-bold" for="n_kind_oauth">' . lang('Connected apps (OAuth)') . '</label>
+						<div class="form-text mt-0" id="n_kind_oauth_help">' . lang('A person connects an outside application, such as an MCP client, after signing in on the site and agreeing to what it may do. There is no secret; the permissions below are the most any connection may reach.') . '</div>
 					</div>
+				</fieldset>
+				<div role="group" aria-labelledby="n_scope_title">
+					<div class="form-label small" id="n_scope_title">' . lang('Permissions') . '</div>
+					' . api_settings_permission_rows('scope', 'n_scope') . '
 				</div>
-				<label class="form-label small">' . lang('Permissions') . '</label>
-				' . api_settings_permission_rows('scope', 'n_scope') . '
 			</div>
 			<div class="dialog-footer">
 				<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="dialog">' . lang('Cancel') . '</button>
@@ -2162,16 +2170,20 @@ if (($new_credentials !== null) && isset($new_credentials['kind']) && ($new_cred
 			<div class="dialog-body">
 				<p class="mb-5">' . lang('Staff can now sign in on the app with their own user name and password. Nothing here has to be kept secret.') . '</p>
 
-				<label class="form-label small text-uppercase opacity-75" id="nc_login_label">' . lang('Sign-in address') . '</label>
-				<div class="api-secret-box mb-5">
-					<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
-					' . api_settings_copy_button('nc_login', 'nc_login_label', 'btn-outline theme-primary') . '
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_login_label">' . lang('Sign-in address') . '</label>
+					<div class="api-secret-box">
+						<code id="nc_login">POST ' . h($api_base_url) . '/auth/login</code>
+						' . api_settings_copy_button('nc_login', 'nc_login_label', 'btn-outline theme-primary') . '
+					</div>
 				</div>
 
-				<label class="form-label small text-uppercase opacity-75" id="nc_key_label">client_key</label>
-				<div class="api-secret-box mb-5">
-					<code id="nc_key">' . h($new_credentials['key']) . '</code>
-					' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_key_label">client_key</label>
+					<div class="api-secret-box">
+						<code id="nc_key">' . h($new_credentials['key']) . '</code>
+						' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+					</div>
 				</div>
 
 				<div class="alert theme-primary py-3 px-5 small mb-0">
@@ -2207,16 +2219,20 @@ if ($new_credentials !== null) {
 					<span class="small opacity-75">'
 					. lang('Only a verification hash is stored. If it is lost, issue a new one.') . '</span></p>
 
-				<label class="form-label small text-uppercase opacity-75" id="nc_key_label">' . lang('Key') . '</label>
-				<div class="api-secret-box mb-5">
-					<code id="nc_key">' . h($new_credentials['key']) . '</code>
-					' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_key_label">' . lang('Key') . '</label>
+					<div class="api-secret-box">
+						<code id="nc_key">' . h($new_credentials['key']) . '</code>
+						' . api_settings_copy_button('nc_key', 'nc_key_label', 'btn-outline theme-primary') . '
+					</div>
 				</div>
 
-				<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">' . lang('Secret') . '</label>
-				<div class="api-secret-box mb-5">
-					<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
-					' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'btn-outline theme-primary') . '
+				<div class="form-field mb-5">
+					<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">' . lang('Secret') . '</label>
+					<div class="api-secret-box">
+						<code id="nc_secret">' . h($new_credentials['secret']) . '</code>
+						' . api_settings_copy_button('nc_secret', 'nc_secret_label', 'btn-outline theme-primary') . '
+					</div>
 				</div>
 
 				<div class="alert theme-warning py-3 px-5 small mb-0">
