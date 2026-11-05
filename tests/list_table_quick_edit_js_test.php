@@ -90,7 +90,11 @@ console.log(JSON.stringify([
   T.quickChanged('money', '12,50', '12,5'),
   T.quickValue('textarea', ' One\r\ntwo \n'),
   T.quickChanged('textarea', 'One\ntwo', 'One\r\ntwo'),
-  T.quickChanged('textarea', 'One\ntwo!', 'One\r\ntwo')
+  T.quickChanged('textarea', 'One\ntwo!', 'One\r\ntwo'),
+  T.quickValue('multiselect', ' 3, 7,3,'),
+  T.quickChanged('multiselect', '7,3', '3,7'),
+  T.quickChanged('multiselect', '7', '3,7'),
+  T.quickChoices('')
 ]));
 JS
 	);
@@ -99,7 +103,7 @@ JS
 		return;
 	}
 
-	pg_assert_same(array('Blue shirt', ' a ', '12,50', false, true, "One\ntwo", false, true), $result);
+	pg_assert_same(array('Blue shirt', ' a ', '12,50', false, true, "One\ntwo", false, true, '3,7', false, true, array()), $result);
 }
 
 /**

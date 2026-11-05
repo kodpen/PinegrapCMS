@@ -22184,6 +22184,17 @@ textarea.pg-list-table-field-lines {
   min-width: 14rem;
   resize: vertical;
 }
+/* A several-choice field: its boxes one under the other, scrolled past a
+   few, so a long list of groups or zones keeps the row short. */
+.pg-list-table-choices {
+  max-height: 9rem;
+  overflow-y: auto;
+  padding: 0.25rem 0.5rem;
+}
+.pg-list-table-choice {
+  display: block;
+  white-space: nowrap;
+}
 /* A select in a cell coloured by an access level (.private * and the like)
    keeps the field's own colour; it and each option wear their own level's
    class instead (the Pages list's folders, tintSelect()). */

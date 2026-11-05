@@ -2120,6 +2120,7 @@
     "payment, invoice, bank transfer, monthly invoice": "ödeme, fatura, havale, EFT, aylık fatura",
     "payment, payout, bank": "ödeme, hak ediş, banka",
     "payment_parts goes with payment_method split, and only with it.": "payment_parts yalnızca payment_method split ile gönderilir.",
+    "payment_parts item {var:1}: send an object of {method, till_id, amount}, the amount a whole number of minor units.": "payment_parts öğesi {var:1}: {method, till_id, amount} nesnesi gönderin; tutar, alt birim cinsinden tam sayı olmalı.",
     "pcs": "adet",
     "pdo_mysql is not enabled on the server. This will cause many functions to fails. Contact the Server Administrator.": "pdo_mysql sunucuda etkin değil. Bu, birçok işlevin başarısız olmasına neden olur. Sunucu Yöneticisine başvurun.",
     "pdo_mysql.dll is not enabled. Please enable it for Auto Backup feature.": "pdo_mysql.dll etkin değil. Lütfen Otomatik Yedekleme özelliği için etkinleştirin.",
