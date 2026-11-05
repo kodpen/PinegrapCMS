@@ -99,6 +99,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - commerce-form-group-names.md: Commerce forms names: State Country label, ship date Adjustment pair, shipping day sets, rate tiers and rate boxes, product group Display Type and gift card Format legends
 - commission-list-paging.md: The commission lists searched on the server, on the list table driver since #6380; issue #2038 (search found only the page PHP printed); what the screens keep
 - common-region-shared-form.md: The common region create and edit screens share includes/forms/common_region_form.php: what it holds, the label fixes, what stays in the screens
+- connections-screen-layout.md: Connected accounts screen (connections.php) on the wide layout: provider cards in the form column, a Summary of every provider in the status column, application fields as form-field boxes, no save bar
 - contact-filter-keyboards.md: Contacts Advanced Filters: no address autofill, phone and web address keyboards, an unmasked e-mail box; the panel's permissive Inputmask email alias; Submitted Forms Referring URL keyboard
 - contact-form-checks.md: Create/Edit Contact save checks: membership date and negative rate refused, role 3 keeps a group on edit, picture posted as file_id or image_url, notes box, wording
 - contact-group-rules.md: Rule editor of a contact group filled by rules (Edit Contact Group, pg_audience_editor.js): switch, rows, pickers, live count, Refresh now, the save, list columns, contact card chips
