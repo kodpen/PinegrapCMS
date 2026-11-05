@@ -28,6 +28,13 @@ if (!pg_cron_is_background_run()) {
     validate_area_access($user, 'manager');
 }
 
+// Who the activity log names: the manager who started a web run, else
+// UNKNOWN. A scheduled run has nobody signed in, and reading the session
+// user there raised a PHP warning on every run that wrote a log line.
+$email_campaign_job_log_user = (isset($_SESSION['sessionusername']) && is_string($_SESSION['sessionusername']) && ($_SESSION['sessionusername'] !== ''))
+    ? $_SESSION['sessionusername']
+    : 'UNKNOWN';
+
 // if the e-mail campaign job is not activated, then output error
 if (email_campaign_job_enabled() == false) {
     $error_message = lang('The e-mail campaign job did not run because it is not activated in the config.php file.');
@@ -693,12 +700,12 @@ foreach ($email_campaigns as $email_campaign_id) {
 
 // if e-mail campaign job e-mailed at least 1 recipient, then log action
 if ($count > 0) {
-    log_activity(lang(array('string' => 'e-mail campaign job sent e-mail(s) to {var:1} recipient(s)', 'vars' => array($count))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'e-mail campaign job sent e-mail(s) to {var:1} recipient(s)', 'vars' => array($count))), $email_campaign_job_log_user);
 }
 
 // Recipients the send gate skipped: their address bounced or complained.
 if (!empty($suppressed)) {
-    log_activity(lang(array('string' => 'e-mail campaign job skipped {var:1} recipient(s) whose address bounced or complained', 'vars' => array($suppressed))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'e-mail campaign job skipped {var:1} recipient(s) whose address bounced or complained', 'vars' => array($suppressed))), $email_campaign_job_log_user);
 }
 
 // Scheduled-task health: record that this job finished. See pg_cron_ran().
