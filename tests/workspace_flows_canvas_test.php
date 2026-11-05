@@ -1897,6 +1897,55 @@ JS
 	pg_assert_same(0, $result['openAdd']);
 }
 
+// A box that reads a row: offered while the person reads a table, even one
+// they may not change; its row named by its number or one value; it gives
+// the boxes after it the row, found and each cell of its table.
+function test_workspace_flows_canvas_row_get_box()
+{
+	$result = ws_flows_canvas_test_node(
+		array('kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowCellValues', 'rowWriteMeta', 'boxValues', 'fieldTexts'),
+		<<<'JS'
+var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_get: { into: true, out: ['done', 'failed'] } };
+var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_get', 'fl_kind_row_get']];
+var VALUE_FIELDS = { row_get: [['row', 'fl_rows_row', 200]] };
+var FL = { outputs: { row_get: [{ key: 'row_id', type: 'number', label: 'Row' }, { key: 'found', type: 'number', label: 'Row found (1 or 0)' }] }, steps: { tables: [
+    { id: 5, name: 'Counters', edit: false, columns: [{ id: 7, name: 'Name', type: 'text' }, { id: 9, name: 'Count', type: 'number' }] }
+] } };
+function valueNames() { return {}; }
+var node = { id: 'get', kind: 'row_get', config: { table_id: 5, row: '12' } };
+var out = {
+    palette: paletteItems().map(function (item) { return item[0]; }),
+    values: boxValues(node).map(function (item) { return item.token + ':' + item.type; }),
+    meta: [rowWriteMeta(node), rowWriteMeta({ kind: 'row_get', config: { table_id: 0, row: '' } })],
+    texts: fieldTexts(node).map(function (item) { return item.key; })
+};
+FL.steps.tables = [];
+out.none = paletteItems().map(function (item) { return item[0]; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('row', 'row_get'), $result['palette'], 'a table read but not changed: the read box, no write box');
+	pg_assert_same(array(), $result['none'], 'no table read: no read box');
+	pg_assert_same(array(
+		'{{node.get.text}}:text', '{{node.get.outcome}}:text', '{{node.get.status}}:text',
+		'{{node.get.row_id}}:number', '{{node.get.found}}:number', '{{node.get.cell_7}}:text', '{{node.get.cell_9}}:number',
+	), $result['values'], 'the row, found and every cell of its table');
+	pg_assert_same(array('fl_rows_meta Counters 12', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('row'), $result['texts'], 'its row reads a value');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$fields = ws_flows_canvas_test_script_function($source, 'rowGetFields');
+
+	pg_assert_contains("stepLists().tables.map", $fields, 'every table the person reads is offered');
+	pg_assert_contains("t('fl_rows_get_row_help')", $fields, 'the row field says a missing row gives found 0');
+	pg_assert_contains("rowGetFields(box, node);", $source, 'the settings draw it');
+}
+
 // The groups of the flow boxes and their colours (dark theme as the visual
 // spec gives them; workspace-flows-visual-spec.md), in their listing order.
 function ws_flows_canvas_test_groups()
@@ -1907,7 +1956,7 @@ function ws_flows_canvas_test_groups()
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get'))
 	);
 }
 

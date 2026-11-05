@@ -137,15 +137,26 @@ if (!$_POST) {
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+        </div>
+    </div>
 
-            <form name="form" action="add_erp_waybill.php" method="post" autocomplete="off">
-                ' . get_token_field() . '
-                ' . $liveform->output_field(array('type' => 'hidden', 'id' => 'order_id', 'name' => 'order_id')) . '
-                ' . $liveform->output_field(array('type' => 'hidden', 'id' => 'invoice_id', 'name' => 'invoice_id')) . '
+    <form name="form" action="add_erp_waybill.php" method="post" autocomplete="off">
+        ' . get_token_field() . '
+        ' . $liveform->output_field(array('type' => 'hidden', 'id' => 'order_id', 'name' => 'order_id')) . '
+        ' . $liveform->output_field(array('type' => 'hidden', 'id' => 'invoice_id', 'name' => 'invoice_id')) . '
+        <div class="row">
+
+            <!--
+                What the note carries: the dates, where it goes, how and
+                which goods. The form wraps both columns, so the Notes box
+                beside it is posted with the rest.
+            -->
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 ' . erp_waybill_form_cards($liveform, array(
                     'lines' => erp_waybill_form_lines($liveform, $given_lines),
                     'order' => $order,
                     'invoice' => $invoice,
+                    'aside' => false,
                 )) . '
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
@@ -154,10 +165,24 @@ if (!$_POST) {
                         </div>
                     </div>
                 </nav>
-            </form>
-            ' . erp_account_quick_modal() . '
+            </div>
+
+            <!--
+                What the note is written for and its notes. Sticky under the
+                fixed header, and after the form column in source order so a
+                narrow screen puts it below the form rather than in front of it.
+            -->
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <div class="position-sticky" style="top:3.3rem;">
+                    ' . erp_waybill_form_aside_cards($liveform, array(
+                        'order' => $order,
+                        'invoice' => $invoice,
+                    )) . '
+                </div>
+            </div>
         </div>
-    </div>
+    </form>
+    ' . erp_account_quick_modal() . '
 </main>' .
     output_footer();
 
