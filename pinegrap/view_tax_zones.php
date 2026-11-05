@@ -18,6 +18,24 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/tax_zone_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/tax_zone_list_edit.php');
+
+$quick_edit = pg_tax_zone_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn, with
+// the tax zone screen's rights (validate_ecommerce_access()) and checks
+// (pg_tax_zone_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_tax_zone_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 $user = validate_user();
 validate_ecommerce_access($user);
@@ -47,49 +65,21 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified' => 'tax_zones.timestamp',
 ));
 
-$tax_zones = db_items(
-    "SELECT
-        tax_zones.id,
-        tax_zones.name,
-        tax_zones.tax_rate,
-        user.user_username AS last_modified_username,
-        tax_zones.timestamp AS last_modified_timestamp
-    FROM tax_zones
-    LEFT JOIN user ON tax_zones.user = user.user_id
-    ORDER BY $order_by");
-
 // Every tax zone is printed: the list table driver sorts and searches them
 // in the browser (browser mode) and keeps a heading's sort.
+$decimal = pg_number_separators()['decimal'];
 $list_rows = array();
 
-foreach ($tax_zones as $tax_zone) {
-
-    // format_tax_rate() trims the stored rate to the decimals it has
-    // (20.000 -> 20, 18.500 -> 18.5); the number keeps that many decimals in
-    // the panel's separators and the template puts the sign on the side the
-    // language writes it (TR "%20").
-    $tax_rate = format_tax_rate($tax_zone['tax_rate']);
-    $tax_rate_decimals = (strpos($tax_rate, '.') === false) ? 0 : strlen($tax_rate) - strpos($tax_rate, '.') - 1;
-
-    $list_rows[] = array(
-        'id' => (int) $tax_zone['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_tax_zone.php?id=' . (int) $tax_zone['id'] . '" data-pg-open>' . h($tax_zone['name']) . '</a>'),
-            'tax_rate' => pg_list_cell(h(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($tax_rate, $tax_rate_decimals))))), 'align-middle', array('data-pg-sort-value' => $tax_rate)),
-            'last_modified' => pg_list_table_when_cell($tax_zone['last_modified_timestamp'], (string) $tax_zone['last_modified_username']),
-        ),
-    );
+foreach ((array) db_items(pg_tax_zone_list_sql() . " ORDER BY " . $order_by) as $tax_zone) {
+    $list_rows[] = array('id' => (int) $tax_zone['id'], 'cells' => pg_tax_zone_list_cells($tax_zone, $quick_edit, $decimal));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_tax_zones',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'tax_rate' => array('heading' => lang('Tax Rate'), 'kind' => 'number'),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_tax_zone_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_tax_zones.php', 'columns' => $quick_edit),
 ));
 
 echo
