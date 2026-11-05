@@ -639,7 +639,7 @@ function check_view_access($folder_id, $always_grant_access_for_registration_and
             // If the visitor should always be granted access for guest access control,
             // or if the visitor has logged in, or if the visitor has selected to be a guest,
             // then the visitor has access.
-            if (($always_grant_access_for_registration_and_guest == true) || (USER_LOGGED_IN == true) || ($_SESSION['software']['guest'] == true)) {
+            if (($always_grant_access_for_registration_and_guest == true) || (USER_LOGGED_IN == true) || (($_SESSION['software']['guest'] ?? false) == true)) {
                 $access = true;
             }
             break;
