@@ -979,6 +979,10 @@ function pg_signature_receipt_html($record)
 // stored without a stamp rather than refusing the signature.
 define('PG_SIGNATURE_TSA_TIMEOUT', 6);
 
+// Bytes a time stamp authority's reply may have: a token is a few kilobytes,
+// with the authority's certificate chain at most a few dozen.
+define('PG_SIGNATURE_TSA_MAX_REPLY', 262144);
+
 // The value the authority is asked to vouch for: the document, the bytes of the
 // drawing, and the moment. All three are printed on the receipt, so the recipe
 // below is reproducible by whoever holds it.
@@ -1157,6 +1161,39 @@ function pg_signature_stamp_request($digest, $nonce)
         . pg_signature_der_tlv(0x01, chr(0xFF)));
 }
 
+// The pg_curl_run() options of a request to a time stamp authority. The
+// address is typed by the operator, and the server sends the request from
+// inside its own network, so it is checked and pinned like every outgoing
+// call to an operator's address (check_address): a loopback, private, link
+// local or metadata address is refused, and no redirect is followed. Plain
+// http stays allowed because many public authorities answer only on it; the
+// reply is a token of a few kilobytes, so the body is capped.
+// Pure.
+function pg_signature_stamp_http_options($request, $auth, $username, $password)
+{
+    $options = array(
+        'body'            => (string) $request,
+        'headers'         => array(
+            'Content-Type: application/timestamp-query',
+            'Accept: application/timestamp-reply',
+        ),
+        'timeout'         => PG_SIGNATURE_TSA_TIMEOUT,
+        'connect_timeout' => PG_SIGNATURE_TSA_TIMEOUT,
+        'allow_http'      => true,
+        'check_address'   => true,
+        'cap'             => PG_SIGNATURE_TSA_MAX_REPLY,
+    );
+
+    // Credentials go only where the site said they should. Sending them to an
+    // authority that was never told to expect them puts a password on the wire
+    // for nothing.
+    if (($auth === 'basic') && ((string) $username !== '')) {
+        $options['userpwd'] = $username . ':' . $password;
+    }
+
+    return $options;
+}
+
 // Asks the configured authority to stamp $digest.
 //
 // Returns array(token, time, authority) or false. Every failure returns false
@@ -1182,48 +1219,36 @@ function pg_signature_request_stamp($digest, $settings = null, &$reason = null)
 
     $reason = '';
 
-    if (($url === '') || !function_exists('curl_init')) {
+    if (($url === '') || !function_exists('curl_init') || !function_exists('pg_curl_run')) {
         $reason = 'no address';
 
         return false;
     }
 
+    if (!function_exists('api_http_check_url')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+    }
+
     $nonce = function_exists('random_bytes') ? random_bytes(8) : pack('N2', mt_rand(), mt_rand());
     $request = pg_signature_stamp_request(hex2bin($digest), $nonce);
 
-    $curl = curl_init($url);
+    $answer = pg_curl_run('POST', $url, pg_signature_stamp_http_options($request, $auth, $username, $password));
+    $response = (string) $answer['body'];
+    $status = (int) $answer['status'];
 
-    curl_setopt($curl, CURLOPT_POST, true);
-    curl_setopt($curl, CURLOPT_POSTFIELDS, $request);
-    curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-        'Content-Type: application/timestamp-query',
-        'Accept: application/timestamp-reply',
-    ));
-    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($curl, CURLOPT_TIMEOUT, PG_SIGNATURE_TSA_TIMEOUT);
-    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, PG_SIGNATURE_TSA_TIMEOUT);
-    curl_setopt($curl, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
+    // A refused address has no cURL error number, only its reason; a reply
+    // over the cap ends the transfer as cURL error 23.
+    if ($status === 0 || $response === '') {
+        if (!empty($answer['capped'])) {
+            $reason = 'reply is too large';
+        } elseif ($answer['errno'] > 0) {
+            $reason = 'cURL ' . $answer['errno'] . ': ' . $answer['error'] . (function_exists('pg_curl_tls_hint') ? ' ' . pg_curl_tls_hint($answer['errno']) : '');
+        } elseif ($status > 0) {
+            $reason = 'HTTP ' . $status;
+        } else {
+            $reason = ((string) $answer['error'] !== '') ? (string) $answer['error'] : 'no reply';
+        }
 
-    if (function_exists('pg_curl_tls')) {
-        pg_curl_tls($curl);
-    }
-
-    // Credentials go only where the site said they should. Sending them to an
-    // authority that was never told to expect them puts a password on the wire
-    // for nothing.
-    if (($auth === 'basic') && ($username !== '')) {
-        curl_setopt($curl, CURLOPT_USERPWD, $username . ':' . $password);
-    }
-
-    $response = curl_exec($curl);
-    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    $errno = curl_errno($curl);
-    $error = curl_error($curl);
-
-    unset($curl);
-
-    if (($response === false) || ($response === '')) {
-        $reason = 'cURL ' . $errno . ': ' . $error . (function_exists('pg_curl_tls_hint') ? ' ' . pg_curl_tls_hint($errno) : '');
         pg_signature_stamp_failed($url, $reason);
 
         return false;

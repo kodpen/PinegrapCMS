@@ -108,10 +108,12 @@ function pg_curl_tls($ch)
  *                    with cap or sink, whose write callback takes the body
  *                    alone)
  *   allow_http       true to accept http as well as https for this request
- *                    (never for a redirect): only for an address the
- *                    operator types and the site reaches itself, such as a
- *                    migration source on the same host or LAN; leave
- *                    check_address off with it
+ *                    (never for a redirect). Without check_address, only for
+ *                    an address the operator types and the site reaches
+ *                    itself, such as a migration source on the same host or
+ *                    LAN; with it, for a public service that answers on
+ *                    plain http (a time stamp authority), whose address is
+ *                    still checked and pinned
  *   cap              bytes the body may have, counted by pg_curl_run()'s
  *                    write callback whatever Content-Length or libcurl says:
  *                    the piece that goes over ends the transfer
@@ -360,7 +362,7 @@ function pg_curl_run($method, $url, $options = array())
             return $result;
         }
 
-        $check = api_http_check_url($url);
+        $check = api_http_check_url($url, !empty($options['allow_http']));
 
         if (!$check['ok']) {
             $result['error'] = $check['error'];
