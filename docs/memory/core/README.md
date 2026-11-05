@@ -27,6 +27,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - ai-prompt-version.md: pg_ai_prompt_version() (r + 8 hex of the rules' SHA-1), ws_ai_requests.prompt_version (11.0.112, #2829), the insert helper and its scan test, where the version is shown
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
+- audiences-door-join.md: pg_audience_door_join(): storefront sign-up doors put a contact into the registration, membership or a ticked group and announce the join for flows, campaign profiles and webhooks
 - audiences-doors.md: Hand doors of a contact group filled by rules: which paths refuse or skip a dynamic group, API/MCP 409 contact_group_by_rule, the guard functions, readers and erasure
 - audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers)
 - audiences-recompute.md: How a contact group filled by rules is recomputed: pages of contact ids, the rule-row diff, the hour and 20-second budget of the general job, the announce once a pass, Refresh now (audience_refresh)
