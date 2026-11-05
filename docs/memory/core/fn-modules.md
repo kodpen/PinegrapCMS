@@ -60,6 +60,7 @@ description: Generated from the module field of the memory files: each includes/
 - `container_list_edit`: [[list-table-quick-edit-containers]]
 - `content`: [[submitted-form-content-helpers]]
 - `core`: [[app-screen-messages]], [[build-url-host-parts]], [[error-screen-language-and-status]], [[schema-cache-file]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]]
+- `country_list_edit`: [[list-table-quick-edit-countries]]
 - `cron`: [[scheduled-job-resume]]
 - `currency_list_edit`: [[list-table-quick-edit-currencies]]
 - `currency_rates`: [[exchange-rates-update]]
