@@ -182,6 +182,11 @@ $money = function ($kurus) use ($statement) {
     return h(erp_money_out_currency((int) $kurus, (string) $statement['till_currency']));
 };
 
+// One label and value line of a status card.
+$status_line = function ($label, $value) {
+    return '<div class="d-flex justify-content-between gap-3 py-2 border-bottom"><span class="fg-secondary">' . $label . '</span><span class="text-end text-break">' . $value . '</span></div>';
+};
+
 // $attributes ' data-erp-send-once' sends the form once (the script at the
 // end) and adds the status line it fills.
 $post_form = function ($fields, $button, $class, $attributes = '') use ($statement_id) {
@@ -192,6 +197,8 @@ $post_form = function ($fields, $button, $class, $attributes = '') use ($stateme
 };
 
 $output_body = '';
+// What is read about the statement, drawn in the sticky status column.
+$output_status = '';
 // A screen-wide action, drawn in the toolbar under the heading.
 $output_toolbar = '';
 $output_toolbar_primary = '';
@@ -261,6 +268,17 @@ if ((string) $statement['status'] === 'mapping') {
         $body .= '</tr>';
     }
 
+    $output_status = '
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Statement') . '</div>
+                    <div class="card-body pt-0">
+                        ' . $status_line(lang('Bank account'), h((string) $statement['till_name'])) . '
+                        ' . $status_line(lang('File'), h((string) $statement['file_name'])) . '
+                        ' . $status_line(lang('Uploaded'), h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $statement['created_at']), 'date and time', false))) . '
+                        ' . $status_line(lang('Lines'), (string) count($rows)) . '
+                    </div>
+                </div>';
+
     $output_body = '
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The first lines of the file') . '</div>
@@ -295,6 +313,10 @@ if ((string) $statement['status'] === 'mapping') {
     // takes: each open invoice is offered on one line only.
     $suggestions = $readonly ? array() : erp_bank_statement_suggestions($lines);
     $suggested = 0;
+    // The Summary card: lines by status and the money in and out.
+    $status_counts = array_fill_keys(array_keys($statuses), 0);
+    $money_in = 0;
+    $money_out = 0;
 
     $all_accounts = null;
     $categories = null;
@@ -305,6 +327,15 @@ if ((string) $statement['status'] === 'mapping') {
         $status = $statuses[(string) $line['status']] ?? array((string) $line['status'], 'secondary');
         $in = ((int) $line['amount'] > 0);
         $action = '';
+
+        if (isset($status_counts[(string) $line['status']])) {
+            $status_counts[(string) $line['status']]++;
+        }
+        if ($in) {
+            $money_in += (int) $line['amount'];
+        } else {
+            $money_out += abs((int) $line['amount']);
+        }
 
         if ((string) $line['status'] === 'new' && !$readonly) {
             $hidden = '<input type="hidden" name="line_id" value="' . (int) $line['id'] . '" />';
@@ -392,6 +423,22 @@ if ((string) $statement['status'] === 'mapping') {
                 <div class="form-text px-5 pb-5">' . lang('Matched: the books already have the movement (same amount and way, within three days). A suggestion comes from a tax number or an account name in the line, or from the one open invoice of that amount; it is written only when you record it.') . '</div>
             </div>';
 
+    $output_status_counts = '';
+    foreach ($statuses as $key => $status) {
+        $output_status_counts .= $status_line('<span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span>', (string) $status_counts[$key]);
+    }
+
+    $output_status = '
+                <div class="card my-7">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</div>
+                    <div class="card-body pt-0">
+                        ' . $status_line(lang('Lines'), (string) count($lines)) . '
+                        ' . $output_status_counts . '
+                        ' . $status_line(lang('Money in'), '<span class="fg-success fw-semibold text-nowrap">+' . $money($money_in) . '</span>') . '
+                        ' . $status_line(lang('Money out'), '<span class="fg-danger fw-semibold text-nowrap">−' . $money($money_out) . '</span>') . '
+                    </div>
+                </div>';
+
     if ($suggested > 0 && !$readonly) {
         $output_toolbar_primary = $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-solid theme-success', ' data-erp-send-once');
     }
@@ -426,7 +473,26 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+        </div>
+
+        <!--
+            The work column: the first lines of the file and the column choice, or
+            the lines to match and record. No sticky save bar: each step has
+            its own button inside its form (Take the lines in, Record on a
+            line), and Record the suggested lines sits in the toolbar.
+        -->
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             ' . $output_body . '
+        </div>
+
+        <!--
+            What is read: the statement and its counts. Sticky under the fixed
+            header, and after the work column in source order so a phone shows
+            the work first.
+        -->
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">' . $output_status . '
+            </div>
         </div>
     </div>
 </main>

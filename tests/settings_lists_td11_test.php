@@ -47,7 +47,9 @@ function test_settings_lists_td11_printed()
 		pg_assert_contains("pg_list_state('" . $list . "'", $screen, $file . ': same name as its session sort');
 		pg_assert_contains("pg_list_table_search_box('" . $list . "')", $source, $file . ': toolbar search box');
 		pg_assert_contains("pg_js_bundle_tags('assets/js/pg_list_table.min.js')", $screen, $file . ': driver loaded');
-		pg_assert_contains('data-pg-open', $screen, $file . ': the name opens the record');
+		// A list with quick edit draws its cells in its includes/fn module.
+		$cells = ($list === 'view_zones') ? (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/zone_list_edit.php') : $screen;
+		pg_assert_contains('data-pg-open', $cells, $file . ': the name opens the record');
 	}
 }
 

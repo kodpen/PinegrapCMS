@@ -23,11 +23,11 @@ module: list_table_edit
 - Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
 
 ## Which other lists have quick edit?
-- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes (name, folder, activation), styles (a custom style's name, collection, layout type), design files (name, folder), shipping methods (all but the zones and Last Modified), offers (all but the flow), arrival dates (all but Last Modified): each in `list-table-quick-edit-<list>.md` (`short-links`, `containers`, `menus`, `comments`, `submitted-forms`, `themes`, `styles`, `design-files`, `shipping-methods`, `offers`, `arrival-dates`), which says which cells change.
+- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes, styles, design files, shipping methods (all but the zones), offers (all but the flow), product attributes, shipping zones, arrival dates: each in `list-table-quick-edit-<list>.md` (`short-links`, `containers`, `menus`, `comments`, `submitted-forms`, `themes`, `styles`, `design-files`, `shipping-methods`, `offers`, `product-attributes`, `zones`, `arrival-dates`), saying which cells change.
 
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
 - Contacts: the groups (multi-select). Comments and themes: the message, the description (several lines).
-- The commerce lists' columns outside their `pg_*_edit_columns()` (orders, gift cards, key codes, product attributes).
+- The commerce lists' columns outside their `pg_*_edit_columns()` (orders, gift cards, key codes).
 
 Related: docs/memory/ui/list-table-quick-edit.md, docs/memory/ui/product-list-paging.md

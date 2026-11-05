@@ -18,6 +18,23 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/zone_list_edit.php');
+
+$quick_edit = pg_zone_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the zone screen's (validate_ecommerce_access()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ((int) $user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_zone_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 // Every zone is printed: the list table driver sorts and searches them in
 // the browser (browser mode) and keeps a heading's sort.
@@ -53,47 +70,16 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified'         => 'zones.timestamp',
 ));
 
-$query = "SELECT
-            zones.id,
-            zones.name,
-            zones.base_rate,
-            zones.primary_weight_rate,
-            zones.secondary_weight_rate,
-            zones.item_rate,
-            user.user_username as user,
-            zones.timestamp
-        FROM zones
-        LEFT JOIN user ON zones.user = user.user_id
-        ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-while ($row = mysqli_fetch_assoc($result)) {
-    $list_rows[] = array(
-        'id' => (int) $row['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_zone.php?id=' . (int) $row['id'] . '" data-pg-open>' . h($row['name']) . '</a>'),
-            'base_rate' => pg_list_cell(prepare_amount($row['base_rate'] / 100), 'align-middle', array('data-pg-sort-value' => (int) $row['base_rate'])),
-            'primary_weight_rate' => pg_list_cell(prepare_amount($row['primary_weight_rate'] / 100), 'align-middle', array('data-pg-sort-value' => (int) $row['primary_weight_rate'])),
-            'secondary_weight_rate' => pg_list_cell(prepare_amount($row['secondary_weight_rate'] / 100), 'align-middle', array('data-pg-sort-value' => (int) $row['secondary_weight_rate'])),
-            'item_rate' => pg_list_cell(prepare_amount($row['item_rate'] / 100), 'align-middle', array('data-pg-sort-value' => (int) $row['item_rate'])),
-            'last_modified' => pg_list_table_when_cell($row['timestamp'], (string) $row['user']),
-        ),
-    );
+foreach ((array) db_items(pg_zone_list_sql() . " ORDER BY " . $order_by) as $zone) {
+    $list_rows[] = array('id' => (int) $zone['id'], 'cells' => pg_zone_list_cells($zone, $quick_edit));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_zones',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'base_rate' => array('heading' => lang('Base Rate'), 'kind' => 'money'),
-        'primary_weight_rate' => array('heading' => lang('Primary W. Rate'), 'kind' => 'money'),
-        'secondary_weight_rate' => array('heading' => lang('Secondary W. Rate'), 'kind' => 'money'),
-        'item_rate' => array('heading' => lang('Item Rate'), 'kind' => 'money'),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_zone_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_zones.php', 'columns' => $quick_edit),
 ));
 
 print
