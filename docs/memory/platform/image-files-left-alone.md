@@ -11,15 +11,15 @@ description: Images the engine refuses to process: animated (PR #1234), unreadab
 
 ## How is an animated file told apart?
 - By its bytes, never its name or extension (an APNG named `.jpg` still counts).
-- GIF: two or more Graphic Control Extension blocks (`00 21 F9 04`) (`pg_image_is_animated_gif()`).
-- PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Only the 8-byte chunk headers are read; each chunk's data is skipped with `fseek()`, so a large text chunk costs nothing. An `acTL` after `IDAT` is a still PNG to every reader. A chunk length near 2 GB ends the search instead of overflowing the `fseek()` offset on 32-bit PHP (a `TypeError` there, a 500 on upload, Optimize, `?w=` and page render).
+- GIF: two or more image descriptors, found by walking the blocks and skipping each sub-block (`pg_image_is_animated_gif()`). Until PR #NNNN it counted `00 21 F9 04`: the first frame after a global colour table (no `00` before it) and frames without one were missed, so a two-frame GIF was optimized into a still.
+- PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Chunk data is skipped with `fseek()`. An `acTL` after `IDAT` is a still PNG to every reader. A chunk length near 2 GB ends the search instead of overflowing the `fseek()` offset on 32-bit PHP (a `TypeError` there, a 500 on upload, Optimize, `?w=` and page render).
 - WebP: the animation bit (0x02) of the `VP8X` flags byte (`pg_image_is_animated_webp()`); a VP8X with only the alpha bit is a still.
 
 ## How is a JPEG's orientation read?
 - `pg_image_jpeg_orientation()`: 1–8, 1 = none, 0 = unreadable. The exif extension when it returns `Orientation` or read IFD0; else `pg_image_jpeg_exif_orientation()` walks the marker segments to the `Exif\0\0` APP1 and reads tag 0x0112 of IFD0 (`pg_image_exif_tiff_orientation()`: II/MM, SHORT or LONG); Imagick (ping) only when those bytes say 0 or exif is missing.
-- Why: with exif and Imagick both loaded, a JPEG without Exif would otherwise cost an Imagick ping on every page render.
+- Why: else a JPEG without Exif costs an Imagick ping per page render.
 - 0 only for a broken block (unknown byte order, IFD0 or entries outside it, a TIFF header cut short, odd type). An empty Exif APP1 (`Exif\0\0` alone) and a value outside 1–8 count as 1, as browsers do.
-- Without exif the GD half used to skip the turn: every phone photo's derivatives and Optimize came out on their side (#754, fixed in PR #1242; exif is off by default on Windows PHP and absent in the upstream php Docker images; Pinegrap's own docker/ image installs it).
+- Without exif the GD half used to skip the turn: every phone photo's derivatives and Optimize came out on their side (#754, fixed in PR #1242; exif is off by default on Windows PHP and absent in the upstream php Docker images).
 
 ## What happens to such a file on each path?
 - Derivatives (`get_file.php ?w=&f=`): the original is sent. Animated: an empty `.skip` remembers it (docs/memory/platform/image-derivatives.md). Unreadable orientation: `pg_image_oriented_size()` gives 0×0, so no attempt is made.
@@ -30,4 +30,4 @@ description: Images the engine refuses to process: animated (PR #1234), unreadab
 
 ## What went wrong before?
 - Until PR #1234 only GIFs were checked (#753): an APNG's derivatives were one frame, the `<picture>` sent WebP readers to that still, and Optimize or a product upload wrote one frame over the file.
-- Until PR #1340 Replace checked only `.gif` names and wrote one frame over an APNG or animated WebP.
+- Until PR #1340 Replace checked only `.gif` names (APNG, WebP lost frames).
