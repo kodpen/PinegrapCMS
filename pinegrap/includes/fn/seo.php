@@ -2215,6 +2215,21 @@ function pg_record_list_page($record_page_id)
 }
 
 /**
+ * JSON-LD as printed inside <script type="application/ld+json">: < > & are
+ * written as \u escapes, so no value (a visitor's product question, a record
+ * title, a product name) can close the element or open "<!--<script", which
+ * keeps the tokenizer inside the script past its </script> and swallows the
+ * page up to the next one. Slashes and non-ASCII text stay as they are.
+ *
+ * @param mixed $data
+ * @return string
+ */
+function pg_jsonld_script_json($data)
+{
+    return (string) json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+}
+
+/**
  * Wrap operator-authored JSON-LD for output.
  *
  * The stored text is decoded and RE-ENCODED rather than echoed: json_encode
@@ -2239,7 +2254,7 @@ function pg_custom_jsonld_block($raw)
     }
 
     return "\n<!-- Start Custom Structured Data -->\n<script type=\"application/ld+json\">"
-        . json_encode($decoded, JSON_UNESCAPED_UNICODE)
+        . pg_jsonld_script_json($decoded)
         . "</script>\n<!-- End Custom Structured Data -->";
 }
 
