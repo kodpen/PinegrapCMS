@@ -264,8 +264,9 @@ function pg_import_shopify_stock($row)
 }
 
 /**
- * The weight of a variant in the unit the shop showed it in: Shopify keeps
- * grams and names the unit beside them. Pure.
+ * The weight of a variant in pounds, the unit products.weight holds:
+ * Shopify keeps grams whatever unit the shop shows (Variant Weight Unit).
+ * Pure.
  *
  * @param array $row
  * @return string
@@ -274,15 +275,11 @@ function pg_import_shopify_weight($row)
 {
     $grams = (string) ($row['variant grams'] ?? '');
 
-    if (!is_numeric($grams) || ((float) $grams <= 0)) {
+    if (!is_numeric($grams)) {
         return '';
     }
 
-    $per = array('g' => 1, 'kg' => 1000, 'lb' => 453.59237, 'oz' => 28.349523125);
-    $unit = mb_strtolower((string) ($row['variant weight unit'] ?? ''));
-    $weight = (float) $grams / ($per[$unit] ?? 1000);
-
-    return rtrim(rtrim(number_format($weight, 3, '.', ''), '0'), '.');
+    return pg_import_weight_pounds((float) $grams, 'g');
 }
 
 /**
