@@ -58,30 +58,38 @@ if (!defined('PG_INIT_LOADED')) {
 
     <div class="card">
         <div class="card-body p-0 position-relative disable_shortcut">
-            <table class="chart table-hover table" style="width:100%;display:none">
+            <table class="chart table-hover table" style="width:100%;display:none"<?=pg_list_edit_table('view_offers.php', $quick_edit)?>>
                 <thead>
                     <tr>
                         <th class="noVis"><?=lang('Action')?></th>
-                        <th class="w-25"><?=lang('Offer')?></th>
+                        <th><?=lang('Offer')?></th>
+                        <th><?=lang('Message')?></th>
                         <th><?=lang('Flow')?></th>
                         <th><?=lang('How')?></th>
                         <th><?=lang('Status')?></th>
-                        <th><?=lang('Validity')?></th>
+                        <th><?=lang('Start Date')?></th>
+                        <th><?=lang('End Date')?></th>
                         <th><?=lang('Last Modified')?></th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($offers as $offer): ?>
+                    <?php
+                    // A cell an operator can change carries its field; the
+                    // answer to an edit redraws it from pg_offer_list_cells().
+                    $cells = pg_offer_list_cells($offer);
+                    $cell = function ($name) use ($cells, $offer, $quick_edit) {
+                        return '<td class="' . $cells[$name]['class'] . '" data-pg-cell="' . $name . '"' . (isset($cells[$name]['sort']) ? ' data-sort="' . h($cells[$name]['sort']) . '"' : '') . pg_list_edit_cell($quick_edit, $name, $offer['id'], pg_offer_quick_value($offer, $name)) . '>' . $cells[$name]['html'] . '</td>';
+                    };
+                    ?>
                     <tr data-id="<?=$offer['id']?>" data-status="<?=$offer['status']?>" data-how="<?=$offer['require_code'] ? 'code' : 'auto'?>" data-incomplete="<?=$offer['incomplete'] ? '1' : '0'?>">
                         <td class="align-middle text-start text-nowrap">
                             <a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_offer.php?id=<?=$offer['id']?>" title="<?=lang('Edit')?>"><i class="bi bi-pencil"></i></a>
                             <a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="edit_offer.php?duplicate=<?=$offer['id']?>" title="<?=lang('Duplicate')?>"><i class="bi bi-copy"></i></a>
                             <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 pg-offer-toggle" data-id="<?=$offer['id']?>" title="<?=$offer['enabled'] ? lang('Disable offer') : lang('Enable offer')?>" aria-label="<?=$offer['enabled'] ? h(lang('Disable offer')) : h(lang('Enable offer'))?>"><i class="bi bi-power" aria-hidden="true"></i></button>
                         </td>
-                        <td class="align-middle">
-                            <a class="fw-semibold pg-link-body-emphasis text-decoration-none" href="edit_offer.php?id=<?=$offer['id']?>"><?=h($offer['code'])?></a>
-                            <?php if ($offer['description'] != ''): ?><div class="small fg-secondary"><?=h($offer['description'])?></div><?php endif ?>
-                        </td>
+                        <?=$cell('code')?>
+                        <?=$cell('description')?>
                         <td class="align-middle" title="<?=h($offer['sentence'])?>">
                             <div class="d-flex flex-wrap align-items-center gap-1">
                                 <?php if ($offer['condition_chips']): ?>
@@ -98,22 +106,11 @@ if (!defined('PG_INIT_LOADED')) {
                                 <?php if ($offer['upsell']): ?><span class="badge rounded-pill bg-1 fg-secondary border fw-normal" title="<?=lang('Up-sell message')?>"><i class="bi bi-chat-square-text" aria-hidden="true"></i><span class="visually-hidden"><?=lang('Up-sell message')?></span></span><?php endif ?>
                             </div>
                         </td>
-                        <td class="align-middle text-nowrap">
-                            <?php if ($offer['require_code']): ?>
-                                <span class="badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal"><i class="bi bi-tag" aria-hidden="true"></i> <?=lang('Code')?></span>
-                            <?php else: ?>
-                                <span class="badge rounded-pill bg-subtle-info fg-emphasis-info border border-subtle-info fw-normal"><i class="bi bi-lightning-charge" aria-hidden="true"></i> <?=lang('Automatic')?></span>
-                            <?php endif ?>
-                        </td>
-                        <td class="align-middle text-nowrap">
-                            <span class="badge rounded-pill pg-offer-status fw-normal <?php if ($offer['status'] == 'active'): ?>theme-success<?php elseif ($offer['status'] == 'scheduled'): ?>theme-info<?php elseif ($offer['status'] == 'expired'): ?>theme-warning<?php else: ?>theme-secondary<?php endif ?>"><?=h($offer['status_label'])?></span>
-                            <?php if ($offer['incomplete']): ?><span class="badge rounded-pill bg-subtle-warning fg-emphasis-warning border border-subtle-warning fw-normal" title="<?=lang('This offer cannot do anything at checkout yet.')?>"><?=lang('Incomplete')?></span><?php endif ?>
-                        </td>
-                        <td class="align-middle text-nowrap fg-secondary"><?=h($offer['period'])?></td>
-                        <td class="align-middle text-nowrap fg-secondary">
-                            <?=$offer['modified']?>
-                            <?php if ($offer['modified_by'] != ''): ?><?=lang(array('string' => 'by {var:1}', 'vars' => array(h($offer['modified_by']))))?><?php endif ?>
-                        </td>
+                        <?=$cell('require_code')?>
+                        <?=$cell('enabled')?>
+                        <?=$cell('start_date')?>
+                        <?=$cell('end_date')?>
+                        <?=$cell('modified')?>
                     </tr>
                     <?php endforeach ?>
                 </tbody>
@@ -238,6 +235,7 @@ if (!defined('PG_INIT_LOADED')) {
                 tr.find('.pg-offer-status').attr('class', 'badge rounded-pill pg-offer-status fw-normal ' + cls).text(res.label);
                 tr.attr('data-status', res.offer_status);
                 relabel(btn, res.enabled ? labels.disable : labels.enable);
+                tr.find('td[data-pg-edit="enabled"]').attr('data-pg-edit-value', res.enabled ? '1' : '0');
                 // A narrowing chip can filter the row out on the redraw, and
                 // focus would go with it: it moves to the toggle of the row now
                 // at that place, else the last row on the drawn page, else the
@@ -261,6 +259,28 @@ if (!defined('PG_INIT_LOADED')) {
                     (next.length ? next : $('#pg-offers-toolbar [data-filter].active')).first().trigger('focus');
                 }
             }).catch(function () { btn.prop('disabled', false); toast(labels.request_failed, 'danger'); });
+        });
+
+        // A value changed in place on the list (backend.src.js quick edit):
+        // the row's filter data and its toggle's name follow the answer, and
+        // a row a narrowing chip no longer matches leaves the drawn page.
+        document.addEventListener('pg:list-edit-saved', function (event) {
+            var row = event.detail ? event.detail.row : null;
+            var tr = $(event.target).closest('tr[data-status]');
+            if (!row || !tr.length) { return; }
+            tr.attr('data-status', row.status).attr('data-how', row.how).attr('data-incomplete', row.incomplete);
+            relabel(tr.find('.pg-offer-toggle'), row.enabled ? labels.disable : labels.enable);
+            recount();
+            if (!matches(tr[0])) {
+                var dt = table();
+                if (dt) {
+                    dt.draw(false);
+                    var info = dt.page.info();
+                    if (info.recordsDisplay > 0 && info.start >= info.recordsDisplay) { dt.page('last').draw('page'); }
+                } else {
+                    tr.hide();
+                }
+            }
         });
 
         $('#pg-offers-cleanup').on('click', function (e) {
