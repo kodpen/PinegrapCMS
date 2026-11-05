@@ -137,6 +137,14 @@ function api_gift_card_load_or_fail($id) {
 
 }
 
+// Whether a gift_cards row is store credit: bound to a customer's account.
+// A site before the store credit update has no user_id column.
+function api_gift_card_is_store_credit(array $row) {
+
+	return isset($row['user_id']) && (int)$row['user_id'] > 0;
+
+}
+
 function api_gift_card_answer($id, $status = 200) {
 
 	$row = api_gift_card_load_or_fail($id);
@@ -381,6 +389,15 @@ function api_gift_cards_delete($params) {
 	$row = api_gift_card_load_or_fail($params['id']);
 
 	$id = (int)$row['id'];
+
+	// A store credit card is bound to a customer: deleting the row drops the
+	// credit without an audit line and breaks its redemptions, the customer's
+	// list and the audit link, so it is only voided, as on the gift card screen.
+	if (api_gift_card_is_store_credit($row)) {
+
+		api_fail(409, 'store_credit_not_deletable', lang('A store credit card is not deleted. Void it on the customer\'s screen or with POST /customers/{id}/credit/{card_id}/void.'));
+
+	}
 
 	api_dry_run_stop('deleted', 'gift_card', array('id' => $id, 'balance' => api_money($row['balance'])));
 

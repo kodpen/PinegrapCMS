@@ -281,10 +281,12 @@ if ($preset_refusal !== '') {
                 ' . (($preset_invoice !== null)
                     ? '<input type="hidden" name="invoice_id" value="' . $preset_invoice_id . '" />'
                     : '') . '
+                <div class="row">
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . $page_title . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12 lg:col-5 my-3">
@@ -344,20 +346,7 @@ if ($preset_refusal !== '') {
                             : '') . '
                         ' . $output_invoice_picker . '
                         <div class="row">
-                            <div class="col-12 sm:col-4 lg:col-3 my-3">
-                                <label for="doc_date" class="form-label">' . lang('Date') . '</label>
-                                ' . $liveform->output_field(array(
-                                    'type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date',
-                                    'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
-                                    'autocomplete' => 'off')) . '
-                                ' . get_date_picker_format() . pg_fields_script() . '                            </div>
-                            <div class="col-12 sm:col-4 lg:col-3 my-3">
-                                <label for="payment_method" class="form-label">' . lang('Payment Method') . '</label>
-                                ' . $liveform->output_field(array(
-                                    'type' => 'select', 'id' => 'payment_method', 'name' => 'payment_method',
-                                    'class' => 'form-control', 'options' => $method_options)) . '
-                            </div>
-                            <div class="col-12 lg:col-6 my-3">
+                            <div class="col-12 my-3">
                                 <label for="description" class="form-label">' . lang('Description') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'text', 'id' => 'description', 'name' => 'description',
@@ -366,13 +355,60 @@ if ($preset_refusal !== '') {
                         </div>
                     </div>
                 </div>
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                </div>
+                <!-- The date and the method are two short fields and the
+                     invoice being closed is read, not filled: they sit beside
+                     the form, written after it, so on a narrow screen they do
+                     not push the account and the amount down. -->
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <div class="position-sticky" style="top:3.3rem;">
+                        <div class="card my-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Details') . '</h2>
+                            <div class="card-body pt-0">
+                                <div class="row">
+                                    <div class="col-12 sm:col-6 lg:col-12 my-3">
+                                        <label for="doc_date" class="form-label">' . lang('Date') . '</label>
+                                        ' . $liveform->output_field(array(
+                                            'type' => 'text', 'id' => 'doc_date', 'data-pg-date' => '', 'name' => 'doc_date',
+                                            'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
+                                            'autocomplete' => 'off')) . '
+                                        ' . get_date_picker_format() . pg_fields_script() . '
+                                    </div>
+                                    <div class="col-12 sm:col-6 lg:col-12 my-3">
+                                        <label for="payment_method" class="form-label">' . lang('Payment Method') . '</label>
+                                        ' . $liveform->output_field(array(
+                                            'type' => 'select', 'id' => 'payment_method', 'name' => 'payment_method',
+                                            'class' => 'form-control', 'options' => $method_options)) . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ' . (($preset_invoice !== null)
+                            ? '<div class="card my-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</h2>
+                            <div class="card-body pt-0">
+                                <dl class="row mb-0">
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Invoice') . '</dt><dd class="sm:col-7"><a href="edit_erp_invoice.php?id=' . (int) $preset_invoice['id'] . '">' . h($preset_invoice['full_number']) . '</a></dd>
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Account') . '</dt><dd class="sm:col-7 text-break">' . h((string) $preset_invoice['account_title']) . '</dd>
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Invoice Date') . '</dt><dd class="sm:col-7">' . h(prepare_form_data_for_output((string) $preset_invoice['issue_date'], 'date')) . '</dd>
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Invoice Total') . '</dt><dd class="sm:col-7">' . h(erp_money_out_currency((int) $preset_invoice['grand_total'], $preset_currency)) . '</dd>
+                                    <dt class="sm:col-5 fg-secondary fw-normal">' . lang('Outstanding') . '</dt><dd class="sm:col-7 mb-0">' . h(erp_money_out_currency(erp_invoice_open_amount($preset_invoice), $preset_currency)) . '</dd>
+                                </dl>
+                            </div>
+                        </div>'
+                            : '') . '
+                    </div>
+                </div>
+                <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                         </div>
                     </div>
                 </nav>
+                </div>
+                </div>
             </form>
             ' . (($preset_invoice === null) ? erp_account_quick_modal() : '') . '
         </div>
