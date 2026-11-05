@@ -4149,6 +4149,7 @@
     "The return of order {var:1} was approved on {var:2} ({var:3} units).": "{var:1} siparişinin iadesi {var:2} üzerinde onaylandı ({var:3} adet).",
     "The return of order {var:1} was approved on {var:2}.": "{var:1} siparişinin iadesi {var:2} üzerinde onaylandı.",
     "The return of order {var:1} was not approved: {var:2}": "{var:1} siparişinin iadesi onaylanamadı: {var:2}",
+    "The return of {{record_title}} is still not handled after two days.": "{{record_title}} iadesi iki gün sonra hâlâ işlenmedi.",
     "The return period for this delivery has ended.": "Bu teslimatın cayma süresi doldu.",
     "The return request was recorded, but the e-mail to the customer could not be sent.": "İade talebi kaydedildi, ancak müşteriye e-posta gönderilemedi.",
     "The return request was recorded.": "İade talebi kaydedildi.",

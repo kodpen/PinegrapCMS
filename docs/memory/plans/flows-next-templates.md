@@ -10,11 +10,11 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 - Already there and not repeated: form to the channel, task when stock runs low, new order to the channel, new customer, quote approval, text review, next task when approved, overdue tasks, morning summaries, overdue invoices every Monday.
 
 ## Which templates?
-- T1 (now): ask for a review: an order is delivered → wait 7 days → a task to ask the customer how it went and for a review.
+- T1 (done, #7113): ask for a review: an order is delivered → wait 7 days → a task to ask the customer how it went and for a review.
 
-- T2 (now): restock after approval: a product runs low → an approval in the channel "Order more?" → approved: a task to order it; rejected: a line in the channel.
+- T2 (done, #7113): restock after approval: a product runs low → an approval in the channel "Order more?" → approved: a task to order it; rejected or undecided: the person is told.
 
-- T3 (now): a return to handle: a return is requested → a task for the person who handles returns, due in 2 days → a line in the channel; the task not done in time → tell the manager.
+- T3 (done, #7113): a return to handle: a return is requested → a task for the person who handles returns, due in 2 days and a line in the channel; the task not done in time → the person is told.
 
 - T4 (now): a cancelled booking: a booking is cancelled → a line in the channel and a task to offer the guest another time.
 

@@ -1114,6 +1114,7 @@
     "Restart the phone and install the latest update: it solves many faults.": "Telefonu yeniden başlatın ve son güncellemeyi yükleyin: birçok arızayı çözer.",
     "Restarting": "Yeniden başlatılıyor",
     "Restaurant": "Restoran",
+    "Restock after approval": "Onayla stok yenileme",
     "Restock {{record_title}}": "Stok yenile: {{record_title}}",
     "Restocking the {var:1} empty products would keep those pages selling.": "Stoğu biten {var:1} ürünü tazelemek o sayfaların satmaya devam etmesini sağlar.",
     "Restocking the {var:1} would keep that page selling.": "{var:1} tazelemek o sayfanın satmaya devam etmesini sağlar.",
