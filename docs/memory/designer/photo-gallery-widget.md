@@ -19,10 +19,11 @@ module: widgets_photo_gallery
 
 ## Which files are photos, with what alt?
 - `pg_gal_image_types()` for the widget and both layouts of `get_photo_gallery.php`: every `pg_public_image_file_types()` type plus classic `tif`/`tiff` (WebP/AVIF since #4361, #4335).
+- Widget photos, album counts and first photos go through `pg_gal_photo_sql()`: no design files, no attachments (`attachment = 1`: form/comment uploads, signatures). Listed, one showed a broken picture: `get_file.php` opens it only to its record's readers. The classic page still lists them.
 - System layout alt: `pg_gal_photo_alt()`, the description, else the name's stem with dashes and underscores as spaces; the link has the description as `title` (#4342, #4361). Custom layout template: `alt=""`.
 
 ## Does Where used see a gallery's photos?
-- Yes: `handle_file_usage.php` walks the file's folder and those above (`pg_gal_folders_showing()`, bin dropped; a file in the bin or a folder in it is shown by no gallery, the walk stops empty: before #4754 a root gallery was listed for it) and lists, under "Photo Gallery", the classic `page_type = 'photo gallery'` pages in them and the designed pages whose widget's top is one of them (`pg_gal_widget_pages_showing()`, nested placements via `pg_shared_component_usage()`, binned pages left out), each once (#4341, #4361, #4450).
+- Yes: `handle_file_usage.php` walks the file's folder and those above (`pg_gal_folders_showing()`; a file in the bin or below it gives none, #4754) and lists, under "Photo Gallery", the classic `page_type = 'photo gallery'` pages in them and the designed pages whose widget's top is one of them (`pg_gal_widget_pages_showing()`, nested placements via `pg_shared_component_usage()`, binned pages left out), each once (#4341, #4361, #4450).
 
 ## Which tokens and flags?
 - Rows (`pg_gal_rows()`): `__gallery_item_id`, `__gallery_item_name`, `__gallery_item_url` (album on this page / the image), `__gallery_item_image_url` (empty for an empty album), `__gallery_item_description`, `__gallery_item_photo_count`, `__gallery_item_count_label` ("3 Photos"), `__gallery_item_is_album`, `__gallery_item_is_photo`. Static `__album_name`, `__back_url`. Flags (`pg_gal_flags()`): `has_gallery_items`, `no_gallery_items`, `has_albums`, `has_photos`, `in_album`.
