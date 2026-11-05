@@ -257,3 +257,19 @@ function test_api_calendar_event_reserved_is_announced_at_completion()
 
 	pg_assert_contains("pg_order_complete_line_reservation(\$product, \$contact_id, array('order_id' => \$order_id", api_calendar_locations_test_body($file, 'pg_order_complete_lines'), 'the order is passed on');
 }
+
+// The buyer's name and e-mail on a reservation are order data: they need the
+// owner's order right and the key's orders:read, never calendars:read alone.
+function test_api_calendar_reservation_customer_needs_orders_scope()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
+
+	$admin = array('role' => 0);
+
+	pg_assert_false(api_calendar_reservation_customer_shown($admin, array('calendars:read')), 'an administrator\'s key holding calendars:read alone gets no customer');
+	pg_assert_true(api_calendar_reservation_customer_shown($admin, array('calendars:read', 'orders:read')), 'a key holding orders:read gets the customer');
+	pg_assert_false(api_calendar_reservation_customer_shown(array('role' => 3, 'manage_ecommerce' => ''), array('calendars:read', 'orders:read')), 'an owner without the order right gets no customer');
+	pg_assert_true(api_calendar_reservation_customer_shown(array('role' => 3, 'manage_ecommerce' => 'yes'), array('calendars:read', 'orders:read')), 'the e-commerce right with orders:read gets the customer');
+
+	pg_assert_contains('api_calendar_reservation_customer_shown($app[\'owner\'], api_current_scopes())', api_calendar_locations_test_body('includes/api/resources/calendars.php', 'api_calendar_owner_reads_orders'), 'the handler reads the caller\'s owner and scopes');
+}
