@@ -11,4 +11,4 @@ module: forms
 
 ## What did this fix?
 - Symptom: any visitor could take a form list view page down with `?a[x][y]=1`: `urlencode()` of the inner array threw a TypeError on PHP 8. A page without a query string and more than one result page logged an undefined `query` key warning.
-- Tested in `tests/form_list_query_carry_test.php`.
+- Tested in `tests/form_list_query_carry_test.php` (PR #6970).
