@@ -74,8 +74,9 @@ if (!$_POST || $errors) {
 
 } else {
     // tax_zones.tax_rate is NOT NULL: a blank or unreadable rate is refused,
-    // never stored as 0, and "8,25" is read as 8.25, not 8.
-    $tax_rate = parse_tax_rate($_POST['tax_rate'] ?? '');
+    // never stored as 0, and "8,25" is read as 8.25, not 8. The form's own
+    // reading is used: a rate sent as a list is blank there, not a warning.
+    $tax_rate = parse_tax_rate($values['tax_rate']);
     if ($tax_rate === NULL) {
         output_error(lang('Enter a tax rate between 0 and 100.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
