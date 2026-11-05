@@ -327,6 +327,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-quick-edit-ship-date-adjustments.md: All Ship Date Adjustments list quick edit (ship_date_adjustment_list_edit.php): prefix, shipping method and signed days as fields, the adjustment screen's checks and save
 - list-table-quick-edit-shipping-methods.md: All Shipping Methods list quick edit (shipping_method_list_edit.php): the fields, service and real-time rate, cells a pickup method or variable base rate keeps as text
 - list-table-quick-edit-short-links.md: Short links list quick edit (includes/fn/short_link_list_edit.php): fields per destination type, the split destination columns, the edit screen's own checks and save
+- list-table-quick-edit-states.md: All States list quick edit (includes/fn/state_list_edit.php): name, code and country change with the state screen's checks; a state whose country is gone keeps the Country cell as text
 - list-table-quick-edit-styles.md: All Page Styles list quick edit (includes/fn/style_list_edit.php): the fields, which rows stay text, the custom style screen's shared check and save
 - list-table-quick-edit-submitted-forms.md: Submitted forms list quick edit (includes/fn/submitted_form_list_edit.php): Status and Form Editor, the required-field check before completing, the screen's rights and side effects
 - list-table-quick-edit-tax-zones.md: All Tax Zones list quick edit (tax_zone_list_edit.php): the name and the rate, the tax zone screen's checks and save, the countries and states kept
