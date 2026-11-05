@@ -6,7 +6,7 @@ description: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free def
 ## Which steps are there?
 - Order and decisions as in `image-editor-steps-3.md`. E27 and E28 change the save path: one at a time with the other save-path steps (`image-editor-workers.md`).
 
-- E26 (M) Free deformation, a mode of the Vektör item (`image-editor-steps-5.md` E23b). `free`. In progress (draft `feat/image-editor-e26-puppet`).
+- E26 (M) Free deformation, a mode of the Vektör item (`image-editor-steps-5.md` E23b). `free`. Done in #7001 (`ui/image-editor-puppet.md`).
   - Pins on a path layer (or outlined text); dragging one bends the shape around the others (moving least squares, rigid). Kept as `puppet` {pins at rest and moved} and drawn on the flattened outline; Expand bakes it.
   - Tests: one pin moves the whole shape, two pins keep their distance at rest, a symmetric pull gives a symmetric shape.
 

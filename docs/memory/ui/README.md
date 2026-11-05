@@ -264,6 +264,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-parts.md: The image editor in parts: core, model, one file per tool; the hooks a tool hangs on the editor (panels, pointers, layer types), its model section, labels, API actions, styles and tests
 - image-editor-picture-layer.md: A photo's picture as the bottom layer (E30, #6470): doc.canvas.picture, unlocking, move, resize and delete like a layer, the extend step's pw and ph
 - image-editor-present.md: Present (AN8): a canvas's scenes full screen, keys, swipes, transitions, reduced motion; PDF in Save animation, a JPEG page per scene from M.pdfFile()
+- image-editor-puppet.md: The image editor's free deformation (puppet): pins on a path, shape or outlined text, rigid moving least squares, kept as l.puppet, drawn after the warp; Expand bakes it
 - image-editor-rail.md: The image editor rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
 - image-editor-redact.md: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
 - image-editor-remove-background.md: The image editor's Remove background (E28c, #6948): subject kept, the rest erased; the erased part's fills (colour, blur, a picture from Files) in the mask step
