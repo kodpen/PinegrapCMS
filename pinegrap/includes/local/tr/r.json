@@ -1000,6 +1000,7 @@
     "Requests": "İstekler",
     "Requests Card": "Talepler Kartı",
     "Requests Note": "Talepler Notu",
+    "Requests in 24 hours": "24 saatteki istekler",
     "Requests older than this are removed from the API log once a day by the cron job. Between 1 and 3650 days.": "Bundan eski istekler cron görevi tarafından günde bir kez API günlüğünden silinir. 1 ile 3650 gün arası.",
     "Requests per minute": "Dakikada istek",
     "Requests the firewall blocked or flagged": "Güvenlik duvarının engellediği veya işaretlediği istekler",

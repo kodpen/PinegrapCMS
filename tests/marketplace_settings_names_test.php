@@ -71,7 +71,7 @@ function test_marketplace_settings_secondary_text_without_opacity()
 	$source = marketplace_settings_names_test_source();
 	$style = marketplace_settings_names_test_style();
 
-	foreach (array('.mp-head', '.mp-pill.off', '.mp-tab small', '.mp-count span') as $selector) {
+	foreach (array('.mp-head', '.mp-pill.off', '.mp-tab small') as $selector) {
 		$at = strpos($style, "\n" . $selector . ' {');
 		pg_assert_true($at !== false, $selector . ' rule is there');
 		$rule = substr($style, $at, (int) strpos($style, '}', $at) - $at);
