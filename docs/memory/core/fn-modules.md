@@ -167,6 +167,7 @@ description: Generated from the module field of the memory files: each includes/
 - `search_console`: [[search-console-screen-messages]]
 - `seo`: [[indexnow-ping-result]], [[list-row-names]], [[main-host-redirect]], [[panel-preview-not-a-visit]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[recycle-bin-offline]], [[robots-large-image-preview]], [[seo-default-share-image-warning]], [[sitemap-cache]], [[sitemap-listed-pages]]
 - `seo_draft`: [[seo-check-draft-render]]
+- `ship_date_adjustment_list_edit`: [[list-table-quick-edit-ship-date-adjustments]]
 - `shipment_labels`: [[shipment-label-api]], [[shipment-label-pickup]], [[shipment-label-pickup-drivers]], [[shipment-label-returns]], [[shipment-labels]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `shipment_tracking`: [[shipment-tracking]]

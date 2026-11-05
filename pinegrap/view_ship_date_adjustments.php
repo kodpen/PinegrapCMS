@@ -18,6 +18,23 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/ship_date_adjustment_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/ship_date_adjustment_list_edit.php');
+
+$quick_edit = pg_ship_date_adjustment_quick_edit_columns(pg_ship_date_adjustment_quick_methods());
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the adjustment screen's (validate_ecommerce_access()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ((int) $user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_ship_date_adjustment_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 $user = validate_user();
 validate_ecommerce_access($user);
@@ -51,68 +68,20 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified'   => 'ship_date_adjustments.last_modified_timestamp',
 ));
 
-$ship_date_adjustments = db_items(
-    "SELECT
-        ship_date_adjustments.id,
-        ship_date_adjustments.zip_code_prefix,
-        shipping_methods.name AS shipping_method_name,
-        shipping_methods.code AS shipping_method_code,
-        ship_date_adjustments.adjustment,
-        created_user.user_username AS created_username,
-        ship_date_adjustments.created_timestamp,
-        last_modified_user.user_username AS last_modified_username,
-        ship_date_adjustments.last_modified_timestamp
-    FROM ship_date_adjustments
-    LEFT JOIN shipping_methods ON ship_date_adjustments.shipping_method_id = shipping_methods.id
-    LEFT JOIN user AS created_user ON ship_date_adjustments.created_user_id = created_user.user_id
-    LEFT JOIN user AS last_modified_user ON ship_date_adjustments.last_modified_user_id = last_modified_user.user_id
-    ORDER BY $order_by");
-
 // Every adjustment is printed: the list table driver sorts and searches
 // them in the browser (browser mode) and keeps a heading's sort.
 $list_rows = array();
 
-foreach ($ship_date_adjustments as $item) {
-
-    $output_shipping_method = h($item['shipping_method_name']);
-
-    if ($item['shipping_method_code'] != '') {
-        $output_shipping_method .= ' (' . h($item['shipping_method_code']) . ')';
-    }
-
-    if ($item['adjustment'] < 0) {
-        $days = abs((int)$item['adjustment']);
-        $suffix = ($days > 1) ? 's' : '';
-        $output_adjustment = lang(array('string' => '{var:1} day{suffix} earlier', 'vars' => array($days), 'suffix' => $suffix));
-    } else {
-        $days = (int)$item['adjustment'];
-        $suffix = ($days > 1) ? 's' : '';
-        $output_adjustment = lang(array('string' => '{var:1} day{suffix} later', 'vars' => array($days), 'suffix' => $suffix));
-    }
-
-    $list_rows[] = array(
-        'id' => (int) $item['id'],
-        'cells' => array(
-            'zip_code_prefix' => pg_list_cell('<a href="edit_ship_date_adjustment.php?id=' . (int) $item['id'] . '" data-pg-open>' . h($item['zip_code_prefix']) . '</a>'),
-            'shipping_method' => pg_list_cell($output_shipping_method),
-            'adjustment' => pg_list_cell($output_adjustment, 'align-middle', array('data-pg-sort-value' => (int) $item['adjustment'])),
-            'created' => pg_list_table_when_cell($item['created_timestamp'], (string) $item['created_username']),
-            'last_modified' => pg_list_table_when_cell($item['last_modified_timestamp'], (string) $item['last_modified_username']),
-        ),
-    );
+foreach ((array) db_items(pg_ship_date_adjustment_list_sql() . " ORDER BY " . $order_by) as $item) {
+    $list_rows[] = array('id' => (int) $item['id'], 'cells' => pg_ship_date_adjustment_list_cells($item, $quick_edit));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_ship_date_adjustments',
-    'columns' => array(
-        'zip_code_prefix' => array('heading' => lang('Zip Code Prefix')),
-        'shipping_method' => array('heading' => lang('Shipping Method')),
-        'adjustment' => array('heading' => lang('Adjustment')),
-        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-    ),
+    'columns' => pg_ship_date_adjustment_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_ship_date_adjustments.php', 'columns' => $quick_edit),
 ));
 
 echo
