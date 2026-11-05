@@ -32,10 +32,15 @@ function get_affiliate_welcome_screen_content() {
         $affiliate_commission_rate = AFFILIATE_DEFAULT_COMMISSION_RATE;
     }
     
+    // This content is only ever mailed (sign-up with automatic approval,
+    // approval from the panel or the API): the link is built on the site's
+    // configured address, never on the request's Host header.
+    $affiliate_link = pg_affiliate_link(URL_SCHEME, HOSTNAME_SETTING, PATH, (string) ($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''));
+
     $output =
         '<div>
             ' . lang('Affiliate Code') . ': ' . h(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? '')) . '<br />
-            ' . lang('Affiliate Link') . ': <a href="' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) . '">' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . '/?a=' . h(urlencode(($_SESSION['software']['affiliate_welcome']['affiliate_code'] ?? ''))) . '</a><br>
+            ' . lang('Affiliate Link') . ': <a href="' . h($affiliate_link) . '">' . h($affiliate_link) . '</a><br>
             ' . lang('Affiliate Commission Rate') . ': ' . $affiliate_commission_rate . '%
         </div>';
 

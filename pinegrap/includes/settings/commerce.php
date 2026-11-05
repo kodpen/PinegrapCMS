@@ -396,7 +396,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-md">
                                                                                             <label for="ecommerce_givex_password" class="form-label">' . lang('Password') . '</label>
-                                                                                            <input type="text" name="ecommerce_givex_password" id="ecommerce_givex_password" class="form-control" value="' . h($ecommerce_givex_password) . '" maxlength="100"/>
+                                                                                            <input type="password" name="ecommerce_givex_password" id="ecommerce_givex_password" class="form-control" autocomplete="off" value="' . h(pg_gateway_secret_shown($ecommerce_givex_password)) . '" maxlength="100"/>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
@@ -634,7 +634,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-lg" id="ecommerce_clearcommerce_password_row" style="' . $ecommerce_clearcommerce_password_row_style . '">
                                                                                             <label class="form-label" for="ecommerce_clearcommerce_password">'. lang('Password') . '</label>
-                                                                                            <input class="form-control" type="password" id="ecommerce_clearcommerce_password" name="ecommerce_clearcommerce_password" value="' . h($ecommerce_clearcommerce_password) . '" size="40" maxlength="100" />
+                                                                                            <input class="form-control" type="password" id="ecommerce_clearcommerce_password" name="ecommerce_clearcommerce_password" value="' . h(pg_gateway_secret_shown($ecommerce_clearcommerce_password)) . '" size="40" maxlength="100" />
                                                                                         </div>
 
                                                                                         <div class="pg-f-lg" id="ecommerce_first_data_global_gateway_store_number_row" style="' . $ecommerce_first_data_global_gateway_store_number_row_style . '">
@@ -673,7 +673,7 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-lg" id="ecommerce_paypal_payments_pro_api_signature_row" style="' . $ecommerce_paypal_payments_pro_api_signature_row_style . '">
                                                                                             <label class="form-label" for="ecommerce_paypal_payments_pro_api_signature">'. lang('API Signature') . '</label>
-                                                                                            <input class="form-control" type="password" id="ecommerce_paypal_payments_pro_api_signature" name="ecommerce_paypal_payments_pro_api_signature" value="' . h($ecommerce_paypal_payments_pro_api_signature) . '" size="40" maxlength="100" />
+                                                                                            <input class="form-control" type="password" id="ecommerce_paypal_payments_pro_api_signature" name="ecommerce_paypal_payments_pro_api_signature" value="' . h(pg_gateway_secret_shown($ecommerce_paypal_payments_pro_api_signature)) . '" size="40" maxlength="100" />
                                                                                         </div>
 
                                                                                         <div class="pg-f-lg" id="ecommerce_sage_merchant_id_row" style="' . $ecommerce_sage_merchant_id_row_style . '">
@@ -682,12 +682,12 @@ $pg_settings_cards[] = '
                                                                                         </div>
                                                                                         <div class="pg-f-lg" id="ecommerce_sage_merchant_key_row" style="' . $ecommerce_sage_merchant_key_row_style . '">
                                                                                             <label class="form-label" for="ecommerce_sage_merchant_key">'. lang('Merchant Key') . '</label>
-                                                                                            <input class="form-control" type="password" id="ecommerce_sage_merchant_key" name="ecommerce_sage_merchant_key" value="' . h($ecommerce_sage_merchant_key) . '" size="40" maxlength="100" />
+                                                                                            <input class="form-control" type="password" id="ecommerce_sage_merchant_key" name="ecommerce_sage_merchant_key" value="' . h(pg_gateway_secret_shown($ecommerce_sage_merchant_key)) . '" size="40" maxlength="100" />
                                                                                         </div>
                                                                                        
                                                                                         <div class="pg-f-lg" id="ecommerce_stripe_api_key_row" style="' . $ecommerce_stripe_api_key_row_style . '">
                                                                                             <label class="form-label" for="ecommerce_stripe_api_key">'. lang('API Key') . '</label>
-                                                                                            <input class="form-control" type="password" id="ecommerce_stripe_api_key" name="ecommerce_stripe_api_key" value="' . h($ecommerce_stripe_api_key) . '" size="40" maxlength="100" />
+                                                                                            <input class="form-control" type="password" id="ecommerce_stripe_api_key" name="ecommerce_stripe_api_key" value="' . h(pg_gateway_secret_shown($ecommerce_stripe_api_key)) . '" size="40" maxlength="100" />
                                                                                             <div class="form-text">' . lang('Enter the Test or Live Secret Key') . '</div>
                                                                                         </div>
                                                                                        
@@ -792,7 +792,7 @@ $pg_settings_cards[] = '
                                                                         </div>
                                                                         <div class="pg-f-lg">
                                                                             <label class="form-label" for="ecommerce_paypal_express_checkout_api_signature">'. lang('API Signature') . '</label>
-                                                                            <input class="form-control" type="password" id="ecommerce_paypal_express_checkout_api_signature" name="ecommerce_paypal_express_checkout_api_signature" value="' . h($ecommerce_paypal_express_checkout_api_signature) . '" size="40" maxlength="100" />
+                                                                            <input class="form-control" type="password" id="ecommerce_paypal_express_checkout_api_signature" name="ecommerce_paypal_express_checkout_api_signature" value="' . h(pg_gateway_secret_shown($ecommerce_paypal_express_checkout_api_signature)) . '" size="40" maxlength="100" />
                                                                         </div>
                                                                     </div>
                                                                 </div>
