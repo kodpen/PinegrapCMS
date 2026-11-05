@@ -37,7 +37,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 
     header('Content-Type: application/json; charset=utf-8');
 
-    echo json_encode(ws_guest_handle(is_array($request) ? (string) ($request['action'] ?? '') : '', is_array($request) ? $request : array()), JSON_UNESCAPED_UNICODE);
+    echo json_encode(ws_guest_handle(is_array($request) ? ws_guest_request_text($request['action'] ?? '') : '', is_array($request) ? $request : array()), JSON_UNESCAPED_UNICODE);
     exit;
 }
 
