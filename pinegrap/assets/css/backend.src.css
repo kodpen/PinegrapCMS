@@ -13426,9 +13426,16 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   border: 1px solid transparent;
   border-radius: var(--ws-radius);
 }
-.btn-check:checked + .ws-status-choice {
+/* A v6 label.btn-check wrapping its radio: the checked choice keeps its
+   tint and takes an outline in its own colour, not the button fill; the
+   focus ring is the panel's. */
+.ws-status-choice.btn-check:has(input:checked) {
   border-color: currentColor;
   box-shadow: 0 0 0 1px currentColor;
+}
+.ws-status-choice.btn-check:has(input:focus-visible) {
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
+  outline-offset: var(--pg-focus-ring-offset);
 }
 .ws-checkin {
   max-width: 34rem;
@@ -21694,7 +21701,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
     .ws-format-tool.active,
     .btn-check:checked + .pg-role-card,
-    .btn-check:checked + .ws-status-choice
+    .ws-status-choice.btn-check:has(input:checked)
   ) {
     forced-color-adjust: none;
     background-color: Highlight;
@@ -21719,9 +21726,9 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     .pg-sale-method[aria-pressed="true"],
     .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
     .ws-format-tool.active,
-    .btn-check:checked + .pg-role-card,
-    .btn-check:checked + .ws-status-choice
-  ) * {
+    .btn-check:checked + .pg-role-card
+  ) *,
+  .ws-status-choice.btn-check > i {
     color: inherit;
     background-color: transparent;
     border-color: currentcolor;
