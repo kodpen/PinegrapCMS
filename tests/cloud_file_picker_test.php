@@ -285,3 +285,87 @@ function test_cloud_picker_missing_consent_keeps_the_connection()
 	pg_assert_true(pg_connect_grant_lost(array('error_code' => 'invalid_grant', 'error' => 'invalid_grant: AADSTS70008: The refresh token has expired.')), 'expired');
 	pg_assert_true(!pg_connect_grant_lost(array('error_code' => 'temporarily_unavailable', 'error' => 'x')), 'not a grant error');
 }
+
+// The browser script of the picker (assets/js/cloud_file_picker.js).
+function pg_cloud_picker_test_js()
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/cloud_file_picker.js');
+}
+
+// Runs pickerOriginAllowed() of the browser script under Node over
+// [origin, picker address] pairs; null without Node.
+function pg_cloud_picker_test_origin_run($cases)
+{
+	$js = pg_cloud_picker_test_js();
+	$start = strpos($js, 'function pickerOriginAllowed(');
+	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
+
+	if (($start === false) || ($end === false)) {
+		return array('error' => 'pickerOriginAllowed() not found');
+	}
+
+	if (!function_exists('exec')) {
+		return null;
+	}
+
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgpk');
+
+	if ($file === false) {
+		return null;
+	}
+
+	file_put_contents($file, substr($js, $start, $end - $start + 6)
+		. "\nvar cases = " . json_encode($cases) . ";\n"
+		. "console.log(JSON.stringify(cases.map(function (c) { return pickerOriginAllowed(c[0], c[1]); })));\n");
+	$out = array();
+	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	@unlink($file);
+	$json = json_decode(implode("\n", $out), true);
+
+	return (($code === 0) && is_array($json)) ? $json : array('error' => implode("\n", $out));
+}
+
+// The OneDrive picker window is answered with a token only while it shows
+// Microsoft's picker page: a message from any other origin (the window
+// navigated elsewhere) is ignored, whatever channel id it names.
+function test_cloud_picker_onedrive_messages_only_from_the_picker_origin()
+{
+	$cases = array(
+		array('https://onedrive.live.com', 'https://onedrive.live.com/picker', true),
+		array('https://my.microsoftpersonalcontent.com', 'https://onedrive.live.com/picker', true),
+		array('https://contoso-my.sharepoint.com', 'https://contoso-my.sharepoint.com/_layouts/15/FilePicker.aspx', true),
+		array('https://evil.example', 'https://onedrive.live.com/picker', false),
+		array('https://onedrive.live.com.evil.example', 'https://onedrive.live.com/picker', false),
+		array('http://onedrive.live.com', 'https://onedrive.live.com/picker', false),
+		array('https://fabrikam-my.sharepoint.com', 'https://contoso-my.sharepoint.com/_layouts/15/FilePicker.aspx', false),
+		array('https://my.microsoftpersonalcontent.com', 'https://contoso-my.sharepoint.com/_layouts/15/FilePicker.aspx', false),
+		array('null', 'https://onedrive.live.com/picker', false),
+		array('https://onedrive.live.com', '', false),
+		array('https://onedrive.live.com', 'not a url', false),
+	);
+	$result = pg_cloud_picker_test_origin_run($cases);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), 'ran: ' . ($result['error'] ?? ''));
+
+	foreach ($cases as $i => $case) {
+		pg_assert_same($case[2], $result[$i] ?? null, $case[0] . ' for ' . $case[1]);
+	}
+
+	$js = pg_cloud_picker_test_js();
+
+	pg_assert_contains('!pickerOriginAllowed(event.origin, pickerUrl)', $js, 'the initialize handler checks the origin');
+	pg_assert_contains('getRandomValues', $js, 'the channel id is unguessable');
+	pg_assert_false(strpos($js, 'Math.random') !== false, 'no Math.random channel id');
+}
