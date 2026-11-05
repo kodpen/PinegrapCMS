@@ -45,6 +45,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - external-api-coverage.md: External API (integration.php): find what the panel can do that the API cannot, then add the missing endpoints in steps (owner, 2026-11-01); claim as [plan:external-api-coverage] X<n>
 - feature-plans-2026-11.md: The eleven feature plans approved 2026-11-02: index and order, how one coordinator and its five workers hold a plan, the shared rules
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
+- flows-calc-and-answers.md: Plan (2026-11-05): a Calculate rule in the derived value box (#7016) and, once #7015 is decided, an answer from the people an approval box asks; claim as [plan:flows-calc-and-answers] FA<n>
 - flows-next-steps.md: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow boxes, and site events flows can start on; claim as [plan:flows-next] <step>
 - flows-next-templates.md: Template steps T1-T14 of plans/flows-next.md: ready flows people pick instead of building box by box, what each needs and how it is tested before it is added
 - flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, and ready templates; steps in flows-next-steps and -templates

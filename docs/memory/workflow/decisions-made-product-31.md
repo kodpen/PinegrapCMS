@@ -1,0 +1,13 @@
+---
+name: decisions-made-product-31
+description: Decisions list, product part 31 (2026-11-05 evening on): a Calculate rule in the derived value box; a refund by lines remembers its lines on the refund row
+---
+
+## Where are the rules and the earlier parts?
+- `decisions-made.md`; its Parts line lists the files. Entries name the issue, the date and the reason.
+
+## Does the derived value box calculate with the workspace calculator? (#7016)
+- Decided (architect, 2026-11-05; the owner asked on dev, with the production-line example, for multiplication, percent and functions in a flow): yes, a `calculate` rule beside compare, join, add, subtract, round, date_format and add_days. `a` holds one expression; every `{{node.*}}` and `{{trigger.*}}` value is read with `ws_calc_number()` and bound through `ws_calc_evaluate()`'s `$resolve`, never pasted in as text, so a value cannot inject an operator; `places` rounds the result; an empty or unreadable value, or a calculator error, gives an empty value as the other rules do; the canvas lists the calculator's functions. Pure, no schema. Reason: one rule with the calculator keeps hesap blocks, formula columns and flows reading figures the same way (`workspace/workspace-calc-numbers.md`), and the answer number of #7015 goes through the same reader. Refused: multiply and divide rules only (no percent, no functions, two boxes for a × b + c). Step FA1 of `plans/flows-calc-and-answers.md`.
+
+## Does a refund by lines remember its lines on an order without an ERP invoice? (#7129)
+- Decided (architect, 2026-11-05, a fix, no schema): yes. The order screen's refund by lines (`refund_mode = lines`, source `order`: no issued sales invoice) writes the refunded line quantities on its `order_refunds.notes` row beside the points marker (`lines:<order item id>=<quantity>,…`, a pure writer and parser with tests), and `erp_order_refund_order_lines()` reads the markers of the order's earlier `refund` rows into `returned_qty` / `remaining_qty`, so the same line is not refunded twice and `pg_credit_points_lines_refunded()` does not take its points back twice. With source `invoice` the return invoice keeps the count, as today. Refunds made before the change carry no marker and stay uncounted (today's behaviour); without the `notes` column nothing is noted and nothing changes (`pg_schema_has()`). Reason: the money cap `total − refunded_amount` alone let line A be refunded as often as the order still owed. Refused: a table or columns for refunded quantities (a schema step for a marker the row already has room for), one refund by lines only (takes a valid second partial refund away), keep as is. `bug` work item: #7129.
