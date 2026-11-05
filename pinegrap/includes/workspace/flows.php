@@ -133,7 +133,7 @@ function ws_flow_kinds()
     // always: one on each enters the loop, one on failed leaves it.
     if (function_exists('ws_flow_loop_normalize')) {
         $kinds['for_each'] = array('label' => lang('For each'), 'trigger' => false, 'outcomes' => array('each', 'failed'), 'step' => false,
-            'outputs' => ws_flow_loop_outputs(array()), 'loop' => 'start', 'texts' => array('list'));
+            'outputs' => ws_flow_loop_outputs(array()), 'loop' => 'start', 'texts' => array('list', 'count'));
         $kinds['for_each_end'] = array('label' => lang('End for each'), 'trigger' => false, 'outcomes' => array('done'), 'step' => false,
             'outputs' => array(
                 array('key' => 'count', 'type' => 'number', 'label' => lang('Item count')),
@@ -709,7 +709,7 @@ function ws_flow_node_texts($node)
 
     // A loop's boxes read their list or the value they gather.
     if ($kind === 'for_each') {
-        $keys = array('list');
+        $keys = array(function_exists('ws_flow_loop_source_key') ? ws_flow_loop_source_key((array) $node['config']) : 'list');
     } elseif ($kind === 'for_each_end') {
         $keys = array('collect');
     } else {
@@ -2908,6 +2908,13 @@ function ws_flow_js_strings()
         'fl_loop_fields'      => lang('Fields of an item'),
         'fl_loop_fields_help' => lang('Up to 10 keys of an item, separated by commas: each becomes a value of this box inside the loop.'),
         'fl_loop_no_list'     => lang('No list chosen'),
+        'fl_loop_mode'        => lang('Go through'),
+        'fl_loop_mode_list'   => lang('Each item of a list'),
+        'fl_loop_mode_count'  => lang('A number of times (Repeat N times)'),
+        'fl_loop_count'       => lang('Number of times'),
+        'fl_loop_count_help'  => lang('A whole number from 1 to 50, or one value. The boxes the each arrow leads into run that many times; Item number counts 1, 2, 3 …'),
+        'fl_loop_count_meta'  => ws_js_template('Repeat {var:1} times', 1),
+        'fl_loop_no_count'    => lang('No number of times chosen'),
         'fl_loop_ends'        => lang('Loop it ends'),
         'fl_loop_pick'        => lang('Choose a loop'),
         'fl_loop_end_meta'    => ws_js_template('Ends {var:1}', 1),

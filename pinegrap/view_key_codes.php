@@ -19,23 +19,22 @@
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/key_code_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/key_code_list_edit.php');
 
-// A key code enabled or disabled in place on the list (pg_list_edit_request()
-// in includes/fn/output.php). Answered in JSON, before anything below draws
-// the screen; the write is the one the key code's screen makes
+// Every value of the list the key code's screen changes is a field.
+$quick_edit = pg_key_code_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen, through the key code screen's own check and save
 // (pg_key_code_quick_update()).
 if (pg_list_edit_requested()) {
-    $edit = pg_list_edit_request(pg_key_code_edit_columns(), function ($user) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
         return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
     });
 
-    $saved = pg_key_code_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
-
-    // The code is the row's link to its key code, drawn again around the
-    // code the answer redraws.
-    if (isset($saved['cells']['code']['html'])) {
-        $saved['cells']['code']['html'] = pg_commerce_list_open_link('edit_key_code.php?id=' . (int) $edit['id'], $saved['cells']['code']['html']);
-    }
+    $saved = pg_key_code_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id'], $quick_edit);
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }
@@ -44,9 +43,6 @@ $user = validate_user();
 validate_ecommerce_access($user);
 
 $liveform = new liveform('view_key_codes');
-
-// What an operator can change on the list without opening the key code.
-$quick_edit = pg_key_code_edit_columns();
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -135,59 +131,19 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
 // Otherwise the user did not select to export gift cards, so just list gift cards.
 } else {
 
-    // Get all key codes.
-    $key_codes = db_items(
-        "SELECT
-            key_codes.id,
-            key_codes.code,
-            key_codes.offer_code,
-            key_codes.enabled,
-            key_codes.expiration_date,
-            key_codes.notes,
-            key_codes.single_use,
-            key_codes.report,
-            last_modified_user.user_username AS last_modified_username,
-            key_codes.timestamp AS last_modified_timestamp,
-            offers.id AS offer_id,
-            offers.description AS offer_description,
-            offers.status AS offer_status,
-            offers.start_date AS offer_start_date,
-            offers.end_date AS offer_end_date
-        FROM key_codes
-        LEFT JOIN offers ON key_codes.offer_code = offers.code
-        LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
+    $key_codes = db_items(pg_key_code_list_sql() . "
         ORDER BY $order_by");
 
-    // Get the current date so that later we can figure out if key codes have expired.
-    $current_date = date('Y-m-d');
-
     // Every key code is printed: the list table driver sorts and searches
-    // them in the browser (browser mode). The cells a quick edit can change
-    // are drawn by the same function that draws them again in the answer to
-    // an edit: the code, green when it works at checkout today (enabled, not
-    // expired, its offer running), the enabled mark and the last change.
+    // them in the browser (browser mode). The cells are drawn by the same
+    // function that draws them again in the answer to an edit.
+    $current_date = date('Y-m-d');
     $list_rows = array();
 
     foreach ($key_codes as $key_code) {
-        $cells = pg_key_code_list_cells($key_code, $current_date);
-        $id = (int) $key_code['id'];
-        $expires = ($key_code['expiration_date'] != '0000-00-00') ? strtotime($key_code['expiration_date']) : 0;
-
         $list_rows[] = array(
-            'id' => $id,
-            'cells' => array(
-                'code' => pg_list_cell(pg_commerce_list_open_link('edit_key_code.php?id=' . $id, $cells['code']['html']), $cells['code']['class'], array('data-pg-sort-value' => (string) $key_code['code'])),
-                'offer_code' => pg_list_cell($key_code['offer_id']
-                    ? '<a class="pg-link-secondary" href="edit_offer.php?id=' . (int) $key_code['offer_id'] . '" title="' . h(lang('Edit Offer')) . '">' . h($key_code['offer_code']) . '</a>'
-                    : h($key_code['offer_code'])),
-                'offer_message' => pg_list_cell(h($key_code['offer_description'])),
-                'enabled' => pg_list_cell($cells['enabled']['html'], $cells['enabled']['class'], pg_list_edit_cell_attributes($quick_edit, 'enabled', $id, !empty($key_code['enabled']) ? '1' : '0') + array('data-pg-sort-value' => !empty($key_code['enabled']) ? '1' : '0')),
-                'expiration_date' => pg_list_cell($expires ? get_absolute_time(array('timestamp' => $expires, 'type' => 'date')) : '', 'align-middle', array('data-pg-sort-value' => (string) (int) $expires)),
-                'notes' => pg_list_cell(nl2br(h($key_code['notes']))),
-                'single_use' => pg_list_cell($key_code['single_use'] ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center', array('data-pg-sort-value' => $key_code['single_use'] ? '1' : '0')),
-                'report' => pg_list_cell('<span class="badge fw-light theme-secondary">' . h(($key_code['report'] == 'key_code') ? lang('Key Code') : lang('Offer Code')) . '</span>'),
-                'last_modified' => pg_list_cell($cells['last_modified']['html'], $cells['last_modified']['class'], array('data-pg-sort-value' => (string) (int) $key_code['last_modified_timestamp'])),
-            ),
+            'id' => (int) $key_code['id'],
+            'cells' => pg_key_code_list_row_cells($key_code, $current_date, $quick_edit),
         );
     }
 

@@ -1922,21 +1922,21 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		<div class="drawer-body tab-content flex-grow-1 overflow-auto">
 
 			<div class="tab-pane fade show active" id="d_general">
-				<div class="mb-5">
-					<label class="form-label small">' . lang('Name') . '</label>
+				<div class="form-field mb-5">
+					<label class="form-label small" for="d_name">' . lang('Name') . '</label>
 					<input type="text" class="form-control form-control-sm" name="name" id="d_name" maxlength="190">
 				</div>
-				<div class="mb-5">
-					<label class="form-label small">' . lang('Description') . '</label>
+				<div class="form-field mb-5">
+					<label class="form-label small" for="d_description">' . lang('Description') . '</label>
 					<input type="text" class="form-control form-control-sm" name="description" id="d_description" maxlength="500">
 				</div>
-				<div class="mb-5">
+				<div class="form-field mb-5">
 					<label class="form-label small" id="d_key_label">' . lang('API Key') . '</label>
 					<div class="api-secret-box"><code id="d_key"></code>
 						' . api_settings_copy_button('d_key', 'd_key_label', 'btn-outline theme-secondary') . '</div>
 					<div class="form-text">' . lang('Public identifier. Safe to share with the integrator.') . '</div>
 				</div>
-				<div class="mb-5" id="d_secret_block">
+				<div class="form-field mb-5" id="d_secret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
 					<div class="api-secret-box"><code id="d_hint" class="fg-2"></code>
 						<button type="submit" class="btn btn-sm btn-outline theme-warning" name="api_action" value="rotate" id="d_rotate">
@@ -1944,9 +1944,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 					<div class="form-text">'
 						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
 				</div>
-				<div class="mb-5 d-none" id="d_nosecret_block">
+				<div class="form-field mb-5 d-none" id="d_nosecret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
-					<div class="form-text mt-0">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
+					<div class="form-text">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
 				</div>
 				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_locked_note">
 					<i class="bi bi-lock me-1"></i>' . h(lang('This application belongs to an account above yours, so only that account or one above it can change it.')) . '
@@ -1954,7 +1954,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_unused_note">
 					<i class="bi bi-exclamation-triangle me-1"></i>' . h(lang('Not in use: the oldest OAuth app applies. The site serves one OAuth app, so the scopes chosen here reach no connection; change them on the app in use, or delete this one.')) . '
 				</div>
-				<div class="mb-5" id="d_device_block">
+				<div class="form-field mb-5" id="d_device_block">
 					<label class="form-label small" id="d_login_label">' . lang('Signing in') . '</label>
 					<div class="api-secret-box"><code id="d_login">POST ' . h($api_base_url) . '/auth/login</code>
 						' . api_settings_copy_button('d_login', 'd_login_label', 'btn-outline theme-secondary') . '</div>
@@ -1964,7 +1964,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<div class="mb-5" id="d_oauth_block">
 					' . api_settings_oauth_guide('d_oauth', 'btn-outline theme-secondary') . '
 				</div>
-				<div class="mb-5" id="d_auth_block">
+				<div class="form-field mb-5" id="d_auth_block">
 					<label class="form-label small" id="d_curl_label">' . lang('Authentication') . '</label>
 					<div class="api-secret-box"><code id="d_curl">curl -u APPLICATION_KEY:SECRET_KEY "'
 						. h($api_base_url) . '/meta"</code>
@@ -1992,8 +1992,8 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			</div>
 
 			<div class="tab-pane fade" id="d_security">
-				<div class="mb-5">
-					<label class="form-label small">' . lang('Allowed addresses') . '</label>
+				<div class="form-field mb-5">
+					<label class="form-label small" for="d_ip">' . lang('Allowed addresses') . '</label>
 					<input type="text" class="form-control tagin min-height-tagin" name="ip_allowlist" id="d_ip" data-pg-chips
 						data-placeholder="' . lang('Add an address') . '" value="">' . get_date_picker_format() . pg_fields_script() . '
 					<div class="form-text">'
@@ -2001,13 +2001,13 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						. '<br>' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . '</div>
 				</div>
 				<div class="row g-5">
-					<div class="col-6">
+					<div class="col-12 sm:col-6 form-field">
 						<label class="form-label small" for="d_expires">' . lang('Expires on') . '</label>
 						<input type="date" data-pg-date class="form-control form-control-sm" name="expires_at" id="d_expires">
 						<div class="form-text">' . lang('After this date the key stops working. Leave empty for a key that does not expire.') . '</div>
 					</div>
-					<div class="col-6">
-						<label class="form-label small">' . lang('Requests per minute') . '</label>
+					<div class="col-12 sm:col-6 form-field">
+						<label class="form-label small" for="d_rate">' . lang('Requests per minute') . '</label>
 						<input type="number" class="form-control form-control-sm" name="rate_limit_per_min" id="d_rate" min="1" max="6000">
 						<div class="form-text">' . lang('When an application asks for more than this in one minute, the rest of that minute is refused and it is told how long to wait.') . '</div>
 					</div>

@@ -4,7 +4,7 @@ description: Decisions list, product part 30 (2026-11-05 on): a loop in one flow
 ---
 
 ## Where are the rules and the earlier parts?
-- `decisions-made.md`; its Parts line lists the files. Entries name the issue, the date and the reason. The three below are one aim: a counter line (read a row, raise it, write it, a round a minute) as one flow; today a loop needs two flows restarting each other through a row start, cut by the chain depth and hard to follow. Steps: `plans/flows-loop-in-one-flow.md`.
+- `decisions-made.md`; its Parts line lists the files. Entries name the issue, the date and the reason. The three below are one aim: a counter line (read a row, raise it, write it, a round a minute) as one flow; today a loop needs two flows restarting each other through a row start, cut by the chain depth and hard to follow. Built in #6874, #6897, #6873 (`workspace/workspace-flows-decisions.md`).
 
 ## Does a flow read state kept between runs? (#6845)
 - Owner (2026-11-04, as recommended; the architect agrees): yes, through a "Read a row" box (`row_get`) beside `row_add` and `row_set`: settings `table_id` and `row` (a row id or one value); outputs the row's cells as `cell_<id>` like the row start box (`ws_flow_row_outputs()`), `row_id` and `found`; read with the owner's view rights (`ws_wtable_for()`); a missing row is done with `found` 0 and empty cells, so a first run can add it. No flow variables: values stored on the flow need a schema change, a screen, a concurrency rule and an API, and hide state a table shows and lets staff correct. Role-3 personal flows read tables in their reach, as the row start box (#3345, applied by the architect). No schema.

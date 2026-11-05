@@ -65,7 +65,7 @@ function test_key_code_cell_says_why_it_does_not_work()
 	pg_assert_contains(pg_list_status_word(lang('Disabled')), $cells['code']['html'], 'a disabled code says Disabled');
 	pg_assert_contains('status_disabled fg-danger', $cells['code']['class'], 'the colour stays');
 
-	$src = list_status_words_source('view_key_codes.php');
+	$src = list_status_words_source('includes/fn/key_code_list_edit.php');
 	pg_assert_contains("pg_commerce_list_open_link('edit_key_code.php?id=' . \$id, \$cells['code']['html'])", $src, 'the list prints the cell the quick-edit answer repaints');
 }
 

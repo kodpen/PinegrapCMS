@@ -63,3 +63,33 @@ function test_api_settings_summary_counts_every_row_once()
 	pg_assert_contains("\$summary_requests += \$stats['requests'];", $loop);
 	pg_assert_contains("\$summary_failures += \$stats['failures'];", $loop);
 }
+
+function api_settings_drawer_tab_source($tab)
+{
+	$source = api_settings_layout_source();
+	$pane = substr($source, (int) strpos($source, 'id="' . $tab . '">'));
+
+	return substr($pane, 0, (int) strpos($pane, '<div class="tab-pane fade"', 10));
+}
+
+function test_api_settings_drawer_general_fields_are_form_fields()
+{
+	$general = api_settings_drawer_tab_source('d_general');
+
+	pg_assert_contains('<label class="form-label small" for="d_name">', $general, 'the Name label names its box');
+	pg_assert_contains('<label class="form-label small" for="d_description">', $general, 'the Description label names its box');
+	foreach (array('id="d_secret_block"', 'id="d_nosecret_block"', 'id="d_device_block"', 'id="d_auth_block"') as $block) {
+		pg_assert_true(preg_match('/<div class="form-field mb-5[^"]*" ' . preg_quote($block, '/') . '>/', $general) === 1, $block . ' is a form field');
+	}
+	pg_assert_true(strpos($general, '<div class="mb-5">') === false, 'no bare stacked block is left on the General tab');
+}
+
+function test_api_settings_drawer_security_fields_are_form_fields()
+{
+	$security = api_settings_drawer_tab_source('d_security');
+
+	pg_assert_contains('<label class="form-label small" for="d_ip">', $security, 'the address list label names its box');
+	pg_assert_contains('<label class="form-label small" for="d_rate">', $security, 'the rate label names its box');
+	pg_assert_true(substr_count($security, '<div class="col-12 sm:col-6 form-field">') === 2, 'the expiry and the rate stack on a phone and pair from sm');
+	pg_assert_true(strpos($security, '<div class="col-6">') === false, 'no fixed half column is left');
+}

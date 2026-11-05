@@ -2480,6 +2480,52 @@ JS
 	pg_assert_contains("'template_save'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php'), 'the config says whether templates may be saved');
 }
 
+// Repeat N times: a For each box in count mode reads and offers its count,
+// never its list, takes a number value for it, without a fallback, and
+// says how many times it repeats.
+function test_workspace_flows_canvas_for_each_count()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
+	pg_assert_true((bool) preg_match('/\n    var VALUE_FIELDS = \{\n.*?\n    \};\n/s', $source, $fields), 'VALUE_FIELDS is in the script');
+
+	$result = ws_flows_canvas_test_node(
+		array('kindOf', 'fieldTexts', 'openFields', 'fieldTakes', 'fieldFallback'),
+		$kinds[0] . $fields[0] . <<<'JS'
+var count = { id: 'repeat', kind: 'for_each', config: { list: '{{node.hook.body}}', path: '', fields: [], mode: 'count', count: '{{node.get.cell_9}}' } };
+var list = { id: 'each', kind: 'for_each', config: { list: '', path: '', fields: [], mode: 'list', count: '' } };
+var empty = { id: 'empty', kind: 'for_each', config: { list: '', path: '', fields: [], mode: 'count', count: '' } };
+console.log(JSON.stringify({
+    texts: fieldTexts(count).map(function (item) { return item.key + '=' + item.text; }),
+    listOpen: openFields(list).map(function (item) { return item.key; }),
+    countOpen: openFields(empty).map(function (item) { return item.key; }),
+    filled: openFields(count).length,
+    takes: [fieldTakes(count, 'count', { node: { kind: 'row_get' }, value: { key: 'cell_9', type: 'number' } }), fieldTakes(count, 'count', { node: { kind: 'row_get' }, value: { key: 'cell_3', type: 'text' } })],
+    fallback: fieldFallback(count, 'count')
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('count={{node.get.cell_9}}'), $result['texts'], 'the list it no longer reads is not threaded');
+	pg_assert_same(array('list'), $result['listOpen']);
+	pg_assert_same(array('count'), $result['countOpen']);
+	pg_assert_same(0, $result['filled'], 'its one value taken, the field closes');
+	pg_assert_same(array(true, false), $result['takes'], 'a count takes a number');
+	pg_assert_false($result['fallback']);
+
+	$fields = ws_flows_canvas_test_script_function($source, 'loopFields');
+
+	pg_assert_contains("t('fl_loop_mode_count')", $fields);
+	pg_assert_contains("config.fields = [];", $fields, 'a count gives no fields');
+	pg_assert_contains("t('fl_loop_count_help')", $fields);
+	pg_assert_contains("t('fl_loop_count_meta'", $source, 'the box says how many times');
+}
+
 // For each / End for each on the canvas (data-passing D9): the canvas finds
 // a loop's body as ws_flow_loops() does; a box outside the loop is offered
 // neither the body's values nor the item; a For each box's list takes only a
