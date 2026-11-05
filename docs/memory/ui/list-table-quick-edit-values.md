@@ -25,6 +25,9 @@ module: list_table_edit
 ## Which other lists have quick edit?
 - Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes (name, folder, activation), styles (a custom style's name, collection, layout type), design files (name, folder), shipping methods (all but the zones and Last Modified), offers (all but the flow, through the offer editor's check and save): each in `list-table-quick-edit-<list>.md` (`short-links`, `containers`, `menus`, `comments`, `submitted-forms`, `themes`, `styles`, `design-files`, `shipping-methods`, `offers`), which says which cells change.
 
+## Shipping zones?
+- Name and the four rates with the zone screen's checks and save: `list-table-quick-edit-zones.md`.
+
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
 - Contacts: the groups (multi-select). Comments and themes: the message, the description (several lines).
