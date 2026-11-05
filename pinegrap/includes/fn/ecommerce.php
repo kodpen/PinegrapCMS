@@ -13350,6 +13350,27 @@ function pg_products_import_headings($headings, $convert)
         'unknown_headings' => $unknown_headings);
 }
 
+/**
+ * Whether an update row's enabled cell disables the product (the import then
+ * drops its tag cloud keywords). An empty cell leaves the product as it is;
+ * any other cell is read as the TINYINT column stores it in a non-strict
+ * session: a number rounded, a word as 0. Compared loosely, '' == 0 held on
+ * PHP 7 and an enabled product lost its keywords. Pure.
+ *
+ * @param mixed $cell the enabled cell, '' when empty
+ * @return bool
+ */
+function pg_products_import_disables($cell)
+{
+    $cell = trim((string) $cell);
+
+    if ($cell === '') {
+        return false;
+    }
+
+    return ((int) round((float) $cell)) === 0;
+}
+
 // The text of one column of a CSV row: '' when the file has no such column
 // (null, or false from array_search()) or the row ends before it.
 function pg_products_import_row_value($row, $key)
