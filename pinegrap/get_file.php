@@ -1711,6 +1711,11 @@ function initialize_user()
 
         // check_view_access() reads USER_MEMBER for membership folders; mirror the
         // active-member rule used by initialize_user() in includes/fn/auth.php.
+        // The expiry date is a day in the site's zone, so today must be too:
+        // this file never runs init.php, and the server's zone would let an
+        // expired member in after the site's midnight (or shut a member out
+        // on the evening of the expiry day) wherever the two zones differ.
+        initialize_timezone();
         if ((USER_MEMBER_ID != '') && ((USER_EXPIRATION_DATE == '') || (USER_EXPIRATION_DATE == '0000-00-00') || (USER_EXPIRATION_DATE >= date('Y-m-d')))) {
             define('USER_MEMBER', true);
         } else {
