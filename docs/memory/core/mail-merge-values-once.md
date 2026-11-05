@@ -17,6 +17,6 @@ module: mail
   `^^code^^` (a gift card buyer's sender name, a form answer, a customer
   name) was filled in before the template's own `^^code^^` and then took
   that field's data, while the real `^^code^^` place reached the recipient
-  raw (fixed in #PR).
+  raw (fixed in #7106).
 - A value is printed as typed, `^^…^^` included; test
   `tests/mail_merge_values_once_test.php`.
