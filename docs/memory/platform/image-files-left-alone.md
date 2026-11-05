@@ -11,7 +11,7 @@ description: Images the engine refuses to process: animated (PR #1234), unreadab
 
 ## How is an animated file told apart?
 - By its bytes, never its name or extension (an APNG named `.jpg` still counts).
-- GIF: two or more image descriptors, found by walking the blocks and skipping each sub-block (`pg_image_is_animated_gif()`). Until PR #NNNN it counted `00 21 F9 04`: the first frame after a global colour table (no `00` before it) and frames without one were missed, so a two-frame GIF was optimized into a still.
+- GIF: two or more image descriptors, found by walking the blocks and skipping each sub-block (`pg_image_is_animated_gif()`). Until PR #7047 it counted `00 21 F9 04`: the first frame after a global colour table (no `00` before it) and frames without one were missed, so a two-frame GIF was optimized into a still.
 - PNG: an `acTL` chunk before the first `IDAT` (`pg_image_is_animated_png()`). Chunk data is skipped with `fseek()`. An `acTL` after `IDAT` is a still PNG to every reader. A chunk length near 2 GB ends the search instead of overflowing the `fseek()` offset on 32-bit PHP (a `TypeError` there, a 500 on upload, Optimize, `?w=` and page render).
 - WebP: the animation bit (0x02) of the `VP8X` flags byte (`pg_image_is_animated_webp()`); a VP8X with only the alpha bit is a still.
 
