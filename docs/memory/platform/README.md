@@ -48,6 +48,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
 - ca-bundle-panel-update.md: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): https-only source, validation checks, atomic write to data/cacert.pem.
 - ca-store-choice.md: pg_ca_bundle_effective() chooses the CA store: the CURL_CA_BUNDLE override, the shipped data/cacert.pem when PHP has no store or the probe failed, else the server's store; the probe record.
+- cache-control-shared-caches.md: Which answers may carry a Cache-Control a CDN or proxy keeps; pg_cache_control_shared_safe() and the guard test over literal header('Cache-Control: …') lines
 - chat-attachment-access.md: Panel team chat attachments open only for the conversation's sides or a role-0 administrator, served private, no-store, whatever their folder allows (#5973)
 - clean-up-tool-file-list.md: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
 - cloud-file-picker-onedrive.md: OneDrive in Upload File's cloud picker (#3261): the v8 picker with OneDrive/SharePoint tokens per resource, the Graph download through its pre-authenticated address, the Entra setup
