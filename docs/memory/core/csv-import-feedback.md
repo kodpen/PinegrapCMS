@@ -5,7 +5,7 @@ description: Contacts, Users, Products, Submitted Forms and Campaign Profiles CS
 
 ## Which separator do the contacts and users imports read?
 - `pg_csv_read_separator($handle)` (`includes/fn/core.php`) reads the header line of a `pg_csv_open()` handle and seeks back to where it started: comma, semicolon or tab, whichever the line holds most (`pg_csv_separator()`, the rule of `pg_key_code_import_separator()`). Excel in Turkish writes `;`. Before, both read `,` only, so a `;` file's header was one unknown cell.
-- Separators inside a quoted heading are not counted: `"Last, First, Middle";email` is a `;` file. Before (#PR), the commas in the heading won and every row split on them. An unclosed quote is counted as written.
+- Separators inside a quoted heading are not counted: `"Last, First, Middle";email` is a `;` file. Before (#7041), the commas in the heading won and every row split on them. An unclosed quote is counted as written.
 
 ## What does Import Contacts refuse or name?
 - A header with no recognised column is refused (`output_error()`, Go back, the headings found). Before, every non-blank row ran `INSERT INTO contacts (user, timestamp)`: one empty contact per row, added to the checked groups, "N contacts were imported".
