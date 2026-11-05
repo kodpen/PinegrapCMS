@@ -48,7 +48,7 @@ function test_list_names_wrap_text_cells()
 	$wrap = '<div class="text-wrap text-break" style="max-width:20rem;">';
 	foreach (array('includes/fn/design_file_list_edit.php') as $path) {
 		$source = list_names_wrap_source($path);
-		pg_assert_contains($wrap . '\' . nl2br(h($file[\'description\'])) . \'</div>\')', $source, $path);
+		pg_assert_contains($wrap . '\' . nl2br(h($file[\'description\'])) . \'</div>\'', $source, $path);
 		pg_assert_false(strpos($source, 'width:200px') !== false, $path . ': no 200px description box');
 		pg_assert_false(strpos($source, 'title="\' . nl2br(h($file[\'description\'])) . \'"') !== false, $path . ': no hover-only title');
 	}

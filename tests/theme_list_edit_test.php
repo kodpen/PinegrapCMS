@@ -42,12 +42,11 @@ function pg_test_theme_quick_fields()
 	return pg_theme_quick_edit_columns(array(3 => 'Design', 4 => "\u{00A0}\u{00A0}Themes"), array(3 => 'public'));
 }
 
-// Every one-line value the theme screen changes is an editable column with
-// a cell field; the description (several lines) and Last Modified stay
-// text. A new column fails here until it is one or the other.
+// Every value the theme screen changes is an editable column with a cell
+// field (the description over several lines); Last Modified stays text. A new column fails here until it is one or the other.
 function test_theme_quick_every_screen_value_is_a_field()
 {
-	$text = array('description', 'last_modified');
+	$text = array('last_modified');
 	$fields = pg_test_theme_quick_fields();
 	$cells = pg_theme_list_cells(pg_test_theme_quick_row(), $fields);
 
@@ -118,8 +117,10 @@ function test_theme_quick_form_values_change_one_field()
 	pg_assert_same('new.css', pg_theme_quick_form_values($row, 'name', 'new.css')['name']);
 	pg_assert_same('4', pg_theme_quick_form_values($row, 'folder', '4')['folder']);
 
-	// The description and unknown fields change nothing.
-	pg_assert_same(pg_theme_quick_form_values($row, 'name', 'site.css'), pg_theme_quick_form_values($row, 'description', 'x'));
+	pg_assert_same("New\nlines", pg_theme_quick_form_values($row, 'description', "New\nlines")['description']);
+
+	// An unknown field changes nothing.
+	pg_assert_same(pg_theme_quick_form_values($row, 'name', 'site.css'), pg_theme_quick_form_values($row, 'other', 'x'));
 }
 
 function test_theme_quick_saved_redraws_the_replaced_theme()

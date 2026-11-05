@@ -5,7 +5,7 @@ module: theme_list_edit
 ---
 
 ## Which cells change?
-- Every one-line value `edit_theme_file.php` changes (`pg_theme_quick_edit_columns()`): File Name, Folder (the screen's `select_folder()` choices, coloured by access type), Activated for Desktop, Activated for Mobile (Yes/No). Text: Description (several lines), Last Modified. `tests/theme_list_edit_test.php` fails for a new column that is neither.
+- Every value `edit_theme_file.php` changes (`pg_theme_quick_edit_columns()`): File Name, Description (`textarea`, may be empty, no length limit, as on the screen), Folder (the screen's `select_folder()` choices, coloured by access type), Activated for Desktop, Activated for Mobile (Yes/No). Text: Last Modified. `tests/theme_list_edit_test.php` fails for a new column that is neither.
 - A theme whose folder the picker does not offer (Recycle Bin) keeps its Folder cell as text.
 
 ## Who may change them?

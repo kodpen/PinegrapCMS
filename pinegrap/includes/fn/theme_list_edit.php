@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The All Themes list (view_themes.php) and its quick edit: every one-line
+ * The All Themes list (view_themes.php) and its quick edit: every
  * value the theme screen (edit_theme_file.php) changes is a field, checked
  * and written by that screen's own code (includes/forms/theme_file_form.php).
  *
@@ -35,6 +35,7 @@ function pg_theme_quick_edit_columns(array $folders = array(), array $folder_cla
 
     return array(
         'name' => array('type' => 'text', 'label' => lang('File Name'), 'max' => 100, 'required' => true),
+        'description' => array('type' => 'textarea', 'label' => lang('Description')),
         'folder' => array('type' => 'select', 'label' => lang('Folder'), 'options' => $folders, 'option_classes' => $folder_classes),
         'activated_desktop' => array('type' => 'select', 'label' => lang('Activated for Desktop'), 'options' => $yes_no),
         'activated_mobile' => array('type' => 'select', 'label' => lang('Activated for Mobile'), 'options' => $yes_no),
@@ -66,8 +67,8 @@ function pg_theme_quick_folder_choices()
 }
 
 /**
- * The list's columns; each one the screen changes on one line is editable.
- * The description is several lines and stays text.
+ * The list's columns; each one the screen changes is editable (the
+ * description over several lines).
  *
  * @param bool $edit whether the list has quick edit
  * @return array key => spec, as pg_list_table_printed() takes them
@@ -76,7 +77,7 @@ function pg_theme_list_columns($edit)
 {
     $columns = array(
         'name' => array('heading' => lang('File Name'), 'editable' => 'text'),
-        'description' => array('heading' => lang('Description')),
+        'description' => array('heading' => lang('Description'), 'editable' => 'textarea'),
         'folder' => array('heading' => lang('Folder'), 'editable' => 'select'),
         'activated_desktop' => array('heading' => lang('Activated for Desktop'), 'kind' => 'check', 'editable' => 'select'),
         'activated_mobile' => array('heading' => lang('Activated for Mobile'), 'kind' => 'check', 'editable' => 'select'),
@@ -167,6 +168,7 @@ function pg_theme_quick_form_values(array $theme, $field, $value)
 
     $form_fields = array(
         'name' => 'name',
+        'description' => 'description',
         'folder' => 'folder',
         'activated_desktop' => 'activated_desktop_theme',
         'activated_mobile' => 'activated_mobile_theme',
@@ -213,7 +215,7 @@ function pg_theme_list_cells(array $theme, array $quick_edit)
 
     return array(
         'name' => pg_list_cell('<a href="edit_theme_file.php?id=' . $id . '" data-pg-open>' . h($theme['name']) . '</a>', 'align-middle', $attributes('name')),
-        'description' => pg_list_cell(nl2br(h((string) $theme['description']))),
+        'description' => pg_list_cell(nl2br(h((string) $theme['description'])), 'align-middle', $attributes('description')),
         'folder' => pg_list_cell(pg_folder_list_name((string) $theme['folder_name']) . '<span class="badge fw-light fg-reset d-inline">(' . get_access_control_type_name($access) . ')</span>', 'align-middle text-wrap ' . $access, $attributes('folder')),
         'activated_desktop' => $check('activated_desktop'),
         'activated_mobile' => $check('activated_mobile'),
