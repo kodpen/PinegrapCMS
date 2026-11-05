@@ -21,3 +21,6 @@ description: How waf_log aggregates by sha1 key + 5 min bucket, why the query st
 
 ## Do the two search boxes of the log screen agree?
 - Yes: the toolbar search (which also filters the summary) goes through `pg_waf_log_list_search()`, the table box's rule: every word, address, method, URL, user agent, rule, reference, target, match or an action's shown name (#5854). A filter that finds nothing says so with a link that clears it, not "no events in this period".
+
+## How are request values written into a row?
+- Through `waf_log_text($value, $bytes)`: cut to the column's bytes on a character boundary, every byte outside a valid UTF-8 character written as `?`. `waf_log_event()` and `waf_shield_drain()` use it for method, URL, target, match and user agent. The table is utf8mb4 and the request runs under the server's own sql_mode (strict by default), where one invalid byte refused the whole silenced INSERT: a PHP-decoded `%bf%27` probe, a raw high byte in the path or a non-ASCII user agent cut mid-character by `substr()` left no row at all (`tests/waf_log_text_test.php`).
