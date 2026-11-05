@@ -95,7 +95,7 @@ if ($liveform->check_form_errors() == false) {
         log_activity(pg_log_lang(array(
             'string' => '{var:1} (Order ID: {var:2}, Ship To ID: {var:3}, Shipping Method ID: {var:4})',
             'vars'   => array($shipping_method_check['message'], $_SESSION['ecommerce']['order_id'] ?? '', $_POST['ship_to_id'], $liveform->get_field_value('shipping_method')))));
-        output_error(h($shipping_method_check['message']) . ' <a href="javascript:history.go(-1)">Go back</a>.');
+        output_error(h($shipping_method_check['message']) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     $shipping_method_id = (int)$shipping_method_check['shipping_method']['id'];
