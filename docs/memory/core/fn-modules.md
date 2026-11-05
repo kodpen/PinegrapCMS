@@ -39,7 +39,7 @@ description: Generated from the module field of the memory files: each includes/
 - `bookings`: [[bookings-decisions]], [[bookings-model]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]
 - `calendar`: [[calendar-event-exception-endpoint]], [[calendar-location-availability]], [[calendar-view-date]]
-- `calendar_writes`: [[api-calendar-locations-reservations]], [[api-calendar-writes]]
+- `calendar_writes`: [[api-calendar-locations-reservations]], [[api-calendar-writes]], [[calendar-reserve-occurrence]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-text-cuts]]
 - `carrier_webhook`: [[carrier-webhook]], [[carrier-webhook-basitkargo]], [[carrier-webhook-drivers]]
 - `cart_quotes`: [[cart-quotes]], [[cart-quotes-api]], [[cart-quotes-screens]]
