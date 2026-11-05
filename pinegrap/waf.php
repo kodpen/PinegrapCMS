@@ -3672,7 +3672,7 @@ function waf_shield_drain()
                  'iplist',
                  10,
                  '',
-                 '" . waf_escape(substr($group['path'], 0, 500)) . "',
+                 '" . waf_escape(waf_log_text($group['path'], 500)) . "',
                  'REMOTE_ADDR',
                  '" . waf_escape($group['ip']) . "',
                  '',
@@ -3802,6 +3802,61 @@ function waf_escape($value)
 }
 
 /**
+ * A request value as the firewall log stores it: at most $bytes bytes, cut on
+ * a character boundary, every byte that is not part of a valid UTF-8
+ * character written as '?'.
+ *
+ * waf_log is utf8mb4, and under a strict sql_mode (the MySQL and MariaDB
+ * default) one invalid byte refuses the whole INSERT, so the event was lost:
+ * a parameter PHP had already decoded (%bf%27, a classic SQL injection
+ * probe), a raw high byte in the path, or a non-ASCII user agent cut in the
+ * middle of a character by substr().
+ *
+ * @param mixed $value
+ * @param int   $bytes
+ * @return string
+ */
+function waf_log_text($value, $bytes)
+{
+    $value = substr((string) $value, 0, max(0, (int) $bytes));
+
+    if (($value === '') || ($value === false) || preg_match('//u', $value)) {
+        return (string) $value;
+    }
+
+    // A character the cut split at the end is dropped, not replaced: the
+    // last lead byte among the final three goes with its tail when the
+    // character it starts is longer than what is left of it.
+    $length = strlen($value);
+
+    for ($back = 1; ($back <= 3) && ($back <= $length); $back++) {
+        $byte = ord($value[$length - $back]);
+
+        if (($byte & 0xC0) === 0x80) {
+            continue;
+        }
+
+        $need = ($byte >= 0xF0) ? 4 : (($byte >= 0xE0) ? 3 : (($byte >= 0xC0) ? 2 : 1));
+
+        if ($need > $back) {
+            $value = substr($value, 0, $length - $back);
+        }
+
+        break;
+    }
+
+    $clean = preg_replace_callback(
+        '/((?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})+)|./s',
+        function ($match) {
+            return (isset($match[1]) && ($match[1] !== '')) ? $match[1] : '?';
+        },
+        (string) $value
+    );
+
+    return is_string($clean) ? $clean : '';
+}
+
+/**
  * Record an event.
  *
  * 'action' says what the firewall DID, which is not the same as what it
@@ -3870,11 +3925,11 @@ function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
              '" . waf_escape(substr($rule_id, 0, 40)) . "',
              '" . waf_escape(substr($category, 0, 32)) . "',
              " . (int) $score . ",
-             '" . waf_escape(substr($method, 0, 8)) . "',
-             '" . waf_escape(substr($url, 0, 500)) . "',
-             '" . waf_escape(substr($target, 0, 64)) . "',
-             '" . waf_escape(substr($matched, 0, 250)) . "',
-             '" . waf_escape(substr($agent, 0, 250)) . "',
+             '" . waf_escape(waf_log_text($method, 8)) . "',
+             '" . waf_escape(waf_log_text($url, 500)) . "',
+             '" . waf_escape(waf_log_text($target, 64)) . "',
+             '" . waf_escape(waf_log_text($matched, 250)) . "',
+             '" . waf_escape(waf_log_text($agent, 250)) . "',
              " . $user_id . ",
              '" . waf_escape(waf_reference()) . "',
              " . $now . ",
