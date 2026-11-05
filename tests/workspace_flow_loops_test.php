@@ -117,12 +117,12 @@ function test_workspace_flow_loops_kinds()
 	pg_assert_same(array('done', 'always'), ws_flow_arrow_outcomes($kinds['for_each_end']));
 	pg_assert_same(array('count', 'done', 'failed', 'list'), array_column($kinds['for_each_end']['outputs'], 'key'));
 	pg_assert_same(array('count', 'index', 'item', 'name'), array_column(ws_flow_loop_outputs(array('fields' => array('name'))), 'key'));
-	pg_assert_same(array('list' => '{{node.a.body}}', 'path' => 'data.items', 'fields' => array('name', 'e_mail')),
+	pg_assert_same(array('list' => '{{node.a.body}}', 'path' => 'data.items', 'fields' => array('name', 'e_mail'), 'mode' => 'list', 'count' => ''),
 		ws_flow_config_normalize('for_each', array('list' => '{{node.a.body}}', 'path' => 'data.items', 'fields' => array('Name', 'name', 'e_mail'), 'x' => 1)));
 	pg_assert_same(array('for_each' => 'for_each_1', 'collect' => ''), ws_flow_config_normalize('for_each_end', array('for_each' => 'for_each_1')));
 
 	$catalogue = array_column(ws_flow_kind_catalogue(), null, 'kind');
-	pg_assert_same(array('list'), $catalogue['for_each']['texts']);
+	pg_assert_same(array('list', 'count'), $catalogue['for_each']['texts']);
 	pg_assert_same(array('collect'), $catalogue['for_each_end']['texts']);
 }
 

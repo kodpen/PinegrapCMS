@@ -892,6 +892,7 @@
     "Repeating tasks": "Tekrarlayan görevler",
     "Repeats": "Tekrar",
     "Repeats (Daily, Weekly …)": "Tekrar (Günlük, Haftalık …)",
+    "Repeats {var:1} times.": "{var:1} kez tekrarlar.",
     "Replace": "Değiştir",
     "Replace All": "Hepsini Değiştir",
     "Replace File": "Dosyayı Değiştir",

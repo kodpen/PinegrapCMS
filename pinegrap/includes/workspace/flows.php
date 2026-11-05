@@ -133,7 +133,7 @@ function ws_flow_kinds()
     // always: one on each enters the loop, one on failed leaves it.
     if (function_exists('ws_flow_loop_normalize')) {
         $kinds['for_each'] = array('label' => lang('For each'), 'trigger' => false, 'outcomes' => array('each', 'failed'), 'step' => false,
-            'outputs' => ws_flow_loop_outputs(array()), 'loop' => 'start', 'texts' => array('list'));
+            'outputs' => ws_flow_loop_outputs(array()), 'loop' => 'start', 'texts' => array('list', 'count'));
         $kinds['for_each_end'] = array('label' => lang('End for each'), 'trigger' => false, 'outcomes' => array('done'), 'step' => false,
             'outputs' => array(
                 array('key' => 'count', 'type' => 'number', 'label' => lang('Item count')),
@@ -709,7 +709,7 @@ function ws_flow_node_texts($node)
 
     // A loop's boxes read their list or the value they gather.
     if ($kind === 'for_each') {
-        $keys = array('list');
+        $keys = array(function_exists('ws_flow_loop_source_key') ? ws_flow_loop_source_key((array) $node['config']) : 'list');
     } elseif ($kind === 'for_each_end') {
         $keys = array('collect');
     } else {
