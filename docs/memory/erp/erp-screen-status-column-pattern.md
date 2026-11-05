@@ -30,3 +30,6 @@ Reference implementation: `product_builder.php` (draws `add_product.php` and pro
 ## How do the till screens apply it?
 - `add_erp_till.php` (Open a Till, #6834): the till card in the form column, a Status card (Active/Passive and what passive means) in the sticky status column, `erp_till_form_cards($liveform, false, false)` leaving Status out of the card; before, one full-width card. `edit_erp_till.php` keeps Status in the card and reads balance, type and movements in its status column, the cash book full width below.
 - `add_erp_transfer.php` (Transfer, #6875): From/To, Amount, Date and Description in one card in the form column; the sticky status column lists every active till with its balance (Till Balances), read from the same query as the till options.
+
+## How does the one-receipt screen apply it?
+- `erp_receipt.php` (#6893): Allocations, Allocate to open invoices and the cheque note in the work column; the movement card (number, badge, date, amount, account, till, method, description, cancellation line) in the sticky status column; Cancel the Receipt/Payment in the sticky save bar column. Before, the movement card ran full width above the allocations.
