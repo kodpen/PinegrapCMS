@@ -21,7 +21,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/currency_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/currency_list_edit.php');
 
-foreach (array('BASE_CURRENCY_CODE' => 'USD', 'DATE_FORMAT' => 'day_month', 'TIME_FORMAT' => 'twenty_four_hours') as $currency_edit_test_name => $currency_edit_test_value) {
+foreach (array('DATE_FORMAT' => 'day_month', 'TIME_FORMAT' => 'twenty_four_hours') as $currency_edit_test_name => $currency_edit_test_value) {
 	if (!defined($currency_edit_test_name)) {
 		define($currency_edit_test_name, $currency_edit_test_value);
 	}
