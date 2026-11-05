@@ -361,6 +361,11 @@ function pg_panel_designer($request, $action)
             if ($cf_pid <= 0 || !function_exists('pg_cf_load_page_fields')) {
                 respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
             }
+            // A page behind a folder this operator may not know about is
+            // not listed in the editor; its form is not handed out either.
+            if (pg_designer_page_access($cf_pid, $user) === 'hidden') {
+                respond(array('status' => 'error', 'message' => lang('Invalid ID.')));
+            }
             respond(array(
                 'status'   => 'success',
                 'fields'   => pg_cf_load_page_fields($cf_pid),
@@ -411,7 +416,11 @@ function pg_panel_designer($request, $action)
         // to the design when the operator saves.
         case 'page_load':
             $page_id = isset($request['page_id']) ? (int)$request['page_id'] : 0;
-            if ($page_id <= 0) {
+            // A page behind a private or membership folder the operator
+            // has no access to is left out of the editor's tab list
+            // (pg_designer_page_access() 'hidden'); asked for by its id it
+            // answers as a page that does not exist.
+            if ($page_id <= 0 || pg_designer_page_access($page_id, $user) === 'hidden') {
                 respond(array('status' => 'error', 'message' => lang('Page not found.')));
             }
             $owner = (int)db_value(
