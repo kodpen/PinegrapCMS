@@ -2676,7 +2676,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
 			'summary' => 'Delete a gift card',
-			'description' => 'Removes the card, as the gift cards screen does; its code stops working at once and it cannot be undone. The orders it was spent in keep their record of the spend. POST /gift-cards/{id}/delete does the same for servers that refuse DELETE.',
+			'description' => 'Removes the card, as the gift cards screen does; its code stops working at once and it cannot be undone. The orders it was spent in keep their record of the spend. A store credit card (one bound to a customer\'s account) is refused with 409 store_credit_not_deletable: void it with POST /customers/{id}/credit/{card_id}/void instead. POST /gift-cards/{id}/delete does the same for servers that refuse DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -2691,7 +2691,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
 			'summary' => 'Delete a gift card, addressed as a POST',
-			'description' => 'The same deletion as DELETE /gift-cards/{id}, for clients and servers that cannot send DELETE.',
+			'description' => 'The same deletion as DELETE /gift-cards/{id}, for clients and servers that cannot send DELETE; a store credit card is refused with 409 store_credit_not_deletable.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)

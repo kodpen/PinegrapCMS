@@ -62,30 +62,29 @@ if (!$_POST) {
     //if session tags are cleared or empty output tag  selection menu
     if(!isset($_SESSION['software']['mass_edit']['tags']) || !is_string($_SESSION['software']['mass_edit']['tags']) || ($_SESSION['software']['mass_edit']['tags'] ?? '') == ''){
       
-        $outputs = '
-        <div class="row justify-content-center mt-12 pt-12">
-            <div class="col position-relative mb-12">
-                <label for="page_options" class="form-label">' . lang(array('string'=>'Select one or more {var:1}','vars'=>lang('Page Area') )) . '</label>
-                <select class="form-control" data-pg-combobox id="page_options" name="page_options[]" multiple="multiple">
-                    <optgroup label="' . h(lang('Main Information')) . '">
-                        <option value="page_name">' . lang('Page Name') . '</option>
-                    </optgroup>
-                    <optgroup label="' . h(lang('SEO')) . '">
-                        <option value="page_title">' . lang('Web Browser Title') . '</option>
-                        <option value="page_meta_description">' . lang('Web Browser Description') . '</option>
-                        <option value="site_search">' . lang('Include in Site Search') . '</option>
-                        <option value="page_search_keywords">' . lang('Promote on Keyword') . '</option>
-                    </optgroup>
-                </select>
-            </div>
-            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data select buttons')) . '">
-                <div class="container">
-                    <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                        <button type="button" id="get_form" value="Get Form" class=" btn mb-1 mt-1 btn-solid theme-primary" disabled><i class="bi bi-ui-checks me-3" aria-hidden="true"></i>' . lang(array('string'=>'Get Edit Form') ) . '</button>
-                    </div>
+        $form_column = '
+            <div class="card mb-7">
+                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    <label for="page_options" class="mb-0">' . lang(array('string'=>'Select one or more {var:1}','vars'=>lang('Page Area') )) . '</label>
+                </h2>
+                <div class="card-body pt-0">
+                    <select class="form-control" data-pg-combobox id="page_options" name="page_options[]" multiple="multiple">
+                        <optgroup label="' . h(lang('Main Information')) . '">
+                            <option value="page_name">' . lang('Page Name') . '</option>
+                        </optgroup>
+                        <optgroup label="' . h(lang('SEO')) . '">
+                            <option value="page_title">' . lang('Web Browser Title') . '</option>
+                            <option value="page_meta_description">' . lang('Web Browser Description') . '</option>
+                            <option value="site_search">' . lang('Include in Site Search') . '</option>
+                            <option value="page_search_keywords">' . lang('Promote on Keyword') . '</option>
+                        </optgroup>
+                    </select>
                 </div>
-            </nav>
-        </div>
+            </div>';
+        $save_buttons = '
+                            <button type="button" id="get_form" value="Get Form" class="btn my-1 btn-solid theme-primary" disabled><i class="bi bi-ui-checks me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Get Edit Form') ) . '</span></button>';
+        $summary_card = '';
+        $screen_script = '
         <script>
             $("select#page_options").on("change", function (evt) {
                 var chosen = $(this).val();
@@ -95,7 +94,6 @@ if (!$_POST) {
                 // Built from the path so a #fragment (the skip link) does not swallow the query.
                 window.location.href = window.location.pathname + "?tags=" + encodeURIComponent(String($("select#page_options").val() || ""));
             });
-
         </script>';
     }else{
 
@@ -145,8 +143,9 @@ if (!$_POST) {
         
         
         // A tag the screen does not know (hand-typed ?tags=x) edits nothing,
-        // so only the buttons below are output.
-        $outputs = '';
+        // so only the Summary and the save bar are output.
+        $form_column = '';
+        $summary_card = '';
 
         //starts of page editing
         if($output_page_editing != false){
@@ -187,17 +186,44 @@ if (!$_POST) {
                     </nav>';
             }
 
-            $outputs = '
+            // The Summary names what is edited, so the cards need no heading.
+            $field_labels = array();
+            if ($output_page_name) {
+                $field_labels[] = lang('Page Name');
+            }
+            if ($output_page_title) {
+                $field_labels[] = lang('Web Browser Title');
+            }
+            if ($output_page_meta_description) {
+                $field_labels[] = lang('Web Browser Description');
+            }
+            if ($output_site_search) {
+                $field_labels[] = lang('Include in Site Search');
+                $field_labels[] = lang('Promote on Keyword');
+            }
+            $output_field_list = '';
+            foreach ($field_labels as $field_label) {
+                $output_field_list .= '<li>' . h($field_label) . '</li>';
+            }
+
+            $summary_card = '
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Summary') . '</h2>
+                        <div class="card-body pt-0">
+                            <p class="fw-semibold mb-3">' . lang(array('string'=>'{var:1} Page{suffix:1}','vars'=>$count_result,'suffix'=>(($count_result == 1) ? '' : 's'))) . '</p>
+                            ' . (($number_of_screens > 1) ? '<p class="small fg-secondary mb-3">' . lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($screen, $number_of_screens))) . '</p>' : '') . '
+                            <ul class="mb-0 ps-5">' . $output_field_list . '</ul>
+                        </div>
+                    </div>';
+
+            $form_column = '
                 <div class="row">
-                    <div class="col-12">
-                        <h5>' . lang(array('string'=>'{var:1} Page{suffix:1}','vars'=>$count_result,'suffix'=>(($count_result == 1) ? '' : 's'))) . '</h5>
-                    </div>
                     ' . $output_screen_pager;
             while ($row = mysqli_fetch_assoc($result)) {
                 //row for page
-                $outputs .= '
-                    <div class="col-12 lg:col-6">
-                        <div class="card my-7">
+                $form_column .= '
+                    <div class="col-12 2xl:col-6">
+                        <div class="card mb-7">
                             <div class="card-header no-popover" style="display: flex; align-items: center; min-width: 0;" title="' . h($row['page_name']) . '">
                                 <span class="bi bi-window-fullscreen me-3 flex-shrink-0" aria-hidden="true"></span>
                                 <span class="text-truncate" style="min-width: 0;">' . h($row['page_name']) . '</span>
@@ -207,7 +233,7 @@ if (!$_POST) {
 
                 //page name change function not integrated yet.
                 if($output_page_name != false){
-                    $outputs .= '
+                    $form_column .= '
                                     <div class="col-12">
                                         <label class="form-label" for="page_name_' . $row['page_id'] . '">' . lang('Page Name') . '</label>
                                         <div class="input-group ">
@@ -219,21 +245,21 @@ if (!$_POST) {
                                     </div>';
                 }
                 if($output_page_title != false){
-                    $outputs .= '
+                    $form_column .= '
                                     <div class="col-12">
                                         <label class="form-label" for="page_title_' . $row['page_id'] . '">' . lang('Web Browser Title') . '</label>
                                         <input class="form-control" type="text" id="page_title_' . $row['page_id'] . '" name="page_title_' . $row['page_id'] . '" value="' . h($row['page_title']) . '" maxlength="255" />
                                     </div>';
                 }
                 if($output_page_meta_description != false){
-                    $outputs .= '                
+                    $form_column .= '                
                                     <div class="col-12">
                                         <label for="meta_description_' . $row['page_id'] . '" class="form-label">' . lang('Web Browser Description') . '</label>
                                         <textarea name="meta_description_' . $row['page_id'] . '" id="meta_description_' . $row['page_id'] . '" class="form-control" maxlength="255" >' . h($row['page_meta_description']) . '</textarea>
                                     </div>';
                 }
                 if($output_site_search != false || $output_page_search_keywords != false){
-                    $outputs .= '
+                    $form_column .= '
                                     <div class="col-12">
                                         <div class="form-field">
                                             <input type="hidden" name="page_search_' . $row['page_id'] . '" value="0" />
@@ -256,27 +282,24 @@ if (!$_POST) {
 
 
                 //ends of row
-                $outputs .= '   
+                $form_column .= '   
                                 </div>
                             </div>
                         </div>
                     </div>';
             }
 
-            $outputs .= $output_screen_pager . '
+            $form_column .= $output_screen_pager . '
                     <input type="hidden" name="screen" value="' . $screen . '">
                 </div>';
         }
         //ends of page editing
 
-        $outputs .= '
-                <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                            <button type="submit" value="Save Changes" class=" btn mb-1 mt-1 btn-solid theme-success" data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '"><span class="material-icons me-3">send</span>' . lang(array('string'=>'Apply Changes') ) . '</button>
-                        </div>
-                    </div>
-                </nav>';
+        // The save bar sits outside the form, so the button names it.
+        $save_buttons = '
+                            <button type="submit" form="mass_edit_form" value="Save Changes" class="btn my-1 btn-solid theme-success" data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '"><span class="material-icons me-3" aria-hidden="true">send</span><span class="pg-btn-label">' . lang(array('string'=>'Apply Changes') ) . '</span></button>';
+        $screen_script = '';
+
     }
 
     // --- Find & Replace card (always visible, separate form) ---
@@ -284,56 +307,49 @@ if (!$_POST) {
     // apply the boxes show what was ticked.
     $fr_defaults = $liveform->prefill() ? array('checked' => 'checked') : array();
     $output_find_replace = '
-        <div class="card mb-7">
-            <div class="card-header d-flex align-items-center gap-3">
-                <i class="bi bi-arrow-left-right"></i>
-                <strong>' . lang('Find & Replace') . '</strong>
-            </div>
-            <div class="card-body">
-                <form method="post" action="' . h($_SERVER['PHP_SELF']) . '" class="disable_shortcut">
-                    ' . get_token_field() . '
-                    <input type="hidden" name="action" value="find_replace">
-                    <div class="row g-5 align-items-end">
-                        <div class="col-12 md:col-auto">
-                            <label class="form-label fw-semibold mb-3">' . lang('Apply to Fields') . '</label>
-                            <div class="form-field">
-                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_name', 'value'=>'page_name', 'class'=>'check')) . '
-                                <label class="" for="fr_page_name">' . lang('Page Name') . '</label>
-                            </div>
-                            <div class="form-field">
-                                ' . $liveform->output_field($fr_defaults + array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_title', 'value'=>'page_title', 'class'=>'check')) . '
-                                <label class="" for="fr_page_title">' . lang('Web Browser Title') . '</label>
-                            </div>
-                            <div class="form-field">
-                                ' . $liveform->output_field($fr_defaults + array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_meta_desc', 'value'=>'page_meta_description', 'class'=>'check')) . '
-                                <label class="" for="fr_meta_desc">' . lang('Web Browser Description') . '</label>
-                            </div>
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Find & Replace') . '</h2>
+                        <div class="card-body pt-0">
+                            <form method="post" action="' . h($_SERVER['PHP_SELF']) . '" class="disable_shortcut">
+                                ' . get_token_field() . '
+                                <input type="hidden" name="action" value="find_replace">
+                                <fieldset class="mb-5">
+                                    <legend class="form-label fw-semibold fs-md mb-3">' . lang('Apply to Fields') . '</legend>
+                                    <div class="form-field">
+                                        ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_name', 'value'=>'page_name', 'class'=>'check')) . '
+                                        <label class="" for="fr_page_name">' . lang('Page Name') . '</label>
+                                    </div>
+                                    <div class="form-field">
+                                        ' . $liveform->output_field($fr_defaults + array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_page_title', 'value'=>'page_title', 'class'=>'check')) . '
+                                        <label class="" for="fr_page_title">' . lang('Web Browser Title') . '</label>
+                                    </div>
+                                    <div class="form-field">
+                                        ' . $liveform->output_field($fr_defaults + array('type'=>'checkbox', 'name'=>'fr_fields[]', 'id'=>'fr_meta_desc', 'value'=>'page_meta_description', 'class'=>'check')) . '
+                                        <label class="" for="fr_meta_desc">' . lang('Web Browser Description') . '</label>
+                                    </div>
+                                </fieldset>
+                                <div class="mb-5">
+                                    <label class="form-label" for="find_text">' . lang('Find') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'find_text', 'id'=>'find_text', 'class'=>'form-control font-monospace', 'placeholder'=>lang('Text to find...'), 'required'=>'required')) . '
+                                </div>
+                                <div class="mb-5">
+                                    <label class="form-label" for="replace_text">' . lang('Replace with') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'replace_text', 'id'=>'replace_text', 'class'=>'form-control font-monospace', 'placeholder'=>lang('Leave empty to delete'))) . '
+                                </div>
+                                <div class="form-field mb-5">
+                                    <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'use_regex', 'id'=>'use_regex', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                    <label class="" for="use_regex">
+                                        ' . lang('Regex') . '
+                                        <small class="fg-secondary d-block" style="font-size:.75em;">/pattern/flags</small>
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-sm btn-solid theme-warning w-100"
+                                    data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '">
+                                    <i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Apply') . '</span>
+                                </button>
+                            </form>
                         </div>
-                        <div class="col-12 sm:col-6 md:col">
-                            <label class="form-label" for="find_text">' . lang('Find') . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'find_text', 'id'=>'find_text', 'class'=>'form-control font-monospace', 'placeholder'=>lang('Text to find...'), 'required'=>'required')) . '
-                        </div>
-                        <div class="col-12 sm:col-6 md:col">
-                            <label class="form-label" for="replace_text">' . lang('Replace with') . '</label>
-                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'replace_text', 'id'=>'replace_text', 'class'=>'form-control font-monospace', 'placeholder'=>lang('Leave empty to delete'))) . '
-                        </div>
-                        <div class="col-12 md:col-auto d-flex flex-column gap-3">
-                            <div class="form-field mb-0">
-                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'use_regex', 'id'=>'use_regex', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                <label class="" for="use_regex">
-                                    ' . lang('Regex') . '
-                                    <small class="fg-secondary d-block" style="font-size:.75em;">/pattern/flags</small>
-                                </label>
-                            </div>
-                            <button type="submit" class="btn btn-sm btn-solid theme-warning"
-                                data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '">
-                                <i class="bi bi-arrow-left-right me-1"></i>' . lang('Apply') . '
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>';
+                    </div>';
 
     // While fields are chosen, the toolbar offers to choose again.
     $toolbar_slots = array();
@@ -350,21 +366,36 @@ if (!$_POST) {
         'heading_description' => lang('It is a special page for mass editing of Web Site Contents. Not recommended if you dont know what you are doing.'),
     ]) . '
         <main class="container-fluid" id="content" style="min-height:60vh">
+            ' . $liveform->output_errors() . '
+            ' . $liveform->get_warnings() . '
+            ' . $liveform->output_notices() . '
+            ' . pg_screen_toolbar($toolbar_slots) . '
             <div class="row">
-                <div class="col-12">
-                    ' . $liveform->output_errors() . '
-                    ' . $liveform->get_warnings() . '
-                    ' . $liveform->output_notices() . '
-                    ' . pg_screen_toolbar($toolbar_slots) . '
-                    ' . $output_find_replace . '
-                        <form name="form" action="' . h($_SERVER['PHP_SELF']) . '" method="post" class="disable_shortcut position-relative">
-                            ' . get_token_field() . '
-                            ' . $outputs . '
-                            <input type="hidden" name="max_input_vars_test" value="true">
-                        </form>
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                    <form name="form" id="mass_edit_form" action="' . h($_SERVER['PHP_SELF']) . '" method="post" class="disable_shortcut position-relative">
+                        ' . get_token_field() . '
+                        ' . $form_column . '
+                        <input type="hidden" name="max_input_vars_test" value="true">
+                    </form>
+                </div>
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                    <div class="position-sticky" style="top:3.3rem;">
+                        ' . $summary_card . '
+                        ' . $output_find_replace . '
+                    </div>
+                </div>
+                <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                    <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                        <div class="container">
+                            <div class="btn-group flex-wrap justify-content-center">' . $save_buttons . '
+                            </div>
+                        </div>
+                    </nav>
                 </div>
             </div>
         </main>
+        ' . $screen_script . '
         <script>
             // The chosen fields went to the session; the address keeps only
             // the screen, replaced so Back leaves the screen in one step.
