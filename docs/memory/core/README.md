@@ -121,6 +121,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - mail-transport-webhooks.md: mail_webhook.php — bounce, complaint and delivery reports of the API mail transports into the bounce record; URL key, Mailgun/Resend signatures, replays, SES subscription
 - mail-transports.md: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, the SMTP Settings card
 - mailchimp-key-kept.md: Mailchimp API key on the Communication settings card: never printed, empty box keeps it, remove tick, data center checked as a plain host label before any request
+- membership-day-in-get-file.md: Which calendar day decides a running membership or private access in get_file.php (site time zone, set before USER_MEMBER); the hours an ended membership still opened files
 - message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings; what is still left
 - multibyte-trim.md: trim()/rtrim()/ltrim() read their character list byte by byte, so "–", "—", "·" or "“" in it breaks other characters; trim those with a /u regex (pg_ai_write_cut(), #744)
 - output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags
