@@ -17,13 +17,28 @@
  */
 
 include('init.php');
+
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/custom_style_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/style_list_edit.php');
+
+$quick_edit = pg_style_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the custom style screen's (validate_area_access() 'designer').
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return (int) $user['role'] <= 1;
+    });
+
+    $saved = pg_style_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 $user = validate_user();
 validate_area_access($user, 'designer');
-
-// The translated Layout Type column (pg_style_layout_type_label()).
-require_once(PG_FUNCTIONS_DIR . '/includes/forms/custom_style_form.php');
 
 $liveform = new liveform('view_styles');
 
@@ -63,77 +78,25 @@ $style_usage = pg_style_usage(
 );
 
 
-$query =
-    "SELECT
-        style.style_id as id,
-        style.style_name as name,
-        style.style_type as type,
-        files.name AS theme_name,
-        style.collection,
-        style.layout_type,
-        style.style_timestamp as last_modified_timestamp,
-        user.user_username as last_modified_username
-    FROM style
-    LEFT JOIN files ON style.theme_id = files.id
-    LEFT JOIN user ON style.style_user = user.user_id
-    WHERE style.style_layout <> 'visual_designer'
-    ORDER BY $order_by";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-$styles = array();
-
-// Loop through the results
-while ($row = mysqli_fetch_assoc($result)) {
-    $styles[] = $row;
-}
-
 // Every style is printed: the list table driver sorts and searches them in
 // the browser (browser mode) and keeps a heading's sort in the session.
 // Delete Selected posts the selected ids as styles[] (delete_styles.php).
 $list_rows = array();
 
-foreach ($styles as $style) {
-    // A classic style edited as code opens in the visual designer, its code
-    // as the shared component framing its pages; nothing changes on the site
-    // until the design is saved (includes/fn/classic_style_design.php).
-    $output_designer_button = '';
-    if ($style['type'] === 'custom' && (int)$user['role'] <= 1) {
-        $output_designer_button = '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Open in the visual designer')) . '" aria-label="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$style['id'] . '&amp;classic=1"><i class="bi bi-magic" aria-hidden="true"></i></a>';
-    }
-
+foreach ((array) db_items(pg_style_list_sql() . " ORDER BY " . $order_by) as $style) {
     $folders_using = isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_folders'] : 0;
     $pages_using = isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_pages'] : 0;
 
-    $list_rows[] = array(
-        'id' => $style['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_' . h($style['type']) . '_style.php?id=' . (int) $style['id'] . '" data-pg-open>' . h($style['name']) . '</a>', 'align-middle text-nowrap'),
-            'folders' => pg_list_cell(pg_format_number($folders_using, 0), 'align-middle', array('data-pg-sort-value' => (int) $folders_using)),
-            'pages' => pg_list_cell(pg_format_number($pages_using, 0), 'align-middle', array('data-pg-sort-value' => (int) $pages_using)),
-            'theme' => pg_list_cell(h($style['theme_name'])),
-            'collection' => pg_list_cell(h(strtoupper($style['collection'])), 'align-middle text-center'),
-            'layout_type' => pg_list_cell(h(pg_style_layout_type_label($style['layout_type']))),
-            'last_modified' => pg_list_table_when_cell($style['last_modified_timestamp'], $style['last_modified_username'] ?? ''),
-            'designer' => pg_list_cell($output_designer_button),
-        ),
-    );
+    $list_rows[] = array('id' => $style['id'], 'cells' => pg_style_list_cells($style, $quick_edit, $folders_using, $pages_using, (int) $user['role'] <= 1));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_styles',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'folders' => array('heading' => lang('Folders Using Style'), 'kind' => 'number'),
-        'pages' => array('heading' => lang('Pages Using Style'), 'kind' => 'number'),
-        'theme' => array('heading' => lang('Theme')),
-        'collection' => array('heading' => lang('Collection')),
-        'layout_type' => array('heading' => lang('Layout Type')),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-        'designer' => array('heading' => lang('Open in the visual designer'), 'kind' => 'actions'),
-    ),
+    'columns' => pg_style_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
     'ids_field' => 'styles[]',
+    'edit' => array('url' => 'view_styles.php', 'columns' => $quick_edit),
 ));
 
 // Once the bin holds styles, the ones deleted here go there (delete_styles.php).
