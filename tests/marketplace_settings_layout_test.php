@@ -55,3 +55,33 @@ function test_marketplace_settings_account_card_is_read_in_the_status_column()
 	pg_assert_contains('data-bs-target="#mp_drawer">', $source, 'the Settings button opens the drawer');
 	pg_assert_contains('<span class="pg-btn-label">\' . h(lang(\'Test connection\'))', $source, 'the Test connection label is in its span');
 }
+
+function test_marketplace_settings_dialog_and_drawer_fields_are_form_fields()
+{
+	$source = marketplace_settings_layout_source();
+
+	foreach (array('new_provider', 'new_name', 'edit_name', 'edit_shipment_template', 'edit_preparing_day') as $id) {
+		pg_assert_true((bool) preg_match('/<div class="form-field[^"]*">\s*<label class="form-label" for="' . $id . '">/', $source), $id . ' sits in a form-field');
+	}
+
+	pg_assert_contains('<div class="form-field mb-5">
+				<label class="form-label" for="\' . h($id) . \'">', $source, 'a credential field is a form-field');
+	pg_assert_true(strpos($source, '<div class="mb-5">') === false, 'no bare label and control block is left');
+}
+
+function test_marketplace_settings_drawer_sections_in_order()
+{
+	$source = marketplace_settings_layout_source();
+	$drawer = strpos($source, 'id="mp_drawer"');
+	pg_assert_true($drawer !== false, 'the drawer is there');
+
+	$last = $drawer;
+	foreach (array('Connection', 'Stock and prices', 'Orders', 'Shipping') as $section) {
+		$at = strpos($source, '<legend class="fs-md fw-semibold mb-4">\' . lang(\'' . $section . '\') . \'</legend>', $drawer);
+		pg_assert_true($at !== false && $at > $last, $section . ' is a drawer section after the previous one');
+		$last = $at;
+	}
+
+	pg_assert_true(strpos($source, 'id="edit_status"', $drawer) > strpos($source, "lang('Stock and prices')", $drawer), 'the sending switches sit under Stock and prices');
+	pg_assert_true(strpos($source, 'value="delete"', $drawer) > $last, 'Remove marketplace stays last');
+}
