@@ -48,7 +48,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `text_search`: taken by MM — #4819
 - `tour`: clean (OF)
 - `translate`: taken by MM — #4753, #4776
-- `update`: second round: entry names leaving the destination in `pg_extract_archive()` and `download_assistant.php` (zip slip), PR pending (read: update steps' role and token gates, rollback, integrity check paths; first round OV clean)
+- `update`: second round: entry names leaving the destination in `pg_extract_archive()` and `download_assistant.php` (zip slip), #7098 (read: update steps' role and token gates, rollback, integrity check paths; first round OV clean)
 - `user_list`: #5169 (OF)
 - `vendor_api`: clean
 - `visitor_ip`: clean
