@@ -56,7 +56,7 @@ description: Generated from the module field of the memory files: each includes/
 - `consent`: [[fn-module-errors-mail-backup-consent]]
 - `contact_list`: [[contact-delete-notice-groups]], [[contact-list-filters]], [[contact-list-names]], [[contact-merge-role]], [[contact-user-list-view-kept]], [[panel-image-alt]]
 - `contact_list_edit`: [[list-table-quick-edit-contacts]]
-- `contacts`: [[api-commission-writes]], [[contact-delete-refusals]], [[contact-holders]], [[contact-lead-source]], [[contact-merge-columns]], [[deleted-picture-fallback]], [[panel-avatar]], [[panel-avatar-sites]]
+- `contacts`: [[affiliate-welcome-mail-link]], [[api-commission-writes]], [[contact-delete-refusals]], [[contact-holders]], [[contact-lead-source]], [[contact-merge-columns]], [[deleted-picture-fallback]], [[panel-avatar]], [[panel-avatar-sites]]
 - `container_list_edit`: [[list-table-quick-edit-containers]]
 - `content`: [[submitted-form-content-helpers]]
 - `core`: [[app-screen-messages]], [[build-url-host-parts]], [[error-screen-language-and-status]], [[schema-cache-file]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]]
