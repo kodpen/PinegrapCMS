@@ -11,4 +11,4 @@ description: auto_backup.php takes the auto_backup lock in cron_runs before it s
 ## Why?
 - The time is written only when the archive is done (`pg_backup_run_auto()`), and the once-a-day check read the value loaded when the request began. A backup takes minutes to hours, so every crontab start, dispatched tick or manager request during it found the time a day old and wrote another full backup of the same week beside the first (same name, same remote copy). Same pattern as the MailChimp sync flag (#7237): the marker was read apart from being set.
 
-Test: `tests/auto_backup_claim_test.php` (source checks).
+Fixed in #7243. Test: `tests/auto_backup_claim_test.php` (source checks).
