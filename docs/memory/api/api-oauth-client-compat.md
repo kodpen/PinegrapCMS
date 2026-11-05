@@ -23,3 +23,7 @@ description: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Cod
 
 ## Where is a new client documented?
 - The panel guide `api_settings_oauth_guide()` (`api_settings.php`) gives each client's steps and the text to paste, with this site's address in it; a new client gets an entry there. The MCP file address in the software folder comes first, since it works on every server.
+
+## What if a form field or registration value is not text?
+- The token and revocation endpoints read every form field through `pg_oauth_form_value()` (`includes/oauth/endpoints.php`): a field sent as a list (`code[]=x`) counts as not given. The consent screen reads its action through the same request reader and keeps only text entries of `grant[]`; a registration whose `token_endpoint_auth_method` is not text is `invalid_client_metadata`.
+- Why: a `(string)` cast logged "Array to string conversion" on these public endpoints for any crafted request.
