@@ -108,7 +108,9 @@ function ws_flow_loop_count_items($text)
 
     if (!preg_match('/^[0-9]{1,4}$/', $text) || ((int) $text < 1) || ((int) $text > WS_FLOW_LOOP_ITEMS_MAX)) {
         return array('ok' => false, 'items' => array(), 'json' => '',
-            'error' => lang(array('string' => 'The count “{var:1}” is not a whole number from 1 to {var:2}.', 'vars' => array($text, WS_FLOW_LOOP_ITEMS_MAX))));
+            // The value read stays out of the reason: it may come from a box
+            // whose outputs a reader of the run does not see.
+            'error' => lang(array('string' => 'The count the box read is not a whole number from 1 to {var:1}.', 'vars' => WS_FLOW_LOOP_ITEMS_MAX)));
     }
 
     $items = range(1, (int) $text);

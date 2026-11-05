@@ -629,6 +629,7 @@ function test_workspace_flow_loops_count_mode()
 	}
 
 	pg_assert_contains('from 1 to 50', ws_flow_loop_count_items('51')['error']);
+	pg_assert_true(strpos(ws_flow_loop_count_items('{"token":"s3cret"}')['error'], 's3cret') === false, 'the value read stays out of the reason');
 
 	pg_assert_same('', ws_flow_loop_count_problem('5', 'Repeat'));
 	pg_assert_same('', ws_flow_loop_count_problem('{{node.get.cell_4}}', 'Repeat'), 'one value');
