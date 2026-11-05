@@ -12,7 +12,7 @@ description: Adding a front-end cookie or third-party tag under the cookie notic
 - If turning the category off again must delete it, also in `pg_consent_revoke_names()` (a trailing `*` matches a prefix, as in `_ga_*`); `pg_consent.js` deletes those names.
 
 ## When does the notice delete a category's cookies?
-- On every answer that refuses the category (Reject all, Save with it off, closing before answering), whatever the answer before it: a cookie set while the site did not ask yet (consent switched on later, an older version) would otherwise stay, and `get_tracking_code()` / `get_affiliate_code()` keep reading it. Before PR #PRNUM only a withdrawal (allowed → refused) deleted them, so a first "Reject all" kept them.
+- On every answer that refuses the category (Reject all, Save with it off, closing before answering), whatever the answer before it: a cookie set while the site did not ask yet (consent switched on later, an older version) would otherwise stay, and `get_tracking_code()` / `get_affiliate_code()` keep reading it. Before PR #7092 only a withdrawal (allowed → refused) deleted them, so a first "Reject all" kept them.
 - Only a withdrawal also reloads the page: a held script that already ran cannot be stopped in place. `tests/consent_js_revoke_test.php` runs `pg_consent.js` in Node for both cases.
 
 ## How does a third-party tag the software prints wait for consent?
