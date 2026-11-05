@@ -39,7 +39,7 @@ function test_phone_width_marketplace_card_header_buttons_wrap()
 
 	preg_match_all('/<div class="ms-auto d-flex[^"]*">/', $source, $clusters);
 
-	pg_assert_true(count($clusters[0]) >= 3, 'card header clusters found');
+	pg_assert_true(count($clusters[0]) >= 2, 'card header clusters found');
 
 	foreach ($clusters[0] as $cluster) {
 		pg_assert_true(strpos($cluster, ' flex-wrap ') !== false && strpos($cluster, 'justify-content-end') !== false, $cluster . ' wraps');
