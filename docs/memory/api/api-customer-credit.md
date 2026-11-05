@@ -17,6 +17,9 @@ module: store_credit_events
 - Issue is kind `manual`, issued_by the application's owner, reason required (255), `last_day` Y-m-d through `pg_credit_last_day_expires()` (shared with the staff form: the card stops at the start of the next day), amount 1..100000000 minor units as the staff form. 503 `service_unavailable` before `pg_credit_ready()`.
 - Void needs a reason, a card of the record's accounts (404 otherwise) with a balance; a zero balance or an order spending meanwhile is 409 `credit_not_open`. A void is not announced.
 
+## Can DELETE /gift-cards/{id} remove a store credit card?
+- No (#6783): `api_gift_cards_delete()` refuses a card with `user_id` > 0 (`api_gift_card_is_store_credit()`) with 409 `store_credit_not_deletable` before the dry-run stop, naming the void route; the same rule as the gift card screen (#6688), since the delete drops the credit without an audit line. Ordinary gift cards are deleted as before. Test: `tests/api_gift_card_store_credit_delete_test.php`.
+
 ## Which events?
 - `includes/fn/store_credit_events.php`: `pg_credit_announce()` reads the card and its account's contact and calls `pg_announce()` with `pg_credit_event_data()` (pure): id, account_id, customer_id, kind, reason, amount, balance, expires_at, never the code; unbound cards are never announced.
 - `credit.issued` from `pg_credit_issue()` (every kind: points, refund, staff, API); `credit.used` from `pg_order_complete_gift_cards()` per bound card redeemed (order_id, amount_used); `credit.expired` from `pg_credit_expire_card()` (expired_amount). A cancelled order giving credit back is not announced.
