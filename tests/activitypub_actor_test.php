@@ -184,6 +184,28 @@ function test_activitypub_key_from_a_mastodon_actor()
 	pg_assert_false(pg_ap_key_from_document(array('id' => 'x'), 'x'), 'no key in the document');
 }
 
+function test_activitypub_key_owner_must_share_the_key_host()
+{
+	$pem = "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----";
+
+	// A key served by one server cannot speak for an actor on another.
+	pg_assert_false(pg_ap_key_from_document(
+		array('id' => 'https://evil.example/key', 'publicKeyPem' => $pem, 'owner' => 'https://mastodon.example/users/alice'),
+		'https://evil.example/key'
+	), 'an owner on another host');
+	pg_assert_false(pg_ap_key_from_document(
+		array('id' => 'https://mastodon.example/users/alice', 'publicKey' => array('id' => 'https://evil.example/key', 'publicKeyPem' => $pem)),
+		'https://evil.example/key'
+	), 'a document id on another host');
+
+	$key = pg_ap_key_from_document(
+		array('id' => 'https://Social.Example/users/bob/key', 'publicKeyPem' => $pem, 'owner' => 'https://social.example/users/bob'),
+		'https://social.example/users/bob/key'
+	);
+
+	pg_assert_same('https://social.example/users/bob', $key['owner'], 'same host, case aside');
+}
+
 function test_activitypub_verifies_a_request_signed_by_mastodon()
 {
 	$request = activitypub_test_fixture('signed_request.json');
