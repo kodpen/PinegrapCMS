@@ -189,7 +189,7 @@ function test_arrival_date_form_date_text()
 	pg_assert_same('', pg_arrival_date_form_date_text(null), 'null');
 	pg_assert_true(pg_arrival_date_form_date_text('2026-12-24') !== '', 'a real date is written');
 	pg_assert_contains('2026', pg_arrival_date_form_date_text('2026-12-24'), 'with its year');
-	pg_assert_contains('pg_arrival_date_form_date_text($row[\'arrival_date\'])', arrival_date_form_test_source('view_arrival_dates.php'), 'the list uses it');
+	pg_assert_contains('pg_arrival_date_form_date_text($row[\'arrival_date\'])', arrival_date_form_test_source('includes/fn/arrival_date_list_edit.php'), 'the list uses it');
 }
 
 // The cut-off rows backend.src.js adds carry their names: the select and
