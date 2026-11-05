@@ -379,3 +379,15 @@ function test_contact_list_organize_dialog_in_page()
 	pg_assert_contains('$number_of_contacts = pg_contact_list_organized_count($moved);', $save, 'only contacts whose groups changed are counted');
 	pg_assert_contains("lang('No contact group was selected.')", $save, 'an organize with no group says so');
 }
+
+function test_contact_list_posted_group_ids_read_only_text()
+{
+	pg_assert_same(array('3', '7'), pg_contact_list_posted_group_ids('3,7'), 'the dialog posts a comma-separated list');
+	pg_assert_same(array(), pg_contact_list_posted_group_ids(''), 'an empty field names no group');
+	pg_assert_same(array(), pg_contact_list_posted_group_ids(array('3')), 'a field sent as an array names no group');
+	pg_assert_same(array(), pg_contact_list_posted_group_ids(null), 'a missing field names no group');
+
+	$save = file_get_contents(PG_FUNCTIONS_DIR . '/edit_contacts.php');
+	pg_assert_contains("pg_contact_list_posted_group_ids(\$_POST['add_to_contact_groups'] ?? '')", $save, 'the added groups are read as text');
+	pg_assert_contains("pg_contact_list_posted_group_ids(\$_POST['remove_from_contact_groups'] ?? '')", $save, 'the removed groups are read as text');
+}
