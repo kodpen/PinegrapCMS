@@ -1298,8 +1298,8 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 order-3">
-                            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class="btn-group flex-wrap justify-content-center">
                                         <button type="submit" id="submit_save" name="submit_save" value="Save &amp; Run" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . h(lang('Save & Run')) . '</span></button>
