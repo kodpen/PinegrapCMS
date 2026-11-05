@@ -5693,3 +5693,60 @@ function pg_stored_file_exists($value)
 
     return (int) db_value("SELECT COUNT(*) FROM files WHERE name = '" . e((string) $value) . "'") > 0;
 }
+
+/**
+ * Count one E-mail a Friend attempt on the visitor's daily allowance and say
+ * whether it is over the limit (ten a day). Counting and testing are one
+ * atomic step (waf_rate_record() is a single INSERT ... ON DUPLICATE KEY
+ * UPDATE) taken before the mail goes, so parallel requests cannot all read
+ * room under the limit and all send. An IPv6 visitor is counted by the /64
+ * (waf_ip_subject()), so the addresses of one network share one allowance.
+ * A refused attempt is counted too. Fails open: a counter that cannot be
+ * written answers 0.
+ *
+ * @param string        $ip     The visitor's address (pg_auth_request_address())
+ * @param callable|null $record (subject, scope, window) => new total;
+ *                              waf_rate_record() when null
+ * @return bool True when this attempt is over the limit
+ */
+function pg_eaf_limit_take($ip, $record = null)
+{
+    $live = ($record === null);
+
+    if ($live) {
+        if (!function_exists('waf_rate_record')) {
+            return false;
+        }
+
+        $record = 'waf_rate_record';
+    }
+
+    $subject = function_exists('waf_ip_subject') ? waf_ip_subject((string) $ip) : (string) $ip;
+    $over = ((int) call_user_func($record, $subject, 'eaf', 86400) > 10);
+
+    // The firewall's sweep runs only while the firewall is on; this counter
+    // works without it, so it brings its own, as the form limits do.
+    if ($live && function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
+        waf_rate_sweep();
+    }
+
+    return $over;
+}
+
+/**
+ * Log a refusal by E-mail a Friend's daily limit in the firewall log and in
+ * data/firewall.log, so the limit never refuses silently.
+ *
+ * @param string $ip The visitor's address
+ * @return void
+ */
+function pg_eaf_limit_log($ip)
+{
+    if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
+        waf_log_event('rate', 'form-eaf', 'rate', 5, 'email_a_friend.php', '10/day');
+    }
+
+    if (function_exists('waf_text_log')) {
+        waf_text_log('DENY', (string) $ip, array('status' => 429, 'rule' => 'form-eaf'));
+    }
+}
