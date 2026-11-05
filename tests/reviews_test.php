@@ -410,7 +410,7 @@ function test_reviews_request_cancel()
 	$lines = file($cancellation->getFileName());
 	$source = implode('', array_slice($lines, $cancellation->getStartLine() - 1, $cancellation->getEndLine() - $cancellation->getStartLine() + 1));
 
-	$write = strpos($source, "AND status <> 'cancelled'");
+	$write = strpos($source, "AND status NOT IN ('cancelled', 'incomplete')");
 	$guard = strpos($source, 'mysqli_affected_rows(db::$con) < 1');
 	$cancel = strpos($source, 'pg_review_request_cancel($order_id)');
 

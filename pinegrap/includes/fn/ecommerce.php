@@ -11296,6 +11296,16 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
     }
 
+    // A basket (incomplete) is not an order: it has no number, payment or
+    // stock move, and only the checkout ends it. The customer's own
+    // cancel_order.php post and the order screen's cancel handler have no
+    // status check of their own; a cancelled basket was mailed to the
+    // customer as a cancelled order, announced as order.cancelled and listed
+    // among the cancelled orders.
+    if (pg_order_status_move($order['status'], 'cancelled') === 'refuse') {
+        return array('status' => 'error', 'message' => pg_order_status_move_refusal($order['status'], 'cancelled'), 'refund_status' => '', 'order_id' => $order_id);
+    }
+
     // ── Pre-shipment guard (CUSTOMERS ONLY) ─────────────────────────────
     // Admins are never blocked. An operator cancelling from the panel has
     // context the code does not — a customer phoned, the courier returned the
@@ -11333,7 +11343,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
             cancellation_reason = '" . escape($reason_clean) . "',
             " . pg_order_touch_sql() . "
          WHERE id = '" . e($order_id) . "'
-           AND status <> 'cancelled'"
+           AND status NOT IN ('cancelled', 'incomplete')"
     );
     if (mysqli_affected_rows(db::$con) < 1) {
         return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
