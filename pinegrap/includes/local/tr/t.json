@@ -3385,6 +3385,7 @@
     "The occasion, the date, how many guests and the space you like, in a short enquiry.": "Kısa bir talepte etkinlik, tarih, misafir sayısı ve beğendiğiniz mekân.",
     "The offence counters were cleared and the ban shield was rewritten.": "İhlal sayaçları temizlendi ve yasak kalkanı yeniden yazıldı.",
     "The offer action has been created.": "Teklif hareketi oluşturuldu.",
+    "The offer cannot be saved as it is: {var:1} Open it to fix this first.": "Teklif bu haliyle kaydedilemiyor: {var:1} Önce teklifi açıp bunu düzeltin.",
     "The offer code can be at most 50 characters long.": "Teklif kodu en fazla 50 karakter olabilir.",
     "The offer could not be found.": "Teklif bulunamadı.",
     "The offer has been created.": "Teklif oluşturuldu.",
