@@ -128,6 +128,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-product-import-queue.md: The product import queues the products it updated for the marketplaces in one call at the end, after the bundle refresh, without webhooks
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
 - marketplace-shop-view.md: Shop view of marketplace_products.php (#1931): shop products with pictures and their state on an account, codes typed in the row, bulk own-code match, send, remove, listing changes
+- marketplace-sync-queue-lease.md: How a stock and price batch claims its queue rows (lease token in remote_task_id), why a change during a push gets a row of its own, and how a product is sent once per batch.
 - marketplace-variant-attributes.md: Listed products' variant attributes (Trendyol varianter and slicer, n11 isVariant): own option first, the article's value as fallback, duplicate refusal, mapping screen field.
 - marketplace-webhook-receiver.md: marketplace_webhook.php: what calls it and what it imports, its checks and status codes, why it never calls out, the job's acceptance pass, the firewall entry.
 - marketplace-webhook-registration.md: How a marketplace order webhook is registered and removed from the account screen, which saves are refused while one exists, what account delete does with it, and Trendyol's webhook facts.
