@@ -199,6 +199,7 @@ description: Generated from the module field of the memory files: each includes/
 - `store_lookups`: [[api-store-lookups]]
 - `store_regions`: [[api-store-country-state-writes]]
 - `store_zones`: [[api-store-zone-writes]]
+- `style_list_edit`: [[list-table-quick-edit-styles]]
 - `style_usage`: [[style-usage-counts]]
 - `submitted_form_list`: [[filter-on-form-data-rows]], [[list-table-driver-lists]], [[submitted-form-import-export]]
 - `submitted_form_list_edit`: [[list-table-quick-edit-submitted-forms]]
