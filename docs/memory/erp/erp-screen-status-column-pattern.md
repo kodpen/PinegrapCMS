@@ -29,3 +29,4 @@ Reference implementation: `product_builder.php` (draws `add_product.php` and pro
 
 ## How do the till screens apply it?
 - `add_erp_till.php` (Open a Till, #6834): the till card in the form column, a Status card (Active/Passive and what passive means) in the sticky status column, `erp_till_form_cards($liveform, false, false)` leaving Status out of the card; before, one full-width card. `edit_erp_till.php` keeps Status in the card and reads balance, type and movements in its status column, the cash book full width below.
+- `add_erp_transfer.php` (Transfer, #6875): From/To, Amount, Date and Description in one card in the form column; the sticky status column lists every active till with its balance (Till Balances), read from the same query as the till options.
