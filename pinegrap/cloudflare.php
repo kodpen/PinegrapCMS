@@ -1148,55 +1148,119 @@ print pg_page_shell([
   </div>
   </div>
 
-<!-- Add Record Modal -->
+<!-- Add Record dialog -->
 <dialog class="dialog" id="addModal" aria-labelledby="addModal_title">
     <form method="post" class="d-contents">
       '.get_token_field().'
       <input type="hidden" name="action" value="add_record">
       <div class="dialog-header"><h5 class="dialog-title" id="addModal_title">' . lang('Add DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button></div>
       <div class="dialog-body">
-        <div class="mb-5"><label class="form-label" for="add_type">' . lang('Type') . '</label>
-          <select name="type" id="add_type" class="form-control" required>
-            <option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option>
-            <option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option>
-            <option value="SRV">SRV</option><option value="CAA">CAA</option>
-          </select>
-        </div>
-        <div class="mb-5"><label class="form-label" for="add_name">' . lang('Name') . '</label><input type="text" name="name" id="add_name" class="form-control" required></div>
-        <div class="mb-5 common-content"><label class="form-label" for="add_content">' . lang('Content') . '</label><input type="text" name="content" id="add_content" class="form-control"></div>
-        <div class="mb-5"><label class="form-label" for="add_ttl">' . lang('TTL') . '</label>
-          <select name="ttl" id="add_ttl" class="form-control"><option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option><option value="3600" selected>' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option></select>
-        </div>
-        <div class="form-field proxied-only"><input class="check" type="checkbox" name="proxied" id="add_proxied"><label class="" for="add_proxied">' . lang('Proxied') . '</label></div>
-        <!-- MX extra -->
-        <div class="mb-5 type-extra type-mx d-none"><label class="form-label" for="add_priority">' . lang('Priority') . '</label><input type="number" name="priority" id="add_priority" class="form-control" min="0" max="65535"></div>
-        <!-- SRV extra -->
-        <div class="type-extra type-srv d-none">
-          <div class="mb-5"><label for="add_service">' . lang('Service') . '</label><input type="text" name="service" id="add_service" class="form-control"></div>
-          <div class="mb-5"><label for="add_proto">' . lang('Protocol') . '</label><input type="text" name="proto" id="add_proto" class="form-control"></div>
-          <div class="mb-5"><label for="add_priority2">' . lang('Priority') . '</label><input type="number" name="priority" id="add_priority2" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="add_weight">' . lang('Weight') . '</label><input type="number" name="weight" id="add_weight" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="add_port">' . lang('Port') . '</label><input type="number" name="port" id="add_port" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="add_target">' . lang('Target') . '</label><input type="text" name="target" id="add_target" class="form-control"></div>
-        </div>
-        <!-- CAA extra -->
-        <div class="type-extra type-caa d-none">
-          <div class="mb-5"><label for="add_flags">' . lang('Flags') . '</label><input type="number" name="flags" id="add_flags" class="form-control" min="0" max="255"></div>
-          <div class="mb-5"><label for="add_tag">' . lang('Tag') . '</label>
-            <select name="tag" id="add_tag" class="form-control">
-              <option value="issue">issue</option>
-              <option value="issuewild">issuewild</option>
-              <option value="iodef">iodef</option>
-            </select>
+        <div class="row g-5">
+          <div class="col-12 md:col-6">
+            <div class="form-field">
+              <label for="add_type" class="form-label">' . lang('Type') . '</label>
+              <select name="type" id="add_type" class="form-control" required><option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option><option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option><option value="SRV">SRV</option><option value="CAA">CAA</option></select>
+            </div>
           </div>
-          <div class="mb-5"><label for="add_value">' . lang('Value') . '</label><input type="text" name="value" id="add_value" class="form-control"></div>
+          <div class="col-12 md:col-6">
+            <div class="form-field">
+              <label for="add_ttl" class="form-label">' . lang('TTL') . '</label>
+              <select name="ttl" id="add_ttl" class="form-control"><option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option><option value="3600" selected>' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option></select>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="form-field">
+              <label for="add_name" class="form-label">' . lang('Name') . '</label>
+              <input type="text" name="name" id="add_name" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-12 common-content">
+            <div class="form-field">
+              <label for="add_content" class="form-label">' . lang('Content') . '</label>
+              <input type="text" name="content" id="add_content" class="form-control">
+            </div>
+          </div>
+          <div class="col-12 proxied-only">
+            <div class="form-field"><input class="check" type="checkbox" name="proxied" id="add_proxied"><label for="add_proxied">' . lang('Proxied') . '</label></div>
+          </div>
+          <!-- MX -->
+          <div class="col-12 type-extra type-mx d-none">
+            <div class="form-field">
+              <label for="add_priority" class="form-label">' . lang('Priority') . '</label>
+              <input type="number" name="priority" id="add_priority" class="form-control" min="0" max="65535">
+            </div>
+          </div>
+          <!-- SRV -->
+          <div class="col-12 type-extra type-srv d-none">
+            <div class="row g-5">
+              <div class="col-12 md:col-6">
+                <div class="form-field">
+                  <label for="add_service" class="form-label">' . lang('Service') . '</label>
+                  <input type="text" name="service" id="add_service" class="form-control">
+                </div>
+              </div>
+              <div class="col-12 md:col-6">
+                <div class="form-field">
+                  <label for="add_proto" class="form-label">' . lang('Protocol') . '</label>
+                  <input type="text" name="proto" id="add_proto" class="form-control">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="add_priority2" class="form-label">' . lang('Priority') . '</label>
+                  <input type="number" name="priority" id="add_priority2" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="add_weight" class="form-label">' . lang('Weight') . '</label>
+                  <input type="number" name="weight" id="add_weight" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="add_port" class="form-label">' . lang('Port') . '</label>
+                  <input type="number" name="port" id="add_port" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-field">
+                  <label for="add_target" class="form-label">' . lang('Target') . '</label>
+                  <input type="text" name="target" id="add_target" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- CAA -->
+          <div class="col-12 type-extra type-caa d-none">
+            <div class="row g-5">
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="add_flags" class="form-label">' . lang('Flags') . '</label>
+                  <input type="number" name="flags" id="add_flags" class="form-control" min="0" max="255">
+                </div>
+              </div>
+              <div class="col-12 md:col-8">
+                <div class="form-field">
+                  <label for="add_tag" class="form-label">' . lang('Tag') . '</label>
+                  <select name="tag" id="add_tag" class="form-control"><option value="issue">issue</option><option value="issuewild">issuewild</option><option value="iodef">iodef</option></select>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-field">
+                  <label for="add_value" class="form-label">' . lang('Value') . '</label>
+                  <input type="text" name="value" id="add_value" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="dialog-footer"><button type="submit" class="btn btn-solid theme-primary">' . lang('Add') . '</button></div>
     </form>
 </dialog>
 
-<!-- Edit Record Modal -->
+<!-- Edit Record dialog -->
 <dialog class="dialog" id="editModal" aria-labelledby="editModal_title">
     <form method="post" class="d-contents">
       '.get_token_field().'
@@ -1204,44 +1268,105 @@ print pg_page_shell([
       <input type="hidden" name="id" id="edit_id">
       <div class="dialog-header"><h5 class="dialog-title" id="editModal_title">' . lang('Edit DNS Record') . '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button></div>
       <div class="dialog-body">
-        <div class="mb-5"><label for="edit_type">' . lang('Type') . '</label>
-          <select name="type" id="edit_type" class="form-control" required>
-            <option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option>
-            <option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option>
-            <option value="SRV">SRV</option><option value="CAA">CAA</option>
-          </select>
-        </div>
-        <div class="mb-5"><label for="edit_name">' . lang('Name') . '</label><input type="text" name="name" id="edit_name" class="form-control" required></div>
-        <div class="mb-5 common-content"><label for="edit_content">' . lang('Content') . '</label><input type="text" name="content" id="edit_content" class="form-control"></div>
-        <div class="mb-5"><label for="edit_ttl">' . lang('TTL') . '</label>
-          <select name="ttl" id="edit_ttl" class="form-control">
-            <option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option>
-            <option value="3600">' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option>
-          </select>
-        </div>
-        <div class="form-field proxied-only"><input class="check" type="checkbox" name="proxied" id="edit_proxied"><label class="" for="edit_proxied">' . lang('Proxied') . '</label></div>
-        <!-- MX extra -->
-        <div class="mb-5 type-extra type-mx d-none"><label for="edit_priority">' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority" class="form-control" min="0" max="65535"></div>
-        <!-- SRV extra -->
-        <div class="type-extra type-srv d-none">
-          <div class="mb-5"><label for="edit_service">' . lang('Service') . '</label><input type="text" name="service" id="edit_service" class="form-control"></div>
-          <div class="mb-5"><label for="edit_proto">' . lang('Protocol') . '</label><input type="text" name="proto" id="edit_proto" class="form-control"></div>
-          <div class="mb-5"><label for="edit_priority2">' . lang('Priority') . '</label><input type="number" name="priority" id="edit_priority2" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="edit_weight">' . lang('Weight') . '</label><input type="number" name="weight" id="edit_weight" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="edit_port">' . lang('Port') . '</label><input type="number" name="port" id="edit_port" class="form-control" min="0" max="65535"></div>
-          <div class="mb-5"><label for="edit_target">' . lang('Target') . '</label><input type="text" name="target" id="edit_target" class="form-control"></div>
-        </div>
-        <!-- CAA extra -->
-        <div class="type-extra type-caa d-none">
-          <div class="mb-5"><label for="edit_flags">' . lang('Flags') . '</label><input type="number" name="flags" id="edit_flags" class="form-control" min="0" max="255"></div>
-          <div class="mb-5"><label for="edit_tag">' . lang('Tag') . '</label>
-            <select name="tag" id="edit_tag" class="form-control">
-              <option value="issue">issue</option>
-              <option value="issuewild">issuewild</option>
-              <option value="iodef">iodef</option>
-            </select>
+        <div class="row g-5">
+          <div class="col-12 md:col-6">
+            <div class="form-field">
+              <label for="edit_type" class="form-label">' . lang('Type') . '</label>
+              <select name="type" id="edit_type" class="form-control" required><option value="A">A</option><option value="AAAA">AAAA</option><option value="CNAME">CNAME</option><option value="TXT">TXT</option><option value="MX">MX</option><option value="NS">NS</option><option value="SRV">SRV</option><option value="CAA">CAA</option></select>
+            </div>
           </div>
-          <div class="mb-5"><label for="edit_value">' . lang('Value') . '</label><input type="text" name="value" id="edit_value" class="form-control"></div>
+          <div class="col-12 md:col-6">
+            <div class="form-field">
+              <label for="edit_ttl" class="form-label">' . lang('TTL') . '</label>
+              <select name="ttl" id="edit_ttl" class="form-control"><option value="1">' . lang('Auto') . '</option><option value="60">' . lang('1 min') . '</option><option value="300">' . lang('5 min') . '</option><option value="3600">' . lang('1 hour') . '</option><option value="86400">' . lang('1 day') . '</option></select>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="form-field">
+              <label for="edit_name" class="form-label">' . lang('Name') . '</label>
+              <input type="text" name="name" id="edit_name" class="form-control" required>
+            </div>
+          </div>
+          <div class="col-12 common-content">
+            <div class="form-field">
+              <label for="edit_content" class="form-label">' . lang('Content') . '</label>
+              <input type="text" name="content" id="edit_content" class="form-control">
+            </div>
+          </div>
+          <div class="col-12 proxied-only">
+            <div class="form-field"><input class="check" type="checkbox" name="proxied" id="edit_proxied"><label for="edit_proxied">' . lang('Proxied') . '</label></div>
+          </div>
+          <!-- MX -->
+          <div class="col-12 type-extra type-mx d-none">
+            <div class="form-field">
+              <label for="edit_priority" class="form-label">' . lang('Priority') . '</label>
+              <input type="number" name="priority" id="edit_priority" class="form-control" min="0" max="65535">
+            </div>
+          </div>
+          <!-- SRV -->
+          <div class="col-12 type-extra type-srv d-none">
+            <div class="row g-5">
+              <div class="col-12 md:col-6">
+                <div class="form-field">
+                  <label for="edit_service" class="form-label">' . lang('Service') . '</label>
+                  <input type="text" name="service" id="edit_service" class="form-control">
+                </div>
+              </div>
+              <div class="col-12 md:col-6">
+                <div class="form-field">
+                  <label for="edit_proto" class="form-label">' . lang('Protocol') . '</label>
+                  <input type="text" name="proto" id="edit_proto" class="form-control">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="edit_priority2" class="form-label">' . lang('Priority') . '</label>
+                  <input type="number" name="priority" id="edit_priority2" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="edit_weight" class="form-label">' . lang('Weight') . '</label>
+                  <input type="number" name="weight" id="edit_weight" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="edit_port" class="form-label">' . lang('Port') . '</label>
+                  <input type="number" name="port" id="edit_port" class="form-control" min="0" max="65535">
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-field">
+                  <label for="edit_target" class="form-label">' . lang('Target') . '</label>
+                  <input type="text" name="target" id="edit_target" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- CAA -->
+          <div class="col-12 type-extra type-caa d-none">
+            <div class="row g-5">
+              <div class="col-12 md:col-4">
+                <div class="form-field">
+                  <label for="edit_flags" class="form-label">' . lang('Flags') . '</label>
+                  <input type="number" name="flags" id="edit_flags" class="form-control" min="0" max="255">
+                </div>
+              </div>
+              <div class="col-12 md:col-8">
+                <div class="form-field">
+                  <label for="edit_tag" class="form-label">' . lang('Tag') . '</label>
+                  <select name="tag" id="edit_tag" class="form-control"><option value="issue">issue</option><option value="issuewild">issuewild</option><option value="iodef">iodef</option></select>
+                </div>
+              </div>
+              <div class="col-12">
+                <div class="form-field">
+                  <label for="edit_value" class="form-label">' . lang('Value') . '</label>
+                  <input type="text" name="value" id="edit_value" class="form-control">
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="dialog-footer"><button type="submit" class="btn btn-solid theme-warning">' . lang('Save') . '</button></div>

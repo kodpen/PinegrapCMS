@@ -79,3 +79,34 @@ function test_cloudflare_screen_dns_and_logs_cards_have_headings()
 	pg_assert_contains('<span class="pg-btn-label">\' . lang(\'Add Record\') . \'</span>', $source, 'the Add Record label is in its span');
 	pg_assert_true(strpos($source, '<th>') === false, 'every log table heading is a column header');
 }
+
+function test_cloudflare_screen_dns_dialogs_use_labelled_form_fields()
+{
+	$source = cloudflare_screen_layout_source();
+
+	foreach (array('add', 'edit') as $prefix) {
+		$start = strpos($source, '<dialog class="dialog" id="' . $prefix . 'Modal"');
+		pg_assert_true($start !== false, $prefix . ' dialog is there');
+		$dialog = substr($source, $start, strpos($source, '</dialog>', $start) - $start);
+
+		pg_assert_contains('<div class="row g-5">', $dialog, $prefix . ' dialog lays its fields on a grid');
+		pg_assert_true(strpos($dialog, '<div class="mb-5') === false, $prefix . ' dialog has no stacked mb-5 boxes left');
+
+		foreach (array('type', 'ttl', 'name', 'content', 'priority', 'service', 'proto', 'priority2', 'weight', 'port', 'target', 'flags', 'tag', 'value') as $field) {
+			$id = $prefix . '_' . $field;
+			pg_assert_contains('<label for="' . $id . '" class="form-label">', $dialog, $id . ' has a form label');
+			pg_assert_true(preg_match('/<(input|select)[^>]* id="' . $id . '" class="form-control"/', $dialog) === 1, $id . ' is a form control');
+		}
+
+		pg_assert_contains('<input class="check" type="checkbox" name="proxied" id="' . $prefix . '_proxied"><label for="' . $prefix . '_proxied">', $dialog, $prefix . ' Proxied is a labelled check');
+
+		// The type groups toggle d-none on their column, a box with no display
+		// of its own: Bootstrap 6 utilities carry no !important, so d-none on
+		// the inner .row would race the grid's display:flex.
+		foreach (array('type-mx', 'type-srv', 'type-caa') as $group) {
+			pg_assert_contains('<div class="col-12 type-extra ' . $group . ' d-none">', $dialog, $prefix . ' ' . $group . ' hides on its column');
+		}
+		pg_assert_contains('<div class="col-12 common-content">', $dialog, $prefix . ' Content toggles on its column');
+		pg_assert_contains('<div class="col-12 proxied-only">', $dialog, $prefix . ' Proxied toggles on its column');
+	}
+}
