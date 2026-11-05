@@ -262,6 +262,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - products-bulk-change-stock-bin-price.md: Change Selected (edit_products.php) and the Catalog Manager bulk edit: out_of_stock by the shared rule, binned products skipped, only real price changes reported (#4214, #4215, #4220, PR #4279)
 - products-list-bulk-writes.md: Products list, Catalog Manager and product group status bulk writes: bundle component refusal, restore limited to the bin, SEO stale mark, marketplace send, tag cloud keywords
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
+- recurring-calendar-days.md: Recurring start dates and the recurring job's "yesterday" are counted in calendar days with pg_calendar_days_later(), never time() ± 86400, so a clock change does not shift the date
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
