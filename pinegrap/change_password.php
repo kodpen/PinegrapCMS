@@ -183,7 +183,7 @@ $pg_keep_session = (isset($_SESSION['sessionuserid']) && ((int) $_SESSION['sessi
 // routine password change is not the member's way to overturn it. Only this
 // account's own session can carry its pin over.
 $pinned_before = false;
-if ($pg_keep_session && isset($_COOKIE['software']['auth'])) {
+if ($pg_keep_session && isset($_COOKIE['software']['auth']) && is_string($_COOKIE['software']['auth'])) {
     $pinned_parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
     if ($pinned_parts[0] !== '') {
         $pinned_before = pg_auth_token_pinned($pinned_parts[0]);

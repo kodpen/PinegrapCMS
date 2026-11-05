@@ -1529,7 +1529,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
 
     // This browser's own token, to mark "this device".
     $current_selector = '';
-    if (isset($_COOKIE['software']['auth'])) {
+    if (isset($_COOKIE['software']['auth']) && is_string($_COOKIE['software']['auth'])) {
         $auth_parts = explode(':', (string)$_COOKIE['software']['auth'], 2);
         $current_selector = (string)$auth_parts[0];
     }
