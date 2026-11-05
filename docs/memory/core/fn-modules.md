@@ -60,6 +60,7 @@ description: Generated from the module field of the memory files: each includes/
 - `content`: [[submitted-form-content-helpers]]
 - `core`: [[app-screen-messages]], [[build-url-host-parts]], [[error-screen-language-and-status]], [[schema-cache-file]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]]
 - `cron`: [[scheduled-job-resume]]
+- `currency_list_edit`: [[list-table-quick-edit-currencies]]
 - `currency_rates`: [[exchange-rates-update]]
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[custom-form-shown-when]], [[form-field-errors]], [[registration-gate-form-submitter]], [[sms-consent-custom-form]]
 - `custom_form_steps`: [[custom-form-steps]]

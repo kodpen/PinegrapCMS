@@ -5,7 +5,7 @@ module: list_table_edit
 ---
 
 ## What is the rule?
-- Owner (2026-11-04, `workflow/decisions-made-product-22.md`): every value the record's own edit screen can change is editable in quick edit, with that screen's checks and rights, on its `pg_list_edit_request()` endpoint. Computed values stay text: views, created/modified times, SEO score and impact, counts. Fixed: after the move only columns with an earlier `pg_list_edit` field were fields.
+- Owner (2026-11-04, `workflow/decisions-made-product-22.md`): every value the record's own edit screen can change is editable in quick edit, with that screen's checks and rights, on its `pg_list_edit_request()` endpoint. Computed values stay text: views, created/modified times, SEO score and impact, counts. Fixed: after the move only columns with an older `pg_list_edit` field were.
 
 ## Products: which cells change?
 - `pg_pb_quick_edit_more_fields()` (product_builder.php), merged into `pg_pb_quick_edit_columns()`: the code (the ID column, field `name`, unique like the product screen: `pg_product_name_holder()`), taxable, product form title, selection type, default quantity (inside the product's min/max), shippable, weight (`decimal`, stored lb, four places), PWP, SWP, container, preparation, free shipping, extra shipping (minor units), Dim (`12 x 3 x 4`, x/×/*, the screen's checks per size, `pg_pb_quick_dimensions_change()`), the labelled custom fields, recurring, start (not with ClearCommerce), number of payments, payment period, allow to schedule, membership days, the two BCC addresses (validated). Shipping fields only while the store ships.
@@ -23,7 +23,7 @@ module: list_table_edit
 - Names, company, phones, e-mail, opt-in and the address views' address parts: `list-table-quick-edit-contacts.md`. The groups stay text (several choices).
 
 ## Which other lists have quick edit?
-- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes (name, folder, activation), styles (a custom style's name, collection, layout type), design files (name, folder), shipping methods (all but the zones), offers (all but the flow, via the editor's check and save), product attributes (name, label): each in `list-table-quick-edit-<list>.md` (`short-links`, `containers`, `menus`, `comments`, `submitted-forms`, `themes`, `styles`, `design-files`, `shipping-methods`, `offers`, `product-attributes`), which says which cells change.
+- Short links, containers, menus, comments (all but the message), submitted forms (Status, Form Editor), themes (name, folder, activation), styles (a custom style's name, collection, layout type), design files (name, folder), shipping methods (all but the zones), offers (all but the flow, via the editor's check and save), product attributes (name, label), currencies: each in `list-table-quick-edit-<list>.md` (`short-links`, `containers`, `menus`, `comments`, `submitted-forms`, `themes`, `styles`, `design-files`, `shipping-methods`, `offers`, `product-attributes`, `currencies`), which says which cells change.
 
 ## Which lists are not done yet?
 - Products: zones and order receipt message (above).
