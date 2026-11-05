@@ -472,6 +472,31 @@ function erp_late_fee_draft($account_id, $from, $as_of, $user_id)
         return $fail(lang('The account could not be found.'));
     }
 
+    // The waiting-draft look and the write run under the account's lock: a
+    // button pressed twice wrote two fee drafts, and issuing both charged the
+    // same days twice.
+    if (!erp_start_lock('late_fee', (int) $account['id'])) {
+        return $fail(lang('A late payment fee draft of this account is waiting to be issued.'));
+    }
+
+    $made = erp_late_fee_draft_locked($account, $from, $as_of, $user_id, $fail);
+    erp_start_unlock('late_fee', (int) $account['id']);
+
+    return $made;
+}
+
+/**
+ * erp_late_fee_draft() under the account's lock.
+ *
+ * @param array    $account
+ * @param string   $from
+ * @param string   $as_of
+ * @param int      $user_id
+ * @param callable $fail
+ * @return array
+ */
+function erp_late_fee_draft_locked($account, $from, $as_of, $user_id, $fail)
+{
     $open = erp_late_fee_open_draft((int) $account['id']);
 
     if ($open > 0) {
