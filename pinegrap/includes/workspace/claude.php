@@ -1782,7 +1782,9 @@ Work through the queue:
       only says something; a text setting may take {{node.ID.VALUE}} (a value
       of an earlier box) or {{trigger.FIELD}}; a value box (kind value) whose
       rule reads two values (join, compare, add, subtract, add_days) needs both
-      a and b - join writes a, a space, then b, so split a text between them;
+      a and b - join writes a, a space, then b, so split a text between them -
+      and reads {{date}} (Y-m-d), {{time}} (H:i) and {{weekday}} as the moment
+      it is worked out;
       the subject of a box started by hand (kind manual) is the kind of record
       the flow is about (order, contact, task...)
       or left out - never the flow's name; leave x and y out, the boxes are

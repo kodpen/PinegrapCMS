@@ -5391,12 +5391,17 @@
 
     // The kinds whose texts the run fills with {{date}} and the other words
     // of scheduled actions (ws_step_scheduled_texts() and a task's
-    // ws_flow_task_texts()). In any other box such a word stays as typed: a
-    // derived value, a table cell, MCP arguments, a check-in's question.
+    // ws_flow_task_texts()). A derived value fills only {{date}}, {{time}}
+    // and {{weekday}} (ws_flow_derived_words()). In any other box such a
+    // word stays as typed: a table cell, MCP arguments, a check-in's question.
     var WORD_KINDS = ['post', 'email', 'notify', 'task', 'task_open', 'webhook', 'task_digest', 'report', 'approval'];
 
     // The help under a value field: the words named only where they work.
     function valuesHint(node) {
+        if (node.kind === 'value') {
+            return t('fl_values_hint_value');
+        }
+
         return t((WORD_KINDS.indexOf(node.kind) >= 0) ? 'fl_values_hint' : 'fl_values_hint_plain');
     }
 
