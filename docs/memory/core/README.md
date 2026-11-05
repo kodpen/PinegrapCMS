@@ -82,6 +82,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - email-campaign-html-body.md: How an HTML campaign body is drawn from a page: an e-mail render with no session token and signed-out account widgets, the token cut as a guard, and no hard wrap of mail bodies
 - email-campaign-job-log-user.md: Which user email_campaign_job.php writes into its activity log lines: the manager of a web run, else UNKNOWN (no session read in a scheduled run)
 - email-campaign-schedule-label.md: The schedule label on My Campaign Profiles built from two whole keys, the send time as {var:4} at the end
+- email-campaign-send-claims.md: Send now and the campaign job claim recipients with one conditional UPDATE, so overlapping runs never deliver twice; follow-ups only from the run that finished the campaign
 - email-campaign-send.md: Send now and the campaign job share includes/fn/email_campaign_send.php: mail properties with purpose, refused deliveries stored as attempts, finish counts only deliveries
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
 - error-screen-language-and-status.md: The error screen output_error() draws leaves through pg_tr_finalize() like a page, so <html lang> is the site's or the address's language; which "not found" screens answer 404; what is still left
