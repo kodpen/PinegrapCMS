@@ -6817,10 +6817,14 @@
             drawSettings();
         });
         box.appendChild(field(t('fl_derived_rule'), pick));
-        box.appendChild(valueField(node, t('fl_derived_a'), config.a || '', 500, function (value) {
+        box.appendChild(valueField(node, t((rule.key === 'calculate') ? 'fl_derived_formula' : 'fl_derived_a'), config.a || '', 500, function (value) {
             config.a = value;
             refreshNode(node);
         }, false));
+
+        if (rule.key === 'calculate') {
+            derivedFunctions(box, lists.functions || []);
+        }
 
         if (rule.key === 'compare') {
             var op = K.select((lists.operators || []).map(function (key) { return [key, operators[key] || key]; }), config.op || 'eq');
@@ -6839,7 +6843,7 @@
             }, false));
         }
 
-        if (rule.key === 'round') {
+        if ((rule.key === 'round') || (rule.key === 'calculate')) {
             var places = K.select([0, 1, 2, 3, 4, 5, 6].map(function (n) { return [String(n), String(n)]; }), String(config.places || 0));
 
             places.addEventListener('change', function () {
@@ -6860,6 +6864,24 @@
         }
 
         box.appendChild(el('p', 'small fg-secondary', t('fl_derived_help')));
+    }
+
+    // The calculate rule's help: the calculator's functions
+    // (ws_calc_function_help()), each name with what it does on hover.
+    function derivedFunctions(box, functions) {
+        var help = el('p', 'small fg-secondary', t('fl_derived_formula_help') + ' ');
+
+        functions.forEach(function (item, index) {
+            var name = el('code', '', item.name);
+
+            name.title = item.help;
+            help.appendChild(name);
+
+            if (index < functions.length - 1) {
+                help.appendChild(document.createTextNode(', '));
+            }
+        });
+        box.appendChild(help);
     }
 
     function retryFields(box, node) {

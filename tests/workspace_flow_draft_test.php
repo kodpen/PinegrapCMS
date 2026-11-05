@@ -199,7 +199,7 @@ function test_ws_flow_ai_catalogue_hints()
 	pg_assert_contains('approvers (list of integer: user ids from the list of people, the ones who answer; the person who asked when the request says I or me)', $text, 'who answers the question');
 	pg_assert_contains('retry (integer: how many times a failed box tries again; left out for none)', $text, 'what retry is');
 	pg_assert_contains('retry_after (text: the minutes it waits before it tries again; needed with retry)', $text, 'and its minutes');
-	pg_assert_contains('rule (join|compare|add|subtract|round|date_format|add_days)', $text, 'a value box\'s rules');
+	pg_assert_contains('rule (join|compare|add|subtract|round|date_format|add_days|calculate)', $text, 'a value box\'s rules');
 	pg_assert_contains('b (text: the second value; compare, join, add, subtract, add_days need it (join writes a, a space, then b)', $text, 'and when it needs b');
 }
 
