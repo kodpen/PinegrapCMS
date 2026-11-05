@@ -22,7 +22,7 @@ module: audiences
 ## What does each family read?
 - Contact: country and city match the business or home column; lead source and the listed fields take is, is not, contains (`pg_list_like_pattern()`), empty.
 - Consent: `email_opt_in` is `contacts.opt_in = 1` with an address; `consent` (`email|sms|call:marketing`, `contract:kvkk|preinfo|contract`) is the latest non-pending `consent_log` row of the contact being `granted`. A rule only selects; sends still check consent and İYS per contact (`platform/sms-and-iys-rules.md`).
-- Membership: `member_id` set; active, expired and "ends within n days" read `expiration_date` against the site-zone day of `$now` (`date()`), n in calendar days; UTC's day (before #PRNUM) was wrong for hours a day and a day short across a clock change.
+- Membership: `member_id` set; active, expired and "ends within n days" read `expiration_date` against the site-zone day of `$now` (`date()`), n in calendar days; UTC's day (before #7067) was wrong for hours a day and a day short across a clock change.
 - Orders count only `status <> 'incomplete'`. "At most n" and "exactly 0" are NOT IN the contacts above n, so a contact with no order counts; "at least 0" is everybody; total is `SUM(orders.total)` in minor units. "Left a cart": an incomplete order with lines changed within the days. Product and product group through `order_items` and `products_groups_xref`.
 - Returns: `order_returns.requested_at` through the order. Subscriptions: `subscriptions.status` through `user.user_contact`.
 - Forms: `forms.complete = 1` by page; a form answer is `form_data` of one field, equal or containing.
