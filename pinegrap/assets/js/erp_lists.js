@@ -92,8 +92,18 @@
         });
     }
 
+    // The list table driver reads Enter and Space anywhere in a row (open
+    // the row's record, select the row) and cancels them, so on the button
+    // they never became its click. Stopped here before they reach the
+    // table, the button's own activation runs and opens the drawer.
+    document.addEventListener('keydown', function (event) {
+        if (((event.key === 'Enter') || (event.key === ' ')) && event.target.closest && event.target.closest('button[data-erp-drawer-id]')) {
+            event.stopPropagation();
+        }
+    }, true);
+
     // Delegated, because the list table driver draws the rows again on a
-    // sort or a search. Enter and Space on the button are clicks too.
+    // sort or a search.
     document.addEventListener('click', function (event) {
         var button = event.target.closest('button[data-erp-drawer-id]');
 

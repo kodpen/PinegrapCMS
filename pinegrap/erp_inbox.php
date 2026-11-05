@@ -126,7 +126,7 @@ foreach ($rows as $row) {
         'id' => $id,
         'class' => ($row_state === 'ignored') ? 'fg-secondary' : '',
         'cells' => array(
-            'number' => pg_list_cell('<a href="erp_inbox_document.php?id=' . $id . '" class="pg-link-body-emphasis" data-pg-open>' . h($row['gib_number']) . '</a>', 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $row['gib_number'])),
+            'number' => pg_list_cell('<a href="erp_inbox_document.php?id=' . $id . '" class="pg-link-body-emphasis" data-pg-open>' . h(((string) $row['gib_number'] !== '') ? $row['gib_number'] : $row['gib_uuid']) . '</a>', 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $row['gib_number'])),
             'date' => pg_list_cell(h(prepare_form_data_for_output($row['issue_date'], 'date')), 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $row['issue_date'])),
             'supplier' => pg_list_cell('<div class="text-break">' . h($row['supplier_title']) . '</div><div class="small fg-secondary">' . h($row['supplier_tax_number']) . '</div>', 'align-middle text-wrap text-break', array('data-pg-sort-value' => (string) $row['supplier_title'])),
             'type' => pg_list_cell(h(erp_edoc_inbox_type_label($row['invoice_type'])) . '<div class="small fg-secondary">' . h($row['profile']) . '</div>', 'align-middle text-nowrap'),
