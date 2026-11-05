@@ -3806,6 +3806,27 @@ function output_gift_card_code($code)
     return mb_substr($code, 0, 4) . '-' . mb_substr($code, 4, 4) . '-' . mb_substr($code, 8, 4) . '-' . mb_substr($code, 12, 4);
 }
 /**
+ * A gift card's code as a Site Log line names it: '****-****-****-WXYZ'.
+ *
+ * The code is the card's money; the log is read by the site_log:read API
+ * scope, the dashboard feed and the user screen, which open no gift card.
+ * The last four characters tell cards apart; the full code stays on the
+ * gift card's own screen. Pure.
+ *
+ * @param string $code
+ * @return string
+ */
+function pg_gift_card_log_code($code)
+{
+    $code = (string) $code;
+
+    if (mb_strlen($code) <= 4) {
+        return '****';
+    }
+
+    return '****-****-****-' . mb_substr($code, -4);
+}
+/**
  * The time zones of the pick lists (site settings, my account profile) and
  * the names a submitted profile may store, label => zone. Each zone is offered
  * by the name this PHP knows (pg_timezone_canonical()): its current IANA name,
