@@ -76,6 +76,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - file-name-last-segment.md: pg_basename() and pg_file_name_stem(), not basename() or pathinfo(), for a name a person gave: before PHP 8.0 they drop the non-ASCII letters a name starts with; the doors, and pg_backup_folder_name()
 - file-object-storage-readers.md: How readers, in-place doors and passes get a path to a file that may be in the object store; the cached copy's last use and derivative signatures
 - file-object-storage.md: Uploaded files in the object store: storage columns (11.0.152), the switch, the move job, get_file.php redirect, replace and delete handling, how readers and in-place doors get a path
+- file-write-keeps-old.md: Writing over a stored file goes through pg_file_write_whole(): the screens and passes that do, what a failed write leaves, and the writers not yet moved
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, ECOMMERCE/ADS gating, and the refusals that keep a replace from writing where it should not.
 - form-upload-beside-fields.md: Forms that carry a file beside typed fields (ERP expense, bank statement, ERP accounts import, Add/Edit Submitted Form): discarded body, the record in the action, the stated limit, refused uploads.
 - front-visitor-missing-keys.md: Front-end paths a visitor without a session or page properties reaches must not read session or property keys unguarded: the warning prints before the DOCTYPE where display_errors is on

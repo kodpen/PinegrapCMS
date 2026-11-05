@@ -4034,7 +4034,9 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
             if (!in_array($asset['type'], array('css', 'js', 'json'))) continue;
             $ext = strtolower(pathinfo($asset['name'], PATHINFO_EXTENSION));
             if (!in_array($ext, array('css', 'js', 'json'))) continue;
-            @file_put_contents(FILE_DIRECTORY_PATH . '/' . $asset['name'], $asset['content']);
+            // Written as a whole: a failed write keeps the asset file that
+            // pages already load, and records nothing for a missing one.
+            if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $asset['name'], (string) $asset['content'])) continue;
             $size = (int)strlen($asset['content']);
             $nm   = (string) $asset['name'];
             $uid  = (int)$user_id;
