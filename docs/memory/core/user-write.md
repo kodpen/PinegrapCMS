@@ -10,7 +10,7 @@ module: user_write
 
 ## Which checks stay with the caller?
 - Before a write the caller checks the role with `pg_user_role_writable($editor_role, $role)` (an administrator any role; anyone else only below their own; no role at all only for an administrator) and the account fields with `pg_user_write_problem($username, $email, $user_id)` (`username_required`, `email_invalid`, `username_taken`, `email_taken`; a username and an address share one namespace), shown with `pg_user_write_problem_message()`.
-- Whether the editor reaches the row, and the last administrator: the edit screen refuses to delete it with `pg_user_is_last_admin()` (no other enabled administrator); `delete_users.php` keeps its own count over the selection. `pg_user_update()` itself keeps the last administrator's role.
+- Whether the editor reaches the row, and the last administrator: the edit screen refuses to delete it with `pg_user_is_last_admin()` (no other enabled administrator); `delete_users.php` asks it per selected administrator too (it counted disabled administrators as others before, so the last enabled one could be deleted, #6967). `pg_user_update()` itself keeps the last administrator's role.
 - The site log line (`log_activity()`) and the session username after a rename of one's own account stay in the screens.
 
 ## What does each write carry with it?
