@@ -22,4 +22,5 @@ description: The arrival date create and edit screens share includes/forms/arriv
 ## What stays in the screens?
 - Create: the INSERT and the edit-screen notice after left-out cut-offs.
 - Edit: the not-found guard, the record and cut-off load, delete, the UPDATE.
+- The list's quick edit posts through the same check and save (`list-table-quick-edit-arrival-dates.md`).
 - Tests: `tests/arrival_date_form_test.php`; `db_q_shipping_import_test.php` and `db_q_zones_currencies_jobs_test.php` read the screens and the form.

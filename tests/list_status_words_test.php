@@ -86,7 +86,7 @@ function test_product_group_rows_name_a_disabled_product()
 
 function test_arrival_dates_and_gift_cards_name_their_state()
 {
-	$src = list_status_words_source('view_arrival_dates.php');
+	$src = list_status_words_source('includes/fn/arrival_date_list_edit.php');
 	pg_assert_contains("pg_list_status_word(lang('Inactive'))", $src, 'an arrival date outside its window says Inactive');
 
 	$src = list_status_words_source('view_gift_cards.php');
