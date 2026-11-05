@@ -6,8 +6,8 @@
  * and the SELECTION section of the model, run under Node): the max-flow
  * against a plain augmenting-path flow on small graphs, GrabCut on a disc
  * on a plain and on a noisy background, the start box, the message session,
- * the mask's rings in the selection, and the worker's bundle, address and
- * strings.
+ * the mask's rings in the selection, the Keep and Remove brushes, the soft
+ * edge (guided filter), and the worker's bundle, address and strings.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -198,7 +198,89 @@ function test_image_editor_subject_wiring()
 
 	$strings = pg_image_editor_strings_area();
 
-	foreach (array('subjectSelect', 'subjectBusy', 'subjectNote', 'subjectNone', 'subjectRead', 'subjectError') as $key) {
+	foreach (array('subjectSelect', 'subjectBusy', 'subjectNote', 'subjectNone', 'subjectRead', 'subjectError', 'subjectRefine', 'subjectKeep', 'subjectRemove', 'subjectBrush', 'subjectBrushNote', 'subjectRefining', 'subjectEdge') as $key) {
 		pg_assert_true(isset($strings[$key]), 'string ' . $key);
 	}
+}
+
+// The brushes: a Keep stroke brings back a part of the subject the colours
+// gave to the background, one outside the box grows the cut, a Remove
+// stroke takes away a part joined to it; the labels and the session.
+function test_image_editor_subject_brushes()
+{
+	$r = image_editor_subject_node(
+		// A red disc with a background-blue patch in its middle, and a red
+		// bar joined to it on the right that is not part of it.
+		'var w = 160, h = 120, d = new Uint8ClampedArray(w * h * 4), truth = new Uint8Array(w * h), x, y, k;' . "\n"
+		. 'for (y = 0; y < h; y++) { for (x = 0; x < w; x++) { var i = y * w + x, r = Math.hypot(x + 0.5 - 70, y + 0.5 - 60), bar = (x >= 100 && x < 140 && y >= 54 && y < 66);'
+		. ' truth[i] = (r < 40) ? 1 : 0; var c = ((r < 40 && r >= 16) || (bar && r >= 40)) ? [200, 60, 40] : [60, 120, 200];'
+		. ' for (k = 0; k < 3; k++) { d[i * 4 + k] = c[k] + (rnd() - 0.5) * 40; } d[i * 4 + 3] = 255; } }' . "\n"
+		. 'var out = {}, box = [20, 10, 150, 110];' . "\n"
+		. 'out.plain = iou(S.subject(d, w, h, box).mask, truth);' . "\n"
+		. 'out.keep = iou(S.subject(d, w, h, box, [{ keep: 1, r: 5, pts: [[60, 60], [80, 60]] }]).mask, truth);' . "\n"
+		. 'out.both = iou(S.subject(d, w, h, box, [{ keep: 1, r: 5, pts: [[60, 60], [80, 60]] }, { keep: 0, r: 8, pts: [[112, 60], [140, 60]] }]).mask, truth);' . "\n"
+		. 'out.grow = iou(S.subject(d, w, h, [20, 10, 80, 110], [{ keep: 1, r: 5, pts: [[60, 60], [80, 60]] }, { keep: 1, r: 4, pts: [[95, 60]] }, { keep: 0, r: 8, pts: [[112, 60], [140, 60]] }]).mask, truth);' . "\n"
+		. 'var L = S.strokeLabels(20, 20, [5, 5, 10, 10], [{ keep: 1, r: 1, pts: [[15.5, 15.5]] }, { keep: 0, r: 1, pts: [[7.5, 7.5]] }]);' . "\n"
+		. 'out.labels = [L[0], L[6 * 20 + 6], L[15 * 20 + 15], L[7 * 20 + 7], L[17 * 20 + 17], L[19 * 20 + 19]];' . "\n"
+		. 'var got = []; S.session(function (m) { got.push(m); }).receive({ type: "cut", data: d.buffer.slice(0), width: w, height: h, box: box, strokes: [{ keep: 1, r: 5, pts: [[60, 60], [80, 60]] }] });' . "\n"
+		. 'out.session = iou(new Uint8Array(got[0].mask), S.subject(d, w, h, box, [{ keep: 1, r: 5, pts: [[60, 60], [80, 60]] }]).mask);' . "\n"
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true($r['plain'] < 0.9, 'without brushes the patch and the bar are wrong: IoU ' . $r['plain']);
+	pg_assert_true($r['keep'] > $r['plain'], 'Keep brings the patch back: IoU ' . $r['keep']);
+	pg_assert_true($r['both'] > 0.95, 'Keep and Remove: IoU ' . $r['both']);
+	pg_assert_true($r['grow'] > 0.95, 'a Keep stroke outside the box grows the cut: IoU ' . $r['grow']);
+	// BG 0, FG 1, PR_FG 3: the box grown round the Keep stroke, the strokes hard.
+	pg_assert_same(array(0, 3, 1, 0, 3, 0), $r['labels'], 'the labels of the box and the strokes');
+	pg_assert_same(1, $r['session'], 'the session cuts from the strokes it is sent');
+}
+
+// The subject op in the selection, a stroke kept on it, its soft edge, and
+// the guided filter: a hard mask of a picture with a soft edge comes close
+// to that edge, a mask on the colour edge stays as it is, and a tile far
+// from the edge is left alone.
+function test_image_editor_subject_soft_edge()
+{
+	$r = image_editor_subject_node(
+		'var out = {};' . "\n"
+		. 'var sel = { ops: [{ op: "add", kind: "subject", rings: [], edge: 6 }, { op: "add", kind: "rect", ring: [] }, { op: "sub", kind: "subject", rings: [], edge: 50 }] };' . "\n"
+		. 'out.index = M.subjectIndex(sel); out.matte = M.selectionMatte(sel); out.none = M.subjectIndex({ ops: [{ kind: "rect" }] });' . "\n"
+		. 'sel.ops[2].edge = 0; out.hard = M.selectionMatte(sel); out.old = M.selectionMatte({ ops: [{ kind: "subject", rings: [] }] });' . "\n"
+		. 'out.stroke = M.subjectStroke(true, 4, [[0, 0], [0.5, 0], [1.2, 0], [5.555, 1]]); out.empty = M.subjectStroke(false, 4, []);' . "\n"
+		// A disc whose edge fades over 8 px; the hard mask cut at half.
+		. 'var w = 300, h = 200, g = new Uint8ClampedArray(w * h * 4), mask = new Uint8ClampedArray(w * h * 4), soft = new Float32Array(w * h), x, y, k;' . "\n"
+		. 'for (y = 0; y < h; y++) { for (x = 0; x < w; x++) { var i = y * w + x, a = Math.max(0, Math.min(1, (60 - Math.hypot(x + 0.5 - 150, y + 0.5 - 100)) / 8 + 0.5)), f = [200, 60, 40], b = [60, 120, 200];'
+		. ' soft[i] = a; for (k = 0; k < 3; k++) { g[i * 4 + k] = f[k] * a + b[k] * (1 - a); } g[i * 4 + 3] = 255; mask[i * 4 + 3] = (a >= 0.5) ? 255 : 0; } }' . "\n"
+		. 'var err = function () { var e = 0; for (var i = 0; i < w * h; i++) { e += Math.abs(mask[i * 4 + 3] / 255 - soft[i]); } return Math.round(e); };' . "\n"
+		. 'out.before = err(); M.matteMask(mask, g, w, h, 6); out.after = err();' . "\n"
+		// A sharp edge in the picture and the mask on it.
+		. 'var w2 = 40, g2 = new Uint8ClampedArray(w2 * 4), p2 = new Float32Array(w2);'
+		. ' for (x = 0; x < w2; x++) { var c = (x < 20) ? [200, 60, 40] : [60, 120, 200]; g2[x * 4] = c[0]; g2[x * 4 + 1] = c[1]; g2[x * 4 + 2] = c[2]; p2[x] = (x < 20) ? 1 : 0; }' . "\n"
+		. 'out.sharp = Array.prototype.map.call(M.guidedFilter(g2, p2, w2, 1, 4, 1e-4), function (v) { return Math.round(v * 100) / 100; });' . "\n"
+		// A mask with no edge stays as it is.
+		. 'var full = new Uint8ClampedArray(600 * 4).fill(255); M.matteMask(full, g.subarray(0, 600 * 4), 600, 1, 6); out.full = full.every(function (v) { return v === 255; });' . "\n"
+		. 'console.log(JSON.stringify(out));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(2, $r['index'], 'the last subject op is the one the brushes change');
+	pg_assert_same(20, $r['matte'], 'the soft edge is kept to its largest');
+	pg_assert_same(-1, $r['none'], 'no subject op');
+	pg_assert_same(0, $r['hard'], 'an edge of 0 is hard');
+	pg_assert_same(0, $r['old'], 'a subject kept without an edge stays hard');
+	pg_assert_same(array('keep' => 1, 'r' => 4, 'pts' => array(array(0, 0), array(1.2, 0), array(5.56, 1))), $r['stroke'], 'a stroke thinned to a quarter of its radius');
+	pg_assert_same(null, $r['empty'], 'a stroke without points');
+	pg_assert_true($r['after'] < $r['before'] / 3, 'the soft edge follows the picture: error ' . $r['after'] . ' from ' . $r['before']);
+	pg_assert_same(array_merge(array_fill(0, 20, 1), array_fill(0, 20, 0)), $r['sharp'], 'a mask on a sharp edge stays sharp');
+	pg_assert_true($r['full'], 'a mask with no edge is left alone');
 }

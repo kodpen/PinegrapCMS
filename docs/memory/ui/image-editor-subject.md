@@ -1,6 +1,6 @@
 ---
 name: image-editor-subject
-description: The image editor's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op with its rings in doc.selection
+description: The image editor's Select subject (E28a, #6841): own GrabCut and Boykov-Kolmogorov max-flow in a worker, the start box, the subject op in doc.selection
 module: image_editor
 ---
 
@@ -12,11 +12,12 @@ module: image_editor
 - A selection that is one rectangle (added, not inverted) is the box, and the subject replaces it. Else `startBox()`: each pixel's (3 x 3 smoothed) colour distance from the nearest of five border colours (k-means over a 4 % band) with a quarter of its edge strength; pixels over the mean plus half a deviation; the box from their 2nd to 98th percentile each way, grown by 4 %. A flat picture has none ("No subject was found"). A box keeps a pixel of background round it (`clampBox()`).
 
 ## How is the result kept?
-- An op `{ op, kind: 'subject', rings, box }` in `doc.selection` through `areaAdd()` (New, Add or Subtract as the panel says), one undo step. Unlike a wand the rings are kept, since the cut takes about a second at 800 px: `M.subjectRings()` traces the mask (`maskRings()`), drops specks and holes under 0.05 % of the picture, smooths the steps within 0.75 px (`M.simplifyRing()`), carries them to the turned space. `selectionRings()` takes an op's `rings` before its `ring`, so Erase, Keep only, Copy to a layer, Adjust inside and Redact work on it.
+- An op `{ op, kind: 'subject', rings, box, edge, strokes }` (the last two: `image-editor-subject-brushes.md`) in `doc.selection` through `areaAdd()` (New, Add or Subtract as the panel says), one undo step. Unlike a wand the rings are kept, since the cut takes about a second at 800 px: `M.subjectRings()` traces the mask (`maskRings()`), drops specks and holes under 0.05 % of the picture, smooths the steps within 0.75 px (`M.simplifyRing()`), carries them to the turned space. `selectionRings()` takes an op's `rings` before its `ring`, so Erase, Keep only, Copy to a layer, Adjust inside and Redact work on it.
 
 ## What does the max-flow do?
 - `Graph` is Boykov-Kolmogorov: two search trees grown from the terminals, augment, adopt orphans by the shortest valid path (time stamps and distances). Terminal links are kept as one signed residual (`terminal()`). Checked against Edmonds-Karp on 40 random graphs, the cut costing the flow.
 
 ## How was it checked?
 - Node: max-flow, GrabCut on a disc on a plain and on a noisy background (IoU over 0.9, found and drawn box), the session's answers, the rings and a rectangle subtracted from them.
-- Browser (static page of the bundle, no sandbox): 1280×800 a noisy 900×600 picture, the disc's area within 0.1 %, in 1.4 s; Erase on it; on a phone viewport with the worker refused (page fallback) from a drawn rectangle. E28b adds the brushes and the soft edge (`plans/image-editor-steps-6.md`).
+- Browser (static page of the bundle, no sandbox): 1280×800 a noisy 900×600 picture, the disc's area within 0.1 %, in 1.4 s; Erase on it; on a phone viewport with the worker refused (page fallback) from a drawn rectangle.
+- The brushes and the soft edge (E28b): `image-editor-subject-brushes.md`.
