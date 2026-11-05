@@ -302,6 +302,19 @@ function pg_dashboard_v2_hours_since($stats, $since, $column)
 }
 
 /**
+ * Yesterday's midnight, stepped by calendar: across a clock change the day
+ * is 23 or 25 hours long, so today's midnight less 86400 seconds is an
+ * hour off it. Pure.
+ *
+ * @param int $midnight today's midnight
+ * @return int
+ */
+function pg_dashboard_v2_yesterday($midnight)
+{
+    return (int) strtotime('-1 day', (int) $midnight);
+}
+
+/**
  * The raw counts behind a figure, each read the way the old dashboard's
  * widget or brief reads the same rows. The caller checks the gate.
  *
@@ -315,14 +328,15 @@ function pg_dashboard_v2_figure_raw($key, $user)
 
     $now = time();
     $midnight = strtotime(date('Y-m-d', $now));
+    $yesterday = pg_dashboard_v2_yesterday($midnight);
 
     switch ((string) $key) {
         case 'visits':
             // The hourly rollup, as the Visitor Summaries widget reads it.
-            $stats = pg_visitor_stats_range(date('Y-m-d', $midnight - 86400), date('Y-m-d', $midnight));
+            $stats = pg_visitor_stats_range(date('Y-m-d', $yesterday), date('Y-m-d', $midnight));
             return array(
                 'today'     => pg_dashboard_v2_hours_since($stats, $midnight, 'visitors'),
-                'yesterday' => array_sum(array_column($stats[date('Y-m-d', $midnight - 86400)] ?? array(), 'visitors')),
+                'yesterday' => array_sum(array_column($stats[date('Y-m-d', $yesterday)] ?? array(), 'visitors')),
             );
 
         case 'online':
@@ -343,7 +357,7 @@ function pg_dashboard_v2_figure_raw($key, $user)
                     SUM(CASE WHEN order_date >= " . (int) $midnight . " THEN 1 ELSE 0 END) AS today,
                     SUM(CASE WHEN order_date < " . (int) $midnight . " THEN 1 ELSE 0 END) AS yesterday
                  FROM orders
-                 WHERE status != 'incomplete' AND order_date >= " . (int) ($midnight - 86400));
+                 WHERE status != 'incomplete' AND order_date >= " . (int) $yesterday);
             return array('today' => (int) ($row['today'] ?? 0), 'yesterday' => (int) ($row['yesterday'] ?? 0));
 
         case 'seo':

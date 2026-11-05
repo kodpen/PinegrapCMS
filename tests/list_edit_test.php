@@ -51,6 +51,18 @@ function test_list_edit_textarea_keeps_its_lines()
 	pg_assert_true(in_array('textarea', pg_list_table_edit_kinds(), true), 'a list column may be a several-line field');
 }
 
+function test_list_edit_multiselect_reads_offered_values_in_their_order()
+{
+	$column = array('type' => 'multiselect', 'label' => 'Zones', 'options' => array('7' => 'B', '3' => 'A', '9' => 'C'));
+
+	pg_assert_same(array('7', '3'), pg_list_edit_parse($column, ' 3, 7,3 ')['value'], 'each value once, in the options\' order');
+	pg_assert_same(array(), pg_list_edit_parse($column, '')['value'], 'none chosen');
+	pg_assert_false(pg_list_edit_parse($column, '3,4')['ok'], 'a value not offered');
+	pg_assert_false(pg_list_edit_parse(array('required' => true) + $column, ' , ')['ok'], 'a required one needs a choice');
+	pg_assert_same(array(), pg_list_edit_parse($column, array('3'))['value'], 'a posted list reads as nothing chosen');
+	pg_assert_true(in_array('multiselect', pg_list_table_edit_kinds(), true));
+}
+
 function test_list_edit_text_longer_than_its_column_is_refused()
 {
 	$columns = list_edit_columns();

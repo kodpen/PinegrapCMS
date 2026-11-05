@@ -35,15 +35,15 @@ function pg_test_contact_quick_contact()
 	);
 }
 
-// Every column the contact screen changes is a field; the rest are computed
-// or gathered and stay text. A new column fails here until it is one or
-// the other.
+// Every column the contact screen changes is a field (the groups when the
+// user may tick some); the rest are computed or gathered and stay text. A
+// new column fails here until it is one or the other.
 function test_contact_quick_every_screen_value_is_a_field()
 {
-	$text = array('picture', 'user', 'groups', 'last_modified', 'actions');
+	$text = array('picture', 'user', 'last_modified', 'actions');
 
 	foreach (array('default', 'my_subscribers', 'my_contacts_by_home_address', 'my_contacts_by_business_address') as $filter) {
-		$fields = pg_contact_quick_edit_columns($filter);
+		$fields = pg_contact_quick_edit_columns($filter, array('4' => 'News'));
 
 		foreach (array_keys(pg_contact_list_columns($filter, true)) as $column) {
 			pg_assert_true(isset($fields[$column]) || in_array($column, $text, true), $filter . ': ' . $column . ' is a field or computed');
@@ -54,6 +54,40 @@ function test_contact_quick_every_screen_value_is_a_field()
 	pg_assert_false(isset($fields['address']), 'the duplicates view shows both addresses in one cell, text');
 	pg_assert_false(isset($fields['opt_in']), 'the duplicates view has no opt-in column');
 	pg_assert_true(isset($fields['email']));
+	pg_assert_false(isset(pg_contact_quick_edit_columns('default')['groups']), 'no groups to tick, no groups field');
+	pg_assert_same(array('type' => 'multiselect', 'label' => lang('Contact Groups'), 'options' => array('4' => 'News')), pg_contact_quick_edit_columns('default', array('4' => 'News'))['groups']);
+}
+
+// The list marks each column a field writes editable: without the mark the
+// driver gave the contacts list no quick edit at all.
+function test_contact_quick_columns_are_marked_editable()
+{
+	$quick_edit = pg_contact_quick_edit_columns('default', array('4' => 'News'));
+	$columns = pg_contact_list_editable_columns(pg_contact_list_columns('default', true), $quick_edit);
+
+	pg_assert_same('text', $columns['email']['editable']);
+	pg_assert_same('select', $columns['opt_in']['editable']);
+	pg_assert_same('multiselect', $columns['groups']['editable']);
+	pg_assert_false(isset($columns['user']['editable']), 'a computed column is not');
+
+	$source = pg_list_table_source(array('list' => 'view_contacts', 'columns' => $columns, 'edit' => array('url' => 'view_contacts.php', 'columns' => $quick_edit)));
+	pg_assert_true(is_array($source['edit']), 'the list gets its quick edit');
+}
+
+function test_contact_quick_groups_value_and_post()
+{
+	$options = array('7' => 'B', '3' => 'A', '9' => 'C');
+
+	pg_assert_same('7,3', pg_contact_quick_group_value(array(3, '7', '12'), $options), 'in the choices\' order; a group not offered is left out');
+	pg_assert_same('', pg_contact_quick_group_value(array(), $options));
+
+	$states = array('3' => array('in' => true, 'opt_in' => false), '7' => array('in' => false, 'opt_in' => true));
+	pg_assert_same(array(
+		'contact_group_opt_in_7' => '1',
+		'contact_group_3' => '1',
+		'contact_group_opt_in_3' => '',
+		'contact_group_opt_in_9' => '1',
+	), pg_contact_quick_groups_post(array('3'), $options, $states), 'a switch for each chosen group, the opt-in as stored, on for a group never joined');
 }
 
 function test_contact_quick_columns_follow_the_view_address()
@@ -118,6 +152,11 @@ function test_contact_quick_rows_carry_their_fields()
 
 	$row = pg_contact_list_row(pg_test_contact_quick_contact(), array('role' => 0), 'all_duplicate_contacts', '', '');
 	pg_assert_false(isset($row['cells']['address']['attributes']), 'the duplicates view\'s address summary stays text');
+	pg_assert_false(isset($row['cells']['groups']['attributes']), 'no groups field without choices');
+
+	$row = pg_contact_list_row(pg_test_contact_quick_contact(), array('role' => 0), 'default', 'A', '', array('3', '12'), array('3' => 'A', '4' => 'B'));
+	pg_assert_same('groups', $row['cells']['groups']['attributes']['data-pg-edit']);
+	pg_assert_same('3', $row['cells']['groups']['attributes']['data-pg-edit-value'], 'the groups among the choices');
 }
 
 function test_contact_quick_endpoint_answers_before_the_session_keeps_the_request()

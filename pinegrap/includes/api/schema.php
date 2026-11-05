@@ -691,7 +691,7 @@ function api_schema() {
 				array('name' => 'payment_method', 'in' => 'body', 'type' => 'enum', 'values' => array('cash', 'card', 'transfer', 'cheque', 'other', 'later', 'split'), 'description' => 'How the customer paid; later (the default) records no money. With the ERP module off it is not recorded anywhere.'),
 				array('name' => 'till_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The ERP till or bank account the payment goes to; without it the invoice stays open with a warning.'),
 				array('name' => 'received',       'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Cash handed over, in minor units: less than the total is refused. Not stored.'),
-				array('name' => 'payment_parts',  'in' => 'body', 'type' => 'list', 'of' => array('method' => 'string', 'till_id' => 'integer', 'amount' => 'integer'), 'max_items' => 2, 'description' => 'With split only: up to two {method (cash, card, transfer, cheque or other), till_id, amount in minor units}; what they leave stays owed on the account. Needs the ERP module and the owner\'s ERP cash right.')
+				array('name' => 'payment_parts',  'in' => 'body', 'type' => 'list', 'of' => array('method' => 'string', 'till_id' => 'integer', 'amount' => 'integer'), 'max_items' => 2, 'description' => 'With split only: up to two {method (cash, card, transfer, cheque or other), till_id, amount in minor units}; what they leave stays owed on the account. A part of 0 is no part; a part that is not such an object, or whose amount is not a whole number from 0 up, is refused with 422 rather than left out. Needs the ERP module and the owner\'s ERP cash right.')
 			)
 		),
 

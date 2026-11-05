@@ -214,3 +214,28 @@ function test_dashboard_v2_greeting_settings_from_layout()
 	pg_assert_same(0, $settings['top']['brief'], 'brief switched off');
 	pg_assert_same(1, $settings['top']['since']);
 }
+
+// The tiles' "yesterday" starts at the previous midnight, found by calendar:
+// across a clock change that day is 23 or 25 hours long, and today's
+// midnight less 86400 seconds lands an hour off it (on the day before, in
+// spring, so the visits tile read the wrong day).
+function test_dashboard_v2_yesterday_across_a_clock_change()
+{
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+
+	// Clocks went forward on 29 March 2026 and back on 25 October 2026.
+	$spring = strtotime('2026-03-30 00:00:00');
+	$autumn = strtotime('2026-10-26 00:00:00');
+	$plain = strtotime('2026-06-10 00:00:00');
+
+	$results = array(
+		date('Y-m-d H:i', pg_dashboard_v2_yesterday($spring)),
+		date('Y-m-d H:i', pg_dashboard_v2_yesterday($autumn)),
+		date('Y-m-d H:i', pg_dashboard_v2_yesterday($plain)),
+	);
+
+	date_default_timezone_set($zone);
+
+	pg_assert_same(array('2026-03-29 00:00', '2026-10-25 00:00', '2026-06-09 00:00'), $results);
+}

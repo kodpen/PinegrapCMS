@@ -5,9 +5,10 @@
  * Quick edit on the contacts list (view_contacts.php): the values the
  * contact screen (edit_contact.php) changes that the list shows, checked by
  * that screen's rules and rights (includes/forms/contact_form.php) and
- * written to the one column each stands for. Values the list computes or
- * gathers (the picture, the connected user, the groups, the duplicates
- * view's address summary, the last change) stay text.
+ * written to the one column each stands for; the groups through the
+ * screen's group save. Values the list computes or gathers (the picture,
+ * the connected user, the duplicates view's address summary, the last
+ * change) stay text.
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -63,12 +64,15 @@ function pg_contact_quick_columns($filter)
 
 /**
  * The contacts list's cells that change in place in a view, with the
- * contact screen's lengths (its boxes' maxlength). Pure.
+ * contact screen's lengths (its boxes' maxlength); the contact groups when
+ * the user may put a contact in some (pg_contact_quick_group_options()).
+ * Pure.
  *
  * @param string $filter pg_contact_list_filter_name()'s answer
+ * @param array  $groups group id => name, the groups field's choices
  * @return array field => definition (pg_list_edit_parse())
  */
-function pg_contact_quick_edit_columns($filter)
+function pg_contact_quick_edit_columns($filter, array $groups = array())
 {
     $labels = array(
         'first_name' => lang('First Name'),
@@ -97,7 +101,139 @@ function pg_contact_quick_edit_columns($filter)
         }
     }
 
+    if ($groups) {
+        $definitions['groups'] = array('type' => 'multiselect', 'label' => lang('Contact Groups'), 'options' => $groups);
+    }
+
     return $definitions;
+}
+
+/**
+ * The groups the contact screen lets this user tick: the ones they may
+ * edit, by name, without a group filled by rules (the screen shows those
+ * as chips, never as a switch).
+ *
+ * @param array $user
+ * @return array group id => name
+ */
+function pg_contact_quick_group_options($user)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php');
+
+    $options = array();
+
+    foreach (pg_contact_form_groups($user) as $group) {
+        if (($group['kind'] ?? 'static') !== 'dynamic') {
+            $options[(string) $group['id']] = (string) $group['name'];
+        }
+    }
+
+    return $options;
+}
+
+/**
+ * The groups field's value: the contact's groups among the choices, in the
+ * choices' order, comma-separated. A group the user may not tick (another
+ * user's, one filled by rules) is not part of it and the save leaves it
+ * alone. Pure.
+ *
+ * @param array $member_ids the ids of every group the contact is in
+ * @param array $options    group id => name
+ * @return string
+ */
+function pg_contact_quick_group_value(array $member_ids, array $options)
+{
+    $member_ids = array_map('strval', $member_ids);
+    $value = array();
+
+    foreach (array_keys($options) as $id) {
+        if (in_array((string) $id, $member_ids, true)) {
+            $value[] = (string) $id;
+        }
+    }
+
+    return implode(',', $value);
+}
+
+/**
+ * What the contact screen would post for its group switches when the list
+ * picks these groups: a switch on for each chosen group, each group's
+ * opt-in switch as stored (on for a group the contact joins, as on the
+ * screen). Groups that are not choices post nothing; the save skips the
+ * ones the user may not edit. Pure.
+ *
+ * @param array $chosen  group ids, as pg_list_edit_parse() read them
+ * @param array $options group id => name
+ * @param array $states  pg_contact_form_group_states()
+ * @return array post field => value
+ */
+function pg_contact_quick_groups_post(array $chosen, array $options, array $states)
+{
+    $post = array();
+    $chosen = array_map('strval', $chosen);
+
+    foreach (array_keys($options) as $id) {
+        $id = (string) $id;
+
+        if (in_array($id, $chosen, true)) {
+            $post['contact_group_' . $id] = '1';
+        }
+
+        $post['contact_group_opt_in_' . $id] = (($states[$id]['opt_in'] ?? ($states[(int) $id]['opt_in'] ?? true)) ? '1' : '');
+    }
+
+    return $post;
+}
+
+/**
+ * The ids of every group a contact is in.
+ *
+ * @param int $contact_id
+ * @return string[]
+ */
+function pg_contact_quick_member_ids($contact_id)
+{
+    return array_map('strval', (array) db_values("SELECT contact_group_id FROM contacts_contact_groups_xref WHERE contact_id = '" . (int) $contact_id . "'"));
+}
+
+/**
+ * Writes the groups picked on the list the way the contact screen saves
+ * its group switches (pg_contact_form_save_groups()): a User keeps the
+ * contact in one of their groups, joins and leaves are announced, the
+ * contact is stamped and the site log told.
+ *
+ * @param array $user
+ * @param array $stored  pg_contact_quick_stored()
+ * @param array $chosen  group ids
+ * @param array $options pg_contact_quick_group_options()
+ * @return string '' when saved (or nothing changed), else the refusal
+ */
+function pg_contact_quick_groups_write($user, array $stored, array $chosen, array $options)
+{
+    $contact_id = (int) $stored['id'];
+
+    if (pg_contact_quick_group_value(pg_contact_quick_member_ids($contact_id), $options) === implode(',', $chosen)) {
+        return '';
+    }
+
+    $groups = pg_contact_form_groups($user);
+    $post = pg_contact_quick_groups_post($chosen, $options, pg_contact_form_group_states($contact_id, $groups));
+
+    $may_edit = function ($group_id) use ($user) {
+        return validate_contact_group_access($user, $group_id) == true;
+    };
+
+    if (!pg_contact_form_keeps_a_group($user, $groups, $post, $may_edit)) {
+        return lang('Please select at least one contact group for the contact') . '.';
+    }
+
+    pg_contact_form_save_groups($user, $contact_id, pg_contact_form_all_groups(), $post);
+
+    db_q("UPDATE contacts SET user = ?, timestamp = UNIX_TIMESTAMP() WHERE id = ?", array((string) (int) $user['id'], (string) $contact_id));
+
+    log_activity(lang(array('string' => 'contact ({var:1} {var:2}) was modified', 'vars' => array($stored['first_name'], $stored['last_name']))), $_SESSION['sessionusername'] ?? '');
+
+    return '';
 }
 
 /**
@@ -193,11 +329,12 @@ function pg_contact_quick_stored($contact_id)
  * @param array  $user       the signed-in user
  * @param int    $contact_id the contact changed
  * @param string $field      a key of pg_contact_quick_edit_columns()
- * @param string $value      as pg_list_edit_parse() read it
+ * @param mixed  $value      as pg_list_edit_parse() read it (a list for the groups)
  * @param string $filter     the list's view
+ * @param array  $groups     pg_contact_quick_group_options()
  * @return array the answer for pg_list_edit_reply()
  */
-function pg_contact_quick_update($user, $contact_id, $field, $value, $filter)
+function pg_contact_quick_update($user, $contact_id, $field, $value, $filter, array $groups = array())
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table_edit.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php');
@@ -216,6 +353,18 @@ function pg_contact_quick_update($user, $contact_id, $field, $value, $filter)
 
     if (!validate_contact_access($user, $contact_id)) {
         return $refuse(lang('Access denied.'), 'denied');
+    }
+
+    if ($field === 'groups') {
+        $refusal = $groups ? pg_contact_quick_groups_write($user, $stored, (array) $value, $groups) : lang('This column cannot be changed here.');
+
+        if ($refusal !== '') {
+            return $refuse($refusal);
+        }
+
+        $now = pg_contact_quick_group_value(pg_contact_quick_member_ids($contact_id), $groups);
+
+        return pg_contact_quick_answer($user, $contact_id, $field, $now, $filter);
     }
 
     $was = pg_contact_quick_edit_value($field, $stored, $filter);
@@ -253,8 +402,22 @@ function pg_contact_quick_update($user, $contact_id, $field, $value, $filter)
         $stored = $after;
     }
 
-    $now = pg_contact_quick_edit_value($field, $stored, $filter);
+    return pg_contact_quick_answer($user, $contact_id, $field, pg_contact_quick_edit_value($field, $stored, $filter), $filter);
+}
 
+/**
+ * The answer to a quick edit: the row as the list draws it, in the view it
+ * shows, with the field's new value.
+ *
+ * @param array  $user
+ * @param int    $contact_id
+ * @param string $field
+ * @param string $now    the value the field opens with next
+ * @param string $filter
+ * @return array
+ */
+function pg_contact_quick_answer($user, $contact_id, $field, $now, $filter)
+{
     // The row as the list draws it, in the view it shows.
     $source = pg_contact_list_source($user, array('filter' => (string) $filter));
     $row = $source ? pg_list_table_record_row($source, $contact_id) : null;
@@ -264,7 +427,7 @@ function pg_contact_quick_update($user, $contact_id, $field, $value, $filter)
     // Out of the view now (an address taken out of My Subscribers, say):
     // the cell still says what was stored.
     if (!isset($answer['html'])) {
-        $answer['html'] = ($field === 'opt_in') ? h(($now === '1') ? lang('Yes') : lang('No')) : h($now);
+        $answer['html'] = ($field === 'opt_in') ? h(($now === '1') ? lang('Yes') : lang('No')) : (($field === 'groups') ? '' : h($now));
     }
 
     return $answer;

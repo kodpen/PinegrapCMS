@@ -5,8 +5,8 @@
  * The All Shipping Methods list (view_shipping_methods.php) and its quick
  * edit: every value of the list the shipping method screen
  * (edit_shipping_method.php) changes is a field, checked with that screen's
- * own form rules (includes/forms/shipping_method_form.php). The zones stay
- * text (several choices), and so does Last Modified.
+ * own form rules (includes/forms/shipping_method_form.php), the zones as
+ * several choices. Last Modified stays text.
  *
  * Loaded where it is needed (require_once), not by functions.php; it needs
  * includes/forms/shipping_method_form.php.
@@ -72,9 +72,11 @@ function pg_shipping_method_quick_services(array $ready, array $stored)
  * lang() and get_shipping_service_name().
  *
  * @param string[] $services the Service field's choices (pg_shipping_method_quick_services())
+ * @param array    $zones    zone id => name, the Zones field's choices
+ *                           (pg_shipping_method_quick_zone_options()); none, no field
  * @return array field => definition
  */
-function pg_shipping_method_edit_columns(array $services = array())
+function pg_shipping_method_edit_columns(array $services = array(), array $zones = array())
 {
     $yes_no = array('1' => lang('Yes'), '0' => lang('No'));
     $service_options = array('' => '–');
@@ -84,7 +86,7 @@ function pg_shipping_method_edit_columns(array $services = array())
         $service_options[$service] = ($name !== '') ? $name : $service;
     }
 
-    return array(
+    $columns = array(
         'name' => array('type' => 'text', 'label' => lang('Name'), 'max' => 50, 'required' => true),
         'message' => array('type' => 'text', 'label' => lang('Display Message'), 'max' => 255),
         'code' => array('type' => 'text', 'label' => lang('Code'), 'max' => 50),
@@ -100,6 +102,94 @@ function pg_shipping_method_edit_columns(array $services = array())
         'po_box' => array('type' => 'select', 'label' => lang('Allow PO Box'), 'options' => $yes_no),
         'protected' => array('type' => 'select', 'label' => lang('Protected'), 'options' => $yes_no),
     );
+
+    if ($zones) {
+        $columns['zones'] = array('type' => 'multiselect', 'label' => lang('Allowed Zones'), 'options' => $zones);
+    }
+
+    return $columns;
+}
+
+/**
+ * The zones the method screen's Allowed Zones picker offers, by name.
+ *
+ * @return array zone id => name
+ */
+function pg_shipping_method_quick_zone_options()
+{
+    $options = array();
+
+    foreach ((array) db_items("SELECT id, name FROM zones ORDER BY name") as $zone) {
+        $options[(string) $zone['id']] = (string) $zone['name'];
+    }
+
+    return $options;
+}
+
+/**
+ * The Zones field's value: the method's zones among the choices, in the
+ * choices' order, comma-separated. Pure.
+ *
+ * @param array $zones   pg_shipping_method_list_zones() (zone id => name)
+ * @param array $options zone id => name
+ * @return string
+ */
+function pg_shipping_method_quick_zone_value(array $zones, array $options)
+{
+    $value = array();
+
+    foreach (array_keys($options) as $id) {
+        if (array_key_exists($id, $zones)) {
+            $value[] = (string) $id;
+        }
+    }
+
+    return implode(',', $value);
+}
+
+/**
+ * Write the zones picked on the list the way the method screen saves its
+ * Allowed Zones (pg_shipping_method_save_zones()): the method stamped with
+ * who changed it, a line in the Site Log, shipping_method.updated
+ * announced. The same zones again write nothing.
+ *
+ * @param array $method  a row of pg_shipping_method_list_sql()
+ * @param array $chosen  zone ids, as pg_list_edit_parse() read them
+ * @param int   $user_id
+ * @param array $options zone id => name
+ * @return bool false when a query failed
+ */
+function pg_shipping_method_quick_zones_write(array $method, array $chosen, $user_id, array $options)
+{
+    $method_id = (int) $method['id'];
+    $before = pg_shipping_method_list_zones($method_id);
+
+    if (pg_shipping_method_quick_zone_value($before, $options) === implode(',', $chosen)) {
+        return true;
+    }
+
+    if (!pg_shipping_method_save_zones($method_id, $chosen)) {
+        return false;
+    }
+
+    db_q("UPDATE shipping_methods SET user = ?, timestamp = UNIX_TIMESTAMP() WHERE id = ?", array((int) $user_id, $method_id));
+
+    $names = function ($ids) use ($options) {
+        return implode(', ', array_map(function ($id) use ($options) {
+            return $options[$id] ?? $id;
+        }, $ids));
+    };
+
+    log_activity(
+        lang(array(
+            'string' => 'shipping method ({var:1}) was changed on the shipping method list: {var:2} from "{var:3}" to "{var:4}"',
+            'vars'   => array((string) $method['name'], lang('Allowed Zones'), implode(', ', $before), $names($chosen)),
+        )),
+        $_SESSION['sessionusername'] ?? '');
+
+    pg_announce('shipping_method.updated', array('id' => $method_id, 'name' => (string) $method['name']));
+
+    return true;
 }
 
 /**
@@ -350,19 +440,25 @@ function pg_shipping_method_list_sql($id = 0)
 }
 
 /**
- * The names of the zones a method ships to, by name.
+ * The zones a method ships to, by name.
  *
  * @param int $id
- * @return string[]
+ * @return array zone id => name
  */
 function pg_shipping_method_list_zones($id)
 {
-    return db_values(
-        "SELECT zones.name
+    $zones = array();
+
+    foreach ((array) db_items(
+        "SELECT zones.id, zones.name
         FROM shipping_methods_zones_xref
         LEFT JOIN zones ON shipping_methods_zones_xref.zone_id = zones.id
         WHERE shipping_methods_zones_xref.shipping_method_id = '" . (int) $id . "'
-        ORDER BY zones.name");
+        ORDER BY zones.name") as $zone) {
+        $zones[(string) $zone['id']] = (string) $zone['name'];
+    }
+
+    return $zones;
 }
 
 /**
@@ -373,7 +469,7 @@ function pg_shipping_method_list_zones($id)
  * $quick_edit and the method lets it change (pg_shipping_method_quick_locked()).
  *
  * @param array  $method     a row of pg_shipping_method_list_sql()
- * @param array  $zones      pg_shipping_method_list_zones()
+ * @param array  $zones      pg_shipping_method_list_zones() (zone id => name)
  * @param array  $quick_edit pg_shipping_method_edit_columns(), empty without quick edit
  * @param string $now        Y-m-d H:i:s, for the name's colour
  * @return array key => pg_list_cell()
@@ -442,7 +538,8 @@ function pg_shipping_method_list_cells($method, array $zones = array(), array $q
         'transit' => pg_list_cell(h((string) ($method['base_transit_days'] ?? '')), 'align-middle', $attributes('transit', array('data-pg-sort-value' => (string) (int) ($method['base_transit_days'] ?? 0)))),
         'street' => $check('street', 'street_address'),
         'po_box' => $check('po_box', 'po_box'),
-        'zones' => pg_list_cell(implode(',<br>', array_map('h', $zones))),
+        'zones' => pg_list_cell(implode(',<br>', array_map('h', $zones)), 'align-middle',
+            isset($quick_edit['zones']) ? pg_list_edit_cell_attributes($quick_edit, 'zones', $id, pg_shipping_method_quick_zone_value($zones, $quick_edit['zones']['options'])) : array()),
         'protected' => $check('protected', 'protected'),
         'last_modified' => pg_list_cell(
             get_relative_time(array('timestamp' => $method['timestamp'] ?? 0))
@@ -507,6 +604,16 @@ function pg_shipping_method_quick_update($method_id, $field, $value, $user_id, a
 
     if (!$method) {
         return array('ok' => false, 'code' => 'not_found', 'message' => lang('The shipping method could not be found.'));
+    }
+
+    if ($field === 'zones') {
+        if (!isset($quick_edit['zones']) || !pg_shipping_method_quick_zones_write($method, (array) $value, $user_id, $quick_edit['zones']['options'])) {
+            return array('ok' => false, 'code' => 'invalid', 'message' => lang('The value could not be saved.'));
+        }
+
+        $method = db_item(pg_shipping_method_list_sql($method_id));
+
+        return pg_shipping_method_quick_saved(pg_shipping_method_list_cells($method, pg_shipping_method_list_zones($method_id), $quick_edit), $field);
     }
 
     $change = pg_shipping_method_quick_change($method, $field, $value, pg_shipping_method_quick_ready());
