@@ -21,6 +21,9 @@ description: The table boxes of flows (F6b-1 #3189): row_add adds a workflow tab
 ## What if the table's owner has left the team?
 - Gate `paused` (`workflow-table-shares.md`): publish refused; at run `ws_step_row_wait()`: waiting, effect cleared, `wait_key` `wtable:<table id>`, next look in `WS_FLOW_RECHECK`. `ws_flow_step_recheck()` hands it to `ws_step_row_recheck()`: still away, it waits on; else ready again, the try not counted. No `workspace.flow.run.waiting` event (its `for` lists no table).
 
+## And reading a row?
+- `row_get`, the Read a row box: `workspace-flows-row-get-box.md`.
+
 ## How is it built on the canvas?
 - `workspace-flows-table-box-form.md` (F6b-2, #3359).
 
