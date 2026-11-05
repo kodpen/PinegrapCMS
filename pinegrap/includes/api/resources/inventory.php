@@ -452,6 +452,9 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 
 	api_webhook_enqueue('inventory.changed', $stock_event);
 
+	// The Workspace hears it as well: its flows may start on it.
+	pg_event_record('inventory.changed', $stock_event);
+
 	// The announcement above skips pg_announce(), whose listeners hear the
 	// site's other stock writers; a product back in stock is told here.
 	if (function_exists('pg_stock_notify_heard')) {
@@ -474,12 +477,15 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 		&& ((int)$row['inventory_quantity'] <= $threshold)
 		&& ((int)$product['inventory_quantity'] > $threshold)) {
 
-		api_webhook_enqueue('stock.low', array(
+		$low_event = array(
 			'product_id' => (int)$row['id'],
 			'name'       => $product['name'],
 			'quantity'   => (int)$row['inventory_quantity'],
 			'threshold'  => $threshold
-		) + pg_stock_event_location_fields($stock_location));
+		) + pg_stock_event_location_fields($stock_location);
+
+		api_webhook_enqueue('stock.low', $low_event);
+		pg_event_record('stock.low', $low_event);
 
 	}
 

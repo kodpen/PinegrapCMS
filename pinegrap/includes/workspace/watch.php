@@ -145,7 +145,39 @@ function ws_events_catalog()
             'order.cancelled'      => array('label' => lang('An order is cancelled'), 'when' => lang('When an order is cancelled'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.requested' => array('label' => lang('A return is requested'), 'when' => lang('When a return is requested'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'stock.low'            => array('label' => lang('A product runs low in stock'), 'when' => lang('When a product runs low in stock'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.approved' => array('label' => lang('A return is approved'), 'when' => lang('When a return is approved'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.received' => array('label' => lang('A return arrives back'), 'when' => lang('When the goods of a return arrive back'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.refunded' => array('label' => lang('A return is refunded'), 'when' => lang('When a return is refunded'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'marketplace.order.imported' => array('label' => lang('A marketplace order is imported'), 'when' => lang('When a marketplace order is imported'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'inventory.changed'    => array('label' => lang('A product\'s stock changes'), 'when' => lang('When a product\'s stock changes'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
         );
+
+        if (function_exists('pg_reviews_ready') && pg_reviews_ready()) {
+            $catalog['product.review.created'] = array('label' => lang('A product review is written'), 'when' => lang('When a product review is written'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => '');
+        }
+
+        if (function_exists('pg_cart_quotes_ready') && pg_cart_quotes_ready()) {
+            $catalog += array(
+                'cart_quote.created' => array('label' => lang('A cart quote is made'), 'when' => lang('When a cart quote is made'), 'record' => 'cart_quote', 'right' => 'ecommerce', 'filter' => ''),
+                'cart_quote.ordered' => array('label' => lang('A cart quote is ordered'), 'when' => lang('When a cart quote is ordered'), 'record' => 'cart_quote', 'right' => 'ecommerce', 'filter' => ''),
+            );
+        }
+
+        // A renewal is about its order; a failure or a cancellation about
+        // the customer's contact (ws_events_record_of()).
+        if (function_exists('pg_subscriptions_ready') && pg_subscriptions_ready()) {
+            $catalog += array(
+                'subscription.renewed'   => array('label' => lang('A subscription is renewed'), 'when' => lang('When a subscription is renewed'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+                'subscription.failed'    => array('label' => lang('A subscription renewal fails'), 'when' => lang('When a subscription renewal fails'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+                'subscription.cancelled' => array('label' => lang('A subscription is cancelled'), 'when' => lang('When a subscription is cancelled'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+            );
+        }
+
+        // The fee of a designed form's record, narrowed to one form like a
+        // submission.
+        if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
+            $catalog['form.paid'] = array('label' => lang('A form\'s fee is paid'), 'when' => lang('When a form\'s fee is paid'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page');
+        }
     }
 
     $catalog += array(
@@ -440,7 +472,7 @@ function ws_events_channels($viewer)
 /**
  * The record an event is about, as a tag names it: the kind and the id.
  * Each event carries the id under its own key (an order's id, a stock
- * warning's product_id, a submission's id). A task's events are about the
+ * warning's product_id, a submission's id, a review's item_id). A task's events are about the
  * task; a settled approval request about the task it asked about, otherwise
  * its channel; a guest's message about the guest's room.
  *
@@ -453,8 +485,29 @@ function ws_events_record_of($event, $payload)
     $event = (string) $event;
     $payload = (array) $payload;
 
-    if (strpos($event, 'order.') === 0) {
+    if ((strpos($event, 'order.') === 0) || ($event === 'marketplace.order.imported')) {
         return array('order', (int) ($payload['id'] ?? 0));
+    }
+
+    if (strpos($event, 'cart_quote.') === 0) {
+        return array('cart_quote', (int) ($payload['id'] ?? 0));
+    }
+
+    // A renewal names its order; a failure or a cancellation the customer's
+    // contact, when the subscription's account has one.
+    if (strpos($event, 'subscription.') === 0) {
+        if ((int) ($payload['order_id'] ?? 0) > 0) {
+            return array('order', (int) $payload['order_id']);
+        }
+
+        return ((int) ($payload['customer_id'] ?? 0) > 0) ? array('contact', (int) $payload['customer_id']) : array('', 0);
+    }
+
+    // A review of a product, or of a product group shown as one product.
+    if ($event === 'product.review.created') {
+        $item_type = (string) ($payload['item_type'] ?? '');
+
+        return in_array($item_type, array('product', 'product_group'), true) ? array($item_type, (int) ($payload['item_id'] ?? 0)) : array('', 0);
     }
 
     if (strpos($event, 'workspace.task.') === 0) {
@@ -477,6 +530,7 @@ function ws_events_record_of($event, $payload)
 
     switch ($event) {
         case 'stock.low':
+        case 'inventory.changed':
         case 'product.updated':
             return array('product', (int) ($payload['product_id'] ?? ($payload['id'] ?? 0)));
 
@@ -486,6 +540,7 @@ function ws_events_record_of($event, $payload)
             return array('contact', (int) ($payload['id'] ?? 0));
 
         case 'form.submitted':
+        case 'form.paid':
             return array('form', (int) ($payload['id'] ?? 0));
     }
 
