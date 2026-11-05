@@ -588,7 +588,31 @@ function test_order_completion_reward_membership_until()
 	pg_assert_same('2026-12-31', pg_order_reward_membership_until('2026-12-01', 30, '2026-11-10'), 'a future end moves on');
 	pg_assert_same('2026-12-10', pg_order_reward_membership_until('2026-11-01', 30, '2026-11-10'), 'a past end starts from today');
 	pg_assert_same('2026-12-10', pg_order_reward_membership_until('', 30, '2026-11-10'), 'no end yet starts from today');
-	pg_assert_same('2026-12-10', pg_order_reward_membership_until('0000-00-00', 30, '2026-11-10'), 'a lifetime membership gets the days from today, as before');
+	pg_assert_same('2026-12-10', pg_order_reward_membership_until('0000-00-00', 30, '2026-11-10'), 'a contact without a member id gets the days from today');
+	pg_assert_same('0000-00-00', pg_order_reward_membership_until('0000-00-00', 30, '2026-11-10', 'M100'), 'a lifetime member stays lifetime');
+	pg_assert_same('0000-00-00', pg_order_reward_membership_until('', 30, '2026-11-10', 'M100'), 'a member with no end date stays lifetime');
+	pg_assert_same('2026-12-31', pg_order_reward_membership_until('2026-12-01', 30, '2026-11-10', 'M100'), 'a timed member moves on');
+}
+
+// A lifetime member (a member id and no end date) who buys a membership
+// renewal keeps the lifetime membership; anybody else gets days x quantity.
+function test_order_completion_membership_renewal_until()
+{
+	pg_assert_same('0000-00-00', pg_order_membership_renewal_until('M100', '0000-00-00', 30, 2, '2026-11-10'), 'a lifetime member stays lifetime');
+	pg_assert_same('0000-00-00', pg_order_membership_renewal_until('M100', '', 30, 1, '2026-11-10'), 'an empty end date is lifetime');
+	pg_assert_same('0000-00-00', pg_order_membership_renewal_until('M100', null, 30, 1, '2026-11-10'), 'a NULL end date is lifetime');
+	pg_assert_same('2027-01-30', pg_order_membership_renewal_until('M100', '2026-12-01', 30, 2, '2026-11-10'), 'a timed member moves on by days x quantity');
+	pg_assert_same('2026-11-20', pg_order_membership_renewal_until('M100', '2026-11-01', 10, 1, '2026-11-10'), 'an expired member starts from today');
+	pg_assert_same('2026-12-10', pg_order_membership_renewal_until('', '0000-00-00', 30, 1, '2026-11-10'), 'a first membership starts from today');
+}
+
+function test_order_completion_membership_lifetime()
+{
+	pg_assert_true(pg_order_membership_lifetime('M100', '0000-00-00'), 'member id and no end');
+	pg_assert_true(pg_order_membership_lifetime('M100', ''), 'member id and an empty end');
+	pg_assert_false(pg_order_membership_lifetime('', '0000-00-00'), 'no member id is no membership');
+	pg_assert_false(pg_order_membership_lifetime(null, null), 'nothing at all');
+	pg_assert_false(pg_order_membership_lifetime('M100', '2026-12-01'), 'a timed membership');
 }
 
 function test_order_completion_line_reward_points()

@@ -102,6 +102,7 @@ function product_list_driver_test_choices()
 		'pages' => array('7' => 'Welcome', '9' => 'Thanks [ARCHIVED]'),
 		'folders' => array('3' => 'Members', '4' => "\u{00A0}\u{00A0}Gold"),
 		'groups' => array('5' => 'Buyers'),
+		'zones' => array('5' => 'Asia', '2' => 'Europe', '8' => 'World'),
 	);
 }
 
@@ -109,7 +110,7 @@ function test_product_list_driver_every_screen_value_is_editable()
 {
 	// Computed, or set on the product screen with several choices or rich
 	// text: the only columns that stay text in quick edit.
-	$read_only = array('image', 'seo', 'impact', 'last_modified', 'out_of_stock_date', 'actions', 'allowed_zones', 'disallowed_zones', 'order_receipt_message');
+	$read_only = array('image', 'seo', 'impact', 'last_modified', 'out_of_stock_date', 'actions', 'order_receipt_message');
 
 	foreach (array_keys(pg_product_list_filters()) as $filter) {
 		$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view($filter), pg_pb_quick_edit_columns(product_list_driver_test_choices())));
@@ -256,4 +257,42 @@ function test_product_list_driver_is_a_driver_list()
 	pg_assert_same('pg_product_list_source', $definition['source']);
 	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
 	pg_assert_same(null, pg_product_list_source(array('role' => '3', 'manage_ecommerce' => '0'), array()), 'a user without the e-commerce right may not open it');
+}
+
+function test_product_list_driver_zone_fields()
+{
+	$fields = pg_pb_quick_edit_fields(product_list_driver_test_choices());
+
+	if (!isset($fields['allowed_zones'])) {
+		return;
+	}
+
+	pg_assert_same('multiselect', $fields['allowed_zones']['edit']['type'], 'several choices');
+	pg_assert_same(array('5' => 'Asia', '2' => 'Europe', '8' => 'World'), $fields['disallowed_zones']['edit']['options'], 'every zone, by name');
+	pg_assert_false(isset(pg_pb_quick_edit_fields(array('zones' => array()))['allowed_zones']), 'no zones, no field');
+
+	$product = array('allowed_zone_ids' => '2,5');
+	pg_assert_same('5,2', pg_pb_quick_edit_value('allowed_zones', $product, $fields), 'the allowed ones in the choices\' order');
+	pg_assert_same('8', pg_pb_quick_edit_value('disallowed_zones', $product, $fields), 'the rest');
+	pg_assert_same('', pg_pb_quick_edit_value('allowed_zones', array('allowed_zone_ids' => ''), $fields), 'none allowed');
+	pg_assert_true(pg_pb_quick_cell_editable('allowed_zones', $product, $fields), 'a row read with its zones');
+	pg_assert_false(pg_pb_quick_cell_editable('allowed_zones', array(), $fields), 'not without them');
+
+	pg_assert_same(array('allowed_zone_ids' => '5,8'), pg_pb_quick_more_change('allowed_zones', array('8', '5'), array(), $fields)['change'], 'the allowed list stored as picked');
+	pg_assert_same(array('allowed_zone_ids' => '5,8'), pg_pb_quick_more_change('disallowed_zones', array('2'), array(), $fields)['change'], 'the disallowed side writes the rest');
+	pg_assert_same(array('allowed_zone_ids' => ''), pg_pb_quick_more_change('allowed_zones', array(), array(), $fields)['change'], 'none: ships nowhere, as the screen saves it');
+	pg_assert_same('Asia, Europe', pg_pb_quick_more_shown('allowed_zones', $product, $fields), 'the log names the zones');
+
+	$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view('shippable_products'), pg_pb_quick_edit_columns(product_list_driver_test_choices())));
+	pg_assert_same('multiselect', $columns['disallowed_zones']['editable'], 'the column opens as several choices');
+
+	$view = product_list_driver_test_view('shippable_products');
+	$context = array('quick_edit' => pg_pb_quick_edit_columns(product_list_driver_test_choices()), 'fields' => $fields, 'more_images' => array(),
+		'zones' => array(12 => array('allowed' => array('2' => 'Europe'), 'disallowed' => array('5' => 'Asia', '8' => 'World'))));
+	$row = pg_product_list_row(product_list_driver_test_product(array('weight' => '0', 'primary_weight_points' => '0', 'secondary_weight_points' => '0', 'length' => '0', 'width' => '0', 'height' => '0',
+		'container_required' => '0', 'preparation_time' => '0', 'free_shipping' => '0', 'extra_shipping_cost' => '0')), $view, $context);
+
+	pg_assert_same('2', $row['cells']['allowed_zones']['attributes']['data-pg-edit-value'] ?? '', 'the allowed cell opens with its zone');
+	pg_assert_same('5,8', $row['cells']['disallowed_zones']['attributes']['data-pg-edit-value'] ?? '', 'the disallowed cell with the rest');
+	pg_assert_contains('Asia,<br />World', $row['cells']['disallowed_zones']['html'], 'drawn by name');
 }

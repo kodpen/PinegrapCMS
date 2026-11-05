@@ -1774,6 +1774,16 @@
         this.load(true);
     };
 
+    /**
+     * Whether a cell's data-pg-filter holds a filter value: one value, or
+     * several separated by spaces when a row belongs to more than one
+     * group of the same buttons (an offer is Active, With code and
+     * Incomplete at once).
+     */
+    function filterHas(values, value) {
+        return (' ' + String(values || '') + ' ').indexOf(' ' + value + ' ') !== -1;
+    }
+
     /** A list printed whole: the rows the search words and the filters keep. */
     Driver.prototype.showHere = function () {
         var value = this.search;
@@ -1789,7 +1799,7 @@
             keys(filters).forEach(function (key) {
                 var cell = row.querySelector('td[data-pg-col="' + key + '"]');
 
-                hidden = hidden || !cell || (cell.getAttribute('data-pg-filter') !== filters[key]);
+                hidden = hidden || !cell || !filterHas(cell.getAttribute('data-pg-filter'), filters[key]);
             });
 
             row.hidden = hidden;
@@ -1876,6 +1886,7 @@
         sortEdit: sortEdit,
         sortMarks: sortMarks,
         allSelected: allSelected,
+        filterHas: filterHas,
         compareSortValues: compareSortValues,
         sortRows: sortRows,
         prefsKey: prefsKey,

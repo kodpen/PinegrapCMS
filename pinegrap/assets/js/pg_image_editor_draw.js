@@ -83,7 +83,89 @@
 
     // ---- the layer types ----
 
-    var shadows = 0;
+    var shadows = 0, masks = 0;
+
+    // The eraser's mask over a drawn layer (M.eraseStrokes()) in its box's
+    // frame before the mirror: white where the drawing shows, the eraser's
+    // strokes black. Its area reaches well past the box, where a line, a
+    // warp or a shadow's source may draw.
+    function eraseMask(l) {
+        var mask = document.createElementNS(SVGNS, 'mask'), white = document.createElementNS(SVGNS, 'rect'), big = 4 * Math.max(l.w, l.h) + 1000;
+        var area = [['x', -big], ['y', -big], ['width', l.w + 2 * big], ['height', l.h + 2 * big]];
+
+        mask.setAttribute('id', 'pgie-er-' + (++masks));
+        mask.setAttribute('maskUnits', 'userSpaceOnUse');
+        area.forEach(function (a) {
+            mask.setAttribute(a[0], a[1]);
+            white.setAttribute(a[0], a[1]);
+        });
+        white.setAttribute('fill', '#ffffff');
+        mask.appendChild(white);
+
+        M.eraseStrokes(l).forEach(function (s) {
+            var line = document.createElementNS(SVGNS, 'polyline');
+
+            line.setAttribute('points', s.pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' '));
+            line.setAttribute('fill', 'none');
+            line.setAttribute('stroke', '#000000');
+            line.setAttribute('stroke-width', 2 * s.r);
+            line.setAttribute('stroke-linecap', 'round');
+            line.setAttribute('stroke-linejoin', 'round');
+
+            if ((s.w !== l.w) || (s.h !== l.h)) {
+                line.setAttribute('transform', 'scale(' + (l.w / s.w) + ' ' + (l.h / s.h) + ')');
+            }
+
+            mask.appendChild(line);
+        });
+
+        return mask;
+    }
+
+    // A drawn layer with the eraser's mask onto g: drawn on a canvas of its
+    // own as big as g's and with its transform, the strokes cut out there,
+    // then put onto g, so the cut takes nothing from the layers under it.
+    // g's opacity and clip apply as it is put.
+    function erasedPaint(g, l) {
+        var m = g.getTransform(), c = document.createElement('canvas'), cg, bare = M.clone(l);
+
+        c.width = g.canvas.width;
+        c.height = g.canvas.height;
+        cg = c.getContext('2d');
+        cg.setTransform(m);
+        delete bare.erase;
+        drawnPaint(cg, bare);
+
+        cg.setTransform(m);
+        cg.translate(l.x + l.w / 2, l.y + l.h / 2);
+        cg.rotate((l.rot || 0) * Math.PI / 180);
+
+        if (l.mirror) {
+            cg.scale(-1, 1);
+        }
+
+        cg.translate(-l.w / 2, -l.h / 2);
+        cg.globalCompositeOperation = 'destination-out';
+        cg.strokeStyle = '#000000';
+        cg.lineCap = 'round';
+        cg.lineJoin = 'round';
+
+        M.eraseStrokes(l).forEach(function (s) {
+            cg.save();
+            cg.scale(l.w / s.w, l.h / s.h);
+            cg.lineWidth = 2 * s.r;
+            cg.beginPath();
+            cg.moveTo(s.pts[0][0], s.pts[0][1]);
+            s.pts.forEach(function (p) { cg.lineTo(p[0], p[1]); });
+            cg.stroke();
+            cg.restore();
+        });
+
+        g.save();
+        g.setTransform(1, 0, 0, 1, 0, 0);
+        g.drawImage(c, 0, 0);
+        g.restore();
+    }
 
     // A drawn layer as SVG: its path in its box's frame, turned around the
     // box's centre and mirrored inside it. stroke 0 draws no line; ink (an
@@ -92,7 +174,7 @@
     // the same way at any angle.
     function drawnNode(l) {
         var g = document.createElementNS(SVGNS, 'g'), shape = M.shapePath(l), path = document.createElementNS(SVGNS, 'path');
-        var dash = M.dashFor(l), tf = 'translate(' + l.x + ' ' + l.y + ')', s = l.shadow, outer, filter, drop;
+        var dash = M.dashFor(l), tf = 'translate(' + l.x + ' ' + l.y + ')', s = l.shadow, outer, filter, drop, body = g, mask;
 
         if (l.rot) {
             tf += ' rotate(' + l.rot + ' ' + (l.w / 2) + ' ' + (l.h / 2) + ')';
@@ -123,7 +205,17 @@
             path.setAttribute('stroke-dasharray', dash.join(' '));
         }
 
-        g.appendChild(path);
+        // What the eraser took: the drawing in a group of its own under the
+        // mask, both in the box's frame.
+        if (M.eraseOn(l)) {
+            mask = eraseMask(l);
+            body = document.createElementNS(SVGNS, 'g');
+            body.setAttribute('mask', 'url(#' + mask.getAttribute('id') + ')');
+            g.appendChild(mask);
+            g.appendChild(body);
+        }
+
+        body.appendChild(path);
 
         if (shape.head) {
             var head = document.createElementNS(SVGNS, 'path');
@@ -134,7 +226,7 @@
             head.setAttribute('stroke-width', shape.head.stroke || 0);
             head.setAttribute('stroke-linecap', 'round');
             head.setAttribute('stroke-linejoin', 'round');
-            g.appendChild(head);
+            body.appendChild(head);
         }
 
         if (!s || !s.color) {
@@ -184,6 +276,13 @@
             g.shadowOffsetY = (s.dy || 0) * k;
             g.drawImage(c, l.x + l.w / 2 - fw / 2, l.y + l.h / 2 - fh / 2, fw, fh);
             g.shadowColor = 'transparent';
+            return;
+        }
+
+        // A layer the eraser masked; with a shadow it comes here from the
+        // branch above, so the shadow falls from what the eraser left.
+        if (M.eraseOn(l)) {
+            erasedPaint(g, l);
             return;
         }
 
@@ -313,13 +412,15 @@
     Editor.prototype.drawDown = function (e) {
         var h = e.target.getAttribute && e.target.getAttribute('data-h'), p = this.toDoc(e.clientX, e.clientY), kind = this.drawKind();
 
-        if (h && (this.sel.length === 1)) {
+        // The eraser erases under a selected layer's handles too: on touch
+        // their 44 px targets cover much of a small shape.
+        if (h && (this.sel.length === 1) && (kind !== 'eraser')) {
             this.startDrag(e);
             return;
         }
 
         if (kind === 'eraser') {
-            this.drag = { kind: 'erase' };
+            this.drag = { kind: 'erase', last: p, open: {} };
             this.eraseAt(p);
         } else {
             // A press on a selected layer moves it; anywhere else draws.
@@ -441,20 +542,36 @@
         return Math.max(M.strokeFor(this.drawDefaults.eraser, size.w, size.h) * 2.5, 8 / this.view.k);
     };
 
-    // The eraser at p cuts the visible, unlocked pen strokes it touches.
+    // The eraser at p cuts the visible, unlocked pen strokes it touches and
+    // masks the shapes and paths it passes over on its way from the drag's
+    // last point (M.eraseAdd()): a layer it touched goes on taking the
+    // drag's points, so its stroke follows the eraser.
     Editor.prototype.eraseAt = function (p) {
-        var r = this.eraserRadius(), cuts = {}, any = false;
+        var r = this.eraserRadius(), d = (this.drag && (this.drag.kind === 'erase')) ? this.drag : null, from = (d && d.last) || p;
+        var cuts = {}, masked = [], any = false;
 
         this.eraser = { x: p[0], y: p[1], r: r };
 
         this.doc.layers.forEach(function (l) {
+            if (!l.hidden && !l.locked && M.erasable(l) && ((d && (d.open[l.id] !== undefined)) || M.eraseTouches(l, from, p, r))) {
+                masked.push(l.id);
+                any = true;
+            }
+        });
+
+        if (d) {
+            d.last = p;
+        }
+
+        this.doc.layers.forEach(function (l) {
             var b = (l.type === 'pen') && !l.hidden && !l.locked ? M.bounds([l]) : null, reach = r + (l.stroke || 1), pieces;
 
-            if (!b || (p[0] < b.x - reach) || (p[0] > b.x + b.w + reach) || (p[1] < b.y - reach) || (p[1] > b.y + b.h + reach)) {
+            if (!b || (Math.max(p[0], from[0]) < b.x - reach) || (Math.min(p[0], from[0]) > b.x + b.w + reach)
+                    || (Math.max(p[1], from[1]) < b.y - reach) || (Math.min(p[1], from[1]) > b.y + b.h + reach)) {
                 return;
             }
 
-            pieces = M.eraseTrace(l, p[0], p[1], r);
+            pieces = M.eraseTrace(l, p[0], p[1], r, from);
 
             if (pieces) {
                 cuts[l.id] = pieces;
@@ -502,6 +619,18 @@
             });
 
             doc.layers = out;
+
+            masked.forEach(function (id) {
+                var l = find(doc, id), next = l ? M.eraseAdd(l, from, p, r, d ? d.open[id] : null) : null;
+
+                if (next) {
+                    l.erase = next.erase;
+
+                    if (d) {
+                        d.open[id] = next.i;
+                    }
+                }
+            });
         }, 'erase', true);
         this.keepSelection();
     };

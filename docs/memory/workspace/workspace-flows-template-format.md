@@ -17,6 +17,7 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 - A follow-up's `{{result}}` becomes `{{node.check.text}}`: a flow fills no `{{result}}`, the box's sentence is the same text.
 - A template needing a count the person cannot read is left out (digest needs one of its counts, overdue, stock, invoices theirs).
 - welcome and the event ones of workspace_events.js (merge plan R1): a `join` start (0: any public channel) posting in the channel joined (-1), only with `join`; order_event, form_event, stock_event, overdue_event, approval_event an `event` start, each only when its event is in `events` (`ws_events_js_config()` list); titles as `ws_events_js_strings()`.
+- With a follow-up (flows-next T1-T3, `test_workspace_flow_templates_event_follow_ups`): `review_request` (order.delivered, 7 days, task), `restock_approval` (stock.low, approval 48 h, task if approved), `return_task` (order.return.requested, task, 48 h timeout).
 
 ## Which day does a start box get?
 - A day of the site's calendar, as the scheduler reads date + time: from `today` (`date('Y-m-d')`) at noon in UTC (`DateTimeImmutable`). `strtotime('next monday')` in PHP's zone gave the Sunday before east of UTC (PR #2230); tested in five zones.
@@ -25,7 +26,7 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 - Staff-saved ones, category `saved`, key `site_<id>`: `workspace-flows-template-saved.md`.
 
 ## What is left of the templates?
-- Export and import of templates over the API with dry run (G4 of the closed templates plan; answer #2416: Save as template first, G3a #3146, G3b #3242). The AI start of New flow: `workspace-flow-ai-start.md`.
+- API export/import with dry run (G4; #2416: Save as template first, #3146, #3242). AI start: `workspace-flow-ai-start.md`.
 
 ## Which are a flow's own?
 - new_customer, quote_approval, text_review (G3): `workspace-flows-template-flow-only.md`.
@@ -34,5 +35,5 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 - forms, orders and chain (R1b): `workspace-flows-template-last-day.md`.
 
 ## How does the canvas use it?
-- "New flow" with templates or the AI start opens `showGallery(null)` in place of the canvas: Empty canvas, Describe it to AI, then the cards by category; Use creates a flow named after the template with its graph.
+- "New flow" opens `showGallery(null)` in place of the canvas: Empty canvas, Describe it to AI, the cards by category; Use creates a flow named after the template.
 - The box list shows "Start from a template" while the flow has no boxes; Use opens that flow again and places the graph (a flow that got boxes meanwhile gets a new flow instead), saved as any change; then the motion and the setup panel (`workspace-flows-template-setup.md`).

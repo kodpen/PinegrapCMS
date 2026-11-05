@@ -1866,7 +1866,9 @@ function pg_order_complete_line_membership(array $line, $contact_id, $reference_
         pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
     }
 
-    $new_expiration_date = pg_order_extended_until($row['expiration_date'], $line['membership_renewal'], $line['quantity'], date('Y-m-d'));
+    // The member id the contact had before this order: one taken from the
+    // reference code just now is a first membership, never a lifetime one.
+    $new_expiration_date = pg_order_membership_renewal_until($row['member_id'], $row['expiration_date'], $line['membership_renewal'], $line['quantity'], date('Y-m-d'));
 
     $audit_members = pg_audit_fetch_by('contacts', 'member_id', $member_id);
     db_q("UPDATE contacts SET expiration_date = ? WHERE member_id = ?", array((string) $new_expiration_date, (string) $member_id)) or output_error('Query failed');
@@ -3429,21 +3431,64 @@ function pg_order_line_reward_points(array $line, $program_on)
 
 /**
  * The membership end the reward program gives: lifetime ('0000-00-00') when
- * it gives 0 days, else the days added to the current end when it is still
- * ahead, otherwise to today. Pure.
+ * it gives 0 days or the contact is a lifetime member already
+ * (pg_order_membership_lifetime()), else the days added to the current end
+ * when it is still ahead, otherwise to today. Pure.
  *
- * @param string $end   the contact's expiration date, '' for none
- * @param int    $days  ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS
- * @param string $today Y-m-d
+ * @param string $end       the contact's expiration date, '' for none
+ * @param int    $days      ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS
+ * @param string $today     Y-m-d
+ * @param string $member_id the contact's member id, '' for none
  * @return string Y-m-d
  */
-function pg_order_reward_membership_until($end, $days, $today)
+function pg_order_reward_membership_until($end, $days, $today, $member_id = '')
 {
-    if ($days == 0) {
+    if (($days == 0) || pg_order_membership_lifetime($member_id, $end)) {
         return '0000-00-00';
     }
 
     return pg_order_extended_until($end, $days, 1, $today);
+}
+
+/**
+ * Is the contact a lifetime member: a member id and no end date ('',
+ * '0000-00-00' or NULL)? A contact without a member id has no membership,
+ * whatever its date column holds. Pure.
+ *
+ * @param mixed $member_id contacts.member_id
+ * @param mixed $end       contacts.expiration_date
+ * @return bool
+ */
+function pg_order_membership_lifetime($member_id, $end)
+{
+    if (trim((string) $member_id) === '') {
+        return false;
+    }
+
+    $end = trim((string) $end);
+
+    return ($end === '') || ($end === '0000-00-00');
+}
+
+/**
+ * The membership end a renewal line gives: a lifetime member stays lifetime
+ * ('0000-00-00': a renewal never shortens what the member had), anybody else
+ * gets days x quantity (pg_order_extended_until()). Pure.
+ *
+ * @param mixed  $member_id the contact's member id before the order, '' for none
+ * @param mixed  $end       the contact's expiration date
+ * @param int    $days      days one unit gives
+ * @param int    $quantity  units bought
+ * @param string $today     Y-m-d
+ * @return string Y-m-d
+ */
+function pg_order_membership_renewal_until($member_id, $end, $days, $quantity, $today)
+{
+    if (pg_order_membership_lifetime($member_id, $end)) {
+        return '0000-00-00';
+    }
+
+    return pg_order_extended_until((string) $end, $days, $quantity, $today);
 }
 
 /**
@@ -3504,7 +3549,7 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
             db_q("UPDATE contacts SET member_id = ? WHERE id = ?", array((string) $order_number, (string) $contact_id)) or output_error('Query failed.');
         }
 
-        $new_expiration_date = pg_order_reward_membership_until($row['expiration_date'], ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS, date('Y-m-d'));
+        $new_expiration_date = pg_order_reward_membership_until($row['expiration_date'], ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS, date('Y-m-d'), $member_id);
 
         db_q("UPDATE contacts SET expiration_date = ? WHERE id = ?", array((string) $new_expiration_date, (string) $contact_id)) or output_error('Query failed.');
         pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
