@@ -48,15 +48,21 @@ function test_edit_file_refuses_a_blank_name_after_delete()
 function test_edit_design_file_refuses_a_blank_name_in_the_save_branch()
 {
 	$source = file_rename_blank_source('edit_design_file.php');
-	$check = "if (\$name_posted === '') {\n            output_error(lang('Please enter a name.') . ' <a href=\"javascript:history.go(-1)\">' . lang('Go back') . '</a>.');\n        }";
-
 	$else = strpos($source, "        \$notice = lang('The design file was deleted successfully.');\n    }\n    else\n    {");
-	$blank = strpos($source, $check);
-	$rename = strpos($source, 'check_name_availability(');
+	$refusal = strpos($source, 'pg_design_file_form_refusal($name_posted, $stored_name, $id)');
 
 	pg_assert_true($else !== false, 'the save branch follows the delete branch');
+	pg_assert_true(($refusal !== false) && ($refusal > $else), 'the save branch checks the name, Delete does not');
+
+	// The shared check refuses a blank name before prepare_file_name() and
+	// the availability check.
+	$form = file_rename_blank_source('includes/forms/design_file_form.php');
+	$blank = strpos($form, "if (\$name_posted === '') {\n        return lang('Please enter a name.');\n    }");
+	$prepare = strpos($form, '$name = prepare_file_name($name_posted);');
+	$available = strpos($form, 'check_name_availability(array(');
+
 	pg_assert_true($blank !== false, 'a blank name is refused');
-	pg_assert_true(($blank > $else) && ($blank < $rename), 'the refusal sits in the save branch, before the availability check');
+	pg_assert_true(($blank < $prepare) && ($blank < $available), 'before the name is prepared and checked');
 }
 
 function test_file_window_refuses_a_blank_name_before_preparing_it()
