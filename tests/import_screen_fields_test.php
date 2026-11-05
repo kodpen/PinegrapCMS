@@ -27,7 +27,6 @@ function test_import_screen_fields_file_pickers_required()
 {
 	$liveform_screens = array(
 		'import_products.php',
-		'import_email_campaign_profiles.php',
 		'import_submitted_forms.php',
 		'import_users.php',
 		'import_zip.php',
@@ -40,7 +39,7 @@ function test_import_screen_fields_file_pickers_required()
 		);
 	}
 
-	foreach (array('import_contacts.php', 'import_key_codes.php') as $path) {
+	foreach (array('import_contacts.php', 'import_email_campaign_profiles.php', 'import_key_codes.php') as $path) {
 		$source = import_screen_fields_source($path);
 		pg_assert_true(
 			(bool) preg_match('/<input[^>]*type="file"[^>]*\srequired[\s>\/]/', $source),
