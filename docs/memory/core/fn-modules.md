@@ -69,7 +69,7 @@ description: Generated from the module field of the memory files: each includes/
 - `design_file_list_edit`: [[list-table-quick-edit-design-files]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
-- `ecommerce`: [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[card-data-manual-processing]], [[cart-default-quantity]], [[cart-posted-quantity]], [[contact-import-cells]], [[csv-import-headings]], [[currency-form-rules]], [[currency-names-display]], [[express-order-tax-address]], [[import-decimal-cells]], [[marketplace-product-import-queue]], [[order-cancel-commissions]], [[panel-image-alt]], [[product-bulk-duplicate-code]], [[product-mass-edit-checks]]
+- `ecommerce`: [[affiliate-code-on-order]], [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[card-data-manual-processing]], [[cart-default-quantity]], [[cart-posted-quantity]], [[contact-import-cells]], [[csv-import-headings]], [[currency-form-rules]], [[currency-names-display]], [[express-order-tax-address]], [[import-decimal-cells]], [[marketplace-product-import-queue]], [[order-cancel-commissions]], [[panel-image-alt]], [[product-bulk-duplicate-code]], [[product-mass-edit-checks]]
 - `editor`: [[rich-text-editor-files]], [[rich-text-profiles]]
 - `email_campaign_create`: [[api-campaign-create]]
 - `email_campaign_list`: [[list-table-campaign-system-lists]]

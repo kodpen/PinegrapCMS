@@ -733,7 +733,8 @@ function submit_order($type) {
             tax_exempt,
             offline_payment_allowed,
             reference_code,
-            special_offer_code
+            special_offer_code,
+            affiliate_code
         FROM orders
         WHERE id = ?";
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
@@ -758,6 +759,7 @@ function submit_order($type) {
     $tax_exempt = $row['tax_exempt'];
     $offline_payment_allowed = $row['offline_payment_allowed'];
     $reference_code = $row['reference_code'];
+    $order_affiliate_code = (string) $row['affiliate_code'];
     $special_offer_code = $row['special_offer_code'];
     
     // if tax is on, apply taxes to order
@@ -3365,7 +3367,7 @@ function submit_order($type) {
 
     // The affiliate's commission is a value of the order; its rows are
     // written once the order is completed.
-    $affiliate_code = get_affiliate_code();
+    $affiliate_code = pg_order_submit_affiliate_code(get_affiliate_code(), $order_affiliate_code);
     $affiliate_rate = null;
 
     if ((AFFILIATE_PROGRAM == true) && ($affiliate_code != '')) {

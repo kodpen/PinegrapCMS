@@ -25,6 +25,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - address-form-places.md: Every place an address's city, state or district is asked, shown, saved or read: widgets, templates, classic pages, layouts, panel and ERP forms, save and read paths
 - address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
 - affiliate-approval-and-commission-edit.md: approve_affiliate.php checks the contact's groups and does not approve twice; the commission and recurring profile edit screens print a summary of the record
+- affiliate-code-on-order.md: Which affiliate code an order is credited to: the visitor's session/cookie code, else the code the cart stored on the order; pg_order_submit_affiliate_code()
 - affiliate-link-offer-code.md: When an affiliate link (?a=) puts the affiliate's code into the session as the special offer code: only when its group offer runs today (pg_special_offer_code_running(), #4163, PR #4266)
 - api-bulk-inventory-quantity.md: How POST /products/inventory (batch) reads each item's quantity: the same whole-number rule and ±1000000 bound as the single-product endpoint, refused per item instead of rounded or clamped
 - api-bulk-price-bound.md: How POST /products/prices (batch) reads each item's price: whole minor units from 0 to 2147483647, the single-product routes' bound, refused per item instead of rounded or cut by the INT column
