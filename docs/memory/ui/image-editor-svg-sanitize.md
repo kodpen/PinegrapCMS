@@ -1,0 +1,14 @@
+---
+name: image-editor-svg-sanitize
+description: What pg_svg_sanitize() keeps of an SVG, why its style rules are scoped to the root or prefixed to reach use copies, what it refuses
+module: svg_sanitize
+---
+
+## What does pg_svg_sanitize() keep?
+- It rebuilds the SVG element by element (`includes/fn/svg_sanitize.php`): only the listed drawing elements and their listed attributes; presentation properties as attributes or `style` declarations.
+- `href` / `xlink:href` only to `#id` or `data:image/png|jpeg|gif|webp|avif;base64`; never `data:image/svg+xml`. A `use` with nothing left to point at goes.
+- A value with an outside `url()`, an image function (`image-set(`, `-webkit-image-set(`, `cross-fade(`, `element(`, `image(`, `src(`), a backslash, `<`, `expression(`, `javascript:` or `@import` is dropped.
+- Why are style sheets scoped? An inline SVG's `<style>` applies to the whole page: a file's `svg path{display:none}` hid every panel icon. A sheet keeps only plain rules (names, `.class`, `#id`, descendant and child combinators; no attribute selector, pseudo-class, `*`, sibling combinator, at-rule or rule on `svg`), its declarations kept as a `style` attribute's, each selector prefixed with the root's id (its own plain id, else `pgsvg-` and ten hex of the file's SHA-1), set on the root. Already scoped rules are scoped once, so a sanitized file comes through unchanged. The editor gives the stage and the saved root that id (`doc.svgRootId`).
+- Why are some rules left unscoped? Chrome matches what a `<use>` draws against selectors inside the use's own tree, so `#root .cls-1` never reached symbol or definition content: an Illustrator-style file (`<symbol>`, `.cls-1{fill:…}`, `<use>`) showed black symbols, `#star{stroke:…}` lost its outline on a `<use>` of `#star` (found in the review of #6653). Now, when a sheet keeps a rule, every id but the root's and every class a kept rule names get the file's prefix `pgsvg-<ten hex of the input's SHA-1>-` (elements, `href`, `url(#…)` in attributes, styles and rules; `pg_svg_sanitize_name()`), and a selector whose every compound names such an id or class goes unscoped; the rest stay under the root. A name already carrying a `pgsvg-…-` prefix keeps it, so a sanitized file still comes through unchanged. Classes no rule names (the motion groups' `pgm-n`) are not renamed. A file with no kept rule is not renamed.
+- Refused whole (''): not a string, empty, over 5 MB, broken XML, a root that is not an SVG-namespace `<svg>`, any `<!DOCTYPE` / `<!ENTITY` in the text or a document type after parsing. Comments, processing instructions, scripts, event handlers, `foreignObject`, `a`, animations and other namespaces never come through.
+- Tests: `tests/svg_sanitize_test.php` (hostile samples), `tests/image_editor_svg_test.php` (the model's SVG section).

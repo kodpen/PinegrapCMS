@@ -255,7 +255,7 @@ else
 
         // A longer name would be cut by the column; a taken one keeps the
         // visual designer from saving either style.
-        $name_error = pg_region_form_name_refusal($name, pg_style_name_taken($name, $id));
+        $name_error = pg_custom_style_form_name_refusal($name, $id);
 
         if ($name_error !== '') {
             $liveform = new liveform('edit_custom_style');
@@ -264,12 +264,7 @@ else
             go(PATH . SOFTWARE_DIRECTORY . '/edit_custom_style.php?id=' . $id . ((($_POST['send_to'] ?? '') != '') ? '&send_to=' . urlencode((string) $_POST['send_to']) : ''));
         }
 
-        // update style
-        $result = db_q(
-            "UPDATE style SET " . implode(' = ?, ', array_keys($values)) . " = ?, style_timestamp = UNIX_TIMESTAMP(), style_user = ? WHERE style_id = ?",
-            array_merge(array_values($values), array((string) $user['id'], (string) ($_POST['id'] ?? '')))
-        ) or output_error('Query failed');
-        log_activity(lang(array('string'=>'style ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
+        pg_custom_style_form_update($id, $values, (int) $user['id']) or output_error('Query failed');
         $notice = lang('The style was edited successfully.');
     }
 

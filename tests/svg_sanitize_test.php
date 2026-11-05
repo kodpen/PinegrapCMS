@@ -99,8 +99,9 @@ function test_svg_sanitize_references()
 function test_svg_sanitize_style_sheets()
 {
 	$ok = pg_svg_sanitize(svg_sanitize_doc('<style>/* note */ .a { fill: #f00; } g > .b, #c rect { fill: url(#g1); stroke-width: 2 }</style><rect class="a" width="1" height="1"/>', ' id="art"'));
-	pg_assert_contains('<style>#art .a{fill: #f00}' . "\n" . '#art g &gt; .b, #art #c rect{fill: url(#g1); stroke-width: 2}</style>', $ok, 'a plain sheet stays, each selector under the root');
-	pg_assert_contains('class="a"', $ok, 'classes stay');
+	pg_assert_true((bool) preg_match('#class="(pgsvg-[0-9a-f]{10}-)a"#', $ok, $p), 'classes stay, with the file\'s prefix');
+	$p = isset($p[1]) ? $p[1] : '?';
+	pg_assert_contains('<style>.' . $p . 'a{fill: #f00}' . "\n" . '#art g &gt; .' . $p . 'b, #art #' . $p . 'c rect{fill: url(#' . $p . 'g1); stroke-width: 2}</style>', $ok, 'a plain sheet stays, a selector with a bare name under the root');
 	pg_assert_true((bool) preg_match('#<svg [^>]*id="art"#', $ok), 'the root keeps its id');
 
 	foreach (array(
@@ -117,8 +118,8 @@ function test_svg_sanitize_style_sheets()
 	}
 }
 
-// A sheet cannot reach past the drawing: rules are scoped to the root's id
-// (a generated one when it has none), selectors other than names, classes,
+// A sheet cannot reach past the drawing: rules name only prefixed ids and
+// classes or are scoped to the root's id (a generated one when it has none), selectors other than names, classes,
 // ids and descendant or child combinators go, and so do at-rules, rules
 // on the root's own element name and declarations of unlisted properties.
 function test_svg_sanitize_sheet_scoped()
@@ -126,7 +127,8 @@ function test_svg_sanitize_sheet_scoped()
 	$out = pg_svg_sanitize(svg_sanitize_doc('<style>svg path{display:none} .pgie-top{background:#ff00ff !important} rect.box{fill:#2563eb}</style><rect class="box" width="1" height="1"/>'));
 
 	pg_assert_true((bool) preg_match('#<svg [^>]*id="(pgsvg-[0-9a-f]{10})"#', $out, $m), 'a root without an id gets one');
-	pg_assert_contains('<style>#' . (isset($m[1]) ? $m[1] : '?') . ' rect.box{fill: #2563eb}</style>', $out, 'only the drawing\'s own rule stays, under the root');
+	$id = isset($m[1]) ? $m[1] : '?';
+	pg_assert_contains('<style>rect.' . $id . '-box{fill: #2563eb}</style>', $out, 'only the drawing\'s own rule stays, its class prefixed');
 	pg_assert_false(strpos($out, 'pgie-top') !== false, 'a rule of no listed property goes');
 	pg_assert_false(strpos($out, 'display') !== false, 'a rule on the root\'s element name goes');
 
@@ -136,7 +138,7 @@ function test_svg_sanitize_sheet_scoped()
 
 	$once = pg_svg_sanitize(svg_sanitize_doc('<style>rect.box{fill:#2563eb} g > .t{fill:red}</style><rect class="box" width="1" height="1"/>'));
 	pg_assert_same($once, pg_svg_sanitize($once), 'a sanitized file comes through unchanged: rules are scoped once');
-	pg_assert_contains(' rect.box{fill: #2563eb}', $once, 'scoped');
+	pg_assert_true((bool) preg_match('/ g &gt; \.pgsvg-[0-9a-f]{10}-t\{fill: red\}/', $once), 'scoped');
 
 	$plain = pg_svg_sanitize(svg_sanitize_doc('<rect width="1" height="1"/>'));
 	pg_assert_false(strpos($plain, ' id=') !== false, 'no sheet, no generated id');
@@ -213,4 +215,36 @@ function test_svg_sanitize_foreign_namespaces()
 	pg_assert_contains('<radialGradient id="r" cx="0.5" cy="0.5" r="0.5" gradientUnits="objectBoundingBox">', $out, 'a radial gradient stays');
 	pg_assert_contains('<polygon points="0,0 5,5 0,5"/>', $out, 'a polygon stays');
 	pg_assert_contains('width="50" height="40"', $out, 'the root keeps its size');
+}
+
+// A <use> copy matches rules only inside its own tree, so a rule scoped
+// under the root misses symbol and definition content. Ids and the classes
+// a sheet names get the file's prefix everywhere (elements, href, url(#…),
+// rules); a selector whose every compound names one of them stays unscoped,
+// the rest keep the root's scope.
+function test_svg_sanitize_sheet_reaches_use_copies()
+{
+	$in = svg_sanitize_doc('<defs><style>.cls-1{fill:#e30613} .cls-2{fill:url(#g)} #star{stroke:#000;stroke-width:2} g .cls-1{opacity:.5} rect{stroke:blue} #art .cls-2{opacity:1} #art{fill:red}</style>'
+		. '<linearGradient id="g"><stop offset="0" stop-color="#fff"/></linearGradient>'
+		. '<symbol id="s" viewBox="0 0 10 10"><path class="cls-1 other" d="M0 0L10 10Z"/></symbol><rect id="star" class="cls-2" width="5" height="5"/></defs>'
+		. '<use href="#s" width="10" height="10"/><use xlink:href="#star"/><g class="pgm-0"><rect width="1" height="1" fill="url(#g)" style="stroke: url(#g)"/></g>', ' id="art"');
+	$out = pg_svg_sanitize($in);
+
+	pg_assert_true((bool) preg_match('#<path class="(pgsvg-[0-9a-f]{10}-)cls-1 other"#', $out, $m), 'a class the sheet names gets the prefix, another stays');
+	$p = isset($m[1]) ? $m[1] : '?';
+
+	pg_assert_contains('<style>.' . $p . 'cls-1{fill: #e30613}' . "\n" . '.' . $p . 'cls-2{fill: url(#' . $p . 'g)}' . "\n" . '#' . $p . 'star{stroke: #000; stroke-width: 2}' . "\n"
+		. '#art g .' . $p . 'cls-1{opacity: .5}' . "\n" . '#art rect{stroke: blue}' . "\n" . '.' . $p . 'cls-2{opacity: 1}' . "\n" . '#art #art{fill: red}</style>', $out, 'id and class rules unscoped, the rest under the root');
+	pg_assert_contains('<linearGradient id="' . $p . 'g">', $out, 'ids renamed');
+	pg_assert_contains('<symbol id="' . $p . 's" viewBox="0 0 10 10">', $out, 'a symbol renamed');
+	pg_assert_contains('<rect id="' . $p . 'star" class="' . $p . 'cls-2" width="5" height="5"/>', $out, 'id and class renamed');
+	pg_assert_contains('<use href="#' . $p . 's" width="10" height="10"/>', $out, 'href renamed');
+	pg_assert_contains('xlink:href="#' . $p . 'star"', $out, 'xlink:href renamed');
+	pg_assert_contains('<g class="pgm-0"><rect width="1" height="1" fill="url(#' . $p . 'g)" style="stroke: url(#' . $p . 'g)"/></g>', $out, 'url(#…) renamed, a class no rule names kept');
+	pg_assert_true((bool) preg_match('#<svg [^>]*id="art"#', $out), 'the root keeps its id');
+	pg_assert_same($out, pg_svg_sanitize($out), 'a sanitized file comes through unchanged');
+
+	$plain = pg_svg_sanitize(svg_sanitize_doc('<defs><linearGradient id="g"/></defs><rect class="a" fill="url(#g)" width="1" height="1"/>'));
+	pg_assert_contains('<linearGradient id="g"/>', $plain, 'no sheet, no renaming');
+	pg_assert_contains('class="a" fill="url(#g)"', $plain, 'no sheet, references kept');
 }

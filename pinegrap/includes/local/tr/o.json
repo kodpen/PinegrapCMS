@@ -552,6 +552,7 @@
     "Only a value that matches one of the options is used (upper and lower case alike).": "Yalnızca seçeneklerden biriyle eşleşen bir değer kullanılır (büyük ve küçük harf fark etmez).",
     "Only a verification hash is stored. If it is lost, issue a new one.": "Sistemde yalnız doğrulama özeti saklanır. Kaybederseniz yenisini üretin.",
     "Only add Comment if Submitted Form was updated": "Yalnızca Gönderi Formu güncellendiyse Yorum ekleyin",
+    "Only addresses on the same host as the website URL are read, at most {var:1} items.": "Yalnızca web sitesi URL'si ile aynı sunucudaki adresler okunur, en çok {var:1} öğe.",
     "Only administrators and designers can share a dashboard layout.": "Pano düzenini yalnız yöneticiler ve tasarımcılar paylaşabilir.",
     "Only administrators and designers can share a prototype.": "Prototipi yalnızca yöneticiler ve tasarımcılar paylaşabilir.",
     "Only administrators and designers see this.": "Yalnız yönetici ve tasarımcılar görür.",
