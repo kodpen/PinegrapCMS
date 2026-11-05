@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-34
-description: Decisions list, product part 34 (2026-11-05 night on): a review hides while its order is cancelled or its item refunded; folder access taken back on cancel; no private-access product in a bundle
+description: Decisions list, product part 34 (2026-11-05 night on): a review hides while its order is cancelled or its item refunded; folder access taken back on cancel; no private access in a bundle
 ---
 
 ## Where are the rules and the earlier parts?

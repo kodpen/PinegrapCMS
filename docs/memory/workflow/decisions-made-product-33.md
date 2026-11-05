@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-33
-description: Decisions list, product part 33 (2026-11-05 night on): the flows-next questions (AI box, wait until a date, web address start, e-mail to the record's person, channel mention), the approval answer
+description: Decisions list, product part 33 (2026-11-05 night on): the flows-next questions (AI box, wait until a date, web address start, e-mail to the record's person, channel mention) and #7015
 ---
 
 ## Where are the rules and the earlier parts?
