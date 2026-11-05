@@ -4181,6 +4181,23 @@ function get_standard_fields_for_view()
     return $standard_fields;
 }
 
+// The ORDER BY of a classic form list view's page, ending on the record id.
+// The page is read with LIMIT start, count; by the configured sort fields
+// alone, records sharing a value (one category, one submit second) have no
+// fixed order, so the server may return them in another order for the next
+// page and a record is shown twice while another is never shown. Without a
+// sort field the records come in the order they were submitted. Pure.
+function pg_form_list_view_order_sql($order_by)
+{
+    $order_by = trim((string) $order_by);
+
+    if ($order_by === '') {
+        return 'ORDER BY forms.id ASC';
+    }
+
+    return $order_by . ', forms.id ASC';
+}
+
 // Whether a field picked on the form list view screen (an order-by or a
 // filter field) is one the view can store: '' (none), a value of
 // get_standard_fields_for_view(), 'random' where $allow_random (only the first
