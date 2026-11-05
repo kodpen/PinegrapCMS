@@ -9,7 +9,9 @@
  * worker) into the selection; the Keep and Remove brushes mark what the
  * cut got wrong and it runs again, and the subject's soft edge follows the
  * picture at full size (a guided filter, M.matteMask()) in the masks and
- * cut-outs of the layers made from it.
+ * cut-outs of the layers made from it. Remove background erases what lies
+ * outside the subject; the erased part stays see-through or takes a
+ * colour, a blur of the picture or a picture from Files.
  *
  * A part of window.PgImageEditor, bundled after pg_image_editor_redact.js
  * (pg_js_bundles()); it hangs its code on the editor through
@@ -650,6 +652,20 @@
 
     var serial = 0;
 
+    // Whether an erased area is see-through: no colour, blur or picture
+    // fills it.
+    function eraseClear(l) {
+        return (l.type === 'erase') && !l.fill && !l.blur && !l.backdrop;
+    }
+
+    // The box a Files picture covers (the picture's frame, as CSS cover
+    // does) for a picture iw x ih.
+    function backdropBox(box, iw, ih) {
+        var c = Math.max(box.w / (iw || 1), box.h / (ih || 1));
+
+        return { x: box.x + (box.w - iw * c) / 2, y: box.y + (box.h - ih * c) / 2, w: iw * c, h: ih * c };
+    }
+
     function isMaskLayer(l) {
         return (l.type === 'erase') || (l.type === 'adjust');
     }
@@ -679,7 +695,28 @@
         defs.appendChild(mask);
         g.appendChild(defs);
 
-        if ((l.type === 'erase') && l.fill) {
+        if ((l.type === 'erase') && l.backdrop && l.backdrop.src) {
+            // A picture from Files over the picture's frame, cut to the area.
+            var frame = M.pictureBox(this.doc);
+
+            this.picture(l.backdrop.src).then(null, function () {});
+            content = svg('image', {
+                href: l.backdrop.src, x: frame.x, y: frame.y, width: frame.w, height: frame.h, preserveAspectRatio: 'xMidYMid slice'
+            });
+        } else if ((l.type === 'erase') && l.blur && this.img && this.doc.source) {
+            // The picture under it, with the document's colour step, blurred.
+            var blur = svg('filter', { id: id + '-b', filterUnits: 'userSpaceOnUse', x: b.x - 1, y: b.y - 1, width: b.w + 2, height: b.h + 2 });
+            var pm = M.placedMatrix(this.doc), under = svg('g', { filter: 'url(#' + this.fxId + ')' });
+
+            blur.appendChild(svg('feGaussianBlur', { stdDeviation: l.blur, edgeMode: 'duplicate' }));
+            defs.appendChild(blur);
+            under.appendChild(svg('image', {
+                href: this.img.src, x: 0, y: 0, width: this.doc.source.width, height: this.doc.source.height, preserveAspectRatio: 'none',
+                transform: 'matrix(' + pm.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(' ') + ')'
+            }));
+            content = svg('g', { filter: 'url(#' + id + '-b)' });
+            content.appendChild(under);
+        } else if ((l.type === 'erase') && l.fill) {
             content = svg('rect', Object.assign({ fill: l.fill }, whole));
         } else if (l.type === 'erase') {
             // See-through as the canvas shows it: grey and white squares.
@@ -723,36 +760,81 @@
         return M.fileFormat((this.file && this.file.name) || this.opts.fileName || '') === 'jpeg';
     };
 
-    // An erased area's panel: see-through or a fill colour.
-    Editor.prototype.erasePanel = function (body, layers) {
-        var self = this, l = layers[0], filled = !!l.fill;
-        var set = function (fill) {
-            self.change(function (doc) {
-                var it = find(doc, l.id);
+    // What fills an erased area: see-through, a colour, a blur of the
+    // picture or a picture from Files; one of fill, blur, backdrop.
+    Editor.prototype.eraseSet = function (id, fields, key) {
+        this.change(function (doc) {
+            var it = find(doc, id);
 
-                if (fill) {
-                    it.fill = fill;
-                } else {
-                    delete it.fill;
-                }
-            }, 'erase-fill', true);
+            delete it.fill;
+            delete it.blur;
+            delete it.backdrop;
+            Object.assign(it, fields);
+        }, key || null, !!key);
+
+        if (!key) {
+            this.history.key = null;
+        }
+    };
+
+    // An erased area's panel: see-through, a colour, a blur or a picture.
+    Editor.prototype.erasePanel = function (body, layers) {
+        var self = this, l = layers[0], kind = l.backdrop ? 'picture' : (l.blur ? 'blur' : (l.fill ? 'colour' : 'none'));
+        var pick = function () {
+            self.openImportFiles(function (f) {
+                self.picture(f.url).then(function () {
+                    self.eraseSet(l.id, { backdrop: { src: f.url, fileId: f.id, name: f.name } });
+                }, function () {
+                    self.showMessage(t('stickerFilesError'), true);
+                });
+            });
         };
 
-        body.appendChild(check(t('eraseFill'), filled, function (on) {
-            set(on ? '#ffffff' : null);
-            self.history.key = null;
-            self.render();
-        }));
+        var kinds = [['none', t('eraseNone')], ['colour', t('eraseColourKind')], ['blur', t('eraseBlur')]];
 
-        if (filled) {
+        // A picture from Files needs the editor's API; one kept stays shown.
+        if (this.importApi() || (kind === 'picture')) {
+            kinds.push(['picture', t('erasePicture')]);
+        }
+
+        body.appendChild(section(t('eraseWith'), this.drawSegment(kinds,
+            kind, function (v) {
+                if (v === 'colour') {
+                    self.eraseSet(l.id, { fill: '#ffffff' });
+                } else if (v === 'blur') {
+                    self.eraseSet(l.id, { blur: Math.max(1, Math.round(Math.max(M.pictureBox(self.doc).w, M.pictureBox(self.doc).h) / 100)) });
+                } else if (v === 'picture') {
+                    if (self.importApi()) {
+                        pick();
+                    }
+                } else {
+                    self.eraseSet(l.id, {});
+                }
+            })));
+
+        if (kind === 'colour') {
             var colour = el('input', { type: 'color', class: 'pgie-color', value: l.fill, 'aria-label': t('eraseColour') });
 
-            colour.addEventListener('input', function () { set(colour.value); });
+            colour.addEventListener('input', function () { self.eraseSet(l.id, { fill: colour.value }, 'erase-fill'); });
             colour.addEventListener('change', function () { self.history.key = null; });
             body.appendChild(section(t('eraseColour'), colour));
+        } else if (kind === 'blur') {
+            body.appendChild(this.drawSlider(t('eraseBlurAmount'), 1, 100, Math.round(l.blur), function (v) { return v + ' px'; }, function (v, live) {
+                self.eraseSet(l.id, { blur: v }, 'erase-blur');
+
+                if (!live) {
+                    self.history.key = null;
+                }
+            }));
+        } else if (kind === 'picture') {
+            body.appendChild(el('p', { class: 'pgie-note', text: l.backdrop.name || '' }));
+            if (this.importApi()) {
+                body.appendChild(el('div', { class: 'pgie-arow' }, [button('pgie-btn', t('erasePick'), null, pick, true)]));
+            }
         } else if (this.areaJpeg()) {
             body.appendChild(el('p', { class: 'pgie-note', text: t('eraseJpegNote') }));
         }
+
     };
 
     // A press takes an area layer only inside its outline (M.areaHit()).
@@ -792,8 +874,8 @@
     // A layer of the selection's outline (or of rings), feathered as the
     // selection is, pushed onto doc; its id, or null for no area. extra
     // holds the layer's own fields.
-    function pushArea(doc, type, extra, rings) {
-        var geo = M.areaLayer(rings), feather = doc.selection ? (doc.selection.feather || 0) : 0, matte = M.selectionMatte(doc.selection);
+    function pushArea(doc, type, extra, rings, soft) {
+        var geo = M.areaLayer(rings), feather = doc.selection ? (doc.selection.feather || 0) : 0, matte = (soft === undefined) ? M.selectionMatte(doc.selection) : soft;
 
         if (!geo) {
             return null;
@@ -942,7 +1024,7 @@
 
             g.globalCompositeOperation = 'destination-out';
             this.doc.layers.forEach(function (l) {
-                if (!l.hidden && ((l.type === 'redact') || ((l.type === 'erase') && !l.fill))) {
+                if (!l.hidden && ((l.type === 'redact') || eraseClear(l))) {
                     g.save();
                     at();
                     X.areaShapes.paint(g, l, k);
@@ -1046,6 +1128,79 @@
         }
     };
 
+    // A Files picture as the save's fill of an erased area: drawn over the
+    // picture's frame as the stage shows it, the region r of the output
+    // (place(g) sets it up), a JPEG; null when it is not loaded or cannot
+    // be read back (the area is then see-through).
+    Editor.prototype.areaBackdrop = function (l, r, place) {
+        var img = this.pictures[l.backdrop.src], canvas = document.createElement('canvas'), g, at;
+
+        if (!img || !img.naturalWidth) {
+            return null;
+        }
+
+        at = backdropBox(M.pictureBox(this.doc), img.naturalWidth, img.naturalHeight);
+        canvas.width = r.w;
+        canvas.height = r.h;
+        g = canvas.getContext('2d');
+        g.fillStyle = '#ffffff';
+        g.fillRect(0, 0, r.w, r.h);
+        place(g);
+        g.drawImage(img, at.x, at.y, at.w, at.h);
+
+        try {
+            return canvas.toDataURL('image/jpeg', 0.92);
+        } catch (err) {
+            return null;
+        }
+    };
+
+    // Remove background: the subject (cut first when the selection holds
+    // none) is kept, the rest of the picture's frame erased, in one undo
+    // step; the erased area's panel then offers its fills.
+    Editor.prototype.areaRemoveBackground = function () {
+        var self = this, px;
+
+        if (this.subjectOp()) {
+            this.areaEraseRest(this.areaRings(), M.selectionMatte(this.doc.selection));
+            return;
+        }
+
+        px = this.areaPixelsAt(SUBJECT_SIDE);
+        this.subjectNote = null;
+
+        if (!px) {
+            this.subjectNote = 'subjectRead';
+            this.render();
+            return;
+        }
+
+        this.subjectCut(px, this.subjectBox(px), null, function (out, rings) {
+            if (!rings.length) {
+                self.subjectNote = 'subjectNone';
+                self.render();
+                return;
+            }
+
+            self.areaEraseRest(rings, SUBJECT_EDGE);
+        });
+    };
+
+    Editor.prototype.areaEraseRest = function (rings, matte) {
+        var rest = rings.length ? M.areaRest(rings, M.pictureBox(this.doc)) : [], id = null;
+
+        if (M.ringsArea(rest) < 1) {
+            return;
+        }
+
+        this.change(function (doc) {
+            delete doc.selection;
+            id = pushArea(doc, 'erase', null, rest, matte);
+        });
+        this.history.key = null;
+        this.areaShow(id);
+    };
+
     // One mask per visible Erase or Adjust inside layer, drawn at the output
     // size over its own box, in the layers' order.
     Editor.prototype.areaMasks = function () {
@@ -1081,7 +1236,13 @@
             entry = { op: (l.type === 'erase') ? 'erase' : 'color', x: r.x, y: r.y, mask: canvas.toDataURL('image/png') };
 
             if (l.type === 'erase') {
-                if (l.fill) {
+                var drawn = l.backdrop ? self.areaBackdrop(l, r, place) : null;
+
+                if (drawn) {
+                    entry.picture = drawn;
+                } else if (l.blur) {
+                    entry.blur = Math.min(250, Math.max(0.5, Math.round(l.blur * sx * 100) / 100));
+                } else if (l.fill) {
                     entry.fill = l.fill;
                 }
             } else {
@@ -1097,7 +1258,7 @@
 
     // Whether a see-through erase is visible.
     Editor.prototype.areaSeeThrough = function () {
-        return this.doc.layers.some(function (l) { return (l.type === 'erase') && !l.hidden && !l.fill; });
+        return this.doc.layers.some(function (l) { return eraseClear(l) && !l.hidden; });
     };
 
     // The masks go with every save that draws the picture; a JPEG with a
@@ -1134,7 +1295,10 @@
 
         subject.disabled = !!this.subjectBusy;
         subject.setAttribute('aria-busy', this.subjectBusy ? 'true' : 'false');
-        body.appendChild(el('div', { class: 'pgie-arow' }, [subject]));
+        var removeBg = button('pgie-btn', t('removeBg'), null, function () { self.areaRemoveBackground(); }, true);
+
+        removeBg.disabled = !!this.subjectBusy;
+        body.appendChild(el('div', { class: 'pgie-arow' }, [subject, removeBg]));
         body.appendChild(el('p', { class: 'pgie-note' + (this.subjectNote ? ' pgie-warn' : ''), text: t(this.subjectNote || 'subjectNote') }));
 
         var subjectOp = this.subjectOp();
