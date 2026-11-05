@@ -10,6 +10,7 @@ description: Repeat N times (For each count mode, FL2) and value boxes inside a 
 
 ## What is checked?
 - Publish: `ws_flow_loop_count_problem()` in `ws_flow_loop_problems()`: empty, out of range or not a number is `bad_config`; a value with a "When empty, write" text too (read as it is, like a list).
+- Size warning (`loop_size`): a typed count is that many items (`ws_flow_loop_items_most()` in `ws_flow_loop_box_runs()`), a list or a count from a value the cap (#PR). Before, Repeat 5 times with 9 boxes warned "50 items × 9 boxes".
 - Run: `ws_flow_loop_start_run()` fills the value and fails the box with the reason when it is not 1…50 (on failed when an arrow leaves on it). Box try: "Repeats N times." or the reason.
 
 ## May a value box read a box inside a loop?

@@ -274,6 +274,30 @@ function test_workspace_flow_loops_size_warning()
 	$graph['nodes'][] = ws_flow_loops_test_node('value_1', 'value', array('text' => '{{node.for_each_1.name}}'));
 	$graph = ws_flow_graph_normalize($graph);
 	pg_assert_same(154, ws_flow_loop_box_runs(array_column($graph['nodes'], null, 'id'), ws_flow_loops($graph))['total']);
+
+	// Repeat N times with a typed count runs that many times, not 50: five
+	// rounds of 9 boxes warned "50 items × 9 boxes" on dev. A count read
+	// from a value may still be 50.
+	$repeat = function ($count) use ($body) {
+		$graph = $body(9);
+
+		foreach ($graph['nodes'] as $index => $node) {
+			if ($node['id'] === 'for_each_1') {
+				$graph['nodes'][$index]['config'] = array('mode' => 'count', 'count' => $count);
+			}
+		}
+
+		return ws_flow_graph_normalize($graph);
+	};
+	pg_assert_same(5, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '5')));
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '{{node.webhook_1.body}}')), 'a value: the cap');
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '80')), 'never past the cap');
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'list', 'count' => '5')), 'a list: the cap');
+	pg_assert_same(array(), $warnings($repeat('5')), 'five rounds of 9 boxes');
+	$found = $warnings($repeat('40'));
+	pg_assert_same(1, count($found), 'forty rounds of 9 boxes');
+	pg_assert_contains('(40 items × 9 boxes in it)', $found[0]['text'], 'its own count');
+	pg_assert_same(1, count($warnings($repeat('{{node.webhook_1.body}}'))), 'a count from a value');
 }
 
 // A box outside a loop reads what its items gave through the End box, never
