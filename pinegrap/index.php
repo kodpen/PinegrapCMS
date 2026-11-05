@@ -22,6 +22,9 @@ define('NON_ROOT_INDEX', TRUE);
 
 include('init.php');
 
+// Where a sign-in lands is one address; an array is no destination.
+pg_request_single_values(array('send_to', 'return_to'));
+
 $liveform = new liveform('login');
 
 // Database behind the code (files just landed, upgrade not run yet): the
@@ -88,7 +91,12 @@ if (!$pg_login_posted || !isset($_POST['email'])) {
     
     $liveform->remove();
     $liveform->add_fields_to_session();
-    
+
+    // Each credential field holds one value. One posted as an array
+    // (email[]=) counts as not given: it reached escape() in validate_login()
+    // and stopped the request with a TypeError on PHP 8.
+    pg_liveform_single_values($liveform, array('email', 'password', 'remember_me'));
+
     $username = $liveform->get_field_value('email');
     // Raw password now; validate_login() checks it against the stored hash.
     $password = $liveform->get_field_value('password');

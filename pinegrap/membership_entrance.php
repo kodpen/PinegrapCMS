@@ -20,6 +20,9 @@ include('init.php');
 
 $liveform = new liveform('membership_entrance');
 
+// Where a sign-in lands is one address; an array is no destination.
+pg_request_single_values(array('send_to', 'return_to'));
+
 // If the user is already logged in and has a user role, then determine if we should send user to login home.
 // We don't want to send managers and above to the login home, because we want to allow them to
 // view this screen in case they want to edit it.
@@ -59,7 +62,12 @@ if (!$_POST) {
     
     $liveform->remove_form('membership_entrance');
     $liveform->add_fields_to_session();
-    
+
+    // Each credential field holds one value. One posted as an array (u[]=)
+    // counts as not given: it reached escape() in validate_login() and
+    // stopped the request with a TypeError on PHP 8.
+    pg_liveform_single_values($liveform, array('u', 'p', 'login_remember_me'));
+
     $query_string = '';
     
     // if there is a send to, then add send to to query string

@@ -90,6 +90,11 @@ if (!$_POST) {
         $login_form->remove();
         $login_form->add_fields_to_session();
 
+        // Each credential field holds one value. One posted as an array
+        // (email[]=) counts as not given: it reached escape() in validate_login()
+        // and stopped the request with a TypeError on PHP 8.
+        pg_liveform_single_values($login_form, array('email', 'password', 'login_remember_me'));
+
         check_banned_ip_addresses('login');
 
         $username = $login_form->get_field_value('email');
