@@ -88,7 +88,7 @@ function test_custom_style_form_screens_use_shared_form()
 
 function test_custom_style_screens_refuse_a_blank_name()
 {
-	$queries = array('add_custom_style.php' => 'INSERT INTO style', 'edit_custom_style.php' => 'UPDATE style SET');
+	$queries = array('add_custom_style.php' => 'INSERT INTO style', 'edit_custom_style.php' => 'pg_custom_style_form_update(');
 
 	foreach ($queries as $file => $query) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
@@ -151,7 +151,7 @@ function test_style_layout_type_label()
 	pg_assert_same(lang('Custom'), pg_style_layout_type_label('custom'), 'custom');
 	pg_assert_same('', pg_style_layout_type_label(''), 'no override');
 
-	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_styles.php');
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/style_list_edit.php');
 	pg_assert_contains("h(pg_style_layout_type_label(\$style['layout_type']))", $list, 'the list column is translated');
 	pg_assert_false(strpos($list, "ucwords(\$style['layout_type'])") !== false, 'no raw enum in the list');
 }
@@ -196,9 +196,9 @@ function test_custom_style_screens_refuse_a_taken_or_long_name()
 	pg_assert_contains('can be at most', pg_region_form_name_refusal(str_repeat('ş', 101), false), 'over 100 characters');
 	pg_assert_same('', pg_region_form_name_refusal(str_repeat('ş', 100), false), '100 characters fit');
 
-	foreach (array('add_custom_style.php' => 'pg_style_name_taken($name)', 'edit_custom_style.php' => 'pg_style_name_taken($name, $id)') as $file => $call) {
+	foreach (array('add_custom_style.php' => 'pg_region_form_name_refusal($name, pg_style_name_taken($name))', 'edit_custom_style.php' => 'pg_custom_style_form_name_refusal($name, $id)') as $file => $call) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-		pg_assert_contains('pg_region_form_name_refusal($name, ' . $call . ')', $source, $file . ' refuses a taken or long name');
+		pg_assert_contains($call, $source, $file . ' refuses a taken or long name');
 		pg_assert_contains("mark_error('name', \$name_error)", $source, $file . ' shows it under the name');
 		pg_assert_contains(', $name_error)', $source, $file . ' draws the error');
 	}

@@ -379,3 +379,46 @@ function pg_custom_style_form_values($post, $social_networking)
 
     return $values;
 }
+
+/**
+ * Why a style's name cannot be saved, '' when it can: required, at most
+ * pg_name_max_length() characters (the column would cut a longer one) and
+ * held by no other style (the visual designer refuses to save a design
+ * whose name another style holds). Shared by the edit screen and the
+ * style list's quick edit.
+ *
+ * @param string        $name    The trimmed name
+ * @param int|null      $id      The style being edited, null on create
+ * @param callable|null $lookup  pg_style_name_taken()'s lookup
+ * @return string
+ */
+function pg_custom_style_form_name_refusal($name, $id = null, $lookup = null)
+{
+    return pg_region_form_name_refusal($name, pg_style_name_taken($name, $id, $lookup));
+}
+
+/**
+ * Writes a custom style's values (pg_custom_style_form_values()), stamps
+ * the change and logs it. Shared by the edit screen and the style list's
+ * quick edit.
+ *
+ * @param int   $id
+ * @param array $values  pg_custom_style_form_values()
+ * @param int   $user_id
+ * @return bool whether the UPDATE ran
+ */
+function pg_custom_style_form_update($id, array $values, $user_id)
+{
+    $result = db_q(
+        "UPDATE style SET " . implode(' = ?, ', array_keys($values)) . " = ?, style_timestamp = UNIX_TIMESTAMP(), style_user = ? WHERE style_id = ?",
+        array_merge(array_values($values), array((string) (int) $user_id, (string) (int) $id))
+    );
+
+    if (!$result) {
+        return false;
+    }
+
+    log_activity(lang(array('string' => 'style ({var:1}) was modified', 'vars' => $values['style_name'])), $_SESSION['sessionusername'] ?? '');
+
+    return true;
+}
