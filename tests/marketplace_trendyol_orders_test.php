@@ -435,8 +435,10 @@ function test_marketplace_trendyol_orders_pull_reads_a_short_page_to_the_end()
 {
 	$calls = array();
 	$before = time();
+	// A cursor an hour ago stays inside the two-week window whenever the test runs.
+	$cursor = $before - 3600;
 
-	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), 1792690000,
+	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), $cursor,
 		trendyol_orders_test_fixed_transport(200, trendyol_orders_test_fixture('v2-orders-page0.json'), $calls));
 
 	$after = time();
@@ -461,7 +463,7 @@ function test_marketplace_trendyol_orders_pull_reads_a_short_page_to_the_end()
 	pg_assert_same('0', $query['page']);
 	pg_assert_same('200', $query['size']);
 	pg_assert_false(isset($query['status']), 'no status filter');
-	pg_assert_same((string) ((1792690000 - 300) * 1000), $query['startDate'], 'five minutes before the cursor, in milliseconds');
+	pg_assert_same((string) (($cursor - 300) * 1000), $query['startDate'], 'five minutes before the cursor, in milliseconds');
 	pg_assert_true((int) $query['endDate'] >= $before * 1000 && (int) $query['endDate'] <= $after * 1000, 'the window ends now, not later');
 	pg_assert_same(0, ((int) $query['endDate']) % 1000);
 }
