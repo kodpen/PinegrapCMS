@@ -5,8 +5,8 @@
  * The All Gift Cards list (view_gift_cards.php) and its quick edit: the
  * expiration date and the notes are fields, checked by the gift card
  * screen's (edit_gift_card.php) own check and written by its own save
- * (includes/forms/gift_card_form.php). The balance, store credit and notes
- * written on more lines change only on the screen.
+ * (includes/forms/gift_card_form.php); the notes keep their lines. The
+ * balance and store credit change only on the screen.
  *
  * Loaded where it is needed (require_once), not by functions.php; it needs
  * includes/forms/gift_card_form.php.
@@ -35,29 +35,14 @@ function pg_gift_card_edit_columns()
 {
     return array(
         'expiration_date' => array('type' => 'text', 'label' => lang('Expiration Date'), 'max' => 20),
-        'notes' => array('type' => 'text', 'label' => lang('Notes')),
+        'notes' => array('type' => 'textarea', 'label' => lang('Notes')),
     );
-}
-
-/**
- * Whether a gift card's notes can change on the list. The list's box holds
- * one line and reads a line break as a space, so notes written on more lines
- * (on the gift card's screen, or the line a cancelled order adds) change only
- * on the gift card's screen, where the lines are kept.
- *
- * @param string $notes
- * @return bool
- */
-function pg_gift_card_notes_fit_list($notes)
-{
-    return strpbrk((string) $notes, "\r\n") === false;
 }
 
 /**
  * Whether a gift card's cell changes on the list. Store credit (a card bound
  * to a customer, credit_user_id > 0) changes only on the gift card's screen,
- * which records a balance change in the audit trail; notes on more lines
- * only there too. Pure.
+ * which records a balance change in the audit trail. Pure.
  *
  * @param array  $gift_card a row of pg_gift_card_list_sql()
  * @param string $field
@@ -65,11 +50,7 @@ function pg_gift_card_notes_fit_list($notes)
  */
 function pg_gift_card_quick_cell_editable($gift_card, $field)
 {
-    if (!array_key_exists($field, pg_gift_card_edit_columns()) || ((int) ($gift_card['credit_user_id'] ?? 0) > 0)) {
-        return false;
-    }
-
-    return ($field !== 'notes') || pg_gift_card_notes_fit_list($gift_card['notes'] ?? '');
+    return array_key_exists($field, pg_gift_card_edit_columns()) && ((int) ($gift_card['credit_user_id'] ?? 0) <= 0);
 }
 
 /**
@@ -319,7 +300,7 @@ function pg_gift_card_quick_update($id, $field, $value, $user_id, array $quick_e
     }
 
     if (!pg_gift_card_quick_cell_editable($gift_card, $field)) {
-        return $refuse(lang('These notes take more than one line. Change them in the gift card.'), 'locked');
+        return $refuse(lang('This column cannot be changed here.'));
     }
 
     $form = new liveform('gift_card_quick_edit');

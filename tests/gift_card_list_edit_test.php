@@ -57,7 +57,7 @@ function test_gift_card_quick_edit_fields_are_the_date_and_the_notes()
 	pg_assert_same('', pg_list_edit_parse($columns['expiration_date'], ' ')['value'], 'a blank date for no expiration');
 }
 
-function test_gift_card_quick_cells_editable_but_store_credit_and_lines()
+function test_gift_card_quick_cells_editable_but_store_credit()
 {
 	$row = pg_test_gift_card_quick_row();
 
@@ -69,8 +69,7 @@ function test_gift_card_quick_cells_editable_but_store_credit_and_lines()
 	}
 
 	pg_assert_false(pg_gift_card_quick_cell_editable($row, 'code'), 'the code is not a field');
-	pg_assert_false(pg_gift_card_quick_cell_editable(pg_test_gift_card_quick_row(array('notes' => "One\r\nTwo")), 'notes'), 'notes on more lines stay on the screen');
-	pg_assert_true(pg_gift_card_quick_cell_editable(pg_test_gift_card_quick_row(array('notes' => "One\nTwo")), 'expiration_date'), 'but the date of such a card changes');
+	pg_assert_true(pg_gift_card_quick_cell_editable(pg_test_gift_card_quick_row(array('notes' => "One\r\nTwo")), 'notes'), 'notes on more lines change on the list too');
 }
 
 function test_gift_card_quick_form_values_are_the_screen_form_with_one_change()
