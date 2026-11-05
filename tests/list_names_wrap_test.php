@@ -58,10 +58,20 @@ function test_list_names_wrap_text_cells()
 	// Information text is rich text that can run to paragraphs: it keeps its cut preview.
 	pg_assert_contains('<span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;" title="\' . h(pg_liveform_message_text($text)) . \'">\' . $text . \'</span>', $fields);
 
-	$shipping = list_names_wrap_source('view_shipping_methods.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_method_list_edit.php');
+	foreach (array('BASE_CURRENCY_SYMBOL' => '$', 'DATE_FORMAT' => 'day_month') as $name => $value) {
+		if (!defined($name)) {
+			define($name, $value);
+		}
+	}
+	$shipping = list_names_wrap_source('includes/fn/shipping_method_list_edit.php');
+	$cells = pg_shipping_method_list_cells(array('id' => 1, 'name' => 'Courier', 'description' => 'Two days', 'timestamp' => 0));
 	// The name and message wrap with a floor width, so the table does not
 	// squeeze them to a word per line next to one-line columns.
-	pg_assert_contains('<span class="d-inline-block text-wrap text-break" style="min-width:12rem;max-width:20rem;">\' . h($row[\'name\']) . \'</span>\'', $shipping);
-	pg_assert_contains('<div class="text-wrap text-break" style="min-width:15rem;max-width:24rem;">\' . h($row[\'description\']) . \'</div>\'', $shipping);
+	pg_assert_contains('<span class="d-inline-block text-wrap text-break" style="min-width:12rem;max-width:20rem;">Courier</span>', $cells['name']['html']);
+	pg_assert_contains('<div class="text-wrap text-break" style="min-width:15rem;max-width:24rem;">Two days</div>', $cells['message']['html']);
 	pg_assert_false(strpos($shipping, 'text-nowrap text-truncate') !== false, 'shipping: no truncated cells');
 }
