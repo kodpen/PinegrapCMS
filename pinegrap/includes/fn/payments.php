@@ -1780,6 +1780,20 @@ function pg_payment_refund_lock_name($order_id, $database = null)
 }
 
 /**
+ * The refunded_amount value that adds a refund to an order's refunded total.
+ * It adds to the column rather than writing a total read earlier: a return or
+ * a store credit refund recorded while the payment service was answering adds
+ * its own amount, and a written-back total would drop it.
+ *
+ * @param int|float $cents amount refunded, in minor units
+ * @return string SQL expression for "SET refunded_amount = ..."
+ */
+function pg_order_refunded_add_expr($cents)
+{
+    return 'COALESCE(refunded_amount, 0) + ' . (int) round((float) $cents);
+}
+
+/**
  * The driver that voids an order's payment when the order is cancelled. A
  * gateway that is not driver-based leaves the refund to the operator.
  *

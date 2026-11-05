@@ -148,7 +148,7 @@ description: Generated from the module field of the memory files: each includes/
 - `page_home`: [[single-home-page]]
 - `page_list`: [[page-list-paging]]
 - `page_vitals`: [[page-vitals-beacon]], [[page-vitals-figures]]
-- `payments`: [[card-brand-switches]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
+- `payments`: [[card-brand-switches]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
 - `places`: [[place-packs]], [[tr-place-list]]
 - `preorder`: [[product-preorder]]
