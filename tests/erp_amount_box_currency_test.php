@@ -28,7 +28,7 @@ function test_erp_transfer_amount_box_names_the_till_currency()
 {
 	$src = erp_amount_box_currency_source('add_erp_transfer.php');
 
-	pg_assert_contains('SELECT id, name, currency FROM erp_cash_accounts', $src, 'the till list reads each till\'s currency');
+	pg_assert_contains('SELECT id, name, currency, balance FROM erp_cash_accounts', $src, 'the till list reads each till\'s currency');
 	pg_assert_contains("\$till_options[h(\$till['name'] . (\$fx_on ? (' (' . strtoupper(trim((string) \$till['currency'])) . ')') : ''))]", $src, 'each till option names its currency with FX on, escaped once');
 	pg_assert_contains("<span class=\"form-adorn-text\" aria-hidden=\"true\">' . (\$fx_on ? lang('in the till currency') : BASE_CURRENCY_SYMBOL) . '</span>", $src, 'the amount box names the till currency with FX on');
 }
