@@ -3,10 +3,10 @@
  *
  * ERP - the side drawer of the account, invoice and delivery note lists.
  *
- * A click on a row (anywhere but a link, a button or a checkbox) opens the
- * drawer printed by erp_drawer_markup() and fills it from get_erp_drawer.php.
- * The row's own buttons keep going to the document's full screen, so nothing
- * that worked before changes; the drawer is the quicker look.
+ * The Quick look button of a row (erp_drawer_button()) opens the drawer
+ * printed by erp_drawer_markup() and fills it from get_erp_drawer.php. A
+ * click on the row itself selects it (list table driver) and the record's
+ * name opens its full screen; the drawer is the quicker look.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -92,33 +92,16 @@
         });
     }
 
-    // Delegated, because DataTables redraws the rows on every page and sort.
-    // Listened for in the capture phase and stopped there: the register's
-    // row-click selection (multiselectCheckbox, syncEvent "click") would
-    // otherwise tick the row as well. The checkbox itself still ticks.
+    // Delegated, because the list table driver draws the rows again on a
+    // sort or a search. Enter and Space on the button are clicks too.
     document.addEventListener('click', function (event) {
-        var row = event.target.closest('tr[data-erp-drawer-id]');
+        var button = event.target.closest('button[data-erp-drawer-id]');
 
-        if (!row || event.target.closest('a, button, input, label, select, textarea')) {
+        if (!button) {
             return;
         }
 
-        // A selection is someone copying a number, not asking for the drawer.
-        if (window.getSelection && String(window.getSelection()).length > 0) {
-            return;
-        }
-
-        event.stopPropagation();
-        show(row.getAttribute('data-erp-drawer-id'), row);
-    }, true);
-
-    // Keyboard: Enter on a focused row does what a click does.
-    document.addEventListener('keydown', function (event) {
-        if ((event.key !== 'Enter') || !event.target.matches || !event.target.matches('tr[data-erp-drawer-id]')) {
-            return;
-        }
-        event.preventDefault();
-        show(event.target.getAttribute('data-erp-drawer-id'), event.target);
+        show(button.getAttribute('data-erp-drawer-id'), button.closest('tr'));
     });
 
     // The chat launcher sits above the offcanvas; the shared class moves it
