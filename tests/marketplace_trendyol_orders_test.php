@@ -434,20 +434,20 @@ function test_marketplace_trendyol_orders_stage_narrows_their_statuses()
 function test_marketplace_trendyol_orders_pull_reads_a_short_page_to_the_end()
 {
 	$calls = array();
-	$before = time();
+
+	// The clock is fixed an hour after the cursor: read from time(), the
+	// cursor would fall behind the two-week cap once the real date moved on.
+	$now = 1792690000 + 3600;
 
 	$result = mp_trendyol_pull_orders(trendyol_orders_test_account(), 1792690000,
-		trendyol_orders_test_fixed_transport(200, trendyol_orders_test_fixture('v2-orders-page0.json'), $calls));
-
-	$after = time();
+		trendyol_orders_test_fixed_transport(200, trendyol_orders_test_fixture('v2-orders-page0.json'), $calls), $now);
 
 	pg_assert_true($result['ok'], $result['error']);
 	pg_assert_same(1, count($calls), 'one short page');
 	pg_assert_same('GET', $calls[0]['method']);
 	pg_assert_same(array('3330111111'), trendyol_orders_test_ids($result['data']['packages']), 'the Awaiting package is left out');
 	pg_assert_true($result['data']['complete']);
-	pg_assert_true($result['data']['read_to'] >= $before && $result['data']['read_to'] <= $after,
-		'a feed read to its end moves the cursor to the end of the window');
+	pg_assert_same($now, $result['data']['read_to'], 'a feed read to its end moves the cursor to the end of the window');
 	pg_assert_false(!empty($result['data']['more']));
 
 	$url = $calls[0]['url'];
@@ -462,8 +462,31 @@ function test_marketplace_trendyol_orders_pull_reads_a_short_page_to_the_end()
 	pg_assert_same('200', $query['size']);
 	pg_assert_false(isset($query['status']), 'no status filter');
 	pg_assert_same((string) ((1792690000 - 300) * 1000), $query['startDate'], 'five minutes before the cursor, in milliseconds');
-	pg_assert_true((int) $query['endDate'] >= $before * 1000 && (int) $query['endDate'] <= $after * 1000, 'the window ends now, not later');
-	pg_assert_same(0, ((int) $query['endDate']) % 1000);
+	pg_assert_same((string) ($now * 1000), $query['endDate'], 'the window ends now, not later');
+}
+
+// The cursor's five-minute overlap holds up to the last second the two-week
+// cap still reaches; one second later the cap takes over.
+function test_marketplace_trendyol_orders_pull_window_cap_boundary()
+{
+	$since = 1792690000;
+
+	// The first moment at which the cap reaches the overlap's start.
+	$edge = $since - 300 + 1209600 - 3600;
+
+	$calls = array();
+
+	mp_trendyol_pull_orders(trendyol_orders_test_account(), $since,
+		trendyol_orders_test_fixed_transport(200, '{"content":[]}', $calls), $edge);
+
+	pg_assert_same((string) (($since - 300) * 1000), trendyol_orders_test_query($calls[0]['url'])['startDate'], 'at the edge');
+
+	$calls = array();
+
+	mp_trendyol_pull_orders(trendyol_orders_test_account(), $since,
+		trendyol_orders_test_fixed_transport(200, '{"content":[]}', $calls), $edge + 1);
+
+	pg_assert_same((string) (($since - 300 + 1) * 1000), trendyol_orders_test_query($calls[0]['url'])['startDate'], 'a second past it');
 }
 
 // Their window is two weeks at most: an older cursor starts at the oldest

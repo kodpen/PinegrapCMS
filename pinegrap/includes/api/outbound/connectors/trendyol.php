@@ -2066,9 +2066,11 @@ function mp_trendyol_unapproved_states($decoded, $wanted) {
 // Answers data['read_to'] the way mp_n11_pull_orders() does: the end of the
 // window when the feed ran out, the modification time of the last package read
 // when the page cap ran out first.
-function mp_trendyol_pull_orders($account, $since, $transport = null) {
+//
+// $now is the clock, in seconds; null reads time().
+function mp_trendyol_pull_orders($account, $since, $transport = null, $now = null) {
 
-	$now = time();
+	$now = ($now === null) ? time() : (int) $now;
 
 	$since = (int) $since;
 
