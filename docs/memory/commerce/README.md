@@ -100,6 +100,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
+- express-order-script-language.md: The express order page's fetch() calls to api.php carry pg_lang on a translated page, built by one helper.
 - express-order-tax-address.md: Which address the express order widget takes its tax on: prefill at render, eo_tax_totals on each address edit; no ship_tos write (#3326, PRs #3530, #3920)
 - express-order-tick-boxes.md: When the express order widget fills its billing tick boxes (opt_in, opt_in_sms, tax_exempt, update_contact), and the refused-submit fault it fixed.
 - express-order-widget-totals.md: Express order widget totals (designer pages) as submit_order() charges them: today's lines, order discount and its tax, gift cards, surcharge, shipping a kurus lower (pg_express_order_charged_totals)
