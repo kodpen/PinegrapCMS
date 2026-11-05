@@ -105,6 +105,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - express-order-widget-totals.md: Express order widget totals (designer pages) as submit_order() charges them: today's lines, order discount and its tax, gift cards, surcharge, shipping a kurus lower (pg_express_order_charged_totals)
 - featured-and-new-items-screen.md: How Edit Featured & New Items checks the featured order, what it shows after a save, and its layout
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
+- gateway-masked-keys.md: Legacy gateway keys kept plain but drawn masked on the Commerce card; a blank box keeps them; the Givex password kept only for its saved hostnames
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
 - gift-card-email-variables.md: The product screen's Email Gift Card variable buttons (^^code^^, ^^amount^^ …): where the list lives, how it stays in step with the sender (#4449), what ^^amount^^ prints, the starter dumps' texts
 - gift-card-line-quantity-limit.md: A gift card line holds at most 100 units; every door that writes a line quantity refuses more with one translated error (#6806, #6820)
