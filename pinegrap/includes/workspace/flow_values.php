@@ -140,7 +140,8 @@ function ws_flow_constants_problems($config, $name)
  * The rules a derived value box works its value out by, with the type of
  * the value each gives: compare (1 when it holds, else 0), join (the two
  * inputs with a space between), add, subtract, round, date format, add
- * days. Nothing that reads the database: the box is pure.
+ * days, calculate (one expression of the workspace calculator). Nothing
+ * that reads the database: the box is pure.
  *
  * @return array rule => type
  */
@@ -154,6 +155,7 @@ function ws_flow_derived_rules()
         'round'       => 'number',
         'date_format' => 'text',
         'add_days'    => 'text',
+        'calculate'   => 'number',
     );
 }
 
@@ -191,9 +193,9 @@ function ws_flow_derived_formats()
 /**
  * The derived value box's lists as the canvas reads them: each rule with its
  * label, type and whether it reads a second value; the comparisons; the
- * date shapes with an example.
+ * date shapes with an example; the calculator's functions with their help.
  *
- * @return array rules, operators, formats
+ * @return array rules, operators, formats, functions
  */
 function ws_flow_derived_lists()
 {
@@ -205,6 +207,7 @@ function ws_flow_derived_lists()
         'round'       => lang('Round a number'),
         'date_format' => lang('Write a date in another shape'),
         'add_days'    => lang('Add days to a date'),
+        'calculate'   => lang('Calculate'),
     );
     $rules = array();
 
@@ -218,7 +221,13 @@ function ws_flow_derived_lists()
         $formats[] = array('key' => $format, 'label' => gmdate($format, gmmktime(14, 30, 0, 12, 31, 2026)));
     }
 
-    return array('rules' => $rules, 'operators' => ws_flow_derived_operators(), 'formats' => $formats);
+    $functions = array();
+
+    foreach (ws_calc_function_help() as $name => $help) {
+        $functions[] = array('name' => ws_calc_local_name($name), 'help' => $help);
+    }
+
+    return array('rules' => $rules, 'operators' => ws_flow_derived_operators(), 'formats' => $formats, 'functions' => $functions);
 }
 
 /**
@@ -305,6 +314,10 @@ function ws_flow_derived_problems($config, $name)
 
     if (in_array($config['rule'], ws_flow_derived_two_inputs(), true) && ($config['b'] === '')) {
         $out[] = lang(array('string' => 'The box {var:1} needs its second value.', 'vars' => $name));
+    }
+
+    if (($config['rule'] === 'calculate') && ($config['a'] !== '') && !ws_flow_derived_formula_reads($config['a'])) {
+        $out[] = lang(array('string' => 'The box {var:1} has a formula the calculator cannot read.', 'vars' => $name));
     }
 
     if (($config['rule'] === 'add_days') && (strpos($config['b'], '{{') === false) && ($config['b'] !== '') && !preg_match('/^-?\d{1,4}$/', $config['b'])) {
@@ -493,17 +506,117 @@ function ws_flow_derived_date($text)
 }
 
 /**
- * The value of a derived value box from its inputs as filled: empty when an
- * input is not what the rule reads (a word to add, a date that is none).
- * Pure.
+ * A calculate box's formula with each {{node.*}} / {{trigger.*}} reference
+ * put as a calculator name ("@L<slot>", ws_calc_bind()'s form), so a value
+ * is bound by ws_calc_evaluate()'s resolver and never read as formula text.
+ * A formula holding @ by hand is given as "@" alone, which the calculator
+ * cannot read: a slot is never written by hand. Pure.
  *
- * @param array  $config ws_flow_derived_normalize()
- * @param string $a      the first input, filled
- * @param string $b      the second input, filled
+ * @param string $formula
+ * @return array the formula, and slot => the reference's match
+ */
+function ws_flow_derived_bind($formula)
+{
+    $formula = (string) $formula;
+
+    if (strpos($formula, '@') !== false) {
+        return array('@', array());
+    }
+
+    $slots = array();
+    $bound = (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use (&$slots) {
+        $slots[] = $match;
+
+        return ' @L' . (count($slots) - 1) . ' ';
+    }, $formula);
+
+    return array($bound, $slots);
+}
+
+/**
+ * Whether the calculator can read a calculate box's formula: tried with 1
+ * for every value, so only a formula that cannot be read, an unknown
+ * function or a name nobody gave (a cell, a word) fails it, not a division
+ * by a value that may be 0. Pure but for the site's language.
+ *
+ * @param string $formula
+ * @return bool
+ */
+function ws_flow_derived_formula_reads($formula)
+{
+    list($bound, $slots) = ws_flow_derived_bind($formula);
+    $result = ws_calc_evaluate($bound, function ($token) use ($slots) {
+        return (($token[0] === 'var') && isset($slots[$token[1]])) ? 1.0 : 'ref';
+    });
+
+    return !empty($result['ok']) || !in_array((string) $result['error'], array('syntax', 'name', 'ref'), true);
+}
+
+/**
+ * The calculate rule: $formula worked out by the workspace calculator, each
+ * value it reads taken from $values with ws_calc_number() (1.250,50, 18%,
+ * 450 ₺) and bound as a name. Empty when a value is empty or no number, or
+ * the calculator gives an error; else the result rounded to $places. Pure
+ * but for the site's language (decimal comma).
+ *
+ * @param string $formula with {{node.*}} / {{trigger.*}} references
+ * @param array  $values  node id => key => value, the trigger's under WS_STEP_TRIGGER
+ * @param int    $places  0-6
  * @return string
  */
-function ws_flow_derived_value($config, $a, $b)
+function ws_flow_derived_calculate($formula, $values, $places)
 {
+    list($bound, $slots) = ws_flow_derived_bind($formula);
+
+    if (trim($bound) === '') {
+        return '';
+    }
+
+    $numbers = array();
+
+    foreach ($slots as $slot => $match) {
+        $number = ws_calc_number(mb_substr(ws_step_value_of($match, (array) $values), 0, WS_FLOW_DERIVED_VALUE_LENGTH));
+
+        if ($number === null) {
+            return '';
+        }
+
+        $numbers[$slot] = $number;
+    }
+
+    $result = ws_calc_evaluate($bound, function ($token) use ($numbers) {
+        if (($token[0] === 'var') && isset($numbers[$token[1]])) {
+            return $numbers[$token[1]];
+        }
+
+        return 'ref';
+    });
+
+    if (empty($result['ok']) || !is_numeric($result['value']) || !is_finite((float) $result['value'])) {
+        return '';
+    }
+
+    return ws_flow_derived_number(round((float) $result['value'], max(0, min(6, (int) $places))));
+}
+
+/**
+ * The value of a derived value box from its inputs as filled: empty when an
+ * input is not what the rule reads (a word to add, a date that is none).
+ * The calculate rule takes its formula as written instead, with the run's
+ * values beside it (ws_flow_derived_calculate()), never filled in. Pure.
+ *
+ * @param array  $config ws_flow_derived_normalize()
+ * @param string $a      the first input, filled (calculate: as written)
+ * @param string $b      the second input, filled
+ * @param array  $values the run's values, for calculate
+ * @return string
+ */
+function ws_flow_derived_value($config, $a, $b, $values = array())
+{
+    if ($config['rule'] === 'calculate') {
+        return ws_flow_derived_calculate($a, $values, $config['places']);
+    }
+
     $a = trim(mb_substr((string) $a, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
     $b = trim(mb_substr((string) $b, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
     $numbers = is_numeric($a) && is_numeric($b);
@@ -656,9 +769,14 @@ function ws_flow_pure_values($graph, $values = array(), $now = null)
             }
 
             $known = $out + (array) $values;
-            $a = ws_flow_derived_fill(strtr($config['a'], $words), $known);
-            $b = ws_flow_derived_fill(strtr($config['b'], $words), $known);
-            $out[$id] = array('value' => ws_flow_derived_value($config, $a, $b));
+
+            if ($config['rule'] === 'calculate') {
+                $out[$id] = array('value' => ws_flow_derived_value($config, strtr($config['a'], $words), '', $known));
+            } else {
+                $a = ws_flow_derived_fill(strtr($config['a'], $words), $known);
+                $b = ws_flow_derived_fill(strtr($config['b'], $words), $known);
+                $out[$id] = array('value' => ws_flow_derived_value($config, $a, $b));
+            }
             unset($derived[$id]);
             $added = true;
         }

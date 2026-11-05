@@ -2792,6 +2792,8 @@ function ws_flow_js_strings()
         'fl_derived_days'     => lang('Days to add'),
         'fl_derived_op'       => lang('Comparison'),
         'fl_derived_places'   => lang('Decimal places'),
+        'fl_derived_formula'  => lang('Formula'),
+        'fl_derived_formula_help' => lang('Numbers, values, + - * / ^, a percent such as 18% and functions with their values split by ; as in ROUND(value; 2). A value that is not a number gives an empty value. Functions:'),
         'fl_derived_format'   => lang('Date shape'),
         'fl_derived_value'    => lang('Value'),
         'fl_derived_help'     => lang('This box has no arrows: its value is worked out from the values it reads each time a box reads it. A comparison gives 1 when it holds, else 0; a value the rule cannot read gives an empty value.'),

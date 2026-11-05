@@ -1440,6 +1440,7 @@
     "The box {var:1} compares sizes: {var:2} is not a number.": "{var:1} kutusu büyüklük karşılaştırıyor: {var:2} bir sayı değil.",
     "The box {var:1} ends no For each box: choose the loop it ends.": "{var:1} kutusu hiçbir Her biri için kutusunu bitirmiyor: bitirdiği döngüyü seçin.",
     "The box {var:1} ends no loop: choose the loop it ends.": "{var:1} kutusu hiçbir döngüyü bitirmiyor: bitirdiği döngüyü seçin.",
+    "The box {var:1} has a formula the calculator cannot read.": "{var:1} kutusundaki formül hesap makinesince okunamıyor.",
     "The box {var:1} holds no value yet.": "{var:1} kutusunda henüz değer yok.",
     "The box {var:1} holds two values named {var:2}.": "{var:1} kutusunda {var:2} adlı iki değer var.",
     "The box {var:1} is in a loop: the arrows lead back to it.": "{var:1} kutusu bir döngüde: oklar yine ona dönüyor.",
