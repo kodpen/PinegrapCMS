@@ -34,6 +34,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
 - back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
+- barcode-label-print-escaping.md: The barcode label print page (LabelEditor buildPrintHTML() in backend.src.js): barcode and template values read as numbers, CSS values or escaped text before they reach the print window
 - barcode-product-code-overlap.md: A barcode, typed or generated, may not be another product's code, nor a product code another product's barcode; a scanned code that is both is refused (#4715, #6664)
 - barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447)
 - booking-deposit-payment.md: The booking widget's deposit payment (BK9b): hold kept, payment form posted to booking_slots.php, return and retry, paid on arrival, paid shown on the screens and the API
