@@ -331,6 +331,48 @@ function pg_file_withheld($name)
     return mb_strtolower(trim((string) $name)) === 'dkim.key';
 }
 
+// Whether a file in the object store has to come back to the disk: a rename
+// or the design flag made it a file the move job never takes
+// (pg_file_storage_movable(): a design or theme file, a style sheet, a
+// script), which the design screens, the code editors and the design export
+// read only by path, and whose {path} get_file.php rewrites only on the disk.
+// Pure; $row is the files row as it is after the change, with storage and
+// storage_key.
+function pg_file_storage_comes_home(array $row)
+{
+    return function_exists('pg_file_storage') && function_exists('pg_file_storage_movable')
+        && (pg_file_storage($row) === 's3') && !pg_file_storage_movable($row);
+}
+
+// Brings back to the disk the stored files among these ids that may no
+// longer stay in the object store (pg_file_storage_comes_home()), once the
+// door that renamed them or set their design flag has written its row. The
+// bytes are copied into the file directory (pg_file_make_local()), which the
+// general job's reconcile pass then sets the row back to local for; a file
+// whose bytes cannot be fetched now stays stored, still served, and is named
+// in the Site Log.
+function pg_file_storage_bring_home($ids)
+{
+    if (!function_exists('pg_file_storage_ready') || !pg_file_storage_ready()) {
+        return;
+    }
+
+    $ids = array_values(array_filter(array_map('intval', (array) $ids)));
+
+    if (!$ids) {
+        return;
+    }
+
+    $rows = db_items("SELECT id, name, design, theme, storage, storage_key FROM files
+        WHERE storage = 's3' AND id IN (" . implode(',', $ids) . ")");
+
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        if (pg_file_storage_comes_home($row) && (pg_file_make_local($row['name']) === '')) {
+            log_activity(lang(array('string' => 'The file {var:1} could not be brought back from the object store to the disk.', 'vars' => array($row['name']))), 'UNKNOWN');
+        }
+    }
+}
+
 // Whether this person may not give a file this name. The one such name is
 // dkim.key: the mailer signs the site's mail with whatever file is called
 // that (includes/fn/mail.php), and the SMTP settings screen offers its
