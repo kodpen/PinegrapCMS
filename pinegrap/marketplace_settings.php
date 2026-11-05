@@ -1934,10 +1934,6 @@ echo pg_page_shell(array(
    title instead of pushing the page (and the close button of the drawer) sideways. */
 .mp-name { min-width: 0; overflow-wrap: anywhere; }
 #mp_drawer .drawer-header .btn-close { flex: 0 0 auto; }
-.mp-count { display: flex; gap: 18px; flex-wrap: wrap; }
-.mp-count div { min-width: 82px; }
-.mp-count b { font-size: 1.25rem; display: block; line-height: 1.1; }
-.mp-count span { font-size: 0.6875rem; color: var(--pg-fg-2); }
 .mp-err { font-size: 0.71875rem; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
 /* Questions and failures are free text, not columns: they sit outside the
    sideways-scrolling block, so they wrap to the width of the card instead. */
@@ -2065,56 +2061,68 @@ if ($selected) {
 
 	/* ------------------------------------------------------------ account */
 
-	echo '
-	<div class="card mb-5">
-		<div class="card-header d-flex align-items-center flex-wrap gap-3">
-			<i class="bi bi-sliders me-1"></i><b class="mp-name">' . h($selected['name']) . '</b>
-			<span class="small opacity-75">' . h(mp_provider_name($selected['provider'])) . '</span>'
-			. ((isset($selected['credentials']['environment']) && $selected['credentials']['environment'] === 'stage')
-				? ' <span class="mp-pill off">' . lang('Test environment') . '</span>' : '') . '
-			<div class="ms-auto d-flex flex-wrap justify-content-end gap-3">
-				<form method="post" action="marketplace_settings.php" class="d-inline">
-					' . get_token_field() . '
-					<input type="hidden" name="mp_action" value="test">
-					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline theme-secondary">
-						<i class="bi bi-plug me-1"></i>' . lang('Test connection') . '</button>
-				</form>
-				<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="drawer" data-bs-target="#mp_drawer">
-					<i class="bi bi-pencil me-1"></i>' . lang('Settings') . '</button>
+	// The selected account is what the operator reads: its name, its counts
+	// and its state, with the two account actions. It sits in the sticky
+	// status column, written after the form column so that on a narrow screen
+	// the work cards come first; the account tiles above stay full width as
+	// the switcher between accounts.
+	$mp_status = '
+		<div class="card mb-5" id="mp-account">
+			<div class="card-header bg-reset border-0 d-flex align-items-center flex-wrap gap-3">
+				<i class="bi bi-sliders fg-primary" aria-hidden="true"></i><b class="mp-name">' . h($selected['name']) . '</b>'
+				. ((isset($selected['credentials']['environment']) && $selected['credentials']['environment'] === 'stage')
+					? ' <span class="mp-pill off">' . lang('Test environment') . '</span>' : '') . '
+				<div class="small fg-secondary w-100">' . h(mp_provider_name($selected['provider'])) . '</div>
 			</div>
-		</div>
-		<div class="card-body">
-			<div class="mp-count">
-				<div><b>' . pg_format_number($map_counts['all'], 0) . '</b><span>' . lang('matched products') . '</span></div>
-				<div><b>' . pg_format_number($queue_counts['waiting'], 0) . '</b><span>' . lang('waiting') . '</span></div>
-				<div><b>' . pg_format_number($queue_counts['sent'], 0) . '</b><span>' . lang('with the marketplace') . '</span></div>
-				<div><b class="' . ($queue_counts['failed'] ? 'fg-danger' : '') . '">'
-					. pg_format_number($queue_counts['failed'], 0) . '</b><span>' . lang('failed') . '</span></div>
-			</div>';
+			<div class="card-body pt-0">
+				<dl class="row small mb-0">
+					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Matched products')) . '</dt>
+					<dd class="col-4 text-end mb-2">' . pg_format_number($map_counts['all'], 0) . '</dd>
+					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Waiting')) . '</dt>
+					<dd class="col-4 text-end mb-2">' . pg_format_number($queue_counts['waiting'], 0) . '</dd>
+					<dt class="col-8 fw-normal fg-secondary">' . h(lang('With the marketplace')) . '</dt>
+					<dd class="col-4 text-end mb-2">' . pg_format_number($queue_counts['sent'], 0) . '</dd>
+					<dt class="col-8 fw-normal fg-secondary">' . h(lang('Failed')) . '</dt>
+					<dd class="col-4 text-end mb-0' . ($queue_counts['failed'] ? ' fg-danger fw-bold' : '') . '">' . pg_format_number($queue_counts['failed'], 0) . '</dd>
+				</dl>';
 
 	if ($selected['status'] !== 'active') {
 
-		echo '
-			<div class="alert theme-warning small mt-5 mb-0">
-				<i class="bi bi-pause-circle me-1"></i>'
-				. lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.') . '
-			</div>';
+		$mp_status .= '
+				<div class="alert theme-warning small mt-5 mb-0">
+					<i class="bi bi-pause-circle me-1"></i>'
+					. lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.') . '
+				</div>';
 
 	}
 
 	if ($selected['last_error'] !== '') {
 
-		echo '
-			<div class="alert theme-danger small mt-5 mb-0">
-				<i class="bi bi-exclamation-triangle me-1"></i>' . h($selected['last_error']) . '
-			</div>';
+		$mp_status .= '
+				<div class="alert theme-danger small mt-5 mb-0 mp-name">
+					<i class="bi bi-exclamation-triangle me-1"></i>' . h($selected['last_error']) . '
+				</div>';
 
 	}
 
+	$mp_status .= '
+				<div class="d-grid gap-3 mt-5">
+					<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="drawer" data-bs-target="#mp_drawer">
+						<i class="bi bi-pencil me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Settings')) . '</span></button>
+					<form method="post" action="marketplace_settings.php" class="d-grid">
+						' . get_token_field() . '
+						<input type="hidden" name="mp_action" value="test">
+						<input type="hidden" name="account_id" value="' . $selected_id . '">
+						<button type="submit" class="btn btn-sm btn-outline theme-secondary">
+							<i class="bi bi-plug me-2" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Test connection')) . '</span></button>
+					</form>
+				</div>
+			</div>
+		</div>';
+
 	echo '
-		</div>
-	</div>';
+	<div class="row g-5">
+		<div class="col-12 lg:col-8 2xl:col-9 order-1">';
 
 	/* ------------------------------------------------------------ mapping */
 
@@ -2612,7 +2620,7 @@ if ($selected) {
 	/* -------------------------------------------------------------- queue */
 
 	echo '
-	<div class="card" id="mp-queue">
+	<div class="card mb-5" id="mp-queue">
 		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-hourglass-split me-1"></i><b>' . lang('What did not go through') . '</b>
 			<div class="ms-auto d-flex flex-wrap justify-content-end gap-3">';
@@ -2666,6 +2674,12 @@ if ($selected) {
 	}
 
 	echo '
+		</div>
+	</div>
+		</div>
+		<div class="col-12 lg:col-4 2xl:col-3 order-2">
+			<div class="position-sticky" style="top:3.3rem;">' . $mp_status . '
+			</div>
 		</div>
 	</div>';
 
