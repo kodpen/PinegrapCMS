@@ -509,6 +509,29 @@ function pg_push_send_to_subscription($subscription)
 	return $result;
 }
 
+// Can this account's browsers still be woken? Only while the account exists
+// and is not disabled: a disabled person signs in nowhere, so the banner
+// could only open a refused panel. A subscription made in a session without
+// "remember me" carries no auth_selector, so disabling the account
+// (pg_auth_token_revoke_user()) does not take it away; the queue does, here.
+// A row read before user_disabled_at existed is enabled. Pure.
+function pg_push_account_wakeable($account)
+{
+	return is_array($account) && !empty($account) && ((int) ($account['user_disabled_at'] ?? 0) <= 0);
+}
+
+// The account row pg_push_account_wakeable() reads, or null when it is gone.
+function pg_push_account($user_id)
+{
+	$disabled = (function_exists('pg_user_has_disabled_at') && pg_user_has_disabled_at())
+		? 'user_disabled_at'
+		: '0 AS user_disabled_at';
+
+	$row = db_item("SELECT user_id, " . $disabled . " FROM user WHERE user_id = '" . (int) $user_id . "'");
+
+	return (is_array($row) && !empty($row)) ? $row : null;
+}
+
 // Wakes every browser one person has subscribed. Answers a row per device so a
 // caller can say which one refused.
 function pg_push_notify_user($user_id)
@@ -726,6 +749,14 @@ function pg_push_queue_run($budget_seconds = 10)
 		}
 
 		$user_id = (int) $person['user_id'];
+
+		// A disabled or deleted account: its waiting rows and its browsers
+		// go, so the device is not woken now or on any later event.
+		if (!pg_push_account_wakeable(pg_push_account($user_id))) {
+			db("DELETE FROM push_queue WHERE user_id = '" . $user_id . "'");
+			db("DELETE FROM push_subscriptions WHERE user_id = '" . $user_id . "'");
+			continue;
+		}
 
 		$rows = db_items("SELECT id, user_id, source, reference_id, attempts
 			FROM push_queue
