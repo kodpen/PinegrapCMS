@@ -447,7 +447,7 @@ function test_parasut_stale_product_driver_kept_ids()
 // buyer card forgotten is opened again before the body is built again.
 function test_parasut_stale_product_create_invoice_sends_once_more()
 {
-	$body = parasut_stale_product_test_source('includes/fn/parasut.php', 'parasut_create_invoice');
+	$body = parasut_stale_product_test_source('includes/fn/parasut.php', '_parasut_create_invoice_claimed');
 
 	parasut_stale_product_test_in_order($body, array(
 		"'Contact' => (\$kept_contact !== '') ? array(\$kept_contact) : array(),",
@@ -479,7 +479,7 @@ function test_parasut_stale_product_create_invoice_sends_once_more()
 // try's lookup.
 function test_parasut_stale_product_create_shipment_sends_once_more()
 {
-	$body = parasut_stale_product_test_source('includes/fn/parasut.php', 'parasut_create_shipment');
+	$body = parasut_stale_product_test_source('includes/fn/parasut.php', '_parasut_create_shipment_claimed');
 
 	parasut_stale_product_test_in_order($body, array(
 		"\$skip_warehouse = '';",

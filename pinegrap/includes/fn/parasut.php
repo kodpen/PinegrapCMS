@@ -109,14 +109,144 @@ function parasut_throttle()
  * (erp_edoc_parasut_request()): Paraşüt did not process the request, so
  * repeating it cannot create a second record.
  *
+ * A 401 for a token the cache still holds (Paraşüt retired it: another
+ * renewal with the same credentials, a copy of the site, the application
+ * re-authorized) forgets that token, renews it once and sends the request
+ * again, as the driver does too (_parasut_token_after_401()). Paraşüt
+ * processes no request it answers 401, so a POST is not doubled. A second
+ * 401 (a company number the user cannot reach) is returned.
+ *
  * @param string $method     GET | POST | PUT | PATCH | DELETE
  * @param string $url        Full URL
  * @param array  $body       Associative array (will be JSON-encoded) or null
  * @param string $token      Bearer token (omit for OAuth token endpoint)
  * @param bool   $retry_429  false for the repeated request, so a second 429 is returned
+ * @param bool   $renew_401  false for a token that is not the cached one (a code just exchanged)
  * @return array ['http_code' => int, 'body' => mixed]
  */
-function _parasut_request($method, $url, $body = null, $token = null, $retry_429 = true)
+function _parasut_request($method, $url, $body = null, $token = null, $retry_429 = true, $renew_401 = true)
+{
+    return parasut_request_renewing(function ($bearer) use ($method, $url, $body, $retry_429) {
+        return _parasut_request_once($method, $url, $body, $bearer, $retry_429);
+    }, parasut_token_in_use($token), $renew_401 ? '_parasut_token_after_401' : null);
+}
+
+/**
+ * Sends a request once more with a renewed token after a 401, at most once.
+ *
+ * @param callable      $send   function (string|null $token): the _parasut_request() answer
+ * @param string|null   $token  The bearer token of the first request
+ * @param callable|null $renew  function (string $token): the renewed token, '' when none;
+ *                              null for no renewal
+ * @return array  The answer of the last request sent
+ */
+function parasut_request_renewing($send, $token, $renew)
+{
+    $result = $send($token);
+
+    if (((int) ($result['http_code'] ?? 0) !== 401) || ((string) $token === '') || ($renew === null)) {
+        return $result;
+    }
+
+    $fresh = (string) call_user_func($renew, (string) $token);
+
+    if (($fresh === '') || ($fresh === (string) $token)) {
+        return $result;
+    }
+
+    return $send($fresh);
+}
+
+/**
+ * What a 401 for a token sent says about the cache: 'forget' when the
+ * cache still holds that token (the one Paraşüt retired), 'renew' when it
+ * holds another or none (another request renewed or forgot it meanwhile,
+ * and what it wrote is kept), 'none' without a token sent or a cache.
+ *
+ * @param string|null $token  The bearer token Paraşüt refused
+ * @param array       $cache  _parasut_token_cache_read()
+ * @return string  'forget' | 'renew' | 'none'
+ */
+function parasut_unauthorized_step($token, $cache)
+{
+    if (((string) $token === '') || empty($cache)) {
+        return 'none';
+    }
+
+    return ((string) ($cache['access_token'] ?? '') === (string) $token) ? 'forget' : 'renew';
+}
+
+/**
+ * The token to send in place of one renewed during this request. A press
+ * reads its token once and hands it to every request it makes; after a
+ * renewal those requests go with the new token instead of renewing again,
+ * since each renewal retires the token before it.
+ *
+ * @param string|null $token
+ * @param string|null $renewed  Records $renewed as the token that replaced $token
+ * @return string|null
+ */
+function parasut_token_in_use($token, $renewed = null)
+{
+    static $replaced = array();
+
+    if ($renewed !== null) {
+        $replaced[(string) $token] = (string) $renewed;
+
+        return (string) $renewed;
+    }
+
+    $seen = array();
+
+    while (((string) $token !== '') && isset($replaced[(string) $token]) && !isset($seen[(string) $token])) {
+        $seen[(string) $token] = true;
+        $token = $replaced[(string) $token];
+    }
+
+    return $token;
+}
+
+/**
+ * Renews the token Paraşüt answered 401 for: forgets it when the cache
+ * still holds it, then asks parasut_get_token() (refresh token, or the
+ * password) under its lock.
+ *
+ * @param string $token
+ * @return string  The renewed token, '' when there is none
+ */
+function _parasut_token_after_401($token)
+{
+    $step = parasut_unauthorized_step($token, _parasut_token_cache_read());
+
+    if ($step === 'none') {
+        return '';
+    }
+
+    if ($step === 'forget') {
+        parasut_token_forget();
+    }
+
+    $fresh = parasut_get_token();
+
+    if (empty($fresh['success']) || ((string) $fresh['token'] === '') || ((string) $fresh['token'] === (string) $token)) {
+        return '';
+    }
+
+    return (string) parasut_token_in_use($token, (string) $fresh['token']);
+}
+
+/**
+ * One request to the Parasut API (_parasut_request() without the renewal),
+ * with the 429 retry.
+ *
+ * @param string      $method
+ * @param string      $url
+ * @param array|null  $body
+ * @param string|null $token
+ * @param bool        $retry_429
+ * @return array ['http_code' => int, 'body' => mixed]
+ */
+function _parasut_request_once($method, $url, $body = null, $token = null, $retry_429 = true)
 {
     parasut_throttle();
 
@@ -153,7 +283,7 @@ function _parasut_request($method, $url, $body = null, $token = null, $retry_429
     if (($http_code === 429) && $retry_429) {
         sleep((int) ceil(PARASUT_RATE_WINDOW));
 
-        return _parasut_request($method, $url, $body, $token, false);
+        return _parasut_request_once($method, $url, $body, $token, false);
     }
 
     return ['http_code' => $http_code, 'body' => json_decode($response, true), 'raw' => (string) $response];
@@ -937,7 +1067,7 @@ function parasut_authorize_url($client_id = null)
  */
 function parasut_me($token)
 {
-    $result = _parasut_request('GET', _parasut_base() . '/v4/me?include=companies', null, $token);
+    $result = _parasut_request('GET', _parasut_base() . '/v4/me?include=companies', null, $token, true, false);
 
     if (($result['http_code'] !== 200) || empty($result['body']['data'])) {
         return ['success' => false, 'email' => '', 'name' => '', 'companies' => [], 'error' => _parasut_extract_error($result)];
@@ -3471,6 +3601,90 @@ function parasut_kept_product_cards($product_ids)
 }
 
 /**
+ * The name of the lock one order's Paraşüt presses run under. Lock names
+ * belong to the whole database server, so the name carries the database;
+ * the hash keeps it within the 64 characters MySQL takes.
+ *
+ * @param string     $database  The database's name and host
+ * @param int|string $order_id
+ * @return string
+ */
+function parasut_order_press_lock_name($database, $order_id)
+{
+    return 'pinegrap_parasut_order_' . md5((string) $database . '|' . (int) $order_id);
+}
+
+/**
+ * Runs one press of the order screen's Paraşüt buttons under the order's
+ * claim. The press reads the order's kept ids at its start and writes them
+ * only after several seconds of requests, so two presses at once both found
+ * the order unsent and each wrote a sales invoice, an e-document or a
+ * shipment document (which has no idempotency key). One lock per order,
+ * for both buttons, taken without waiting: a press that finds it held is
+ * refused before it reads the order. A MySQL named lock goes with the
+ * connection, so a process that dies holding it leaves no claim behind;
+ * the unsure mark it may have left is settled by the next press
+ * (parasut_order_invoice_find()).
+ *
+ * @param int           $order_id
+ * @param callable      $run      function (): the press's answer
+ * @param callable|null $lock     function (string $name): bool, whether the lock was taken
+ * @param callable|null $release  function (string $name)
+ * @return array  The press's answer, or the refusal
+ */
+function parasut_order_press_claimed($order_id, $run, $lock = null, $release = null)
+{
+    if ($lock === null) {
+        $lock = function ($name) {
+            return ((int) db_value("SELECT GET_LOCK('" . escape($name) . "', 0)") === 1);
+        };
+    }
+
+    if ($release === null) {
+        $release = function ($name) {
+            db_value("SELECT RELEASE_LOCK('" . escape($name) . "')");
+        };
+    }
+
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : '';
+    $name = parasut_order_press_lock_name($database, $order_id);
+
+    if (!$lock($name)) {
+        return array(
+            'success' => false,
+            'parasut_invoice_id' => null,
+            'parasut_shipment_id' => null,
+            'error' => lang('Another Paraşüt send of this order is running. Nothing was sent; wait a minute, then open the order again to see what it left.'),
+        );
+    }
+
+    try {
+        return $run();
+    } finally {
+        $release($name);
+    }
+}
+
+/**
+ * The order screen's Create Invoice, run under the order's claim
+ * (parasut_order_press_claimed()): a second press of either button on the
+ * same order while this one runs is refused before anything is read or
+ * written. The work is _parasut_create_invoice_claimed().
+ *
+ * @param int   $order_id  orders.id
+ * @param array $notices   Receives what the order screen shows beside the outcome
+ * @return array  _parasut_create_invoice_claimed()
+ */
+function parasut_create_invoice($order_id, &$notices = array())
+{
+    $notices = array();
+
+    return parasut_order_press_claimed($order_id, function () use ($order_id, &$notices) {
+        return _parasut_create_invoice_claimed($order_id, $notices);
+    });
+}
+
+/**
  * Create a Paraşüt sales invoice for an order and turn it into its
  * e-document: an e-invoice for a buyer registered with GİB, an e-archive
  * invoice otherwise (_parasut_resolve_edoc_kind()).
@@ -3503,7 +3717,7 @@ function parasut_kept_product_cards($product_ids)
  * @return array ['success' => bool, 'parasut_invoice_id' => string|null, 'edoc_kind' => string,
  *                'edoc_state' => string, 'error' => string]
  */
-function parasut_create_invoice($order_id, &$notices = array())
+function _parasut_create_invoice_claimed($order_id, &$notices)
 {
     $notices = array();
 
@@ -3965,6 +4179,25 @@ function parasut_create_invoice($order_id, &$notices = array())
 }
 
 /**
+ * The order screen's E-Shipment, run under the order's claim
+ * (parasut_order_press_claimed()): a second press of either button on the
+ * same order while this one runs is refused before anything is read or
+ * written. The work is _parasut_create_shipment_claimed().
+ *
+ * @param int   $order_id  orders.id
+ * @param array $notices   Receives what the order screen shows beside the outcome
+ * @return array  _parasut_create_shipment_claimed()
+ */
+function parasut_create_shipment($order_id, &$notices = array())
+{
+    $notices = array();
+
+    return parasut_order_press_claimed($order_id, function () use ($order_id, &$notices) {
+        return _parasut_create_shipment_claimed($order_id, $notices);
+    });
+}
+
+/**
  * Create a Parasut shipment document (e-irsaliye) for the given order.
  *
  * Only a finished sale is shipped (parasut_order_press_refusal()). After
@@ -3984,7 +4217,7 @@ function parasut_create_invoice($order_id, &$notices = array())
  *                         each record the press left out or forgot because Paraşüt no longer holds it
  * @return array ['success' => bool, 'parasut_shipment_id' => string|null, 'error' => string]
  */
-function parasut_create_shipment($order_id, &$notices = array())
+function _parasut_create_shipment_claimed($order_id, &$notices)
 {
     $notices = array();
 
