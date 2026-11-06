@@ -4142,6 +4142,16 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     pg_credit_points_lines_refunded($return['order_id'], $returned_quantities);
 
+    // A product whose whole ordered quantity is now refunded loses that
+    // order's review from its rating (pg_review_purchase_stands_sql()).
+    $returned_products = array();
+
+    foreach ((array) $return['items'] as $item) {
+        $returned_products[] = isset($item['product_id']) ? (int) $item['product_id'] : 0;
+    }
+
+    pg_review_refresh_products($returned_products);
+
     $release();
 
     $after = pg_return_audit_fields($moved['return']);

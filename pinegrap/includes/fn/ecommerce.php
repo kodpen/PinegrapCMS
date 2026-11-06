@@ -11391,6 +11391,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // cancelled the order (the guarded write above) gets here.
     pg_review_request_cancel($order_id);
 
+    // Its reviews no longer count: a cancelled order is no purchase
+    // (pg_review_purchase_stands_sql()).
+    pg_review_refresh_order($order_id);
+
     // ── Expire gift cards issued by this order ──────────────────────────
     // Folded in from the removed legacy cancel_order(). A cancelled order
     // must not leave spendable gift cards behind, so we push their
@@ -11836,6 +11840,9 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
     if ($commission_line !== '') {
         log_activity($commission_line);
     }
+
+    // Its reviews count again.
+    pg_review_refresh_order($order_id);
 
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 
