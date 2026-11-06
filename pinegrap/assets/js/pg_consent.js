@@ -4,9 +4,9 @@
  * The cookie notice of a visitor page (markup: pg_consent_markup() in
  * includes/fn/consent.php). Shows the notice until the visitor answers every
  * optional category the page has, keeps the answer in the pg_consent cookie,
- * starts the scripts held for an allowed category and, when a category is
- * turned off again, deletes its cookies and reloads so nothing of it keeps
- * running.
+ * starts the scripts held for an allowed category, deletes the cookies of a
+ * refused one (also those set before any answer) and, when a category is
+ * turned off again, reloads so nothing of it keeps running.
  *
  * Cookie value: "1" followed by ".<letter><0|1>" per answered category, the
  * same format pg_consent_parse() reads on the server. Answers for categories
@@ -311,18 +311,30 @@
         // already running stops being granted at once.
         signal(merged);
 
-        // What was on and is off now: its cookies go, and the page reloads,
-        // because a script that already ran cannot be stopped in place.
+        // Every refused category loses its cookies, also on a first answer:
+        // a cookie set while the site did not ask yet is still there and
+        // the server would keep reading it. Only what was on and is off now
+        // reloads the page, because a script that already ran cannot be
+        // stopped in place.
+        var reload = false;
+
         Array.prototype.forEach.call(switches, function (input) {
             category = input.getAttribute('data-pg-cc-category');
 
-            if (before[category] === true && merged[category] === false) {
+            if (merged[category] === false) {
                 patterns = patterns.concat((input.getAttribute('data-pg-cc-revoke') || '').split(' ').filter(Boolean));
+
+                if (before[category] === true) {
+                    reload = true;
+                }
             }
         });
 
         if (patterns.length) {
             revoke(patterns);
+        }
+
+        if (reload) {
             location.reload();
             return;
         }
