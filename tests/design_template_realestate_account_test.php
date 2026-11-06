@@ -173,3 +173,23 @@ function test_realestate_account_blog_form_and_samples()
 	$text = json_encode($form['sample_records'], JSON_UNESCAPED_UNICODE) . json_encode($d['parts']['account']['pages'], JSON_UNESCAPED_UNICODE);
 	pg_assert_false((bool)preg_match('/\b20[2-3]\d\b/', $text), 'no year');
 }
+
+// The blog's cover is shown as an <img> on the post cards, the post page
+// and the share image: its input takes images only and marks the field as
+// an image, so a PDF or Word file is refused.
+function test_realestate_account_blog_cover_takes_images_only()
+{
+	$d = _test_re_acc_load()['parts']['account']['widgets']['blog_form']['tree'];
+	$nodes = array();
+	_test_re_acc_nodes($d, $nodes);
+	$cover = null;
+	foreach ($nodes as $n) {
+		if (empty($n['props']['_attrs'])) continue;
+		foreach ($n['props']['_attrs'] as $a) if ($a['name'] === 'name' && $a['value'] === 'cover_image') $cover = $n;
+	}
+	pg_assert_true($cover !== null, 'blog form has a cover input');
+	$accept = null;
+	foreach ($cover['props']['_attrs'] as $a) if ($a['name'] === 'accept') $accept = $a['value'];
+	pg_assert_same('image/*', $accept);
+	pg_assert_same('image', $cover['props']['_cf']['kind'] ?? null);
+}
