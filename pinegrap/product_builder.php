@@ -4423,11 +4423,21 @@ function pg_pb_render_bundle_card($mode, $product_id, $values)
     }
 
     $rows = '';
+    $refused = '';
 
     foreach (pg_bundle_items($product_id) as $item) {
         $label = trim((string) $item['short_description']);
         $label = ($label !== '') ? $label . ' (' . $item['name'] . ')' : (string) $item['name'];
         $rows .= pg_pb_render_bundle_row($item['product_id'], $label, $item['quantity']);
+
+        // A component the rules refuse now (a product that grants private
+        // access, accepted before) still sells until the next save, which is
+        // refused until it is taken out: the card says which one.
+        $problem = pg_bundle_component_problem($item);
+
+        if ($problem !== '') {
+            $refused .= '<div class="alert theme-warning" role="alert">' . h($label) . ': ' . lang($problem) . ' ' . lang('Take it out of the bundle before saving.') . '</div>';
+        }
     }
 
     $pricing     = (isset($values['bundle_pricing']) && ($values['bundle_pricing'] === 'sum')) ? 'sum' : 'fixed';
@@ -4466,6 +4476,7 @@ function pg_pb_render_bundle_card($mode, $product_id, $values)
                                                         <input type="text" inputmode="decimal" name="bundle_discount" id="bundle_discount" class="form-control" value="' . h($discount) . '" />
                                                     </div>
                                                     <div class="col-12 my-3">
+                                                        ' . $refused . '
                                                         <table class="table table-sm align-middle mb-3">
                                                             <thead><tr><th>' . lang('Product') . '</th><th>' . lang('Quantity') . '</th><th></th></tr></thead>
                                                             <tbody id="pg_pb_bundle_rows">' . $rows . '</tbody>

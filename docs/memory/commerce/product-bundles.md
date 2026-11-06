@@ -17,7 +17,7 @@ module: bundles
 
 ## What refreshes a bundle?
 - `pg_marketplace_product_changed()` calls `pg_bundle_refresh_for()` first: every stock and price writer ends there, `pg_product_stock_changed()` included; a static guard skips the bundle's own call.
-- `import_products.php` ends with `pg_bundle_refresh_all()`, which also overwrites a stock or price the file gave a bundle.
+- `import_products.php` ends with `pg_bundle_refresh_all()`: it overwrites a stock or price the file gave a bundle.
 - A bundle's stock is never written directly: inventory API 409 `bundle` (bulk: status `bundle`); barcode screens and ERP stock count refuse it; bulk edits (`edit_products.php`, `handle_products_bulk.php`) end with `pg_bundle_refresh()`; the quick stock cells (`pg_pb_quick_update()` code `bundle`, #2826; Catalog Manager `handle_catalog_edit.php`) refuse it.
 - A sum-priced bundle takes no typed price: API bulk prices (status `bundle`), the Products list quick price (code `bundle`) and the Catalog Manager's refuse it (`pg_bundle_price_is_summed()`). `pg_bundle_refresh_for()` skips the edited bundle itself, so a typed value would stay until a component changed.
 
@@ -32,7 +32,7 @@ module: bundles
 
 ## What does the product screen do?
 - Edit screen only: Bundle card (`pg_pb_render_bundle_card()`, `assets/js/product_bundle.js`), search via `add_order.php?request=search_products`; hidden `bundle_card` marks a save carrying it.
-- `pg_pb_validate_product_post()` refuses bad contents (`pg_bundle_items_problem()`: not found, bundle, donation, gift card, recurring; a component cannot become a bundle). While on, posted stock is ignored; off empties the contents.
+- `pg_pb_validate_product_post()` refuses contents (`pg_bundle_items_problem()`: not found, bundle, donation, gift card, recurring, private access; a component cannot become a bundle). While on, posted stock is ignored; off empties the contents.
 
 ## Can a component be deleted?
 - No: `pg_pb_delete_product()` returns false for a component and deletes a bundle's own contents rows; API `DELETE` 409 `product_in_bundle`. The Recycle Bin refuses a component (`pg_catalog_bin_product()` false; screen, list, API, Workspace say why).
