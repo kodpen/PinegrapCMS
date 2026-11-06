@@ -6143,90 +6143,39 @@ else {
 		// own in place: deleting them first would leave the site with none.
 		$install_content_path = pg_restore_content_path($install_restore);
 
-		if (is_dir($install_content_path . '/files')) {
+		// Each folder is replaced only when the disk holds the backup's files
+		// (pg_restore_place_folder()); otherwise the site keeps its own, and a
+		// file that could not be written is named instead of passing as copied.
+		$install_restore_folders = array(
+			'files'   => array(FILE_DIRECTORY_PATH, lang('Copied the files of the site'), lang('The backup has no files folder, so the files of the site were kept')),
+			'layouts' => array(LAYOUT_DIRECTORY_PATH, lang('Copied the design templates'), lang('The backup has no layouts folder, so the design templates of the site were kept')),
+		);
 
-			// delete all files from files directory
-			$handle = opendir(FILE_DIRECTORY_PATH . '/');
+		foreach ($install_restore_folders as $install_restore_folder => $install_restore_folder_info) {
 
-			while (false !== ($file = readdir($handle))) {
+			if (!is_dir($install_content_path . '/' . $install_restore_folder)) {
 
-				if (($file != '.') && ($file != '..')) {
+				add_install_step($install_restore_folder_info[2], '', 'warning');
 
-					unlink(FILE_DIRECTORY_PATH . '/' . $file);
-
-				}
-
-			}
-
-			closedir($handle);
-
-			// prepare path to template files
-			$template_files_path = $install_content_path . '/files/';
-
-			$handle = opendir($template_files_path);
-
-			// copy template files to files directory
-			while (false !== ($file = readdir($handle))) {
-
-				if (($file != '.') && ($file != '..')) {
-
-					copy($template_files_path . $file, FILE_DIRECTORY_PATH . '/' . $file);
-
-				}
+				continue;
 
 			}
 
-			closedir($handle);
+			$install_placed = pg_restore_place_folder($install_content_path . '/' . $install_restore_folder, $install_restore_folder_info[0]);
 
-			add_install_step(lang('Copied the files of the site'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(FILE_DIRECTORY_PATH), array('.', '..'))))));
+			if ($install_placed['ok'] == false) {
 
-		} else {
+				add_install_step($install_placed['error'], '', 'warning');
 
-			add_install_step(lang('The backup has no files folder, so the files of the site were kept'), '', 'warning');
+			} elseif ($install_placed['failed']) {
 
-		}
+				add_install_step($install_restore_folder_info[1], lang(array('string' => '{var:1} files could not be copied: {var:2}', 'vars' => array(count($install_placed['failed']), implode(', ', array_slice($install_placed['failed'], 0, 3)) . ((count($install_placed['failed']) > 3) ? ', ...' : '')))), 'warning');
 
-		// Deal with layouts now.
-		if (is_dir($install_content_path . '/layouts')) {
+			} else {
 
-			// delete all files from layouts directory
-			$handle = opendir(LAYOUT_DIRECTORY_PATH . '/');
-
-			while (false !== ($file = readdir($handle))) {
-
-				if (($file != '.') && ($file != '..')) {
-
-					unlink(LAYOUT_DIRECTORY_PATH . '/' . $file);
-
-				}
+				add_install_step($install_restore_folder_info[1], lang(array('string' => '{var:1} files', 'vars' => $install_placed['copied'])));
 
 			}
-
-			closedir($handle);
-
-			// prepare path to template layouts
-			$template_layouts_path = $install_content_path . '/layouts/';
-
-			$handle = opendir($template_layouts_path);
-
-			// copy template layouts to layouts directory
-			while (false !== ($file = readdir($handle))) {
-
-				if (($file != '.') && ($file != '..')) {
-
-					copy($template_layouts_path . $file, LAYOUT_DIRECTORY_PATH . '/' . $file);
-
-				}
-
-			}
-
-			closedir($handle);
-
-			add_install_step(lang('Copied the design templates'), lang(array('string' => '{var:1} files', 'vars' => count(array_diff((array) @scandir(LAYOUT_DIRECTORY_PATH), array('.', '..'))))));
-
-		} else {
-
-			add_install_step(lang('The backup has no layouts folder, so the design templates of the site were kept'), '', 'warning');
 
 		}
 
