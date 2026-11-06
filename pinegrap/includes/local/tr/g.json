@@ -234,6 +234,8 @@
     "Give where it counts": "Fark yaratan yere bağış yapın",
     "Give where it is needed most, or to one of our campaigns.": "En çok ihtiyaç olan yere ya da kampanyalarımızdan birine bağış yapın.",
     "Give whoever submits this form a membership": "Bu formu gönderen üyelik kazansın",
+    "Give your time in the field, at events, in the office or with your profession: tell us how you would like to help.": "Zamanınızı sahada, etkinliklerde, ofiste ya da mesleğinizle verin: nasıl yardım etmek istediğinizi bize anlatın.",
+    "Give your time where it helps most. Tell us how you would like to help; we answer everyone within a week.": "Zamanınızı en çok işe yarayacağı yere verin. Nasıl yardım etmek istediğinizi anlatın; herkese bir hafta içinde yanıt veririz.",
     "Give {var:1} access on “{var:2}”? It reaches {var:3} groups inside it and {var:4} channels ({var:5} of them private): {var:6} new memberships. Channels moved into these groups later are opened to them too.": "{var:1} kişisine “{var:2}” grubunda yetki verilsin mi? Yetki {var:3} alt grubu ve {var:4} kanalı kapsar ({var:5} tanesi özel): {var:6} yeni üyelik açılır. Sonradan bu gruplara taşınan kanallara da erişirler.",
     "Given": "Verildi",
     "Given and not yet paid": "Verilmiş, henüz ödenmemiş",

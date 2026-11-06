@@ -387,8 +387,11 @@
     "Voice recording is not supported in this browser.": "Bu tarayıcı ses kaydını desteklemiyor.",
     "Void": "Geçersiz kıl",
     "Volunteer": "Gönüllü Ol",
+    "Volunteer Received E-mail": "Gönüllü Başvurusu Alındı E-postası",
     "Volunteer observers log a record 40,000 meteor sightings": "Gönüllü gözlemciler 40.000 meteor gözlemiyle rekor kırdı",
+    "Volunteering": "Gönüllülük",
     "Volunteering and events": "Gönüllülük ve etkinlikler",
+    "Volunteers": "Gönüllüler",
     "Volunteers are needed at every mile marker, and sign-ups are open on the race's website.": "Parkurun her kilometre noktasında gönüllülere ihtiyaç var; gönüllü kayıtları yarışın internet sitesinde açık.",
     "Volunteers carrying crates of pumpkins in a garden": "Bir bahçede kasalarla bal kabağı taşıyan gönüllüler",
     "Volunteers logged more than 40,000 meteor sightings this year, a record for the citizen-science project that collects them.": "Gönüllüler bu yıl 40.000'den fazla meteor gözlemi kaydetti; bu, gözlemleri toplayan yurttaş bilimi projesi için bir rekor.",
@@ -437,6 +440,10 @@
     "visitor's request was denied because the spam protection service reported that visitor's IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})": "spam koruma hizmeti, ziyaretçinin IP adresinin spam gönderenler tarafından kullanıldığını bildirdiği için ziyaretçinin isteği reddedildi. (güven: %{var:1}, sıklık: {var:2})",
     "visitor, analytics, tracking code, tracking, statistics, google analytics": "visitor, analytics, tracking code, tracking, statistics, google analytics, ziyaretci, ziyaretçi, analitik, takip kodu, istatistik",
     "visitors": "ziyaretçi",
+    "volunteer": "gonullu-ol",
+    "volunteer form, sign up, apply": "gönüllü formu, kayıt, başvuru",
+    "volunteer, help, field trip, events, skills": "gönüllü, yardım, saha gezisi, etkinlikler, beceriler",
     "volunteer, help, time": "gönüllü, yardım, zaman",
+    "volunteering": "gonulluluk",
     "volunteers who give their time": "gönüllü zamanını veriyor"
 }
