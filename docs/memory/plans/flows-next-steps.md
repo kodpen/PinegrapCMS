@@ -16,7 +16,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 
 - B2 (free, M then M): Pinegrap AI box: a prompt with values only, through `pg_ai_chat()` on the site's quota; modes write, summarize, extract, classify into the named outcomes that become its arrows (else `other`); waits like the approval box.
 
-- B3 (free, S): text rules in the derived value box: replace, extract a number, extract an e-mail address, upper or lower case, trim and cut to N characters, split and take part N. As Zapier Formatter. flow_values.php.
+- B3 (done, #7411): text rules in the derived value box: replace, extract a number, extract an e-mail address, upper or lower case, trim and cut to N characters, split and take part N. As Zapier Formatter. flow_values.php.
 
 - B4 (free, S): Wait until: the delay box waits until a date and time read from a value (a booking's start, minus N hours); the cap rises to 90 days. flow_runs.php delay, the form.
 
