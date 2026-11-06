@@ -22,6 +22,11 @@ if (!defined('PG_PANEL_ACTIONS')) {
 
 function pg_panel_backend_search($request, $action)
 {
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+
     $user = validate_user();
 
     $search = isset($request['search']) ? trim($request['search']) : '';

@@ -162,6 +162,7 @@ function test_workspace_flow_outputs_answered()
 		'row_add'     => array('ws_step_row_do'),
 		'row_set'     => array('ws_step_row_do'),
 		'row_get'     => array('ws_step_row_get_data'),
+		'record_get'  => array('ws_step_record_get_data'),
 	);
 
 	$kinds = array_keys(ws_step_kinds());

@@ -3391,6 +3391,34 @@ function pg_designer_page_insert_defaults($c_extra)
  * a refused page never leaves its siblings half-written (MyISAM — no
  * transactions to fall back on).
  */
+/**
+ * What a content-level save (manager, user) keeps of a page as stored: its
+ * name (its address), its folder (its permission), its home flag (the
+ * site's front door) and its design (how it looks, which only a designer
+ * moves). The save writes page_style from the design it is called with, so
+ * a page sent with another design's id would otherwise move there.
+ *
+ * Pure: no query.
+ *
+ * @param array      $page     the page as sent
+ * @param int        $style_id the design the save was called with
+ * @param array|null $stored   the stored row (page_name, page_folder, page_home, page_style)
+ * @return array page, style_id
+ */
+function pg_designer_restricted_identity($page, $style_id, $stored)
+{
+    $style_id = (int)$style_id;
+    if (!is_array($stored)) return array('page' => $page, 'style_id' => $style_id);
+
+    $page['page_name']   = (string)$stored['page_name'];
+    $page['page_folder'] = (int)$stored['page_folder'];
+    $page['page_home']   = ((string)$stored['page_home'] === 'yes') ? 1 : 0;
+    $stored_style = isset($stored['page_style']) ? (int)$stored['page_style'] : 0;
+    if ($stored_style > 0) $style_id = $stored_style;
+
+    return array('page' => $page, 'style_id' => $style_id);
+}
+
 function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
 {
     $style_id = (int)$style_id;
@@ -3408,12 +3436,10 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // chose. Title, description and keywords are content and stay editable.
     $restricted = !pg_designer_is_full($user);
     if ($restricted && $page_id > 0) {
-        $stored_row = db_item("SELECT page_name, page_folder, page_home FROM page WHERE page_id = '$page_id' LIMIT 1");
-        if (is_array($stored_row)) {
-            $page['page_name']   = (string)$stored_row['page_name'];
-            $page['page_folder'] = (int)$stored_row['page_folder'];
-            $page['page_home']   = ((string)$stored_row['page_home'] === 'yes') ? 1 : 0;
-        }
+        $stored_row = db_item("SELECT page_name, page_folder, page_home, page_style FROM page WHERE page_id = '$page_id' LIMIT 1");
+        $kept = pg_designer_restricted_identity($page, $style_id, $stored_row);
+        $page     = $kept['page'];
+        $style_id = $kept['style_id'];
     }
 
     $name = trim((string)(isset($page['page_name']) ? $page['page_name'] : ''));
@@ -4034,7 +4060,9 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
             if (!in_array($asset['type'], array('css', 'js', 'json'))) continue;
             $ext = strtolower(pathinfo($asset['name'], PATHINFO_EXTENSION));
             if (!in_array($ext, array('css', 'js', 'json'))) continue;
-            @file_put_contents(FILE_DIRECTORY_PATH . '/' . $asset['name'], $asset['content']);
+            // Written as a whole: a failed write keeps the asset file that
+            // pages already load, and records nothing for a missing one.
+            if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $asset['name'], (string) $asset['content'])) continue;
             $size = (int)strlen($asset['content']);
             $nm   = (string) $asset['name'];
             $uid  = (int)$user_id;

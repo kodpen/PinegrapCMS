@@ -139,6 +139,11 @@
         svg.appendChild(node);
 
         Array.prototype.forEach.call(svg.querySelectorAll('path, line, polyline, polygon, rect, ellipse, circle'), function (s) {
+            // The eraser's mask (pg_image_editor_draw.js) is not drawn on.
+            if (s.closest('mask')) {
+                return;
+            }
+
             s.setAttribute('pathLength', '1');
             s.setAttribute('stroke-dasharray', '1 1');
             s.setAttribute('stroke-dashoffset', String(1 - draw));

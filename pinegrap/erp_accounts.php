@@ -24,6 +24,7 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/drawer.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_accounts');
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
@@ -96,7 +97,9 @@ $kind_labels = array(
     'both' => lang('Customer and supplier'),
 );
 
-$output_rows = '';
+// Every account is printed: the list table driver sorts and searches them
+// in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
 // Asked once for the whole list; each row then only checks the contact's groups.
 $contacts_access = validate_contacts_access($user, true);
@@ -163,8 +166,6 @@ foreach ($accounts as $account) {
 
     $status_class = ((string) $account['status'] === 'passive') ? ' fg-secondary text-decoration-line-through' : '';
 
-    $output_link_url = h('edit_erp_account.php?id=' . $id . '&send_to=' . urlencode(REQUEST_URL));
-
     // The contact behind the card, when there is one: the link is where the
     // orders come from. A viewer edit_contact.php would refuse sees the mark
     // without the link.
@@ -180,20 +181,40 @@ foreach ($accounts as $account) {
         $output_contact = '<span class="fg-secondary d-inline-flex align-items-center justify-content-center p-1" title="' . h(lang('Contact')) . '"><i class="bi bi-person-check" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Contact')) . '</span></span>';
     }
 
-    $output_rows .=
-        '<tr' . erp_drawer_row_attributes($id) . '>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-            </td>
-            <td style="max-width:220px" class="text-wrap text-break align-middle chart_label' . $status_class . '">' . h($account['title']) . $output_edoc_flag . '</td>
-            <td class="align-middle">' . h($kind_labels[$account['kind']] ?? $account['kind']) . '</td>
-            <td class="align-middle text-center" data-order="' . (($contact_id > 0) ? 1 : 0) . '">' . $output_contact . '</td>
-            <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
-            <td class="align-middle">' . h($account['city']) . '</td>
-            <td class="align-middle text-end ' . $balance_class . '" data-order="' . $balance . '">' . h(erp_money_out(abs($balance))) . $output_balance_fc . '</td>
-            <td class="align-middle">' . h($balance_side) . $output_credit_flag . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => $id,
+        'cells' => array(
+            'name' => pg_list_cell('<a href="' . h('edit_erp_account.php?id=' . $id . '&send_to=' . urlencode(REQUEST_URL)) . '" class="' . trim('pg-link-body-emphasis' . $status_class) . '" data-pg-open>' . h($account['title']) . '</a>' . $output_edoc_flag, 'align-middle text-wrap text-break', array('data-pg-sort-value' => (string) $account['title'])),
+            'kind' => pg_list_cell(h($kind_labels[$account['kind']] ?? $account['kind'])),
+            'contact' => pg_list_cell($output_contact, 'align-middle', array('data-pg-sort-value' => ($contact_id > 0) ? 1 : 0)),
+            'tax_number' => pg_list_cell(h($account['tax_number']), 'align-middle text-nowrap'),
+            'city' => pg_list_cell(h($account['city'])),
+            'balance' => pg_list_cell(h(erp_money_out(abs($balance))) . $output_balance_fc, 'align-middle ' . $balance_class, array('data-pg-sort-value' => $balance)),
+            'direction' => pg_list_cell(h($balance_side) . $output_credit_flag),
+            'actions' => pg_list_cell(erp_drawer_button($id)),
+        ),
+    );
 }
+
+$columns = array(
+    'name' => array('heading' => lang('Name'), 'kind' => 'link'),
+    'kind' => array('heading' => lang('Type')),
+    'contact' => array('heading' => lang('Contact'), 'kind' => 'check'),
+    'tax_number' => array('heading' => erp_tax_id_label()),
+    'city' => array('heading' => lang('City')),
+    'balance' => array('heading' => lang('Balance'), 'kind' => 'money'),
+    'direction' => array('heading' => lang('Direction')),
+    'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
+);
+$sort_columns = pg_list_table_printed_sort_columns($columns);
+$sort_default = array('sort' => 'name', 'order' => 'asc');
+$list_state = pg_list_state('erp_accounts', $sort_columns, $sort_default);
+$list = pg_list_table_printed(array(
+    'list' => 'erp_accounts',
+    'columns' => $columns,
+    'levels' => $list_state['sorts'],
+    'rows' => $list_rows,
+));
 
 // The narrowing switches only show while there is something to narrow to,
 // or while one of them is on; one filter, each choice with how many cards
@@ -240,31 +261,17 @@ pg_page_shell([
                     <button type="submit" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} contact(s) have placed orders but have no account. Open an account for each of them from their contact card?', 'vars' => $unlinked_contacts))) . '"><i class="bi bi-person-plus me-1"></i>' . h(lang(array('string' => 'Open accounts for {var:1} contact(s) with orders', 'vars' => $unlinked_contacts))) . '</button>
                 </form>' : '') . '
                 <div class="pg-toolbar-grow"></div>
+                ' . pg_list_table_search_box('erp_accounts') . '
+                ' . pg_list_sort_menu('erp_accounts.php', $sort_columns, $list_state['sorts'], $sort_default, ($edoc_only || $over_limit_only) ? array('filter' => $edoc_only ? 'edoc' : 'over_limit') : array()) . '
                 ' . $output_filter . '
             </nav>
             <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none;">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Name') . '</th>
-                                <th>' . lang('Type') . '</th>
-                                <th class="text-center">' . lang('Contact') . '</th>
-                                <th>' . h(erp_tax_id_label()) . '</th>
-                                <th>' . lang('City') . '</th>
-                                <th class="text-end">' . lang('Balance') . '</th>
-                                <th>' . lang('Direction') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Accounts')) . '
             </div>
         </div>
     </div>
 </main>
-' . erp_drawer_markup('account') .
+' . erp_drawer_markup('account') . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

@@ -12,7 +12,7 @@ module: order_completion
 - `pg_order_complete_abandoned_campaigns($order_id, $contact_id, $billing_email_address)`: ready or paused `order_abandoned` campaigns of the order or the same customer cancelled.
 - `pg_order_complete_visitor($visitor_id, $total, $billing)`: the visit's `order_completed`, total, billing place. The context's `visitor_id` (`submit_order()` passes the session's); a payment service's message has none (0 → nothing).
 - `pg_order_complete_announce($order_id, $order_number, $total, $billing)`: the "Order was completed" log line and the `new_order` notification.
-- Pure: `pg_order_line_reward_points($line, $program_on)` (points × quantity, summed in the loop), `pg_order_reward_membership_until()` (0 days → `0000-00-00`; else `pg_order_extended_until()`; a lifetime end gets the days from today, as before).
+- Pure: `pg_order_line_reward_points($line, $program_on)` (points × quantity, summed in the loop), `pg_order_reward_membership_until($end, $days, $today, $member_id)` (0 days or a lifetime member → `0000-00-00`; else `pg_order_extended_until()`).
 
 ## What stays in submit_order()?
 - The post-save PHP hook (`eval` over the request's variables) runs after `pg_order_complete()` returns, then `pg_erp_auto_invoice($order_id, 'order_paid', true)`, so the hook still comes before the invoice. A payment service's message (A3) calls the invoice itself; it has no hook (`order-completion.md`).
@@ -24,3 +24,6 @@ module: order_completion
 - `pg_order_extended_until()` (memberships, folder access, the reward membership) and `pg_order_recurring_commission_start()` add `+N day` with `strtotime()`. They added N × 86400 s: over the autumn clock change (a 25-hour day, Europe and the US) an end came out one day early, a one-day access bought the day before ended that same day. Turkey has no clock change, so Turkish sites never saw it.
 
 Related: commerce/order-completion.md, commerce/order-completion-lines.md
+
+## Does a lifetime member stay lifetime?
+- Yes (owner, #5058). `pg_order_membership_lifetime($member_id, $end)`: a member id and an end of `''`, `0000-00-00` or NULL. A reward goal and a renewal line (`pg_order_membership_renewal_until()`, read with the member id the contact had before the order) keep `0000-00-00`; a contact without a member id gets the days from today. Before the fix both turned a lifetime membership into today + N days; members already changed stay as they are.

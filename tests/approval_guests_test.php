@@ -150,6 +150,29 @@ function test_approval_guest_state_what_a_link_opens_to()
 	pg_assert_same('expired', ws_approval_guest_state(array('decision' => 'pending', 'expires_at' => 5000), $open, $now));
 }
 
+function test_approval_guest_state_frozen_channel_closes_an_unanswered_link()
+{
+	$now = 5000;
+	$open = array('closed_at' => 0, 'closes_at' => 0);
+
+	// A request in an archived channel, or in an earlier version of a cleared
+	// conversation, takes no answer from outside the team either.
+	pg_assert_same('closed', ws_approval_guest_state(array('decision' => 'pending', 'expires_at' => 6000), $open, $now, true));
+	pg_assert_same('answered', ws_approval_guest_state(array('decision' => 'approved', 'expires_at' => 6000), $open, $now, true));
+	pg_assert_same('open', ws_approval_guest_state(array('decision' => 'pending', 'expires_at' => 6000), $open, $now, false));
+}
+
+function test_approval_guest_channel_frozen()
+{
+	pg_assert_true(ws_approval_guest_channel_frozen(null, null, false));
+	pg_assert_true(ws_approval_guest_channel_frozen(array('kind' => 'public', 'archived_at' => 10), null, false));
+	pg_assert_true(ws_approval_guest_channel_frozen(array('kind' => 'thread', 'archived_at' => 0), array('archived_at' => 10), false));
+	pg_assert_true(ws_approval_guest_channel_frozen(array('kind' => 'thread', 'archived_at' => 0), null, false));
+	pg_assert_true(ws_approval_guest_channel_frozen(array('kind' => 'private', 'archived_at' => 0), null, true));
+	pg_assert_false(ws_approval_guest_channel_frozen(array('kind' => 'private', 'archived_at' => 0), null, false));
+	pg_assert_false(ws_approval_guest_channel_frozen(array('kind' => 'thread', 'archived_at' => 0), array('archived_at' => 0), false));
+}
+
 function test_approval_guest_token_shape()
 {
 	pg_assert_true(ws_approval_guest_token_shape(str_repeat('a', 40) . '-_9'));

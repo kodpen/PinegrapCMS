@@ -171,7 +171,12 @@ $pg_settings_cards[] = '
                                                    <div class="row gy-5">
                                                         <div class="pg-f-lg">
                                                             <label for="mailchimp_key" class="form-label">' . lang('API Key') . '</label>
-                                                            <input type="text" name="mailchimp_key" id="mailchimp_key" class="form-control" value="' . h($mailchimp_key) . '" maxlength="100"/>
+                                                            <input type="text" name="mailchimp_key" id="mailchimp_key" class="form-control" value="" maxlength="100" autocomplete="off" spellcheck="false" placeholder="' . ($mailchimp_key_stored ? h(lang('Leave blank to keep the stored key')) : '') . '"/>' . ($mailchimp_key_stored ? '
+                                                            <div class="form-text">' . lang('A secret is saved (never shown here). Type a new value only to replace it.') . '</div>
+                                                            <div class="form-field mt-2">
+                                                                <input value="1" class="check" type="checkbox" id="mailchimp_key_clear" name="mailchimp_key_clear"/>
+                                                                <label class="" for="mailchimp_key_clear">' . lang('Remove the stored key') . '</label>
+                                                            </div>' : '') . '
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label for="mailchimp_list_id" class="form-label">' . lang('List ID') . '</label>

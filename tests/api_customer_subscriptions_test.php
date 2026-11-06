@@ -63,7 +63,7 @@ function test_api_customer_subscriptions_sql_reads_the_accounts_of_the_customer(
 // customer could make now, never the card token or the driver's ids.
 function test_api_customer_subscription_present()
 {
-	$out = api_subscription_present(api_customer_subscriptions_test_row());
+	$out = api_subscription_present(api_customer_subscriptions_test_row(), true);
 
 	pg_assert_same(7, $out['id'], 'id');
 	pg_assert_same('Coffee box', $out['product_name'], 'product name');

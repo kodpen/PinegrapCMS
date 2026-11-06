@@ -25,16 +25,17 @@ function offers_keycodes_names_source($file)
 function test_offers_toggle_name_follows_its_state()
 {
 	$src = offers_keycodes_names_source('view_offers.php');
+	$fn = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/offer_list_edit.php');
 
-	pg_assert_contains('aria-label="<?=$offer[\'enabled\'] ? h(lang(\'Disable offer\')) : h(lang(\'Enable offer\'))?>"', $src, 'the toggle prints its name beside its title');
+	pg_assert_contains('title="\' . h($toggle) . \'" aria-label="\' . h($toggle) . \'"', $fn, 'the toggle prints its name beside its title');
 	pg_assert_contains(".attr('aria-label', text)", $src, 'relabel() renames the toggle after a click');
 }
 
 function test_offers_upsell_badge_has_a_name()
 {
-	$src = offers_keycodes_names_source('view_offers.php');
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/offer_list_edit.php');
 
-	pg_assert_contains('<i class="bi bi-chat-square-text" aria-hidden="true"></i><span class="visually-hidden"><?=lang(\'Up-sell message\')?></span>', $src, 'the up-sell badge reads its name');
+	pg_assert_contains('<i class="bi bi-chat-square-text" aria-hidden="true"></i><span class="visually-hidden">\' . h(lang(\'Up-sell message\')) . \'</span>', $src, 'the up-sell badge reads its name');
 }
 
 function test_key_code_marks_read_as_text()

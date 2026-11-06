@@ -356,7 +356,19 @@ function erp_edoc_inbox_keep($provider, $item)
             updated_at = '" . $now . "',
             " . implode(",\n            ", $pairs));
 
-    return ($ok === false) ? '' : 'added';
+    if ($ok === false) {
+        return '';
+    }
+
+    // A document read for the first time: announced once, as kept.
+    if (function_exists('erp_event')) {
+        erp_event('erp.edoc.received', array(
+            'id' => (int) mysqli_insert_id(db::$con),
+            'gib_uuid' => $uuid,
+        ) + $columns);
+    }
+
+    return 'added';
 }
 
 /**
@@ -526,8 +538,9 @@ function erp_edoc_inbox_account_data($party, $document)
  * beyond doubt: the buyer's item code (the store's own code, as the supplier
  * keeps it) read as a barcode or SKU, or the supplier's code read as a
  * barcode only - a supplier's own item number is theirs and says nothing
- * about the store's SKUs. 0 when neither names a product; the operator can
- * link the line on the draft before it is issued.
+ * about the store's SKUs. 0 when neither names a product, or names one in
+ * the Recycle Bin; the operator can link the line on the draft before it
+ * is issued.
  *
  * @param array $line  One line of erp_ubl_read()
  * @return int
@@ -539,7 +552,9 @@ function erp_edoc_inbox_line_product($line)
     if ($buyer_code !== '') {
         $row = erp_product_by_barcode($buyer_code);
 
-        if (is_array($row)) {
+        // A product in the Recycle Bin is not linked, as the ERP product
+        // search leaves it out: its stock would move unseen.
+        if (is_array($row) && !pg_catalog_product_binned($row['id'])) {
             return (int) $row['id'];
         }
     }
@@ -548,7 +563,9 @@ function erp_edoc_inbox_line_product($line)
 
     if (($seller_code !== '') && (mb_strlen($seller_code) <= 100) && defined('BARCODE_ENABLED') && BARCODE_ENABLED
         && function_exists('waf_table_has_column') && waf_table_has_column('product_barcodes', 'barcode')) {
-        return (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($seller_code) . "' LIMIT 1");
+        $product_id = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($seller_code) . "' LIMIT 1");
+
+        return (($product_id > 0) && !pg_catalog_product_binned($product_id)) ? $product_id : 0;
     }
 
     return 0;

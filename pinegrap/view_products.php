@@ -25,8 +25,8 @@ require_once(dirname(__FILE__) . '/seo.php');
 if (pg_list_edit_requested()) {
     include_once('product_builder.php');
 
-    // A page, folder or contact group is one of the user's choices; they
-    // are read only for such a cell, and only once the session is known.
+    // A page, folder, contact group or zone is one of the user's choices;
+    // they are read only for such a cell, and only once the session is known.
     $choices = (defined('USER_LOGGED_IN') && USER_LOGGED_IN && in_array($_POST['field'] ?? '', pg_pb_quick_edit_choice_codes(), true))
         ? pg_pb_quick_edit_choices(validate_user())
         : null;

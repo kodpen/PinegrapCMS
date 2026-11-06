@@ -673,15 +673,75 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
  * answer is reported as such, so the operator looks at the service before
  * trying again. A return label (collected from the recipient, delivered to
  * the store) is kept as a row only: its number is not one of the address's
- * parcels, whose delivery would announce the order delivered.
+ * parcels, whose delivery would announce the order delivered. While
+ * another create of the same address runs, the call is refused with code
+ * busy and nothing is asked of the service.
  *
  * @param int  $ship_to_id
  * @param int  $user_id
  * @param bool $return
- * @return array ok, error, code (the check's, '' past it), unclear, id (the
- *               label row), number, row
+ * @return array ok, error, code (the check's or busy, '' past it), unclear,
+ *               id (the label row), number, row
  */
 function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
+{
+    $lock = pg_shipment_label_lock_name($ship_to_id);
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 0)") !== 1) {
+        return pg_shipment_label_busy_refusal();
+    }
+
+    $result = pg_shipment_label_create_locked($ship_to_id, $user_id, $return);
+
+    db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+    return $result;
+}
+
+/**
+ * The name of the lock that lets one label be made for an address at a
+ * time, outbound and return alike.
+ *
+ * @param int $ship_to_id
+ * @return string
+ */
+function pg_shipment_label_lock_name($ship_to_id)
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+
+    return 'pg_label_ship_to_' . md5($database) . '_' . (int) $ship_to_id;
+}
+
+/**
+ * The refusal of a create that finds another create of the same address
+ * running, in the full shape of pg_shipment_label_create()'s result. Pure.
+ *
+ * @return array ok, error, code (busy), unclear, id, number, row
+ */
+function pg_shipment_label_busy_refusal()
+{
+    return array(
+        'ok'      => false,
+        'error'   => lang('A label is being created for this address. Wait a moment, then open the order again.'),
+        'code'    => 'busy',
+        'unclear' => false,
+        'id'      => 0,
+        'number'  => '',
+        'row'     => array(),
+    );
+}
+
+/**
+ * pg_shipment_label_create() under the address's lock: the check for an
+ * active label and the service call run inside it, so two presses, a bulk
+ * run and an API call at once never buy two labels for one address.
+ *
+ * @param int  $ship_to_id
+ * @param int  $user_id
+ * @param bool $return
+ * @return array as pg_shipment_label_create()
+ */
+function pg_shipment_label_create_locked($ship_to_id, $user_id, $return = false)
 {
     $out = array('ok' => false, 'error' => '', 'code' => '', 'unclear' => false, 'id' => 0, 'number' => '', 'row' => array());
     $check = pg_shipment_label_create_check($ship_to_id, $return);

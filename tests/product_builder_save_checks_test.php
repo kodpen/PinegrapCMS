@@ -130,3 +130,37 @@ function test_product_builder_attributes_cleared_needs_the_mark()
 	pg_assert_same(false, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1', 'variants_json' => array('[]'))), 'an array');
 	pg_assert_same(false, pg_pb_attributes_cleared(array('pg_pb_attributes_posted' => '1')), 'nothing posted');
 }
+
+function test_product_builder_shipping_counts_and_stock_read_as_whole_numbers()
+{
+	pg_assert_same('', pg_pb_number_fields_problem(array('primary_weight_points' => '3', 'secondary_weight_points' => '', 'preparation_time' => '1.200', 'inventory_quantity' => '0'), '.'), 'whole counts and an empty box');
+
+	pg_assert_contains(lang('Primary Weight Points'), pg_pb_number_fields_problem(array('primary_weight_points' => '-4'), '.'), 'negative points');
+	pg_assert_contains(lang('Secondary Weight Points'), pg_pb_number_fields_problem(array('secondary_weight_points' => 'abc'), '.'), 'letters in points');
+	pg_assert_contains(lang('Preparation Time'), pg_pb_number_fields_problem(array('preparation_time' => '2,5'), '.'), 'fractional days');
+	pg_assert_contains(lang('Inventory Quantity'), pg_pb_number_fields_problem(array('inventory_quantity' => '-5'), '.'), 'negative stock');
+	pg_assert_contains(lang('Inventory Quantity'), pg_pb_number_fields_problem(array('inventory_quantity' => array('1')), '.'), 'an array');
+}
+
+function test_product_builder_counts_fit_their_columns()
+{
+	pg_assert_same('', pg_pb_number_fields_problem(array('maximum_quantity' => '4294967295'), '.'), 'the column top');
+	pg_assert_contains(lang('Max. Quantity'), pg_pb_number_fields_problem(array('maximum_quantity' => '4294967296'), '.'), 'above the column');
+	pg_assert_contains(lang('Reward Points'), pg_pb_number_fields_problem(array('reward_points' => '99999999999999999999'), '.'), 'far above the column');
+}
+
+function test_product_builder_posted_stock_quantity_reads_groups()
+{
+	$saved = $_POST;
+
+	$_POST = array();
+	pg_assert_same('', pg_pb_posted_stock_quantity(), 'absent');
+
+	$_POST = array('inventory_quantity' => ' 12 ');
+	pg_assert_same('12', pg_pb_posted_stock_quantity(), 'spaces trimmed');
+
+	$_POST = array('inventory_quantity' => '1 200');
+	pg_assert_same('1200', pg_pb_posted_stock_quantity(), 'grouped by a space');
+
+	$_POST = $saved;
+}

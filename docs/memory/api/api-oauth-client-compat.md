@@ -16,7 +16,7 @@ description: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Cod
 
 ## What about scopes the site does not have?
 - `openid`, `offline_access` or a client's own word are passed over on the consent screen (`pg_oauth_scope_requested()`); a request naming no known scope lists everything available and the person chooses.
-- On refresh unknown names are ignored the same way; asking for more than was granted is 400 `invalid_scope`.
+- On refresh unknown names are ignored the same way; asking for more than was granted is 400 `invalid_scope`. Asking for less gives an access token holding only that, and the answer's `scope` names it; the next refresh may ask for the whole consent again (`api-device-refresh-rotation.md`).
 
 ## Where do clients find the server?
 - `router.php` answers `.well-known/oauth-authorization-server`, `.well-known/openid-configuration` (the only name reachable for a site installed in a folder; it claims nothing OpenID Connect adds) and `.well-known/oauth-protected-resource/<path>`, each through `oauth.php`. Beside them it answers `.well-known/pinegrap.json`, Pinegrap's own discovery document for team device clients, not an OAuth name (`api-discovery-document.md`).

@@ -2620,9 +2620,6 @@ elseif (isset($_GET['icalendar']) && $_GET['icalendar'] == 'true')
 	{
 		output_error(lang('The requested calendar event is not allowed in this calendar event view.'), 403);
 	}
-	// format dates so that they always have an identical format
-	$start_date_and_time = date('l, F j, Y g:i A', strtotime($calendar_event['start_date_and_time']));
-	$end_date_and_time = date('l, F j, Y g:i A', strtotime($calendar_event['end_date_and_time']));
 	$output_recurrence_rule = '';
 	// if this event has recurrence enabled then output the recurrence rule
 	if ($calendar_event['recurrence'] == 1)
@@ -2687,13 +2684,13 @@ elseif (isset($_GET['icalendar']) && $_GET['icalendar'] == 'true')
 		break;
 		}
 		$count = $calendar_event['total_recurrence_number'] + 1;
-		$output_recurrence_rule = 'RRULE:FREQ=' . $frequency . ';COUNT=' . $count . $by_day . "\n";
+		$output_recurrence_rule = 'FREQ=' . $frequency . ';COUNT=' . $count . $by_day;
 	}
 	// set content type and disposition headers for ICS
-	header('Content-type: text/calendar');
+	header('Content-type: text/calendar; charset=UTF-8');
 	header('Content-Disposition: attachment; filename="' . $calendar_event['id'] . $calendar_event['created_timestamp'] . '.ics"');
 	// output calendar event data in ICS format
-	$content = 'BEGIN:VCALENDAR' . "\n" . 'VERSION:2.0' . "\n" . 'PRODID:-//' . HOSTNAME . '//NONSGML ' . $page_name . '//EN' . "\n" . 'METHOD:PUBLISH' . "\n" . 'BEGIN:VEVENT' . "\n" . 'UID:' . $calendar_event['id'] . $calendar_event['created_timestamp'] . "\n" . 'DTSTAMP:' . date("Ymd\THis", strtotime($start_date_and_time)) . "\n" . 'DTSTART:' . date("Ymd\THis", strtotime($start_date_and_time)) . "\n" . 'DTEND:' . date("Ymd\THis", strtotime($end_date_and_time)) . "\n" . 'LOCATION:' . trim($calendar_event['location']) . "\n" . 'SUMMARY:' . trim($calendar_event['name']) . "\n" . 'DESCRIPTION:' . trim($calendar_event['short_description']) . "\n" . $output_recurrence_rule . 'END:VEVENT' . "\n" . 'END:VCALENDAR';
+	$content = pg_calendar_event_ics($calendar_event, HOSTNAME, $page_name, $output_recurrence_rule);
 	// else output the page normally
 	
 }

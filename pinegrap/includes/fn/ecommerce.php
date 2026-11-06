@@ -3652,6 +3652,41 @@ function pg_import_contact_value($column_name, $value, $max_length = 0, $heading
 }
 
 /**
+ * An imported affiliate code, left empty when another contact already holds
+ * it: checkout and the commission screens find the affiliate by the code, so
+ * a second contact with it would take the first one's orders. The contact
+ * form refuses such a code the same way (pg_contact_form_affiliate_code()).
+ *
+ * @param string   $code    The cell as pg_import_contact_value() read it
+ * @param string   $heading The file's heading, named in the problem
+ * @param callable $taken   Whether a stored contact holds the code (tests stub it)
+ * @return array array('value' => string, 'problem' => string)
+ */
+function pg_import_affiliate_code($code, $heading, $taken = 'pg_import_affiliate_code_taken')
+{
+    $code = (string) $code;
+
+    if (($code === '') || !$taken($code)) {
+        return array('value' => $code, 'problem' => '');
+    }
+
+    return array('value' => '', 'problem' => lang(array('string' => 'Column {var:1}: the affiliate code "{var:2}" belongs to another contact, so it was left empty.', 'vars' => array($heading, $code))));
+}
+
+/**
+ * Whether a stored contact holds the affiliate code, compared as checkout
+ * compares it (the column's collation). Rows an import wrote earlier count,
+ * so a file that repeats a code keeps it on its first row only.
+ *
+ * @param string $code
+ * @return bool
+ */
+function pg_import_affiliate_code_taken($code)
+{
+    return (bool) db_value("SELECT id FROM contacts WHERE affiliate_code = '" . escape((string) $code) . "' LIMIT 1");
+}
+
+/**
  * The character lengths of a table's text columns from SHOW COLUMNS rows:
  * varchar(n) and char(n) give n; other types are left out.
  *
@@ -5345,6 +5380,20 @@ function pg_offer_best_order_discount($candidates, $subtotal)
     return $best;
 }
 
+// The statement that stores an order's order discount offer: the winner
+// apply_offers_to_cart() found, or 0 when none applies. Clearing touches only
+// an order that still names an offer, so a cart without one is not written
+// on every view.
+function pg_order_discount_offer_update_sql($order_id, $offer_id)
+{
+    $order_id = ctype_digit((string) $order_id) ? (int) $order_id : 0;
+    $offer_id = ctype_digit((string) $offer_id) ? (int) $offer_id : 0;
+    if ($offer_id > 0) {
+        return "UPDATE orders SET discount_offer_id = '" . $offer_id . "' WHERE id = '" . $order_id . "'";
+    }
+    return "UPDATE orders SET discount_offer_id = '0' WHERE (id = '" . $order_id . "') AND (discount_offer_id != '0')";
+}
+
 // Conditions about the cart that do not fit the offer_rules row. The answer
 // depends on what is in the basket right now, and apply_offers_to_cart() moves
 // the basket while it runs, so nothing here is cached.
@@ -6441,16 +6490,15 @@ function apply_offers_to_cart()
         }
         list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($qualified_candidates, $final_subtotal);
     }
-    // if there is an order discount, then add order discount to order
+    // The order keeps the winning offer, or none. A stored offer is cleared
+    // also when the session holds no amount for it: a cart retrieved in a new
+    // session (a saved cart link, the order history) still names the offer
+    // its earlier session won, which the cart would list as applied and the
+    // usage limit would count once the order is placed without the discount.
+    db(pg_order_discount_offer_update_sql($_SESSION['ecommerce']['order_id'] ?? 0, $best_order_discount_offer_id));
     if ($best_order_discount_offer_id != 0) {
-        $query = "UPDATE orders SET discount_offer_id = ? WHERE id = ?";
-        $result = db_q($query, array((string) $best_order_discount_offer_id, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         $_SESSION['ecommerce']['order_discount'] = $best_order_discount;
-        // else there is not an order discount, so if there was before, then remove it
-    } else if (isset($_SESSION['ecommerce']['order_discount']) == true) {
-        // remove order discount until we find out below if there is an order discount
-        $query = "UPDATE orders SET discount_offer_id = '0' WHERE id = ?";
-        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
+    } else {
         unset($_SESSION['ecommerce']['order_discount']);
     }
     // if shipping is on, then loop through discounted ship tos in order to discount them
@@ -11296,6 +11344,16 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
     }
 
+    // A basket (incomplete) is not an order: it has no number, payment or
+    // stock move, and only the checkout ends it. The customer's own
+    // cancel_order.php post and the order screen's cancel handler have no
+    // status check of their own; a cancelled basket was mailed to the
+    // customer as a cancelled order, announced as order.cancelled and listed
+    // among the cancelled orders.
+    if (pg_order_status_move($order['status'], 'cancelled') === 'refuse') {
+        return array('status' => 'error', 'message' => pg_order_status_move_refusal($order['status'], 'cancelled'), 'refund_status' => '', 'order_id' => $order_id);
+    }
+
     // ── Pre-shipment guard (CUSTOMERS ONLY) ─────────────────────────────
     // Admins are never blocked. An operator cancelling from the panel has
     // context the code does not — a customer phoned, the courier returned the
@@ -11333,7 +11391,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
             cancellation_reason = '" . escape($reason_clean) . "',
             " . pg_order_touch_sql() . "
          WHERE id = '" . e($order_id) . "'
-           AND status <> 'cancelled'"
+           AND status NOT IN ('cancelled', 'incomplete')"
     );
     if (mysqli_affected_rows(db::$con) < 1) {
         return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
@@ -11345,6 +11403,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // tell the customer the order was not bought. Only the request that
     // cancelled the order (the guarded write above) gets here.
     pg_review_request_cancel($order_id);
+
+    // Its reviews no longer count: a cancelled order is no purchase
+    // (pg_review_purchase_stands_sql()).
+    pg_review_refresh_order($order_id);
 
     // ── Expire gift cards issued by this order ──────────────────────────
     // Folded in from the removed legacy cancel_order(). A cancelled order
@@ -11792,6 +11854,9 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
         log_activity($commission_line);
     }
 
+    // Its reviews count again.
+    pg_review_refresh_order($order_id);
+
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 
     return true;
@@ -11880,6 +11945,23 @@ function pg_order_restore_commissions($order_id)
     }
 
     return $result;
+}
+
+// The affiliate code an order is submitted with: the visitor's own code
+// (session or cookie, get_affiliate_code()), else the one the cart stored on
+// the order when an affiliate code was typed as an offer code. Without visitor
+// tracking that code lives on the order only, and the off-site payment
+// completion credits it from there; the on-site submit must not overwrite it
+// with an empty value. Pure.
+function pg_order_submit_affiliate_code($visitor_code, $order_code)
+{
+    $visitor_code = trim((string) $visitor_code);
+
+    if ($visitor_code !== '') {
+        return $visitor_code;
+    }
+
+    return trim((string) $order_code);
 }
 
 // The site log line of a cancellation's commissions, '' when it changed none.
@@ -13348,6 +13430,27 @@ function pg_products_import_headings($headings, $convert)
         'column_names' => $column_names,
         'submit_form_fields' => $submit_form_fields,
         'unknown_headings' => $unknown_headings);
+}
+
+/**
+ * Whether an update row's enabled cell disables the product (the import then
+ * drops its tag cloud keywords). An empty cell leaves the product as it is;
+ * any other cell is read as the TINYINT column stores it in a non-strict
+ * session: a number rounded, a word as 0. Compared loosely, '' == 0 held on
+ * PHP 7 and an enabled product lost its keywords. Pure.
+ *
+ * @param mixed $cell the enabled cell, '' when empty
+ * @return bool
+ */
+function pg_products_import_disables($cell)
+{
+    $cell = trim((string) $cell);
+
+    if ($cell === '') {
+        return false;
+    }
+
+    return ((int) round((float) $cell)) === 0;
 }
 
 // The text of one column of a CSV row: '' when the file has no such column

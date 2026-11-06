@@ -2392,3 +2392,32 @@ function pg_comment_label_line_start($label, $language)
 
     return $first . mb_substr($label, 1, null, 'UTF-8');
 }
+
+/**
+ * The UPDATE with which the general job publishes a scheduled comment whose
+ * time has come. It changes the row only while the comment is still
+ * unpublished and still carries the time the job read, so of two job runs
+ * that overlap (a slow tick and the next one, or a manager starting the job
+ * by hand) exactly one claims it, and a comment whose time was changed or
+ * cleared in between is left alone. The caller sends the comment e-mails
+ * only when one row changed. Pure.
+ *
+ * @param int    $comment_id
+ * @param string $due publish_date_and_time as the job read it
+ * @return string
+ */
+function pg_comment_schedule_claim_sql($comment_id, $due)
+{
+    // The created time moves to now so the comment sits in logical order.
+    return
+        "UPDATE comments
+        SET
+            published = '1',
+            publish_date_and_time = '',
+            publish_cancel = '0',
+            created_timestamp = UNIX_TIMESTAMP()
+        WHERE
+            (id = '" . (int) $comment_id . "')
+            AND (published = '0')
+            AND (publish_date_and_time = '" . e((string) $due) . "')";
+}

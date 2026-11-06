@@ -6,7 +6,7 @@ module: activitypub_comments
 
 ## Which replies become comments?
 - The inbox hands a Create(Note) whose `inReplyTo` is under the site's base and whose `attributedTo` is the sender to `pg_ap_reply_receive()` (`platform/activitypub-inbox.md`). `pg_ap_reply_ref()` (pure) reads `inReplyTo`: `<actor>/p/<id>` a page, `<actor>/r/<id>` a record, `<actor>/c/<id>` a reply the site sent (`<actor>` = `pg_ap_urls()['id']`), or an Article's `url` (base + page name, no slash, query or `@`).
-- `pg_ap_reply_thread()`: a page or record must be in `pg_ap_published()` now (a record's thread is its record page, `item_type = 'submitted_form'`); a `c` reply goes under that published site comment (`parent_id` set, once the column is there). Anything else, or a page whose comments are off or closed (`pg_comments_settings()`, `pg_comments_allow_new()`), is not stored; the inbox log says why.
+- `pg_ap_reply_thread()`: a page or record must be in `pg_ap_published()` now (a record's thread is its record page, `item_type = 'submitted_form'`); a `c` reply goes under that published site comment (`parent_id` set, once the column is there) only while the comment's own page or record is in `pg_ap_published()` (`pg_ap_comment_thread()`, pure); before, any published comment id let a server post into the thread of a private, member-only or binned page and mail its watchers. Anything else, or a page whose comments are off or closed (`pg_comments_settings()`, `pg_comments_allow_new()`), is not stored; the inbox log says why.
 - A reply to another remote comment is ignored (`pg_ap_is_ours()`).
 
 ## What does the row hold?

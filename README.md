@@ -11,6 +11,10 @@ Pinegrap is an open-source, all-in-one website platform written in PHP. A websit
 
 Pinegrap grew out of LiveSite and has been developed by Kodpen since 2017. It runs wherever PHP runs, from a shared cPanel account to a dedicated IIS server, with no Composer step, no build pipeline and no outside service to set up.
 
+<p align="center">
+  <img src=".github/readme/editor.webp" width="100%" alt="The visual page editor with the Online Store template open: the page tree on the left, the hero block selected on the canvas, its options on the right">
+</p>
+
 ---
 
 ## Links
@@ -51,6 +55,56 @@ A short overview; the full list is on [pinegrap.com/features](https://pinegrap.c
 * **No Composer, no build pipeline, no `node_modules`.** Upload the files, run the installer, done.
 * **One codebase, one deploy.** Everything ships together and is upgraded together through versioned upgrade steps.
 * **Runs where PHP runs.** A codebase with a production lineage going back to 2001 that still deploys over plain FTP if it has to.
+
+---
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/dashboard-dark.webp">
+        <img src=".github/readme/dashboard-light.webp" alt="The dashboard: today's orders and visits, goals, System Status and a Connect Claude card">
+      </picture>
+      <p align="center"><sub>Dashboard: the day's figures, goals and System Status</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/workspace-dark.webp">
+        <img src=".github/readme/workspace-light.webp" alt="Workspace: a team channel with a checklist, mentions, and tabs for decisions, tasks and files">
+      </picture>
+      <p align="center"><sub>Workspace: team channels with tasks, decisions and files</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src=".github/readme/store.webp" alt="A store home page made from the Online Store template: search, category menu, campaign blocks and categories">
+      <p align="center"><sub>A store made from the Online Store template</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/orders-dark.webp">
+        <img src=".github/readme/orders-light.webp" alt="The orders screen: sales totals, a top-products chart, payment methods and the order list">
+      </picture>
+      <p align="center"><sub>Orders with sales charts and filters</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src=".github/readme/phone-store.webp" width="24%" alt="The store's home page on a phone">
+  <img src=".github/readme/phone-products.webp" width="24%" alt="The store's products with prices and Add to Cart buttons on a phone">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/phone-dashboard-dark.webp">
+    <img src=".github/readme/phone-dashboard-light.webp" width="24%" alt="The dashboard on a phone">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/phone-workspace-dark.webp">
+    <img src=".github/readme/phone-workspace-light.webp" width="24%" alt="A Workspace channel on a phone">
+  </picture>
+</p>
+<p align="center"><sub>On a phone: the store, its products, the dashboard and Workspace</sub></p>
 
 ---
 

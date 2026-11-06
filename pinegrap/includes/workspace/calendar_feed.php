@@ -764,16 +764,21 @@ function ws_calendar_feed_serve($token)
     }
 
     $user = pg_load_user_row((int) $feed['user_id']);
+    $viewer = is_array($user) ? ws_viewer($user) : array('member' => false);
 
-    if (!is_array($user)) {
+    $state = ws_calendar_feed_holder_state(
+        $user,
+        is_array($user) && pg_auth_user_disabled((int) $user['id']),
+        !empty($viewer['member'])
+    );
+
+    if ($state === 'deleted') {
         // The account was deleted: its address goes with it.
         ws_calendar_feed_end((int) $feed['user_id']);
         ws_calendar_feed_refuse(404);
     }
 
-    $viewer = ws_viewer($user);
-
-    if (!$viewer['member']) {
+    if ($state !== 'open') {
         ws_calendar_feed_refuse(404);
     }
 
@@ -817,6 +822,31 @@ function ws_calendar_feed_serve($token)
     }
 
     exit;
+}
+
+/**
+ * What the address of this holder opens. A deleted account ('deleted') has
+ * its address ended; a disabled account matches no credential, this secret
+ * address included, and one out of the team sees nothing ('refused'). A
+ * disabled account keeps its row, so turning it back on brings the same
+ * address back, as with its API keys. Pure.
+ *
+ * @param array|null $user     pg_load_user_row() answer
+ * @param bool       $disabled user.user_disabled_at is set
+ * @param bool       $member   ws_viewer() says a workspace member
+ * @return string 'deleted', 'refused' or 'open'
+ */
+function ws_calendar_feed_holder_state($user, $disabled, $member)
+{
+    if (!is_array($user)) {
+        return 'deleted';
+    }
+
+    if ($disabled || !$member) {
+        return 'refused';
+    }
+
+    return 'open';
 }
 
 /**
