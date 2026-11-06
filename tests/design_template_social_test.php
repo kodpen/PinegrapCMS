@@ -121,17 +121,23 @@ function test_social_members_and_posts_hang_together()
 }
 
 // A tag opens its page with ?tag=, a topic the explore list with its
-// title (the value the Posts form stores), a name the profile with the
-// member's user name (the value the post list filters on).
+// title (the value the Posts form stores), a sample member's name the
+// people list searched for that name (the display name of the member's
+// sample profile record). The member page filters ?member= on the author
+// name of a record, which a fictional sample member never has, so no
+// static card links there, and no card shows a user name the site does
+// not have.
 function test_social_links_send_what_the_lists_read()
 {
 	$d = _test_social_load();
 	pg_assert_same('{{page:tag}}?tag=film', call_user_func($d['tag_url'], 'film'));
 	pg_assert_same('{{page:explore}}?topic=' . rawurlencode($d['topics']['food']['title']), call_user_func($d['topic_url'], 'food'));
-	pg_assert_same('{{page:member}}?member=' . rawurlencode($d['members']['ayla']['handle']), call_user_func($d['member_url'], 'ayla'));
-	$json = json_encode($d['parts']);
+	pg_assert_same('{{page:people}}?query=' . rawurlencode($d['members']['ayla']['name']), call_user_func($d['member_url'], 'ayla'));
+	$json = json_encode($d['parts'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 	pg_assert_contains('{{page:tag}}?tag=harbour', $json, 'a post card links its tags');
-	pg_assert_contains('{{page:member}}?member=ayla.lens', $json, 'a post card links its member');
+	pg_assert_contains('{{page:people}}?query=' . rawurlencode($d['members']['ayla']['name']), $json, 'a post card links its member');
+	pg_assert_true(strpos($json, '{{page:member}}?member=') === false, 'no static card links the member page');
+	foreach ($d['members'] as $key => $m) pg_assert_true(strpos($json, '@' . $m['handle']) === false, "$key: no user name on a card");
 }
 
 function test_social_page_links_name_template_pages()

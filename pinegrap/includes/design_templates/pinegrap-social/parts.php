@@ -148,10 +148,10 @@ $topics = array(
         'topics' => lang('hiking, cycling, climbing, surfing, camping, nature')),
 );
 
-// The sample members. Each is a sample record of the Profiles collection;
-// 'handle' is the user name its posts are filed under (the profile page's
-// ?member= value), 'topic' a key of the list above. The people are
-// fictional.
+// The sample members. Each is a sample record of the Profiles collection
+// ('name' is its display name); 'handle' is a sample user name for the
+// sample records that ask for one, 'topic' a key of the list above. The
+// people are fictional.
 $members = array(
     'ayla'  => array('handle' => 'ayla.lens', 'name' => lang('Ayla Demir'), 'city' => lang('Izmir'), 'topic' => 'photo',
         'bio' => lang('Street pictures on an old film camera. Mornings by the harbour.')),
@@ -244,8 +244,12 @@ $social_steps = array(
     array(lang('Join the conversation'), lang('Comment on posts, save the ones you love and find people near you.')),
 );
 
-// The address of a tag's page, the explore list filtered to a topic, and a
-// member's profile: what a tag, a topic tile and a name open.
+// The address of a tag's page, the explore list filtered to a topic, and
+// the people list searched for a sample member's name: what a tag, a topic
+// tile and a name open. The member page filters ?member= on the author
+// name of a record, which a fictional sample member never is, so a static
+// card opens the people list, where the member's sample profile record
+// links the member page with its real author name.
 $tag_url = function ($tag) {
     return '{{page:tag}}?tag=' . rawurlencode($tag);
 };
@@ -253,7 +257,7 @@ $topic_url = function ($key) use ($topics) {
     return '{{page:explore}}?topic=' . rawurlencode($topics[$key]['title']);
 };
 $member_url = function ($key) use ($members) {
-    return '{{page:member}}?member=' . rawurlencode($members[$key]['handle']);
+    return '{{page:people}}?query=' . rawurlencode($members[$key]['name']);
 };
 
 // ── The parts every page repeats ────────────────────────────────────────
@@ -507,18 +511,17 @@ $post_card = function ($member_key, $n) use ($el, $heading, $para, $link, $image
     ));
 };
 
-// A member as a card of the people list: picture, name, user name, city,
-// topic and the words of the profile; it opens the member's profile.
+// A member as a card of the people list: picture, name, city, topic and
+// the words of the profile; it opens the member in the people list.
 $profile_card = function ($member_key) use ($el, $heading, $para, $link, $span, $icon, $col, $members, $topics, $avatar, $member_url) {
     $m = $members[$member_key];
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-4 position-relative psc-lift', $m['name'], array(
             $el('div', 'card-body p-4 text-center', lang('Card Body'), array(
                 $avatar($member_key, 'psc-avatar-lg mb-3'),
-                $el('h3', 'h6 fw-bold mb-0 position-static', lang('Title'), array(
+                $el('h3', 'h6 fw-bold mb-2 position-static', lang('Title'), array(
                     $link($m['name'], $member_url($member_key), 'stretched-link link-body-emphasis text-decoration-none'),
                 )),
-                $span('@' . $m['handle'], 'd-block small text-body-secondary mb-2', lang('User Name')),
                 $el('p', 'd-flex flex-wrap justify-content-center align-items-center gap-2 small text-body-secondary mb-2', lang('Place and Topic'), array(
                     $icon('bi-geo-alt'),
                     $span($m['city'], '', lang('City')),
