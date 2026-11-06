@@ -12,7 +12,7 @@ description: Hotel template (pinegrap-hotel): rooms as a collection with rates, 
 - Trap: `parts.php` keeps the samples in `$rooms` and `$vouchers`; a part's return under those names would overwrite them. `events.php` names its helpers `ev_…` so it never replaces a `bookings.php` helper.
 
 ## How does it work without new product behaviour?
-- A room is a record of the Rooms form, a collection ([[collection-fields]]): guests and size number kinds, `photo_1`-`photo_3` image kinds, the rate as words written with `$money()` from `$room_rates`, office field `featured`. Lists filter `?type=` and `?view=` ([[collection-lists]]).
+- A room is a record of the Rooms form, a collection ([[collection-fields]]): guests and size number kinds, `photo_1`-`photo_3` image kinds, the rate as words written with `$money()` from `$room_rates`, office field `featured`. Lists filter `?type=` and `?room_view=` ([[collection-lists]]); `?view=` is reserved, so a filter on it was dropped and listed every room (#7514). `design_templates_url_params_test.php` checks all templates' names.
 - A booking is a request, never a reservation: a record of Booking Requests (`?room=`, `?plan=`, `?offer=` by `_cf.url_param`, dates with `min_date` today), office-only status, messages on the record page's Comments widget (`booking_messages`), views `submitter_only`, a staff list. Event enquiries the same way (`event_messages`, `?space=`, `?kind=`); a guest's file goes to the `private` folder.
 - Only the shop pages and `address_book` carry `requires => ecommerce`; the shared parts never link them.
 - Not built (new behaviour): live availability, prices per date, a deposit, OTA sync, room stock, appointment-booking features.

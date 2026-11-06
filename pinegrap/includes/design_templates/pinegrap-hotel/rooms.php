@@ -10,11 +10,12 @@
  *
  * A room is a record of the Rooms form. Its kind and view are pick lists
  * whose answers are the words parts.php gives, so a link with ?type= or
- * ?view= filters the list by the words a visitor sees. Guests and size are
- * number fields, so a list can sort on them; the rate is the words the
- * cards show ("From $190 a night"). The photos are image fields kept in the
- * public folder. Featured is the hotel's own choice (office use only): the
- * home page shows the featured rooms.
+ * ?room_view= filters the list by the words a visitor sees (?view= is a
+ * reserved name a list filter cannot read). Guests and size are number
+ * fields, so a list can sort on them; the rate is the words the cards show
+ * ("From $190 a night"). The photos are image fields kept in the public
+ * folder. Featured is the hotel's own choice (office use only): the home
+ * page shows the featured rooms.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -83,7 +84,7 @@ $room_filter_bar = function () use ($el, $link, $span, $query, $room_type_titles
     };
     return $el('nav', 'mb-4', lang('Filters'), array(
         $chips(lang('Kind of room'), 'type', $room_type_titles),
-        $chips(lang('View'), 'view', $view_titles),
+        $chips(lang('View'), 'room_view', $view_titles),
     ));
 };
 
@@ -262,7 +263,7 @@ $room_widgets = array(
             'items_per_page' => 12,
             'filters'        => array(
                 $room_filter('type', 'is equal to', '', 'type'),
-                $room_filter('view', 'is equal to', '', 'view'),
+                $room_filter('view', 'is equal to', '', 'room_view'),
             ),
             'search_enabled' => true,
             'search_fields'  => array('name', 'type', 'view', 'beds', 'summary', 'amenities', 'description'),
