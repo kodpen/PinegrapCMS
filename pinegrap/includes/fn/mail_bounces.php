@@ -578,9 +578,10 @@ function pg_mail_bounce_envelope($sender, $return_path)
 }
 
 /**
- * Which address a bounce report is about: the first candidate one of its
- * tokens was signed for. A report with no token, or none that matches, is
- * not the site's to record: anyone can send a mailbox a report. Pure.
+ * Which address a bounce report is about: the failed recipient it names,
+ * else the first candidate, when one of its tokens was signed for it. A
+ * report with no token, or none that matches, is not the site's to record:
+ * anyone can send a mailbox a report. Pure.
  *
  * @param array  $dsn  pg_mail_parse_dsn()
  * @param string $key
@@ -593,6 +594,17 @@ function pg_mail_bounce_dsn_match($dsn, $key)
     }
 
     $candidates = (array) ($dsn['candidates'] ?? array());
+
+    // A report that names its failed recipient is about that address only.
+    // A bcc copy leaves with the return path signed for the message's "to",
+    // and its report carries the returned headers (To: that recipient)
+    // among the candidates: matching any candidate would record the bcc
+    // copy's bounce or complaint against the "to", who got the message.
+    $recipient = pg_mail_bounce_address((string) ($dsn['recipient'] ?? ''));
+
+    if ($recipient !== '') {
+        $candidates = array($recipient);
+    }
 
     foreach ($candidates as $address) {
         foreach ((array) $dsn['tokens'] as $token) {

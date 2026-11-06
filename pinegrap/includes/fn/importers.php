@@ -466,6 +466,32 @@ function pg_import_tree_choices($rows, $left_out)
     return $choices;
 }
 
+/**
+ * A weight in the unit an export names, in pounds: products.weight holds
+ * pounds (the product screen converts typed kilograms the same way), so a
+ * shop's kilograms or grams stored as written ship as less than half their
+ * weight. Four places, the column's precision; '' for none, zero or less.
+ * An unknown unit is taken as kilograms. Pure.
+ *
+ * @param float|int $figure
+ * @param string    $unit kg, g, lb, lbs or oz
+ * @return string
+ */
+function pg_import_weight_pounds($figure, $unit)
+{
+    $figure = (float) $figure;
+
+    if (!($figure > 0)) {
+        return '';
+    }
+
+    $per_pound = array('g' => 453.59237, 'kg' => 0.45359237, 'lb' => 1, 'lbs' => 1, 'oz' => 16);
+    $unit = strtolower(trim((string) $unit));
+    $pounds = round($figure / (isset($per_pound[$unit]) ? $per_pound[$unit] : $per_pound['kg']), 4);
+
+    return ($pounds > 0) ? rtrim(rtrim(number_format($pounds, 4, '.', ''), '0'), '.') : '';
+}
+
 // ---- Files ---------------------------------------------------------------
 
 // The uploaded export, kept until the import is undone or swept.
@@ -657,9 +683,28 @@ function pg_import_write($import, $related, $item)
             kind = '" . e($kind) . "',
             item_id = '" . (int) $answer['id'] . "',
             source_key = '" . e($key) . "'");
+
+        // The general job works an import outside a signed-in request, and
+        // most writers announce nothing the page cache hears.
+        if (pg_import_kind_dirties_pages($kind) && function_exists('pg_page_cache_mark_dirty')) {
+            pg_page_cache_mark_dirty();
+        }
     }
 
     return $answer;
+}
+
+/**
+ * Whether a made item of this kind may show on a stored page: records,
+ * pages, files, comments, products and redirects do; contacts and authors
+ * appear on none. Pure.
+ *
+ * @param string $kind
+ * @return bool
+ */
+function pg_import_kind_dirties_pages($kind)
+{
+    return in_array((string) $kind, array('record', 'page', 'file', 'comment', 'product', 'redirect'), true);
 }
 
 /**

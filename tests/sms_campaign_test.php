@@ -137,11 +137,11 @@ function test_sms_campaign_queue_goes_through_the_sms_layer()
 	$enqueue = function ($to, $text, $kind, $options) use (&$calls) {
 		$calls[] = array($to, $text, $kind, $options);
 
-		if ($to === '905449998877') {
+		if ($to === '+905449998877') {
 			return array('ok' => false, 'row' => 0, 'duplicate' => false, 'error' => 'No SMS consent.');
 		}
 
-		return array('ok' => true, 'row' => count($calls), 'duplicate' => ($to === '905550000000'), 'error' => '');
+		return array('ok' => true, 'row' => count($calls), 'duplicate' => ($to === '+905550000000'), 'error' => '');
 	};
 
 	$counts = pg_sms_campaign_queue(
@@ -161,6 +161,30 @@ function test_sms_campaign_queue_goes_through_the_sms_layer()
 
 	pg_assert_same('smscampaign:7:11', $calls[0][3]['reference']);
 	pg_assert_same('smscampaign:7:13', $calls[1][3]['reference']);
+}
+
+// The audience is keyed by E.164 digits; the number goes to the queue with
+// its plus, so the layer reads it back unchanged. Without the plus a foreign
+// number was refused as "not a mobile number", and a foreign one of ten
+// digits starting with 5 (Cuba +53 5...) was read as a Turkish mobile.
+function test_sms_campaign_queue_passes_numbers_readable_back()
+{
+	$to_numbers = array();
+	$enqueue = function ($to, $text, $kind, $options) use (&$to_numbers) {
+		$to_numbers[] = pg_sms_number($to);
+
+		return array('ok' => true, 'row' => 1, 'duplicate' => false, 'error' => '');
+	};
+
+	$audience = pg_sms_campaign_audience_pick(array(
+		array('id' => 1, 'mobile_phone' => '0532 111 22 33'),
+		array('id' => 2, 'mobile_phone' => '+49 176 12345678'),
+		array('id' => 3, 'mobile_phone' => '+53 5123 4567'),
+	), array());
+
+	pg_sms_campaign_queue(array('id' => 9, 'body' => 'Yaz indirimi'), $audience, 1000, $enqueue);
+
+	pg_assert_same(array('905321112233', '4917612345678', '5351234567'), $to_numbers);
 }
 
 // The module never writes sms_outbox nor calls a driver or pg_sms_send()

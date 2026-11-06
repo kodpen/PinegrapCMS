@@ -8,7 +8,7 @@ description: New dashboard Visitor map card (cards/visitmap.php, #6464): data so
 - Link: `visitors.php?p=today|7d|30d`.
 
 ## Who writes a visit's country and city?
-- `init_tracking()` (`includes/fn/seo.php`) inserts `country` = `pg_geo_country_code()` (edge header, web server, the site's IP list; Tor `T1` stored empty) and `city` = `pg_geo_city()` (`includes/geo.php`): Cloudflare's `CF-IPCity` only, believed only through `pg_geo_trusted_edge()`, cleaned by the pure `pg_geo_clean_city()` (valid UTF-8, no control characters, 50 characters, the column's length). There is no other city source.
+- `init_tracking()` (`includes/fn/seo.php`) inserts `country` = `pg_geo_country_code()` (edge header, web server, the site's IP list; Tor `T1` stored empty) and `city` = `pg_geo_city()` (`includes/geo.php`): Cloudflare's `CF-IPCity` only, believed only from an edge that sets it (`pg_geo_trusted_sources()`), cleaned by the pure `pg_geo_clean_city()` (valid UTF-8, no control characters, 50 characters, the column's length). There is no other city source.
 - A completed order still overwrites both with its billing address (`pg_order_complete_visitor()`). Visits before this change carry no location: the card fills from the upgrade on.
 
 ## What does the card show?

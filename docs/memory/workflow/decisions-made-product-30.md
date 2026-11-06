@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-30
-description: Decisions list, product part 30 (2026-11-05 on): a loop in one flow: a Read a row box, Repeat N times under the 5-minute floor, the date words in a derived value box
+description: Decisions list, product part 30 (2026-11-05 on): a loop in one flow (Read a row, Repeat N times, date words in a value box); the image editor's eraser on shapes and touch corners
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,3 +14,9 @@ description: Decisions list, product part 30 (2026-11-05 on): a loop in one flow
 
 ## Do the date words work in a derived value box or in table cells? (#6847)
 - Owner (2026-11-04, as recommended; the architect agrees): the derived value box fills `{{date}}` (`Y-m-d`), `{{time}}` (`H:i`) and `{{weekday}}` in `a` and `b` on the typed text, before the run's values go in (a value holding the word is not expanded) and in the site's zone; the other words need the run's context and stay out. Table cells fill nothing: cells are JSON, a date column takes `Y-m-d`, and a value box now carries the date into any cell. A running site's value box that typed `{{date}}` gives the date instead of that text. The hint of #6844 names the three words for the value box again. No schema. Reason: a value box that cannot say today's date forced a Wait box as a clock.
+
+## The image editor's eraser takes shapes too (owner, 2026-11-05)
+- The Draw panel's eraser takes away what it passes over from unlocked shapes and paths as from pen strokes; a locked layer stays. The shape keeps its type, colour and size: the erased part is a mask on the layer, so it can still be restyled. Why: in the same panel as the shapes, an eraser that left them alone looked broken. Details: `ui/image-editor-eraser.md`.
+
+## A corner keeps the proportions on a touch screen (owner, 2026-11-05)
+- With a finger or a pen, a corner handle keeps the layer's width-to-height ratio and an edge stretches one side; the mouse is unchanged (a picture keeps its ratio from a corner, Shift does the other). Why: a phone has no Shift, so a circle could not grow evenly. Details: `ui/image-editor-layers.md`.

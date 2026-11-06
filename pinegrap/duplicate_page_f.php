@@ -819,6 +819,15 @@ function duplicate_page($request) {
                '" . pg_comment_copy_parent_id(isset($comment['parent_id']) ? $comment['parent_id'] : 0, $comment_copies) . "'";
         }
 
+        // The store's answer under a review and whether the comment is a
+        // question or its answer, once those columns are there.
+        foreach (pg_comment_copy_columns($comment, $comment_copies, pg_review_replies_ready(), pg_product_questions_ready()) as $column => $value) {
+            $sql_parent_column .= ",
+               " . $column;
+            $sql_parent_value .= ",
+               " . (($value === null) ? 'NULL' : "'" . e((string) $value) . "'");
+        }
+
         // create comment
         $query =
             "INSERT INTO comments (
@@ -829,6 +838,7 @@ function duplicate_page($request) {
                message,
                file_id,
                published,
+               rating,
                publish_date_and_time,
                publish_cancel,
                featured,
@@ -837,6 +847,7 @@ function duplicate_page($request) {
                last_modified_user_id,
                last_modified_timestamp$sql_parent_column)
             VALUES (
+               ?,
                ?,
                ?,
                ?,
@@ -859,6 +870,7 @@ function duplicate_page($request) {
             (string) $comment['message'],
             (string) $comment['file_id'],
             (string) $comment['published'],
+            (string) $comment['rating'],
             (string) $comment['publish_date_and_time'],
             (string) $comment['publish_cancel'],
             (string) $comment['featured'],

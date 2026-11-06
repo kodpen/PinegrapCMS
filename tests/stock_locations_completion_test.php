@@ -107,7 +107,9 @@ function test_stock_completion_site_without_locations_keeps_its_statements()
 
 	foreach (array('barcode_decrease_inventory.php', 'barcode_increase_inventory.php') as $screen) {
 		$source = stock_completion_test_source($screen);
-		pg_assert_contains('(($scan === null) ? "inventory_quantity = ?," : "")', $source, $screen . ' writes the total only without locations');
+		$branch = strpos($source, 'if ($scan === null) {');
+		pg_assert_true($branch !== false, $screen . ' writes the total only without locations');
+		pg_assert_true(strpos($source, 'inventory_quantity = ', (int) $branch) < strpos($source, '} else {', (int) $branch), $screen . ' the total write sits in that branch');
 		pg_assert_contains('pg_stock_requested_location($request[\'location_id\'] ?? 0)', $source, $screen . ' reads the location');
 		pg_assert_contains('pg_stock_scan_location_field()', $source, $screen . ' shows the picker');
 	}

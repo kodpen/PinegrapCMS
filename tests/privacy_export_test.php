@@ -369,3 +369,16 @@ function test_privacy_export_join_keeps_the_row_limit()
 	pg_assert_true(pg_privacy_export_join(array($part(1, 'invoice', true)))['truncated'], 'a cut part stays cut');
 	pg_assert_same(array('rows' => array(), 'truncated' => false), pg_privacy_export_join(array()), 'no part');
 }
+
+// A web order's total is kept in the store's base currency, the unit every
+// payment driver charges; orders.currency_code is only the currency the
+// visitor was shown prices in. A marketplace order keeps the marketplace's
+// own currency in that column, and its total is in it.
+function test_privacy_export_order_total_currency()
+{
+	pg_assert_same('TRY', _pg_privacy_export_order_currency(array('type' => 'online', 'currency_code' => 'EUR'), 'TRY'), 'web order browsed in EUR');
+	pg_assert_same('TRY', _pg_privacy_export_order_currency(array('currency_code' => 'EUR'), 'TRY'), 'site without the type column');
+	pg_assert_same('TRY', _pg_privacy_export_order_currency(array('type' => 'local', 'currency_code' => ''), 'TRY'), 'counter sale');
+	pg_assert_same('EUR', _pg_privacy_export_order_currency(array('type' => 'marketplace', 'currency_code' => 'EUR'), 'TRY'), 'marketplace order');
+	pg_assert_same('TRY', _pg_privacy_export_order_currency(array('type' => 'marketplace', 'currency_code' => ''), 'TRY'), 'marketplace order without a code');
+}

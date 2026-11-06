@@ -60,3 +60,31 @@ function test_checkout_hidden_arrival_date_box_is_not_posted()
 	pg_assert_true(strpos($js, "cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; refreshField(inp); });") !== false, 'hidden boxes are disabled');
 	pg_assert_true(strpos($js, "custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; refreshField(inp); });") !== false, 'the shown box is enabled, the date control told');
 }
+
+function test_arrival_dates_offered_sql_matches_the_listed_window()
+{
+	pg_assert_same(
+		"(status = 'enabled') AND (start_date <= CURRENT_DATE()) AND (concat(end_date, ' 17:00:00') > NOW())",
+		pg_arrival_dates_offered_sql('17:00:00'),
+		'the window the arrival date list shows');
+	pg_assert_same(
+		"(status = 'enabled') AND (start_date <= CURRENT_DATE()) AND (concat(end_date, ' 9:30') > NOW())",
+		pg_arrival_dates_offered_sql('9:30'),
+		'hours and minutes');
+	pg_assert_same(
+		"(status = 'enabled') AND (start_date <= CURRENT_DATE()) AND (concat(end_date, ' 23:59:59') > NOW())",
+		pg_arrival_dates_offered_sql("17:00') OR ('1"),
+		'anything but a time reads as the end of the day');
+}
+
+function test_shipping_address_step_refuses_an_arrival_date_not_offered()
+{
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/shipping_address_and_arrival.php');
+
+	pg_assert_true(
+		preg_match('/FROM arrival_dates\s+WHERE id = \?\s*AND " \. pg_arrival_dates_offered_sql\(ECOMMERCE_END_OF_DAY_TIME\)/', $source) === 1,
+		'a posted id is read only inside the offered window');
+	pg_assert_true(
+		strpos($source, "\$liveform->mark_error('arrival_date', lang('The selected arrival date is not available. Please select another one.'));") !== false,
+		'an id outside the window is refused');
+}

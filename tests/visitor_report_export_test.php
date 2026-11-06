@@ -108,3 +108,22 @@ function test_visitor_report_export_guards_grouping_cells()
 	pg_assert_contains('$line[] = pg_csv_formula_guard($cell);', $block);
 	pg_assert_same(1, substr_count($block, 'pg_csv_formula_guard('), 'only the grouping cells are guarded');
 }
+
+// A visitor-set value holding a backslash before a quote (?utm_source=x\",=1+1)
+// stays in its own cell: quotes are doubled (RFC 4180, as spreadsheets read
+// it), with no backslash escape that would end the cell early and put =1+1
+// unguarded in the next one.
+function test_visitor_report_csv_line_doubles_quotes_after_backslash()
+{
+	pg_assert_same("\"x\\\"\",=1+1\",b\n", pg_visitor_report_csv_line(array("x\\\",=1+1", 'b')));
+	pg_assert_same("a,\"b,c\",\"\"\"q\"\"\",\"l\nm\",12.50\n", pg_visitor_report_csv_line(array('a', 'b,c', '"q"', "l\nm", '12.50')));
+	pg_assert_same("\" lead\",'=1+1\n", pg_visitor_report_csv_line(array(' lead', "'=1+1")));
+}
+
+// The export writes its lines through that function, never fputcsv().
+function test_visitor_report_export_lines_without_fputcsv()
+{
+	$block = visitor_report_export_block();
+	pg_assert_same(0, substr_count($block, 'fputcsv('), 'no fputcsv() in the export');
+	pg_assert_same(2, substr_count($block, 'pg_visitor_report_csv_line('), 'heading and visit lines');
+}

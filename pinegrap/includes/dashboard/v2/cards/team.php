@@ -173,13 +173,16 @@ function pg_dashboard_v2_card_team($user, $period, $compare)
 
     $late = (int) ($counts['late'] ?? 0);
 
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/tips.php');
+    $open_tasks = (int) ($counts['open_tasks'] ?? 0);
+
     return array('status' => 'success', 'data' => array(
         'people'     => array_values(array_slice($people, 0, 8, true)),
         'more'       => max(0, count($people) - 8),
         'presence'   => array('online' => lang('online'), 'away' => lang('away'), 'offline' => lang('offline')),
         'summary'    => array(
             array('text' => lang(array('string' => '{var:1} online', 'vars' => pg_format_number($online, 0))), 'tone' => ''),
-            array('text' => lang(array('string' => '{var:1} open task{suffix:1}', 'vars' => pg_format_number((int) ($counts['open_tasks'] ?? 0), 0))), 'tone' => ''),
+            array('text' => lang(array('string' => '{var:1} open task{suffix:1}', 'vars' => pg_format_number($open_tasks, 0), 'suffix' => pg_dashboard_v2_plural_suffix($open_tasks))), 'tone' => ''),
             array('text' => lang(array('string' => '{var:1} late', 'vars' => pg_format_number($late, 0))), 'tone' => ($late > 0) ? 'bad' : ''),
         ),
         'rows_title' => lang('Who works on what'),

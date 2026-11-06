@@ -351,6 +351,20 @@ function ws_folder_create($name, $parent_id, $user_id)
 }
 
 /**
+ * May an existing top-level folder called Workspace become the Workspace
+ * folder? Only when no file sits directly in it and every folder below it
+ * is a channel's folder or the notes folder: anything else is the site's own.
+ *
+ * @param int $files           files directly in the folder
+ * @param int $foreign_folders folders below it that are not the Workspace's
+ * @return bool
+ */
+function ws_root_folder_reusable($files, $foreign_folders)
+{
+    return ((int) $files === 0) && ((int) $foreign_folders === 0);
+}
+
+/**
  * The "Workspace" folder at the top of the file manager, made when missing
  * and kept private.
  *
@@ -380,8 +394,25 @@ function ws_root_folder_id($user_id = 0)
     }
 
     // A folder already called Workspace at the top is taken over rather than
-    // doubled.
+    // doubled, but only when it holds nothing of the site's: taking it over
+    // makes it private and closes everything below it as conversation files,
+    // so a site's own public "Workspace" folder of page images would answer
+    // 403 from the first file posted in a channel. Otherwise a new folder is
+    // made beside it (named uniquely by ws_folder_create()).
     $existing = (int) db_value("SELECT folder_id FROM folder WHERE folder_parent = '" . $top . "' AND folder_name = 'Workspace' ORDER BY folder_id LIMIT 1");
+
+    if ($existing > 0) {
+        $files = (int) db_value("SELECT COUNT(*) FROM files WHERE folder = '" . $existing . "'");
+        $notes = pg_schema_has('config', 'ws_notes_folder_id') ? (int) db_value("SELECT ws_notes_folder_id FROM config") : 0;
+        $foreign = (int) db_value("SELECT COUNT(*) FROM folder
+            WHERE folder_parent = '" . $existing . "'
+                AND folder_id NOT IN (SELECT folder_id FROM ws_channels WHERE folder_id > 0)
+                AND folder_id <> '" . $notes . "'");
+
+        if (!ws_root_folder_reusable($files, $foreign)) {
+            $existing = 0;
+        }
+    }
 
     if ($existing > 0) {
         db("UPDATE folder SET folder_access_control_type = 'private' WHERE folder_id = '" . $existing . "'");

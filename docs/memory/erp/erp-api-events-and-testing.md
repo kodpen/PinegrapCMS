@@ -4,7 +4,7 @@ description: The ERP event door erp_event() (webhook queue, audit trail, alerts)
 ---
 
 ## What does erp_event() do? (`includes/erp/events.php`)
-- The one door for every ERP announcement. It feeds the audit trail (`erp_audit_event()`, 4.90: every event, API installed or not), the bell and device notices (`erp_alert_event()`, 4.91: only what the store asked for) and the webhook queue (`api_webhook_enqueue()`).
+- The one door for every ERP announcement. It feeds the audit trail (`erp_audit_event()`, 4.90: every event, API installed or not), the bell and device notices (`erp_alert_event()`, 4.91: only what the store asked for), the Workspace (`pg_event_record()`, only the events a flow may start on, `workspace/workspace-flows-erp-start-events.md`) and the webhook queue (`api_webhook_enqueue()`).
 - Returns the rows queued: 0 when the API file is missing, or when the name is not declared in `erp_webhook_events()` (`includes/erp/api.php`; the queue drops it without a word). It never stops the writer.
 - The payload builders (`erp_event_invoice()`, `erp_event_receipt()`, `erp_event_account()`, `erp_event_waybill()`, `erp_event_expense()`, `erp_event_quote()`, `erp_event_purchase_order()`, `erp_event_stock_count()`) read the record again, so every subscriber sees one shape whichever screen or endpoint caused it.
 - `erp_event_invoice()` also starts side work: the kept PDF (`erp_archive_defer()`, on created), the purchase order's status (`erp_purchase_order_refresh_for_invoice()`, created/cancelled), the automatic e-mail (`erp_mail_auto_consider()`, created/edoc_changed). A path that writes an invoice without this event skips all three.

@@ -11,7 +11,7 @@ description: Why functions.php became a manifest over includes/fn/ modules (2026
 - Module list: `docs/memory/core/fn-module-map.md`.
 
 ## How is code written in a module?
-- A new function goes into the module matching its topic, NOT into `functions.php` (code added there works but regrows the file). A new module gets its line in the manifest (or a `require_once` where it is needed) and the gate `if (!defined('PG_FUNCTIONS_DIR')) { exit; }`.
+- A new function goes into the module matching its topic, NOT into `functions.php` (code added there works but regrows the file). A new module gets its line in the manifest (or a `require_once` where it is needed) and the gate `if (!defined('PG_FUNCTIONS_DIR')) { exit; }` before anything it declares or defines; `tests/fn_module_gate_test.php` fails a module without it (`shipment_lookup.php` had none until the 2026-11-05 hunt).
 - `dirname(__FILE__)` / `__DIR__` in a module is NOT the software directory; moved code says `PG_FUNCTIONS_DIR` wherever it said either. For a path in a new module function use `PG_FUNCTIONS_DIR . '/data/temp/...'`. Root files and `init.php` keep `dirname(__FILE__)`.
 - `use PHPMailer\...` is valid only in `mail.php`. It used to be file-scoped, so every unqualified `Exception` after line 49,558 resolved to `PHPMailer\PHPMailer\Exception`; in any other module an unqualified `Exception` is the global `\Exception` (after the split `pg_purge_caches()`'s `catch (Exception)` caught it for the first time).
 - Module order matters only for non-function statements (`core.php` the `array_key_last()` polyfill, `mail.php` the PHPMailer `require` + `use`, `tour.php` its version constant, `content.php` the image-id global); functions are hoisted at compile time and call each other in any order.

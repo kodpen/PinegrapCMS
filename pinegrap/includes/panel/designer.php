@@ -155,13 +155,10 @@ function pg_panel_get_styles($request, $action)
 
 function pg_panel_update_toolbar_properties($request, $action)
 {
-    // Exempt from the general gate, which answered a request without a
-    // session this way; the same answer is kept.
+    // Exempt from the general gate, so the session is checked here, with
+    // the general gate's own refusal.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
 

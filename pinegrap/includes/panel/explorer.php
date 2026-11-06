@@ -812,27 +812,26 @@ function pg_panel_file_explorer($request, $action)
                     }
                     //defualt
                 } else {
-                    $output_table_classes = '';
+                    // A plain table: it comes in an answer after the page has
+                    // loaded, so no list code ever started on it; one line per
+                    // file, as the panel's lists draw them.
+                    $output_table_classes = 'table table-hover text-nowrap';
                     if (isset($folder_table_view_type) && $folder_table_view_type == 'minimal') {
-                        //minimal table view
-                        $output_table_classes = 'chart table table-hover table-sm table-borderless table-condensed datatable-restricted-mode datatable-no-info datatable-click-to-select';
-                    } else {
-                        //normal table view
-                        $output_table_classes = 'chart table-condensed table-hover table datatable-restricted-mode datatable-no-info datatable-click-to-select ';
+                        $output_table_classes .= ' table-sm table-borderless';
                     }
 
                     $output = '
                     <table class="' . $output_table_classes . '" style="width:100%" >
                         <thead>
                             <tr>
-                                <th class="noVis"></th>
-                                <th class="noVis d-none">
+                                <th></th>
+                                <th class="d-none">
                                     <div class="form-field">
                                         <div class="switch"><input class="" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
                                     </div>
                                 </th>
-                                <th class="noVis"><i class="bi bi-file-earmark"></i></th>
-                                <th class="noVis">' . lang('Name') . '</th>
+                                <th><i class="bi bi-file-earmark" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Type')) . '</span></th>
+                                <th>' . lang('Name') . '</th>
                                 <th>' . lang('Size') . '</th>
                                 <th>' . lang('Last Modified') . '</th>
                             </tr>

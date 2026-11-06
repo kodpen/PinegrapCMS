@@ -254,7 +254,7 @@ function test_order_form_array_cart_action()
 	$skip = strpos($source, 'if (!is_string($raw)) continue;');
 	pg_assert_true(($skip !== false) && ($skip < strpos($source, '$amount = pg_parse_amount($raw);')), 'donation list skipped before it is parsed');
 
-	pg_assert_contains("SELECT type, multiple FROM form_fields", $source, 'product form field carries multiple');
+	pg_assert_contains("SELECT type, label, multiple FROM form_fields", $source, 'product form field carries multiple');
 	pg_assert_contains("\$raw = pg_cf_posted_value(\$raw, array('type' => \$f_type, 'multiple' => is_array(\$f_meta) ? \$f_meta['multiple'] : 0));", $source, 'product form value kept as pg_cf_posted_value() keeps it');
 
 	foreach (array('_p' => '_n_period', '_c' => '_n_payments', '_d' => '_n_start') as $variable => $name) {

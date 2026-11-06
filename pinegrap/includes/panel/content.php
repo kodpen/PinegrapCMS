@@ -327,20 +327,27 @@ function pg_panel_sort_menu_items($request, $action)
         respond(array('status' => 'error', 'message' => lang('Access denied.')));
     }
 
-    foreach ($groups as $group) {
-        $parent_id = (int) (isset($group['parent_id']) ? $group['parent_id'] : 0);
-        $order = isset($group['order']) ? $group['order'] : array();
-        $sort_order = 1;
-        foreach ($order as $item_id) {
-            $item_id = (int) $item_id;
-            if ($item_id <= 0) {
-                continue;
-            }
-            db("UPDATE menu_items
-                    SET sort_order = '$sort_order', parent_id = '$parent_id'
-                    WHERE id = '$item_id' AND menu_id = '$menu_id'");
-            $sort_order++;
-        }
+    // The tree is checked against the menu as it is now: an item another
+    // editor deleted meanwhile must not become a parent, which would hide
+    // the items moved under it from the site and from this screen.
+    require_once(PG_FUNCTIONS_DIR . '/includes/forms/menu_item_form.php');
+
+    $parent_of = array();
+    foreach (db_items("SELECT id, parent_id FROM menu_items WHERE menu_id = '$menu_id'") as $row) {
+        $parent_of[(int) $row['id']] = (int) $row['parent_id'];
+    }
+
+    $plan = pg_menu_item_sort_plan($groups, $parent_of);
+
+    if ($plan === null) {
+        respond(array('status' => 'error', 'message' => lang('The menu has changed since this page was opened. Reload the page and try again.')));
+    }
+
+    foreach ($plan as $move) {
+        list($item_id, $parent_id, $sort_order) = $move;
+        db("UPDATE menu_items
+                SET sort_order = '" . (int) $sort_order . "', parent_id = '" . (int) $parent_id . "'
+                WHERE id = '" . (int) $item_id . "' AND menu_id = '$menu_id'");
     }
 
     db("UPDATE menus SET last_modified_user_id = '" . $user['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = '$menu_id'");

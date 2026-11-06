@@ -6459,6 +6459,7 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
         return $seen[$folder_id];
     };
     $base_sql = "FROM page LEFT JOIN folder ON page.page_folder = folder.folder_id
+                 LEFT JOIN style ON style.style_id = page.page_style
                  WHERE page.page_search = '1' AND folder.folder_archived = '0'
                    AND page.page_id NOT IN ($not_featured)$binned";
 
@@ -6489,28 +6490,34 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
     }
 
     // Title, meta description, keywords and — for a page built in the visual
-    // editor — the text of its layout tree.
-    $tree_ready = function_exists('pg_multi_page_design_ready') && pg_multi_page_design_ready();
+    // editor — the words of the tree it is drawn from (its own, else its
+    // design's) and of the shared components it places, as the legacy
+    // Search Results page counts them. A page whose words sit only in a
+    // placed component is a candidate through that component's id.
+    $tree_expr  = pg_page_tree_sql_expr();
+    $components = pg_tree_search_components();
+    $shared_sql = pg_tree_search_shared_ref_sql($tree_expr, pg_tree_search_matching_components($components, $query));
     $candidates = db_items(
         "SELECT page.page_id, page.page_name, page.page_folder, page.page_title,
-                page.page_meta_description, page.page_search_keywords"
-             . ($tree_ready ? ", page.page_tree_json" : "") . "
+                page.page_meta_description, page.page_search_keywords,
+                $tree_expr AS page_tree
          $base_sql
            AND (page.page_title LIKE $like OR page.page_meta_description LIKE $like
-                OR page.page_search_keywords LIKE $like"
-             . ($tree_ready ? " OR page.page_tree_json LIKE $like" : "") . ")");
+                OR page.page_search_keywords LIKE $like
+                OR $tree_expr LIKE $like"
+             . (($shared_sql !== '') ? " OR " . $shared_sql : "") . ")");
     foreach ((array)$candidates as $r) {
         $pid = (int)$r['page_id'];
         if (!$allowed($r['page_folder'])) continue;
         $info[$pid] = $r;
         $hits = 0;
-        if ($tree_ready && (string)$r['page_tree_json'] !== '') {
-            $tree      = json_decode((string)$r['page_tree_json'], true);
-            $tree_text = _pg_sw_tree_text($tree);
+        if ((string)$r['page_tree'] !== '') {
+            $tree      = json_decode((string)$r['page_tree'], true);
+            $tree_text = pg_tree_search_plain_text($tree, $components);
             $hits += mb_substr_count(mb_strtolower($tree_text), $needle);
             if ($tree_text !== '') $texts[$pid] = (isset($texts[$pid]) ? $texts[$pid] . ' ' : '') . $tree_text;
             // The topics of its search sections count as the page's words.
-            if (strpos((string)$r['page_tree_json'], 'searchSection') !== false) {
+            if (strpos((string)$r['page_tree'], 'searchSection') !== false) {
                 $hits += 2 * mb_substr_count(_pg_search_fold(pg_search_section_topics($tree)), _pg_search_fold($query));
             }
         }

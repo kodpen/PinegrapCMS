@@ -165,3 +165,34 @@ function test_iys_sms_refusal_needed()
 	pg_assert_contains("'source'     => 'iys'", $apply);
 	pg_assert_contains("\$change['status'] === 'refused'", $apply);
 }
+
+// A pulled change reaches every contact sending to the number would read: a
+// contact whose checkout answer was about the billing phone of their latest
+// order (and whose own mobile number is another one, or none) is found as
+// well, each contact once per number.
+function test_iys_sms_change_reaches_checkout_contacts()
+{
+	$grouped = pg_iys_sms_contacts_by_number(array(
+		array('id' => '4', 'email_address' => 'a@example.com', 'phone' => '0532 123 45 67'),
+		array('id' => '7', 'email_address' => 'b@example.com', 'phone' => '+90 (532) 123-45-67'),
+		array('id' => '4', 'email_address' => 'a@example.com', 'phone' => '05321234567'),
+		array('id' => '9', 'email_address' => 'c@example.com', 'phone' => '0212 123 45 67'),
+		'not a row',
+	));
+
+	pg_assert_same(array('905321234567'), array_map('strval', array_keys($grouped)), 'a landline is no SMS number');
+	pg_assert_same(array(4, 7), array_map('intval', array_column($grouped['905321234567'], 'id')), 'each contact once');
+	pg_assert_same(array(), pg_iys_sms_contacts_by_number(array()), 'none');
+
+	$apply = iys_sms_test_function_source('includes/iys/client.php', 'pg_iys_apply_sms_changes');
+	pg_assert_contains("pg_sms_number_sql('mobile_phone')", $apply, 'contacts by their mobile number');
+	pg_assert_contains("pg_sms_number_sql('orders.billing_phone_number')", $apply, 'contacts by the billing phone of their latest order');
+	pg_assert_contains('SELECT MAX(latest.id) FROM orders AS latest WHERE latest.contact_id = orders.contact_id', $apply, 'the latest order only');
+	pg_assert_contains("(consent_log.source = 'checkout')", $apply, 'only a contact who answered at a checkout');
+	pg_assert_contains('pg_iys_sms_contacts_by_number($found)', $apply);
+
+	// The same contacts the permission check reads before sending.
+	$permission = iys_sms_test_function_source('includes/fn/sms.php', 'pg_sms_marketing_permission');
+	pg_assert_contains("pg_sms_number_sql('orders.billing_phone_number')", $permission);
+	pg_assert_contains("(consent_log.source = 'checkout')", $permission);
+}

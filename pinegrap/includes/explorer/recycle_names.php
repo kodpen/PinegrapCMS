@@ -302,6 +302,21 @@ function pg_recycle_display_name($item_kind, $item_id)
     return ($original !== '') ? $original : $name;
 }
 
+// The user the daily purge deletes as: the visitor's id with the
+// administrator role. The purge is the software's own work, run on whoever's
+// explorer visit came first; with that visitor's rights a folder-rights user
+// claimed the day and deleted nothing (the bin folder is not theirs), and a
+// manager left design files and page styles at the head of the queue, where
+// they blocked every younger entry for good.
+function pg_recycle_purge_user($user)
+{
+    $purge_user = is_array($user) ? $user : array();
+    $purge_user['id'] = isset($purge_user['id']) ? (int) $purge_user['id'] : 0;
+    $purge_user['role'] = 0;
+
+    return $purge_user;
+}
+
 // Purge bin entries older than the retention window. Claimed once a day by
 // whichever explorer visit comes first; capped per run so a big bin never
 // stalls the screen that triggered it.
@@ -335,6 +350,7 @@ function pg_recycle_purge_if_due($user)
     }
 
     $purged = 0;
+    $purge_user = pg_recycle_purge_user($user);
 
     // The purge is the software's own work, run on whoever's visit came first;
     // the audit trail records its deletes as a job's, not as that person's.
@@ -342,7 +358,7 @@ function pg_recycle_purge_if_due($user)
 
     try {
         foreach ($entries as $entry) {
-            $result = pg_recycle_hard_delete_item($entry['item_type'], $entry['item_id'], $user);
+            $result = pg_recycle_hard_delete_item($entry['item_type'], $entry['item_id'], $purge_user);
 
             if ($result['status'] == 'success') {
                 db("DELETE FROM recycle_bin WHERE id = '" . e($entry['id']) . "'");

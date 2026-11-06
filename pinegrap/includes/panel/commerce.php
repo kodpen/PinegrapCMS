@@ -583,16 +583,22 @@ function pg_panel_get_product($request, $action)
                 custom_field_2,
                 custom_field_3,
                 custom_field_4,
-                timestamp
+                timestamp,
+                enabled
             FROM products
             WHERE id = '" . $product_id . "'"
     ) : false;
 
-    // A missing or unknown id answers in JSON before any field is read.
-    if (!$product_raw) {
+    // A missing or unknown id answers in JSON before any field is read. So
+    // does a product that is switched off or in the Recycle Bin (binning
+    // switches it off): it is not on the site, every variant chooser lists
+    // enabled products only, and its texts, price and stock stay unread.
+    if (!$product_raw || ((int) ($product_raw['enabled'] ?? 0) !== 1)) {
         echo encode_json(array('status' => 'error', 'message' => lang('Product not found.')));
         exit();
     }
+
+    unset($product_raw['enabled']);
 
 
 

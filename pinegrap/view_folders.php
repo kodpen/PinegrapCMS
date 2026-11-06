@@ -6772,8 +6772,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function openItem(item) {
         if (!item) { return; }
 
-        // A short link is an address, so opening it means following it.
-        if (item.short_link) { window.open(item.url, '_blank'); return; }
+        // A short link is an address, so opening it means following it. It
+        // redirects off the site: noopener keeps the panel window out of
+        // reach of the destination page.
+        if (item.short_link) { window.open(item.url, '_blank', 'noopener'); return; }
 
         // A binned page style has nothing to open until it is restored.
         if (item.kind === 'style') { return; }
@@ -8849,7 +8851,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
             case 'new_short_link': openShortLinkWizard(); break;
             // A one-time link's address was shown once, when it was made.
-            case 'short_link_visit': if (item && item.url) { window.open(item.url, '_blank'); } else if (item) { toast(L.link_no_visit, false); } break;
+            case 'short_link_visit': if (item && item.url) { window.open(item.url, '_blank', 'noopener'); } else if (item) { toast(L.link_no_visit, false); } break;
             case 'short_link_edit': if (item) { openShortLinkWizard(item); } break;
             // catalogTargets() is "the selection, or the row that was clicked":
             // the same rule the store uses. Written out longhand here it read

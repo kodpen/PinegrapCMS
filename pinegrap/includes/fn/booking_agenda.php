@@ -659,131 +659,52 @@ function pg_booking_agenda_badge($status)
 }
 
 /**
- * The list view's search: every word in the customer's name, address or
- * phone, the service's name, or the status label.
+ * The list view's columns, as pg_list_table_printed() takes them: the
+ * month's bookings are printed whole, so the browser sorts and searches
+ * them. Pure.
  *
- * @param array $terms pg_list_search_terms()'s answer
- * @return array array('sql', 'params')
+ * @return array key => spec
  */
-function pg_booking_agenda_list_search(array $terms)
+function pg_booking_agenda_list_columns()
 {
-    $labels = array();
-
-    foreach (pg_booking_agenda_status_badges() as $status => $badge) {
-        $labels[$status] = $badge[0];
-    }
-
-    return pg_list_search_where(
-        $terms,
-        array('bookings.name', 'bookings.email', 'bookings.phone', 'booking_services.name'),
-        array(array('expr' => 'bookings.status', 'labels' => $labels))
+    return array(
+        'time'     => array('heading' => lang('Time'), 'kind' => 'link'),
+        'status'   => array('heading' => lang('Status'), 'kind' => 'badge'),
+        'customer' => array('heading' => lang('Customer')),
+        'contact'  => array('heading' => lang('Contact')),
+        'service'  => array('heading' => lang('Service')),
+        'staff'    => array('heading' => lang('Staff')),
     );
 }
 
 /**
- * One booking of the list view.
+ * One booking of the list view, as pg_list_table_printed() takes a row:
+ * the time opens the booking and sorts by its Unix time, the status by its
+ * label.
  *
- * @param array $row
- * @param array $staff pg_booking_agenda_staff()'s answer
- * @return array array('class', 'cells')
+ * @param array  $row     pg_booking_agenda_rows()'s booking
+ * @param array  $staff   pg_booking_agenda_staff()'s answer
+ * @param string $deposit the booking's deposit badge, HTML ('' for none)
+ * @return array array('id', 'cells')
  */
-function pg_booking_agenda_list_row(array $row, array $staff)
+function pg_booking_agenda_list_row(array $row, array $staff, $deposit = '')
 {
     $id = (int) $row['id'];
     $who = isset($staff[(int) $row['staff_id']]) ? $staff[(int) $row['staff_id']]['name'] : '';
-    $contact = h($row['email']) . ((((string) $row['email'] !== '') && ((string) $row['phone'] !== '')) ? '<br>' : '') . h($row['phone']);
+    $email = (string) $row['email'];
+    $phone = (string) $row['phone'];
+    $contact = h($email) . ((($email !== '') && ($phone !== '')) ? '<br>' : '') . h($phone);
+    $badges = pg_booking_agenda_status_badges();
+    $status = isset($badges[$row['status']]) ? $badges[$row['status']][0] : (string) $row['status'];
 
-    return array('class' => 'pointer', 'cells' => array(
-        pg_list_cell('<a href="edit_booking.php?id=' . $id . '">' . h(pg_booking_agenda_time($row['start_at'], true)) . '</a>', 'align-middle text-nowrap'),
-        pg_list_cell(pg_booking_agenda_badge($row['status']) . pg_booking_deposit_badge($row), 'align-middle'),
-        pg_list_cell(h($row['name']), 'align-middle'),
-        pg_list_cell($contact, 'align-middle small'),
-        pg_list_cell(h((string) $row['service_name']), 'align-middle'),
-        pg_list_cell(h($who), 'align-middle'),
+    return array('id' => $id, 'cells' => array(
+        'time'     => pg_list_cell('<a href="edit_booking.php?id=' . $id . '" class="pg-link-body-emphasis" data-pg-open>' . h(pg_booking_agenda_time($row['start_at'], true)) . '</a>', 'align-middle text-nowrap', array('data-pg-sort-value' => (string) (int) $row['start_at'])),
+        'status'   => pg_list_cell(pg_booking_agenda_badge($row['status']) . $deposit, 'align-middle', array('data-pg-sort-value' => $status)),
+        'customer' => pg_list_cell(h($row['name']), 'align-middle text-wrap text-break'),
+        'contact'  => pg_list_cell($contact, 'align-middle small text-wrap text-break'),
+        'service'  => pg_list_cell(h((string) $row['service_name']), 'align-middle'),
+        'staff'    => pg_list_cell(h($who), 'align-middle'),
     ));
-}
-
-/**
- * The list action's filters, checked: the period's ends, the staff member
- * and the statuses.
- *
- * @param mixed    $filters the screen's filters
- * @param int|null $scope
- * @param array    $staff   pg_booking_agenda_staff()'s answer
- * @return array start, end, staff_id, statuses
- */
-function pg_booking_agenda_list_filters($filters, $scope, array $staff)
-{
-    $filters = is_array($filters) ? $filters : array();
-
-    return array(
-        'start'    => max(0, (int) ($filters['start'] ?? 0)),
-        'end'      => max(0, (int) ($filters['end'] ?? 0)),
-        'staff_id' => pg_booking_agenda_staff_filter($filters['staff'] ?? '', $scope, array_keys($staff)),
-        'statuses' => pg_booking_agenda_status_filter($filters['status'] ?? array()),
-    );
-}
-
-/**
- * One page of the list view, by start: the counts without and with the
- * search box, and the page's rows.
- *
- * @param array $filters pg_booking_agenda_list_filters()'s answer
- * @param array $terms
- * @param array $window
- * @param array $staff
- * @return array|false
- */
-function pg_booking_agenda_list_page(array $filters, array $terms, array $window, array $staff)
-{
-    $where = "bookings.start_at >= ? AND bookings.start_at < ?"
-        . (($filters['staff_id'] > 0) ? " AND bookings.staff_id = '" . (int) $filters['staff_id'] . "'" : '')
-        . " AND bookings.status IN ('" . implode("', '", $filters['statuses']) . "')";
-    $params = array($filters['start'], $filters['end']);
-    $from = " FROM bookings LEFT JOIN booking_services ON booking_services.id = bookings.service_id WHERE ";
-
-    $count = function ($sql, $values) use ($from) {
-        $result = db_q("SELECT COUNT(*)" . $from . $sql, $values);
-        return $result ? (int) mysqli_fetch_row($result)[0] : false;
-    };
-
-    $total = $count($where, $params);
-
-    if ($total === false) {
-        return false;
-    }
-
-    $search = pg_booking_agenda_list_search($terms);
-
-    if ($search['sql'] !== '') {
-        $where .= ' AND ' . $search['sql'];
-        $params = array_merge($params, $search['params']);
-        $filtered = $count($where, $params);
-    } else {
-        $filtered = $total;
-    }
-
-    if ($filtered === false) {
-        return false;
-    }
-
-    $result = db_q(
-        "SELECT bookings.id, bookings.staff_id, bookings.name, bookings.email, bookings.phone, bookings.start_at,
-            bookings.status," . (pg_booking_deposit_ready() ? ' bookings.order_id, bookings.paid_at,' : '') . " booking_services.name AS service_name" . $from . $where . "
-        ORDER BY bookings.start_at, bookings.id" . pg_list_limit_sql($window),
-        $params);
-
-    if (!$result) {
-        return false;
-    }
-
-    $rows = array();
-
-    while ($row = mysqli_fetch_assoc($result)) {
-        $rows[] = pg_booking_agenda_list_row($row, $staff);
-    }
-
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
 }
 
 /**
