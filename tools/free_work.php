@@ -56,6 +56,10 @@ function free_work_shelved($description, $file = '')
 // with no such heading has them in any section. Lines under the order and
 // side-by-side headings name steps without being one, and so do lines whose
 // ID is followed by a comma, a colon or "alone", "first", "is done".
+// A bare number (the design templates' "- 4 Topic: …", "- 4: …",
+// "- 4 (done, #n): …", "- 4 Done (#n). …") is a step only under a steps
+// heading, where "- 4: …" is one too (its colon is dropped); a number
+// followed by "-" or "×" is a date, a range or a size, not a step.
 // Returns a list of array(id, rest of the line).
 function free_work_steps($text)
 {
@@ -72,9 +76,23 @@ function free_work_steps($text)
 			continue;
 		}
 
-		if ($take && preg_match('/^- \**([A-Z]{1,3}\d+[a-z]?)\b\**\s*(.*)$/', $line, $match)
-			&& !preg_match('/^(?:[,:]|alone\b|first\b|is done\b)/i', $match[2])) {
-			$steps[] = array($match[1], trim($match[2]));
+		if (!$take || !preg_match('/^- \**([A-Z]{1,3})?(\d+[a-z]?)\b\**(?![-\x{2013}\x{00D7}\d])\s*(.*)$/u', $line, $match)) {
+			continue;
+		}
+
+		$numbered = ($match[1] === '');
+		$rest = $match[3];
+
+		if ($numbered) {
+			if (!$headed) {
+				continue;
+			}
+
+			$rest = preg_replace('/^:\s*/', '', $rest);
+		}
+
+		if (!preg_match('/^(?:[,:]|alone\b|first\b|is done\b)/i', $rest)) {
+			$steps[] = array($match[1] . $match[2], trim($rest));
 		}
 	}
 
@@ -93,13 +111,29 @@ function free_work_step_done($line)
 }
 
 // The open PR that holds a step: its title names "[plan:<plan>]" and the
-// step's ID as a word. $titles is number => title. Returns the number or 0.
+// step's ID as a word. A numbered step is looked for only between the tag
+// and the " — " before the topic, so a number in the topic holds nothing.
+// $titles is number => title. Returns the number or 0.
 function free_work_holder($plan, $id, array $titles)
 {
 	$tag = '[plan:' . $plan . ']';
+	$pattern = '/(?<![A-Za-z0-9.])' . preg_quote((string) $id, '/') . '(?![A-Za-z0-9])/';
 
 	foreach ($titles as $number => $title) {
-		if ((strpos((string) $title, $tag) !== false) && preg_match('/(?<![A-Za-z0-9])' . preg_quote($id, '/') . '(?![A-Za-z0-9])/', (string) $title)) {
+		$at = strpos((string) $title, $tag);
+
+		if ($at === false) {
+			continue;
+		}
+
+		$named = (string) $title;
+
+		if (ctype_digit(substr((string) $id, 0, 1))) {
+			$named = substr($named, $at + strlen($tag));
+			$named = preg_split('/\s+(?:\x{2014}|--?)\s+/u', $named, 2)[0];
+		}
+
+		if (preg_match($pattern, $named)) {
 			return (int) $number;
 		}
 	}
