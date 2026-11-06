@@ -2731,8 +2731,9 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	}
 
-	// The designer is one file in either mode: its .min.js, or its source.
-	$output_designer_script = implode('', pg_js_bundle_urls('assets/js/style_designer.min.js'));
+	// The designer's addresses in load order: its .min.js, or its sources one by one (development
+	// mode, or the .min.js missing), loaded one after another by the design step.
+	$output_designer_scripts = json_encode(array_values(pg_js_bundle_urls('assets/js/style_designer.min.js')), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
 	$output_design_choices = '';
 
@@ -4522,13 +4523,19 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					submit(starters);
 				};
 				if ((typeof StyleDesigner !== "undefined") && (StyleDesigner.starterTree)) { build(); return; }
-				var script = document.createElement("script");
-				script.src = "' . $output_designer_script . '";
-				script.onload = function() {
-					if ((typeof StyleDesigner !== "undefined") && (StyleDesigner.starterTree)) { build(); } else { failed(); }
+				var scripts = ' . $output_designer_scripts . ';
+				var next = function(index) {
+					if (index >= scripts.length) {
+						if ((typeof StyleDesigner !== "undefined") && (StyleDesigner.starterTree)) { build(); } else { failed(); }
+						return;
+					}
+					var script = document.createElement("script");
+					script.src = scripts[index];
+					script.onload = function() { next(index + 1); };
+					script.onerror = failed;
+					document.head.appendChild(script);
 				};
-				script.onerror = failed;
-				document.head.appendChild(script);
+				next(0);
 			}).fail(failed);
 		}
 
