@@ -2537,10 +2537,11 @@ if (!$_POST) {
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
 
         // A customer's order may get what it owes as store credit instead
-        // (pg_credit_refund_cancelled_order()), the site's bonus on top.
+        // (pg_credit_refund_cancelled_order()), the site's bonus on top of
+        // the payment part.
         $output_refund_credit_choice = '';
         if (($status == 'cancelled') && ($refund_owed['total'] > 0) && pg_credit_refund_possible($order_customer_id)) {
-            $refund_credit_cents = pg_credit_refund_card_amount($refund_owed['total'], pg_credit_refund_bonus());
+            $refund_credit_cents = pg_credit_refund_cancel_card_amount($refund_owed, pg_credit_refund_bonus());
             $output_refund_credit_choice = '
                                 <div class="mb-3">
                                     <div class="form-field">
