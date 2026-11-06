@@ -3417,6 +3417,7 @@
     "Another stay?": "Bir konaklama daha mı?",
     "Another story to tell?": "Anlatacak başka bir hikâyeniz mi var?",
     "Another story?": "Başka bir haberiniz mi var?",
+    "Another system starts the published flow by sending a POST to this address, in the name of the flow's owner: at most 60 calls a minute and 64 KB each. Keep it secret: whoever has it can start the flow.": "Başka bir sistem bu adrese POST göndererek yayımlanmış akışı akışın sahibi adına başlatır: dakikada en çok 60 çağrı, her biri en çok 64 KB. Adresi gizli tutun: ona sahip olan herkes akışı başlatabilir.",
     "Another table?": "Bir masa daha mı?",
     "Another upgrade": "Başka bir yükseltme",
     "Another upgrade has been running since {var:1}. Wait for it to finish, then refresh this screen.": "{var:1} itibarıyla başka bir yükseltme çalışıyor. Bitmesini bekleyin, sonra bu ekranı yenileyin.",

@@ -135,6 +135,8 @@ function pg_reseal_registry()
         'where'  => "settings LIKE '%\"secret\"%'",
         'fields' => array('secret'),
     ));
+    // A flow's web address secret, one row per flow (flow_web_start.php).
+    $registry[] = $rows('workspace', 'config_text', 'value', 'name', 'iv', array('where' => "name LIKE 'ws\\_flow\\_web\\_%' AND value <> ''"));
     $registry[] = $config('workspace', 'ws_claude_token', 'iv');
     $registry[] = $config_text('workspace', 'ws_voice_key', 'iv');
     $registry[] = $config_text('workspace', 'ws_voice_speech_key', 'iv');

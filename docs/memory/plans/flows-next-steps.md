@@ -24,7 +24,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 
 - B6 (done, PR #7410): a failed run as a start: `workspace.flow.run.failed` in `ws_events_catalog()` (flow, box, its sentence), so a team, not only the owner, hears of it; a flow never starts on its own failure.
 
-- B7 (free, M): a web address that starts a flow: a sealed secret per flow, editors only, renewable; only a published flow, in its owner's name; body fields as `trigger.*`; 60 calls a minute per address (WAF), 64 KB; its own root file.
+- B7 (done, PR #7460): a web address that starts a flow: a sealed secret per flow, editors only, renewable; only a published flow, in its owner's name; body fields as `trigger.*`; 60 calls a minute per address (WAF), 64 KB; its own root file.
 
 - B8 (done, #7429): e-mail to the record's person: recipient `record_person`, never a typed value; purpose `info` or `marketing`, marketing only with consent, else skipped with its reason, with an unsubscribe link.
 
