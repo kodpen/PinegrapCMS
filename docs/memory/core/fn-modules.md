@@ -52,7 +52,7 @@ description: Generated from the module field of the memory files: each includes/
 - `commerce_list`: [[list-table-commerce-lists]], [[list-table-order-side-lists]]
 - `commission_list`: [[affiliate-approval-and-commission-edit]], [[api-commission-writes]], [[commission-list-affiliate-join]], [[commission-list-paging]], [[order-cancel-commissions]]
 - `common_regions`: [[api-design-dialogs-regions]]
-- `config_text`: [[config-table-no-varchar]]
+- `config_text`: [[config-table-no-varchar]], [[job-pass-time-claim]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
 - `contact_list`: [[contact-delete-notice-groups]], [[contact-list-filters]], [[contact-list-names]], [[contact-merge-role]], [[contact-user-list-view-kept]], [[panel-image-alt]]
 - `contact_list_edit`: [[list-table-quick-edit-contacts]]
