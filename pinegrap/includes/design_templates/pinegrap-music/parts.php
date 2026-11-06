@@ -1188,3 +1188,94 @@ $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_whe
     ), $show_when('has_ai_links'));
 };
 
+
+// ── Collection lists and record pages ───────────────────────────────────
+
+// A filter row of a list's settings: the field, how it compares and the
+// value, or where the value comes from (a URL parameter, left out while
+// the parameter is not in the address; or today's date).
+$mu_filter = function ($field, $operator, $value, $param = '') {
+    $row = array('field' => $field, 'operator' => $operator, 'value' => $value, 'dynamic_value' => $param !== '' ? 'url parameter' : '');
+    if ($param !== '') $row['dynamic_value_attribute'] = $param;
+    return $row;
+};
+// A date filter against today: the shows to come (on or after today) or
+// those already played (before today).
+$mu_date_filter = function ($field, $operator) {
+    return array('field' => $field, 'operator' => $operator, 'value' => '', 'dynamic_value' => 'current date');
+};
+// The answers of the Featured list: the first marks a record for the home.
+$mu_featured_choices = array(lang('Yes'), lang('No'));
+
+// A list's settings: the form, its record page, the order and the words
+// shown when nothing matches.
+$mu_list_config = function ($form_page, $detail_page, $order_field, $direction, $empty, $more) {
+    return array_merge(array(
+        'regionType'          => 'form_list_view',
+        'custom_form_page_id' => '{{tab:' . $form_page . '}}',
+        'detail_page_id'      => '{{tab:' . $detail_page . '}}',
+        'order_by_field'      => $order_field,
+        'order_by_direction'  => $direction,
+        'empty_message'       => $empty,
+    ), $more);
+};
+
+// The links above a list that narrow it: one per answer of a pick list,
+// each opening the list with the filter set.
+$mu_filter_bar = function ($page_key, $label, $param, $values) use ($el, $link, $span, $query) {
+    $children = array($span($label, 'small fw-semibold text-body-secondary me-1', lang('Label')));
+    $children[] = $link(lang('All'), '{{page:' . $page_key . '}}', 'btn btn-sm btn-outline-secondary rounded-pill');
+    foreach ($values as $v) {
+        $children[] = $link($v, '{{page:' . $page_key . '}}?' . $query(array($param => $v)), 'btn btn-sm btn-outline-secondary rounded-pill');
+    }
+    return $el('nav', 'd-flex flex-wrap align-items-center gap-2 mb-4', lang('Filters'), $children);
+};
+
+// The record pages' back link and Edit button, above the record.
+$mu_toolbar = function ($page_key, $text) use ($el, $icon, $span, $edit_button) {
+    return $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Toolbar'), array(
+        $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-primary text-decoration-none', lang('Link'), array(
+            $icon('bi-arrow-left'),
+            $span($text, '', lang('Link Text')),
+        ), array('href' => '{{page:' . $page_key . '}}')),
+        $edit_button(),
+    ));
+};
+// What a record page shows when its record is not there.
+$mu_not_found = function ($icon_name, $title, $text, $back_text, $back_page) use ($el, $icon, $heading, $para, $link, $bind, $show_when) {
+    return $el('div', 'text-center py-5', lang('Not Found'), array(
+        $icon($icon_name, 'display-5 text-body-tertiary'),
+        $heading('h2', $title, 'h3 fw-semibold mt-3'),
+        $para($text, 'text-body-secondary mb-4', $bind('not_found')),
+        $link($back_text, '{{page:' . $back_page . '}}', 'btn btn-primary rounded-pill px-4'),
+    ), $show_when('record_not_found'));
+};
+// A long field of a record page under its heading, its lines kept; the
+// block leaves when the record has no value.
+$mu_long_field = function ($title, $token, $sample, $class = 'mb-4') use ($el, $heading, $bind) {
+    return $el('div', 'pg-hide-if-empty ' . $class, $title, array(
+        $heading('h2', $title, 'pmu-display h4 mb-2'),
+        $el('div', 'pg-field-value lh-lg', lang('Value'), array(), array_merge(array('text' => $sample), $bind($token))),
+    ));
+};
+// A link to an address the record holds, in a new window, shown only when
+// the record has it (a listening service, a video, a ticket seller).
+$mu_record_link = function ($text, $token, $class) use ($link, $attr) {
+    return $link($text, '#', $class, array($attr('rel', 'noopener')),
+        array('target' => '_blank', '_bindings' => array('href' => $token, 'show_if' => $token)));
+};
+// A staff page holding a collection's form in a card.
+$mu_form_page = function ($title, $lead, $widget_key) use ($staff_page, $page_header, $el, $container, $row, $col, $widget) {
+    return $staff_page(array(
+        $page_header($title, $lead),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'p-4 rounded-4 border', lang('Form Card'), array($widget($widget_key))),
+                    ), '', '8'),
+                ), '', 'center'),
+            )),
+        )),
+    ));
+};

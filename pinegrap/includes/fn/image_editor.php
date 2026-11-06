@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'actions', 'menu');
 }
 
 /**
@@ -3702,6 +3702,7 @@ function pg_image_editor_strings_motion()
         'motionRemove'         => lang('Remove'),
         'motionWhole'          => lang('Whole animation'),
         'motionLength'         => lang('Length'),
+        'motionLongNote'       => lang('This moves for longer than 5 seconds. On a web page beside other content, visitors must be able to pause it (WCAG 2.2.2), and a GIF, APNG or WebP cannot be paused: shorten it, repeat it fewer times, or save it as a video.'),
         'motionRepeatCount'    => lang('Repeat'),
         'motionForever'        => lang('Forever'),
         'motionTimes'          => lang('{n} times'),
@@ -4445,6 +4446,12 @@ function pg_image_editor_strings_access()
         'keyPinDelete'    => lang('Remove the chosen pin'),
         'keyPinNudge'     => lang('Move the chosen pin by 1 pixel'),
         'keyPinNudgeMore' => lang('Move the chosen pin by 10 pixels'),
+        'keysTimeline'  => lang('Timeline'),
+        'keyPlay'       => lang('Play or pause'),
+        'keyFrame'      => lang('One frame back or forward'),
+        'keySecond'     => lang('One second back or forward'),
+        'keyStart'      => lang('Go to the start'),
+        'keyEnd'        => lang('Go to the end'),
     );
 }
 
@@ -5092,5 +5099,28 @@ function pg_image_editor_strings_area()
         'erasePick'       => lang('Choose another picture'),
         'removeBg'        => lang('Remove background'),
         'eraseJpegNote'   => lang('A JPEG cannot be see-through: saving makes a PNG copy beside it. Choose a fill colour to keep the JPEG.'),
+    );
+}
+
+// -- A recorded move (pg_image_editor_record.js) --
+
+/**
+ * The recording part's labels: Record beside Play, the Path tab's
+ * recording section, the phone's pill and the hint.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_record()
+{
+    return array(
+        'recRecord'    => lang('Record a move'),
+        'recStop'      => lang('Stop recording'),
+        'recBadge'     => lang('REC'),
+        'recTitle'     => lang('Recording a move'),
+        'recRate'      => lang('Recording speed'),
+        'recNote'      => lang('While you drag the layer the time runs; letting go stops the recording and its path becomes keyframes with its speed. The keyframes inside the recorded span are replaced.'),
+        'recPick'      => lang('Select one layer to record its move.'),
+        'recHint'      => lang('Recording: drag the layer, letting go stops it · Esc cancels the recording'),
+        'recHintPhone' => lang('Drag the layer; letting go stops the recording.'),
     );
 }

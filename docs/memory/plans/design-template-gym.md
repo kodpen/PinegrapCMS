@@ -17,9 +17,9 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 
 - 3 (done, #7546): `trainers.php`: the Trainers collection (`trainers`, `trainer`, `trainer_new`) and `book_online` (booking widget starter, privacy link); test.
 
-- 4: `mail.php` (the e-mail builders) and `classes.php`: class booking requests (`class_booking`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`) and the join request (`join`, `join_view`, `staff_joins`); test.
+- 4 (done, #7571): `mail.php` (the e-mail builders) and `classes.php`: class booking requests (`class_booking`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, `email_booking_new`, `email_booking_received`) and the join request (`join`, `join_view`, `staff_joins`, `email_join_new`, `email_join_received`); `tests/design_template_gym_classes_test.php`.
 
-- 5: `members.php`: shop pages (`memberships`, product, cart, checkout, order, `email_order`, the catalog with membership products) and the members' area (`members`, `workouts`); test.
+- 5 (done, #7629): `members.php`: shop pages (`memberships`, product, cart, checkout, order, `email_order`, catalog group `memberships`) and the members' area (`members`, `workouts`, folder `members`); test.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
 
@@ -28,8 +28,10 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 - 8: assembly: `pinegrap-gym.php` (order, search sections, look, fonts, `pgy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-gym.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 4. `parts.php` already has the class booking and join pick lists (`$class_names`, `$day_titles`, `$time_choices`, `$join_choices`, `$goal_choices`, `$experience_choices`, `$booking_statuses`, `$join_statuses`), the form builders and `$comment_thread`; copy `mail.php` and the request pattern from `pinegrap-hotel/mail.php` and `bookings.php`. The page `privacy` must be named `lang('privacy-policy')` ([[booking-templates]]).
-- PHP 7.1 traps met so far: no trailing comma after a call's last argument (step 2 failed CI on it). Commit with committer `Erdal Güral`, or the branch guard fails.
+- Step 6: copy `pinegrap-hotel/standard.php` ([[design-templates-standard-pages]]); `email_reply` is already in `classes.php`, `cart_link` in `members.php`.
+- Step 8: `mail.php` right after `parts.php`; folder `members` with access `membership`; `catalog` from `members.php`.
+- Translation trap: an existing key may carry another template's word (`First visit` reads "İlk muayene"): check it before reuse.
+- PHP 7.1: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).

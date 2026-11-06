@@ -248,6 +248,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-actions.md: The image editor's selection bar on a small screen: which commands show (M.actionList()), where it sits, when it hides, why it exists, how it was checked
 - image-editor-adjust.md: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-animation-save.md: Saving an animation into Files (AN4): Save to Files, the upload limit, action animation (binary body, type by bytes), its version with the document, reopening, same-format replace
+- image-editor-animation.md: The image editor's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
 - image-editor-area-cut.md: The image editor's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why an area layer takes a press only inside its outline
 - image-editor-area-pixels.md: What an image editor selection does to pixels (E27b, #6678): Erase inside and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends, the engine's mask step under GD and Imagick
 - image-editor-area.md: The image editor's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
@@ -275,6 +276,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-present.md: Present (AN8): a canvas's scenes full screen, keys, swipes, transitions, reduced motion; PDF in Save animation, a JPEG page per scene from M.pdfFile()
 - image-editor-puppet.md: The image editor's free deformation (puppet): pins on a path, shape or outlined text, rigid moving least squares, kept as l.puppet, drawn after the warp; Expand bakes it
 - image-editor-rail.md: The image editor rail's group items Photo (Fotoğraf) and Vector (Vektör): which tools they hold, the mode switch, the mode reopened, letters and hints, M.railItems()
+- image-editor-record.md: The Animate tool's recorded move (AN12): Record beside Play, the clock at 0.5x-2x while a layer is dragged, M.recordThin()/recordApply() into linear keyframes, the phone's pill
 - image-editor-redact.md: The image editor's redaction (E10): layer fields, box and brush areas, the preview filters, the masks a save sends, the server's step 4 under Imagick and GD, metadata, versions
 - image-editor-remove-background.md: The image editor's Remove background (E28c, #6948): the subject a layer of its own over the picture erased whole; the erased part's fills (colour, blur, a picture from Files) in the mask step
 - image-editor-render.md: The image editor's animation frames and GIF (AN3): renderFrame(), paintLayers() with a time, action base, the encoder worker, the Save animation dialog with estimate, progress, Cancel and Download

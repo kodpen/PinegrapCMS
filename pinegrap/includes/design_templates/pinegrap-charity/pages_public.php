@@ -431,7 +431,7 @@ $public_pages[] = array(
                         $faq_group('ch-faq-help', lang('Volunteering and events'), array(
                             array(lang('How can I volunteer?'), lang('Tell us how you would like to help from the volunteer page; we answer everyone and you can follow it from your account.'), lang('volunteer, help, time')),
                             array(lang('Do I need experience?'), lang('No. We need drivers, cooks, translators and people to talk to donors as much as engineers and nurses.'), lang('skills, experience, requirements')),
-                            array(lang('How do I join an event?'), lang('Every event has its own page with a short sign-up form.'), lang('events, sign up, register')),
+                            array(lang('How do I join an event?'), lang('Every event has a Sign up button that opens a short form: no ticket and no seat to choose.'), lang('events, sign up, register')),
                         )),
                     ), '', '8'),
                 ), '4', 'center'),

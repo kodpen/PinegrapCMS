@@ -1761,6 +1761,9 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //                       today and the days before it
 //   filters             list  the classic form list view's filters, see
 //                             pg_sw_form_list_filter_sql()
+//   one_per_submitter   bool (default false): each signed-in submitter's
+//                       newest record only, see
+//                       pg_sw_form_list_one_per_submitter_sql()
 //   filter_title        string the page title while a value from the address
 //                             is applied with "is equal to" and records
 //                             match; {value} stands
@@ -1815,6 +1818,33 @@ function pg_sw_form_list_empty_message($configured, $search_active)
     $configured = is_string($configured) ? $configured : '';
 
     return ($configured !== '') ? $configured : lang('No records found.');
+}
+
+/**
+ * The form list's "newest record per submitter" condition: with the
+ * one_per_submitter option on, a record of a signed-in submitter
+ * (forms.user_id > 0) is listed only when no newer complete record of the
+ * same form has the same submitter, so a member who sent the form again
+ * shows once, with the newest record. Records without a submitter
+ * (user_id 0) are never collapsed. The condition looks at every complete
+ * record of the form, before the list's filters, the visitor's search and
+ * the viewer filter, which then apply to what is left: an older record
+ * never stands in for a newer one those hold back, and the count and the
+ * pages number the cards shown.
+ *
+ * @param  array $cfg the widget's system_region_config
+ * @return string An " AND (...)" fragment over the unaliased forms table,
+ *                or '' when the option is off.
+ */
+function pg_sw_form_list_one_per_submitter_sql($cfg)
+{
+    if (!is_array($cfg) || empty($cfg['one_per_submitter'])) return '';
+
+    return " AND (forms.user_id = 0 OR NOT EXISTS (SELECT 1 FROM forms newer_form
+                  WHERE newer_form.page_id = forms.page_id
+                    AND newer_form.complete = 1
+                    AND newer_form.user_id = forms.user_id
+                    AND newer_form.id > forms.id))";
 }
 
 function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
@@ -2100,6 +2130,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $filter_sql['tokens'] = array();
     }
     $filter_where = $filter_sql['where'];
+    // The submitter's older records leave the list before anything else
+    // counts them; the address check below reads the same rows.
+    $filter_where .= pg_sw_form_list_one_per_submitter_sql($cfg);
     // The value from the address, printed only once records match it
     // exactly, so the page never repeats text that names nothing in the
     // data.

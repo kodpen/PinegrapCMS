@@ -104,6 +104,12 @@
         return (this.time === null) ? null : this.time - this.motionStart();
     };
 
+    // True when anything plays: a moving layer, the picture's move or
+    // another scene to go to.
+    Editor.prototype.motionMoves = function () {
+        return (M.docMotion(this.doc).base !== 'none') || (M.sceneCount(this.doc) > 1) || this.doc.layers.some(function (l) { return !!l.anim; });
+    };
+
     // The selected layers that may move.
     Editor.prototype.motionLayers = function () {
         return this.selected().filter(function (l) { return STILL.indexOf(l.type) < 0; });
@@ -389,6 +395,12 @@
         repeat.addEventListener('change', function () { self.setDocMotion({ loop: Number(repeat.value) }); });
         body.appendChild(section(t('motionRepeatCount'), repeat));
 
+        // WCAG 2.2.2: motion past 5 seconds beside other content needs a way
+        // to pause it, which a saved GIF, APNG or WebP has not.
+        if (M.motionLong(this.motionTotal(), m.loop) && this.motionMoves()) {
+            body.appendChild(el('p', { class: 'pgie-note pgie-mlong', role: 'note', text: t('motionLongNote') }));
+        }
+
         if (this.img) {
             var bases = el('div', { class: 'pgie-chips', role: 'radiogroup', 'aria-label': t('motionBase') });
 
@@ -429,6 +441,8 @@
     Editor.prototype.motionBar = function () {
         var self = this, end = this.motionTotal(), from = this.motionStart(), now = (this.time === null) ? 0 : this.time;
         var playBtn = button('pgie-mplay', this.playing ? t('motionPause') : t('motionPlay'), this.playing ? 'pause' : 'play', function () { self.togglePlay(); });
+
+        playBtn.setAttribute('aria-keyshortcuts', 'K');
         var scrub = el('input', { type: 'range', class: 'pgie-range pgie-mscrub', min: '0', max: String(end), step: '10', value: String(now), 'aria-label': t('motionScrub'), 'aria-valuetext': clockText(now) });
         var ticks = el('div', { class: 'pgie-mticks', 'aria-hidden': 'true' });
         var clock = el('span', { class: 'pgie-mclock' }, [el('strong', { text: clockText(now) }), ' / ' + clockText(end)]);
@@ -607,6 +621,7 @@
 
             if (this.motionEls) {
                 this.motionEls.play.replaceWith(this.motionEls.play = button('pgie-mplay', t('motionPlay'), 'play', this.togglePlay.bind(this)));
+                this.motionEls.play.setAttribute('aria-keyshortcuts', 'K');
             }
         }
 
@@ -779,16 +794,33 @@
 
     // ---- keys and pointers ----
 
-    // K plays and pauses in the Animate tool, the video players' key; Space
-    // keeps moving the view as in every tool.
+    // The timeline's keys in the Animate tool: K plays and pauses, the video
+    // players' key; Left and Right step the playhead a frame (Shift: a
+    // second), Home and End go to the ends (M.timelineKey()), which pauses
+    // as a scrub does. Up and Down still nudge the selection; Space keeps
+    // moving the view as in every tool. A recording keeps its own clock.
     Editor.prototype.motionKey = function (e, mod, k) {
-        if ((this.tool !== 'motion') || mod || e.altKey || ((k !== 'k') && (k !== 'K'))) {
+        var at;
+
+        if ((this.tool !== 'motion') || mod || e.altKey || this.recording) {
             return false;
         }
 
-        if (!e.repeat) {
-            this.togglePlay();
+        if ((k === 'k') || (k === 'K')) {
+            if (!e.repeat) {
+                this.togglePlay();
+            }
+
+            return true;
         }
+
+        at = M.timelineKey(this.time, k, e.shiftKey, this.motionTotal());
+
+        if (at === null) {
+            return false;
+        }
+
+        this.seek(at);
 
         return true;
     };

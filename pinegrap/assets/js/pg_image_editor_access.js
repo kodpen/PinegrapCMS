@@ -31,7 +31,7 @@
             return MAC ? '⌘' : 'Ctrl';
         }
 
-        return { Space: t('keySpace'), Delete: t('keyDeleteName'), Arrows: t('keyArrows'), Drag: t('keyDrag'), Click: t('keyClick'), DoubleClick: t('keyDoubleClick') }[k] || k;
+        return { Space: t('keySpace'), Delete: t('keyDeleteName'), Arrows: t('keyArrows'), Drag: t('keyDrag'), Click: t('keyClick'), DoubleClick: t('keyDoubleClick'), LeftRight: '← →' }[k] || k;
     }
 
     // The aria-keyshortcuts form of a key list: Control or Meta for Mod.

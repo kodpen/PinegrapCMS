@@ -19,9 +19,9 @@ description: Plan: the Photography Studio design template (pinegrap-photo): gall
 
 - 4 (done, #7572): `mail.php` (the e-mail builders) and `bookings.php`: shoot booking requests (`book` with `?package=` and `?category=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`); test.
 
-- 5: `clients.php`: the client area (`client_area` in public; the `client_sample` private folder with the sample proofing gallery `proofing_sample` and its downloads), proof selections (`selection` with `?gallery=`, `selection_view`, `my_selections`, `staff_selections`); test.
+- 5 (done, #7603): `clients.php`: the client area (`client_area` in public; the `client_sample` private folder with the sample proofing gallery `proofing_sample` and its downloads), proof selections (`selection` with `?gallery=`, `selection_view`, `my_selections`, `staff_selections`); test.
 
-- 6: `shop.php`: `vouchers`, product, cart, checkout, order, `email_order`, the catalog (a session deposit per package, gift vouchers, `shippable => false`); test.
+- 6 (done, #7621): `shop.php`: `vouchers`, product, cart, checkout, order, `email_order`, the catalog (a session deposit per package, gift vouchers, `shippable => false`); test.
 
 - 7: `standard.php`: contact, inbox, conversation, newsletter, blog (Photo Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
