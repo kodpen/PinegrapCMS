@@ -638,10 +638,8 @@ function pg_member_register($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) REGISTRATION_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
-        db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
-            VALUES ('" . $contact_id . "', '" . $group_id . "')");
-    }
+    // Skips a group filled by rules (pg_audience_hand_sql()) and announces the join.
+    pg_audience_door_join($contact_id, $group_id);
 
     // The account. create_member_user() writes the modern hash and returns
     // the id; contact, start page and hint travel as data.
@@ -919,15 +917,9 @@ function pg_member_activate($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) MEMBERSHIP_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
-        $in_group = db_value(
-            "SELECT contact_id FROM contacts_contact_groups_xref
-            WHERE contact_id = '" . $contact_id . "' AND contact_group_id = '" . $group_id . "'");
-        if (!$in_group) {
-            db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
-                VALUES ('" . $contact_id . "', '" . $group_id . "')");
-        }
-    }
+    // Skips a group filled by rules (pg_audience_hand_sql()) or one the
+    // contact is already in, and announces the join.
+    pg_audience_door_join($contact_id, $group_id);
 
     $create = array(
         'username'      => $username,
@@ -1659,6 +1651,49 @@ function pg_session_cookie_allow_cross_site()
         header('Set-Cookie: ' . session_name() . '=; Path=' . $default_path
             . '; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0', false);
     }
+}
+
+/**
+ * Whether a browser sent this request from a page of another site. The
+ * session-only JSON actions (api.php's public site actions, booking_slots.php)
+ * carry no form token and lean on the Lax session cookie, which a cross-site
+ * POST does not carry; but once pg_session_cookie_allow_cross_site() has
+ * re-issued the cookie as SameSite=None, it does, and a page elsewhere can
+ * post a text/plain body that decodes as their JSON. Sec-Fetch-Site decides
+ * when the browser sends it (same-site is a sibling subdomain, kept); else
+ * an Origin naming another host and port, or the opaque "null", is
+ * cross-site. A request with neither header is not a browser's cross-site
+ * request.
+ *
+ * @param array $server $_SERVER
+ * @return bool
+ */
+function pg_request_cross_site(array $server)
+{
+    if (isset($server['HTTP_SEC_FETCH_SITE']) && is_string($server['HTTP_SEC_FETCH_SITE']) && (trim($server['HTTP_SEC_FETCH_SITE']) !== '')) {
+        return (strtolower(trim($server['HTTP_SEC_FETCH_SITE'])) === 'cross-site');
+    }
+
+    $origin = (isset($server['HTTP_ORIGIN']) && is_string($server['HTTP_ORIGIN'])) ? trim($server['HTTP_ORIGIN']) : '';
+
+    if ($origin === '') {
+        return false;
+    }
+
+    if (strtolower($origin) === 'null') {
+        return true;
+    }
+
+    $host = (isset($server['HTTP_HOST']) && is_string($server['HTTP_HOST'])) ? strtolower(trim($server['HTTP_HOST'])) : '';
+    $parts = parse_url($origin);
+
+    if (($host === '') || !is_array($parts) || empty($parts['host'])) {
+        return true;
+    }
+
+    $from = strtolower($parts['host']) . (isset($parts['port']) ? ':' . $parts['port'] : '');
+
+    return !hash_equals($host, $from);
 }
 
 // Non-remember logins get a session-scoped token only so they can be counted
@@ -4207,7 +4242,8 @@ function validate_token_field()
 /**
  * Whether this request renders pages as a visitor who is not signed in,
  * whoever started it: a search index run (UPDATE_SEARCH_INDEX) or an audit
- * run from the panel (audit_run.php, PG_ANONYMOUS_RENDER). Such a request
+ * run from the panel (audit_run.php) or a design preview (design_preview.php),
+ * both PG_ANONYMOUS_RENDER. Such a request
  * loads no user from the session or the remember-me cookie; the script
  * checks its caller's role from the session itself.
  *

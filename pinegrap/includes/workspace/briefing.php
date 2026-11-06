@@ -143,29 +143,11 @@ function ws_channel_briefing($viewer, $channel, $membership)
         $open_ids[] = (int) $task['id'];
     }
 
-    $people = ws_task_assignees_map($open_ids);
-    $overdue = 0;
-    $due_today = 0;
-    $mine = 0;
-    $waiting = 0;
-
-    foreach ($open as $task) {
-        $due = (string) ($task['due_date'] ?? '');
-
-        if (($due !== '') && ($due < $today)) {
-            $overdue++;
-        } elseif ($due === $today) {
-            $due_today++;
-        }
-
-        if ($task['status'] === 'waiting') {
-            $waiting++;
-        }
-
-        if (in_array($me, $people[(int) $task['id']] ?? array(), true)) {
-            $mine++;
-        }
-    }
+    $task_counts = ws_channel_task_counts($open, ws_task_assignees_map($open_ids), $me, $today);
+    $overdue = $task_counts['overdue'];
+    $due_today = $task_counts['due_today'];
+    $mine = $task_counts['mine'];
+    $waiting = $task_counts['waiting'];
 
     $done_week = (int) db_value("SELECT COUNT(*) FROM ws_tasks
         WHERE channel_id = '" . $channel_id . "' AND status = 'done' AND completed_at >= '" . ($now - 7 * 86400) . "'");
@@ -344,6 +326,45 @@ function ws_channel_briefing($viewer, $channel, $membership)
             'first_mention' => $mention_ids[0] ?? 0,
         )),
     );
+}
+
+/**
+ * A channel's open tasks counted for its greeting: past their due date, due
+ * today, waiting, and handed to the reader. A due date of NULL or 0000-00-00
+ * is no due date and is neither late nor due today, as the dashboard counts
+ * it (ws_dashboard_signals()). Pure.
+ *
+ * @param array[] $open   ws_tasks rows (id, due_date, status)
+ * @param array   $people task id => assignee user ids
+ * @param int     $me
+ * @param string  $today  Y-m-d
+ * @return array overdue, due_today, waiting, mine
+ */
+function ws_channel_task_counts($open, $people, $me, $today)
+{
+    $out = array('overdue' => 0, 'due_today' => 0, 'waiting' => 0, 'mine' => 0);
+
+    foreach ((array) $open as $task) {
+        $due = (string) ($task['due_date'] ?? '');
+
+        if (($due !== '') && ($due !== '0000-00-00')) {
+            if ($due < $today) {
+                $out['overdue']++;
+            } elseif ($due === $today) {
+                $out['due_today']++;
+            }
+        }
+
+        if ($task['status'] === 'waiting') {
+            $out['waiting']++;
+        }
+
+        if (in_array((int) $me, $people[(int) $task['id']] ?? array(), true)) {
+            $out['mine']++;
+        }
+    }
+
+    return $out;
 }
 
 /**

@@ -172,3 +172,72 @@ function test_menu_item_parent_allowed_stops_on_a_stored_loop()
 
 	pg_assert_false(pg_menu_item_parent_allowed(5, 9, '1', $lookup), 'a loop that never reaches the top is refused');
 }
+
+// The order the menu screen's drag and drop saves: every group's parent
+// must be an item of the menu as it is now, an item may be placed once, and
+// the moves may not close a cycle. Items no longer in the menu are skipped.
+function test_menu_item_sort_plan()
+{
+	// 1 and 2 at the top, 3 under 1, 4 under 3.
+	$parent_of = array(1 => 0, 2 => 0, 3 => 1, 4 => 3);
+
+	pg_assert_same(
+		array(array(2, 0, 1), array(1, 0, 2), array(3, 2, 1), array(4, 3, 1)),
+		pg_menu_item_sort_plan(array(
+			array('parent_id' => 0, 'order' => array(2, 1)),
+			array('parent_id' => '2', 'order' => array('3')),
+			array('parent_id' => 3, 'order' => array(4)),
+		), $parent_of),
+		'a valid tree: id, parent, place among its siblings');
+
+	pg_assert_same(
+		array(array(2, 0, 1)),
+		pg_menu_item_sort_plan(array(array('parent_id' => 0, 'order' => array(9, 2))), $parent_of),
+		'an item deleted since the screen was opened is skipped and does not take a place');
+
+	pg_assert_same(null,
+		pg_menu_item_sort_plan(array(array('parent_id' => 9, 'order' => array(2))), $parent_of),
+		'a parent deleted since the screen was opened is refused: the item would vanish from the menu');
+
+	pg_assert_same(null,
+		pg_menu_item_sort_plan(array(array('parent_id' => 4, 'order' => array(1))), $parent_of),
+		'moving an item under its own sub-item is refused');
+
+	pg_assert_same(null,
+		pg_menu_item_sort_plan(array(array('parent_id' => 2, 'order' => array(2))), $parent_of),
+		'an item under itself is refused');
+
+	pg_assert_same(null,
+		pg_menu_item_sort_plan(array(
+			array('parent_id' => 0, 'order' => array(1)),
+			array('parent_id' => 2, 'order' => array(1)),
+		), $parent_of),
+		'an item placed twice is refused');
+
+	pg_assert_same(null,
+		pg_menu_item_sort_plan(array(array('parent_id' => 'x', 'order' => array(1))), $parent_of),
+		'a parent that is not a number is refused');
+
+	pg_assert_same(array(),
+		pg_menu_item_sort_plan(array(), $parent_of),
+		'nothing to save');
+
+	// A stored orphan (its parent is gone) left out of the save does not
+	// make the save fail.
+	pg_assert_same(
+		array(array(1, 0, 1)),
+		pg_menu_item_sort_plan(array(array('parent_id' => 0, 'order' => array(1))), array(1 => 0, 5 => 77)),
+		'an orphan the save does not touch is no cycle');
+}
+
+// The sort action reads the menu's items and refuses a plan the rule turns
+// down, before any row is written.
+function test_menu_item_sort_action_uses_plan()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/content.php');
+	$start = strpos($source, 'function pg_panel_sort_menu_items');
+	pg_assert_true($start !== false, 'the sort action exists');
+	$body = substr($source, $start, 4000);
+	pg_assert_true(strpos($body, 'pg_menu_item_sort_plan(') !== false, 'the sort action checks the plan');
+	pg_assert_true(strpos($body, 'pg_menu_item_sort_plan(') < strpos($body, 'UPDATE menu_items'), 'before writing');
+}

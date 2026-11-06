@@ -15,15 +15,15 @@ description: Plan (owner 2026-11-05): flow boxes other automation tools have and
 ## What is there already?
 - 22 start events: orders (created, status, shipped, delivered, cancelled, return requested), stock.low, contacts, form.submitted, contact group, bookings, tasks, approval decided, a guest writes, an e-mail is received.
 - Read a row, Repeat N times, date words in derived values (#6874, #6897, #6873, size warning #7000).
-- The flow's owner is told when a run fails (`ws_flow_run_tell_owner()`), and `workspace.flow.run.failed` is a webhook event (`workspace-flows-run-events.md`), not yet a start.
-- Pending with the architect: #7015 (an answer, number or note, from the people an approval asks) and #7016 (a Calculate rule with the workspace calculator): steps A1 and A2.
+- The flow's owner is told when a run fails (`ws_flow_run_tell_owner()`), and `workspace.flow.run.failed` is a webhook event (`workspace-flows-run-events.md`) and a start (B6, `workspace-flows-run-failed-start.md`).
+- Decided 2026-11-05: #7015 (the approval box's answer) and #7016 (a Calculate rule): steps A1 and A2, `workflow/decisions-made-product-32.md` and `-33.md`.
 
-## Which questions are open? (#7110)
-1. AI box: which data may go to the AI backend (customer data, order lines), whose quota pays, may it wait like an approval, and may its answer pick a branch?
-2. Wait until a date from a value: how far ahead (the delay box stops at a week, `WS_FLOW_DELAY_MAX`; a booking reminder needs weeks)?
-3. A web address that starts a flow: allowed, with which rate limit and size cap?
-4. E-mail to the person of the record (an order's customer, a form's sender, a booking's guest): today `to` is typed and never filled. Which recipients may a flow address, and how are commercial messages kept to people who consented?
-5. A channel message as a start (words or a mention): allowed, and how is it kept from starting on every message?
+## Which decisions bind the steps? (#7110, owner 2026-11-05, `workflow/decisions-made-product-33.md`)
+1. AI box: yes, four modes, only the prompt's values go out, the site's quota, waits like an approval, classify picks a named outcome or `other`.
+2. Wait until a date: up to 90 days.
+3. A web address start: a sealed secret per flow, editors only, 60 calls a minute per address, 64 KB.
+4. E-mail to the record's person: yes, `info` or `marketing`; marketing only with consent, with an unsubscribe link.
+5. A channel start: only a mention of the flow by name; one start per person a minute.
 
 ## Where to start?
-- Steps B1, B3, B5, B6, C1, C2 and C3 need no decision; the templates marked `now` use boxes on development and can be written at once. A suggested order: the `now` templates, B1, C1, B3, B5, then A1 and A2 when decided, with each template as its boxes land.
+- Every step is free. A suggested order: the `now` templates, A2, A1, B1, C1, B3, B5, B4, B2, B7, B8, C4, with each template as its boxes land.

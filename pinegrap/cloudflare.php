@@ -736,7 +736,7 @@ switch ($period) {
             preg_match('/^\d{4}-\d{2}-\d{2}$/', $_REQUEST['end_date'])) {
             $start_date = $_REQUEST['start_date'];
             $end_date   = $_REQUEST['end_date'];
-            $days = max(1, (int) ((strtotime($end_date) - strtotime($start_date)) / 86400) + 1);
+            $days = pg_cloudflare_analytics_range(0, $start_date, $end_date, time())['limit'];
         } else {
             $days = 30;
         }

@@ -296,6 +296,62 @@ function ws_task_detail($viewer, $task)
 }
 
 /**
+ * A task's stored start or due date as Y-m-d, or '' when it has none: NULL
+ * and the zero date 0000-00-00 both mean no date. Pure.
+ *
+ * @param string|null $value
+ * @return string
+ */
+function ws_task_date_value($value)
+{
+    $value = (string) $value;
+
+    return (($value === '') || ($value === '0000-00-00')) ? '' : $value;
+}
+
+/**
+ * Whether a task would start after it is due; a missing start or due date
+ * (NULL or 0000-00-00) never clashes. Pure.
+ *
+ * @param string|null $start
+ * @param string|null $due
+ * @return bool
+ */
+function ws_task_starts_after_due($start, $due)
+{
+    $start = ws_task_date_value($start);
+    $due = ws_task_date_value($due);
+
+    return ($start !== '') && ($due !== '') && ($start > $due);
+}
+
+/**
+ * The fields that move a task to a new due date: a task with both dates
+ * keeps its length, so its start moves by the same number of days; a start
+ * without a due date is cleared. A date of NULL or 0000-00-00 is no date.
+ * Pure.
+ *
+ * @param array  $task    ws_tasks row (start_date, due_date)
+ * @param string $new_due Y-m-d
+ * @return array due_date, and start_date when it changes
+ */
+function ws_task_move_dates($task, $new_due)
+{
+    $start = ws_task_date_value($task['start_date'] ?? null);
+    $due = ws_task_date_value($task['due_date'] ?? null);
+    $fields = array('due_date' => $new_due);
+
+    if (($start !== '') && ($due !== '')) {
+        $shift = (int) round((strtotime($new_due . ' 12:00:00') - strtotime($due . ' 12:00:00')) / 86400);
+        $fields['start_date'] = date('Y-m-d', strtotime($start . ' 12:00:00 ' . (($shift >= 0) ? '+' : '') . $shift . ' days'));
+    } elseif ($start !== '') {
+        $fields['start_date'] = null;
+    }
+
+    return $fields;
+}
+
+/**
  * A date the caller typed, as Y-m-d, or null.
  *
  * @param mixed $value
@@ -381,7 +437,7 @@ function ws_task_validate($viewer, $data, $current = null)
     $start = array_key_exists('start_date', $clean) ? $clean['start_date'] : (($current !== null) ? $current['start_date'] : null);
     $due = array_key_exists('due_date', $clean) ? $clean['due_date'] : (($current !== null) ? $current['due_date'] : null);
 
-    if (($start !== null) && ($due !== null) && ($start > $due)) {
+    if (ws_task_starts_after_due($start, $due)) {
         return $fail(lang('The task cannot start after it is due.'), 'start_date');
     }
 

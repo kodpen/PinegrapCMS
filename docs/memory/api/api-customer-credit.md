@@ -18,7 +18,10 @@ module: store_credit_events
 - Void needs a reason, a card of the record's accounts (404 otherwise) with a balance; a zero balance or an order spending meanwhile is 409 `credit_not_open`. A void is not announced.
 
 ## Can DELETE /gift-cards/{id} remove a store credit card?
-- No (#6783): `api_gift_cards_delete()` refuses a card with `user_id` > 0 (`api_gift_card_is_store_credit()`) with 409 `store_credit_not_deletable` before the dry-run stop, naming the void route; the same rule as the gift card screen (#6688), since the delete drops the credit without an audit line. Ordinary gift cards are deleted as before. Test: `tests/api_gift_card_store_credit_delete_test.php`.
+- No (#6783): `api_gift_cards_delete()` refuses a card with `user_id` > 0 (`api_gift_card_is_store_credit()`) with 409 `store_credit_not_deletable`, naming the void route, as the gift card screen (#6688): a delete drops the credit unaudited. Test: `tests/api_gift_card_store_credit_delete_test.php`.
+
+## What does POST /gift-cards/{id} do to a balance?
+- Writes it only over the balance it read (`api_gift_card_update_sql()`), as the screen's `balance_was` guard; a spend meanwhile is 409 `balance_changed`. A changed store credit balance gets the screen's `pg_audit('update', 'store_credit')` line (`api_gift_card_credit_audit()`). Test: `tests/api_gift_card_update_guard_test.php`.
 
 ## Which events?
 - `includes/fn/store_credit_events.php`: `pg_credit_announce()` reads the card and its account's contact and calls `pg_announce()` with `pg_credit_event_data()` (pure): id, account_id, customer_id, kind, reason, amount, balance, expires_at, never the code; unbound cards are never announced.

@@ -67,8 +67,8 @@ function test_workspace_claude_flow_drafts_instructions()
 	pg_assert_contains('question put to people is an approval box', $text, 'the question box');
 	pg_assert_contains('leave x and y out', $text, 'no places');
 	pg_assert_contains('a value box (kind value) whose', $text, 'the value box');
-	pg_assert_contains('rule reads two values (' . implode(', ', array('join', 'compare', 'add', 'subtract', 'add_days')) . ') needs both', $text, 'its rules with two values');
-	pg_assert_same(array(), array_diff(ws_flow_derived_two_inputs(), array('join', 'compare', 'add', 'subtract', 'add_days')), 'every rule with two values named');
+	pg_assert_contains('rule reads two values (' . implode(', ', array('join', 'compare', 'add', 'subtract', 'add_days', 'replace', 'cut', 'split')) . ') needs both', $text, 'its rules with two values');
+	pg_assert_same(array(), array_diff(ws_flow_derived_two_inputs(), array('join', 'compare', 'add', 'subtract', 'add_days', 'replace', 'cut', 'split')), 'every rule with two values named');
 	pg_assert_contains('join writes a, a space, then b, so split a text between them', $text, 'a text split between a and b');
 	pg_assert_contains('opens it on the Flows canvas and publishes it', $text, 'the person publishes');
 }

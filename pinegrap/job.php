@@ -48,7 +48,8 @@ $comments = db_items(
         id,
         page_id,
         item_id,
-        item_type
+        item_type,
+        publish_date_and_time
     FROM comments
     WHERE
         (publish_date_and_time != '0000-00-00 00:00:00')
@@ -56,18 +57,21 @@ $comments = db_items(
         AND (published = 0)
     ORDER BY publish_date_and_time");
 
+$comments_published = 0;
+
 // Loop through the comments in order to publish them.
 foreach ($comments as $comment) {
-    // Publish the comment and clear the scheduled info.
-    // We update the created timestamp so that the comment appears in logical order.
-    db(
-        "UPDATE comments
-        SET
-            published = '1',
-            publish_date_and_time = '',
-            publish_cancel = '0',
-            created_timestamp = UNIX_TIMESTAMP()
-        WHERE id = '" . $comment['id'] . "'");
+    // Publish the comment and clear the scheduled info. The claim changes the
+    // row only while it is still unpublished at the time read above: a run
+    // that overlaps this one and read the same comment changes nothing and
+    // sends no e-mail, so nobody is mailed about one comment twice.
+    db(pg_comment_schedule_claim_sql($comment['id'], $comment['publish_date_and_time']));
+
+    if (mysqli_affected_rows(db::$con) !== 1) {
+        continue;
+    }
+
+    $comments_published++;
 
     // If this comment is for a submitted form on a form item view,
     // then update submitted form info.
@@ -125,12 +129,10 @@ foreach ($comments as $comment) {
     send_comment_email_to_watchers($comment['id']);
 }
 
-$number_of_comments = count($comments);
-
 // If at least one comment was published, then log activity.
-if ($number_of_comments) {
+if ($comments_published) {
 
-    log_activity(lang(array('string' => 'general job published {var:1} scheduled comment(s)', 'vars' => array(pg_format_number($number_of_comments, 0)))), 'UNKNOWN');
+    log_activity(lang(array('string' => 'general job published {var:1} scheduled comment(s)', 'vars' => array(pg_format_number($comments_published, 0)))), 'UNKNOWN');
 
 }
 

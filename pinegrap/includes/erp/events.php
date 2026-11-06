@@ -53,6 +53,12 @@ function erp_event($event, $payload)
         erp_alert_event($event, $payload);
     }
 
+    // The Workspace hears the ones a flow may start on, with the API or
+    // without it (pg_event_workspace_events()).
+    if (function_exists('pg_event_record')) {
+        pg_event_record((string) $event, (array) $payload);
+    }
+
     $webhooks = PG_FUNCTIONS_DIR . '/includes/api/outbound/webhooks.php';
 
     if (!function_exists('api_webhook_enqueue')) {
@@ -66,7 +72,8 @@ function erp_event($event, $payload)
         return 0;
     }
 
-    return (int) api_webhook_enqueue((string) $event, (array) $payload);
+    // Recorded above already: the Workspace must not keep the event twice.
+    return (int) api_webhook_enqueue((string) $event, (array) $payload, function_exists('pg_event_record'));
 }
 
 /**
@@ -102,8 +109,8 @@ function erp_event_time($unix)
  * its internal note changed.
  *
  * @param int    $invoice_id
- * @param string $event  'erp.invoice.created' | 'erp.invoice.paid' | 'erp.invoice.cancelled' | 'erp.invoice.edoc_changed' | 'erp.invoice.note_changed'
- * @param array  $extra  Fields one event adds to the common shape (note_changed: notes)
+ * @param string $event  'erp.invoice.created' | 'erp.invoice.paid' | 'erp.invoice.cancelled' | 'erp.invoice.edoc_changed' | 'erp.invoice.note_changed' | 'erp.invoice.overdue'
+ * @param array  $extra  Fields one event adds to the common shape (note_changed: notes; overdue: days_overdue)
  * @return int
  */
 function erp_event_invoice($invoice_id, $event, $extra = array())

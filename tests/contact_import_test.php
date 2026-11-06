@@ -136,3 +136,29 @@ function test_contact_import_screen()
 	pg_assert_contains('pg_import_unique_columns($column_names)', $source, 'repeated headings are left out');
 	pg_assert_same(2, substr_count($source, '$contact_values($row, $line)'), 'both import modes read the cells with their problems');
 }
+
+function test_contact_import_affiliate_code_taken()
+{
+	$taken = function ($code) {
+		return (mb_strtolower($code) === 'abc123');
+	};
+
+	$read = pg_import_affiliate_code('ABC123', 'Affiliate Code', $taken);
+	pg_assert_same('', $read['value'], 'a code another contact holds is left empty');
+	pg_assert_true($read['problem'] !== '', 'the row names the code it left out');
+
+	pg_assert_same(array('value' => 'NEW1', 'problem' => ''), pg_import_affiliate_code('NEW1', 'Affiliate Code', $taken), 'a free code is kept');
+
+	$asked = false;
+	$spy = function ($code) use (&$asked) {
+		$asked = true;
+		return true;
+	};
+	pg_assert_same(array('value' => '', 'problem' => ''), pg_import_affiliate_code('', 'Affiliate Code', $spy), 'an empty cell stays empty');
+	pg_assert_same(false, $asked, 'an empty code is not looked up');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_contacts.php');
+	pg_assert_contains('pg_import_affiliate_code(', $source, 'the contact importer checks the code');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_users.php');
+	pg_assert_contains('pg_import_affiliate_code(', $source, 'the user importer checks the code');
+}

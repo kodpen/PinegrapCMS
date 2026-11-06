@@ -167,6 +167,60 @@ function pg_tree_search_plain_text($tree, array $components = array())
 }
 
 /**
+ * The ids of the components whose words, with those of the components they
+ * place, contain $needle (case folded), sorted. A page that places one of
+ * them holds the words without its own tree carrying them.
+ *
+ * @param array  $components id => decoded tree (pg_tree_search_components())
+ * @param string $needle
+ * @return int[]
+ */
+function pg_tree_search_matching_components(array $components, $needle)
+{
+    $needle = mb_strtolower((string) $needle, 'UTF-8');
+    $ids = array();
+
+    if ($needle === '') {
+        return $ids;
+    }
+
+    foreach ($components as $id => $tree) {
+        $text = mb_strtolower(pg_tree_search_plain_text($tree, $components), 'UTF-8');
+        if (mb_strpos($text, $needle, 0, 'UTF-8') !== false) {
+            $ids[] = (int) $id;
+        }
+    }
+
+    sort($ids);
+
+    return $ids;
+}
+
+/**
+ * A condition that a tree column or expression places one of the components
+ * ('' for none): the id stored as a number or as a string.
+ *
+ * @param string $expr SQL expression, written into the query as it is
+ * @param array  $ids
+ * @return string
+ */
+function pg_tree_search_shared_ref_sql($expr, array $ids)
+{
+    $likes = array();
+
+    foreach (array_unique(array_map('intval', $ids)) as $id) {
+        if ($id <= 0) {
+            continue;
+        }
+        $likes[] = $expr . " LIKE '%\"sharedId\":" . $id . ",%'";
+        $likes[] = $expr . " LIKE '%\"sharedId\":" . $id . "}%'";
+        $likes[] = $expr . " LIKE '%\"sharedId\":\"" . $id . "\"%'";
+    }
+
+    return $likes ? '(' . implode(' OR ', $likes) . ')' : '';
+}
+
+/**
  * Walks the searchable texts of a tree in document order, by reference.
  * $visit($field, $value) answers null to keep a text or a string to write
  * in its place.

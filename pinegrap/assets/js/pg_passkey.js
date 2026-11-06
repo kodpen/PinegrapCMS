@@ -157,10 +157,17 @@
 
     function post(url, fields) {
         var body = new window.FormData();
+        var lang = window.document.documentElement.getAttribute('data-pg-lang');
 
         Object.keys(fields).forEach(function (key) {
             body.append(key, fields[key]);
         });
+
+        // fetch() misses the jQuery prefilter that tells the software a
+        // translated page's language: passkey.php answers in it this way.
+        if (lang) {
+            body.append('pg_lang', lang);
+        }
 
         return window.fetch(url, {
             method: 'POST',

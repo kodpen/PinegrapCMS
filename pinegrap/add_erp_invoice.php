@@ -28,6 +28,7 @@ if (!validate_erp_access($user)
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/invoice_order_form.php');
 include_once('liveform.class.php');
 $liveform = new liveform('add_erp_invoice');
 
@@ -92,6 +93,8 @@ if (!$_POST) {
         $order_options[$label] = (string) (int) $order['id'];
     }
 
+    $order_counts = pg_invoice_order_form_counts($open_orders);
+
     if (empty($open_orders)) {
         $order_options = array(lang('There are no orders waiting to be invoiced.') => '');
     }
@@ -118,35 +121,12 @@ if (!$_POST) {
 
             <form name="form" action="add_erp_invoice.php" method="post">
                 ' . get_token_field() . '
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('Order') . '
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 lg:col-8 my-3">
-                                <label for="order_id" class="form-label">' . lang('Order') . '</label>
-                                ' . $liveform->output_field(array(
-                                    'type' => 'select', 'id' => 'order_id', 'name' => 'order_id',
-                                    'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $order_options)) . '
-                                <div class="form-text">' . lang('Completed orders that are linked to a contact or an account and have not been invoiced yet. Orders still awaiting payment are marked.') . '</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-12 my-3">
-                                <div class="form-text">' . lang('The invoice takes its figures from the order. Shipping and any surcharge become lines; an order discount is spread over the lines it applied to.') . '</div>
-                                <div class="form-text">' . lang('For a sale outside the shop or a supplier\'s bill, type the invoice in instead:') . ' <a href="add_erp_manual_invoice.php" class="pg-link-body-emphasis">' . lang('New Invoice') . '</a></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create the Invoice')) . '</span></button>
-                        </div>
-                    </div>
-                </nav>
+                ' . pg_invoice_order_form_layout(
+                    pg_invoice_order_form_card($liveform->output_field(array(
+                        'type' => 'select', 'id' => 'order_id', 'name' => 'order_id',
+                        'class' => 'form-control', 'data-pg-combobox' => '', 'options' => $order_options)))
+                    . pg_invoice_order_form_status($order_counts, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_erp_manual_invoice.php'),
+                    !empty($open_orders)) . '
             </form>
         </div>
     </div>

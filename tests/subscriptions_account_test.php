@@ -67,6 +67,11 @@ function subscriptions_account_test_io(array &$store, array &$calls, $answer = n
 		'log' => function ($message) use (&$calls) {
 			$calls[] = array('log');
 		},
+		'lock' => function ($id, $wait = 0) {
+			return true;
+		},
+		'unlock' => function ($id) {
+		},
 	);
 }
 
@@ -158,6 +163,48 @@ function test_subscription_customer_move_lost_to_a_concurrent_one()
 
 	pg_assert_same('refused', pg_subscription_customer_action(17, 7, 'cancel', '', $io)['result']);
 	pg_assert_same(array(), $calls, 'no card forgotten for a cancel that was not written');
+}
+
+// A move waits for the renewal's row lock: a charge in flight while the row
+// is paused or cancelled would leave its paid period unrecorded, so a
+// resumed row would be charged for it again.
+function test_subscription_customer_move_holds_the_renewal_lock()
+{
+	$store = subscriptions_account_test_row();
+	$calls = array();
+	$io = subscriptions_account_test_io($store, $calls);
+	$io['lock'] = function ($id, $wait = 0) use (&$calls) {
+		$calls[] = array('lock', (int) $id, $wait > 0);
+		return true;
+	};
+	$io['unlock'] = function ($id) use (&$calls) {
+		$calls[] = array('unlock', (int) $id);
+	};
+
+	pg_assert_same('done', pg_subscription_customer_action(17, 7, 'cancel', '', $io)['result']);
+	pg_assert_same(array(
+		array('lock', 7, true),
+		array('event', 'status_cancelled', 'customer'),
+		array('call', 'stripe', 'subscription_cancel', '', ''),
+		array('unlock', 7),
+	), $calls, 'status and card forgetting inside the lock');
+}
+
+function test_subscription_customer_move_refused_while_a_renewal_runs()
+{
+	$store = subscriptions_account_test_row();
+	$calls = array();
+	$io = subscriptions_account_test_io($store, $calls);
+	$io['lock'] = function ($id, $wait = 0) {
+		return false;
+	};
+	$io['unlock'] = function ($id) use (&$calls) {
+		$calls[] = array('unlock');
+	};
+
+	pg_assert_same('refused', pg_subscription_customer_action(17, 7, 'pause', '', $io)['result']);
+	pg_assert_same('active', $store['status'], 'not paused under a running charge');
+	pg_assert_same(array(), $calls, 'nothing written, no lock released');
 }
 
 // A renewal that failed between the action's read and its write moved the

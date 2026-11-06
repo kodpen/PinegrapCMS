@@ -35,6 +35,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-fn-2b.md: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to widgets_lists_checkout (widgets_cart and widgets_catalog in part 2d), one line each with its state
 - bug-hunt-modules-fn-2c.md: Module list of plans/bug-hunt.md, part 2c: includes/fn/ modules widgets_lists_menu to wishlist, one line each with its state
 - bug-hunt-modules-fn-2d.md: Module list of plans/bug-hunt.md, part 2d: the includes/fn/ modules widgets_cart and widgets_catalog, moved out of part 2b for size, one line each with its state
+- bug-hunt-modules-migrations.md: Module list of plans/bug-hunt.md, migrations part: the open version's migration file and its runner helpers, one line each with its state
 - bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
@@ -50,8 +51,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, and ready templates; steps in flows-next-steps and -templates
 - image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
 - image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
+- image-editor-animation-steps-2.md: Steps AN12 on of plans/image-editor-animation.md (owner 2026-11-05): a move recorded by dragging, its path and speed kept as keyframes; claim as [plan:image-editor-animation] AN<n>
 - image-editor-animation-steps.md: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion, tracks, GIF, saving, APNG, WebP, video, scenes, Present, PDF, keyframes, SVG; claim as [plan:image-editor-animation] AN<n>
-- image-editor-animation-visuals.md: Screens of plans/image-editor-animation.md (AN0), 26 to 32 in plans/image-editor/: what each shows and which step builds it
+- image-editor-animation-visuals.md: Screens of plans/image-editor-animation.md (AN0, AN12), 26 to 34 in plans/image-editor/: what each shows and which step builds it
 - image-editor-animation.md: Plan (owner 2026-11-01): image editor animation, layers and scenes that move, saved as GIF, APNG, WebP, MP4 or WebM, a PDF of the scenes or animated SVG; held with plans/image-editor.md
 - image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
 - image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security
@@ -103,11 +105,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - table-driver-steps-2.md: Steps of the table driver plan, part 2: the browser mode, the printed lists in batches, the screens with their own DataTables code, removal of DataTables (TD9-TD14)
 - table-driver-steps.md: Steps of the table driver plan: the driver core, its parts, the server-paged, quick edit and log lists (TD1-TD8)
 - table-driver.md: Plan (owner 2026-11-03): the panel's own list table driver replacing DataTables, and the move of every table.chart screen to it, screen by screen (TD1-TD14)
-- template-previews-code.md: What the code holds for plans/template-previews.md (development 8d9a31a): the installer's design step and layout, the DB-less preview, the drawings and their users, a bug found
-- template-previews-steps-2.md: Steps TP4-TP5 of plans/template-previews.md: real pictures on the Visual Page Editor home and in Choose a Template, the template's own theme first, close-out; claim as [plan:template-previews] TP<n>
-- template-previews-steps.md: Steps TP1-TP3 of plans/template-previews.md: the live picture and tour, the installer's design step, the panel's preview address; claim as [plan:template-previews] TP<n>
-- template-previews-visuals.md: Screens of plans/template-previews.md the owner approved on 2026-11-05, in plans/template-previews/: what each shows and which step builds it
-- template-previews.md: Plan (owner 2026-11-05): template and design pictures drawn live from the real pages, a short installer design step with a home-page preview and a page tour, the installer at Bootstrap 6 width
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions in visitor_stats_daily, added only when a real report needs one
 - workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt

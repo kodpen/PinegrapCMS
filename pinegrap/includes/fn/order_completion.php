@@ -2054,13 +2054,16 @@ function pg_order_gift_card_lines_over_limit($order_id)
 }
 
 /**
- * The day a gift card ends: the validity days counted from its delivery
- * date, or from today when it is sent at once ('0000-00-00'); '' when the
- * store sets no validity days. Pure.
+ * The day a gift card ends: the validity days counted on the calendar from
+ * its delivery date, or from today in the site time zone when it is sent at
+ * once ('0000-00-00') or the date is missing or not a real one (no
+ * recipient row gives NULL); '' when the store sets no validity days. A
+ * missing date used to reach strtotime() as false, so the days were counted
+ * from 1970 and the card was issued already expired (1971-01-01 for 365).
  *
- * @param string $delivery_date Y-m-d or '0000-00-00'
- * @param int    $validity_days ECOMMERCE_GIFT_CARD_VALIDITY_DAYS
- * @param int    $now           the current Unix time
+ * @param string|null $delivery_date Y-m-d or '0000-00-00'
+ * @param int         $validity_days ECOMMERCE_GIFT_CARD_VALIDITY_DAYS
+ * @param int         $now           the current Unix time
  * @return string Y-m-d or ''
  */
 function pg_order_gift_card_expiration($delivery_date, $validity_days, $now)
@@ -2069,9 +2072,13 @@ function pg_order_gift_card_expiration($delivery_date, $validity_days, $now)
         return '';
     }
 
-    $start = ($delivery_date == '0000-00-00') ? $now : strtotime($delivery_date, $now);
+    $start = pg_return_date($delivery_date);
 
-    return date('Y-m-d', strtotime('+' . (int) $validity_days . ' day', $start));
+    if ($start === '') {
+        $start = date('Y-m-d', (int) $now);
+    }
+
+    return pg_return_add_days($start, (int) $validity_days);
 }
 
 /**
@@ -4233,4 +4240,38 @@ function pg_next_order_number_refusal($posted, $last_order_number)
     }
 
     return '';
+}
+
+/**
+ * Whether an accepted Next Order Number must not be written after all: asked
+ * again under the counter's lock, with the counter as it is now.
+ * pg_next_order_number_refusal() runs before the lock against the orders
+ * written so far, so an order completed in between, or one that took its
+ * number and has not stored it yet, is not in that MAX(); written over the
+ * moved counter, the typed value would hand that number out again. A counter
+ * still at the value the screen was opened with is the operator's own to set
+ * (the check before the lock holds it above every stored order); a counter
+ * that moved meanwhile is never set back below where it is. Pure: the caller
+ * holds a table lock under which nothing else may be queried.
+ *
+ * @param string      $posted  the typed value, already accepted
+ * @param string|null $was     the value the screen was opened with, null when
+ *                             it was not posted
+ * @param int|null    $current the counter read under the lock, null for no row
+ * @return bool
+ */
+function pg_next_order_number_set_back($posted, $was, $current)
+{
+    if ($current === null) {
+        return false;
+    }
+
+    $current = (int) $current;
+    $was = ($was === null) ? '' : trim((string) $was);
+
+    if (ctype_digit($was) && ((int) $was === $current)) {
+        return false;
+    }
+
+    return (int) trim((string) $posted) < $current;
 }

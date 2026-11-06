@@ -368,6 +368,20 @@ function test_order_completion_gift_card_expiration()
 	pg_assert_same('', pg_order_gift_card_expiration('2026-12-01', 0, $today), 'no validity days, a delivery date: no end');
 	pg_assert_same('2026-12-10', pg_order_gift_card_expiration('0000-00-00', 30, $today), 'sent now: from today');
 	pg_assert_same('2026-12-31', pg_order_gift_card_expiration('2026-12-01', 30, $today), 'sent later: from the delivery date');
+
+	// No recipient row (NULL), an empty or a broken date: counted from
+	// today, never from 1970 (a card that was expired the day it was issued).
+	pg_assert_same('2027-11-10', pg_order_gift_card_expiration(null, 365, $today), 'no recipient row: from today');
+	pg_assert_same('2027-11-10', pg_order_gift_card_expiration('', 365, $today), 'empty date: from today');
+	pg_assert_same('2027-11-10', pg_order_gift_card_expiration('2026-02-30', 365, $today), 'not a real date: from today');
+	pg_assert_same('2026-11-11', pg_order_gift_card_expiration('0000-00-00', '1', $today), 'days as the setting string');
+
+	// Calendar days: a DST change inside the window moves no day.
+	$previous = date_default_timezone_get();
+	date_default_timezone_set('America/New_York');
+	pg_assert_same('2026-11-02', pg_order_gift_card_expiration('0000-00-00', 1, mktime(0, 30, 0, 11, 1, 2026)), 'over the clock change: the next day');
+	pg_assert_same('2026-03-09', pg_order_gift_card_expiration('2026-03-07', 2, $today), 'delivery date over the spring change');
+	date_default_timezone_set($previous);
 }
 
 function test_order_completion_gift_card_send_time()

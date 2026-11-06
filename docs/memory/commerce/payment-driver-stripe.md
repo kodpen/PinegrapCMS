@@ -17,8 +17,8 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 - Return modes: `pg_payment_return_modes()`, `pg_payment_is_return_mode()`, `pg_payment_return_method()`. Classic order preview and express order draw it too (`payment-hosted-classic-pages.md`); no token is refused ("Please enter your card details.").
 
 ## Refund and cancel?
-- `refund()`: `/v1/refunds` by `payment_intent`, or by `charge` for a classic `ch_` id. `cancel()`: cancel while not taken, full refund once taken.
-- Visitor sentences are the site's; Stripe's words go to `Stripe payment for order #N was not accepted: …`.
+- `refund()`: `/v1/refunds` by `payment_intent`, or by `charge` for a classic `ch_` id; Idempotency-Key per order, payment, amount, `refunded_amount`; no answer: unclear. `cancel()`: cancel while not taken, full refund once taken.
+- Visitor reads the site's sentences; Stripe's words go to `Stripe payment for order #N was not accepted: …`.
 
 ## Security policy?
 - A definition may list `csp` hosts (script-src, frame-src, connect-src; https origins, `https://*.` allowed). `waf_csp_add_payment_sources()` adds the card gateway's to the built-in policy (read from the config row). Stripe's: script `js.stripe.com`, `*.js.stripe.com`; frame those, `hooks.stripe.com`, `link.com`, `*.link.com`; connect `api.stripe.com`, `link.com`, `*.link.com` (Link hosts always listed). A custom policy must add them itself.
@@ -27,9 +27,9 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 - `notify()` (PR #2143): `Stripe-Signature` checked (HMAC-SHA256 of `t.body`, any `v1`, 300 s; no secret = refused). `payment_intent.succeeded` (metadata `order_id`) → `paid`; `charge.refunded` → `refunded`; `charge.dispute.created` → `pending`; else `raw.ignored`. Outcome: `payment-callback.md`.
 
 ## What is not done?
-- Completing an incomplete order from the webhook: `order-completion-from-payment.md` (intent and amount on the order: #2199). Apple Pay: domain in the Dashboard; Link is set there.
+- Webhook completing an incomplete order: `order-completion-from-payment.md` (#2199). Apple Pay: domain in the Dashboard; Link is set there.
 
 ## How was it verified?
-- `tests/payment_stripe_test.php` (stand-in HTTP caller), `payment_stripe_webhook_test.php`, `payment_hosted_classic_test.php`; jsdom, fake Stripe.js; no real account.
+- `tests/payment_stripe_test.php`, `payment_stripe_webhook_test.php`, `payment_hosted_classic_test.php`; jsdom, fake Stripe.js; no real account.
 
 Related: commerce/payment-drivers.md, payment-refunds.md, payment-driver-layer-decisions.md, subscriptions-stripe.md

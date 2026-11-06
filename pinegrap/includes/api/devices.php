@@ -331,7 +331,13 @@ function api_device_find_refresh($refresh_token) {
 // is the same app retrying, or a request that ran alongside the one that
 // exchanged it, and it gets the same pair again; after it, somebody else is
 // holding a copy, and the device is ended so that neither copy works.
-function api_device_rotate_pair($refresh_token) {
+//
+// $access_scopes is what an OAuth refresh narrowed the new access token to,
+// or null for all the connection holds (always null for a team device). It is
+// written with the pair, so the row's last exchange decides it: concurrent
+// refreshes asking for different sets get the same token, which carries the
+// set of whichever wrote last.
+function api_device_rotate_pair($refresh_token, $access_scopes = null) {
 
 	$hash = api_secret_hash(trim((string)$refresh_token));
 
@@ -405,10 +411,22 @@ function api_device_rotate_pair($refresh_token) {
 	// copy seen after it still ends the device. It is assigned before
 	// refresh_hash because MySQL evaluates single-table UPDATE assignments
 	// left to right: placed after, the IF would see the new hash.
+	// Probed: the files land before the upgrade adds the column.
+	$access_scopes_sql = '';
+
+	if (pg_schema_has('api_devices', 'access_scopes')) {
+
+		$access_scopes_sql = 'access_scopes = ' . (is_array($access_scopes)
+			? "'" . escape(json_encode(array_values($access_scopes))) . "'"
+			: 'NULL') . ',';
+
+	}
+
 	api_exec("UPDATE api_devices SET
 			refresh_rotated_at = IF(refresh_hash = '" . escape($refresh_hash) . "', refresh_rotated_at, '" . $now . "'),
 			access_hash = '" . escape(api_secret_hash($access)) . "',
 			access_expires = '" . $access_expires . "',
+			" . $access_scopes_sql . "
 			refresh_prev_hash = '" . escape($hash) . "',
 			refresh_hash = '" . escape($refresh_hash) . "',
 			refresh_expires = '" . $refresh_expires . "',
@@ -419,6 +437,7 @@ function api_device_rotate_pair($refresh_token) {
 
 	$row['access_expires']  = $access_expires;
 	$row['refresh_expires'] = $refresh_expires;
+	$row['access_scopes']   = is_array($access_scopes) ? json_encode(array_values($access_scopes)) : null;
 
 	return array(
 		'error'           => '',
@@ -536,10 +555,22 @@ function api_device_authenticate($token) {
 	}
 
 	// A connection holds what the person agreed to on the consent screen and
-	// nothing it was not offered; a device holds the device ceiling.
-	$scopes = $oauth
-		? pg_oauth_effective_scopes($app, $owner, json_decode((string)$row['scopes'], true))
-		: api_device_scopes($app, $owner);
+	// nothing it was not offered, narrowed to what its last refresh asked for
+	// (access_scopes, absent before the upgrade adds it); a device holds the
+	// device ceiling.
+	if ($oauth) {
+
+		$narrowed = pg_oauth_stored_access_scopes(isset($row['access_scopes']) ? $row['access_scopes'] : null);
+
+		$scopes = pg_oauth_access_scopes(
+			pg_oauth_effective_scopes($app, $owner, json_decode((string)$row['scopes'], true)),
+			is_array($narrowed) ? api_scopes_expand($narrowed) : null);
+
+	} else {
+
+		$scopes = api_device_scopes($app, $owner);
+
+	}
 
 	// The name every activity line and audit row uses for the caller. The
 	// person comes first because that is who did it; the device says from

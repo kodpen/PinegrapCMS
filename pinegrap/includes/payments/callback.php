@@ -144,7 +144,8 @@ function pg_payment_notify_matches_order($answer, $order, $store_currency)
  *   ignored        an event the store does not use: 200
  *   unknown_order  no order of this store, or another payment than the
  *                  order's own: 200, nothing done
- *   nothing        a payment for an order already placed and paid: 200
+ *   nothing        a payment for an order already placed and paid, or
+ *                  cancelled after its payment was recorded: 200
  *   recorded       a payment for an order placed with its payment pending,
  *                  for the order's total: 200, a log line, and the caller
  *                  marks the order paid (mark_paid)
@@ -153,7 +154,8 @@ function pg_payment_notify_matches_order($answer, $order, $store_currency)
  *                  total, in the store's currency: 200, and the caller
  *                  completes the order (complete) and writes the log line
  *   alerted        a payment for an order still incomplete that does not
- *                  match it, a pending payment for another amount, a refund,
+ *                  match it, a payment for an order cancelled before its
+ *                  payment was recorded, a pending payment for another amount, a refund,
  *                  a cancellation or a dispute: 200, a log line and an alert
  *
  * @param string     $key            driver key
@@ -211,6 +213,18 @@ function pg_payment_notify_outcome($key, $answer, $order, $store_currency = '')
 
         $line = pg_payment_notify_line($key, $source, $order_id, 'not_total');
     } elseif (in_array($answer['status'], array('paid', 'authorized'), true)) {
+        // Cancelled before its payment was recorded (a pending capture the
+        // operator gave up on, a basket cancelled while the visitor paid):
+        // the money arrived on an order the store no longer ships.
+        if (((string) $order['status'] === 'cancelled') && ((int) ($order['paid_at'] ?? 0) === 0)) {
+            $line = pg_payment_notify_line($key, $source, $order_id, 'cancelled');
+            $outcome['status'] = 'alerted';
+            $outcome['log'] = array($line);
+            $outcome['alert'] = $line;
+
+            return $outcome;
+        }
+
         if ((string) $order['status'] !== 'incomplete') {
             $outcome['status'] = 'nothing';
 
@@ -245,7 +259,7 @@ function pg_payment_notify_outcome($key, $answer, $order, $store_currency = '')
  * @param string $source   the service's line (its answer's first log line)
  * @param int    $order_id
  * @param string $result   recorded, not_total, completed, not_completed,
- *                         not_matching or unchanged
+ *                         cancelled, not_matching or unchanged
  * @param array  $detail   completed: number (the order number);
  *                         not_completed: reason
  * @return string
@@ -271,6 +285,9 @@ function pg_payment_notify_line($key, $source, $order_id, $result, array $detail
 
         case 'not_completed':
             return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was still incomplete. The order was not completed: {var:3}. Check the payment on {var:4}\'s own screen.', 'vars' => array($source, $order_id, isset($detail['reason']) ? $detail['reason'] : '', $service)));
+
+        case 'cancelled':
+            return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was cancelled before its payment was recorded. The order was not changed: refund the payment on {var:3}\'s own screen or restore the order.', 'vars' => array($source, $order_id, $service)));
 
         case 'not_matching':
             return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which is still incomplete, but not for its own payment, its total or the store\'s currency. The order was not completed: check the payment on {var:3}\'s own screen.', 'vars' => array($source, $order_id, $service)));

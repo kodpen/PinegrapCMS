@@ -653,12 +653,26 @@ function mp_enqueue($product_id, $operation = 'stock_price', $priority = 5) {
 
 		}
 
-		$waiting = db_value("SELECT id FROM marketplace_sync_queue
+		// A row leased by a pass that is sending it now does not count: that
+		// pass read the product before this change, so the change needs a row
+		// of its own or it is marked sent with the old stock and never sent.
+		$waiting = 0;
+
+		foreach ((array) db_items("SELECT id, status, remote_task_id FROM marketplace_sync_queue
 			WHERE (account_id = '" . e($account_id) . "')
 			  AND (product_id = '" . e($product_id) . "')
 			  AND (operation = '" . e($operation) . "')
-			  AND (status = 'waiting')
-			LIMIT 1");
+			  AND (status = 'waiting')") as $pending) {
+
+			if (mp_enqueue_absorbs($pending)) {
+
+				$waiting = (int) $pending['id'];
+
+				break;
+
+			}
+
+		}
 
 		if ($waiting) {
 
@@ -694,6 +708,17 @@ function mp_enqueue($product_id, $operation = 'stock_price', $priority = 5) {
 	}
 
 	return $written;
+
+}
+
+// Whether a queue row can carry one more change of its product: a waiting
+// row no pass has leased yet. A leased row carries its pass's token in
+// remote_task_id (mp_sync_lease_token()) until it is sent or let go.
+function mp_enqueue_absorbs($row) {
+
+	return is_array($row)
+		&& isset($row['status']) && ((string)$row['status'] === 'waiting')
+		&& isset($row['remote_task_id']) && ((string)$row['remote_task_id'] === '');
 
 }
 

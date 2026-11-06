@@ -25,7 +25,9 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - address-form-places.md: Every place an address's city, state or district is asked, shown, saved or read: widgets, templates, classic pages, layouts, panel and ERP forms, save and read paths
 - address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
 - affiliate-approval-and-commission-edit.md: approve_affiliate.php checks the contact's groups and does not approve twice; the commission and recurring profile edit screens print a summary of the record
+- affiliate-code-on-order.md: Which affiliate code an order is credited to: the visitor's session/cookie code, else the code the cart stored on the order; pg_order_submit_affiliate_code()
 - affiliate-link-offer-code.md: When an affiliate link (?a=) puts the affiliate's code into the session as the special offer code: only when its group offer runs today (pg_special_offer_code_running(), #4163, PR #4266)
+- affiliate-welcome-mail-link.md: The affiliate welcome mail's link is built on the configured address (pg_affiliate_link()), never the request's Host header; what it fixed
 - api-bulk-inventory-quantity.md: How POST /products/inventory (batch) reads each item's quantity: the same whole-number rule and ±1000000 bound as the single-product endpoint, refused per item instead of rounded or clamped
 - api-bulk-price-bound.md: How POST /products/prices (batch) reads each item's price: whole minor units from 0 to 2147483647, the single-product routes' bound, refused per item instead of rounded or cut by the INT column
 - api-catalog-recycle-bin.md: How the external API treats products and product groups in the catalogue's Recycle Bin: what is listed, what a group's product_ids and in_use count, when a group delete is refused for binned subgroups
@@ -33,6 +35,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
 - back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
+- barcode-label-print-escaping.md: The barcode label print page (LabelEditor buildPrintHTML() in backend.src.js): barcode and template values read as numbers, CSS values or escaped text before they reach the print window
 - barcode-product-code-overlap.md: A barcode, typed or generated, may not be another product's code, nor a product code another product's barcode; a scanned code that is both is refused (#4715, #6664)
 - barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447)
 - booking-deposit-payment.md: The booking widget's deposit payment (BK9b): hold kept, payment form posted to booking_slots.php, return and retry, paid on arrival, paid shown on the screens and the API
@@ -42,6 +45,9 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - booking-retention.md: How long bookings are kept (cancelled rows pruned after 400 days by the general job) and what the personal data export and erasure do with a person's bookings (#5032)
 - bookings-decisions.md: Lasting rules of appointment bookings (plan closed in BK10): UTC times, no account needed, no new calendar engine, deposits via the form payment step, open retention work
 - bookings-model.md: Appointment bookings model and slot engine: the three tables (11.0.157), hours JSON, slot rules (DST, buffers, lead, horizon, holidays), hold/confirm on the unique key, manage token
+- bulk-stock-relative-write.md: Edit Selected and the Catalog Manager bulk edit write a stock increase or decrease inside the UPDATE (pg_explorer_bulk_quantity_sql()); the lost update it fixed.
+- calendar-event-ics.md: The .ics file a calendar event view page answers with ?icalendar=true: escaping, folding, all-day dates, what is still floating.
+- calendar-reserve-occurrence.md: Which occurrence of a calendar event a visitor may reserve through reserve_calendar_event.php, and why a posted number is checked
 - card-brand-switches.md: How the checkout reads the accepted card brand switches (Visa, MasterCard, American Express, ...) and why American Express was never counted
 - card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
 - card-surcharge-rounding.md: Card surcharge (ECOMMERCE_SURCHARGE_PERCENTAGE) as a figure: pg_percent_of() in minor units, the same on every PHP version; the classic pages post what submit_order() charges (PR #1388)
@@ -69,6 +75,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - cart-quotes-screens.md: Cart quote list and new-quote form details: the products cell, New link confirmation, a deleted contact, quantity checks and redraw
 - cart-quotes.md: Cart quotes (Sepet teklifi): cart_quotes / cart_quote_items, the hashed link, cart_quote.php (GET confirm, POST fills the cart), plan rules, ordered on completion, contact holder, export and erasure
 - cart-save-for-later.md: Opt-in Save for Later: cart_action.php endpoint, pg_order_item_active_sql() in every cart and checkout reader, what still counts a saved line, lines dropped when the order is placed (#732).
+- cart-stock-below-minimum.md: Checkout stock check against a product's minimum quantity: a line the stock can only cover below the minimum is removed, not cut (bundle path); the plain check_inventory() path still cuts it
 - cart-tax-estimate.md: The cart widget's tax estimate (pg_cart_estimate_tax): stored line taxes while each taxable line has one that fits today's amount, else the default-rate preview (#3455, PRs #3530, #3920)
 - cart-widget-low-stock.md: Cart widget low-stock warning (define, tokens, exact condition), cart query stock columns and out_of_stock_message.
 - cart-widget-payment-plan-and-gates.md: Who writes cart recurring payment plan columns, the Messages-node-before-loop liveform snapshot rule, and the double gate for staff-only offline payment checkbox.
@@ -80,10 +87,11 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
 - checkout-kvkk-notice.md: KVKK notice link and optional consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection and designer node, the kvkk copy, consent log row
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
-- checkout-requested-arrival-date.md: How the designed checkout refills a recipient's custom requested arrival date, bounds its box and keeps a past, invalid or unreachable date out of the "cannot ship here" notice
+- checkout-requested-arrival-date.md: Requested arrival date at checkout: which one a visitor may post, how the designed checkout refills and bounds the custom date box, where an unusable date is reported
 - checkout-state-list.md: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for), the order screen's İlçe/İl billing labels
 - classic-order-pages-language.md: The classic order view, receipt and preview write every label through lang(): billing Phone/Fax/PO Number, shipping method and arrival date, the order view's headings and totals (PR #5202)
 - classic-store-pages-language.md: Classic store pages and checkout steps (cart, express order, receipt, order preview, shipping, billing) print every visitor text through lang(); {var:n} keys (PR #4472, #4795)
+- commission-list-affiliate-join.md: Commission and recurring profile lists join one contact per affiliate code (the oldest); the status totals read commissions alone
 - counter-sale-cart-session.md: Counter sale (add_order.php) cart in its own session key and born a local order; what completion writes (order date, buyer name, no recipient); typed quantity 0 to 9999 only
 - counter-sale-cash-and-add-quantity.md: Counter sale (add_order.php): cash received short of the total is refused before the sale is claimed; the next product's quantity is a whole 1-9999 and a line never passes 9999 (#5772, #5774)
 - counter-sale-keyboard-focus.md: Create Order screen (add_order.js): focus kept on the cart row, quick-amount chip and customer card when a server answer redraws them; Enter in a quantity box keeps the box
@@ -100,14 +108,19 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
+- express-order-script-language.md: The express order page's fetch() calls to api.php carry pg_lang on a translated page, built by one helper.
 - express-order-tax-address.md: Which address the express order widget takes its tax on: prefill at render, eo_tax_totals on each address edit; no ship_tos write (#3326, PRs #3530, #3920)
 - express-order-tick-boxes.md: When the express order widget fills its billing tick boxes (opt_in, opt_in_sms, tax_exempt, update_contact), and the refused-submit fault it fixed.
 - express-order-widget-totals.md: Express order widget totals (designer pages) as submit_order() charges them: today's lines, order discount and its tax, gift cards, surcharge, shipping a kurus lower (pg_express_order_charged_totals)
 - featured-and-new-items-screen.md: How Edit Featured & New Items checks the featured order, what it shows after a save, and its layout
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
+- gateway-masked-keys.md: Legacy gateway keys kept plain but drawn masked on the Commerce card; a blank box keeps them; the Givex password kept only for its saved hostnames
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
+- gift-card-code-in-site-log.md: Site Log lines name a gift card by its last four characters (pg_gift_card_log_code()), never the full spendable code.
 - gift-card-email-variables.md: The product screen's Email Gift Card variable buttons (^^code^^, ^^amount^^ …): where the list lives, how it stays in step with the sender (#4449), what ^^amount^^ prints, the starter dumps' texts
 - gift-card-line-quantity-limit.md: A gift card line holds at most 100 units; every door that writes a line quantity refuses more with one translated error (#6806, #6820)
+- gift-card-order-expiry.md: How a gift card bought in an order gets its expiration date (validity days on the calendar from the delivery date or today), and the 1971-01-01 fault it fixed
+- gift-card-recipient-check.md: The order preview refuses an order while a gift card unit has no recipient row with a valid e-mail; why a card used to be issued with no recipient and a 1971 end date
 - gift-card-screens-store-credit.md: Gift card screens: store credit shown with its owner and kind, credit balance edits audited, code search without dashes, amount and quantity box sizes
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.
 - guest-shipment-lookup.md: Guest parcel lookup (track_shipment.php, PR #2116): order number + billing e-mail, neutral not-found answer, shipping fields only, 10 lookups/hour per address in waf_rate, how operators place it
@@ -128,6 +141,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-product-import-queue.md: The product import queues the products it updated for the marketplaces in one call at the end, after the bundle refresh, without webhooks
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
 - marketplace-shop-view.md: Shop view of marketplace_products.php (#1931): shop products with pictures and their state on an account, codes typed in the row, bulk own-code match, send, remove, listing changes
+- marketplace-sync-queue-lease.md: How a stock and price batch claims its queue rows (lease token in remote_task_id), why a change during a push gets a row of its own, and how a product is sent once per batch.
 - marketplace-variant-attributes.md: Listed products' variant attributes (Trendyol varianter and slicer, n11 isVariant): own option first, the article's value as fallback, duplicate refusal, mapping screen field.
 - marketplace-webhook-receiver.md: marketplace_webhook.php: what calls it and what it imports, its checks and status codes, why it never calls out, the job's acceptance pass, the firewall entry.
 - marketplace-webhook-registration.md: How a marketplace order webhook is registered and removed from the account screen, which saves are refused while one exists, what account delete does with it, and Trendyol's webhook facts.
@@ -142,6 +156,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
 - offer-percent-rounding.md: An offer's percentage as a figure (order discount, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), on every PHP version (PR #1367)
+- offer-rule-gift-lines-not-counted.md: An offer's required products, group condition and up-sell count only lines the shopper added (added_by_offer = 0), so a gift cannot keep its own offer alive
 - order-address-postcode-note.md: The order screen's warning-only note when a Turkish postcode belongs to another province than the address's state (pg_shipping_postcode_province())
 - order-auto-registration-set-password-link.md: An account an order's auto-registration opens has no password and gets the set password link; the receipt e-mail is split so the store's BCC copy never carries the link (PR #1220).
 - order-cancel-commissions.md: Affiliate commissions on order cancel and restore (#4174): voided to ineligible with status_before_cancel, profiles stopped with disabled_by_cancel, hand edit clears it, list badge
@@ -171,7 +186,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-preview-step-links-and-installments.md: Order Preview without earlier checkout step pages in the session (pg_op_step_page_id/url, no Change link) and the Iyzipay installment table shared with Express Order (#4019)
 - order-reference-code-link.md: How the cart, quote and express order pages read the ?r= / ?reference_code= saved-cart link (one string, list = not given), and the order history screens' translated messages.
 - order-refunded-amount-writes.md: How orders.refunded_amount is written: every writer adds to the column (pg_order_refunded_add_expr()), the order screen's refund re-reads the total after the add
-- order-report-screen.md: view_order_report.php: default filters (no carts, no cancelled orders), first-group rule, cart figures, form state after a save error, order date filter parsing.
+- order-report-screen.md: view_order_report.php: default filters (no carts, no cancelled orders), first-group rule, cart figures and shipping, form state after a save error, order date filter parsing.
 - order-returns-api-timing.md: Returns over the API and the customer's timing rules (owner 2026-10-24): staff-like by default, customer_rules and its 409s, repeat before timing, OrderReturn.withdrawal, pg_return_timing()
 - order-returns-api.md: Returns over the external API: GET/POST /orders/{id}/returns, body, errors, what source api skips, the create check split and its repeat, where the refund's amount and method are
 - order-returns-classic-view.md: Returns in the classic My Account order view: listed for the owner whatever the switch, form and moves while it is on, the answer via liveform order_receipt, Bootstrap 3 markup
@@ -190,6 +205,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-screen-shipping-input.md: Order screen shipping card input: cancelled order read only and refused by update_order(), ship and delivery dates checked, shipped quantity 0 to ordered, paid on row
 - order-screen-toolbar.md: The order screen's toolbar (view_order.php): which buttons stay on the bar, which are rows of the three-dots menu, why menu rows lost their colours
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
+- order-template-installment-row.md: The built-in order receipt and order view layouts (includes/templates/order_receipt.php, view_order.php) print the instalment rows, so their rows add up to the Total
 - order-view-legal-documents.md: Order view links to the legal documents and KVKK copy kept with the order: __legal_*_url tokens, has_legal_* flags, starter card, cards added after older layouts, none in the e-mail
 - order-view-screen-rows.md: The panel order screen's card rows (includes/fn/order_view.php): empty rows hidden, address type, country, arrival date and contact named, the provider panel link (#2051, #2050)
 - order-view-surcharge-row.md: The order view's card surcharge row shows only when the order has a surcharge: has_surcharge on the starter row and stamped on saved trees
@@ -198,6 +214,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window with parcel arrivals, estimate rules, none for a dateless delivery, order view token, fallback card, panel row
 - orders-list-amount-column.md: Orders list amount cell: an incomplete order shows its cart total (muted, titled "Cart total"), never added to the filter totals; one GROUP BY query per page
 - orders-list-bulk-actions.md: Orders list bulk actions and exports: Paraşüt export (scope, end, refusals), Cancel Selected (open carts, refunds), CSV empty cells, Country and Product Name filters, phone bar
+- orders-list-state-filter.md: The orders list's Billing and Shipping State filters join states by code inside the address's own country (pg_order_list_state_join()), since a state code is unique only per country
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date, no SKU column), optional columns, status enum, and the shape the external API returns for an order.
 - payment-callback.md: payment_callback.php?driver=<key> (PR #2143): what reaches notify(), how the order is found, what each answer does (alerts; records a pending payment), status codes, firewall entry
 - payment-driver-iyzico.md: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their submit_order.php branch, the 3-D Secure return in the card's complete() (PR #1710), no card refund under a protected currency, tests
@@ -252,6 +269,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-reference-price.md: Reference price ("price before the discount"): pg_price_history_reference(), the window query (PR #1803), the rule setting pg_price_reference_rule() (11.0.49), coverage, labels
 - product-review-order.md: How a product's review thread is read (2026.11.0, decided in #2426): verified purchases only, newest first, no featured count, filter or pinning; what it hides
 - product-review-photos.md: Photo reviews (11.0.57; #2426, #2818): config.review_photos, which switch lets a thread take a file, the image check, forms, thumbnails in the classic list, moderation and the comments widget
+- product-review-purchase-stands.md: A verified product review hides while its order is cancelled or the reviewed item's whole quantity on it is refunded (#7202): pg_review_purchase_stands_sql(), its refreshes
 - product-review-request-email.md: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #1316): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
 - product-review-store-reply.md: The store's reply under a product review (comments.seller_reply, seller_reply_at; 2026.11.0, PR #698): where it is written and shown, when its date is set, the verified marker in moderation
 - product-reviews-verified.md: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
@@ -263,6 +281,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - products-bulk-change-stock-bin-price.md: Change Selected (edit_products.php) and the Catalog Manager bulk edit: out_of_stock by the shared rule, binned products skipped, only real price changes reported (#4214, #4215, #4220, PR #4279)
 - products-list-bulk-writes.md: Products list, Catalog Manager and product group status bulk writes: bundle component refusal, restore limited to the bin, SEO stale mark, marketplace send, tag cloud keywords
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
+- recurring-calendar-days.md: Recurring start dates are counted in calendar days with pg_calendar_days_later(), never time() + 86400 * N, so a clock change does not shift the date
 - refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - shipment-api-fields.md: The address (district) and parcels blocks of GET /orders/{id} shipments, the order.shipped / order.delivered parcels (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
@@ -298,13 +317,14 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - store-credit-refunds.md: Refunds given as store credit (2026.11.0): the return refund's credit method, the cancelled order's refund dialog, the bonus setting, what is written, the mails
 - store-credit-rules.md: What binds store credit (owner, 2026-11-02, #5039, #6306): a customer-bound gift card, not a payment method, never pays for a gift card product, the reward goal kept, money in minor units
 - store-credit-screens.md: Store credit screens (2026.11.0): the staff card on edit_user.php (issue, void, rights) and the customer's My Account section (built-in templates, designer widget section store_credit)
-- storefront-api-missing-fields.md: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) read missing or malformed request fields as empty and answer in JSON, never with a warning or a 500
+- storefront-api-missing-fields.md: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) answer malformed fields in JSON, never a warning or a 500; get_product answers enabled products only
 - storefront-pack-decisions.md: Lasting decisions of the storefront pack (reviews, wishlist, back in stock, bundles; 2026-10-19, finished with #2902) and where each part is documented
 - subscriptions-account.md: The customer's subscriptions in My Account (slice 5a): the my_account "subscriptions" section, pause/resume/cancel at period end/update card, ownership, events, the job ending cancelled rows
 - subscriptions-decisions.md: Why driver subscriptions are built as they are (approved 2026-10-19, #3183): store-run renewals first, legacy profiles untouched, renewals as normal orders, no proration; the PRs of each slice
 - subscriptions-iyzico.md: iyzico store-run subscriptions (PR #3249, decided in #3183): the stored-card renewals switch, card_ref, charge_renewal, update_card, subscription_cancel, the checkout row
 - subscriptions-later-start.md: Recurring lines that start after the order day on the driver gateways (PR #3378, decided in #3310): their row on today's card, the first charge on the start date, the nothing-today order refused
 - subscriptions-mails.md: Subscription e-mails (decided in #3288): renewed / failed / cancelled campaign profiles, which event mails which, once per event, the fields, the signed card update page, step 11.0.129
+- subscriptions-move-lock.md: Why a pause, resume or cancel of a store-run subscription (My Account, operator screen, API) waits for the renewal job's row lock, and what it answers while a charge runs
 - subscriptions-number-of-payments.md: What a product's Number of Payments (recurring_number_of_payments) counts on store-run subscriptions (#4623): N charges in all, the order's own charge included; legacy gateway profiles differ
 - subscriptions-operator-screen.md: Operator Subscriptions screen (#3343): view_subscriptions.php list and filters, ?id= row page, pause/resume/cancel at period end through the shared move, operator named in the event
 - subscriptions-operator-words-errors.md: Operator Subscriptions screen: staff event words, the Event type column, 404 and the not_found move error, the one-line next-charge range on a phone (#5744, #5745, #5746)
@@ -333,5 +353,6 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - variant-price-rules.md: How variant prices are computed from attribute price rules (base, multiplier, delta), the fixed order and rounding, the top a rule price may reach, the single compute function and its JS preview twin.
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - verified-shipping-address-screens.md: Verified shipping address screens: state labels via pg_geo_state_option_labels(), country sort by shown name, required state picker, narrow filter, one Turkish name (#5721-#5723)
+- visitor-currency-zero-rate.md: init.php uses a visitor's chosen currency only while its exchange rate is above zero (pg_visitor_currency_row()); a 0 rate falls back to the base currency
 - wishlist-heart.md: Favourite heart in the catalog widgets: catalog_wishlist / wishlist actions, the binding pass, pg_wishlist.js and its injection, the variant event, why pages stay cacheable
 - wishlist.md: Favourites core (includes/fn/wishlist.php, wishlist.php): owner model, the pg_wishlist cookie, lazy merge at sign-in, the toggle and state endpoint, rate limit, trim, privacy export

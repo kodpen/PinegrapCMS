@@ -510,6 +510,8 @@ function pg_sms_cod_field_html()
         . 'button.addEventListener("click",function(){'
         .   'var data=new FormData(),token=form.querySelector("[name=token]"),phone=form.querySelector("[name=billing_phone_number]");'
         .   'data.append("purpose","cod");data.append("token",token?token.value:"");'
+        // The page's language, so the sentence and the SMS come in it.
+        .   'var lang=document.documentElement.getAttribute("data-pg-lang");if(lang)data.append("pg_lang",lang);'
         .   'if(phone&&phone.value)data.append("phone",phone.value);'
         .   'button.disabled=true;status.textContent=texts.sending;'
         .   'fetch(box.getAttribute("data-url"),{method:"POST",body:data,credentials:"same-origin",headers:{"X-Requested-With":"XMLHttpRequest"}})'

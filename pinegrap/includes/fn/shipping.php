@@ -225,6 +225,26 @@ function pg_arrival_date_passed($date, $today)
 }
 
 /**
+ * SQL condition for the arrival dates a visitor is offered: enabled, started
+ * today or earlier and not past the end of their last day. Both the list the
+ * shipping step shows and the check of a posted id use it, so an id the list
+ * never showed (disabled, not yet started, ended) is refused.
+ *
+ * @param  string $end_of_day_time ECOMMERCE_END_OF_DAY_TIME (H:i or H:i:s)
+ * @return string
+ */
+function pg_arrival_dates_offered_sql($end_of_day_time)
+{
+    $end_of_day_time = (string) $end_of_day_time;
+
+    if (preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $end_of_day_time) !== 1) {
+        $end_of_day_time = '23:59:59';
+    }
+
+    return "(status = 'enabled') AND (start_date <= CURRENT_DATE()) AND (concat(end_date, ' " . $end_of_day_time . "') > NOW())";
+}
+
+/**
  * Validates the check digit of a UPU S10 item number (two letters, eight
  * digits, a check digit, two letters: PTT's international parcels and
  * registered mail, "RR123456785TR").

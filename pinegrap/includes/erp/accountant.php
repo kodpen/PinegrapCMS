@@ -472,7 +472,7 @@ function erp_accountant_collect($from, $to, $options = array())
         $summary['expense'] = array('count' => 0, 'net' => 0, 'vat' => 0, 'tax2' => 0, 'total' => 0);
         $expense_statuses = erp_expense_statuses();
 
-        foreach (array_reverse(erp_expenses_list(array('from' => $from, 'to' => $to, 'status' => 'all', 'limit' => 5000))) as $expense) {
+        foreach (erp_expenses_period($from, $to) as $expense) {
             $cancelled = ((string) $expense['status'] === 'cancelled');
             $deductible = ((int) $expense['tax_deductible'] === 1);
 

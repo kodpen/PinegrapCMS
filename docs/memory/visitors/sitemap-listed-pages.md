@@ -15,6 +15,7 @@ module: seo
 
 ## Do the records of a detail page still get listed?
 - Yes, under their own addresses: designed lists list their records when the detail page is public and not noindex (its site map switch is not read); the legacy form list view lists them when the form item view page has the switch on (`page-noindex-switch.md`). So one switch no longer governs both the bare page and its records on designed pages.
+- Not a list whose filters compare a field with the viewer (no fixed value, dynamic value `viewer` / `viewers email address`): designed lists by `pg_sw_filters_compare_viewer()` over the list's and its record view's filters, legacy ones by `pg_sitemap_legacy_filters_compare_viewer()` (`includes/fn/seo.php`). The kept sitemap is drawn by whoever asks first and served to everyone: a crawler's draw listed every record sent while signed out, a panel save's (`update_sitemap_and_ping()`) the saving person's own records. Same rule as the search index (`pg_sw_search_index_eligible()`).
 
 ## Does the Pages screen count the same pages?
 - Its SEO summary (`view_pages.php`, `pg_seo_pages_summary()`, #2042) counts each number under its list's condition: archived pages out everywhere, the site map counts public pages only. Before, it summed the whole page table (private, archived and binned-folder pages too), so "N in the site map" and "N missing a title" disagreed with the lists they open.

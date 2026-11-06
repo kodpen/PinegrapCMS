@@ -9,6 +9,9 @@ description: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<
 - The "this design" optgroup lists the `_pages` tabs first. With `types`, `_swTabHasWidget` lists only tabs holding a widget of that type (twin of the server list; form detail adds `test`). An unsaved tab has value `tab:<key>`.
 - A picker for a page whose widget is often added later (a detail page) also lists the design's tabs without that widget, under their own optgroup (`otherTabs` label), and draws `_swDetailPageHint()` under it: a warning when the chosen tab has no such widget yet, a note when no page shows the records. The editor loads only the open tab's component rows, so a tab whose components are not loaded yet is unknown, not lacking: the hint asks for those rows once (`_swTabUnloadedShared()`, `_swDetailHintLoad()`), shows the neutral note meanwhile and draws again when they arrive (#4588; before, every list of a design opened from a template warned about the other tab's Form Item View).
 
+## Where does the server list say which widgets a page carries?
+- `list_all_pages` (`includes/panel/shared_component.php`) gives each page the widget types of the tree it is drawn from (`pg_page_tree_sql_expr()`: its own, else its design's, style left-joined). Before, it read `page.page_tree_json` only, so a page drawn from its design's tree was missing from a `types` picker (a sign-in page picker) though the site showed the widget on it.
+
 ## Why may a page arrive at the save without its tree?
 - A widget setting is written at once through `_patchSysCfg(sid, mutate)` (queued per widget, merged into the stored config), before and apart from the design save. A page nothing touched since the last save goes to the save marked `unchanged: 1` and without its tree.
 - So save-time code that finds widgets through a page's tree must read the stored tree when none came, as `pg_designer_resolve_tab_refs()` does with `pg_page_tree_json()` (`includes/designer_screen.php`).

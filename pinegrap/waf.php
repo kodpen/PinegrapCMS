@@ -2976,12 +2976,12 @@ function waf_csp_policy()
         $policy = trim(preg_replace('/[\r\n]+/', ' ', $custom));
     } else {
         $policy = "default-src 'self' blob:; "
-                . "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://code.jquery.com https://cdn.datatables.net https://codemirror.net https://static.cloudflareinsights.com https://*.search.ai.cloudflare.com; "
-                . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com https://fonts.googleapis.com https://cdn.datatables.net https://codemirror.net; "
+                . "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://code.jquery.com https://codemirror.net https://static.cloudflareinsights.com https://*.search.ai.cloudflare.com; "
+                . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com https://fonts.googleapis.com https://codemirror.net; "
                 . "img-src 'self' data: blob: https:; "
                 . "font-src 'self' data: https:; "
                 . "media-src 'self' data: blob: https:; "
-                . "connect-src 'self' https://cdn.jsdelivr.net https://cdn.datatables.net https://cloudflareinsights.com; "
+                . "connect-src 'self' https://cdn.jsdelivr.net https://cloudflareinsights.com; "
                 . "object-src 'none'; "
                 . "base-uri 'self'";
 

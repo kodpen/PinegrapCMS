@@ -23,6 +23,7 @@ Table structures and SQL pitfalls.
 - backup-rowless-tables.md: Tables every backup dumps without rows, the SEO, search and log tables that keep theirs and why, and how Search Console refills after a restore.
 - capital-i-search-term.md: Why older panel searches lowercase the typed term with pg_search_lower() (capital İ and U+0307), and why Find & Replace counts, highlights and replaces with one Unicode matcher.
 - catalog-search-turkish-i.md: Product and product group search (site search, catalog search) folds I, İ, ı and i as one letter through pg_catalog_search_condition(); why, what it reuses, the issue it fixed.
+- comment-page-copy-columns.md: Which comment columns Duplicate Page writes on the copied comments (stars, store answer, question kind) and why verified_order_id stays 0.
 - comments-author-index.md: comments.idx_author (created_user_id, created_timestamp), 2026.11.0 step 11.0.36: why it exists, what reads it, how the step pauses, how it was checked
 - comments-table.md: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes and their readers, copy cost on MyISAM, code that copies or exports rows.
 - common-region-queries.md: Classic pages read <cregion> rows through pg_common_regions(): one query per nesting level per request, how a name finds its row (collation, lowest id), what the output must keep
@@ -40,6 +41,7 @@ Table structures and SQL pitfalls.
 - db-q-converted-commerce.md: Cart, checkout, form, order and product screen files converted to db_q(): PR, special cases, what stayed raw and why, guard tests.
 - db-q-converted-contacts-forms.md: Contact, contact group, form field and submitted form panel screens converted to db_q() (PRs #2299, #2316): what stayed raw and why, guard test.
 - db-q-converted-core-logs.md: Price history, core callers, calendar, mail, not-found log, db maintenance and backup restore functions converted to db_q(): PR, special cases, what stayed raw, guard test.
+- db-q-converted-dashboard.md: The new dashboard's dashboard_layout rows (includes/dashboard/v2/layout.php) and the recent orders card on db_q(); what stayed raw, guard test.
 - db-q-converted-editors-explorer-waf.md: Theme and file editors, custom style, explorer panel, page form and firewall log screen converted to db_q() (PR #2333): special cases, what stayed raw and why, guard test.
 - db-q-converted-files.md: Content files converted to db_q() (get_page_content, content, seo, get_page): PR, how values are passed, what stayed raw and why, guard tests; the conversion rules.
 - db-q-converted-front.md: Front-end files converted to db_q() (shopping cart, form item view, view order, email preferences, watchers, affiliate sign-up): PR, clauses with values, what stayed raw, guard test.

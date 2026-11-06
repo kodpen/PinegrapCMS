@@ -157,3 +157,15 @@ function test_workspace_wtable_rows_guarded_writes()
 	pg_assert_contains("AND revision = '\" . \$revision . \"'\");", $source);
 	pg_assert_same(1, substr_count((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php'), "require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_rows.php');"));
 }
+
+function test_workspace_wtable_rows_page_after()
+{
+	// No cursor: from the first row.
+	pg_assert_same("position > '0'", ws_wtable_rows_after_sql(0, 0));
+	// A position alone (the screen's link, an older cursor).
+	pg_assert_same("position > '40'", ws_wtable_rows_after_sql(40, 0));
+	// Position and id: a row sharing the last row's position with a higher
+	// id is not skipped.
+	pg_assert_same("(position > '40' OR (position = '40' AND id > '912'))", ws_wtable_rows_after_sql(40, 912));
+	pg_assert_same("position > '0'", ws_wtable_rows_after_sql(-3, -1));
+}

@@ -145,7 +145,9 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.
 - erp-product-suggestion-list.md: Invoice/waybill line editors: the product suggestion list leaves the lines table for the overlay host while open, fixed placement, keyboard, why (.table-responsive clipping).
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
+- erp-purchase-order-double-press.md: Two presses at once on a purchase order: the invoice draft is made under the order's row lock, status moves (sent, cancelled, opened again) are guarded updates that announce once.
 - erp-purchase-orders.md: ERP purchase orders (10.58): own table and series, the line key that ties invoice lines back, status read from purchase invoices, the draft made from an order, shared refusals, API line keys.
+- erp-quote-double-invoice.md: Two presses at once on a quote's "Turn into an invoice": the quote row is locked before its state is read, so one quote makes one invoice draft.
 - erp-quote-guest-link.md: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_links, erp_quote.php, one live link, expiry, acceptance through erp_signatures and erp_quote_set_status(), WAF, e-mail
 - erp-quote-screen-layout.md: edit_erp_quote.php toolbar, two-column layout and where the messages of the signature, guest link and e-mail cards are drawn.
 - erp-quote-templates.md: Sales quote templates (#3717, step 11.0.63; API #3921): table, who sees and writes one, what it keeps, shared checks, events, the panel box, the API routes.
@@ -163,6 +165,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-settings-cards.md: ERP settings cards from includes/erp/settings_cards.php: Accounting pane for role < 3, erp_settings.php for role 3 only; how each saves; why the template editor stays.
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.
+- erp-stock-return-cost-rounding.md: A line returned in parts takes back exactly the cost and quantity its stock move recorded: each return's share is the difference of rounded running totals.
 - erp-tax-names-zones-and-second-tax.md: ERP tax captions (erp_tax_label, config.erp_tax_name), the zone rate for store and account sales, and the second tax (4.75): columns, SQL helpers, captions, the e-document limit.
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-till-below-zero.md: A cash till (drawer, received-cheque portfolio) never goes below zero on a transfer, payment or expense: the one check, where it is asked, who skips it, what an already negative till does
