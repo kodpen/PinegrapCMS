@@ -5,7 +5,7 @@ description: Social Community template (pinegrap-social): member photo posts and
 
 ## What does it ship?
 - Public: `home` (places `home_featured_posts`, `home_latest_posts`, `home_news`, `newsletter_band`), `topics`, `about`, `guidelines`, `faq`, `help`, `privacy`, `terms`. Posts: `post_new`, `explore` (`?topic=`), `tag` (`?tag=`), `post` (record view + `post_comments`), `my_posts`, `saved`. People: `people`, `member` (`?member=submitter_name`), `my_profile`, `staff_members`. Reports: `report`, `report_view`, `my_reports`, `staff_reports`, `staff_report` (`report_notes`), `staff_posts`, the report e-mails, `email_comment`, `email_reply`. Standard pages with the blog called Community News ([[design-templates-standard-pages]]); account and staff pages, account e-mails.
-- Shared: account_bar, notice, header (with the site search), member_bar, footer, join_band, staff_bar, email_header/footer. Order 78, icon `bi-camera`, look `modern-soft`, palette `lavender` (the e-mails' inline pink `#be185d` is its secondary). Contact group `newsletter` (Community Newsletter). Folders `posts` and `avatars` (public, under root) hold the post photos and profile pictures. Built in #6297, #6339, #6341, #6342, #6340, #6343, #6346 and the assembly PR.
+- Shared: account_bar, notice, header (with the site search), member_bar, footer, join_band, staff_bar, email_header/footer. Order 78, icon `bi-camera`, look `modern-soft`, palette `lavender` (the e-mails' inline pink `#be185d` is its secondary). Contact group `newsletter` (Community Newsletter). Folders `posts` and `avatars` (public, under root) hold the post photos and profile pictures. Built in #6297–#6346.
 
 ## Why a main file plus a folder?
 - As Marketplace ([[design-template-market]]): `pinegrap-social.php` includes `parts.php`, `mail.php`, then `pages_public.php`, `posts.php`, `profiles.php`, `reports.php`, `standard.php`, `account.php` in one scope, each return kept as `$…_part`.
@@ -13,8 +13,9 @@ description: Social Community template (pinegrap-social): member photo posts and
 - `member` is the public profile, `my_profile` the member's own; `profile` stays the account page.
 
 ## How does it work without new product behaviour?
-- A post is a Posts form record (collection, sent signed in): photo (image kind, `posts` folder), alt text, caption, topic (parts.php's titles), tags (`contains ?tag=`), place; office `status` Live/Hidden and `featured`. Every public list and the post view carry `status is not equal to Hidden` (the live rule); `staff_posts` shows all.
-- A profile is a Profiles form record the member sends again to change it; lists show the newest. Saved posts are followed comment threads ([[form-list-viewer-filter]]).
+- A post is a Posts form record (collection, sent signed in): photo (image kind, `posts` folder), alt text, caption, topic (parts.php's titles), tags (`contains ?tag=`), place; office `status` Live/Hidden and `featured`. Every public list and the post view carry `status is not equal to Hidden` (the live rule); `staff_posts` shows all; its rows link no post page (the live rule holds for staff too): the pencil opens the record (#7509).
+- A profile is a Profiles form record the member sends again to change it; the member's card and page show the newest.
+- A post's byline is `submitter_name` (the account's name), never the profile's `display_name`; its hint says so (#7510). Saved posts are followed comment threads ([[form-list-viewer-filter]]).
 - A report is a Reports record opened with `?post=` (text, never trusted as a link); moderators' notes are `staff_report`'s comments, e-mailed to nobody.
 - Not built (new behaviour, #6296): likes, following members, messages between members, stories, video.
 
