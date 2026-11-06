@@ -228,6 +228,7 @@
     "Each result is an object with a hash and a text.": "Her sonuç hash ve text alanları olan bir nesnedir.",
     "Each row written starts a run, as the flow's owner, while the flow is live and they may read the table. Rows a file import adds start nothing.": "Akış yayındayken ve sahibi tabloyu okuyabildiği sürece yazılan her satır, akışın sahibi olarak bir çalıştırma başlatır. Dosyadan içe aktarılan satırlar hiçbir şey başlatmaz.",
     "Each rule contributes a score. Sensitivity sets how much evidence is needed before a request counts as an attack.": "Her kural bir puan ekler. Hassasiyet, bir isteğin saldırı sayılması için ne kadar kanıt gerektiğini belirler.",
+    "Each template in the look it is made for.": "Her şablon, kendisi için hazırlanan görünümde.",
     "Each time it happens a run starts, as the flow's owner, while the flow is live.": "Akış yayındayken bu her olduğunda akışın sahibi adına bir çalıştırma başlar.",
     "Each tool is an object of {name, rule}; rule is off, on or approve.": "Her araç bir {name, rule} nesnesidir; rule off, on ya da approve olur.",
     "Each value goes into the address as the record stores it (?name=value). A value that is empty, longer than 100 characters or on several lines is left out.": "Her değer adrese kayıtta saklandığı gibi eklenir (?ad=değer). Boş, 100 karakterden uzun ya da birden çok satıra yayılan bir değer eklenmez.",

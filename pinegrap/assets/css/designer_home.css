@@ -272,6 +272,19 @@
   aspect-ratio: 16 / 10;
 }
 
+/* The design's page as a live picture (pg_design_live_picture()): the
+   browser window is its frame, so the box has none of its own. */
+.sdh-browser-view > .pg-live-picture,
+.sdh-ill-tpl .sdh-tpl-mini > .pg-live-picture,
+.sd-tpl-thumb > .pg-live-picture {
+  border: 0;
+  border-radius: 0;
+}
+
+.sdh-ill-tpl .sdh-tpl-mini > .pg-live-picture {
+  height: 100%;
+}
+
 .sdh-browser-view > svg {
   display: block;
   width: 100%;

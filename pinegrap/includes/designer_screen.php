@@ -952,13 +952,40 @@ function pg_designer_list_status_cell($d)
 }
 
 /**
- * A design's picture: its template's drawing in the design's own look and
- * colours. A design started blank or imported has no picture of its own; it
- * gets the outline of a page with what it is built on in the middle.
+ * A design's picture: the page the card's Edit opens ($open, a
+ * pg_designer_list_pages() row), as a first-time visitor sees it
+ * (design_preview.php?page_id=, a live picture). Until it arrives, or when
+ * it cannot be drawn, the drawing shows: its template's in the design's own
+ * look and colours, else the outline of a page with what it is built on in
+ * the middle. A design with no page to open shows the outline.
  */
-function pg_designer_list_thumb($d)
+function pg_designer_list_thumb($d, $open = null)
 {
-    $tpl = !empty($d['template']) ? pg_design_template($d['template']) : null;
+    $src = pg_designer_design_picture_src($open);
+    if ($src === '') return pg_designer_list_drawing($d, false);
+    return pg_design_live_picture($src, array('fallback' => pg_designer_list_drawing($d, true)));
+}
+
+/**
+ * The address of a design's picture: its page drawn by design_preview.php;
+ * '' when there is no page to open. Pure.
+ */
+function pg_designer_design_picture_src($open)
+{
+    $id = (is_array($open) && isset($open['id'])) ? (int)$open['id'] : 0;
+    if ($id <= 0) return '';
+    $base = (defined('PATH') && defined('SOFTWARE_DIRECTORY')) ? PATH . SOFTWARE_DIRECTORY . '/' : '';
+    return $base . 'design_preview.php?page_id=' . $id;
+}
+
+/**
+ * A design's drawing: with $template, its template's drawing in the
+ * design's own look and colours when it has one; otherwise the outline of a
+ * page with what it is built on in the middle.
+ */
+function pg_designer_list_drawing($d, $template = true)
+{
+    $tpl = ($template && !empty($d['template'])) ? pg_design_template($d['template']) : null;
     if ($tpl && !empty($d['framework_bootstrap']) && function_exists('pg_design_thumb_svg')) {
         return pg_design_thumb_svg($d['look'], $d['palette'], '', lang(array('string' => 'Preview of {var:1}', 'vars' => $d['style_name'])), isset($tpl['thumb']) ? (string)$tpl['thumb'] : '');
     }
@@ -1032,8 +1059,13 @@ function pg_designer_home_drawing($kind, $templates = array())
             if (count($minis) >= 3) break;
             $s = pg_design_template_summary($tpl);
             if ($s['framework'] !== 'bootstrap5' || !function_exists('pg_design_thumb_svg')) continue;
+            // The template's home page in its own theme; its drawing until
+            // the page arrives, or alone when the page cannot be drawn.
+            $drawing = pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], '', '', $s['thumb']);
+            $theme = pg_designer_template_card_theme($s, '@template', '@template');
+            $src = pg_designer_template_picture_src($tpl, $theme['look'], $theme['palette']);
             $minis[] = '<span class="sdh-tpl-mini">'
-                     . pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], '', '', $s['thumb'])
+                     . ($src !== '' ? pg_design_live_picture($src, array('fallback' => $drawing)) : $drawing)
                      . '</span>';
         }
         if ($minis) return '<span class="sdh-ill sdh-ill-tpl" aria-hidden="true">' . implode('', $minis) . '</span>';
@@ -1213,7 +1245,7 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     // The picture opens the editor too; the name link is the one announced.
     $picture = '<a class="sdh-browser" href="' . h($edit_url) . '" tabindex="-1" aria-hidden="true">'
              .     '<span class="sdh-browser-bar"><i></i><i></i><i></i><span class="sdh-browser-url">' . h($address) . '</span></span>'
-             .     '<span class="sdh-browser-view">' . pg_designer_list_thumb($d) . '</span>'
+             .     '<span class="sdh-browser-view">' . pg_designer_list_thumb($d, $open) . '</span>'
              . '</a>';
     $title = '<a href="' . h($edit_url) . '"><span class="sdh-name-text">' . $name . '</span></a>';
     // Markup of its own (a <time> element), so it is not escaped again.
@@ -1531,6 +1563,7 @@ function pg_designer_start_screen($ctx)
         ' . ($can_tpl ? pg_designer_home_template_dialog() : '') . '
         <div class="menu sdh-menu" id="sdh-menu" role="menu" tabindex="-1"></div>
         <script type="application/json" id="sdh-config">' . json_encode($config, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>
+        ' . pg_js_bundle_tags('assets/js/pg_live_picture.min.js') . '
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/designer_home.js?v=' . pg_designer_asset_stamp('assets/js/designer_home.js') . '"></script>
         ';
     print output_footer();
@@ -1837,6 +1870,51 @@ function pg_designer_start_action($user, $style_id)
 }
 
 /**
+ * The look and palette a template card opens in, for the picker's choice
+ * ($look, $palette: a key, '' for plain Bootstrap, or '@template' for the
+ * template's own). The template's own is what its file names; nothing named
+ * is plain Bootstrap. $summary: pg_design_template_summary(). Pure.
+ *
+ * @return array look, palette
+ */
+function pg_designer_template_card_theme($summary, $look, $palette)
+{
+    $own_look = (is_array($summary) && isset($summary['look']) && is_string($summary['look'])) ? $summary['look'] : '';
+    $own_palette = (is_array($summary) && isset($summary['palette']) && is_string($summary['palette'])) ? $summary['palette'] : '';
+    return array(
+        'look' => ((string)$look === '@template') ? $own_look : (string)$look,
+        'palette' => ((string)$palette === '@template') ? $own_palette : (string)$palette,
+    );
+}
+
+/**
+ * The address of a template's picture: its home page in the given look and
+ * palette (design_preview.php); '' when the template has no page a preview
+ * can show, so its drawing stays.
+ */
+function pg_designer_template_picture_src($tpl, $look = '', $palette = '')
+{
+    if (!is_array($tpl) || !isset($tpl['id']) || !pg_design_template_preview_pages($tpl)) return '';
+    return pg_design_preview_address('panel', array('template' => (string)$tpl['id'], 'look' => $look, 'palette' => $palette));
+}
+
+/**
+ * A preview address with the look and palette added, as the picker's script
+ * adds them (twin: themed() in pg_designer_template_theme_picker()): only
+ * the ones pg_design_looks()/pg_design_palettes() know. Pure.
+ */
+function pg_designer_template_theme_query($src, $look, $palette)
+{
+    $src = (string)$src;
+    if ($src === '') return '';
+    $looks = function_exists('pg_design_looks') ? pg_design_looks() : array();
+    $palettes = function_exists('pg_design_palettes') ? pg_design_palettes() : array();
+    if ((string)$look !== '' && isset($looks[(string)$look])) $src .= '&look=' . rawurlencode((string)$look);
+    if ((string)$palette !== '' && isset($palettes[(string)$palette])) $src .= '&palette=' . rawurlencode((string)$palette);
+    return $src;
+}
+
+/**
  * "Choose a Template": the templates this installation ships. Choosing one
  * opens the editor with the template's pages as unsaved tabs; nothing is
  * created until the design is published.
@@ -1846,24 +1924,40 @@ function pg_designer_template_modal($templates, $from_pages)
     $extra = $from_pages ? '&from=pages' : '';
     $look0 = function_exists('pg_design_default_look') ? pg_design_default_look() : '';
     $cards = '';
+    // Every card opens in the template's own theme until the picker above
+    // says otherwise (pg_designer_template_theme_picker()).
     foreach ((array)$templates as $tpl) {
         $s = pg_design_template_summary($tpl);
         // Template and framework version, readable at a glance: on the
         // picture when there is one, under the description otherwise.
         $fw_version = isset($s['framework_version']) ? (string)$s['framework_version'] : '';
         $ver_badge  = '<span class="sd-tpl-ver">' . h('v' . $s['version'] . ' · ' . $s['framework_label'] . ($fw_version !== '' ? ' ' . $fw_version : '')) . '</span>';
-        $thumb = ($s['framework'] === 'bootstrap5' && function_exists('pg_design_thumb_svg'))
-            ? '<div class="sd-tpl-thumb">' . pg_design_thumb_svg($look0, '', 'sd-tpl-thumb-svg', lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name'])), $s['thumb']) . $ver_badge . '</div>'
+        // The template's home page in the theme the card opens in (its own:
+        // the picker's first choices); the drawing until the page arrives,
+        // or alone when the template has no page a preview can show.
+        $theme = pg_designer_template_card_theme($s, '@template', '@template');
+        $picture_src = pg_designer_template_picture_src($tpl, $theme['look'], $theme['palette']);
+        $tour_src = ($picture_src !== '') ? pg_design_preview_address('panel', array('template' => $s['id'], 'tour' => true)) : '';
+        $drawing = ($s['framework'] === 'bootstrap5' && function_exists('pg_design_thumb_svg'))
+            ? pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], 'sd-tpl-thumb-svg', '', $s['thumb'])
             : '';
-        // The theme the template is made for: offered on the card, applied
-        // to the picker above only when the operator asks. The picker is
-        // what every template opens in: "No theme" and "Bootstrap" there
-        // mean plain Bootstrap, whatever a template suggests.
-        $theme_attrs = '';
+        $label = lang(array('string' => 'Preview of {var:1}', 'vars' => $s['name']));
+        if ($picture_src !== '') {
+            $thumb = '<div class="sd-tpl-thumb">' . pg_design_live_picture($picture_src, array('label' => $label, 'fallback' => $drawing)) . $ver_badge . '</div>';
+        } elseif ($drawing !== '') {
+            $thumb = '<div class="sd-tpl-thumb">' . pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], 'sd-tpl-thumb-svg', $label, $s['thumb']) . $ver_badge . '</div>';
+        } else {
+            $thumb = '';
+        }
+        // The theme the template is made for: the picker's first choices
+        // ("Template's theme", "Template's palette") open each card in its
+        // own; any other choice opens every card in that one.
+        $theme_attrs = ' data-look="' . h((string)$s['look']) . '" data-palette="' . h((string)$s['palette']) . '"'
+                     . ' data-has-look="' . ($s['look'] !== null ? '1' : '0') . '" data-has-palette="' . ($s['palette'] !== null ? '1' : '0') . '"'
+                     . ' data-picture="' . h($picture_src !== '' ? pg_design_preview_address('panel', array('template' => $s['id'])) : '') . '"'
+                     . ' data-tour="' . h($tour_src) . '"';
         $theme_names = '';
         if ($s['look'] !== null || $s['palette'] !== null) {
-            $theme_attrs = ' data-look="' . h((string)$s['look']) . '" data-palette="' . h((string)$s['palette']) . '"'
-                         . ' data-has-look="' . ($s['look'] !== null ? '1' : '0') . '" data-has-palette="' . ($s['palette'] !== null ? '1' : '0') . '"';
             $parts = array();
             if ($s['look'] !== null && function_exists('pg_design_look_label')) $parts[] = pg_design_look_label($s['look']);
             if ($s['palette'] !== null && $s['palette'] !== '') {
@@ -1873,11 +1967,10 @@ function pg_designer_template_modal($templates, $from_pages)
             $theme_names = implode(' · ', array_filter($parts, 'strlen'));
         }
         $made_for = ($theme_names !== '') ? lang(array('string' => 'Made for: {var:1}', 'vars' => $theme_names)) : '';
-        // "Use this theme" stays inside .sd-tpl-card: the picker script finds
-        // the card's data-look / data-palette from the button.
-        $theme_apply = ($made_for !== '')
-            ? '<button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-nowrap sd-tpl-theme-apply no-popover" data-bs-toggle="tooltip" title="' . h($made_for) . '">'
-              . '<i class="bi bi-palette me-1" aria-hidden="true"></i>' . lang('Use this theme') . '</button>'
+        // The tour of every page and e-mail, in a new tab, in the card's theme.
+        $tour_btn = ($tour_src !== '')
+            ? '<a href="' . h(pg_designer_template_theme_query($tour_src, $theme['look'], $theme['palette'])) . '" target="_blank" rel="noopener" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5 text-nowrap sd-tpl-tour">'
+              . '<i class="bi bi-eye me-1" aria-hidden="true"></i>' . lang('Preview') . '<span class="visually-hidden"> ' . h(lang('(opens in a new tab)')) . '</span></a>'
             : '';
         // The details live in the info button's popover (pgBindTitlePopovers()):
         // the name on top, then the whole description, the first pages, two
@@ -1906,6 +1999,7 @@ function pg_designer_template_modal($templates, $from_pages)
             ? '<button type="button" class="btn btn-sm btn-text theme-secondary sd-tpl-delete no-popover" data-template="' . h($s['id']) . '" data-name="' . h($s['name']) . '" data-bs-toggle="tooltip" title="' . h(lang('Delete template')) . '" aria-label="' . h(lang('Delete template')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>'
             : '';
         $use_href = 'add_system_style.php?start=template&template=' . rawurlencode($s['id']) . $extra;
+        $use_now = $use_href . '&look=' . rawurlencode($theme['look']) . '&palette=' . rawurlencode($theme['palette']);
         $cards .=
             '<div class="col-12 md:col-6 xl:col-4 2xl:col-3">
                 <div class="card h-100 overflow-hidden sd-tpl-card"' . $theme_attrs . '>
@@ -1919,9 +2013,9 @@ function pg_designer_template_modal($templates, $from_pages)
                                 ' . $info_btn . '
                             </div>
                             <div class="d-flex align-items-center gap-3 ms-auto">
-                                ' . $theme_apply . '
                                 ' . $delete_btn . '
-                                <a href="' . h($use_href) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
+                                ' . $tour_btn . '
+                                <a href="' . h($use_now) . '" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap sd-tpl-use" data-href="' . h($use_href) . '"><i class="bi bi-magic me-1" aria-hidden="true"></i>' . lang('Use This Template') . '</a>
                             </div>
                         </div>
                         <span class="small fg-secondary text-truncate">' . h($s['description']) . '</span>
@@ -1993,25 +2087,33 @@ function pg_designer_template_modal($templates, $from_pages)
 
 /**
  * The look and the colour palette a template opens in, above the template
- * cards. The cards' pictures follow the choice, and "Use This Template"
- * carries it to the editor (?look=&palette=). Both can be changed later in
- * the editor, under Settings > Theme.
+ * cards. The first choices, checked at first, are each template's own
+ * ("Template's theme", "Template's palette"); any other opens every
+ * template in that one. The cards' pictures follow the choice
+ * (PGLivePicture.set(), 300 ms after the last change, the cards in view
+ * first), and "Use This Template" and "Preview" carry it
+ * (?look=&palette=). Both can be changed later in the editor, under
+ * Settings > Theme.
  */
 function pg_designer_template_theme_picker()
 {
     if (!function_exists('pg_design_looks')) return '';
-    $look0 = pg_design_default_look();
-    $looks = array('' => array('name' => lang('Plain Bootstrap'), 'description' => lang('Plain Bootstrap 5.3, as it comes.'),
-                               'preview' => array('radius' => 6, 'btn_radius' => 6, 'shadow' => 'none', 'border' => 1)));
+    $looks = array(
+        '@template' => array('name' => lang('Template\'s theme'), 'description' => lang('Each template in the look it is made for.')),
+        '' => array('name' => lang('Plain Bootstrap'), 'description' => lang('Plain Bootstrap 5.3, as it comes.')),
+    );
     $looks = array_merge($looks, pg_design_looks());
     $look_btns = '';
     $n = 0;
     foreach ($looks as $key => $l) {
         $id = 'sd-tpl-look-' . (++$n);
-        $look_btns .= '<input type="radio" class="btn-check" name="sd_tpl_look" id="' . $id . '" value="' . h($key) . '"' . ($key === $look0 ? ' checked' : '')
-                    . ' data-preview="' . h(json_encode($l['preview'])) . '" autocomplete="off">'
-                    . '<label class="btn btn-outline theme-secondary rounded-pill no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($l['description']) . '">' . h($l['name']) . '</label>';
+        $icon = ($key === '@template') ? '<i class="bi bi-stars me-1" aria-hidden="true"></i>' : '';
+        $look_btns .= '<input type="radio" class="btn-check" name="sd_tpl_look" id="' . $id . '" value="' . h($key) . '"' . ($key === '@template' ? ' checked' : '') . ' autocomplete="off">'
+                    . '<label class="btn btn-outline theme-secondary rounded-pill no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($l['description']) . '">' . $icon . h($l['name']) . '</label>';
     }
+    $own = lang('the template\'s own palette');
+    $pal_btns = '<input type="radio" class="btn-check" name="sd_tpl_palette" id="sd-tpl-pal-0" value="@template" checked data-name="' . h($own) . '" autocomplete="off">'
+              . '<label class="btn btn-outline theme-secondary rounded-pill no-popover" for="sd-tpl-pal-0"><i class="bi bi-stars me-1" aria-hidden="true"></i>' . h(lang('Template\'s palette')) . '</label>';
     $bs = pg_design_bootstrap_colors();
     $palettes = array('' => array('name' => lang('Bootstrap'), 'primary' => $bs['primary'], 'secondary' => $bs['secondary']));
     $palettes = array_merge($palettes, pg_design_palettes());
@@ -2019,24 +2121,27 @@ function pg_designer_template_theme_picker()
         if (!isset($f['meta']['primary'], $f['meta']['secondary'])) continue;
         $palettes['file-' . $f['id']] = array('name' => $f['name'], 'primary' => $f['meta']['primary'], 'secondary' => $f['meta']['secondary']);
     }
-    $pal_btns = '';
     $n = 0;
     foreach ($palettes as $key => $p) {
         $id = 'sd-tpl-pal-' . (++$n);
-        $pal_btns .= '<input type="radio" class="btn-check" name="sd_tpl_palette" id="' . $id . '" value="' . h($key) . '"' . ($key === '' ? ' checked' : '')
-                   . ' data-primary="' . h($p['primary']) . '" data-secondary="' . h($p['secondary']) . '" data-name="' . h($p['name']) . '" autocomplete="off">'
+        $pal_btns .= '<input type="radio" class="btn-check" name="sd_tpl_palette" id="' . $id . '" value="' . h($key) . '"'
+                   . ' data-name="' . h($p['name']) . '" autocomplete="off">'
                    . '<label class="sd-tpl-pal no-popover" for="' . $id . '" data-bs-toggle="tooltip" title="' . h($p['name']) . '"><i style="background:' . h($p['primary']) . '"></i><i style="background:' . h($p['secondary']) . '"></i>'
                    . '<span class="visually-hidden">' . h($p['name']) . '</span></label>';
     }
+    // The preview addresses take only the looks and palettes these lists
+    // know (pg_design_preview_address()); a palette from a theme file shows
+    // in plain Bootstrap colours on the picture and opens in its own.
+    $known = array('looks' => array_keys(pg_design_looks()), 'palettes' => array_keys(pg_design_palettes()));
     return '
-        <div class="border rounded-5 p-5 mb-5 bg-1" id="sd-tpl-theme">
+        <div class="border rounded-5 p-5 mb-5 bg-1" id="sd-tpl-theme" data-known="' . h(json_encode($known)) . '">
             <div class="mb-5">
                 <div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal fg-secondary">— ' . lang('corners, shadows, type and buttons') . '</span></div>
                 <div class="d-flex flex-wrap gap-1 sd-tpl-look" role="radiogroup" aria-label="' . h(lang('Look')) . '">' . $look_btns . '</div>
             </div>
             <div>
-                <div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal fg-secondary">— <span id="sd-tpl-pal-name">' . lang('Bootstrap') . '</span></span></div>
-                <div class="d-flex flex-wrap gap-3" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $pal_btns . '</div>
+                <div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal fg-secondary">— <span id="sd-tpl-pal-name">' . h($own) . '</span></span></div>
+                <div class="d-flex flex-wrap align-items-center gap-3" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $pal_btns . '</div>
             </div>
             <div class="form-text mt-3">' . lang('You can change both later in the editor, under Settings, Design, Theme.') . '</div>
         </div>
@@ -2045,52 +2150,59 @@ function pg_designer_template_theme_picker()
                 var box = document.getElementById("sd-tpl-theme");
                 if (!box) return;
                 var modal = box.closest(".dialog");
-                // Twin of pg_design_thumb_vars().
-                function vars(pv, p, s) {
-                    pv = pv || {};
-                    var hex = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(p || "");
-                    var rgb = hex ? [parseInt(hex[1], 16), parseInt(hex[2], 16), parseInt(hex[3], 16)].join(", ") : "13, 110, 253";
-                    var sh = { none: "none", soft: "drop-shadow(0 2px 3px rgba(16, 24, 40, 0.16))", crisp: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18))",
-                               glow: "drop-shadow(0 3px 4px rgba(" + rgb + ", 0.35))", hard: "drop-shadow(2px 2px 0 #111827)", deep: "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.28))" };
-                    var r = Math.min(+pv.radius || 0, 14) * 0.5, br = (+pv.btn_radius >= 50) ? 5.5 : Math.min(+pv.btn_radius || 0, 14) * 0.5;
-                    return { "--tp": p, "--ts": s, "--tr": r + "px", "--tbr": br + "px", "--tsh": sh[pv.shadow] || "none",
-                             "--tbw": ((+pv.border || 0) * 0.75) + "px", "--tbc": pv.shadow === "hard" ? "#111827" : "#e5e7eb" };
+                var known = { looks: [], palettes: [] };
+                try { known = JSON.parse(box.getAttribute("data-known")) || known; } catch (e) {}
+                var timer = null;
+                // What a card opens in (twin of pg_designer_template_card_theme()).
+                function theme(card, look, palette) {
+                    return {
+                        look: look === "@template" ? (card.getAttribute("data-look") || "") : look,
+                        palette: palette === "@template" ? (card.getAttribute("data-palette") || "") : palette
+                    };
                 }
-                function radio(name, value) {
-                    var found = null;
-                    box.querySelectorAll("input[name=" + name + "]").forEach(function (r) { if (r.value === value) found = r; });
-                    return found;
+                // A preview address with the theme (twin of pg_designer_template_theme_query()).
+                function themed(src, t) {
+                    if (!src) return "";
+                    if (t.look && known.looks.indexOf(t.look) >= 0) src += "&look=" + encodeURIComponent(t.look);
+                    if (t.palette && known.palettes.indexOf(t.palette) >= 0) src += "&palette=" + encodeURIComponent(t.palette);
+                    return src;
                 }
-                // Every template opens in what the picker shows.
+                function inView(el) {
+                    var r = el.getBoundingClientRect();
+                    return r.bottom > 0 && r.top < (window.innerHeight || document.documentElement.clientHeight);
+                }
+                // The pictures follow the choice once it settles, the cards in view first.
+                function redraw() {
+                    if (!window.PGLivePicture) return;
+                    var first = [], rest = [];
+                    modal.querySelectorAll(".sd-tpl-card [data-pg-live-picture]").forEach(function (pic) {
+                        var want = pic.getAttribute("data-want") || "";
+                        if (!want || want === (pic.getAttribute("data-src") || "")) return;
+                        (inView(pic) ? first : rest).push(pic);
+                    });
+                    first.concat(rest).forEach(function (pic) { PGLivePicture.set(pic, pic.getAttribute("data-want")); });
+                }
                 function sync() {
                     var l = box.querySelector("input[name=sd_tpl_look]:checked");
                     var p = box.querySelector("input[name=sd_tpl_palette]:checked");
-                    var pv = {};
-                    try { pv = JSON.parse(l ? l.getAttribute("data-preview") : "{}") || {}; } catch (e) {}
-                    var v = vars(pv, p ? p.getAttribute("data-primary") : "#0d6efd", p ? p.getAttribute("data-secondary") : "#6c757d");
-                    modal.querySelectorAll(".sd-tpl-thumb-svg").forEach(function (svg) {
-                        Object.keys(v).forEach(function (k) { svg.style.setProperty(k, v[k]); });
-                    });
+                    var look = l ? l.value : "@template", palette = p ? p.value : "@template";
                     var nm = document.getElementById("sd-tpl-pal-name");
                     if (nm && p) nm.textContent = p.getAttribute("data-name");
-                    var q = "&look=" + encodeURIComponent(l ? l.value : "") + "&palette=" + encodeURIComponent(p ? p.value : "");
-                    modal.querySelectorAll(".sd-tpl-use").forEach(function (a) { a.href = a.getAttribute("data-href") + q; });
+                    modal.querySelectorAll(".sd-tpl-card").forEach(function (card) {
+                        var t = theme(card, look, palette);
+                        var use = card.querySelector(".sd-tpl-use");
+                        if (use) use.href = use.getAttribute("data-href") + "&look=" + encodeURIComponent(t.look) + "&palette=" + encodeURIComponent(t.palette);
+                        var tour = card.querySelector(".sd-tpl-tour");
+                        if (tour) tour.href = themed(card.getAttribute("data-tour"), t);
+                        var pic = card.querySelector("[data-pg-live-picture]");
+                        if (pic) pic.setAttribute("data-want", themed(card.getAttribute("data-picture"), t));
+                    });
+                    clearTimeout(timer);
+                    timer = setTimeout(redraw, 300);
                 }
                 box.addEventListener("change", sync);
-                // "Use this theme" on a card puts its theme in the picker.
-                modal.addEventListener("click", function (e) {
-                    var btn = e.target.closest ? e.target.closest(".sd-tpl-theme-apply") : null;
-                    if (!btn) return;
-                    var card = btn.closest(".sd-tpl-card");
-                    if (!card) return;
-                    var r;
-                    if (card.getAttribute("data-has-look") === "1" && (r = radio("sd_tpl_look", card.getAttribute("data-look") || ""))) r.checked = true;
-                    if (card.getAttribute("data-has-palette") === "1" && (r = radio("sd_tpl_palette", card.getAttribute("data-palette") || ""))) r.checked = true;
-                    sync();
-                });
                 // The cards come after this script in the page.
                 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", sync); else sync();
-                if (modal) pgUI.dialog.on(modal, "show", sync);
             })();
         </script>';
 }

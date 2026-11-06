@@ -144,3 +144,49 @@ function test_designer_home_start_card_order()
 	pg_assert_true($ill !== false && $title > $ill && $text > $title, 'drawing, title, sentence');
 	pg_assert_true(strpos($html, '<div class="col-6 xl:col-3">') === 0, 'two by two on phones, four in a row on wide screens');
 }
+
+function test_designer_home_template_card_theme_follows_the_choice()
+{
+	$own = array('look' => 'organic', 'palette' => 'cocoa');
+	pg_assert_same(array('look' => 'organic', 'palette' => 'cocoa'), pg_designer_template_card_theme($own, '@template', '@template'), 'the template\'s own theme');
+	pg_assert_same(array('look' => 'minimal', 'palette' => 'cocoa'), pg_designer_template_card_theme($own, 'minimal', '@template'), 'another look, its own palette');
+	pg_assert_same(array('look' => '', 'palette' => ''), pg_designer_template_card_theme($own, '', ''), 'plain Bootstrap');
+	// A template that names no theme opens in plain Bootstrap.
+	pg_assert_same(array('look' => '', 'palette' => ''), pg_designer_template_card_theme(array('look' => null, 'palette' => null), '@template', '@template'), 'nothing named');
+}
+
+function test_designer_home_template_picture_address()
+{
+	$tpl = null;
+	foreach (pg_design_templates() as $t) {
+		if (!empty($t['builtin']) && pg_design_template_preview_pages($t)) { $tpl = $t; break; }
+	}
+	pg_assert_true($tpl !== null, 'a shipped template with pages');
+	$src = pg_designer_template_picture_src($tpl, 'organic', 'cocoa');
+	pg_assert_contains('design_preview.php?template=' . $tpl['id'] . '&look=organic&palette=cocoa', $src);
+	pg_assert_false(strpos($src, '&page=') !== false, 'the home page: no page key');
+	// The script's twin builds the same address from the card's base.
+	$base = pg_design_preview_address('panel', array('template' => $tpl['id']));
+	pg_assert_same($src, pg_designer_template_theme_query($base, 'organic', 'cocoa'));
+	pg_assert_same($base, pg_designer_template_theme_query($base, 'nope', 'file-3'), 'unknown look and file palette dropped');
+	// No page a preview can show: the drawing stays.
+	$empty = $tpl;
+	$empty['pages'] = array();
+	pg_assert_same('', pg_designer_template_picture_src($empty));
+	pg_assert_same('', pg_designer_template_picture_src(null));
+}
+
+function test_designer_home_design_picture_is_the_page_edit_opens()
+{
+	pg_assert_contains('design_preview.php?page_id=12', pg_designer_design_picture_src(array('id' => 12, 'locked' => false)));
+	pg_assert_same('', pg_designer_design_picture_src(null), 'no page to open');
+	pg_assert_same('', pg_designer_design_picture_src(array('id' => 0)), 'no id');
+	$d = array('style_name' => 'Kafe', 'template' => '', 'framework_bootstrap' => true, 'look' => '', 'palette' => '');
+	$html = pg_designer_list_thumb($d, array('id' => 12));
+	pg_assert_contains('data-pg-live-picture', $html);
+	pg_assert_contains('pg-live-picture-fallback', $html);
+	pg_assert_contains('sdh-blank', $html);
+	$none = pg_designer_list_thumb($d, null);
+	pg_assert_false(strpos($none, 'data-pg-live-picture') !== false, 'no page: the outline alone');
+	pg_assert_contains('sdh-blank', $none);
+}
