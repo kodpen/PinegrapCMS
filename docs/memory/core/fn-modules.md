@@ -153,6 +153,7 @@ description: Generated from the module field of the memory files: each includes/
 - `page_home`: [[single-home-page]]
 - `page_list`: [[page-list-paging]]
 - `page_vitals`: [[page-vitals-beacon]], [[page-vitals-figures]]
+- `parasut`: [[erp-parasut-legacy-press-claim]], [[erp-parasut-legacy-token-401]]
 - `payments`: [[card-brand-switches]], [[gateway-masked-keys]], [[order-refunded-amount-writes]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
 - `places`: [[place-packs]], [[tr-place-list]]

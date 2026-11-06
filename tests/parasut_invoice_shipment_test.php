@@ -200,7 +200,7 @@ function test_parasut_shipment_with_invoice()
 // it looks for an unanswered try's record or writes one.
 function test_parasut_create_invoice_sends_without_shipment_after_e_shipment()
 {
-	$body = parasut_invoice_shipment_test_source('parasut_create_invoice');
+	$body = parasut_invoice_shipment_test_source('_parasut_create_invoice_claimed');
 	$built = strpos($body, "\$invoice_body = parasut_order_invoice_with_shipment(\$invoice_body, (string) (\$order['parasut_shipment_id'] ?? ''));");
 	$searched = strpos($body, 'parasut_order_invoice_find($invoice_body,');
 	$posted = strpos($body, "'/sales_invoices', \$invoice_body");
@@ -217,7 +217,7 @@ function test_parasut_create_invoice_sends_without_shipment_after_e_shipment()
 // names the invoice the judgement gave.
 function test_parasut_create_shipment_judges_the_invoice_before_any_write()
 {
-	$body = parasut_invoice_shipment_test_source('parasut_create_shipment');
+	$body = parasut_invoice_shipment_test_source('_parasut_create_shipment_claimed');
 	$guard = strpos($body, "\$existing_shipment_id = trim((string) (\$order['parasut_shipment_id'] ?? ''));");
 	$link = strpos($body, "parasut_shipment_invoice_link(\$invoice_to_judge['invoice_id'],");
 	$refused = strpos($body, "if (\$invoice_link['error'] !== '') {");
