@@ -40,6 +40,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - activitypub-outbox.md: ActivityPub publishing: what counts as published, the general job's sweep that queues Create/Update/Delete into ap_outbox, the log and delivery rows, signing, retries, the outbox collection.
 - activitypub-reactions.md: Fediverse likes and boosts of a page or record shown by the Comments widget: its tokens, which objects a thread counts, page cache.
 - audit-rule-registry.md: Audit rule registry (includes/fn/audit_rules.php): per concept the SEO and a11y codes, WCAG criterion, severities, editor rule ids, document/browser flags; tools/check_audit_rules.php
+- auto-backup-run-claim.md: auto_backup.php takes the auto_backup lock in cron_runs before it starts and reads the last backup time under it, so overlapping starts write one backup
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
