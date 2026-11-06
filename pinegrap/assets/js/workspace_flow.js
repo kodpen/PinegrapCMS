@@ -599,6 +599,10 @@
         }
 
         if (node.kind === 'email') {
+            if (config.recipient === 'record_person') {
+                return t((config.purpose === 'marketing') ? 'fl_email_person_marketing' : 'fl_email_person_info');
+            }
+
             return config.to ? t('fl_email_meta', config.to) : t('fl_email_no_to');
         }
 
@@ -6064,14 +6068,36 @@
         }, true));
     }
 
-    // An e-mail box: addresses, subject and text, sent from the site.
+    // An e-mail box: typed addresses, or the person of the run's record
+    // (read when the box runs, never typed) with why it writes to them;
+    // subject and text, sent from the site.
     function emailFields(box, node) {
         var config = node.config;
+        var person = config.recipient === 'record_person';
+        var recipient = K.select([['typed', t('fl_email_typed')], ['record_person', t('fl_email_person')]], person ? 'record_person' : 'typed');
 
-        box.appendChild(field(t('fl_email_to'), textInput(config.to, 2000, function (value) {
-            config.to = value;
+        recipient.addEventListener('change', function () {
+            config.recipient = recipient.value;
             refreshNode(node);
-        }), t('fl_email_to_help')));
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_email_recipient'), recipient));
+
+        if (person) {
+            var purpose = K.select([['info', t('fl_email_purpose_info')], ['marketing', t('fl_email_purpose_marketing')]], (config.purpose === 'marketing') ? 'marketing' : 'info');
+
+            purpose.addEventListener('change', function () {
+                config.purpose = purpose.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_email_purpose'), purpose, t('fl_email_purpose_help')));
+        } else {
+            box.appendChild(field(t('fl_email_to'), textInput(config.to, 2000, function (value) {
+                config.to = value;
+                refreshNode(node);
+            }), t('fl_email_to_help')));
+        }
+
         box.appendChild(valueField(node, t('fl_email_subject'), config.subject, 250, function (value) {
             config.subject = value;
             refreshNode(node);
@@ -8738,7 +8764,7 @@
         } else if (kind === 'post') {
             config = { channel_id: 0, body: '' };
         } else if (kind === 'email') {
-            config = { to: '', subject: '', body: '', page_id: 0 };
+            config = { to: '', subject: '', body: '', page_id: 0, recipient: 'typed', purpose: 'info' };
         } else if (kind === 'notify') {
             config = { user_ids: [], text: '' };
         } else if (kind === 'task_open') {

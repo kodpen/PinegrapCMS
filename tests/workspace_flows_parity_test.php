@@ -2377,6 +2377,7 @@ function workspace_flows_parity_table()
 			array(array('post.body'), 3, 'post box: the message'),
 			array(workspace_flows_parity_prefixed('email', 'to subject body'), 3, 'email box: addresses, subject, text'),
 			array(array('email.page_id'), 3, 'email box: a site page as HTML (get_page_content()), its title the subject when empty'),
+			array(array('email.marketing'), 3, 'email box to the record\'s person with purpose marketing (flow_mail_person.php): consent checked, unsubscribe link and headers'),
 			array(workspace_flows_parity_prefixed('notify', 'user_ids text'), 3, 'notify box: people, text'),
 			array(workspace_flows_parity_prefixed('task', 'title description priority channel_id assignees due_in'), 3, 'task box: title, text, priority, channel, people, due in days'),
 			array(workspace_flows_parity_prefixed('task_digest', 'mode channel_id only user_ids subject intro'), 3, 'task e-mail box: mine or a channel\'s, which tasks, people (default the assignees or members), subject, intro'),

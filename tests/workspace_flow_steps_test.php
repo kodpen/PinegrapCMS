@@ -89,7 +89,8 @@ function test_workspace_flow_steps_config_normalize()
 	pg_assert_same('a@example.com, b@example.com', $email['to']);
 	pg_assert_same('One line', $email['subject']);
 	pg_assert_same(12, $email['page_id']);
-	pg_assert_same(array('to', 'subject', 'body', 'page_id'), array_keys($email));
+	pg_assert_same(array('to', 'subject', 'body', 'page_id', 'recipient', 'purpose'), array_keys($email));
+	pg_assert_same(array('typed', 'info'), array($email['recipient'], $email['purpose']), 'typed addresses for info by default');
 	pg_assert_same(array(), ws_step_config_normalize('nothing', array('a' => 1)));
 }
 

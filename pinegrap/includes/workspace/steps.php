@@ -390,14 +390,20 @@ function ws_step_config_normalize($kind, $config)
                 'body'       => ws_flow_lines($config['body'] ?? '', 4000),
             );
 
+        // The person of the run's record is read when the box runs, never
+        // typed (flow_mail_person.php); marketing only with their consent.
         case 'email':
             $to = $config['to'] ?? '';
+            $recipient = (string) ($config['recipient'] ?? '');
+            $purpose = (string) ($config['purpose'] ?? '');
 
             return array(
-                'to'      => ws_flow_lines(is_array($to) ? implode(', ', array_map('ws_flow_text', $to)) : $to, 2000),
-                'subject' => ws_flow_line($config['subject'] ?? '', 250),
-                'body'    => ws_flow_lines($config['body'] ?? '', 20000),
-                'page_id' => $number($config['page_id'] ?? 0),
+                'to'        => ws_flow_lines(is_array($to) ? implode(', ', array_map('ws_flow_text', $to)) : $to, 2000),
+                'subject'   => ws_flow_line($config['subject'] ?? '', 250),
+                'body'      => ws_flow_lines($config['body'] ?? '', 20000),
+                'page_id'   => $number($config['page_id'] ?? 0),
+                'recipient' => ($recipient === 'record_person') ? 'record_person' : 'typed',
+                'purpose'   => ($purpose === 'marketing') ? 'marketing' : 'info',
             );
 
         case 'notify':
@@ -620,7 +626,7 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             break;
 
         case 'email':
-            if (trim($config['to']) === '') {
+            if ((($config['recipient'] ?? 'typed') !== 'record_person') && (trim($config['to']) === '')) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs an address to write to.', 'vars' => $name));
             }
 
@@ -1836,7 +1842,24 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
-    $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
+    $config = $node['config'];
+
+    // An e-mail to the person of the run's record: their address read now
+    // with the owner's rights; marketing only with their consent, else the
+    // box is done with nothing sent and the reason in the run.
+    if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person')) {
+        $person = ws_flow_mail_person($owner, $run);
+        $refusal = ($person['error'] === '') && (($config['purpose'] ?? '') === 'marketing') ? ws_flow_mail_marketing_refusal($person['email']) : '';
+
+        if (($person['error'] !== '') || ($refusal !== '')) {
+            ws_flow_step_settle($step, 'running', 'done', 'done', ($person['error'] !== '') ? $person['error'] : $refusal, array('sent' => 0));
+            return;
+        }
+
+        $config['to'] = $person['email'];
+    }
+
+    $check = ws_step_check($owner, $kind, $config, ws_flow_starts_on_join($graph));
 
     if (!$check['ok']) {
         if (!empty($check['paused'])) {
@@ -1877,6 +1900,11 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $action = ws_step_fill_action($kind, $check['action'], $values);
+
+    // Marketing mail carries the campaigns' unsubscribe link and headers.
+    if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person') && (($config['purpose'] ?? '') === 'marketing')) {
+        $action['marketing'] = true;
+    }
 
     // A line in somebody's inbox names the flow it comes from: the notice
     // has no scheduled action to take its title from.
@@ -2063,7 +2091,26 @@ function ws_flow_box_try($viewer, $flow, $data)
     );
 
     if (!empty(ws_flow_kinds()[$kind]['step'])) {
-        $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
+        $config = $node['config'];
+
+        // The person of the run's record, as the run reads them: only a
+        // chosen run has one; one it may not write to sends nothing.
+        if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person')) {
+            if ($run_id <= 0) {
+                return array('outcome' => 'done', 'said' => lang('Writes to the person of the record the run is about: choose a run to see who.')) + $answer;
+            }
+
+            $person = ws_flow_mail_person($owner, $run);
+            $refusal = ($person['error'] === '') && (($config['purpose'] ?? '') === 'marketing') ? ws_flow_mail_marketing_refusal($person['email']) : '';
+
+            if (($person['error'] !== '') || ($refusal !== '')) {
+                return array('outcome' => 'done', 'said' => ($person['error'] !== '') ? $person['error'] : $refusal) + $answer;
+            }
+
+            $config['to'] = $person['email'];
+        }
+
+        $check = ws_step_check($owner, $kind, $config, ws_flow_starts_on_join($graph));
 
         if (!$check['ok']) {
             return array('outcome' => 'failed', 'refusal' => (string) $check['error']) + $answer;
