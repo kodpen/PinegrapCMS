@@ -20,7 +20,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 
 - B4 (free, S): Wait until: the delay box waits until a date and time read from a value (a booking's start, minus N hours); the cap rises to 90 days. flow_runs.php delay, the form.
 
-- B5 (free, S): add to a cell: a `row_set` cell may add to the number it holds in the same write (`+3`), so two runs never lose an addition (seen on dev: two shifts read one row, one addition was lost). wtable store, steps.php.
+- B5 (done, PR #7408): add to a cell: a `row_set` cell may add to the number it holds in the same write (`+3`), so two runs never lose an addition (seen on dev: two shifts read one row, one addition was lost). wtable store, steps.php.
 
 - B6 (done, PR #7410): a failed run as a start: `workspace.flow.run.failed` in `ws_events_catalog()` (flow, box, its sentence), so a team, not only the owner, hears of it; a flow never starts on its own failure.
 

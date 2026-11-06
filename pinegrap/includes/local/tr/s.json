@@ -2484,6 +2484,7 @@
     "Some scheduled tasks have stopped running, and backups and mail wait until they start again.": "Bazı zamanlanmış görevler durmuş; yeniden çalışana kadar yedekler ve e-postalar bekliyor.",
     "Some values were not saved because they are longer than the field allows": "Bazı değerler alanın izin verdiğinden uzun olduğu için kaydedilmedi",
     "Some wear": "Biraz yıpranmış",
+    "Somebody changed the row in the table “{var:1}” each time the box wrote it; it was not changed.": "Kutu her yazışında birisi “{var:1}” tablosundaki satırı değiştirdi; satır değiştirilmedi.",
     "Somebody changed the row in the table “{var:1}” while the box wrote it, twice; it was not changed.": "Kutu yazarken biri “{var:1}” tablosundaki satırı iki kez değiştirdi; satır değiştirilmedi.",
     "Somebody changed this note meanwhile.": "Bu arada başka biri notu değiştirdi.",
     "Somebody changed this row meanwhile: look at it again and repeat your change.": "Bu satırı bu arada başka biri değiştirdi: satıra yeniden bakıp değişikliğinizi tekrarlayın.",
