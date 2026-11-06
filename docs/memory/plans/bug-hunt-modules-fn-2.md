@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `search_console`: #4852
 - `seo`: #4870
 - `shipment_labels`: #5117 (NY)
-- `shipment_lookup`: clean (NY)
+- `shipment_lookup`: clean (NY); round 2 (functions.php hunt): its missing PG_FUNCTIONS_DIR gate added
 - `shipment_tracking`: clean (MJ)
 - `shipping`: taken by LL, #4625
 - `shipping_import`: clean (NY)
