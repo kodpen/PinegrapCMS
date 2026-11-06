@@ -6,7 +6,7 @@ description: Team-device API work for the closed-source Pinegrap Mobile app (res
 ## What is the status?
 - Restarted (owner, 2026-10-24; shelved from 2026-10-14): Kodpen develops Pinegrap Mobile, a closed-source app that is not part of this open-source repository, in the private repository `kodpen/PinegrapMobile`. Its plans, questions and store work live there.
 - The endpoints built for it stay general team-device capabilities: no app-specific endpoints, and route descriptions and user-facing texts name a team device, not the app.
-- What the app needs from this repository arrives as an issue (`[iş] <topic>`, or `[plan:mobile-api-shelved.md] M7 — <topic>` for native push) and is done as an ordinary task here. The file keeps its name because those issues refer to it. The Claude-channel plan (docs/memory/plans/claude-code-channel.md) stays shelved.
+- What the app needs from this repository arrives as an issue (`[iş] <topic>`, or `[plan:mobile-api-shelved.md] M7 — <topic>` for native push) and is done as an ordinary task here. The file keeps its name because those issues refer to it. The Claude Code channel is a door of docs/memory/plans/agent-channel.md (step A8).
 
 ## Which decisions were made before? (2026-09-27)
 - Users are the team / panel users, not shop customers. Sign-in is a panel login + device token.
@@ -27,7 +27,7 @@ description: Team-device API work for the closed-source Pinegrap Mobile app (res
 2. Sign-in: a Team devices session (`/auth/login`) and QR pairing (#1640; its `api_device_pairings` table approved in #2470, `workflow/decisions-made-schema.md`), no OAuth in the browser.
 3. Native push: a Kodpen broker; the push shape (M7) is handed to this repository as an issue.
 4. Broker access for free and licensed sites: still open in the app repository.
-- Questions 5–12 concern Claude in channels: docs/memory/plans/claude-code-channel.md
+- Questions 5–12 concerned Claude in channels: answered by docs/memory/plans/agent-channel.md (the Claude Code door, step A8)
 
 ## What must the team-device work still check?
 - Prefer verified `https` links (Universal / App Links) over a custom scheme; tokens in Keychain / Keystore.
