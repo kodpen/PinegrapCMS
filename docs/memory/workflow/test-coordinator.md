@@ -13,6 +13,7 @@ description: Test coordinator (2026-10-31): starts no workers, tests and opens `
 - A fault whose fix needs a product or schema decision goes to an `architect` issue instead (`architect-asking.md`).
 
 ## How does a `bug` issue become work?
+- The bug hunt opens its findings as `bug` issues the same way (`coordinator-no-plans.md`).
 - The code coordinators read the open `bug` issues beside the plan steps when a worker slot is free and give one to a worker as free work (`coordinator.md`):
   `gh api 'repos/kodpen/pinegrapcms/issues?state=open&labels=bug&per_page=100' --jq '.[]|select(.pull_request|not)|"#\(.number) \(.title)"'`
 - An open PR whose body names the issue (`Fixes #<n>`) holds it, as a draft PR holds a plan step: check the open PRs' bodies before giving it out.
