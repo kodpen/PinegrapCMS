@@ -2801,8 +2801,9 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		$design_template_summary = pg_design_template_summary($design_template);
 
 		// The tile shows the template's home page in the look and the palette its file names;
-		// the large preview above the grid follows the pickers.
-		$design_template_look = (string) $design_template_summary['look'];
+		// the large preview above the grid follows the pickers. A template that names no look
+		// wears the default one, as the pickers do (pg_design_template_theme()).
+		$design_template_look = ($design_template_summary['look'] !== null) ? (string) $design_template_summary['look'] : pg_design_default_look();
 
 		$design_template_palette = (string) $design_template_summary['palette'];
 
@@ -2863,7 +2864,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		$install_design_selected_theme = pg_design_template_theme($install_design_templates[$install_design_selected]);
 
-		$install_design_look = (string) $install_design_selected_theme['look'];
+		$install_design_look = ($install_design_selected_theme['look'] !== null) ? (string) $install_design_selected_theme['look'] : pg_design_default_look();
 
 		$install_design_palette = (string) $install_design_selected_theme['palette'];
 

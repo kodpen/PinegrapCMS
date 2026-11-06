@@ -74,6 +74,8 @@ function test_installer_design_step_previews_and_tour()
 	pg_assert_contains('$design_tour_html = pg_design_tour_html($design_tour_options);', $php, 'the tour is printed by the shared helper');
 	pg_assert_contains('pg_design_live_picture($design_template_picture, array(', $php, 'each tile is a live picture of its home page');
 	pg_assert_contains('if ((apply_theme) && ($(element).hasClass("pg-design-template"))) { pg_install_apply_template_theme($(element)); }', $php, 'picking a template sets the pickers to its own look and palette');
+	pg_assert_contains('$install_design_look = ($install_design_selected_theme[\'look\'] !== null) ? (string) $install_design_selected_theme[\'look\'] : pg_design_default_look();', $php, 'a template that names no look keeps the default look in the pickers');
+	pg_assert_contains('$design_template_look = ($design_template_summary[\'look\'] !== null) ? (string) $design_template_summary[\'look\'] : pg_design_default_look();', $php, 'a tile of a template that names no look wears the default look');
 	pg_assert_contains('var tour = window.open(this.href, "_blank");', $php, 'the tour opens from a script, so its button can close the tab');
 	pg_assert_contains('main#content.pg-install { max-width: 1440px; }', $php, 'the installer is as wide as the widest container');
 	pg_assert_contains('.pg-wizard-grid.pg-wide-step .pg-side { display: none; }', $php, 'the design step takes the side column\'s room');
