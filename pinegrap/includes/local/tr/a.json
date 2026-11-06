@@ -3579,6 +3579,8 @@
     "Answer the ones you have fixed, with the version that fixes them: people often change their rating.": "Düzelttiklerinize, düzelten sürümü yazarak yanıt verin: insanlar çoğu zaman puanlarını değiştirir.",
     "Answer the question that was asked, be kind, and keep each reply to one point. A moderator marks a topic as solved when its author says a reply solved it.": "Sorulan soruyu yanıtlayın, nazik olun ve her yanıtta tek bir noktaya odaklanın. Konunun sahibi bir yanıtın sorunu çözdüğünü söylediğinde bir moderatör konuyu çözüldü olarak işaretler.",
     "Answer the question that was asked, in a few clear steps.": "Sorulan soruyu birkaç açık adımda yanıtlayın.",
+    "Answer the sales question {{record_title}}": "{{record_title}} satış sorusunu yanıtla",
+    "Answer the support request {{record_title}}": "{{record_title}} destek talebini yanıtla",
     "Answer with the approval": "Onayla birlikte cevap",
     "Answer within one working day": "Bir iş günü içinde yanıt",
     "Answered": "Yanıtlandı",

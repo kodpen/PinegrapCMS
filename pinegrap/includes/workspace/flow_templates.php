@@ -78,10 +78,10 @@ function ws_flow_template_setting_types()
  * @param array $fill me (the person's id), channel (the channel open, 0 for
  *                    none), site (the site's address), email (the person's),
  *                    today (YYYY-MM-DD), metrics (keys of the counts the
- *                    person may read), recap_ai (Pinegrap AI may sum up what
- *                    was missed), join (a flow may start when somebody
- *                    joins a channel), events (keys of the events the
- *                    person may wait for)
+ *                    person may read), recap_ai (Pinegrap AI is set up:
+ *                    it may sum up what was missed and sort forms), join
+ *                    (a flow may start when somebody joins a channel),
+ *                    events (keys of the events the person may wait for)
  * @return array[] see the file's docblock
  */
 function ws_flow_templates($fill)
@@ -563,6 +563,31 @@ function ws_flow_templates($fill)
                 'call'  => $task(lang('Call the customer about {{record_title}}'), 'normal'),
             ),
             'edges' => array(array('start', 'wait', 'next'), array('wait', 'read', 'done'), array('read', 'open', 'done'), array('open', 'call', 'yes')));
+    }
+
+    // Incoming forms sorted by Pinegrap AI from their answers: a task for a
+    // sales question, another for a support request, spam ends, and a form
+    // it cannot place is told to the person so none is lost. The AI box
+    // refuses to publish while Pinegrap AI is not set up, so the template
+    // is offered only when it is.
+    if (in_array('form.submitted', $events, true) && !empty($fill['recap_ai'])) {
+        $out[] = array('key' => 'form_sort', 'category' => 'site', 'icon' => 'bi-funnel',
+            'title' => lang('Sort incoming forms'),
+            'help' => lang('Pinegrap AI reads each submitted form and opens a task for sales or for support; spam ends there.'),
+            'boxes' => array(
+                'start'   => $on('form.submitted'),
+                'read'    => array('kind' => 'record_get', 'config' => array('record' => 'form', 'id' => '{{trigger.record_id}}')),
+                'sort'    => array('kind' => 'ai', 'config' => array('mode' => 'classify',
+                    'prompt' => lang('Sort this submitted web form. Sales: a question about buying, prices or an offer. Support: help with something already bought or in use. Spam: advertising, nonsense or anything not meant for us.'),
+                    'text' => '{{node.read.answers}}', 'classes' => array(lang('Sales'), lang('Support'), lang('Spam')), 'closes_in' => 24)),
+                'sales'   => $task(lang('Answer the sales question {{record_title}}'), 'high'),
+                'support' => $task(lang('Answer the support request {{record_title}}'), 'normal'),
+                'spam'    => array('kind' => 'end', 'config' => array()),
+                'unsure'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Pinegrap AI could not sort a submitted form: {{record}}')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'read', 'next'), array('read', 'sort', 'done'), array('sort', 'sales', 'class_1'),
+                array('sort', 'support', 'class_2'), array('sort', 'spam', 'class_3'), array('sort', 'unsure', 'other')));
     }
 
     // The templates a scheduled action has no form for: tasks that wait for

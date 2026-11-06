@@ -36,4 +36,4 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T13 (done, PR #7486; its `cart_quote` kind in Read a record: #7474): quote follow-up: a cart quote is made → wait 2 days → read the quote → still open: a task to call the customer (an e-mail after B8).
 
-- T14 (after B2): sort incoming forms: a form is submitted → Pinegrap AI picks sales, support or spam → a task for the right person, spam ends.
+- T14 (done, PR #7505): sort incoming forms: a form is submitted → Pinegrap AI picks sales, support or spam → a task for the right person, spam ends.
