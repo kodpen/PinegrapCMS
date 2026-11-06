@@ -579,27 +579,21 @@ function api_inventory_locations_list($params) {
 
 }
 
-function api_inventory_list($params) {
-
-	$location = api_inventory_location(isset($params['location']) ? $params['location'] : null);
-
-	if ($location === null) {
-
-		api_fail(422, 'location', lang('location is not a stock location of this site.'), 'location');
-
-	}
-
-	$location_ids = array();
-
-	foreach (pg_stock_locations() as $row) {
-
-		$location_ids[] = (int)$row['id'];
-
-	}
-
-	$default_id = pg_stock_default_location();
+// The conditions of GET /inventory without its cursor: products that track
+// stock, out of the Recycle Bin when the catalogue has one ($bin), and the
+// product and stock filters. Pure.
+function api_inventory_list_where($params, $location, $default_id, $bin) {
 
 	$where = array("products.inventory = '1'");
+
+	// A product in the catalogue Recycle Bin is deleted as far as the shop is
+	// concerned: GET /products leaves it out, so this list does too, or a
+	// stock sync would keep offering a product the shop no longer sells.
+	if ($bin) {
+
+		$where[] = "products.recycled = '0'";
+
+	}
 
 	if (!empty($params['product_id'])) {
 
@@ -629,6 +623,32 @@ function api_inventory_list($params) {
 		}
 
 	}
+
+	return $where;
+
+}
+
+function api_inventory_list($params) {
+
+	$location = api_inventory_location(isset($params['location']) ? $params['location'] : null);
+
+	if ($location === null) {
+
+		api_fail(422, 'location', lang('location is not a stock location of this site.'), 'location');
+
+	}
+
+	$location_ids = array();
+
+	foreach (pg_stock_locations() as $row) {
+
+		$location_ids[] = (int)$row['id'];
+
+	}
+
+	$default_id = pg_stock_default_location();
+
+	$where = api_inventory_list_where($params, $location, $default_id, api_catalog_bin_columns());
 
 	if (isset($params['cursor']) && $params['cursor'] !== '') {
 
