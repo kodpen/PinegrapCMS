@@ -28,6 +28,6 @@ module: payments
 
 ## What is left?
 - The readers still get the secret as a constant, the one exception to `core/security-helpers-and-secret-storage.md`. Moving the decode into each reader waits for `submit_order.php` to be free.
-- Other legacy gateways' keys (Stripe, Sage, ClearCommerce password) are still printed.
+- Other legacy keys: masked, still plain (`gateway-masked-keys.md`).
 
 Related: docs/memory/core/security-helpers-and-secret-storage.md, docs/memory/commerce/payment-driver-iyzico.md

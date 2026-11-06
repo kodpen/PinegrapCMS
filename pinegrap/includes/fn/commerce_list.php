@@ -45,7 +45,7 @@ function pg_commerce_list_specs(array $specs, array $sort_columns, array $quick_
         $type = $quick_edit[$key]['type'] ?? '';
         $type = ($type === 'integer') ? 'number' : $type;
 
-        if (in_array($type, array('text', 'number', 'money', 'select', 'check', 'date'), true)) {
+        if (in_array($type, pg_list_table_edit_kinds(), true)) {
             $specs[$key]['editable'] = $type;
         }
     }

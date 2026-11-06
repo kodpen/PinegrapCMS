@@ -90,6 +90,31 @@ function pg_shipping_method_save($shipping_method_id, $columns, $zone_ids, $excl
 }
 
 /**
+ * Replaces the zones of a shipping method (the shipping method list's
+ * Zones field writes them alone).
+ *
+ * @param int   $shipping_method_id
+ * @param array $zone_ids
+ * @return bool  false when a query failed
+ */
+function pg_shipping_method_save_zones($shipping_method_id, $zone_ids)
+{
+    $shipping_method_id = (int) $shipping_method_id;
+
+    if (!db_q("DELETE FROM shipping_methods_zones_xref WHERE shipping_method_id = ?", array($shipping_method_id))) {
+        return false;
+    }
+
+    foreach (pg_store_zone_link_ids($zone_ids) as $zone_id) {
+        if (!db_q("INSERT INTO shipping_methods_zones_xref (shipping_method_id, zone_id) VALUES (?, ?)", array($shipping_method_id, $zone_id))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * Replaces the zones and the excluded transit dates of a shipping method.
  *
  * @param int   $shipping_method_id
@@ -101,18 +126,12 @@ function pg_shipping_method_save_links($shipping_method_id, $zone_ids, $excluded
 {
     $shipping_method_id = (int) $shipping_method_id;
 
-    if (!db_q("DELETE FROM shipping_methods_zones_xref WHERE shipping_method_id = ?", array($shipping_method_id))) {
+    if (!pg_shipping_method_save_zones($shipping_method_id, $zone_ids)) {
         return false;
     }
 
     if (!db_q("DELETE FROM excluded_transit_dates WHERE shipping_method_id = ?", array($shipping_method_id))) {
         return false;
-    }
-
-    foreach (pg_store_zone_link_ids($zone_ids) as $zone_id) {
-        if (!db_q("INSERT INTO shipping_methods_zones_xref (shipping_method_id, zone_id) VALUES (?, ?)", array($shipping_method_id, $zone_id))) {
-            return false;
-        }
     }
 
     foreach (array_unique((array) $excluded_dates) as $date) {

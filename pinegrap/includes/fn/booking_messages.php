@@ -666,7 +666,8 @@ function pg_booking_reminder_hours()
  * The general job's reminder pass: the confirmed bookings whose reminder
  * moment fell since the last pass get the booking_reminder mail and text.
  * The pass time is written before anything is sent, so a pass that dies
- * loses its reminders rather than sending them twice.
+ * loses its reminders rather than sending them twice, and only while it still
+ * holds the time this pass read, so two overlapping runs never both send.
  *
  * @param int $now
  * @return int how many reminders went out
@@ -690,7 +691,9 @@ function pg_booking_reminders_run($now)
     // than a day.
     $last = ($stored !== '') ? max((int) $stored, $now - 86400) : $now - 900;
 
-    if (!pg_config_text_save('booking_reminders_at', (string) $now)) {
+    // Claimed against the value read: of two general job runs that read the
+    // same pass time, only the one whose write changed the row sends.
+    if (!pg_config_text_claim('booking_reminders_at', $stored, (string) $now)) {
         return 0;
     }
 

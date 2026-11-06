@@ -145,7 +145,39 @@ function ws_events_catalog()
             'order.cancelled'      => array('label' => lang('An order is cancelled'), 'when' => lang('When an order is cancelled'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.requested' => array('label' => lang('A return is requested'), 'when' => lang('When a return is requested'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'stock.low'            => array('label' => lang('A product runs low in stock'), 'when' => lang('When a product runs low in stock'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.approved' => array('label' => lang('A return is approved'), 'when' => lang('When a return is approved'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.received' => array('label' => lang('A return arrives back'), 'when' => lang('When the goods of a return arrive back'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.refunded' => array('label' => lang('A return is refunded'), 'when' => lang('When a return is refunded'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'marketplace.order.imported' => array('label' => lang('A marketplace order is imported'), 'when' => lang('When a marketplace order is imported'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'inventory.changed'    => array('label' => lang('A product\'s stock changes'), 'when' => lang('When a product\'s stock changes'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
         );
+
+        if (function_exists('pg_reviews_ready') && pg_reviews_ready()) {
+            $catalog['product.review.created'] = array('label' => lang('A product review is written'), 'when' => lang('When a product review is written'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => '');
+        }
+
+        if (function_exists('pg_cart_quotes_ready') && pg_cart_quotes_ready()) {
+            $catalog += array(
+                'cart_quote.created' => array('label' => lang('A cart quote is made'), 'when' => lang('When a cart quote is made'), 'record' => 'cart_quote', 'right' => 'ecommerce', 'filter' => ''),
+                'cart_quote.ordered' => array('label' => lang('A cart quote is ordered'), 'when' => lang('When a cart quote is ordered'), 'record' => 'cart_quote', 'right' => 'ecommerce', 'filter' => ''),
+            );
+        }
+
+        // A renewal is about its order; a failure or a cancellation about
+        // the customer's contact (ws_events_record_of()).
+        if (function_exists('pg_subscriptions_ready') && pg_subscriptions_ready()) {
+            $catalog += array(
+                'subscription.renewed'   => array('label' => lang('A subscription is renewed'), 'when' => lang('When a subscription is renewed'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+                'subscription.failed'    => array('label' => lang('A subscription renewal fails'), 'when' => lang('When a subscription renewal fails'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+                'subscription.cancelled' => array('label' => lang('A subscription is cancelled'), 'when' => lang('When a subscription is cancelled'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+            );
+        }
+
+        // The fee of a designed form's record, narrowed to one form like a
+        // submission.
+        if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
+            $catalog['form.paid'] = array('label' => lang('A form\'s fee is paid'), 'when' => lang('When a form\'s fee is paid'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page');
+        }
     }
 
     $catalog += array(
@@ -187,6 +219,13 @@ function ws_events_catalog()
         $catalog['workspace.mail.received'] = array('label' => lang('An e-mail is received'), 'when' => lang('When an e-mail is received'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
     }
 
+    // A run of another flow that failed: checked against the runs the
+    // creator reads (ws_events_creator_sees()); a flow never starts on its
+    // own failure (ws_events_own_failure()).
+    if (function_exists('ws_flows_ready') && ws_flows_ready()) {
+        $catalog['workspace.flow.run.failed'] = array('label' => lang('A flow run fails'), 'when' => lang('When a run of a flow fails'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
+    }
+
     return $catalog;
 }
 
@@ -205,6 +244,7 @@ function ws_events_own()
         'workspace.approval.decided',
         'workspace.guest.message',
         'workspace.mail.received',
+        'workspace.flow.run.failed',
         'workspace.wtable.row.created',
         'workspace.wtable.row.updated',
         'workspace.wtable.row.deleted',
@@ -220,6 +260,22 @@ function ws_events_own()
 function ws_events_is_own($event)
 {
     return in_array((string) $event, ws_events_own(), true);
+}
+
+/**
+ * Is the event the failure of the very flow a rule would start? A flow never
+ * starts on its own failure: a run that fails again would start the next.
+ * Pure.
+ *
+ * @param string $event
+ * @param array  $payload
+ * @param int    $flow_id the flow the waiting rule starts, 0 for a plain scheduled action
+ * @return bool
+ */
+function ws_events_own_failure($event, $payload, $flow_id)
+{
+    return ((string) $event === 'workspace.flow.run.failed') && ((int) $flow_id > 0)
+        && ((int) (((array) $payload)['flow_id'] ?? 0) === (int) $flow_id);
 }
 
 /**
@@ -402,6 +458,18 @@ function ws_events_creator_sees($user_id, $event, $payload)
         return $task && ws_can_see_task($viewer, $task);
     }
 
+    // A failed run: one the creator reads (ws_flow_run_access()), whatever
+    // its channel; a run of no channel is read by the flow's own people.
+    if ((string) $event === 'workspace.flow.run.failed') {
+        if (!function_exists('ws_flow_run_access')) {
+            return false;
+        }
+
+        $run = ws_flow_run((int) ($payload['run_id'] ?? 0));
+
+        return $run && (ws_flow_run_access($viewer, ws_flow((int) $run['flow_id']), $run) !== '');
+    }
+
     // A row of a workflow table: the table read, its owner on the team
     // (ws_wtable_flow_gate()).
     if (strpos((string) $event, 'workspace.wtable.') === 0) {
@@ -440,7 +508,7 @@ function ws_events_channels($viewer)
 /**
  * The record an event is about, as a tag names it: the kind and the id.
  * Each event carries the id under its own key (an order's id, a stock
- * warning's product_id, a submission's id). A task's events are about the
+ * warning's product_id, a submission's id, a review's item_id). A task's events are about the
  * task; a settled approval request about the task it asked about, otherwise
  * its channel; a guest's message about the guest's room.
  *
@@ -453,8 +521,29 @@ function ws_events_record_of($event, $payload)
     $event = (string) $event;
     $payload = (array) $payload;
 
-    if (strpos($event, 'order.') === 0) {
+    if ((strpos($event, 'order.') === 0) || ($event === 'marketplace.order.imported')) {
         return array('order', (int) ($payload['id'] ?? 0));
+    }
+
+    if (strpos($event, 'cart_quote.') === 0) {
+        return array('cart_quote', (int) ($payload['id'] ?? 0));
+    }
+
+    // A renewal names its order; a failure or a cancellation the customer's
+    // contact, when the subscription's account has one.
+    if (strpos($event, 'subscription.') === 0) {
+        if ((int) ($payload['order_id'] ?? 0) > 0) {
+            return array('order', (int) $payload['order_id']);
+        }
+
+        return ((int) ($payload['customer_id'] ?? 0) > 0) ? array('contact', (int) $payload['customer_id']) : array('', 0);
+    }
+
+    // A review of a product, or of a product group shown as one product.
+    if ($event === 'product.review.created') {
+        $item_type = (string) ($payload['item_type'] ?? '');
+
+        return in_array($item_type, array('product', 'product_group'), true) ? array($item_type, (int) ($payload['item_id'] ?? 0)) : array('', 0);
     }
 
     if (strpos($event, 'workspace.task.') === 0) {
@@ -475,8 +564,14 @@ function ws_events_record_of($event, $payload)
         return array('channel', (int) ($payload['channel_id'] ?? 0));
     }
 
+    // A failed run: the channel it ran in, none for a flow with no home.
+    if ($event === 'workspace.flow.run.failed') {
+        return ((int) ($payload['channel_id'] ?? 0) > 0) ? array('channel', (int) $payload['channel_id']) : array('', 0);
+    }
+
     switch ($event) {
         case 'stock.low':
+        case 'inventory.changed':
         case 'product.updated':
             return array('product', (int) ($payload['product_id'] ?? ($payload['id'] ?? 0)));
 
@@ -486,6 +581,7 @@ function ws_events_record_of($event, $payload)
             return array('contact', (int) ($payload['id'] ?? 0));
 
         case 'form.submitted':
+        case 'form.paid':
             return array('form', (int) ($payload['id'] ?? 0));
     }
 
@@ -734,10 +830,12 @@ function ws_events_start($event_id, $event, $payload)
     if ($waiting === null) {
         $waiting = array();
 
-        foreach ((array) db_items("SELECT id, rules, created_by FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
+        $flow_column = (function_exists('ws_flows_ready') && ws_flows_ready()) ? ', flow_id' : '';
+
+        foreach ((array) db_items("SELECT id, rules, created_by" . $flow_column . " FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
                 if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row'), true)) {
-                    $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by']);
+                    $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by'], 'flow_id' => (int) ($row['flow_id'] ?? 0));
                 }
             }
         }
@@ -758,6 +856,10 @@ function ws_events_start($event_id, $event, $payload)
 
     foreach ($waiting as $action_id => $item) {
         if (!ws_events_rule_matches($item['rule'], $event, $payload)) {
+            continue;
+        }
+
+        if (ws_events_own_failure($event, $payload, $item['flow_id'])) {
             continue;
         }
 
@@ -807,6 +909,20 @@ function ws_events_fill_values($viewer, $event, $payload)
         '{{actor}}'         => '',
         '{{message}}'       => '',
     );
+
+    // A failed run: its channel's tag, the flow's name and the box's
+    // sentence, only for a creator who reads the run.
+    if ((string) $event === 'workspace.flow.run.failed') {
+        if (!is_array($viewer) || !ws_events_creator_sees((int) ($viewer['id'] ?? 0), $event, (array) $payload)) {
+            return $values;
+        }
+
+        $values['{{record}}'] = (($type !== '') && ($id > 0)) ? '<#' . $type . ':' . $id . '>' : '';
+        $values['{{record_title}}'] = (string) ($payload['flow_name'] ?? '');
+        $values['{{message}}'] = trim((string) ($payload['box'] ?? '') . ': ' . (string) ($payload['sentence'] ?? ''), ': ');
+
+        return $values;
+    }
 
     if (($type === '') || ($id <= 0)) {
         return $values;

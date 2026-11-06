@@ -228,12 +228,7 @@ function pg_ap_reply_thread($ref, $site)
     if ($ref['kind'] === 'c') {
         $row = pg_ap_comments_row("SELECT id, page_id, item_type, item_id FROM comments WHERE id = ? AND published = '1' AND remote_actor = ''", array((string) (int) $ref['id']));
 
-        if (!$row) {
-            return null;
-        }
-
-        return array('page_id' => (int) $row['page_id'], 'item_type' => (string) $row['item_type'], 'item_id' => (int) $row['item_id'],
-            'parent_id' => (int) $row['id']);
+        return $row ? pg_ap_comment_thread($row, pg_ap_published($site, pg_ap_settings()), $site) : null;
     }
 
     $published = pg_ap_published($site, pg_ap_settings());
@@ -261,6 +256,29 @@ function pg_ap_reply_thread($ref, $site)
     }
 
     return array('page_id' => (int) $entry['record_page']['page_id'], 'item_type' => 'submitted_form', 'item_id' => (int) $ref['id'], 'parent_id' => 0);
+}
+
+/**
+ * The thread of a comment written on the site that a remote note answers,
+ * only while that thread's page or record is published to the Fediverse:
+ * a comment id alone would otherwise let any server post into the thread of
+ * a private, member-only or binned page. Pure.
+ *
+ * @param array $row       the comment's id, page_id, item_type, item_id
+ * @param array $published pg_ap_published()
+ * @param array $site      pg_ap_site()
+ * @return array|null page_id, item_type, item_id, parent_id
+ */
+function pg_ap_comment_thread($row, $published, $site)
+{
+    $objects = pg_ap_thread_objects($site, (int) $row['page_id'], (string) $row['item_type'], (int) $row['item_id']);
+
+    if (!$objects || !isset($published[$objects[0]])) {
+        return null;
+    }
+
+    return array('page_id' => (int) $row['page_id'], 'item_type' => (string) $row['item_type'], 'item_id' => (int) $row['item_id'],
+        'parent_id' => (int) $row['id']);
 }
 
 /**

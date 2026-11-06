@@ -119,6 +119,34 @@ function pg_pb_zones()
     return $cache;
 }
 
+/**
+ * Replace the zones a product may be shipped to: the product screen's save
+ * (new and edited products) and the product list's zone cells write them
+ * here. An empty list means the product ships nowhere
+ * (pg_pb_render_zone_options()).
+ *
+ * @param int   $product_id
+ * @param array $zone_ids
+ * @return bool false when a query failed
+ */
+function pg_pb_save_zones($product_id, $zone_ids)
+{
+    $product_id = (int) $product_id;
+
+    if (!$product_id || !db_q("DELETE FROM products_zones_xref WHERE product_id = ?", array($product_id))) {
+        return false;
+    }
+
+    foreach (array_unique(array_filter(array_map('intval', (array) $zone_ids))) as $zone_id) {
+        pg_pb_insert_row('products_zones_xref', array(
+            'product_id' => $product_id,
+            'zone_id'    => $zone_id,
+        ));
+    }
+
+    return true;
+}
+
 
 /**
  * Does the catalog have any product group at all?
@@ -1598,15 +1626,7 @@ function pg_pb_create_product($product, $relations = array())
         }
     }
 
-    foreach ($zone_ids as $zone_id) {
-        $zone_id = (int) $zone_id;
-        if ($zone_id) {
-            pg_pb_insert_row('products_zones_xref', array(
-                'product_id' => $product_id,
-                'zone_id'    => $zone_id,
-            ));
-        }
-    }
+    pg_pb_save_zones($product_id, $zone_ids);
 
     $sort_order = 0;
 
@@ -6882,19 +6902,7 @@ function pg_pb_update_product($product_id)
     }
 
     if ($shipping_on) {
-        db("DELETE FROM products_zones_xref WHERE product_id = '" . e($product_id) . "'");
-
-        if (!empty($_POST['allowed_zones']) && is_array($_POST['allowed_zones'])) {
-            foreach ($_POST['allowed_zones'] as $zone_id) {
-                $zone_id = (int) $zone_id;
-                if ($zone_id) {
-                    pg_pb_insert_row('products_zones_xref', array(
-                        'product_id' => $product_id,
-                        'zone_id'    => $zone_id,
-                    ));
-                }
-            }
-        }
+        pg_pb_save_zones($product_id, (!empty($_POST['allowed_zones']) && is_array($_POST['allowed_zones'])) ? $_POST['allowed_zones'] : array());
     }
 
     pg_pb_save_submit_form_fields($product_id);
@@ -7577,18 +7585,19 @@ function pg_pb_quick_edit_columns($choices = null)
  */
 function pg_pb_quick_edit_choice_codes()
 {
-    return array('set_start_page', 'grant_private_access', 'email_page', 'contact_group');
+    return array('set_start_page', 'grant_private_access', 'email_page', 'contact_group', 'allowed_zones', 'disallowed_zones');
 }
 
 /**
  * What the product screen's pickers offer the user, read once per request:
  * the pages (select_page()), the folders with private access
  * (select_folder()) and the contact groups (select_contact_group(), a
- * role-3 user's own only). The pickers read the global $user, which a
- * quick edit request has not set yet.
+ * role-3 user's own only), and the shipping zones while the store ships
+ * (the screen's Allowed Zones picker, pg_pb_zones()). The pickers read the
+ * global $user, which a quick edit request has not set yet.
  *
  * @param array $user the signed-in user
- * @return array 'pages', 'folders', 'groups': id => label
+ * @return array 'pages', 'folders', 'groups', 'zones': id => label
  */
 function pg_pb_quick_edit_choices($user)
 {
@@ -7616,7 +7625,14 @@ function pg_pb_quick_edit_choices($user)
         'pages' => $pages,
         'folders' => pg_page_quick_option_pairs(select_folder(0, 0, 0, 0, array(), array(), 'private')),
         'groups' => pg_page_quick_option_pairs(select_contact_group('', $user)),
+        'zones' => array(),
     );
+
+    if (!defined('ECOMMERCE_SHIPPING') || ECOMMERCE_SHIPPING) {
+        foreach (pg_pb_zones() as $zone) {
+            $read[$key]['zones'][(string) (int) $zone['id']] = (string) $zone['name'];
+        }
+    }
 
     if ($had_user) {
         $GLOBALS['user'] = $global_user;
@@ -7632,10 +7648,13 @@ function pg_pb_quick_edit_choices($user)
  * pickers offer them (pg_pb_quick_edit_choices()), each with a first choice
  * for none: the customer's start page and the private folder (only on a
  * product that grants private access, where the screen shows them), the
- * e-mail page and the contact group. Pure.
+ * e-mail page and the contact group; and, where there are zones, the
+ * allowed and the disallowed zones as several choices, two sides of the
+ * one list the screen's Allowed Zones picker writes (pg_pb_save_zones()).
+ * Pure.
  *
  * @param array $choices pg_pb_quick_edit_choices()
- * @return array field => array('column', 'kind', 'edit'[, 'row', 'private'])
+ * @return array field => array('column', 'kind', 'edit'[, 'row', 'private', 'allowed'])
  */
 function pg_pb_quick_edit_choice_fields($choices)
 {
@@ -7653,12 +7672,54 @@ function pg_pb_quick_edit_choice_fields($choices)
         return $extra + array('column' => $column, 'kind' => 'choice', 'edit' => array('type' => 'select', 'label' => $label, 'options' => $pairs));
     };
 
-    return array(
+    $fields = array(
         'set_start_page' => $choice('send_to_page', lang('Set Start Page'), $choices['pages'] ?? array(), array('private' => true)),
         'grant_private_access' => $choice('private_folder', lang('Grant Private Access'), $choices['folders'] ?? array(), array('private' => true, 'row' => 'private_folder_id')),
         'email_page' => $choice('email_page', lang('E-mail Page'), $choices['pages'] ?? array(), array('row' => 'email_page_id')),
         'contact_group' => $choice('contact_group_id', lang('Contact Group'), $choices['groups'] ?? array()),
     );
+
+    // The zones are not a products column: the row carries the allowed ones
+    // as allowed_zone_ids (pg_product_list_row(), pg_pb_quick_update()).
+    $zones = array();
+
+    foreach ((array) ($choices['zones'] ?? array()) as $value => $text) {
+        if ((int) $value > 0) {
+            $zones[(string) (int) $value] = (string) $text;
+        }
+    }
+
+    if ($zones) {
+        foreach (array('allowed_zones' => lang('Allowed Zones'), 'disallowed_zones' => lang('Disallowed Zones')) as $field => $label) {
+            $fields[$field] = array('column' => 'allowed_zone_ids', 'columns' => array(), 'kind' => 'zones', 'allowed' => ($field === 'allowed_zones'),
+                'edit' => array('type' => 'multiselect', 'label' => $label, 'options' => $zones));
+        }
+    }
+
+    return $fields;
+}
+
+/**
+ * One side of a product's zones as a zone field's value: the allowed ones,
+ * or the rest, among the choices and in their order, comma-separated. Pure.
+ *
+ * @param string|array $allowed the allowed zone ids (a list, or comma-separated)
+ * @param array        $options zone id => name
+ * @param bool         $side    true for the allowed side
+ * @return string
+ */
+function pg_pb_quick_zone_value($allowed, $options, $side = true)
+{
+    $allowed = array_flip(array_map('strval', array_map('intval', is_array($allowed) ? $allowed : explode(',', (string) $allowed))));
+    $value = array();
+
+    foreach (array_keys((array) $options) as $id) {
+        if (isset($allowed[(string) $id]) === $side) {
+            $value[] = (string) $id;
+        }
+    }
+
+    return implode(',', $value);
 }
 
 /**
@@ -7692,6 +7753,11 @@ function pg_pb_quick_cell_editable($field, $product, $fields)
     }
 
     $more = $fields[$field];
+
+    // The zones only on a row read with them.
+    if ($more['kind'] === 'zones') {
+        return array_key_exists('allowed_zone_ids', $product);
+    }
 
     if ($more['kind'] !== 'choice') {
         return true;
@@ -7748,9 +7814,9 @@ function pg_pb_quick_dimensions_change($value)
  * block the product screen does not draw is not offered either: the
  * shipping figures while the store does not ship, Start where the gateway
  * takes no start day. The pages, folder and contact group chosen from the
- * site need the user's choices (pg_pb_quick_edit_choice_fields()). Left on
- * the product screen: the zones (several choices) and the order receipt
- * message (rich text).
+ * site, and the zones, need the user's choices
+ * (pg_pb_quick_edit_choice_fields()). Left on the product screen: the order
+ * receipt message (rich text).
  *
  * @return array field => array('column', 'kind', 'edit'[, 'code', 'row', 'columns'])
  */
@@ -7887,6 +7953,17 @@ function pg_pb_quick_more_change($field, $value, $current, $fields = null)
 
     $more = $fields[$field];
     $label = $more['edit']['label'];
+
+    // Several zones picked on one side; the allowed list is what is stored.
+    if ($more['kind'] === 'zones') {
+        $options = $more['edit']['options'];
+        $chosen = pg_pb_quick_zone_value(is_array($value) ? $value : (string) $value, $options, true);
+
+        return array('ok' => true, 'change' => array('allowed_zone_ids' => empty($more['allowed'])
+            ? pg_pb_quick_zone_value($chosen, $options, false)
+            : $chosen), 'message' => '');
+    }
+
     $value = is_scalar($value) ? (string) $value : '';
 
     switch ($more['kind']) {
@@ -7962,6 +8039,16 @@ function pg_pb_quick_more_shown($field, $product, $fields = null)
     $fields = is_array($fields) ? $fields : pg_pb_quick_edit_more_fields();
     $more = $fields[$field];
     $value = pg_pb_quick_edit_value($field, $product, $fields);
+
+    if ($more['kind'] === 'zones') {
+        $names = array();
+
+        foreach (($value === '') ? array() : explode(',', $value) as $id) {
+            $names[] = (string) $more['edit']['options'][$id];
+        }
+
+        return implode(', ', $names);
+    }
 
     if (isset($more['edit']['options'][$value])) {
         return (string) $more['edit']['options'][$value];
@@ -8078,6 +8165,8 @@ function pg_pb_quick_edit_value($field, $product, $fields = null)
             case 'whole':
             case 'choice':
                 return (string) (int) $raw;
+            case 'zones':
+                return pg_pb_quick_zone_value($raw, $more[$field]['edit']['options'], !empty($more[$field]['allowed']));
             case 'dimensions':
                 // 12 x 3 x 4.5 in the site's decimal style; empty for none.
                 $sizes = array();
@@ -8162,6 +8251,16 @@ function pg_pb_quick_update($product_id, $field, $value, $user = null)
 
     if (!$current) {
         return array('ok' => false, 'code' => 'not_found', 'message' => lang('Product not found.'));
+    }
+
+    $zones = isset($more[$field]) && ($more[$field]['kind'] === 'zones');
+
+    // The zones live beside the product (products_zones_xref), in the
+    // choices' order so the same list again reads as unchanged.
+    if ($zones) {
+        $current['allowed_zone_ids'] = pg_pb_quick_zone_value(
+            db_values("SELECT zone_id FROM products_zones_xref WHERE product_id = '" . $product_id . "'"),
+            $more[$field]['edit']['options']);
     }
 
     $change = array();
@@ -8277,6 +8376,15 @@ function pg_pb_quick_update($product_id, $field, $value, $user = null)
             $change['seo_analysis_current'] = 0;
         }
 
+        // Written the way the product screen's save writes them.
+        if ($zones) {
+            if (!pg_pb_save_zones($product_id, explode(',', $change['allowed_zone_ids']))) {
+                return array('ok' => false, 'code' => 'invalid', 'message' => lang('The value could not be saved.'));
+            }
+
+            unset($change['allowed_zone_ids']);
+        }
+
         pg_pb_update_row('products', $change, 'id', $product_id);
 
         if ($field === 'price') {
@@ -8341,8 +8449,17 @@ function pg_pb_quick_update($product_id, $field, $value, $user = null)
         $source = pg_product_list_source(is_array($user) ? $user : validate_user(), array('filter' => $_SESSION['software']['view_products']['filter'] ?? ''));
         $row = $source ? pg_list_table_record_row($source, $product_id) : null;
 
-        return array('ok' => true, 'value' => pg_pb_quick_edit_value($field, $product, $more))
-            + pg_list_table_edit_answer($row, isset($more[$field]['code']) ? $more[$field]['code'] : $field, array('last_modified'));
+        // The other side of the zones changes with this one: its cell and
+        // the boxes its field holds.
+        $other = $zones ? (($field === 'allowed_zones') ? 'disallowed_zones' : 'allowed_zones') : '';
+        $answer = array('ok' => true, 'value' => pg_pb_quick_edit_value($field, $product, $more))
+            + pg_list_table_edit_answer($row, isset($more[$field]['code']) ? $more[$field]['code'] : $field, array_filter(array('last_modified', $other)));
+
+        if (isset($answer['cells'][$other])) {
+            $answer['cells'][$other]['value'] = pg_pb_quick_edit_value($other, $product, $more);
+        }
+
+        return $answer;
     }
 
     $cells = pg_pb_list_cells($product);

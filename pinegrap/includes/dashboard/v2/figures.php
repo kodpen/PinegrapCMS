@@ -302,6 +302,19 @@ function pg_dashboard_v2_hours_since($stats, $since, $column)
 }
 
 /**
+ * Yesterday's midnight, stepped by calendar: across a clock change the day
+ * is 23 or 25 hours long, so today's midnight less 86400 seconds is an
+ * hour off it. Pure.
+ *
+ * @param int $midnight today's midnight
+ * @return int
+ */
+function pg_dashboard_v2_yesterday($midnight)
+{
+    return (int) strtotime('-1 day', (int) $midnight);
+}
+
+/**
  * The raw counts behind a figure, each read the way the old dashboard's
  * widget or brief reads the same rows. The caller checks the gate.
  *
@@ -315,14 +328,15 @@ function pg_dashboard_v2_figure_raw($key, $user)
 
     $now = time();
     $midnight = strtotime(date('Y-m-d', $now));
+    $yesterday = pg_dashboard_v2_yesterday($midnight);
 
     switch ((string) $key) {
         case 'visits':
             // The hourly rollup, as the Visitor Summaries widget reads it.
-            $stats = pg_visitor_stats_range(date('Y-m-d', $midnight - 86400), date('Y-m-d', $midnight));
+            $stats = pg_visitor_stats_range(date('Y-m-d', $yesterday), date('Y-m-d', $midnight));
             return array(
                 'today'     => pg_dashboard_v2_hours_since($stats, $midnight, 'visitors'),
-                'yesterday' => array_sum(array_column($stats[date('Y-m-d', $midnight - 86400)] ?? array(), 'visitors')),
+                'yesterday' => array_sum(array_column($stats[date('Y-m-d', $yesterday)] ?? array(), 'visitors')),
             );
 
         case 'online':
@@ -343,7 +357,7 @@ function pg_dashboard_v2_figure_raw($key, $user)
                     SUM(CASE WHEN order_date >= " . (int) $midnight . " THEN 1 ELSE 0 END) AS today,
                     SUM(CASE WHEN order_date < " . (int) $midnight . " THEN 1 ELSE 0 END) AS yesterday
                  FROM orders
-                 WHERE status != 'incomplete' AND order_date >= " . (int) ($midnight - 86400));
+                 WHERE status != 'incomplete' AND order_date >= " . (int) $yesterday);
             return array('today' => (int) ($row['today'] ?? 0), 'yesterday' => (int) ($row['yesterday'] ?? 0));
 
         case 'seo':
@@ -483,7 +497,11 @@ function pg_dashboard_v2_chip_count($key, $user, $since)
         case 'subscribers':
             return (int) db_value("SELECT COUNT(*) FROM contacts WHERE opt_in = '1' AND email_address != '' AND timestamp >= " . $since);
         case 'files':
-            return (int) db_value("SELECT COUNT(*) FROM files WHERE timestamp >= " . $since);
+            // The files the person's Files card and file list show them.
+            require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_18.php');
+            $sql = pg_dashboard_v2_files_count_sql(pg_dashboard_files_where($user), $since);
+            return ($sql === null) ? 0 : (int) db_value($sql);
         case 'blocks':
             // SUM(hit_count): one row is a whole window of repeats.
             return (int) db_value("SELECT COALESCE(SUM(hit_count), 0) FROM waf_log WHERE action IN ('block', 'rate', 'ban') AND log_timestamp >= " . $since);
@@ -495,6 +513,25 @@ function pg_dashboard_v2_chip_count($key, $user, $since)
     }
 
     return 0;
+}
+
+/**
+ * The query counting files uploaded since a time under a files condition
+ * (pg_dashboard_files_where(): archived folders, design files and a
+ * contributor's folders left out). Pure.
+ *
+ * @param string|null $where SQL condition on files and folder; null when
+ *                           nothing is granted
+ * @param int         $since unix time
+ * @return string|null SQL; null when nothing is granted
+ */
+function pg_dashboard_v2_files_count_sql($where, $since)
+{
+    if ($where === null) {
+        return null;
+    }
+
+    return "SELECT COUNT(*) FROM files LEFT JOIN folder ON files.folder = folder.folder_id WHERE (" . $where . ") AND files.timestamp >= " . (int) $since;
 }
 
 /**

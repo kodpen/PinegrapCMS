@@ -305,6 +305,29 @@ function pg_product_question_state($comment_id)
 }
 
 /**
+ * Deletes a question's staff answers and their panel notifications, for a
+ * question being deleted: an answer left behind would show without its
+ * question. Nothing before the kind columns exist.
+ *
+ * @param int $question_id
+ * @return bool whether the deletes ran
+ */
+function pg_product_question_delete_answers($question_id)
+{
+    $id = (is_scalar($question_id) && !is_bool($question_id)) ? (int) $question_id : 0;
+
+    if (($id <= 0) || !pg_product_questions_ready()) {
+        return false;
+    }
+
+    $params = array((string) $id);
+
+    $notified = db_q("DELETE FROM notifications WHERE comment_id IN (SELECT id FROM (SELECT id FROM comments WHERE (answer_of = ?) AND (kind = 'answer')) AS answers)", $params);
+
+    return ($notified !== false) && (db_q("DELETE FROM comments WHERE (answer_of = ?) AND (kind = 'answer')", $params) !== false);
+}
+
+/**
  * Write, change or remove the staff answer to a question: a published
  * comment of kind 'answer' on the question's thread whose answer_of and
  * parent_id name it. An empty text removes the answer, so the question waits

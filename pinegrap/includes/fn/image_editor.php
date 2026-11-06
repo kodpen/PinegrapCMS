@@ -1363,7 +1363,7 @@ function pg_image_editor_strings_draw()
 {
     return array(
         'hintDraw'       => lang('Drag to draw. Shift: straight angles and squares.'),
-        'hintEraser'     => lang('Drag over pen strokes to erase them.'),
+        'hintEraser'     => lang('Drag over pen strokes, shapes and paths to erase them. Locked layers stay.'),
         'drawKinds'      => lang('Shapes'),
         'layer_arrow'    => lang('Arrow'),
         'layer_line'     => lang('Line'),
@@ -1376,7 +1376,7 @@ function pg_image_editor_strings_draw()
         'layer_pen'      => lang('Pen'),
         'eraser'         => lang('Eraser'),
         'eraserSize'     => lang('Eraser size'),
-        'eraserNote'     => lang('The eraser cuts pen strokes. Delete a shape with Select or the Delete key.'),
+        'eraserNote'     => lang('The eraser takes away what it passes over from pen strokes, shapes and paths. Locked layers stay as they are.'),
         'drawColor'      => lang('Color'),
         'strokeWidth'    => lang('Line width'),
         'strokeThin'     => lang('Thin'),

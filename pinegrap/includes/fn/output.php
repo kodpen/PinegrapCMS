@@ -1493,13 +1493,15 @@ function pg_list_sort_menu($url, $columns, $levels, $default, $query = array(), 
  *
  * A screen describes the columns it lets change once, as field => definition:
  *
- *   'type'     'text', 'textarea' (several lines), 'integer', 'money' or 'select'
+ *   'type'     'text', 'textarea' (several lines), 'integer', 'money', 'select'
+ *              or 'multiselect' (several of the options)
  *   'label'    the column's heading, for the input's name and the messages
  *   'max'      the longest text, or the highest number
  *   'min'      the lowest number (integer; 0 when not given)
  *   'empty'    an integer or an amount may be left empty, which reads as ''
- *   'required' a text may not be left empty
- *   'options'  value => label for 'select', in the order they are offered
+ *   'required' a text may not be left empty; a multiselect needs one choice
+ *   'options'  value => label for 'select' and 'multiselect', in the order
+ *              they are offered; a multiselect's values hold no comma
  *
  * The table names the address that takes the change and carries the
  * definitions (pg_list_edit_table()); each cell that can change carries its
@@ -1641,6 +1643,8 @@ function pg_list_edit_cell_attributes($columns, $field, $id, $value)
  *   money    the digits and separators as typed, spaces taken out
  *   decimal  the same, for a figure that is not an amount (a weight)
  *   select   the value of one of the options, as a string
+ *   multiselect  the values of the options named, comma-separated in the
+ *            post and in the cell's value, as a list in the options' order
  *
  * @param array $column the column's definition
  * @param mixed $raw    the posted value
@@ -1739,6 +1743,36 @@ function pg_list_edit_parse($column, $raw)
             }
 
             return $fail(lang(array('string' => 'Choose one of the values offered for {var:1}.', 'vars' => array($label))));
+
+        case 'multiselect':
+            $named = array();
+
+            foreach (explode(',', $value) as $part) {
+                $part = trim($part);
+
+                if ($part !== '') {
+                    $named[$part] = true;
+                }
+            }
+
+            $chosen = array();
+
+            foreach ((array) ($column['options'] ?? array()) as $option => $text) {
+                if (isset($named[(string) $option])) {
+                    $chosen[] = (string) $option;
+                    unset($named[(string) $option]);
+                }
+            }
+
+            if ($named) {
+                return $fail(lang(array('string' => 'Choose one of the values offered for {var:1}.', 'vars' => array($label))));
+            }
+
+            if (!$chosen && !empty($column['required'])) {
+                return $fail(lang(array('string' => '{var:1|c} is required', 'vars' => array($label))));
+            }
+
+            return $pass($chosen);
     }
 
     return $fail(lang('This column cannot be changed here.'));
@@ -1755,7 +1789,8 @@ function pg_list_edit_parse($column, $raw)
  * @param array    $columns field => definition
  * @param callable $allowed function ($user): whether this user may change the list
  * @return array array('user' => the user, 'field' => field, 'id' => record number,
- *               'value' => the value pg_list_edit_parse() read)
+ *               'value' => the value pg_list_edit_parse() read,
+ *               'was' => the value the cell opened with, pg_list_edit_was())
  */
 function pg_list_edit_request($columns, $allowed)
 {
@@ -1794,7 +1829,22 @@ function pg_list_edit_request($columns, $allowed)
         pg_list_edit_reply(array('ok' => false, 'code' => 'invalid', 'message' => $parsed['error']), 422);
     }
 
-    return array('user' => $user, 'field' => $field, 'id' => $id, 'value' => $parsed['value']);
+    return array('user' => $user, 'field' => $field, 'id' => $id, 'value' => $parsed['value'], 'was' => pg_list_edit_was($_POST));
+}
+
+/**
+ * The value the edited cell opened with, as the list drew it (its
+ * data-pg-edit-value): a screen whose write must not overwrite a change
+ * made elsewhere since the list was drawn compares it with what is stored.
+ * Null when the request does not carry it (a page drawn by an older
+ * script). Pure.
+ *
+ * @param array $post the request's fields
+ * @return string|null
+ */
+function pg_list_edit_was(array $post)
+{
+    return (isset($post['was']) && is_string($post['was'])) ? $post['was'] : null;
 }
 
 /**
@@ -7339,6 +7389,9 @@ function pg_js_bundles()
         'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js', 'assets/js/pg_list_table_edit.js'),
         // The Prototype view's hotspot collector (window.PGProtoHotspots).
         'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
+        // Live pictures of designs and templates (window.PGLivePicture,
+        // includes/fn/design_previews.php).
+        'assets/js/pg_live_picture.min.js'         => array('assets/js/pg_live_picture.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the

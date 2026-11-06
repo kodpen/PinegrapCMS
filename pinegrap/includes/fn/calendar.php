@@ -1331,6 +1331,68 @@ function pg_calendar_event_exception_number_ok($recurrence_number, $recurrence, 
 }
 
 /**
+ * A calendar event as an .ics file (pure), the answer of a calendar event
+ * view page to ?icalendar=true. Text values are escaped and long lines
+ * folded (pg_booking_ics_escape(), pg_booking_ics_fold()), so a comma, a
+ * semicolon or a line break in the name, location or short description
+ * stays inside its own property. An all-day event is written as dates,
+ * its DTEND the day after its last day as RFC 5545 asks; a timed event
+ * keeps the site's local times.
+ *
+ * @param array  $event     id, created_timestamp, all_day, start_date_and_time,
+ *                          end_date_and_time, location, name, short_description
+ * @param string $host      PRODID's host
+ * @param string $page_name PRODID's product name
+ * @param string $rrule     RRULE value without the name, '' for none
+ * @return string CRLF line endings
+ */
+function pg_calendar_event_ics($event, $host, $page_name, $rrule)
+{
+    $start = strtotime((string) $event['start_date_and_time']);
+    $end = strtotime((string) $event['end_date_and_time']);
+    // PRODID is one line: line breaks in a page name are dropped.
+    $product = preg_replace('/[\x00-\x1F\x7F]/', '', (string) $host . '//NONSGML ' . (string) $page_name);
+
+    $lines = array(
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//' . $product . '//EN',
+        'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        'UID:' . $event['id'] . $event['created_timestamp'],
+        'DTSTAMP:' . date('Ymd\THis', $start),
+    );
+
+    if ((string) $event['all_day'] === '1') {
+        $first_day = date('Y-m-d', $start);
+        $last_day = date('Y-m-d', $end);
+
+        if ($last_day < $first_day) {
+            $last_day = $first_day;
+        }
+
+        $lines[] = 'DTSTART;VALUE=DATE:' . str_replace('-', '', $first_day);
+        $lines[] = 'DTEND;VALUE=DATE:' . date('Ymd', strtotime($last_day . ' +1 day'));
+    } else {
+        $lines[] = 'DTSTART:' . date('Ymd\THis', $start);
+        $lines[] = 'DTEND:' . date('Ymd\THis', $end);
+    }
+
+    $lines[] = 'LOCATION:' . pg_booking_ics_escape(trim((string) $event['location']));
+    $lines[] = 'SUMMARY:' . pg_booking_ics_escape(trim((string) $event['name']));
+    $lines[] = 'DESCRIPTION:' . pg_booking_ics_escape(trim((string) $event['short_description']));
+
+    if ($rrule !== '') {
+        $lines[] = 'RRULE:' . $rrule;
+    }
+
+    $lines[] = 'END:VEVENT';
+    $lines[] = 'END:VCALENDAR';
+
+    return implode("\r\n", array_map('pg_booking_ics_fold', $lines)) . "\r\n";
+}
+
+/**
  * The start and end of one occurrence of a recurring event. The occurrence
  * starts on its own date at the event's start time and lasts as long as the
  * event, so an overnight or multi-day event ends on a later day than the

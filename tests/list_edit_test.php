@@ -51,6 +51,18 @@ function test_list_edit_textarea_keeps_its_lines()
 	pg_assert_true(in_array('textarea', pg_list_table_edit_kinds(), true), 'a list column may be a several-line field');
 }
 
+function test_list_edit_multiselect_reads_offered_values_in_their_order()
+{
+	$column = array('type' => 'multiselect', 'label' => 'Zones', 'options' => array('7' => 'B', '3' => 'A', '9' => 'C'));
+
+	pg_assert_same(array('7', '3'), pg_list_edit_parse($column, ' 3, 7,3 ')['value'], 'each value once, in the options\' order');
+	pg_assert_same(array(), pg_list_edit_parse($column, '')['value'], 'none chosen');
+	pg_assert_false(pg_list_edit_parse($column, '3,4')['ok'], 'a value not offered');
+	pg_assert_false(pg_list_edit_parse(array('required' => true) + $column, ' , ')['ok'], 'a required one needs a choice');
+	pg_assert_same(array(), pg_list_edit_parse($column, array('3'))['value'], 'a posted list reads as nothing chosen');
+	pg_assert_true(in_array('multiselect', pg_list_table_edit_kinds(), true));
+}
+
 function test_list_edit_text_longer_than_its_column_is_refused()
 {
 	$columns = list_edit_columns();
@@ -169,4 +181,12 @@ function test_list_edit_cell_escapes_its_value()
 	pg_assert_contains(' data-pg-edit="title" data-pg-edit-id="7"', $cell, 'field and record');
 	pg_assert_contains(' data-pg-edit-value="&quot;&gt;&lt;b&gt;"', $cell, 'value escaped');
 	pg_assert_contains(' tabindex="0"', $cell, 'reachable by keyboard');
+}
+
+function test_list_edit_was_is_the_value_the_cell_opened_with()
+{
+	pg_assert_same('12,50', pg_list_edit_was(array('was' => '12,50')), 'the posted value as sent');
+	pg_assert_same('', pg_list_edit_was(array('was' => '')), 'an empty cell opened empty');
+	pg_assert_same(null, pg_list_edit_was(array()), 'a page drawn before the driver sent it');
+	pg_assert_same(null, pg_list_edit_was(array('was' => array('1'))), 'not a string');
 }

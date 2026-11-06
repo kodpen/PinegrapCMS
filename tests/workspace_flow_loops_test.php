@@ -274,6 +274,30 @@ function test_workspace_flow_loops_size_warning()
 	$graph['nodes'][] = ws_flow_loops_test_node('value_1', 'value', array('text' => '{{node.for_each_1.name}}'));
 	$graph = ws_flow_graph_normalize($graph);
 	pg_assert_same(154, ws_flow_loop_box_runs(array_column($graph['nodes'], null, 'id'), ws_flow_loops($graph))['total']);
+
+	// Repeat N times with a typed count runs that many times, not 50: five
+	// rounds of 9 boxes warned "50 items × 9 boxes" on dev. A count read
+	// from a value may still be 50.
+	$repeat = function ($count) use ($body) {
+		$graph = $body(9);
+
+		foreach ($graph['nodes'] as $index => $node) {
+			if ($node['id'] === 'for_each_1') {
+				$graph['nodes'][$index]['config'] = array('mode' => 'count', 'count' => $count);
+			}
+		}
+
+		return ws_flow_graph_normalize($graph);
+	};
+	pg_assert_same(5, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '5')));
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '{{node.webhook_1.body}}')), 'a value: the cap');
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '80')), 'never past the cap');
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'list', 'count' => '5')), 'a list: the cap');
+	pg_assert_same(array(), $warnings($repeat('5')), 'five rounds of 9 boxes');
+	$found = $warnings($repeat('40'));
+	pg_assert_same(1, count($found), 'forty rounds of 9 boxes');
+	pg_assert_contains('(40 items × 9 boxes in it)', $found[0]['text'], 'its own count');
+	pg_assert_same(1, count($warnings($repeat('{{node.webhook_1.body}}'))), 'a count from a value');
 }
 
 // A box outside a loop reads what its items gave through the End box, never
@@ -833,4 +857,41 @@ function test_workspace_flow_loops_counter_line_as_one_flow()
 	pg_assert_same(array(), $codes, 'one flow, no other problem');
 	pg_assert_same('repeat', ws_flow_loop_pure_of(array_column($graph['nodes'], null, 'id'), ws_flow_loops($graph))['raised'], 'the raised value is worked out per round');
 	pg_assert_same(array('get', 'found', 'set', 'wait'), array_values(array_intersect(array('get', 'found', 'set', 'wait'), ws_flow_loops($graph)['repeat']['body'])));
+}
+
+// A box tried again or skipped by hand at pass 0 takes back the boxes the
+// walk skipped behind it through a loop too: the For each box leads to its
+// End box (the outer walk's arrow on each), and on to what follows it, so a
+// failed For each box, or a failed box before it, tried again runs the End
+// box and the boxes after it. Inside a body the item's boxes are taken back.
+function test_workspace_flow_loops_skipped_behind()
+{
+	$graph = ws_flow_loops_test_graph();
+
+	$rows = ws_flow_loops_test_started(0);
+	$rows[2] = ws_flow_loops_test_row('for_each_1', 0, 'failed');
+	$rows[] = ws_flow_loops_test_row('for_each_end_1', 0, 'skipped');
+	$rows[] = ws_flow_loops_test_row('notify_2', 0, 'skipped');
+	pg_assert_same(array('for_each_end_1', 'notify_2'), ws_flow_loop_skipped_behind($graph, $rows, 'for_each_1', 0), 'the failed For each box');
+
+	$rows = array(
+		ws_flow_loops_test_row('start', 0, 'done', 'next'),
+		ws_flow_loops_test_row('webhook_1', 0, 'failed'),
+		ws_flow_loops_test_row('for_each_1', 0, 'skipped'),
+		ws_flow_loops_test_row('for_each_end_1', 0, 'skipped'),
+		ws_flow_loops_test_row('notify_2', 0, 'skipped'),
+	);
+	pg_assert_same(array('for_each_1', 'for_each_end_1', 'notify_2'), ws_flow_loop_skipped_behind($graph, $rows, 'webhook_1', 0), 'a failed box before the loop');
+
+	$graph = ws_flow_loops_test_graph(
+		array(ws_flow_loops_test_node('notify_3', 'notify', array('user_ids' => array(1), 'text' => 'x'))),
+		array(array('notify_1', 'notify_3', 'done'), array('notify_3', 'for_each_end_1', 'always'))
+	);
+	$rows = ws_flow_loops_test_started(2);
+	$rows[] = ws_flow_loops_test_row('notify_1', 1, 'done', 'done');
+	$rows[] = ws_flow_loops_test_row('notify_3', 1, 'done', 'done');
+	$rows[] = ws_flow_loops_test_row('notify_1', 2, 'failed');
+	$rows[] = ws_flow_loops_test_row('notify_3', 2, 'skipped');
+	pg_assert_same(array('notify_3'), ws_flow_loop_skipped_behind($graph, $rows, 'notify_1', 2), 'the item\'s boxes only');
+	pg_assert_contains('ws_flow_loop_skipped_behind(', ws_flow_loops_test_source('ws_flow_step_mend_check'));
 }

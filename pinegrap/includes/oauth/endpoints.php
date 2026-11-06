@@ -596,8 +596,10 @@ function pg_oauth_register() {
 
 	}
 
-	if (function_exists('waf_rate_exceeded')
-		&& waf_rate_exceeded(api_client_ip(), 'oauth_reg', pg_oauth_registration_limit(), 3600)) {
+	// Per subject (the /64 for IPv6), so the addresses of one sender share
+	// one allowance.
+	if (function_exists('waf_rate_exceeded') && function_exists('waf_ip_subject')
+		&& waf_rate_exceeded(waf_ip_subject(api_client_ip()), 'oauth_reg', pg_oauth_registration_limit(), 3600)) {
 
 		pg_oauth_fail(429, 'temporarily_unavailable', 'Too many registrations from this address. Try again later.',
 			array('Retry-After' => '3600'));

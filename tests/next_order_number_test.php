@@ -54,3 +54,32 @@ function test_next_order_number_save_writes_only_a_change()
 	pg_assert_true(strpos($save, 'pg_next_order_number_refusal(') < strpos($save, 'if ($liveform->check_form_errors())'), 'checked before the write is stopped');
 	pg_assert_same(false, strpos($save, 'DELETE FROM next_order_number'), 'the counter row is updated in place');
 }
+
+// Under the lock: a counter still where the screen found it is the operator's
+// to set; one that orders moved meanwhile is never set back below itself.
+function test_next_order_number_not_set_back_under_the_lock()
+{
+	pg_assert_same(false, pg_next_order_number_set_back('101', '100', 100), 'unchanged counter: raised');
+	pg_assert_same(false, pg_next_order_number_set_back('90', '100', 100), 'unchanged counter: the operator may lower it');
+	pg_assert_same(true, pg_next_order_number_set_back('101', '100', 102), 'orders took 100 and 101 meanwhile: 101 would be given twice');
+	pg_assert_same(false, pg_next_order_number_set_back('102', '100', 102), 'at the moved counter: nothing given twice');
+	pg_assert_same(false, pg_next_order_number_set_back('500', '100', 102));
+	pg_assert_same(true, pg_next_order_number_set_back('101', null, 102), 'no opened value: never below the counter');
+	pg_assert_same(false, pg_next_order_number_set_back('5', '', null), 'no counter row yet');
+}
+
+// The save reads the counter again between the lock and the write, and only
+// warns after the unlock (no other table may be queried under the lock).
+function test_next_order_number_save_rechecks_under_the_lock()
+{
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/commerce.save.php');
+	$lock = strpos($save, 'LOCK TABLES next_order_number WRITE');
+	$read = strpos($save, 'SELECT next_order_number FROM next_order_number', (int) $lock);
+	$check = strpos($save, 'pg_next_order_number_set_back(', (int) $lock);
+	$write = strpos($save, 'UPDATE next_order_number SET', (int) $lock);
+	$unlock = strpos($save, 'UNLOCK TABLES', (int) $lock);
+	$warn = strpos($save, 'add_warning(', (int) $lock);
+
+	pg_assert_true(($lock !== false) && ($read !== false) && ($check !== false) && ($write !== false) && ($unlock !== false) && ($warn !== false));
+	pg_assert_true(($lock < $read) && ($read < $check) && ($check < $write) && ($write < $unlock) && ($unlock < $warn), 'lock, read, check, write, unlock, then the warning');
+}

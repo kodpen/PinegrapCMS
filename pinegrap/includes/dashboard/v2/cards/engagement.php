@@ -75,7 +75,7 @@ function pg_dashboard_v2_card_engagement($user, $period, $compare)
         $ago[] = lang(array('string' => '{var:1} minutes ago', 'vars' => $minutes - $i));
     }
     $tips = pg_dashboard_v2_tips($ago, $bars, function ($n) {
-        return lang(array('string' => '{var:1} visit{suffix:1}', 'vars' => pg_format_number($n, 0)));
+        return lang(array('string' => '{var:1} visit{suffix:1}', 'vars' => pg_format_number($n, 0), 'suffix' => pg_dashboard_v2_plural_suffix($n)));
     });
 
     return array('status' => 'success', 'data' => array(
@@ -83,7 +83,7 @@ function pg_dashboard_v2_card_engagement($user, $period, $compare)
         'headline'   => ($active === 1)
             ? lang('One person on the site now')
             : lang(array('string' => '{var:1} people on the site now', 'vars' => pg_format_number($active, 0))),
-        'note'       => lang(array('string' => '{var:1} visit{suffix:1} in the last 30 minutes', 'vars' => pg_format_number($recent, 0))),
+        'note'       => lang(array('string' => '{var:1} visit{suffix:1} in the last 30 minutes', 'vars' => pg_format_number($recent, 0), 'suffix' => pg_dashboard_v2_plural_suffix($recent))),
         'bars'       => $bars,
         'bars_label' => lang('Visits per minute, last 30 minutes'),
         'tips'       => $tips,

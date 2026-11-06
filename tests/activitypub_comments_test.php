@@ -170,6 +170,25 @@ function test_ap_comments_thread_objects_name_the_page_or_the_record()
 	pg_assert_same(array(), pg_ap_thread_objects($site, 12, 'submitted_form', 0), 'no record');
 }
 
+function test_ap_comments_reply_to_a_site_comment_needs_a_published_thread()
+{
+	$site = ap_comments_test_site();
+	$published = array(
+		'https://blog.example/@news/p/12' => array('kind' => 'p'),
+		'https://blog.example/@news/r/7'  => array('kind' => 'r'),
+	);
+
+	pg_assert_same(array('page_id' => 12, 'item_type' => '', 'item_id' => 0, 'parent_id' => 41),
+		pg_ap_comment_thread(array('id' => '41', 'page_id' => '12', 'item_type' => '', 'item_id' => '0'), $published, $site), 'a published page\'s thread');
+	pg_assert_same(array('page_id' => 30, 'item_type' => 'submitted_form', 'item_id' => 7, 'parent_id' => 42),
+		pg_ap_comment_thread(array('id' => '42', 'page_id' => '30', 'item_type' => 'submitted_form', 'item_id' => '7'), $published, $site), 'a published record\'s thread');
+
+	pg_assert_same(null, pg_ap_comment_thread(array('id' => '43', 'page_id' => '99', 'item_type' => '', 'item_id' => '0'), $published, $site), 'a private or binned page\'s thread');
+	pg_assert_same(null, pg_ap_comment_thread(array('id' => '44', 'page_id' => '12', 'item_type' => 'submitted_form', 'item_id' => '8'), $published, $site), 'an unpublished record on a published page');
+	pg_assert_same(null, pg_ap_comment_thread(array('id' => '45', 'page_id' => '12', 'item_type' => 'product', 'item_id' => '3'), $published, $site), 'a product\'s thread');
+	pg_assert_same(null, pg_ap_comment_thread(array('id' => '41', 'page_id' => '12', 'item_type' => '', 'item_id' => '0'), array(), $site), 'nothing published');
+}
+
 function test_ap_comments_reaction_counts_read_grouped_rows()
 {
 	pg_assert_same(array('like' => 0, 'announce' => 0), pg_ap_reaction_counts_read(false), 'a failed query reads as none');

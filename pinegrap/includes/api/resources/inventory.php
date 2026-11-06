@@ -452,6 +452,9 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 
 	api_webhook_enqueue('inventory.changed', $stock_event);
 
+	// The Workspace hears it as well: its flows may start on it.
+	pg_event_record('inventory.changed', $stock_event);
+
 	// The announcement above skips pg_announce(), whose listeners hear the
 	// site's other stock writers; a product back in stock is told here.
 	if (function_exists('pg_stock_notify_heard')) {
@@ -474,12 +477,15 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 		&& ((int)$row['inventory_quantity'] <= $threshold)
 		&& ((int)$product['inventory_quantity'] > $threshold)) {
 
-		api_webhook_enqueue('stock.low', array(
+		$low_event = array(
 			'product_id' => (int)$row['id'],
 			'name'       => $product['name'],
 			'quantity'   => (int)$row['inventory_quantity'],
 			'threshold'  => $threshold
-		) + pg_stock_event_location_fields($stock_location));
+		) + pg_stock_event_location_fields($stock_location);
+
+		api_webhook_enqueue('stock.low', $low_event);
+		pg_event_record('stock.low', $low_event);
 
 	}
 
@@ -573,27 +579,21 @@ function api_inventory_locations_list($params) {
 
 }
 
-function api_inventory_list($params) {
-
-	$location = api_inventory_location(isset($params['location']) ? $params['location'] : null);
-
-	if ($location === null) {
-
-		api_fail(422, 'location', lang('location is not a stock location of this site.'), 'location');
-
-	}
-
-	$location_ids = array();
-
-	foreach (pg_stock_locations() as $row) {
-
-		$location_ids[] = (int)$row['id'];
-
-	}
-
-	$default_id = pg_stock_default_location();
+// The conditions of GET /inventory without its cursor: products that track
+// stock, out of the Recycle Bin when the catalogue has one ($bin), and the
+// product and stock filters. Pure.
+function api_inventory_list_where($params, $location, $default_id, $bin) {
 
 	$where = array("products.inventory = '1'");
+
+	// A product in the catalogue Recycle Bin is deleted as far as the shop is
+	// concerned: GET /products leaves it out, so this list does too, or a
+	// stock sync would keep offering a product the shop no longer sells.
+	if ($bin) {
+
+		$where[] = "products.recycled = '0'";
+
+	}
 
 	if (!empty($params['product_id'])) {
 
@@ -623,6 +623,32 @@ function api_inventory_list($params) {
 		}
 
 	}
+
+	return $where;
+
+}
+
+function api_inventory_list($params) {
+
+	$location = api_inventory_location(isset($params['location']) ? $params['location'] : null);
+
+	if ($location === null) {
+
+		api_fail(422, 'location', lang('location is not a stock location of this site.'), 'location');
+
+	}
+
+	$location_ids = array();
+
+	foreach (pg_stock_locations() as $row) {
+
+		$location_ids[] = (int)$row['id'];
+
+	}
+
+	$default_id = pg_stock_default_location();
+
+	$where = api_inventory_list_where($params, $location, $default_id, api_catalog_bin_columns());
 
 	if (isset($params['cursor']) && $params['cursor'] !== '') {
 

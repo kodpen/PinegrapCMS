@@ -539,14 +539,34 @@ function ws_flow_loop_pure_of($nodes, $loops)
 }
 
 /**
+ * The most items a For each box can take: a count typed as a whole number
+ * in Repeat N times mode is that number (at most WS_FLOW_LOOP_ITEMS_MAX);
+ * a list, or a count read from a value, may be as long as the cap. Pure.
+ *
+ * @param array $config the For each box's settings
+ * @return int
+ */
+function ws_flow_loop_items_most($config)
+{
+    $count = trim((string) ($config['count'] ?? ''));
+
+    if ((($config['mode'] ?? '') === 'count') && preg_match('/^[1-9][0-9]*$/', $count)) {
+        return min((int) $count, WS_FLOW_LOOP_ITEMS_MAX);
+    }
+
+    return WS_FLOW_LOOP_ITEMS_MAX;
+}
+
+/**
  * The most boxes a run of a graph can start: each box that runs once (not
  * the start, not a value box, which never runs), and each box of a loop's
- * body once per item, up to WS_FLOW_LOOP_ITEMS_MAX items. A box behind a
- * condition counts as if it ran. Pure.
+ * body once per item, up to the most items its For each box takes
+ * (ws_flow_loop_items_most()). A box behind a condition counts as if it
+ * ran. Pure.
  *
  * @param array $nodes node id => box
  * @param array $loops ws_flow_loops()
- * @return array total, loops (for_each id => boxes its items can start)
+ * @return array total, loops (for_each id => boxes, items, runs)
  */
 function ws_flow_loop_box_runs($nodes, $loops)
 {
@@ -569,8 +589,9 @@ function ws_flow_loop_box_runs($nodes, $loops)
             }
         }
 
-        $out['loops'][(string) $id] = array('boxes' => $boxes, 'runs' => $boxes * WS_FLOW_LOOP_ITEMS_MAX);
-        $out['total'] += $boxes * WS_FLOW_LOOP_ITEMS_MAX;
+        $items = ws_flow_loop_items_most($nodes[$id]['config'] ?? array());
+        $out['loops'][(string) $id] = array('boxes' => $boxes, 'items' => $items, 'runs' => $boxes * $items);
+        $out['total'] += $boxes * $items;
     }
 
     foreach (array_keys($nodes) as $id) {
@@ -608,7 +629,7 @@ function ws_flow_loop_size_warnings($nodes, $loops, $name)
         if ($loop['boxes'] > 0) {
             $warnings[] = ws_flow_problem('loop_size', (string) $id, null, lang(array(
                 'string' => 'The loop of {var:1} can run {var:2} boxes ({var:3} items × {var:4} boxes in it); with the rest of the flow a run can pass its limit of {var:5} boxes, and a long list then fails on its last items.',
-                'vars'   => array($name($id), $loop['runs'], WS_FLOW_LOOP_ITEMS_MAX, $loop['boxes'], $limit),
+                'vars'   => array($name($id), $loop['runs'], $loop['items'], $loop['boxes'], $limit),
             )), true);
         }
     }
@@ -1075,6 +1096,42 @@ function ws_flow_loop_outer($graph, $loops, $body)
     }
 
     return $outer;
+}
+
+/**
+ * The boxes skipped behind a box of a run at one pass, as
+ * ws_flow_skipped_behind() finds them, read the way the walk wrote them: at
+ * pass 0 on the graph outside the loops, where a For each box leads to its
+ * End box (ws_flow_loop_outer()), so a For each box tried again, or a box
+ * before it, takes back its End box and what follows it; inside a body on
+ * that item's rows alone. Pure.
+ *
+ * @param array   $graph   ws_flow_graph_normalize()
+ * @param array[] $rows    the run's steps: node_id, pass, status, outcome; oldest first
+ * @param string  $node_id the box tried again or skipped
+ * @param int     $pass    its pass
+ * @return string[]
+ */
+function ws_flow_loop_skipped_behind($graph, $rows, $node_id, $pass)
+{
+    $pass = (int) $pass;
+    $loops = ws_flow_loops($graph);
+
+    if (($pass === 0) && !empty($loops)) {
+        $body = array();
+
+        foreach ($loops as $loop) {
+            $body += array_fill_keys($loop['body'], true);
+        }
+
+        $graph = ws_flow_loop_outer($graph, $loops, $body);
+    }
+
+    $same = array_filter((array) $rows, function ($row) use ($pass) {
+        return (int) ($row['pass'] ?? 0) === $pass;
+    });
+
+    return ws_flow_skipped_behind($graph, ws_flow_step_states($same), (string) $node_id);
 }
 
 /**

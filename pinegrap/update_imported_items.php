@@ -542,17 +542,23 @@ function update_imported_items($imported_items)
 
             // Otherwise this is a CSS or JS file, so update content in file.
             } else {
-                // Update content of the file on the file system.
-                @file_put_contents(FILE_DIRECTORY_PATH . '/' . $item['name'], $content);
+                // Update content of the file on the file system, as a whole:
+                // a failed write (full disk, unwritable folder) keeps the
+                // imported file and its record as they were.
+                if (pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $item['name'], $content)) {
+                    clearstatcache(true, FILE_DIRECTORY_PATH . '/' . $item['name']);
 
-                // Update file size and last modified info in db.
-                db(
-                    "UPDATE files
-                    SET
-                        size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $item['name'])) . "',
-                        user = '" . USER_ID . "',
-                        timestamp = UNIX_TIMESTAMP()
-                    WHERE id = '" . $item['file_id'] . "'");
+                    // Update file size and last modified info in db.
+                    db(
+                        "UPDATE files
+                        SET
+                            size = '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $item['name'])) . "',
+                            user = '" . USER_ID . "',
+                            timestamp = UNIX_TIMESTAMP()
+                        WHERE id = '" . $item['file_id'] . "'");
+                } else {
+                    log_activity(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => $item['name'])), $_SESSION['sessionusername'] ?? '');
+                }
             }
         }
     }

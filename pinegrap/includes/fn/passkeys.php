@@ -1667,6 +1667,10 @@ function pg_passkey_account_section($user_id, $password_algo, $action_url, $toke
                 body.append("action", "email_code");
                 body.append("purpose", "recovery");
                 body.append("token", send.form.elements.namedItem("token").value);
+                var lang = document.documentElement.getAttribute("data-pg-lang");
+                if (lang) {
+                    body.append("pg_lang", lang);
+                }
                 send.disabled = true;
                 sent.textContent = "";
                 fetch(' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', $json | JSON_UNESCAPED_SLASHES) . ', { method: "POST", body: body, credentials: "same-origin" }).then(function (response) {
@@ -1853,6 +1857,10 @@ function pg_mfa_recovery_send_script()
                     body.append("action", "email_code");
                     body.append("purpose", "recovery");
                     body.append("token", token ? token.value : "");
+                    var lang = document.documentElement.getAttribute("data-pg-lang");
+                    if (lang) {
+                        body.append("pg_lang", lang);
+                    }
                     send.disabled = true;
                     sent.textContent = "";
                     fetch(url, { method: "POST", body: body, credentials: "same-origin" }).then(function (response) {

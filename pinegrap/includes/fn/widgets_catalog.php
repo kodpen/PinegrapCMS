@@ -1064,6 +1064,46 @@ function _pg_catalog_variant_flags_keep($html, $flags, $switched = array('has_ra
 }
 
 /**
+ * The ORDER BY part of the catalog listing for one sort field, and whether it
+ * needs the products_groups_xref join. "Name" is the title the visitor reads
+ * (short_description; products.name is the SKU). Catalog order lives on the
+ * group row, so without a group it falls back to the product id. While the
+ * join spans a group subtree (a search or filter is on) a product meets one
+ * row per group it sits in under GROUP BY products.id, and a bare
+ * xref.sort_order is whichever row the server keeps: the lowest one is used,
+ * as the catalog feed does. Pure.
+ *
+ * @param string $field 'id', 'name', 'price', 'created_at' or 'sort_order'
+ * @param string $dir 'ASC'; anything else is 'DESC'
+ * @param int $active_group_id 0 without a group
+ * @param bool $spans_subtree the join covers the group's whole subtree
+ * @return array|null array('sql' => …, 'xref' => bool); null for an unknown field
+ */
+function pg_catalog_listing_sort_sql($field, $dir, $active_group_id, $spans_subtree)
+{
+    $dir = (strtoupper((string) $dir) === 'ASC') ? 'ASC' : 'DESC';
+
+    switch ((string) $field) {
+        case 'id':
+            return array('sql' => 'products.id ' . $dir, 'xref' => false);
+        case 'name':
+            return array('sql' => 'products.short_description ' . $dir, 'xref' => false);
+        case 'price':
+            return array('sql' => 'products.price ' . $dir, 'xref' => false);
+        case 'created_at':
+            return array('sql' => 'products.timestamp ' . $dir, 'xref' => false);
+        case 'sort_order':
+            if ((int) $active_group_id <= 0) {
+                return array('sql' => 'products.id ' . $dir, 'xref' => false);
+            }
+
+            return array('sql' => ($spans_subtree ? 'MIN(xref.sort_order) ' : 'xref.sort_order ') . $dir, 'xref' => true);
+    }
+
+    return null;
+}
+
+/**
  * The query string of the listing's "clear filters" address: the visitor's
  * parameters without the filters (pmin, pmax, stock, sort, attr and the
  * attribute filters' pg_attr_<id>), the page number and any array value,
@@ -1439,22 +1479,21 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     //
     // URL `?sort=...` (when sort_control_enabled) takes precedence over the
     // configured order_by; otherwise the two-level configured order applies.
+    // While a search or filter is on, the listing joins the group rows of
+    // the whole subtree (see $_pg_narrowing_active below), so a product in
+    // two of its groups has two sort orders.
+    $_pg_spans_subtree = ($active_group_id > 0)
+                         && (($search_enabled && $search_query !== '')
+                             || !empty($active_attr_filters)
+                             || $pmin_param !== null
+                             || $pmax_param !== null
+                             || $stock_filter_active);
     $order_join_xref = false;
-    $_resolve_order = function ($field, $dir) use (&$order_join_xref, $active_group_id) {
-        if ($field === '' || $field === null) return null;
-        switch ($field) {
-            case 'id':           return "products.id $dir";
-            // "Name" is the title the visitor reads (short_description);
-            // products.name is the SKU, and sorting by it put the list in
-            // an order the visitor could not recognise as alphabetical.
-            case 'name':         return "products.short_description $dir";
-            case 'price':        return "products.price $dir";
-            case 'created_at':   return "products.timestamp $dir";
-            case 'sort_order':
-                if ($active_group_id > 0) { $order_join_xref = true; return "xref.sort_order $dir"; }
-                return "products.id $dir";  // no group context → stable fallback
-        }
-        return null;
+    $_resolve_order = function ($field, $dir) use (&$order_join_xref, $active_group_id, $_pg_spans_subtree) {
+        $sort = pg_catalog_listing_sort_sql($field, $dir, $active_group_id, $_pg_spans_subtree);
+        if ($sort === null) return null;
+        if ($sort['xref']) $order_join_xref = true;
+        return $sort['sql'];
     };
     // URL sort key → (field, dir) mapping
     $url_sort_map = array(

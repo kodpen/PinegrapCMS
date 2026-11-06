@@ -162,6 +162,17 @@ function test_page_message_upload_refusal_escapes_the_name_in_liveforms()
 	pg_assert_same(3, $escaped, 'the three liveform doors escape the file name');
 }
 
+// A file PHP refused (over the size limit, cut short) comes back on the
+// custom form with a sentence naming the file as the visitor sent it; the
+// liveform prints it as HTML, so the form escapes it first.
+function test_page_message_custom_form_upload_refusal_is_escaped()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/custom_form.php');
+
+	pg_assert_same(0, preg_match('/->mark_error\(\$field\[\'id\'\], \$upload_refusal\)/', $source), 'the raw refusal is not passed to the liveform');
+	pg_assert_same(1, preg_match('/->mark_error\(\$field\[\'id\'\], htmlspecialchars\(\$upload_refusal, ENT_QUOTES \| ENT_SUBSTITUTE/', $source), 'the refusal is escaped before it is stored');
+}
+
 // A message is HTML; shown in a field's inline feedback (a text context) it is
 // reduced to its text, read once, so the tags do not show and a double escape
 // does not leave entities on screen.

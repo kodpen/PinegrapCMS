@@ -634,6 +634,8 @@
     "Follow this topic": "Bu konuyu takip et",
     "Follow this topic: e-mail me its new replies.": "Bu konuyu takip et: yeni yanıtları bana e-postayla gönder.",
     "Follow up": "Takip edin",
+    "Follow up a cancelled order": "İptal edilen siparişi takip et",
+    "Follow up the cancellation of {{record_title}}": "{{record_title}} iptalini takip et",
     "Follow up the payments due": "Vadesi gelen ödemeleri takip et",
     "Follow up: {var:1}": "Takip: {var:1}",
     "Follow us": "Bizi takip edin",

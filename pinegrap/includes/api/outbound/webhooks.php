@@ -317,11 +317,13 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 
 	}
 
-	$body = json_encode(array(
-		'event'      => $event,
-		'created_at' => gmdate('Y-m-d\TH:i:s\Z'),
-		'data'       => $payload
-	), JSON_UNESCAPED_UNICODE);
+	$body = api_webhook_body($event, $payload, gmdate('Y-m-d\TH:i:s\Z'));
+
+	if ($body === null) {
+
+		return 0;
+
+	}
 
 	$queued = 0;
 
@@ -379,6 +381,22 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 	}
 
 	return $queued;
+
+}
+
+// The body every subscriber of an event is sent: the envelope as JSON,
+// written by pg_json_encode_answer() so that bytes which are not UTF-8 (a
+// name cut inside a character, a legacy row) become U+FFFD instead of making
+// json_encode() answer false, which queued and signed an empty body no
+// receiver could read. Null when the payload cannot be written at all (INF or
+// NAN): nothing is queued then. Pure.
+function api_webhook_body($event, $payload, $created_at) {
+
+	return pg_json_encode_answer(array(
+		'event'      => (string)$event,
+		'created_at' => (string)$created_at,
+		'data'       => $payload
+	));
 
 }
 

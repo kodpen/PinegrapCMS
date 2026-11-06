@@ -9,9 +9,12 @@
  * With the mode on, every cell of an editable column that carries its
  * data-pg-edit field is a field. A changed field is saved as soon as it is
  * left (or on Enter, which goes on to the same column of the next row;
- * in a several-line field Enter starts a new line and Ctrl+Enter goes on);
- * Escape puts the stored value back. The value goes to the screen's
- * pg_list_edit_request() endpoint, one cell per request, and the answer
+ * in a several-line field Enter starts a new line and Ctrl+Enter goes on;
+ * a several-choice field is a group of check boxes, saved when the focus
+ * leaves the group); Escape puts the stored value back. The value goes to the screen's
+ * pg_list_edit_request() endpoint, one cell per request, with the value
+ * the cell opened with ("was"), so the screen can refuse a value changed
+ * elsewhere since the list was drawn; the answer
  * draws the cell (and the other cells of the row it names) from what was
  * stored. A refused value stays in the field, marked, with the reason
  * under it; nothing is saved.
@@ -71,14 +74,17 @@
         return !!this.last;
     };
 
-    /** What to write back to undo the last save; it can be taken once. */
+    /**
+     * What to write back to undo the last save, each over the value the
+     * save left; it can be taken once.
+     */
     QuickEdits.prototype.takeUndo = function () {
         var last = this.last || [];
 
         this.last = null;
 
         return last.map(function (change) {
-            return { id: String(change.id), field: change.field, value: String(change.before) };
+            return { id: String(change.id), field: change.field, value: String(change.before), was: String(change.after) };
         });
     };
 
@@ -122,11 +128,36 @@
             return String(raw).replace(/\r\n?/g, '\n').trim();
         }
 
+        if (type === 'multiselect') {
+            return quickChoices(raw).join(',');
+        }
+
         return String(raw).trim();
+    }
+
+    /** A several-choice value ("3, 7,3") as its values, each once ([3, 7]). */
+    function quickChoices(raw) {
+        var seen = {};
+
+        return String(raw).split(',').map(function (part) {
+            return part.trim();
+        }).filter(function (part) {
+            if ((part === '') || seen[part]) {
+                return false;
+            }
+
+            seen[part] = true;
+
+            return true;
+        });
     }
 
     /** Whether a field holds something else than the stored value. */
     function quickChanged(type, raw, stored) {
+        if (type === 'multiselect') {
+            return quickChoices(raw).sort().join(',') !== quickChoices(stored).sort().join(',');
+        }
+
         return quickValue(type, raw) !== ((type === 'textarea') ? quickValue(type, stored) : String(stored));
     }
 
@@ -338,6 +369,64 @@
         });
     };
 
+    /**
+     * A several-choice field: a group of check boxes, one per option, that
+     * reads and writes its value ("3,7", in the options' order) like an
+     * input, and takes the focus on its first box.
+     */
+    function choiceGroup(def, value) {
+        var group = document.createElement('div');
+        var chosen = quickChoices(value);
+        var boxes = [];
+
+        group.className = 'pg-list-table-field pg-list-table-choices';
+        group.setAttribute('role', 'group');
+        // Safari, and Firefox on macOS, do not focus a clicked or tapped
+        // check box: the group itself takes the focus then, so leaving it
+        // still saves the boxes ticked.
+        group.tabIndex = -1;
+
+        (def.options || []).forEach(function (pair) {
+            var label = document.createElement('label');
+            var box = document.createElement('input');
+
+            label.className = 'pg-list-table-choice';
+            box.type = 'checkbox';
+            box.className = 'check me-1';
+            box.value = String(pair[0]);
+            box.checked = (chosen.indexOf(box.value) !== -1);
+            label.appendChild(box);
+            label.appendChild(document.createTextNode(String(pair[1])));
+            group.appendChild(label);
+            boxes.push(box);
+        });
+
+        Object.defineProperty(group, 'value', {
+            get: function () {
+                return boxes.filter(function (box) {
+                    return box.checked;
+                }).map(function (box) {
+                    return box.value;
+                }).join(',');
+            },
+            set: function (next) {
+                var values = quickChoices(next);
+
+                boxes.forEach(function (box) {
+                    box.checked = (values.indexOf(box.value) !== -1);
+                });
+            }
+        });
+
+        group.focus = function () {
+            if (boxes.length) {
+                boxes[0].focus();
+            }
+        };
+
+        return group;
+    }
+
     D.openField = function (cell) {
         var self = this;
         var def = this.editDef(cell);
@@ -370,6 +459,8 @@
             });
 
             tintSelect(control);
+        } else if (def.type === 'multiselect') {
+            control = choiceGroup(def, value);
         } else if (def.type === 'textarea') {
             control = document.createElement('textarea');
             control.className = 'form-control form-control-sm pg-list-table-field pg-list-table-field-lines';
@@ -424,8 +515,20 @@
                 tintSelect(control);
             }
 
-            self.quickSave(cell);
+            // A box ticked is not yet the choice: the group saves once the
+            // focus leaves it.
+            if (def.type !== 'multiselect') {
+                self.quickSave(cell);
+            }
         });
+
+        if (def.type === 'multiselect') {
+            control.addEventListener('focusout', function (event) {
+                if (!event.relatedTarget || !control.contains(event.relatedTarget)) {
+                    self.quickSave(cell);
+                }
+            });
+        }
 
         control.addEventListener('keydown', function (event) {
             self.fieldKey(cell, event);
@@ -528,8 +631,11 @@
         return field ? field.value : '';
     };
 
-    /** One cell's value to the screen's endpoint; resolves its answer. */
-    D.post = function (field, id, value) {
+    /**
+     * One cell's value to the screen's endpoint, with the value the cell
+     * opened with; resolves its answer.
+     */
+    D.post = function (field, id, value, was) {
         var body = new FormData();
         var self = this;
 
@@ -538,6 +644,7 @@
         body.append('field', field);
         body.append('id', id);
         body.append('value', value);
+        body.append('was', was);
 
         return window.fetch(this.editUrl, {
             method: 'POST',
@@ -595,6 +702,11 @@
             }
         }
 
+        // A date drawn as text sorts by the value the answer gives with it.
+        if ((typeof view.sort === 'string') || (typeof view.sort === 'number')) {
+            cell.setAttribute('data-pg-sort-value', String(view.sort));
+        }
+
         if (typeof view['class'] === 'string') {
             var invalid = cell.classList.contains('is-invalid');
 
@@ -646,6 +758,13 @@
         cell.classList.remove('pg-list-table-saved');
         void cell.offsetWidth;
         cell.classList.add('pg-list-table-saved');
+
+        // The screen hears a save on the root, e.g. to follow what the
+        // answer says about the row outside its cells (filter groups).
+        this.root.dispatchEvent(new CustomEvent('pg-list-table:saved', {
+            bubbles: true,
+            detail: { cell: cell, row: row, data: data }
+        }));
     };
 
     /**
@@ -680,7 +799,7 @@
         cell.pgQuickBusy = true;
         cell.setAttribute('aria-busy', 'true');
 
-        this.post(field, id, value).then(function (data) {
+        this.post(field, id, value, stored).then(function (data) {
             cell.pgQuickBusy = false;
             cell.removeAttribute('aria-busy');
 
@@ -735,8 +854,9 @@
     };
 
     /**
-     * Writes one value per row, one request at a time; resolves the
-     * changes written and the number refused.
+     * Writes one value per row, one request at a time, each over the
+     * value its cell shows (or the write's 'was' for a row not on screen);
+     * resolves the changes written and the number refused.
      */
     D.writeAll = function (writes) {
         var self = this;
@@ -749,7 +869,7 @@
                 var cell = self.fieldCell(write.row, write.field);
                 var before = cell ? (cell.getAttribute('data-pg-edit-value') || '') : null;
 
-                return self.post(write.field, write.id, write.value).then(function (data) {
+                return self.post(write.field, write.id, write.value, (before === null) ? String(write.was || '') : before).then(function (data) {
                     if (!data.ok) {
                         failed++;
 
@@ -830,7 +950,7 @@
             var cell = tbody.querySelector('td[data-pg-edit="' + quote(change.field) + '"][data-pg-edit-id="' + quote(change.id) + '"]');
             var row = cell ? cell.closest('tr').getAttribute('data-pg-id') : '';
 
-            return { row: row, id: change.id, field: change.field, value: change.value, before: '' };
+            return { row: row, id: change.id, field: change.field, value: change.value, was: change.was, before: '' };
         });
 
         this.applying = true;
@@ -874,6 +994,7 @@
     T.applyTargets = applyTargets;
     T.quickValue = quickValue;
     T.quickChanged = quickChanged;
+    T.quickChoices = quickChoices;
     T.rowNameText = rowNameText;
     T.tintSelect = tintSelect;
 

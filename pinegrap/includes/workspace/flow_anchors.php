@@ -246,6 +246,9 @@ function ws_flow_event_outputs()
     $task = array($value('title', 'text', lang('Title')), $value('status', 'text', lang('Status')));
     $channel = $value('channel_id', 'number', lang('Channel'));
     $actor = $value('actor_id', 'number', lang('The person who did it'));
+    $return = array($order, $value('return_id', 'number', lang('Return')), $value('reason', 'text', lang('Reason')));
+    $subscription = array($value('customer_id', 'number', lang('Contact')), $value('product_id', 'number', lang('Product')), $value('status', 'text', lang('Status')),
+        $value('previous_status', 'text', lang('Previous status')), $value('order_id', 'number', lang('Order')), $value('retry_count', 'number', lang('Retries')));
 
     return array(
         'order.created'          => array($order),
@@ -254,6 +257,18 @@ function ws_flow_event_outputs()
         'order.delivered'        => array($order, $value('delivery_date', 'text', lang('Delivery date'))),
         'order.cancelled'        => array($order),
         'order.return.requested' => array($order),
+        'order.return.approved'  => $return,
+        'order.return.received'  => $return,
+        'order.return.refunded'  => array_merge($return, array($value('refund_method', 'text', lang('How it was refunded')))),
+        'marketplace.order.imported' => array($order, $value('provider', 'text', lang('Marketplace')), $value('remote_order_id', 'text', lang('The marketplace\'s order number'))),
+        'cart_quote.created'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact'))),
+        'cart_quote.ordered'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact')), $order),
+        'subscription.renewed'   => $subscription,
+        'subscription.failed'    => $subscription,
+        'subscription.cancelled' => $subscription,
+        'product.review.created' => array($value('item_id', 'number', lang('Product')), $value('rating', 'number', lang('Rating')), $value('status', 'text', lang('Status'))),
+        'form.paid'              => array($value('reference_code', 'text', lang('Reference code')), $value('contact_id', 'number', lang('Contact')), $order),
+        'inventory.changed'      => array($value('product_id', 'number', lang('Product')), $value('quantity', 'number', lang('Quantity'))),
         'stock.low'              => array($value('name', 'text', lang('Product')), $value('quantity', 'number', lang('Quantity')), $value('threshold', 'number', lang('Threshold'))),
         'customer.created'       => array($value('email', 'text', lang('E-mail'))),
         'customer.updated'       => array($value('email', 'text', lang('E-mail'))),
@@ -266,6 +281,8 @@ function ws_flow_event_outputs()
         'workspace.guest.message'       => array($value('guest', 'text', lang('Guest')), $value('text', 'text', lang('What the guest wrote')), $channel, $value('message_id', 'number', lang('Message'))),
         'workspace.mail.received'       => array($value('customer', 'text', lang('Customer')), $value('customer_email', 'text', lang('E-mail')), $value('subject', 'text', lang('Subject')),
             $value('conversation_id', 'number', lang('Conversation')), $channel, $value('message_id', 'number', lang('Message'))),
+        'workspace.flow.run.failed'     => array($value('flow_id', 'number', lang('Flow')), $value('flow_name', 'text', lang('The name of the flow')), $value('run_id', 'number', lang('Run')),
+            $value('box', 'text', lang('The box that failed')), $value('sentence', 'text', lang('What went wrong')), $channel),
     );
 }
 

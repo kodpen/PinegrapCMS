@@ -23,7 +23,7 @@ description: Workflow tables in the external API and MCP (api_wtables.php, T1d1 
 
 ## Who is in the list?
 - `ws_wtables_reached($viewer, all|mine|shared)` (wtable_shares.php): own tables plus those shared with the person or in a channel they read, access by `ws_wtable_access()`, latest changed first.
-- Rows page by position (`ws_wtable_rows_page()`, cursor = last position, limit 1-250), `total` = `row_count`.
+- Rows page by (position, id) (`ws_wtable_rows_page()`, `workflow-table-rows.md`), limit 1-250, `total` = `row_count`.
 
 ## When do row webhooks go out?
 - `workspace.wtable.row.created`, `.updated` (with `changed`, the column ids written), `.deleted` (row only id and position), from `ws_wtable_row_create/_update/_delete()` through `ws_wtable_row_announce()` (wtable_shares.php, #2931). A move announces nothing.

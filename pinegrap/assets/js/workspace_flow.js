@@ -144,6 +144,7 @@
         row_add: { name: 'fl_kind_row_add', group: 'system', into: true, out: ['done', 'failed'] },
         row_set: { name: 'fl_kind_row_set', group: 'system', into: true, out: ['done', 'failed'] },
         row_get: { name: 'fl_kind_row_get', group: 'system', into: true, out: ['done', 'failed'] },
+        record_get: { name: 'fl_kind_record_get', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
@@ -210,6 +211,7 @@
         ['row_add', 'fl_kind_row_add'],
         ['row_set', 'fl_kind_row_set'],
         ['row_get', 'fl_kind_row_get'],
+        ['record_get', 'fl_kind_record_get'],
         ['approval', 'fl_kind_approval'],
         ['end', 'fl_add_end'],
         ['constants', 'fl_kind_constants'],
@@ -545,6 +547,7 @@
             repeats: steps.repeats || {},
             events: steps.events || null,
             tables: steps.tables || [],
+            reads: steps.reads || [],
             no_order: !!steps.no_order,
             mcp: steps.mcp || []
         };
@@ -692,6 +695,10 @@
 
         if ((node.kind === 'row_add') || (node.kind === 'row_set') || (node.kind === 'row_get')) {
             return rowWriteMeta(node);
+        }
+
+        if (node.kind === 'record_get') {
+            return recordGetMeta(node);
         }
 
         if (node.kind === 'join') {
@@ -3063,11 +3070,12 @@
         mcp: [['arguments', 'fl_mcp_arguments', 20000]],
         row_set: [['row', 'fl_rows_row', 200]],
         row_get: [['row', 'fl_rows_row', 200]],
+        record_get: [['id', 'fl_record_id', 200]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
         approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]],
-        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]],
+        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500], ['c', 'fl_derived_with', 500]],
         for_each: [['list', 'fl_loop_list', 200], ['count', 'fl_loop_count', 200]],
         for_each_end: [['collect', 'fl_loop_collect', 200]]
     };
@@ -3224,7 +3232,7 @@
 
         // A loop's box reads one value: its field is open while empty.
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
-            return (node.kind !== 'value') || (item[0] !== 'b') || derivedRule(config.rule).two;
+            return (node.kind !== 'value') || ((item[0] !== 'b') || derivedRule(config.rule).two) && ((item[0] !== 'c') || derivedRule(config.rule).three);
         }).filter(function (item) {
             return ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list'))) && (!kindOf(node).loop || !config[item[0]]);
         }).map(function (item) {
@@ -3988,6 +3996,7 @@
         return PALETTE.filter(function (item) {
             return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && (((item[0] !== 'row') && (item[0] !== 'row_get')) || tables)
                 && ((item[0] !== 'no_order') || stepLists().no_order)
+                && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
     }
@@ -4783,6 +4792,13 @@
         // (ws_step_outputs()).
         if (node.kind === 'row_get') {
             rowCellValues(node.config).forEach(function (item) { add(prefix, item); });
+        }
+
+        // A box that reads a record gives the fields of its kind.
+        if (node.kind === 'record_get') {
+            var read = recordRead(node.config);
+
+            (read ? read.outputs : []).forEach(function (item) { add(prefix, item); });
         }
 
         if (node.kind === 'report') {
@@ -5740,6 +5756,10 @@
 
         if (node.kind === 'row_get') {
             rowGetFields(box, node);
+        }
+
+        if (node.kind === 'record_get') {
+            recordGetFields(box, node);
         }
 
         if (node.kind === 'condition') {
@@ -6794,12 +6814,12 @@
 
     // A derived value box's rule (FL.derived, ws_flow_derived_rules()): its
     // label, the type of the value it gives and whether it reads a second
-    // value; an unknown one as join, as the server keeps it.
+    // and a third value; an unknown one as join, as the server keeps it.
     function derivedRule(key) {
         var rules = (FL.derived || {}).rules || [];
         var rule = rules.filter(function (item) { return item.key === key; })[0] || rules.filter(function (item) { return item.key === 'join'; })[0];
 
-        return rule || { key: 'join', label: key || '', type: 'text', two: true };
+        return rule || { key: 'join', label: key || '', type: 'text', two: true, three: false };
     }
 
     // A derived value box: its rule, the values it works from (with value
@@ -6817,10 +6837,14 @@
             drawSettings();
         });
         box.appendChild(field(t('fl_derived_rule'), pick));
-        box.appendChild(valueField(node, t('fl_derived_a'), config.a || '', 500, function (value) {
+        box.appendChild(valueField(node, t((rule.key === 'calculate') ? 'fl_derived_formula' : 'fl_derived_a'), config.a || '', 500, function (value) {
             config.a = value;
             refreshNode(node);
         }, false));
+
+        if (rule.key === 'calculate') {
+            derivedFunctions(box, lists.functions || []);
+        }
 
         if (rule.key === 'compare') {
             var op = K.select((lists.operators || []).map(function (key) { return [key, operators[key] || key]; }), config.op || 'eq');
@@ -6833,13 +6857,22 @@
         }
 
         if (rule.two) {
-            box.appendChild(valueField(node, t((rule.key === 'add_days') ? 'fl_derived_days' : 'fl_derived_b'), config.b || '', 500, function (value) {
+            var second = { add_days: 'fl_derived_days', replace: 'fl_derived_find', cut: 'fl_derived_length', split: 'fl_derived_split' }[rule.key] || 'fl_derived_b';
+
+            box.appendChild(valueField(node, t(second), config.b || '', 500, function (value) {
                 config.b = value;
                 refreshNode(node);
             }, false));
         }
 
-        if (rule.key === 'round') {
+        if (rule.three) {
+            box.appendChild(valueField(node, t((rule.key === 'split') ? 'fl_derived_part' : 'fl_derived_with'), config.c || '', 500, function (value) {
+                config.c = value;
+                refreshNode(node);
+            }, false));
+        }
+
+        if ((rule.key === 'round') || (rule.key === 'calculate')) {
             var places = K.select([0, 1, 2, 3, 4, 5, 6].map(function (n) { return [String(n), String(n)]; }), String(config.places || 0));
 
             places.addEventListener('change', function () {
@@ -6860,6 +6893,24 @@
         }
 
         box.appendChild(el('p', 'small fg-secondary', t('fl_derived_help')));
+    }
+
+    // The calculate rule's help: the calculator's functions
+    // (ws_calc_function_help()), each name with what it does on hover.
+    function derivedFunctions(box, functions) {
+        var help = el('p', 'small fg-secondary', t('fl_derived_formula_help') + ' ');
+
+        functions.forEach(function (item, index) {
+            var name = el('code', '', item.name);
+
+            name.title = item.help;
+            help.appendChild(name);
+
+            if (index < functions.length - 1) {
+                help.appendChild(document.createTextNode(', '));
+            }
+        });
+        box.appendChild(help);
     }
 
     function retryFields(box, node) {
@@ -7240,10 +7291,15 @@
     }
 
     // A cell as its field shows it: money in minor units as an amount, a
-    // number with the site's decimal mark (siteShown()).
+    // number with the site's decimal mark (siteShown()); an amount added to
+    // the cell ("+1250") keeps its plus.
     function cellShown(column, value) {
         if ((value === null) || (value === undefined)) {
             return '';
+        }
+
+        if (((column.type === 'number') || (column.type === 'money')) && (typeof value === 'string') && /^\+-?\d+(\.\d+)?$/.test(value.trim())) {
+            return '+' + cellShown(column, Number(value.trim().slice(1)));
         }
 
         if ((column.type === 'money') && (typeof value === 'number')) {
@@ -7260,12 +7316,23 @@
     // What a field typed keeps, as the table takes it: nothing for an empty
     // field, a number typed the site's way as a number (siteNumber(); money
     // in minor units, rounded), a text otherwise; a value from a box before
-    // stays a text the run fills.
+    // stays a text the run fills. A number or money typed after "+" is added
+    // to what the row holds: kept as "+" and its machine form ("+1250").
     function cellKept(column, text) {
         var typed = text.trim();
 
         if (typed === '') {
             return undefined;
+        }
+
+        if (((column.type === 'number') || (column.type === 'money')) && (typed.charAt(0) === '+')) {
+            var amount = siteNumber(typed.slice(1).trim());
+
+            if (amount === null) {
+                return typed;
+            }
+
+            return '+' + ((column.type === 'money') ? Math.round(Number(amount) * Math.pow(10, cellPlaces(column))) : Number(amount));
         }
 
         if (((column.type === 'number') && (siteNumber(typed) !== null)) || ((column.type === 'person') && /^\d+$/.test(typed))) {
@@ -7391,6 +7458,54 @@
             config.row = value;
             refreshNode(node);
         }, false, t('fl_rows_get_row_help')));
+    }
+
+    // The kind of record a read box reads, as the person may read it
+    // (ws_flow_record_get_kinds()), or null.
+    function recordRead(config) {
+        return stepLists().reads.filter(function (item) { return item.kind === config.record; })[0] || null;
+    }
+
+    // Its kind, and the record it names by its number or its value.
+    function recordGetMeta(node) {
+        var config = node.config;
+        var read = recordRead(config);
+        var id = (config.id || '').trim();
+        var named = /^\d+$/.test(id) ? null : valueNames(node)[id];
+
+        if (!config.record) {
+            return t('fl_record_none');
+        }
+
+        var name = read ? read.label : config.record;
+
+        return id ? t('fl_record_meta', name, named ? named.label : id) : name;
+    }
+
+    // A box that reads a record: a kind the person reads, as
+    // ws_step_record_get_check() asks it, and the record, by its number or
+    // one value. Its fields are offered to the boxes after it (boxValues()).
+    function recordGetFields(box, node) {
+        var config = node.config;
+        var options = [['', t('fl_record_kind_pick')]].concat(stepLists().reads.map(function (item) { return [item.kind, item.label]; }));
+
+        if (config.record && !recordRead(config)) {
+            options.push([config.record, config.record]);
+        }
+
+        var pick = K.select(options, config.record || '');
+
+        pick.setAttribute('data-refocus', 'record-kind-' + node.id);
+        pick.addEventListener('change', function () {
+            config.record = pick.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_record_kind'), pick, t('fl_record_kind_help')));
+        box.appendChild(valueField(node, t('fl_record_id'), config.id, 200, function (value) {
+            config.id = value;
+            refreshNode(node);
+        }, false, t('fl_record_id_help')));
     }
 
     // A box that adds or changes a row: its table, the row a change names,
@@ -8664,6 +8779,8 @@
             var readable = stepLists().tables;
 
             config = { table_id: (readable.length === 1) ? readable[0].id : 0, row: '' };
+        } else if (kind === 'record_get') {
+            config = { record: '', id: '' };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };

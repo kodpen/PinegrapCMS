@@ -278,8 +278,8 @@ function get_photo_gallery($properties) {
                             if (pg_session_signed_in() == FALSE) {
                                 $has_access = FALSE;
                             
-                            // else if user does not have edit rights to this folder, then we need to validate membership
-                            } elseif (check_edit_access($folder_id) == false) {
+                            // else if user does not have edit rights to this album, then we need to validate membership
+                            } elseif (check_edit_access($child_folder['id']) == false) {
                                 // get user information so we can find contact for user
                                 $query = "SELECT user_contact FROM user WHERE user_username = ?";
                                 $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
@@ -901,8 +901,8 @@ function get_photo_gallery($properties) {
                         if (pg_session_signed_in() == FALSE) {
                             $has_access = FALSE;
                         
-                        // else if user does not have edit rights to this folder, then we need to validate membership
-                        } elseif (check_edit_access($folder_id) == false) {
+                        // else if user does not have edit rights to this album, then we need to validate membership
+                        } elseif (check_edit_access($child_folder['id']) == false) {
                             // get user information so we can find contact for user
                             $query = "SELECT user_contact FROM user WHERE user_username = ?";
                             $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');

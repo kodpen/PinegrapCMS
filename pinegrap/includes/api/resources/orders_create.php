@@ -28,28 +28,41 @@ function api_local_sale_methods() {
 }
 
 // payment_parts as the counter's split payment reads them
-// (local_sale_split_parts()): {method, till, amount}.
+// (local_sale_split_parts()): {method, till, amount}. bad is the number of
+// the first item (from 1) that is not an object with a whole, non-negative
+// number of minor units as its amount, 0 when none is: the counter skips a
+// part without an amount as empty, so such a part sent here would vanish and
+// the money it stood for would be recorded as owed. A form body sends the
+// amount as digits, which are taken.
 function api_local_sale_parts($raw) {
 
 	$parts = array();
 
-	foreach ((array)$raw as $part) {
+	foreach (array_values((array)$raw) as $index => $part) {
 
-		if (!is_array($part)) {
+		$amount = (is_array($part) && isset($part['amount'])) ? $part['amount'] : null;
 
-			continue;
+		if (!is_int($amount) && !(is_string($amount) && preg_match('/^\d{1,10}$/', trim($amount)))) {
+
+			return array('parts' => array(), 'bad' => $index + 1);
+
+		}
+
+		if ((int)$amount < 0) {
+
+			return array('parts' => array(), 'bad' => $index + 1);
 
 		}
 
 		$parts[] = array(
 			'method' => isset($part['method']) ? (string)$part['method'] : '',
 			'till'   => isset($part['till_id']) ? (int)$part['till_id'] : 0,
-			'amount' => (isset($part['amount']) && is_int($part['amount'])) ? $part['amount'] : 0
+			'amount' => (int)$amount
 		);
 
 	}
 
-	return $parts;
+	return array('parts' => $parts, 'bad' => 0);
 
 }
 
@@ -172,11 +185,22 @@ function api_orders_create($params) {
 
 	}
 
+	$parts = api_local_sale_parts(isset($params['payment_parts']) ? $params['payment_parts'] : array());
+
+	if ($parts['bad'] > 0) {
+
+		api_fail_validation(lang(array(
+			'string' => 'payment_parts item {var:1}: send an object of {method, till_id, amount}, the amount a whole number of minor units.',
+			'vars'   => $parts['bad']
+		)), 'payment_parts');
+
+	}
+
 	$input = array(
 		'pay_method' => $method,
 		'pay_till'   => isset($params['till_id']) ? (int)$params['till_id'] : 0,
 		'received'   => isset($params['received']) ? (int)$params['received'] : 0,
-		'pay_parts'  => api_local_sale_parts(isset($params['payment_parts']) ? $params['payment_parts'] : array())
+		'pay_parts'  => $parts['parts']
 	);
 
 	$lines = pg_local_order_lines($rows);

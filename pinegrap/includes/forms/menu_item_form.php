@@ -421,6 +421,80 @@ function pg_menu_item_parent_allowed($menu_id, $item_id, $parent_id, $lookup)
 }
 
 /**
+ * The rows the menu screen's Save Order writes, or null when the posted
+ * tree cannot be stored as it is: a group's parent is neither 0 nor an item
+ * of the menu now (deleted meanwhile, or another menu's), an item is placed
+ * twice, or the moves would put an item under itself or one of its own
+ * sub-items. Such a parent hides the item and everything under it from the
+ * site and from the menu screen. Items no longer in the menu are skipped.
+ * Pure.
+ *
+ * @param mixed $groups    posted list of array('parent_id', 'order' => item ids)
+ * @param array $parent_of item id => parent id, every item of the menu now
+ * @return array|null list of array(item id, parent id, sort order)
+ */
+function pg_menu_item_sort_plan($groups, array $parent_of)
+{
+    if (!is_array($groups)) {
+        return null;
+    }
+
+    $plan = array();
+    $placed = array();
+
+    foreach ($groups as $group) {
+        $parent = (is_array($group) && isset($group['parent_id'])) ? $group['parent_id'] : 0;
+
+        if (!is_scalar($parent) || (preg_match('/^\d*$/', trim((string) $parent)) !== 1)) {
+            return null;
+        }
+
+        $parent = (int) $parent;
+
+        if (($parent !== 0) && !array_key_exists($parent, $parent_of)) {
+            return null;
+        }
+
+        $order = (is_array($group) && isset($group['order']) && is_array($group['order'])) ? $group['order'] : array();
+        $sort_order = 1;
+
+        foreach ($order as $item_id) {
+            $item_id = is_scalar($item_id) ? (int) $item_id : 0;
+
+            if (($item_id <= 0) || !array_key_exists($item_id, $parent_of)) {
+                continue;
+            }
+
+            if (isset($placed[$item_id])) {
+                return null;
+            }
+
+            $placed[$item_id] = $parent;
+            $plan[] = array($item_id, $parent, $sort_order++);
+        }
+    }
+
+    // Every moved item must still reach the top level; a parent outside the
+    // menu (an orphan stored before) ends the walk without a cycle.
+    $after = $placed + $parent_of;
+    $limit = count($after) + 1;
+
+    foreach ($placed as $item_id => $parent) {
+        $at = $parent;
+
+        for ($steps = 0; ($at !== 0) && array_key_exists($at, $after); $steps++) {
+            if (($at === $item_id) || ($steps > $limit)) {
+                return null;
+            }
+
+            $at = (int) $after[$at];
+        }
+    }
+
+    return $plan;
+}
+
+/**
  * The database lookup of pg_menu_item_parent_allowed(): a menu item's menu
  * and parent, or null.
  *

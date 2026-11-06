@@ -5,8 +5,8 @@
  * The All Key Codes list (view_key_codes.php) and its quick edit: every
  * value of the list the key code screen (edit_key_code.php) changes is a
  * field, checked and written by that screen's own form code
- * (includes/forms/key_code_form.php). The offer's message and Last Modified
- * stay text; notes written on more lines change only on the screen.
+ * (includes/forms/key_code_form.php); the notes keep their lines. The
+ * offer's message and Last Modified stay text.
  *
  * Loaded where it is needed (require_once), not by functions.php; it needs
  * includes/forms/key_code_form.php.
@@ -37,7 +37,7 @@ function pg_key_code_edit_columns()
         'offer_code' => array('type' => 'text', 'label' => lang('Offer Code'), 'max' => 50, 'required' => true),
         'enabled' => array('type' => 'select', 'label' => lang('Enabled'), 'options' => array('1' => lang('Enabled'), '0' => lang('Disabled'))),
         'expiration_date' => array('type' => 'text', 'label' => lang('Expiration Date'), 'max' => 20),
-        'notes' => array('type' => 'text', 'label' => lang('Notes')),
+        'notes' => array('type' => 'textarea', 'label' => lang('Notes')),
         'single_use' => array('type' => 'select', 'label' => lang('Single-Use'), 'options' => $yes_no),
         'report' => array('type' => 'select', 'label' => lang('Report'), 'options' => array('key_code' => lang('Key Code'), 'offer_code' => lang('Offer Code'))),
     );
@@ -69,20 +69,6 @@ function pg_key_code_quick_value($key_code, $field)
     }
 
     return (string) $stored;
-}
-
-/**
- * Whether a key code's cell changes on the list. The list's box holds one
- * line and reads a line break as a space, so notes written on more lines
- * change only on the key code's screen, where the lines are kept.
- *
- * @param array  $key_code a key_codes row
- * @param string $field
- * @return bool
- */
-function pg_key_code_quick_cell_editable($key_code, $field)
-{
-    return ($field !== 'notes') || (strpbrk((string) ($key_code['notes'] ?? ''), "\r\n") === false);
 }
 
 /**
@@ -169,10 +155,6 @@ function pg_key_code_list_row_cells($key_code, $today, array $quick_edit)
     $yes = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>';
 
     $attributes = function ($field, array $more = array()) use ($key_code, $quick_edit, $id) {
-        if (!pg_key_code_quick_cell_editable($key_code, $field)) {
-            return $more;
-        }
-
         return $more + pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_key_code_quick_value($key_code, $field));
     };
 
@@ -252,10 +234,6 @@ function pg_key_code_quick_update($id, $field, $value, $user_id, array $quick_ed
 
     if (!$key_code) {
         return $refuse(lang('Record not found.'), 'not_found');
-    }
-
-    if (!pg_key_code_quick_cell_editable($key_code, $field)) {
-        return $refuse(lang('These notes are on more than one line. Change them on the key code\'s screen.'), 'locked');
     }
 
     $form = new liveform('key_code_quick_edit');

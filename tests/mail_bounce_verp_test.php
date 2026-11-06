@@ -173,6 +173,28 @@ function test_mail_verp_unsigned_reports_do_not_match()
 	pg_assert_same(null, pg_mail_bounce_dsn_match(null, MAIL_VERP_TEST_KEY));
 }
 
+// A message with a bcc copy leaves with the return path signed for its one
+// "to". When the copy bounces, the report names the bcc address as the failed
+// recipient while the returned headers still say To: the customer, whom the
+// token signs. The report is about the copy, so the customer is not matched.
+function test_mail_verp_bcc_copy_bounce_does_not_match_the_to()
+{
+	$raw = str_replace(
+		"To: nobody@nowhere.example.org\n",
+		"To: buyer@example.net\n",
+		mail_verp_test_fixture('postfix', 'q1', 'buyer@example.net'));
+
+	$dsn = pg_mail_parse_dsn($raw);
+
+	pg_assert_same('nobody@nowhere.example.org', $dsn['recipient']);
+	pg_assert_true(in_array('buyer@example.net', $dsn['candidates'], true), 'the returned To is read');
+	pg_assert_same(null, pg_mail_bounce_dsn_match($dsn, MAIL_VERP_TEST_KEY));
+
+	// The same report signed for the failed recipient still matches it.
+	$own = pg_mail_parse_dsn(mail_verp_test_fixture('postfix', 'q1', 'nobody@nowhere.example.org'));
+	pg_assert_same('nobody@nowhere.example.org', pg_mail_bounce_dsn_match($own, MAIL_VERP_TEST_KEY)['address']);
+}
+
 // An ordinary mail is no report.
 function test_mail_verp_ordinary_mail_is_not_a_bounce()
 {

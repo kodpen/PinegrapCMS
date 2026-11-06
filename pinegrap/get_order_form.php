@@ -245,7 +245,7 @@ function get_order_form($properties) {
                                 }
 
                                 // get the default start date based on the number of days that are set for the product
-                                $recurring_start_date = date($month_and_day_format . '/Y', time() + (86400 * $product['start']));
+                                $recurring_start_date = date($month_and_day_format . '/Y', pg_calendar_days_later($product['start']));
                                 
                                 $form->assign_field_value('recurring_start_date_' . $product['id'], $recurring_start_date);
                             }
@@ -779,7 +779,7 @@ function get_order_form($properties) {
                             }
 
                             // get the default start date based on the number of days that are set for the product
-                            $recurring_start_date = date($month_and_day_format . '/Y', time() + (86400 * $product['start']));
+                            $recurring_start_date = date($month_and_day_format . '/Y', pg_calendar_days_later($product['start']));
                             
                             $form->set('recurring_start_date_' . $product['id'], $recurring_start_date);
                         }

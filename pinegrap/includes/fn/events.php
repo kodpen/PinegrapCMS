@@ -274,7 +274,64 @@ function pg_event_workspace_events()
         'booking.confirmed',
         'booking.rescheduled',
         'booking.cancelled',
+        'product.review.created',
+        'order.return.approved',
+        'order.return.received',
+        'order.return.refunded',
+        'cart_quote.created',
+        'cart_quote.ordered',
+        'marketplace.order.imported',
+        'subscription.failed',
+        'subscription.renewed',
+        'subscription.cancelled',
+        'form.paid',
+        'inventory.changed',
     );
+}
+
+// The site's events kept only while an active scheduled action or flow
+// names them: a stock change comes with every line of every sale, and rows
+// nobody waits for would hold up the run's batch for the events people do.
+function pg_event_workspace_on_demand()
+{
+    return array('inventory.changed');
+}
+
+// Is the event kept, given the rules of the active scheduled actions that
+// may name it? Every event but the on-demand ones is; an on-demand one only
+// when an event rule names it. Pure.
+function pg_event_workspace_awaited($event, $rules_rows)
+{
+    if (!in_array((string) $event, pg_event_workspace_on_demand(), true)) {
+        return true;
+    }
+
+    foreach ((array) $rules_rows as $rules) {
+        foreach ((array) json_decode((string) $rules, true) as $rule) {
+            if (is_array($rule) && (($rule['type'] ?? '') === 'event') && ((string) ($rule['event'] ?? '') === (string) $event)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+// The rules of the active scheduled actions that may name an on-demand
+// event, read once a request for each event.
+function pg_event_workspace_waiting_rules($event)
+{
+    static $read = array();
+
+    $event = (string) $event;
+
+    if (!isset($read[$event])) {
+        $read[$event] = pg_schema_has('ws_scheduled_actions')
+            ? array_column((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active' AND rules LIKE '%" . e($event) . "%' LIMIT 50"), 'rules')
+            : array();
+    }
+
+    return $read[$event];
 }
 
 // Keeps an event for the workspace to pick up (ws_events_in).
@@ -298,6 +355,10 @@ function pg_event_record($event, $payload = array())
     }
 
     if (!function_exists('pg_schema_has') || !pg_schema_has('ws_events_in')) {
+        return;
+    }
+
+    if (in_array((string) $event, pg_event_workspace_on_demand(), true) && !pg_event_workspace_awaited($event, pg_event_workspace_waiting_rules($event))) {
         return;
     }
 

@@ -429,7 +429,23 @@ function api_openapi_type($param) {
 
 		case 'decimal':
 
-			return array('type' => 'number');
+			// The router refuses a decimal outside its bounds
+			// (api_validate_bounds()), so the document states them.
+			$schema = array('type' => 'number');
+
+			if (isset($param['min'])) {
+
+				$schema['minimum'] = $param['min'];
+
+			}
+
+			if (isset($param['max'])) {
+
+				$schema['maximum'] = $param['max'];
+
+			}
+
+			return $schema;
 
 		case 'bool':
 

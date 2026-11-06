@@ -296,3 +296,13 @@ function test_dashboard_v2_cards_send_no_html_money()
 		pg_assert_false(strpos((string) file_get_contents($file), 'prepare_amount(') !== false, basename($file) . ' sends plain-text money');
 	}
 }
+
+function test_dashboard_v2_shop_url_opens_a_screen_the_person_may_open()
+{
+	// The orders list for whoever may open it.
+	pg_assert_same('view_orders.php', pg_dashboard_v2_shop_url(true, true));
+	pg_assert_same('view_orders.php', pg_dashboard_v2_shop_url(true, false));
+	// A user with commerce reports only: the reports, not a refused list.
+	pg_assert_same('view_order_reports.php', pg_dashboard_v2_shop_url(false, true));
+	pg_assert_same('', pg_dashboard_v2_shop_url(false, false));
+}

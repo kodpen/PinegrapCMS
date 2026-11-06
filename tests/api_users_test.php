@@ -327,6 +327,26 @@ function test_api_users_write_fields_from_row()
 	pg_assert_same('Staff', $applied['fields']['badge_label'], 'a field not sent is kept');
 }
 
+// An update not sent reward_points leaves the balance alone: the row's
+// balance is posted as its own original, so pg_credit_points_staff_sql()
+// writes nothing and an order or conversion landing meanwhile is kept. A
+// sent balance is still written.
+function test_api_users_write_reward_points_kept_unless_sent()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit_points.php');
+
+	$fields = api_user_fields_from_row(api_users_test_row(array('user_badge' => '0', 'user_badge_label' => '', 'user_reward_points' => '12')));
+
+	$kept = api_user_fields_apply($fields, array('email' => 'new@example.com'), 0, array(), array());
+	pg_assert_same('', pg_credit_points_staff_sql($kept['fields']['reward_points'] ?? null, $kept['fields']['reward_points_original'] ?? null), 'a balance not sent is not written');
+
+	$sent = api_user_fields_apply($fields, array('reward_points' => 40), 0, array(), array());
+	pg_assert_same('user_reward_points = 40,', pg_credit_points_staff_sql($sent['fields']['reward_points'] ?? null, $sent['fields']['reward_points_original'] ?? null), 'a sent balance is written');
+
+	$same = api_user_fields_apply($fields, array('reward_points' => 12), 0, array(), array());
+	pg_assert_same('', pg_credit_points_staff_sql($same['fields']['reward_points'] ?? null, $same['fields']['reward_points_original'] ?? null), 'the stored balance sent again writes nothing');
+}
+
 // Every handler stops for a dry run after its checks and before the first
 // write, and announces through pg_announce().
 function test_api_users_write_dry_run_and_events()

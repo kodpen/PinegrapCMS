@@ -1444,7 +1444,13 @@
     // drawing: its outline within half its stroke and slack, or inside it
     // when it is filled.
     function hitShape(l, p, slack) {
-        var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, lines = outline(l), i, j;
+        return hitLines(l, outline(l), p, slack);
+    }
+
+    // hitShape() on the outline already drawn (lines), so a caller testing
+    // many points draws it once.
+    function hitLines(l, lines, p, slack) {
+        var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, i, j;
 
         // A path with more contours (outlined letters) is inside any of them.
         if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && (l.subs ? lines : [lines[0]]).some(function (line) { return inside(q, line); })) {
@@ -1492,16 +1498,18 @@
         };
     }
 
-    // A pen stroke after the eraser passed x, y with radius r: null when it
-    // was not touched, else the pieces left (none when all went), each a
-    // new box and trace that keeps the stroke's angle and mirror.
-    function eraseTrace(l, x, y, r) {
-        var c = drawnLocal(l, x, y), reach = r + (l.stroke || 1) / 2, runs = [], run = [], touched = false;
+    // A pen stroke after the eraser passed x, y with radius r (coming from
+    // from, a point of the document, so the points it swept over between
+    // two moves go too): null when it was not touched, else the pieces left
+    // (none when all went), each a new box and trace that keeps the stroke's
+    // angle and mirror.
+    function eraseTrace(l, x, y, r, from) {
+        var c = drawnLocal(l, x, y), c0 = from ? drawnLocal(l, from[0], from[1]) : c, reach = r + (l.stroke || 1) / 2, runs = [], run = [], touched = false;
 
         (l.trace || []).forEach(function (t) {
             var p = [t[0] * l.w, t[1] * l.h];
 
-            if (Math.hypot(p[0] - c[0], p[1] - c[1]) <= reach) {
+            if (segmentDistance(p, c0, c) <= reach) {
                 touched = true;
 
                 if (run.length) {
@@ -1533,6 +1541,117 @@
                 rot: l.rot || 0,
                 mirror: !!l.mirror,
                 trace: piece.trace
+            };
+        });
+    }
+
+    // -- the eraser on shapes and paths --
+
+    // A drawn shape or a path loses what the eraser passes over as a pen
+    // stroke does, but through a mask: the layer keeps its type, style and
+    // size. l.erase holds a stroke per drag over the layer, { w, h, r, pts }:
+    // the eraser's path in the layer's frame before the mirror, in pixels of
+    // the w x h box the layer had then (a later resize stretches the mask
+    // with the drawing), r its radius in those pixels.
+    var ERASE_POINTS = 4000;
+
+    // Whether the eraser masks l: a drawn shape (a pen stroke it cuts,
+    // eraseTrace()) or a path.
+    function erasable(l) {
+        return !!l && ((l.type === 'path') || ((DRAW_KINDS.indexOf(l.type) >= 0) && (l.type !== 'pen')));
+    }
+
+    function eraseValid(s) {
+        var num = function (n) { return (typeof n === 'number') && isFinite(n); };
+
+        return !!s && num(s.w) && num(s.h) && num(s.r) && (s.w > 0) && (s.h > 0) && (s.r > 0) && Array.isArray(s.pts) && (s.pts.length > 0)
+            && s.pts.every(function (p) { return Array.isArray(p) && (p.length === 2) && num(p[0]) && num(p[1]); });
+    }
+
+    // The mask's strokes a drawing may use: none on a layer the eraser does
+    // not mask, a broken one left out.
+    function eraseStrokes(l) {
+        return (erasable(l) && Array.isArray(l.erase)) ? l.erase.filter(eraseValid) : [];
+    }
+
+    function eraseOn(l) {
+        return eraseStrokes(l).length > 0;
+    }
+
+    // Whether an eraser of radius r moving from a to b (points of the
+    // document) touches l's drawing as hitShape() tests it, in steps of half
+    // the radius. A layer without a warp is passed over when the move stays
+    // away from its box.
+    function eraseTouches(l, a, b, r) {
+        var reach = r + (l.stroke || 1), pa = local(l, a[0], a[1]), pb = local(l, b[0], b[1]), lines, n, i;
+
+        if (!l.warp && !l.puppet && ((Math.max(pa[0], pb[0]) < -reach) || (Math.min(pa[0], pb[0]) > l.w + reach)
+                || (Math.max(pa[1], pb[1]) < -reach) || (Math.min(pa[1], pb[1]) > l.h + reach))) {
+            return false;
+        }
+
+        lines = outline(l);
+        n = Math.min(200, Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.max(1, r / 2))));
+
+        for (i = 0; i <= n; i++) {
+            if (hitLines(l, lines, [pa[0] + (pb[0] - pa[0]) * i / n, pa[1] + (pb[1] - pa[1]) * i / n], r)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // The point x, y of the document in l's frame before the mirror.
+    function eraseLocal(l, x, y) {
+        var p = drawnLocal(l, x, y);
+
+        return [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10];
+    }
+
+    // l's mask after an eraser of radius r moved from a to b: b goes onto
+    // the stroke at index i (the drag's own) unless it lies within a quarter
+    // of the radius of its last point; without one, a new stroke from a to
+    // b. Answers { erase, i }, i the stroke the drag goes on with.
+    function eraseAdd(l, a, b, r, i) {
+        var list = Array.isArray(l.erase) ? l.erase.slice() : [], s = ((i !== null) && (i !== undefined) && eraseValid(list[i])) ? list[i] : null;
+        var p = eraseLocal(l, b[0], b[1]), last;
+
+        if (s) {
+            last = s.pts[s.pts.length - 1];
+
+            if (Math.hypot(p[0] - last[0], p[1] - last[1]) < s.r / 4) {
+                return { erase: list, i: i };
+            }
+
+            if (s.pts.length < ERASE_POINTS) {
+                list[i] = { w: s.w, h: s.h, r: s.r, pts: s.pts.concat([p]) };
+
+                return { erase: list, i: i };
+            }
+
+            list.push({ w: l.w, h: l.h, r: s.r, pts: [last, p] });
+
+            return { erase: list, i: list.length - 1 };
+        }
+
+        list.push({ w: l.w, h: l.h, r: Math.round(r * 10) / 10, pts: [eraseLocal(l, a[0], a[1]), p] });
+
+        return { erase: list, i: list.length - 1 };
+    }
+
+    // l's mask in a new box of the same angle and mirror (x0, y0, w, h in
+    // the old box's frame before the mirror, as refitPath() and warpExpand()
+    // fit one): the strokes stay where they were on the document.
+    function eraseShift(l, x0, y0, w, h) {
+        return eraseStrokes(l).map(function (s) {
+            var sx = l.w / s.w, sy = l.h / s.h;
+
+            return {
+                w: w,
+                h: h,
+                r: Math.round(s.r * Math.sqrt(sx * sy) * 10) / 10,
+                pts: s.pts.map(function (p) { return [Math.round((p[0] * sx - x0) * 10) / 10, Math.round((p[1] * sy - y0) * 10) / 10]; })
             };
         });
     }
@@ -1569,7 +1688,8 @@
         strokePreset: strokePreset, shapeBox: shapeBox, arrowHead: arrowHead, lineThickness: lineThickness, lineBox: lineBox,
         drawnPoint: drawnPoint, drawnLocal: drawnLocal, lineEnds: lineEnds, regularPoints: regularPoints, maxRadius: maxRadius,
         smoothTrace: smoothTrace, shapePath: shapePath, outline: outline, hitShape: hitShape, penLayer: penLayer,
-        eraseTrace: eraseTrace, dashFor: dashFor, fillFor: fillFor
+        eraseTrace: eraseTrace, dashFor: dashFor, fillFor: fillFor, ERASE_POINTS: ERASE_POINTS, erasable: erasable, eraseStrokes: eraseStrokes,
+        eraseOn: eraseOn, eraseTouches: eraseTouches, eraseAdd: eraseAdd, eraseShift: eraseShift
     };
 
     // -- text (pg_image_editor_text.js) --
@@ -2633,6 +2753,11 @@
 
         if (more.length) {
             out.subs = more.map(function (sub) { return { knots: moveKnots(sub.knots, part), closed: !!sub.closed }; });
+        }
+
+        // The eraser's mask stays where it was on the document.
+        if (eraseOn(l)) {
+            out.erase = eraseShift(l, x0, y0, w, h);
         }
 
         return out;
@@ -4218,7 +4343,15 @@
         return out;
     }
 
-    var ACTIONS = { actionList: actionList };
+    // Whether a corner keeps a layer's proportions while it resizes it
+    // (pointer: the PointerEvent's pointerType): with a finger or a pen
+    // always, a touch screen having no Shift; with the mouse when the type
+    // keeps them (ratio: a picture), Shift doing the other.
+    function keepRatio(pointer, shift, ratio) {
+        return (pointer === 'touch') || (pointer === 'pen') || (!!shift !== !!ratio);
+    }
+
+    var ACTIONS = { actionList: actionList, keepRatio: keepRatio };
 
     // -- The context menu (pg_image_editor_menu.js) --
 
@@ -4792,6 +4925,10 @@
 
         if (cs.length > 1) {
             out.subs = cs.slice(1).map(function (o) { return { knots: part(o.pts), closed: o.closed }; });
+        }
+
+        if (eraseOn(l)) {
+            out.erase = eraseShift(l, left, top, w, h);
         }
 
         return out;
