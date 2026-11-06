@@ -12,7 +12,7 @@ module: editor
   - `style` rebuilt from text formatting only (`_pg_rich_text_visitor_style()`): colour, background colour, font, text align/decoration/transform/indent, line height, vertical align, left/right margin and padding (editor indent), list style, direction, border. Position, z-index, display, width/height and the rest drop; so do negative lengths and viewport units (vw, vh, vmin, vmax). No declaration left: no attribute.
   - every link gets `rel="nofollow ugc noopener"`, replacing its own `rel`.
   - an `img` is removed unless `_pg_rich_text_image_is_local()`: relative, `{path}`, or http(s) on `HOSTNAME_SETTING` (never the request Host). Protocol-relative (`//`, `/\`), user information and other schemes are outside; an empty `src` too.
-  - `{path}` (and libxml's `%7Bpath%7D`) is judged as `/`, the way page output replaces it (the site path starts and ends with a slash): `{path}/host/a.png` or `/{path}host/a.png` becomes `//host/a.png` and is outside. Symptom fixed (bug hunt PR in `plans/bug-hunt-modules-fn-1a.md`): such an address passed as local and the visitor's image loaded from another server.
+  - `{path}` (and libxml's `%7Bpath%7D`) is judged as `/`, the way page output replaces it (the site path starts and ends with a slash): `{path}/host/a.png` or `/{path}host/a.png` becomes `//host/a.png` and is outside. Symptom fixed (a bug hunt PR): such an address passed as local and the visitor's image loaded from another server.
 - Decided by the owner on 2026-10-28 (plan `security-findings-2026-10` item 8): visitor HTML could restyle or cover the page and call outside servers.
 
 ## Who passes which profile?
