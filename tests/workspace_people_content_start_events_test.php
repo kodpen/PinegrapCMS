@@ -134,5 +134,6 @@ function test_workspace_people_content_start_events_rights()
 	pg_assert_contains("'manage_emails'", $from_row);
 
 	$api_page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/pages.php');
-	pg_assert_contains("pg_event_record('page.updated'", $api_page, 'a page changed through the API reaches the Workspace too');
+	pg_assert_contains("api_webhook_enqueue('page.updated'", $api_page, 'a page changed through the API is queued, which keeps it for the Workspace');
+	pg_assert_false(strpos($api_page, "pg_event_record('page.updated'") !== false, 'no second record: api_webhook_enqueue() keeps the event already');
 }
