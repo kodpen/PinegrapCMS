@@ -349,7 +349,7 @@ function test_parasut_product_stock_driver_passes_the_quantity()
 // the order's shipment document as it stands when the body is built.
 function test_parasut_product_stock_create_invoice_says_what_was_taken()
 {
-	$body = parasut_product_stock_test_source('includes/fn/parasut.php', 'parasut_create_invoice');
+	$body = parasut_product_stock_test_source('includes/fn/parasut.php', '_parasut_create_invoice_claimed');
 
 	parasut_product_stock_test_in_order($body, array(
 		'$build_invoice_body = function ($contact_id) use (',
@@ -363,7 +363,7 @@ function test_parasut_product_stock_create_invoice_says_what_was_taken()
 // added back when the order took it out of Pinegrap's count.
 function test_parasut_product_stock_e_shipment_opens_cards_with_the_order_total()
 {
-	$body = parasut_product_stock_test_source('includes/fn/parasut.php', 'parasut_create_shipment');
+	$body = parasut_product_stock_test_source('includes/fn/parasut.php', '_parasut_create_shipment_claimed');
 
 	parasut_product_stock_test_in_order($body, array(
 		'$taken = parasut_order_took_stock($order) ? parasut_stock_taken_units($items) : array();',
@@ -419,7 +419,7 @@ function test_parasut_product_stock_seed_covers_the_order_total()
 // lines stay one per order line.
 function test_parasut_product_stock_e_shipment_checks_the_total_once_per_product()
 {
-	$body = parasut_product_stock_test_source('includes/fn/parasut.php', 'parasut_create_shipment');
+	$body = parasut_product_stock_test_source('includes/fn/parasut.php', '_parasut_create_shipment_claimed');
 
 	parasut_product_stock_test_in_order($body, array(
 		"\$stock_lines[] = array('parasut_product_id' => \$item_parasut_product_id, 'quantity' => \$item_qty, 'name' => \$item_name);",
@@ -470,7 +470,7 @@ function test_parasut_product_stock_shipment_refuses_deleted_products()
 // the token and anything else asked of or written at Paraşüt.
 function test_parasut_product_stock_e_shipment_refuses_deleted_products_first()
 {
-	$body = parasut_product_stock_test_source('includes/fn/parasut.php', 'parasut_create_shipment');
+	$body = parasut_product_stock_test_source('includes/fn/parasut.php', '_parasut_create_shipment_claimed');
 	$guard = strpos($body, "'This order already has a shipment document in Paraşüt (ID: {var:1}), so a second one was not created.'");
 	$refused = strpos($body, "if (\$deleted_refusal !== '') {");
 

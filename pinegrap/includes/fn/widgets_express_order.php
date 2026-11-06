@@ -4157,7 +4157,7 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
                     $cd_name = 'shipping_' . $rid . '_custom_arrival_date_' . $aid;
                     $cd_val  = _eo_custom_arrival_value($get('custom_arrival_date_' . $aid), $r, $aid);
                     $cd_max  = isset($ad['custom_maximum_arrival_date']) ? $ad['custom_maximum_arrival_date'] : '';
-                    $out .= '<div class="ms-4 mt-1 mb-2 pg-eo-custom-arrival" data-pg-eo-arrival-id="' . $aid . '"'
+                    $out .= '<div class="ms-4 mt-1 mb-2 pg-eo-custom-arrival" data-pg-eo-rid="' . $rid . '" data-pg-eo-arrival-id="' . $aid . '"'
                           .   ($is_sel ? '' : ' style="display:none"') . '>'
                           . _eo_custom_arrival_input($cd_name, $cd_val, $cd_max, date('Y-m-d'), $is_sel, (string)$ad['name'])
                           . '</div>';
@@ -4885,10 +4885,15 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
                 fetchMethods(rid);
             });
         }
-        // Address fields → debounced refetch on change
-        ['address_1', 'city', 'state', 'zip_code'].forEach(function (f) {
-            var el = form.querySelector('[name="shipping_' + rid + '_' + f + '"]:not([disabled])');
-            if (el) el.addEventListener('change', function () { fetchMethods(rid); });
+        // Address fields → refetch on change. Listened on the form: the
+        // state's name moves between its text box and its pick list when the
+        // country changes (pg_sa_state_script()), so a listener bound to the
+        // control named at load would miss the other one.
+        var addrNames = ['address_1', 'city', 'state', 'zip_code'].map(function (f) {
+            return 'shipping_' + rid + '_' + f;
+        });
+        form.addEventListener('change', function (e) {
+            if (e.target && e.target.name && addrNames.indexOf(e.target.name) !== -1) fetchMethods(rid);
         });
         // Arrival date radios — refetch + show/hide custom date input
         form.querySelectorAll('input.pg-eo-arrival-radio[data-pg-eo-rid="' + rid + '"]').forEach(function (r) {
@@ -4896,11 +4901,13 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
                 // Toggle custom date input visibility; a hidden date is not
                 // posted, and a date out of its bounds there would block the
                 // submit with no visible message.
-                form.querySelectorAll('.pg-eo-custom-arrival').forEach(function (cd) {
+                // Only this recipient's boxes: every recipient has the same
+                // arrival choice ids.
+                form.querySelectorAll('.pg-eo-custom-arrival[data-pg-eo-rid="' + rid + '"]').forEach(function (cd) {
                     cd.style.display = 'none';
                     cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; refreshField(inp); });
                 });
-                var custWrap = form.querySelector('.pg-eo-custom-arrival[data-pg-eo-arrival-id="' + r.value + '"]');
+                var custWrap = form.querySelector('.pg-eo-custom-arrival[data-pg-eo-rid="' + rid + '"][data-pg-eo-arrival-id="' + r.value + '"]');
                 if (custWrap) {
                     custWrap.style.display = '';
                     custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; refreshField(inp); });
@@ -4911,7 +4918,7 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         // Custom arrival DATE input change → refetch (the picked date affects
         // which methods can deliver by then; without this listener the rate
         // list goes stale once the visitor changes the date).
-        form.querySelectorAll('.pg-eo-custom-arrival input[type="date"]').forEach(function (inp) {
+        form.querySelectorAll('.pg-eo-custom-arrival[data-pg-eo-rid="' + rid + '"] input[type="date"]').forEach(function (inp) {
             inp.addEventListener('change', function () { fetchMethods(rid); });
         });
         // Method picker → update hidden input + sidebar
