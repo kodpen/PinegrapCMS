@@ -1970,6 +1970,45 @@ function validate_time($time)
         return true;
     }
 }
+/**
+ * The error a product form value gets when the designer cart widget posts
+ * it (cart_action.php), as HTML; null when it passes. A date, a date and
+ * time, an e-mail address or a time must be one, as the classic cart and
+ * the express order hold them; a pick list, radio button or check box value
+ * must be of the field's option list (pg_cf_option_value_error()). An empty
+ * value passes: the required check is the checkout's.
+ *
+ * @param array $field         the field's row: type, label
+ * @param mixed $value         the posted value, a string or a list
+ * @param array $option_values the field's form_field_options values
+ * @return string|null
+ */
+function pg_product_form_value_error(array $field, $value, array $option_values)
+{
+    $type = isset($field['type']) ? (string) $field['type'] : '';
+    $label = h(isset($field['label']) ? (string) $field['label'] : '');
+    $text = is_array($value) ? '' : trim((string) $value);
+
+    if ($text !== '') {
+        if (($type === 'date') && !validate_date($text)) {
+            return lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'date and time') && !validate_date_and_time($text)) {
+            return lang(array('string' => 'Please enter a valid date &amp; time for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'email address') && !validate_email_address($text)) {
+            return lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'time') && !validate_time($text)) {
+            return lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => $label));
+        }
+    }
+
+    return pg_cf_option_value_error($field, $value, $option_values);
+}
 // A form processor's single-value fields, after liveform::add_fields_to_session().
 // A text box, a hidden field or a radio button posts one string, but a hand-made
 // request can post any of them as an array (name[]=x), and the escaping, string
