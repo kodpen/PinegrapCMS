@@ -11,7 +11,7 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-coworking-design]].
 
 ## Steps (claim as `[plan:design-template-coworking] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the space's data: opening hours, floors, space kinds, spaces with seats and rates, plans and day passes with prices, amenities, perks, events, members' quotes, pick lists; shared parts: account bar, notice, header, footer, tour band, staff bar; space, plan, amenity, event and quote cards, form fields, comment thread, blog parts); `tests/design_template_coworking_test.php`.
+- 1 (done, #7660): `parts.php` (node builders, the space's data, shared parts and cards); `tests/design_template_coworking_test.php`.
 
 - 2: `pages_public.php`: home, `plans`, `amenities`, `about`, `faq`, `location`; `tests/design_template_coworking_public_test.php`.
 
@@ -30,7 +30,7 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 - 9: assembly: `pinegrap-coworking.php` (order, search sections, look, fonts, `pcw-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-coworking.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 1. Copy the node builders, form fields, comment thread and blog parts from `pinegrap-gym/parts.php`; the data and cards are the coworking space's own.
+- Step 2. `parts.php` has the kinds, spaces, plans, amenities, figures and testimonials and their cards (`$kind_card`, `$space_card`, `$plan_card`, `$amenity_card`, `$testimonial_card`). `$events` carries `in_days` for step 5's sample dates; `$perks` is for the members' area (step 6).
 - Translation trap: an existing key may carry another template's word (`Rooms` may read "Odalar" as a hotel's): check it before reuse.
 - PHP 7.1 traps: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.
 
