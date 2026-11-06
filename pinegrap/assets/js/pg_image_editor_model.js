@@ -4498,6 +4498,16 @@
             ] });
         }
 
+        if (list.indexOf('motion') >= 0) {
+            groups.push({ title: 'keysTimeline', rows: [
+                { keys: ['K'], label: 'keyPlay' },
+                { keys: ['LeftRight'], label: 'keyFrame' },
+                { keys: ['Shift', 'LeftRight'], label: 'keySecond' },
+                { keys: ['Home'], label: 'keyStart' },
+                { keys: ['End'], label: 'keyEnd' }
+            ] });
+        }
+
         groups.push({ title: 'keysView', rows: [
             { keys: ['+'], label: 'zoomIn' },
             { keys: ['-'], label: 'zoomOut' },
@@ -4514,7 +4524,50 @@
         return groups;
     }
 
-    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
+    // The playhead after key k in the Animate tool, at now on a timeline of
+    // end ms: the arrows step to the next or previous frame of fps (Shift: to
+    // the next or previous whole second), Home goes to the start and End to
+    // the end; null for another key. Half a millisecond of slack keeps a
+    // playhead on a rounded frame from stepping to that same frame again.
+    var TIMELINE_FPS = 30;
+
+    function timelineKey(now, k, shift, end, fps) {
+        var dir = { ArrowLeft: -1, ArrowRight: 1 }[k], step, at;
+
+        end = Math.max(0, Number(end) || 0);
+        now = clamp(Number(now) || 0, 0, end);
+
+        if (k === 'Home') {
+            return 0;
+        }
+
+        if (k === 'End') {
+            return end;
+        }
+
+        if (!dir) {
+            return null;
+        }
+
+        step = shift ? 1000 : 1000 / ((fps > 0) ? fps : TIMELINE_FPS);
+        at = (dir > 0) ? Math.floor((now + 0.5) / step) + 1 : Math.ceil((now - 0.5) / step) - 1;
+
+        return clamp(Math.round(at * step), 0, end);
+    }
+
+    // True when an animation of total ms played loop times (0 forever) moves
+    // for longer than 5 seconds: WCAG 2.2.2 then asks for a way to pause it
+    // where it shows beside other content, which a GIF, APNG or WebP lacks.
+    var MOTION_PAUSE_MS = 5000;
+
+    function motionLong(total, loop) {
+        total = Number(total) || 0;
+        loop = Math.round(Number(loop) || 0);
+
+        return (total > 0) && ((loop <= 0) || (total * loop > MOTION_PAUSE_MS));
+    }
+
+    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap, TIMELINE_FPS: TIMELINE_FPS, timelineKey: timelineKey, motionLong: motionLong };
 
     // -- The selection's commands (pg_image_editor_actions.js) --
 
