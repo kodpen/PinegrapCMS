@@ -74,7 +74,7 @@ $client_pages[] = array(
         $page_header(lang('Client Area'),
             lang('Your photos wait in a private gallery that only you can open after signing in. Choose your favourites there, send us their frame numbers and download the edited photos when they are ready.'),
             array($el('div', 'd-flex flex-wrap gap-2 mt-4', lang('Buttons'), array(
-                $link(lang('Sign In'), '{{page:login}}', 'btn btn-primary rounded-pill px-4'),
+                $link(lang('Sign in'), '{{page:login}}', 'btn btn-primary rounded-pill px-4'),
                 $link(lang('My Account'), '{{page:my_account}}', 'btn btn-outline-primary rounded-pill px-4'),
             )))),
         $el('section', 'py-5', lang('Ways In'), array(
