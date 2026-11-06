@@ -4,14 +4,14 @@ description: Plan: the Music Artist design template (pinegrap-music): tour dates
 ---
 
 ## What is it?
-- A design template `pinegrap-music` for a music artist or band: home, tour dates, discography with a release page and its tracks, the band (members), videos, merch sold in the shop, news (the blog), a press kit with a booking enquiry for promoters, the mailing list, contact, sign-in and a staff area. Started by a coordinator after the owner's list (`workflow/coordinator-no-plans.md`).
+- A design template `pinegrap-music` for a music artist or band: home, tour dates, discography with a release page and its tracks, the band (members), videos, merch sold in the shop, news (the blog), a press kit with a booking enquiry for promoters, the mailing list, contact, sign-in and a staff area.
 - Built like Gym and Travel: `pinegrap-music.php` plus the folder `pinegrap-music/` (`parts.php`, `pages_public.php`, `releases.php`, `shows.php`, `mail.php`, `press.php`, `merch.php`, `standard.php`, `account.php`), each page file returns `pages` and `widgets`, kept as `$…_part` in the main file ([[design-template-hotel]]).
 
 ## Design
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-music-design]].
 
 ## Steps (claim as `[plan:design-template-music] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the artist's data: members, sample releases with tracks and durations, sample shows dated from today, cities, venues, ticket states, merch items with prices, press quotes, figures, links to listening services, pick lists; shared parts: account bar, notice, header, footer, mailing-list band, staff bar; release, track list, show row, member, merch and press-quote cards, form fields, comment thread, blog parts); `tests/design_template_music_test.php`.
+- 1 (done, #7544): `parts.php` (builders; data: members, releases with tracks, shows dated by `$show_on()` (six to come, three played), ticket states, merch, gift cards, press quotes, videos; shared parts and cards); `tests/design_template_music_test.php`.
 
 - 2: `pages_public.php`: home (`home_shows`, `home_releases`, `home_posts`), `about` (story and members), `videos`, `faq`, `mailing_list` (the newsletter sign-up as its own page); `tests/design_template_music_public_test.php`.
 
@@ -28,7 +28,7 @@ description: Plan: the Music Artist design template (pinegrap-music): tour dates
 - 8: assembly: `pinegrap-music.php` (order, search sections, look, fonts, `pmu-` rules, folders incl. `press`, contact group, group `newsletter`, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-music.md`; the PR body names `[NEW] Added the Music Artist design template`; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. `pinegrap-travel/`, `pinegrap-gym/`, `pinegrap-events/` (dates from today), [[design-templates-file-format]], [[design-templates-catalog-and-look]].
+- The next free step is the lowest one not marked done. The tests share `_test_mu_page_keys()` and `_test_mu_shop_keys()` from `tests/design_template_music_test.php`; the show row binds `show_date`, `ticket_state`, `ticket_url` (step 3 names these fields so), the release card `cover`, `format`, `note`, `length`, the track list `tracks`. `pinegrap-travel/`, `pinegrap-gym/`, `pinegrap-events/` (dates from today), [[design-templates-file-format]], [[design-templates-catalog-and-look]].
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
