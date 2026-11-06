@@ -1956,7 +1956,7 @@ function ws_flows_canvas_test_groups()
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'record_get'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'record_get', 'ai'))
 	);
 }
 
@@ -2057,9 +2057,19 @@ JS
 	pg_assert_true(isset($server['mcp']), 'the server has the MCP box');
 
 	// A kind the canvas does not build yet (the table boxes) is left out.
+	// A Pinegrap AI box's arrows follow its settings: the canvas holds a
+	// writing box's, kindOf() a classifying box's (ws_step_ai_arrow_outcomes()).
 	foreach (array_intersect_key($server, $result) as $kind => $info) {
-		pg_assert_same(array_values((array) $info['outcomes']), $result[$kind], $kind . "'s outcomes");
+		$outcomes = ($kind === 'ai')
+			? array_values(array_diff(ws_step_ai_arrow_outcomes(ws_step_ai_normalize(array())), array('always')))
+			: array_values((array) $info['outcomes']);
+
+		pg_assert_same($outcomes, $result[$kind], $kind . "'s outcomes");
 	}
+
+	$kind_of = substr($source, (int) strpos($source, 'function kindOf('), 900);
+	pg_assert_contains("(node.config.mode === 'classify')", $kind_of, 'a classifying AI box leaves on its named outcomes');
+	pg_assert_contains("concat(['other', 'failed'])", $kind_of);
 
 	pg_assert_same(array(), array_values(array_diff(array_keys($result), array_keys($server))), 'the canvas has no kind the server lacks');
 

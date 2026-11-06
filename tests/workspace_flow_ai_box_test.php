@@ -242,3 +242,26 @@ function test_workspace_flow_ai_box_reader()
 	pg_assert_same('Pinegrap AI gave no answer.', ws_step_result_shown('ai', 'failed', 'No answer: the quota is used up.', false));
 	pg_assert_same('Pinegrap AI chose “Question”.', ws_step_result_shown('ai', 'class_2', 'Pinegrap AI chose “Question”.', true));
 }
+
+// The canvas: offered while the site has Pinegrap AI, both texts take
+// values, an extracting box offers its number and found, a classifying
+// box's arrows are named after its outcomes, and every text it shows is
+// handed over.
+function test_workspace_flow_ai_box_canvas()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains("['ai', 'fl_kind_ai']", $source, 'in the palette');
+	pg_assert_contains("((item[0] !== 'ai') || stepLists().ai)", $source, 'only while the site has Pinegrap AI');
+	pg_assert_contains("ai: [['prompt', 'fl_ai_prompt', 4000], ['text', 'fl_ai_text', 20000]]", $source, 'both texts take values, at the server\'s lengths');
+	pg_assert_contains("config = { mode: 'write', prompt: '', text: '', classes: [], closes_in: " . WS_STEP_AI_CLOSES_DEFAULT . ' }', $source, 'a new box as the server keeps an empty one');
+	pg_assert_contains("add.disabled = !state.edit || (config.classes.length >= " . WS_STEP_AI_CLASSES_MAX . ')', $source);
+	pg_assert_contains("add(prefix, { key: 'number'", $source);
+	pg_assert_contains("add(prefix, { key: 'found'", $source);
+	pg_assert_contains('return [on, outcomeText(from, on)];', $source, 'the arrow picker names a class by its name');
+	pg_assert_contains('label.textContent = outcomeText(nodeById(edge.from), edge.on);', $source);
+	pg_assert_contains("\$steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php'));
+
+	$min = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.min.js');
+	pg_assert_contains('fl_ai_mode_help_classify', $min, 'the bundle carries it');
+}

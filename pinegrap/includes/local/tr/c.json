@@ -1182,6 +1182,7 @@
     "Choose your storage": "Depolamanızı seçin",
     "Choose zip": "Zip seç",
     "Choose {var:1}.": "{var:1} seçin.",
+    "Chooses which of the outcomes below the text belongs to; each outcome is an arrow, and None of these is one too.": "Metnin aşağıdaki sonuçlardan hangisine ait olduğunu seçer; her sonuç bir oktur, Hiçbiri de bir oktur.",
     "Choose…": "Seçin…",
     "Choose… (optional)": "Seçin… (isteğe bağlı)",
     "Choosing Write holds the read position open; the record keeps only what you chose.": "Yazma seçildiğinde okuma açık tutulur; kayıtta yalnız sizin seçtiğiniz durur.",

@@ -30,6 +30,8 @@ description: The Pinegrap AI box of flows (kind ai, B2): modes, settings, classi
 - `ws_step_outputs_held()['ai'] = *`; non-editors read "Pinegrap AI answered." / "Pinegrap AI gave no answer." (`ws_step_result_shown()`). Not a role-3 member kind (`ws_flow_member_kinds()`): it spends the site's quota.
 - Try: "Asks Pinegrap AI to …"; nothing is sent.
 
-## What is left?
-- The canvas form (workspace_flow.js), the palette entry and the named arrows' labels: B2's second PR. Until then the box comes in through the API, MCP and Pinegrap AI's drafts (`ws_flow_ai_catalogue_hints()`).
-- Unverified: a live call on a site with a key; only the pure parts and the wiring are under tests.
+## Canvas?
+- `workspace-flows-ai-box-canvas.md`.
+
+## What is unverified?
+- A live call on a site with a key, and a browser look at the form; the pure parts, the wiring and the canvas source are under tests.
