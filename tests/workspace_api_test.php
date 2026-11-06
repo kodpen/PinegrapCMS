@@ -2327,6 +2327,42 @@ function test_ws_api_every_write_rehearses()
 
 // A rehearsal meets the panel's own checks and stops before the panel's
 // write: the *_check() function first, then the stop, then the write.
+// Template apply: the panel and the API meet one set of refusals. Every
+// refusal ws_template_apply() gives before its first write (the body, each
+// task, the note room, the message burst) lives in ws_template_apply_check(),
+// which the API handler runs before its dry-run stop.
+function test_ws_template_apply_refusals_live_in_the_check()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
+
+	pg_assert_true(function_exists('ws_template_apply_check'), 'ws_template_apply_check() exists');
+
+	if (!function_exists('ws_template_apply_check')) {
+		return;
+	}
+
+	$check = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_template_apply_check'));
+
+	foreach (array('ws_templates_ready(', 'ws_can_post_channel(', 'ws_template_body_clean(', 'ws_task_validate(', 'WS_NOTE_LIMIT', '> 20') as $needle) {
+		pg_assert_true(strpos($check, $needle) !== false, 'the check holds ' . $needle);
+	}
+
+	$apply = preg_replace('~^\s*//.*$~m', '', ws_api_test_handler_source('ws_template_apply'));
+	$at = strpos($apply, 'ws_template_apply_check(');
+
+	pg_assert_true($at !== false, 'ws_template_apply() runs the check');
+
+	foreach (array('ws_message_send(', 'ws_task_create(', 'ws_note_save(', 'UPDATE ws_channels') as $write) {
+		$found = strpos($apply, $write);
+		pg_assert_true(($found !== false) && ($at !== false) && ($found > $at), 'ws_template_apply(): the check comes before ' . $write);
+	}
+
+	// No refusal left behind in the write path that the rehearsal skips.
+	foreach (array('ws_task_validate(', 'WS_NOTE_LIMIT', 'ws_template_body_clean(') as $needle) {
+		pg_assert_true(strpos($apply, $needle) === false, 'ws_template_apply() leaves ' . $needle . ' to the check');
+	}
+}
+
 function test_ws_api_rehearsal_stops_before_the_write()
 {
 	$order = array(
@@ -2360,6 +2396,7 @@ function test_ws_api_rehearsal_stops_before_the_write()
 		'ws_api_mcp_servers_refresh'  => array('ws_api_mcp_admin(', 'ws_mcp_refresh_check(', 'api_dry_run_stop(', 'ws_mcp_refresh_tools('),
 		'ws_api_mcp_servers_tools'    => array('ws_api_mcp_admin(', 'ws_mcp_tools_check(', 'api_dry_run_stop(', 'ws_mcp_tools_save('),
 		'ws_api_mcp_servers_probe'    => array('ws_api_mcp_admin(', 'ws_mcp_probe_check(', 'api_dry_run_stop(', 'ws_mcp_probe_address('),
+		'ws_api_channel_apply_template' => array('ws_template_apply_check(', 'api_dry_run_stop(', 'ws_template_apply('),
 		'ws_api_claude_claim'         => array('api_dry_run_stop(', 'UPDATE ws_ai_requests'),
 		'ws_api_claude_fail'          => array('api_dry_run_stop(', 'ws_message_send('),
 	);
