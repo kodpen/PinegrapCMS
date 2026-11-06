@@ -250,7 +250,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-adjust.md: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-animation-save.md: Saving an animation into Files (AN4): Save to Files, the upload limit, action animation (binary body, type by bytes), its version with the document, reopening, same-format replace
 - image-editor-animation.md: The image editor's animation as a whole: what binds it (own code, no schema change, editor-only presentation), the AN step ids and their topic files, the timeline keys and the WCAG 2.2.2 note
-- image-editor-area-cut.md: The image editor's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why an area layer takes a press only inside its outline
+- image-editor-area-cut.md: The image editor's Cut to a layer (owner, 2026-11-05), why Erase is named Erase inside, and why the hole an erase leaves is the picture's own, not a piece
 - image-editor-area-pixels.md: What an image editor selection does to pixels (E27b, #6678): Erase inside and Adjust inside layers, Keep only, Copy to a layer, the masks a save sends, the engine's mask step under GD and Imagick
 - image-editor-area.md: The image editor's Select area tool (E27a): shapes, magic wand, add and subtract, invert, feather, marching ants, doc.selection, outline from pixels; the actions of E27b
 - image-editor-artboard.md: The image editor canvas (E12): New image dialog, Canvas tool on a board and on a photo (grow or trim with a fill), outward frames, Image tool, the ARTBOARD model section
