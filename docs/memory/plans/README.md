@@ -22,6 +22,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign-screens-1.md: The first legacy edit screens redone in step B11 of plans/bootstrap-6-redesign.md, each with its PR; the later ones are listed in that plan
+- bootstrap-6-redesign-screens-2.md: Legacy edit screens redone in step B11 of plans/bootstrap-6-redesign.md after screens-1 closed, each with its PR; new ones are added here
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (owner, 2026-11-01)
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
@@ -32,6 +33,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-coworking.md: Plan: the Coworking design template (pinegrap-coworking): desks, offices and meeting rooms, memberships and day passes, tours, community events; ~1,000-line steps
 - design-template-gym-design.md: Design of plans/design-template-gym.md: which shipped features the Gym template reuses for booking, trainers and membership, what it does not build, its look and Turkish words
 - design-template-gym.md: Plan: the Gym design template (pinegrap-gym), a fitness studio with classes, a timetable, trainers, membership plans, class booking and contact, built from existing features in ~1,000-line steps
+- design-template-museum-design.md: Design of plans/design-template-museum.md: the shipped features the Museum template reuses, what it does not build, its look and Turkish words
+- design-template-museum.md: Plan: the Museum / Art Gallery design template (pinegrap-museum): exhibitions, highlights, visit, tickets and membership, events, school visits; ~1,000-line steps
 - design-template-music-design.md: Design of plans/design-template-music.md: what the Music template reuses for shows, releases, merch, press kit and mailing list, what it does not build, its look and Turkish words
 - design-template-music.md: Plan: the Music Artist design template (pinegrap-music): tour dates, discography with tracks, merch shop, news, press kit, mailing list; parts in a folder; ~1,000-line steps
 - design-template-photo-design.md: Design of plans/design-template-photo.md: which shipped features the Photo template reuses for galleries, booking, proofing and downloads, what it does not build, its look and Turkish words

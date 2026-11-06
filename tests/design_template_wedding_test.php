@@ -112,7 +112,7 @@ function _test_wd_page_keys()
 	return array_merge(array(
 		'home', 'about', 'services', 'packages', 'venue', 'gallery', 'timeline', 'faq',
 		'weddings', 'wedding', 'wedding_new',
-		'enquiry', 'enquiry_view', 'my_enquiries', 'staff_enquiries', 'privacy', 'email_reply', 'book_visit',
+		'enquiry', 'enquiry_view', 'my_enquiries', 'staff_enquiries', 'privacy', 'email_enquiry_new', 'email_enquiry_received', 'email_reply', 'book_visit',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',

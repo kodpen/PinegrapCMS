@@ -17,7 +17,7 @@ description: Plan: the Construction Firm design template (pinegrap-construction)
 
 - 3 (done, #7614): `projects.php`: the Projects collection (`projects` by `?sector=` and `?service=`, the `project` page with facts, photos, scope and the client's words, `project_new`), `home_projects`; test.
 
-- 4: `mail.php` (the e-mail builders) and `quotes.php`: quote requests (`quote` with `?service=`, `quote_view`, `my_quotes`, `staff_quotes`, `privacy`, `email_reply`) and the site visit request; test.
+- 4 (done, #7633): `mail.php` (the e-mail builders) and `quotes.php`: quote requests (`quote` with `?service=`, `quote_view`, `my_quotes`, `staff_quotes`, `privacy`, `email_reply`) and the site visit request; test.
 
 - 5: `careers.php`: the Jobs collection (`careers`, `job` with an apply link `?job=`, `job_new`) and applications (`application`, `application_view`, `my_applications`, `staff_applications`); test.
 
