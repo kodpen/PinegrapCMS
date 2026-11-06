@@ -37,7 +37,8 @@ function _test_market_sellers_load()
 	$part = include $dir . '/sellers.php';
 	$pages = array();
 	foreach ($part['pages'] as $p) $pages[$p['key']] = $p;
-	$out = array('pages' => $pages, 'widgets' => $part['widgets'], 'sellers' => $sellers, 'makers_in' => $makers_in);
+	$out = array('pages' => $pages, 'widgets' => $part['widgets'], 'sellers' => $sellers, 'makers_in' => $makers_in,
+		'shop_url' => $seller_shop_url, 'shop_on' => $seller_shop_on);
 	return $out;
 }
 
@@ -101,13 +102,18 @@ function test_market_sellers_form_and_samples()
 	foreach ($form['sample_records'] as $n => $r) {
 		foreach ($r as $name => $value) {
 			pg_assert_true(isset($controls[$name]), "sample $n: field $name exists");
+			if ($name === 'shop_url' && !$d['shop_on']) continue;
 			pg_assert_true($value !== '', "sample $n: $name filled");
 			if ($controls[$name]['tag'] === 'select') {
 				pg_assert_true(in_array($value, $controls[$name]['options'], true), "sample $n: $name '$value' is an answer");
 			}
 		}
-		pg_assert_same(1, preg_match('/\\{\\{product_group_path:([a-z]+)\\}\\}$/', $r['shop_url'], $g), "sample $n: a group's address");
-		pg_assert_true(isset($d['sellers'][$g[1]]), "sample $n: the maker's own group");
+		if ($d['shop_on']) {
+			pg_assert_same(1, preg_match('/\\{\\{product_group_path:([a-z]+)\\}\\}$/', $r['shop_url'], $g), "sample $n: a group's address");
+			pg_assert_true(isset($d['sellers'][$g[1]]), "sample $n: the maker's own group");
+		} else {
+			pg_assert_same('', $r['shop_url'], "sample $n: no shop, no address");
+		}
 		if ($r['featured'] === lang('Yes')) $featured++;
 	}
 	pg_assert_same(3, $featured, 'three featured makers');
@@ -170,4 +176,14 @@ function test_market_sellers_turkish_words()
 			pg_assert_true(mb_stripos($map[$key], 'üretici', 0, 'UTF-8') !== false, "'$key' says üretici");
 		}
 	}
+}
+
+// Without the shop the template has no shop page, so a maker's shop address
+// is empty and the shop button's box leaves (pg-hide-if-empty) instead of
+// linking to "#/".
+function test_market_sellers_shop_url_without_shop()
+{
+	$d = _test_market_sellers_load();
+	pg_assert_same('', call_user_func($d['shop_url'], 'clay', false), 'no shop: no address');
+	pg_assert_same('{{page:shop}}/{{product_group_path:clay}}', call_user_func($d['shop_url'], 'clay', true), 'the shop: the group on the shop page');
 }

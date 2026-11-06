@@ -32,18 +32,18 @@ function test_print_order_shipping_card_rows_with_values()
 	));
 
 	pg_assert_contains(lang('Shipping Information'), $html, 'the card heading');
-	pg_assert_contains('Ship to Name:</span>', $html, 'a row with a value');
+	pg_assert_contains('Ship to Name</span>', $html, 'a row with a value');
 	pg_assert_contains('Ada &amp; Lovelace', $html, 'the value as given');
 	pg_assert_false(strpos($html, 'Company') !== false, 'an empty row is hidden');
 	pg_assert_false(strpos($html, 'Phone') !== false, 'a blank row is hidden');
-	pg_assert_same(2, substr_count($html, '<div class="row">'), 'two rows');
+	pg_assert_same(2, substr_count($html, '<div class="d-flex justify-content-between gap-3">'), 'two rows');
 }
 
 function test_print_order_shipping_card_label_escaped()
 {
 	$html = pg_print_order_shipping_card(array('Gift <b>note</b>' => 'Yes'));
 
-	pg_assert_contains('Gift &lt;b&gt;note&lt;/b&gt;:', $html, 'a custom field name is escaped');
+	pg_assert_contains('Gift &lt;b&gt;note&lt;/b&gt;</span>', $html, 'a custom field name is escaped');
 }
 
 function test_print_order_shipping_card_nothing_without_values()

@@ -222,8 +222,10 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 - workspace-flows-table-box-form.md: The canvas form of the add-row and change-row flow boxes (F6b-2, #3359): tables offered, a field per column, cells kept as JSON one key at a time, the JSON fallback, threads
 - workspace-flows-table-boxes.md: The table boxes of flows (F6b-1 #3189): row_add adds a workflow table row, row_set changes cells of one; cells as JSON text, owner's edit reach, store writers, pause, what non-editors read
-- workspace-flows-template-events.md: The flow templates started by a site event that wait, ask for approval or follow up (plan flows-next T1-T5, T10-T12): their boxes, what each is offered with, how they are tested
+- workspace-flows-template-adding.md: How a built-in flow template is added and tested (flow_templates.php, tests/workspace_flow_templates_test.php), which built-in templates exist and which memory file holds each
+- workspace-flows-template-events.md: The flow templates started by a site event that wait, ask for approval or follow up (T1-T5, T10-T13): their boxes, what each is offered with, how they are tested
 - workspace-flows-template-flow-only.md: The flow templates a scheduled action never had (G3): new_customer, quote_approval, text_review; their boxes, the one person setting, how they are tested
+- workspace-flows-template-form-sort.md: Flow template form_sort (T14, PR #7505): a submitted form read, Pinegrap AI picks sales, support or spam, a task for each of the first two, spam ends, an unsorted form told
 - workspace-flows-template-format.md: Flow templates (G1 #2161, flow_templates.php): format, the scheduled templates that came over or wait, the gallery
 - workspace-flows-template-last-day.md: The forms, orders and chain flow templates (R1b, #2787): counts of the last day once a day, the orders webhook, chain a manual start a "Start a flow" box starts
 - workspace-flows-template-saved.md: Flow templates saved on the site (G3a #3146, G3b #3242): ws_flow_templates, what a save keeps, settings, rights, panel actions, the editor's Save as template, the gallery's saved cards

@@ -1,6 +1,6 @@
 ---
 name: flows-next
-description: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, and ready templates; steps in flows-next-steps and -templates
+description: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, ready templates; steps in flows-next-steps (templates done)
 ---
 
 ## Why this plan?
@@ -26,4 +26,4 @@ description: Plan (owner 2026-11-05): flow boxes other automation tools have and
 5. A channel start: only a mention of the flow by name; one start per person a minute.
 
 ## Where to start?
-- Every step is free. A suggested order: the `now` templates, A2, A1, B1, C1, B3, B5, B4, B2, B7, B8, C4, with each template as its boxes land.
+- Every step is free. A suggested order: A2, A1, B1, C1, B3, B5, B4, B2, B7, B8, C4. The templates T1-T14 are all merged; a new template follows `workspace/workspace-flows-template-adding.md`.

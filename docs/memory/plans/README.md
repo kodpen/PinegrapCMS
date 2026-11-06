@@ -23,6 +23,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign-screens-1.md: The first legacy edit screens redone in step B11 of plans/bootstrap-6-redesign.md, each with its PR; the later ones are listed in that plan
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (owner, 2026-11-01)
+- bug-hunt-b11-screens.md: Bug hunt, second round: the root panel screens redesigned to the wide layout under B11 of plan bootstrap-6-panel (Oct-Nov 2026), each group with its issues or clean
+- bug-hunt-design-templates.md: Module list of plans/bug-hunt.md, design templates part (second round): one shipped template each with its state
 - bug-hunt-modules-endpoints-1.md: Module list of plans/bug-hunt.md, part 3: root endpoint groups account to offer by area word, one line each with its state
 - bug-hunt-modules-endpoints-1c.md: Module list of plans/bug-hunt.md, part 3c: root endpoint groups mail, manifest and marketplace, one line each with its state
 - bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word, one line each with its state; single endpoints in endpoints-2b
@@ -42,6 +44,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-charity.md: Plan for the Charity template (pinegrap-charity): causes, campaigns with progress, gifts as donation products, volunteers, events, news, transparency; parts in a folder; steps 1-9
 - design-template-gym-design.md: Design of plans/design-template-gym.md: which shipped features the Gym template reuses for booking, trainers and membership, what it does not build, its look and Turkish words
 - design-template-gym.md: Plan: the Gym design template (pinegrap-gym), a fitness studio with classes, a timetable, trainers, membership plans, class booking and contact, built from existing features in ~1,000-line steps
+- design-template-photo-design.md: Design of plans/design-template-photo.md: which shipped features the Photo template reuses for galleries, booking, proofing and downloads, what it does not build, its look and Turkish words
+- design-template-photo.md: Plan: the Photography Studio design template (pinegrap-photo): galleries by category, session packages, shoot booking, a private client proofing area, gift vouchers; ~1,000-line steps
 - design-template-travel-design.md: Design of plans/design-template-travel.md: which shipped features the Travel template reuses for tours, bookings, deposits and reviews, what it does not build, its look and Turkish words
 - design-template-travel.md: Plan: the Travel Agency design template (pinegrap-travel): destinations, tours with itineraries, booking requests, shop deposits, reviews, enquiries; ~1,000-line steps
 - design-template-wedding-design.md: Design of plans/design-template-wedding.md: which shipped features the Wedding template reuses for packages, real weddings, enquiries and visits, what it does not build, its look and Turkish words
@@ -53,8 +57,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - feature-plans-2026-11.md: The eleven feature plans approved 2026-11-02: index and order, how one coordinator and its five workers hold a plan, the shared rules
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - flows-next-steps.md: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow boxes, and site events flows can start on; claim as [plan:flows-next] <step>
-- flows-next-templates.md: Template steps T1-T14 of plans/flows-next.md: ready flows people pick instead of building box by box, what each needs and how it is tested before it is added
-- flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, and ready templates; steps in flows-next-steps and -templates
+- flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, ready templates; steps in flows-next-steps (templates done)
 - image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
 - image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
 - image-editor-animation-steps-2.md: Steps AN12 on of plans/image-editor-animation.md (owner 2026-11-05): a move recorded by dragging, its path and speed kept as keyframes; claim as [plan:image-editor-animation] AN<n>

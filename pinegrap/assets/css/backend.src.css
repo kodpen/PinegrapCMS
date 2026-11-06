@@ -5606,6 +5606,21 @@ div#software_image_picker_container {
   --bs-list-group-item-padding-y: 1rem;
 }
 
+/* An order line's facts flow into as many equal columns as the form column
+   holds; 9rem fits the shipped quantity's minus, field and plus. */
+.order-line-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.75rem 1.5rem;
+}
+.order-line-image {
+  display: block;
+  width: 4.5rem;
+  height: 4.5rem;
+  object-fit: cover;
+  border-radius: var(--pg-radius-lg);
+}
+
 @media print {
 
   .list-group.order-list-group {

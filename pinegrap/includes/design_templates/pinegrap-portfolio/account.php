@@ -543,7 +543,7 @@ $account_widgets = array(
         'tree'   => $widget_root(array(
             $field('pd-post-title', lang('Title'), pg_cf_with_role($input('pd-post-title', 'text', 'title', 'off'), 'title')),
             $field('pd-post-summary', lang('Summary'), pg_cf_with_role($textarea('pd-post-summary', 'summary', 3), 'description')),
-            $field('pd-post-cover', lang('Cover Image'), pg_cf_with_role($file('pd-post-cover', 'cover_image', 'public'), 'media')),
+            $field('pd-post-cover', lang('Cover Image'), pg_cf_with_role($file('pd-post-cover', 'cover_image', 'public', 'image/*'), 'media')),
             $field('pd-post-content', lang('Content'), $textarea('pd-post-content', 'content', 14)),
             $submit(lang('Publish')),
             $loop(array()),

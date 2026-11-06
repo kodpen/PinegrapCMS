@@ -39,6 +39,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - booking-widget-confirm.md: Booking widget details step and confirm (#6596): form fields by name, signed-in prefill, auto_confirm status, expired hold rebooked when free, taken path, privacy page link
 - booking-widget.md: The booking system widget (#6224): parts by binding, data-pg-booking settings, booking_slots.php (month, day, hold), "anyone" picks the freest, one hold per session
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
+- bound-href-scheme.md: A form field bound to a link's address never prints a javascript:, vbscript: or data: address
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
 - catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
@@ -119,6 +120,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does
 - design-preview-address.md: design_preview.php, the panel's preview address: a template page, its tour, or a visual design page as a first-time visitor sees it; who may open it, what is left out, caching
 - design-template-appstudio.md: Mobile App Developer template (pinegrap-appstudio): apps and release notes as collections, support and project requests followed from the account, beta sign-up, pma- look, tests.
+- design-template-blog-cover.md: A design template's blog or article Cover Image input takes image/* and carries _cf.kind = image; templates whose $file helper defaults to documents pass it explicitly (#7513)
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).

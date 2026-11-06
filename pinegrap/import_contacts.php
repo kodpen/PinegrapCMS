@@ -140,7 +140,7 @@ if (!$_POST) {
                                 </h2>
                                 <div class="card-body pt-0">
                                     <dl class="mb-0">'
-        . $status_row(lang('Contacts'), h(number_format((int) db_value("SELECT COUNT(*) FROM contacts"))), false)
+        . $status_row(lang('Contacts'), h(number_format((int) db_value(pg_contact_count_sql($user)))), false)
         . $status_row(lang('Contact Groups'), '<span id="contact_import_summary_groups">0</span> / ' . h(number_format(count($contact_groups))), false)
         . $status_row(lang('File'), '<span id="contact_import_summary_file">' . h(lang('None')) . '</span>', true) . '
                                     </dl>

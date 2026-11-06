@@ -390,8 +390,9 @@ $contact_choices = array(
 $event_statuses = array(lang('Enquiry received'), lang('Proposal sent'), lang('Date held for you'), lang('Confirmed'), lang('Declined'));
 
 // The query string of a link that opens a list with a filter set (?type=,
-// ?view=) or a form with a choice made (?room=, ?plan=, ?offer=, ?space=):
-// the form's fields start with these values (_cf.url_param).
+// ?room_view=; ?view= is reserved by pg_sw_url_param_reserved()) or a form
+// with a choice made (?room=, ?plan=, ?offer=, ?space=): the form's fields
+// start with these values (_cf.url_param).
 $query = function ($params) {
     return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 };
@@ -593,7 +594,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $room_type
     };
     $room_links = array($link(lang('All Rooms'), '{{page:rooms}}', $plain));
     foreach ($room_types as $t) $room_links[] = $link($t['title'], '{{page:rooms}}?' . $query(array('type' => $t['title'])), $plain);
-    foreach ($views as $v) $room_links[] = $link($v['title'], '{{page:rooms}}?' . $query(array('view' => $v['title'])), $plain);
+    foreach ($views as $v) $room_links[] = $link($v['title'], '{{page:rooms}}?' . $query(array('room_view' => $v['title'])), $plain);
     $social = function ($name, $label) use ($el, $icon, $attr) {
         return $el('a', 'link-body-emphasis fs-5', $label, array($icon($name)), array('href' => '#', '_attrs' => array($attr('aria-label', $label))));
     };

@@ -1,6 +1,6 @@
 ---
 name: order-screen-wide-layout
-description: view_order.php on the wide edit layout (B11 part 1): which card sits in which column, the sticky Order Information, the save bar column, pg_order_view_card_column()
+description: view_order.php on the wide edit layout (B11 parts 1-4): which card sits in which column, the sticky Order Information, the save bar column, card rows, shipping fields, order lines
 module: order_view
 ---
 
@@ -13,8 +13,14 @@ module: order_view
 - Every card is printed `card mt-5`. `pg_order_view_card_column($cards)` (`includes/fn/order_view.php`) joins a column's cards, skips empty ones and removes `mt-5` from the first, so the right column starts level with the left one whether the order has a ship-to or not.
 - A rule in `backend.src.css` cannot: Bootstrap 6's `utilities` layer comes after `custom`, so `.mt-5` beats any panel rule. Tested in `tests/order_view_rows_test.php`.
 
-## What is left for the later parts?
-- The cards still use label/value `.row` lines and the order lines their old boxes.
+## How is a label and its value drawn?
+- Part 3: a line `d-flex justify-content-between gap-3`, the label `fg-secondary` without a colon, the value `text-end text-break`; `pg_order_view_row()` prints the same (also on `print_order.php`). Before, a `.row` of two `.col` halves wrapped a country or an e-mail inside half the card. The address lines (`pg_order_view_row(..., true)`, Address 1, the ship-to Address) keep their own column layout, also without a colon.
+
+## How is an order line drawn?
+- Part 4: `pg_order_view_line()` prints one `.list-group-item.order-line`: a 4.5rem thumbnail (`.order-line-image`, left out of print), the product name and the short description under it, then `.order-line-facts`, a CSS grid of `minmax(9rem, 1fr)` columns (9rem holds the shipped quantity's minus, field and plus). Before, each fact was a bordered box of its own width, wrapping unevenly, under a right-aligned uppercase name; the thumbnail was sticky.
+- A fact is `pg_order_view_line_fact()`: a small `fg-secondary` caption over the value, nothing when the value is empty (an incomplete order shows no Shipped Qty). The Shipped Qty caption is a `<label for>` its field; Total is `fw-semibold`.
+- Gift cards and product forms bought with a line are `pg_order_view_line_part()` boxes under its facts; a gift card's values use the same facts grid.
+- The shippable and the non-shippable loops build the same line; only the shippable one adds Shipped Qty. Tested in `tests/order_view_rows_test.php`.
 
 ## How are the shipping card's fields drawn?
 - Part 2: Ship Date and Delivery Date are labelled `form-field` boxes side by side from `sm` (`<label for>` naming each date field; before, the captions named no field). A cancelled order shows them as text under a plain caption, a dash when empty. Tracking Numbers (the parcel list and the chips field) and Shipping Labels each sit in a `form-field` with a `form-label` caption. Pinned by `tests/field_caption_links_test.php`.

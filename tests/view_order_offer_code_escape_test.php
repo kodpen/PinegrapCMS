@@ -23,8 +23,8 @@ function test_view_order_offer_code_escape()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
 
 	foreach (array('special_offer_code', 'reference_code') as $name) {
-		pg_assert_same(false, strpos($source, "'<span class=\"col text-end\">' . \$" . $name . " . '</span>"), $name . ' printed raw');
-		pg_assert_same(false, strpos($source, "<span class=\"col text-end\">' . \$" . $name . " . '</span>"), $name . ' printed raw');
-		pg_assert_contains("<span class=\"col text-end\">' . h(\$" . $name . ") . '</span>", $source, $name . ' escaped');
+		pg_assert_same(false, strpos($source, "'<span class=\"text-end text-break\">' . \$" . $name . " . '</span>"), $name . ' printed raw');
+		pg_assert_same(false, strpos($source, "<span class=\"text-end text-break\">' . \$" . $name . " . '</span>"), $name . ' printed raw');
+		pg_assert_contains("<span class=\"text-end text-break\">' . h(\$" . $name . ") . '</span>", $source, $name . ' escaped');
 	}
 }

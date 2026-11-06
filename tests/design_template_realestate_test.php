@@ -429,6 +429,25 @@ function test_realestate_listing_widgets()
 	}
 }
 
+// Sold and rented homes leave every list a visitor browses: the deal
+// lists and All Listings hide both closed states, the home and
+// neighbourhood lists show only homes on the market.
+function test_realestate_lists_hide_closed_listings()
+{
+	$d = _test_re_load();
+	$closed = array($d['statuses'][2], $d['statuses'][3]);
+	foreach ($d['listing_part']['widgets'] as $key => $w) {
+		if ($w['config']['regionType'] !== 'form_list_view') continue;
+		$hidden = array();
+		foreach ($w['config']['filters'] ?? array() as $f) {
+			if ($f['field'] !== 'status' || $f['dynamic_value'] === 'url parameter') continue;
+			if ($f['operator'] === 'is not equal to') $hidden[] = $f['value'];
+			if ($f['operator'] === 'is equal to' && $f['value'] === $d['statuses'][0]) $hidden = $closed;
+		}
+		foreach ($closed as $status) pg_assert_true(in_array($status, $hidden, true), "$key: hides $status");
+	}
+}
+
 // The props of each named control of a widget tree, by field name.
 function _test_re_control_props($tree)
 {

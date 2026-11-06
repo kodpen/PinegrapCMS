@@ -144,6 +144,11 @@ function test_social_reports_lists()
 		}
 	}
 	pg_assert_same('Hidden', $d['widgets']['staff_posts_hidden']['config']['filters'][0]['value']);
+	// The post page keeps its live rule for everyone, so a row that may be
+	// hidden never links to it: the list's pencil opens the record.
+	foreach (array('staff_posts_hidden', 'staff_posts_all') as $wkey) {
+		pg_assert_false(strpos(json_encode($d['widgets'][$wkey]['tree']), '"href":"form_item_view"') !== false, "$wkey rows do not open the post page");
+	}
 	pg_assert_true($d['widgets']['staff_posts_all']['config']['search_enabled'], 'every post can be searched');
 }
 
