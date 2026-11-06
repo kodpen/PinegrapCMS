@@ -1003,3 +1003,47 @@ function pg_review_verified_filter_sql($verified)
 
     return '';
 }
+
+/**
+ * The columns past the classic list that a comment copied with its page
+ * (duplicate_page_f.php) keeps, as column => value. Pure.
+ *
+ * The store's answer under a review (once 11.0.14's reply columns are there)
+ * and the comment's kind with the question an answer answers (11.0.148),
+ * answer_of mapped to the copy of that question as parent_id is
+ * (pg_comment_copy_parent_id()). verified_order_id is left out on purpose:
+ * a product's rating counts verified reviews over every page
+ * (pg_review_rating_sql()), so a copy marked verified would count twice.
+ *
+ * @param mixed $comment         the original row (SELECT *)
+ * @param mixed $copied          array(original comment id => id of its copy)
+ * @param bool  $replies_ready   pg_review_replies_ready()
+ * @param bool  $questions_ready pg_product_questions_ready()
+ * @return array column => value (null for SQL NULL)
+ */
+function pg_comment_copy_columns($comment, $copied, $replies_ready, $questions_ready)
+{
+    if (!is_array($comment)) {
+        return array();
+    }
+
+    $columns = array();
+
+    if ($replies_ready) {
+        $reply = isset($comment['seller_reply']) && is_scalar($comment['seller_reply']) ? (string) $comment['seller_reply'] : null;
+
+        $columns['seller_reply'] = $reply;
+        $columns['seller_reply_at'] = isset($comment['seller_reply_at']) && is_scalar($comment['seller_reply_at']) ? max(0, (int) $comment['seller_reply_at']) : 0;
+    }
+
+    if ($questions_ready) {
+        $kind = isset($comment['kind']) && is_scalar($comment['kind']) ? (string) $comment['kind'] : '';
+
+        $columns['kind'] = in_array($kind, array('comment', 'question', 'answer'), true) ? $kind : 'comment';
+        $columns['answer_of'] = ($columns['kind'] === 'answer')
+            ? pg_comment_copy_parent_id(isset($comment['answer_of']) ? $comment['answer_of'] : 0, $copied)
+            : 0;
+    }
+
+    return $columns;
+}
