@@ -1204,6 +1204,8 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'delay.at' => array('hint' => 'with mode until, the date and time it waits until: one value such as {{trigger.FIELD}} or a date written as YYYY-MM-DD HH:MM; a date that has passed goes on at once'),
         'for_each.count' => array('hint' => 'with mode count, how many times the body repeats: a whole number from 1 to ' . WS_FLOW_LOOP_ITEMS_MAX . ' or one value; index and item are then 1 to the count, and list, path and fields are not read'),
         'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b; replace finds b as written, cut keeps the first b characters, split splits at b (spaces when empty)'),
+        'ai.mode' => array('hint' => 'write writes what prompt asks for; summarize sums up text; extract finds in text the value prompt names and gives answer, number and found (1 or 0); classify leaves on the outcome of classes text belongs to, else on other'),
+        'ai.classes' => array('hint' => 'with mode classify, up to ' . WS_STEP_AI_CLASSES_MAX . ' outcome names; an arrow leaves on class_1 for the first, class_2 for the second, and on other when none fits'),
         'value.c' => array('hint' => 'the third value; with rule replace what goes in place of b (empty takes it out), with rule split the part to take: 1 the first (when empty), -1 the last'),
     );
     // The same two settings on every step box.
@@ -1216,6 +1218,7 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'post'     => 'only says something in a channel; it never waits for an answer',
         'mention'  => 'starts the flow when a person writes @ and the flow\'s name in the channel channel_id (never a flow\'s, an application\'s or an assistant\'s message; one start per person a minute); it gives message_id, text, author_id, author_name, channel_id and channel_name',
         'row_get'  => 'reads one row of a workflow table, named by its id or one value such as {{trigger.row_id}}; it gives found (1, or 0 when the row is not there) and cell_COLUMN_ID for each column',
+        'ai'       => 'asks Pinegrap AI on the site\'s quota and waits for its answer (answer); only prompt and text, with their values, are sent; closes_in is the hours it waits before leaving on failed',
         'web'      => 'starts the flow when another system (a form service, a shop, an automation tool) posts to the flow\'s own web address; fields lists the body fields it reads, each {"key":"order_no","type":"text"} or type number, then read as {{trigger.KEY}}',
         'record_get' => 'reads one record (record: order, product, contact, booking, task or form, a submitted form) named by its id or one value such as {{trigger.record_id}}, with the owner\'s rights; it gives found (1, or 0 when the record is not there or out of reach) and the record\'s fields, such as email, status or total',
     );

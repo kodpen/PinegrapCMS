@@ -762,6 +762,7 @@
     "No advertising, no links that only promote something, and no posts written to gather clicks or votes.": "Reklam, yalnızca bir şeyi tanıtmaya yönelik bağlantılar ve tıklama ya da oy toplamak için yazılmış gönderiler yasaktır.",
     "No answer": "Cevap yok",
     "No answer came, so the inventory quantity may or may not have changed. Check the inventory of the product before scanning again.": "Yanıt gelmedi; stok miktarı değişmiş de olabilir, değişmemiş de. Yeniden okutmadan önce ürünün stok miktarını kontrol edin.",
+    "No answer yet: {var:1} The box asks again within the hour.": "Henüz yanıt yok: {var:1} Kutu bir saat içinde yeniden sorar.",
     "No answer yet?": "Henüz bir yanıt yok mu?",
     "No app matches these choices yet. Try another kind of app or platform.": "Bu seçimlere uyan bir uygulama henüz yok. Başka bir uygulama türü ya da platform deneyin.",
     "No application": "Uygulama yok",

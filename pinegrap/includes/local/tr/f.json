@@ -913,6 +913,7 @@
     "Forwarded from a channel you cannot open": "Açamadığınız bir kanaldan iletildi",
     "Forwarded header reporting HTTPS": "HTTPS bildiren yönlendirme başlığı",
     "Found": "Bulunanlar",
+    "Found (1 or 0)": "Bulundu (1 veya 0)",
     "Found 12 result(s) for: design": "tasarım için 12 sonuç bulundu",
     "Found by itself": "Kendiliğinden bulunur",
     "Found by search engines": "Arama motorlarında bulunur",
