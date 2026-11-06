@@ -1610,6 +1610,7 @@
     "The campaign may not be sent in its current status.": "Kampanya şu anki durumunda gönderilemez.",
     "The campaign profile has been created.": "Kampanya profili oluşturuldu.",
     "The campaign profile has been deleted.": "Kampanya profili silindi.",
+    "The campaign profile has been duplicated, and you are now editing the duplicate.": "Kampanya profili çoğaltıldı ve şimdi kopyayı düzenliyorsunuz.",
     "The campaign profile has been saved.": "Kampanya profili kaydedildi.",
     "The campaign profile it is to follow does not exist.": "İzlenecek kampanya profili yok.",
     "The campaign stopped because the server did not answer. Close this window and send the campaign again to resume it.": "Sunucu yanıt vermediği için kampanya durdu. Bu pencereyi kapatın ve kampanyayı kaldığı yerden sürdürmek için yeniden gönderin.",

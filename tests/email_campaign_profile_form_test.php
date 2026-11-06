@@ -196,6 +196,51 @@ function test_email_campaign_profile_import_checks_rows()
 	pg_assert_contains('pg_email_campaign_profile_values_problem(', $source, 'import checks each row like the form');
 	pg_assert_contains('pg_email_campaign_profile_access_problem(', $source, 'import checks access like the form');
 	pg_assert_contains('pg_email_campaign_profile_schedule_time(', $source, 'import stores midnight like the form');
+	pg_assert_contains('pg_email_campaign_profile_text_problems(', $source, 'import checks the text columns like the form');
+	pg_assert_contains("'subject' => '',", $source, 'a new profile starts with an empty subject, so a file without one is refused');
+	pg_assert_contains("'from_name' => '',", $source, 'a new profile starts with an empty from name');
+	pg_assert_contains("\$export_only_headings = array('action_item', 'page_name', 'created', 'created_username', 'last_modified', 'last_modified_username');", $source, 'the export columns for reading only are not named unknown');
+}
+
+function test_email_campaign_profile_text_problems()
+{
+	$valid = array(
+		'name' => 'Welcome',
+		'subject' => 'Hello',
+		'from_name' => 'Shop',
+		'from_email_address' => 'shop@example.com',
+		'reply_email_address' => '',
+		'bcc_email_address' => '',
+	);
+
+	pg_assert_same(array(), pg_email_campaign_profile_text_problems($valid), 'valid text columns');
+	pg_assert_same(array(), pg_email_campaign_profile_text_problems(array('subject' => str_repeat('ş', 255), 'from_name' => str_repeat('ğ', 100)) + $valid), 'limits counted in characters, not bytes');
+
+	pg_assert_same(array('subject', 'from_name'), array_keys(pg_email_campaign_profile_text_problems(array('subject' => ' ', 'from_name' => '') + $valid)), 'subject and from name required');
+	pg_assert_same(array('subject', 'from_name'), array_keys(pg_email_campaign_profile_text_problems(array('name' => 'x'))), 'missing columns read as empty');
+
+	foreach (array('name' => 101, 'subject' => 256, 'from_name' => 101, 'from_email_address' => 101, 'reply_email_address' => 101, 'bcc_email_address' => 101) as $field => $length) {
+		pg_assert_same(array($field), array_keys(pg_email_campaign_profile_text_problems(array($field => str_repeat('a', $length)) + $valid)), $field . ' over its column length');
+	}
+}
+
+function test_email_campaign_profile_form_checks_text_lengths()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+	$start = strpos($source, 'function pg_email_campaign_profile_form_validate(');
+
+	pg_assert_true($start !== false, 'form validate found');
+	pg_assert_contains('pg_email_campaign_profile_text_problems(', substr($source, $start), 'the form checks the text column lengths');
+}
+
+function test_email_campaign_profile_body_preview_by_page_id()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+
+	pg_assert_false(strpos($source, 'firstChild.nodeValue') !== false, 'the preview address is not built from the option label');
+	pg_assert_contains('data-page-urls="', $source, 'the preview frame carries the address of each page by id');
+	pg_assert_contains("f.src = u ? u : \\'about:blank\\';", $source, 'the placeholder blanks the preview instead of loading a missing address');
+	pg_assert_contains('encode_url_path($page_row[\'page_name\'])', $source, 'the address is encoded as the server-side source is');
 }
 
 function test_email_campaign_profile_screens_use_shared_form()
