@@ -16,14 +16,15 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- agent-channel.md: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
+- agent-channel-steps.md: Steps A0-A8 of plans/agent-channel.md: experiment, routine hardening, parent_id, agent registry, request queue, memory and decision marks, model assistants, risk tiers, doors
+- agent-channel.md: Plan (owner 2026-11-06, reopened): a Workspace channel for agents and people: one agent registry with @handles and channel permissions, wake rules, request queue, memory, decision marks, doors
+- api-forms-for-agents.md: Plan (owner 2026-11-06): the external API and MCP let Claude Desktop and other clients send designed forms and collection records (a blog post with rich text) completely; steps F1-F5
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign-screens-1.md: The first legacy edit screens redone in step B11 of plans/bootstrap-6-redesign.md, each with its PR; the later ones are listed in that plan
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (owner, 2026-11-01)
-- claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
 - design-template-charity.md: Plan for the Charity template (pinegrap-charity): causes, campaigns with progress, gifts as donation products, volunteers, events, news, transparency; parts in a folder; steps 1-9
 - design-template-construction-design.md: Design of plans/design-template-construction.md: which shipped features the Construction template reuses for projects, quotes and careers, what it does not build, its look and Turkish words
@@ -42,6 +43,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-travel.md: Plan: the Travel Agency design template (pinegrap-travel): destinations, tours with itineraries, booking requests, shop deposits, reviews, enquiries; ~1,000-line steps
 - design-template-wedding-design.md: Design of plans/design-template-wedding.md: which shipped features the Wedding template reuses for packages, real weddings, enquiries and visits, what it does not build, its look and Turkish words
 - design-template-wedding.md: Plan: the Wedding Planner and Venue design template (pinegrap-wedding): services, packages, venue, real weddings, timeline, enquiries and visits; ~1,000-line steps
+- designer-performance-and-publish.md: Plan (owner 2026-11-06): the visual designer stops rebuilding everything on every edit and opens faster, and Publish lists the pages to put on the site; steps D1-D7, one worker at a time on the script
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
@@ -103,6 +105,5 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - table-driver.md: Plan (owner 2026-11-03): the panel's own list table driver replacing DataTables, and the move of every table.chart screen to it, screen by screen (TD1-TD14)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions in visitor_stats_daily, added only when a real report needs one
-- workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged

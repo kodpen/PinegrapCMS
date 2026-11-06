@@ -64,7 +64,8 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-32.md: Decisions list, product part 32 (2026-11-05 night on): a Calculate rule in the value box; a refund by lines remembers its lines; the credit refund bonus on the payment part only
 - decisions-made-product-33.md: Decisions list, product part 33 (2026-11-05 night on): the flows-next questions (AI box, wait until a date, web address start, e-mail to the record's person, channel mention) and #7015
 - decisions-made-product-34.md: Decisions list, product part 34 (2026-11-05 night on): a review hides while its order is cancelled or its item refunded; folder access taken back on cancel; no private access in a bundle
-- decisions-made-product-35.md: Decisions list, product part 35 (2026-11-05 on): templates and designs shown as their real pages (live pictures), the installer's short design step and tour, its 1440 px width
+- decisions-made-product-35.md: Decisions list, product part 35 (2026-11-05 on): live pictures of templates and designs, the installer's design step and 1440 px width, the ACP Bearer credential, a shopper's MCP consent
+- decisions-made-product-36.md: Decisions list, product part 36 (2026-11-06 on): one card per submitter in a form list (the Social template's People list)
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
@@ -91,6 +92,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
+- decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel's rules: an agent's own messages, how far an unattended flow goes, decision marks on messages, the loop-guard text
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files

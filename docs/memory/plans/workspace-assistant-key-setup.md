@@ -25,4 +25,4 @@ description: Plan (2026-10-23): Create on the Claude and Pinegrap AI cards makes
 - Measure `ws_ai_requests` (agent `ai`): `ai_steps`, `ai_attempts`, `claimed_at` to `answered_at`, `error`, `ai_state` size; tokens not kept. Briefing: workspace/workspace-claude-bootstrap.md.
 
 ## Where to start?
-- Slice 4 (waits on question 5's measures). The sheet shows `ws_claude_routine_prompt()`, a bootstrap since #2736 (workspace/workspace-claude-bootstrap.md); the config link fits plans/workspace-agent-handles.md.
+- Slice 4 (waits on question 5's measures). The sheet shows `ws_claude_routine_prompt()`, a bootstrap since #2736 (workspace/workspace-claude-bootstrap.md); the config link fits plans/agent-channel.md (step A6).

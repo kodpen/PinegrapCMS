@@ -1,0 +1,20 @@
+---
+name: agent-channel-steps
+description: Steps A0-A8 of plans/agent-channel.md: experiment, routine hardening, parent_id, agent registry, request queue, memory and decision marks, model assistants, risk tiers, doors
+---
+
+## Which steps are there?
+- S under 400 product lines, M about 1,000; each step its tests and its memory topic in `workspace/`; a schema step rerun twice on a dev DB.
+
+- A0 (S, `tools/` only) Experiment without site change. `free`. Per-agent application keys on dev.pinegrap.com, a private channel, `tools/ws_wait.php` (waits on `GET /workspace/sync` with ETag for a matching message) and `tools/ws_post.php`, a GitHub Actions step posting `[ci]` and `[ready]`; what a week shows in `workflow/agent-channel-experiment.md`.
+- A1 (S) Claude routine hardening. `free`. A claim refuses a run that has not read the current instructions (409 `instructions_outdated`, a system line), the instruction version on the card, a guide warning (`workspace/workspace-claude-bootstrap.md`).
+- A2 (S) Replies and "no answer needed". `free`. `parent_id` on `workspace.messages.create` (a thread as the panel makes it, `api/api-endpoint-rules.md`); "no answer needed" on Claude's answer route closes the request without a message.
+- A3 (M, schema) Agent registry and membership. After A2. A table of agents (kind, handle, name, avatar, application id, provider, model, sealed key, status; the handle unique and never a person's user name) and a channel-agent row (allowed, wake rule, the tier the channel's manager allows, default tier 1, the loop-guard switch per channel); the @ picker, tags, `ws_message_ask_assistants()`, the discussion follow and the settings read `ws_assistants()` from it; an outside application hears a mention by invitation where the channel allows it (`ws_app_reads_channel()`); the membership routes (add or remove an agent in a channel; only a member adds one to a private channel); `claude_access` and `ai_access` stay. The depth and hourly brakes.
+- A4 (M) The request queue. After A3. A matching message makes one `ws_ai_requests` row per agent (`app:<id>`, `model:<id>`), shown on the message; `GET /workspace/agent-requests`, a claim with 409, answer and fail routes generalising Claude's; the brief (preamble, context, memory digest, the short loop-guard text unless the channel switched it off); an agent edits or deletes only its own messages, with an edited mark.
+- A5 (M, schema) Channel memory and decision marks. After A3. Entries (title, text, tags, author, pinned, expiry), a Memory tab, the digest in every brief; a decision mark on a message by any member and its decision line in the brief; approvals and polls opened to agent keys as the owner's questions, the outcome as a decision line.
+- A6 (M) Model assistants. After A3. A card each: handle (`@chatgpt`), name, avatar, sealed key, model, test; OpenAI-compatible chat APIs (OpenAI, Gemini, Mistral, DeepSeek, OpenRouter, Azure OpenAI, a custom address such as Ollama) answered by `ws_ai_step()` with that address, key and model: the same tools, proposals and approvals; `ws_ai_requests.agent` `model:<id>`; each provider's API and data terms rechecked first; the question names the provider.
+- A7 (M) Risk tiers. After A4. Tiers on `ws_change_types()` (1 reading and messages, 2 a reversible record change, 3 irreversible), the execution policy from the channel-agent row, an undo journal for agent changes; then flows: an "ask an agent" box and agent-started runs by permission (`plans/flows-next.md` shape).
+- A8 (M) Doors. After A4. A webhook door and a polling door on the queue; the Claude Code channel plugin in a separate repository (`kodpen/pinegrap-claude-channel`: poll, claim, push the event, tools reply, fail, context, record, react, post), applied to Anthropic's channel list; per-person sessions over OAuth with the "via" badge; a chat box on the dashboard on the same catalogue.
+
+## Which run side by side?
+- A0, A1 and A2 together; A4, A5 and A6 after A3 touch different files; A7 and A8 after A4.
