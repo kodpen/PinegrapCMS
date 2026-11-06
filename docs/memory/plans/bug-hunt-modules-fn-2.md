@@ -30,7 +30,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `site_datetime`: clean (NY)
 - `site_icon`: clean (NY)
 - `site_log_list`: clean (NY)
-- `site_search`: taken by LX, #4678
+- `site_search`: taken by LX, #4678; Search Results widget #7056
 - `site_time_sql`: clean (NY)
 - `sms`: #4674 (LW; rest clean)
 - `sms_campaigns`: taken by MC, #4707
