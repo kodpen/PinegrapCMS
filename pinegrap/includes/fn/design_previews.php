@@ -260,3 +260,110 @@ function _pg_design_tour_js()
         . 'if(window.matchMedia&&window.matchMedia("(max-width:600px)").matches)device(true);'
         . '})();';
 }
+
+// ========================= THE PANEL'S PREVIEW ADDRESS ===========================================
+//
+// design_preview.php draws, for a signed-in operator, a template page (any
+// template the site can load, custom ones too), a template's tour, or a
+// visual design page as a first-time visitor sees it. The helpers below are
+// the pure parts of that file.
+
+// What a request to design_preview.php asks for, from its query ($get:
+// $_GET). 'kind': 'page' (page_id), 'tour' (template and tour=1),
+// 'template' (template) or '' (nothing it can draw). Look and palette are
+// kept only when pg_design_looks()/pg_design_palettes() know them; template
+// and page keys only when they match the patterns the addresses use.
+function pg_design_preview_request($get)
+{
+    $get = is_array($get) ? $get : array();
+    $arg = function ($key) use ($get) {
+        return (isset($get[$key]) && is_scalar($get[$key])) ? trim((string)$get[$key]) : '';
+    };
+    $out = array('kind' => '', 'page_id' => 0, 'template' => '', 'page' => '', 'look' => '', 'palette' => '');
+
+    $page_id = $arg('page_id');
+    if ($page_id !== '') {
+        if (preg_match('/^[1-9][0-9]{0,9}$/', $page_id)) {
+            $out['kind'] = 'page';
+            $out['page_id'] = (int)$page_id;
+        }
+        return $out;
+    }
+
+    $template = $arg('template');
+    if (!preg_match('/^[a-z0-9-]{1,64}$/', $template)) return $out;
+    $out['template'] = $template;
+    $out['kind'] = $arg('tour') === '1' ? 'tour' : 'template';
+
+    $page = $arg('page');
+    if (preg_match('/^[a-z0-9_-]{1,64}$/', $page)) $out['page'] = $page;
+    $look = $arg('look');
+    $looks = function_exists('pg_design_looks') ? pg_design_looks() : array();
+    if ($look !== '' && isset($looks[$look])) $out['look'] = $look;
+    $palette = $arg('palette');
+    $palettes = function_exists('pg_design_palettes') ? pg_design_palettes() : array();
+    if ($palette !== '' && isset($palettes[$palette])) $out['palette'] = $palette;
+    return $out;
+}
+
+// Where the tour's "Use This Template" leads: the editor starting from the
+// template in the look and palette the tour shows (relative to the
+// software directory, as the Choose a Template cards link it).
+function pg_design_preview_use_href($template, $look = '', $palette = '')
+{
+    $query = array('start' => 'template', 'template' => (string)$template);
+    if ((string)$look !== '') $query['look'] = (string)$look;
+    if ((string)$palette !== '') $query['palette'] = (string)$palette;
+    return 'add_system_style.php?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+}
+
+// A page as a picture shows it: no script runs in a live picture's frame,
+// so none is sent (inline, linked, or a module), and nothing on it is
+// submitted or followed.
+function pg_design_preview_strip_scripts($html)
+{
+    $html = (string)$html;
+    $out = preg_replace('~<script\b[^>]*>.*?</script\s*>~is', '', $html);
+    if ($out === null) return $html;
+    $out = preg_replace('~<script\b[^>]*/?>~i', '', $out);
+    return $out === null ? $html : $out;
+}
+
+// The ETag of a design page's picture: the page, its last change, its
+// design's last change and the software version (a new release may draw the
+// same page differently). The cache is private, so the operator is not part
+// of it.
+function pg_design_preview_etag($page_id, $page_changed, $style_changed, $version = '')
+{
+    return '"dp-' . substr(sha1((int)$page_id . '|' . (int)$page_changed . '|' . (int)$style_changed . '|' . (string)$version), 0, 20) . '"';
+}
+
+// Whether the browser's If-None-Match ($header) names the ETag; '*' and a
+// weak form (W/"...") count.
+function pg_design_preview_etag_matches($header, $etag)
+{
+    $header = trim((string)$header);
+    if ($header === '' || (string)$etag === '') return false;
+    if ($header === '*') return true;
+    foreach (explode(',', $header) as $tag) {
+        $tag = trim($tag);
+        if (strncmp($tag, 'W/', 2) === 0) $tag = substr($tag, 2);
+        if ($tag === (string)$etag) return true;
+    }
+    return false;
+}
+
+// The plain page shown when there is nothing to draw: a template page that
+// cannot be drawn, a design page that cannot be opened or rendered. Calm in
+// both schemes; the text is the only content.
+function pg_design_preview_placeholder_html($text)
+{
+    $language = function_exists('lang') ? lang(array('info' => true)) : 'en';
+    return '<!doctype html><html lang="' . h(is_string($language) ? $language : 'en') . '"><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
+        . '<title>' . h($text) . '</title>'
+        . '<style>:root{color-scheme:light dark}html,body{height:100%;margin:0}'
+        . 'body{display:flex;align-items:center;justify-content:center;background:#f3f4f6;color:#6b7280;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}'
+        . '@media (prefers-color-scheme:dark){body{background:#1f2328;color:#9aa1a9}}</style>'
+        . '</head><body><p>' . h($text) . '</p></body></html>';
+}

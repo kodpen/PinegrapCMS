@@ -140,3 +140,77 @@ function test_tour_of_an_unknown_template_is_empty()
 {
 	pg_assert_same('', pg_design_tour_html(array('where' => 'install', 'template' => 'no-such-template')));
 }
+
+function test_preview_request_reads_a_design_page()
+{
+	$r = pg_design_preview_request(array('page_id' => '42', 'template' => 'pinegrap-cafe'));
+	pg_assert_same('page', $r['kind']);
+	pg_assert_same(42, $r['page_id']);
+	pg_assert_same('', $r['template'], 'a page id wins over a template');
+	foreach (array('0', '-3', '4x', '12345678901', array('1')) as $bad) {
+		pg_assert_same('', pg_design_preview_request(array('page_id' => $bad))['kind'], 'bad page id ' . json_encode($bad));
+	}
+}
+
+function test_preview_request_reads_a_template_page_and_tour()
+{
+	$r = pg_design_preview_request(array('template' => 'pinegrap-cafe', 'page' => 'menu', 'look' => 'organic', 'palette' => 'cocoa'));
+	pg_assert_same('template', $r['kind']);
+	pg_assert_same('pinegrap-cafe', $r['template']);
+	pg_assert_same('menu', $r['page']);
+	pg_assert_same('organic', $r['look']);
+	pg_assert_same('cocoa', $r['palette']);
+
+	$r = pg_design_preview_request(array('template' => 'pinegrap-cafe', 'tour' => '1', 'page' => '../x', 'look' => 'nope', 'palette' => 'nope'));
+	pg_assert_same('tour', $r['kind']);
+	pg_assert_same('', $r['page'], 'a page key outside the pattern is dropped');
+	pg_assert_same('', $r['look'], 'an unknown look is dropped');
+	pg_assert_same('', $r['palette'], 'an unknown palette is dropped');
+
+	pg_assert_same('', pg_design_preview_request(array('template' => 'Bad Id'))['kind']);
+	pg_assert_same('', pg_design_preview_request(array())['kind']);
+	pg_assert_same('', pg_design_preview_request('x')['kind']);
+}
+
+function test_preview_use_href_carries_the_theme()
+{
+	pg_assert_same('add_system_style.php?start=template&template=pinegrap-cafe&look=organic&palette=cocoa', pg_design_preview_use_href('pinegrap-cafe', 'organic', 'cocoa'));
+	pg_assert_same('add_system_style.php?start=template&template=pinegrap-cafe', pg_design_preview_use_href('pinegrap-cafe'));
+}
+
+function test_preview_strips_every_script()
+{
+	$html = '<html><head><script src="a.js"></script><SCRIPT type="module">x()</SCRIPT ></head>'
+		. '<body><p>Hi</p><script>if (a < b) { alert("</p>"); }</script><script src="b.js"/></body></html>';
+	pg_assert_same('<html><head></head><body><p>Hi</p></body></html>', pg_design_preview_strip_scripts($html));
+	pg_assert_same('<p>no script</p>', pg_design_preview_strip_scripts('<p>no script</p>'));
+}
+
+function test_preview_etag_follows_page_design_and_version()
+{
+	$a = pg_design_preview_etag(5, 100, 200, '2026.11.0');
+	pg_assert_true((bool)preg_match('/^"dp-[0-9a-f]{20}"$/', $a), 'quoted strong tag');
+	pg_assert_same($a, pg_design_preview_etag('5', '100', '200', '2026.11.0'));
+	pg_assert_true($a !== pg_design_preview_etag(5, 101, 200, '2026.11.0'), 'page change');
+	pg_assert_true($a !== pg_design_preview_etag(5, 100, 201, '2026.11.0'), 'design change');
+	pg_assert_true($a !== pg_design_preview_etag(5, 100, 200, '2026.11.1'), 'new release');
+	pg_assert_true($a !== pg_design_preview_etag(6, 100, 200, '2026.11.0'), 'other page');
+}
+
+function test_preview_etag_matching()
+{
+	$tag = '"dp-abc"';
+	pg_assert_true(pg_design_preview_etag_matches('"dp-abc"', $tag));
+	pg_assert_true(pg_design_preview_etag_matches('"x", W/"dp-abc"', $tag));
+	pg_assert_true(pg_design_preview_etag_matches('*', $tag));
+	pg_assert_false(pg_design_preview_etag_matches('', $tag));
+	pg_assert_false(pg_design_preview_etag_matches('"dp-abd"', $tag));
+}
+
+function test_preview_placeholder_is_a_plain_escaped_page()
+{
+	$html = pg_design_preview_placeholder_html('No <page>');
+	pg_assert_contains('<meta name="robots" content="noindex">', $html);
+	pg_assert_contains('<p>No &lt;page&gt;</p>', $html);
+	pg_assert_false(stripos($html, '<script') !== false, 'no script');
+}
