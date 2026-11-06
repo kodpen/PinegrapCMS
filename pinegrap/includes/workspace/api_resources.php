@@ -3542,7 +3542,7 @@ function ws_api_approvals_decide($params)
     // meets the same refusals. An answer after the request's time closes it,
     // as in the panel; a dry run leaves that to the next answer or the hourly
     // job.
-    $checked = ws_approval_decide_check($viewer, $approval, (string) $params['decision']);
+    $checked = ws_approval_decide_check($viewer, $approval, (string) $params['decision'], (string) ($params['note'] ?? ''));
 
     if (!$checked['ok']) {
         if ($checked['expired'] && !api_dry_run_requested()) {

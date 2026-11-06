@@ -50,8 +50,9 @@ function pg_explorer_webp_base_name($name)
 // A Word or Excel file read on the server for the file window and
 // Quick Look (includes/fn/office.php): rows for a workbook, a safe
 // subset of HTML for a document. Reading only, so it is open to
-// whoever may view the folder; a document the ERP module keeps to
-// whoever may read the ERP (get_file.php's rule for those).
+// whoever may view the folder, except what get_file.php keeps closed
+// there too: a form or chat attachment (pg_file_panel_content_verdict()),
+// and a document the ERP module keeps to whoever may read the ERP.
 //
 // The file window asks for a workbook's cells or a document's
 // paragraphs to be offered for editing (edit): then the answer also
@@ -72,7 +73,10 @@ function pg_explorer_handle_office_preview($type, $request, $user)
         if (!defined('ERP_ENABLED') || !ERP_ENABLED || (((int) $user['role'] >= 3) && empty($user['manage_erp']))) {
             respond(array('status' => 'error', 'message' => lang('Access denied')));
         }
-    } elseif (check_view_access($office_file['folder']) == false) {
+    } elseif (
+        (check_view_access($office_file['folder']) == false)
+        || !pg_file_panel_content_verdict($office_file['attachment'], check_edit_access($office_file['folder']), $user['id'], $user['role'], pg_file_chat_conversations($office_file['id']))
+    ) {
         respond(array('status' => 'error', 'message' => lang('Access denied')));
     }
 

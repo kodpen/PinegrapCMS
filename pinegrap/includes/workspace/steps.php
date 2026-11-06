@@ -237,6 +237,14 @@ function ws_step_outputs($kind, $config, $labels = array())
         }
     }
 
+    // An approval box that asks for an answer gives it, read as a number
+    // too, and who gave it.
+    if (($kind === 'approval') && in_array($config['answer'] ?? 'none', array('text', 'number'), true)) {
+        $out[] = array('key' => 'answer', 'type' => 'text', 'label' => lang('Answer'));
+        $out[] = array('key' => 'answer_number', 'type' => 'number', 'label' => lang('Answer as a number'));
+        $out[] = array('key' => 'decided_by', 'type' => 'number', 'label' => lang('Decided by'));
+    }
+
     // A box that reads a record gives the fields of its kind.
     if (($kind === 'record_get') && function_exists('ws_flow_record_get_outputs')) {
         $out = array_merge($out, ws_flow_record_get_outputs((string) ($config['record'] ?? '')));
@@ -289,6 +297,9 @@ function ws_step_result_data($kind, $config, $done)
         if ((($kind === 'row_get') && (strpos($key, 'cell_') === 0))
             || (($kind === 'record_get') && !in_array($key, array('record_id', 'found'), true))) {
             $value = is_scalar($value) ? (string) $value : '';
+        } elseif (($kind === 'approval') && ($key === 'answer_number')) {
+            // An answer's number may have decimals (ws_approval_answer_number()).
+            $value = (is_scalar($value) && is_numeric($value)) ? (string) $value : null;
         } elseif ($output['type'] === 'number') {
             $value = (is_numeric($value) && !is_string($value)) ? (int) $value : null;
 
@@ -345,7 +356,9 @@ function ws_step_outcomes()
  *            put in a channel it opens)
  * approval:  channel_id, title, text, approvers (up to 50), rule (any, all),
  *            closes_in ('' for no deadline, else 1 to
- *            WS_STEP_APPROVAL_CLOSES_MAX hours from when the box runs)
+ *            WS_STEP_APPROVAL_CLOSES_MAX hours from when the box runs),
+ *            answer (none, text, number: what Approve asks for),
+ *            answer_label (the question, up to 120 characters)
  * mcp:       server_id, tool (a tool of that server that is turned on),
  *            arguments (a JSON object as text, '' for none; one given as an
  *            object is written as its JSON), channel_id and closes_in (for a
@@ -545,6 +558,9 @@ function ws_step_config_normalize($kind, $config)
                 'approvers'  => $people($config['approvers'] ?? array(), 50),
                 'rule'       => (($config['rule'] ?? '') === 'all') ? 'all' : 'any',
                 'closes_in'  => (is_bool($closes_in) || !is_numeric($closes_in)) ? '' : max(1, min(WS_STEP_APPROVAL_CLOSES_MAX, (int) $closes_in)),
+                // What Approve asks for (ws_approval_answer_problem()): none, text or number.
+                'answer'       => in_array($config['answer'] ?? '', array('text', 'number'), true) ? (string) $config['answer'] : 'none',
+                'answer_label' => ws_flow_line($config['answer_label'] ?? '', 120),
             );
 
         case 'mcp':

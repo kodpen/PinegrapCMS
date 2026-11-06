@@ -5,14 +5,16 @@ description: Product add/edit save checks (counts, weight, quantity range, varia
 
 ## Which numbers does the product save refuse?
 
-`pg_pb_validate_product_post()` calls `pg_pb_number_fields_problem($_POST, pg_pb_thousands_separator())`
-(`product_builder.php`) and stops with a sentence naming the field. Count
-boxes (payments, start days, membership days, access days, reward points,
-default/min/max quantity) go through `pg_pb_whole_number_from_input()`:
-digits, or groups of three with the panel's thousands separator ("1.200" in
-Turkish) or a space; a sign, a decimal part or a letter is refused. Before
-this `-2` payments was stored as 0 (no end to the charges), `12,5` as 12 and
-`abc` as is (#5269). `pg_pb_common_from_post()` stores the parsed number.
+`pg_pb_validate_product_post()` calls `pg_pb_number_fields_problem()` and
+stops with a sentence naming the field. Count boxes (payments, start, membership
+and access days, reward points, default/min/max quantity, inventory quantity,
+primary/secondary weight points, preparation time) go through
+`pg_pb_whole_number_from_input()`: digits or groups of three ("1.200" in
+Turkish); a sign, decimal or letter is refused, and so is a figure above
+4294967295 (their int(10) unsigned columns cut it). `-2` payments was stored
+as 0 (#5269); weight points and preparation time went in raw (`-4`, `abc` as
+0). `pg_pb_common_from_post()` stores the parsed number (empty points or
+preparation time as 0); `pg_pb_posted_stock_quantity()` reads the stock box.
 Label Column Width is empty, 0 (an old stored value, read as none) or up to
 100. Price, extra shipping cost, weight and dimensions with a minus sign are
 refused: their readers dropped the sign and stored it positive. Weight and

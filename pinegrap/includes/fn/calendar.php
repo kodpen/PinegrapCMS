@@ -1412,6 +1412,38 @@ function pg_calendar_occurrence_window($occurrence_date, $start_date_and_time, $
     return array($start, $start + $length);
 }
 
+/**
+ * Whether a one-off event already in a location overlaps a new booking.
+ * The stored start and end are read as site time here in PHP, like the new
+ * booking's times: MySQL's UNIX_TIMESTAMP() would read them at the session's
+ * fixed offset of the request day (init.php), an hour off for an event on
+ * the other side of a clock change.
+ *
+ * @param string $start_date_and_time the event's start, YYYY-MM-DD HH:MM:SS
+ * @param string $end_date_and_time   the event's end, YYYY-MM-DD HH:MM:SS
+ * @param int    $event_start         the new booking's start timestamp
+ * @param int    $event_end           the new booking's end timestamp
+ * @return bool
+ */
+function pg_calendar_single_event_conflicts($start_date_and_time, $end_date_and_time, $event_start, $event_end)
+{
+    $start = strtotime((string) $start_date_and_time);
+    $end = strtotime((string) $end_date_and_time);
+
+    if (($start === false) || ($end === false)) {
+        return false;
+    }
+
+    if (($start <= $event_start) && ($end > $event_start)) {
+        return true;
+    }
+    if (($start > $event_start) && ($start < $event_end)) {
+        return true;
+    }
+
+    return ($end > $event_start) && ($end <= $event_end);
+}
+
 function check_calendar_event_location_availability($location_id, $event_start, $event_end, $event_id = "0")
 {
 
@@ -1450,10 +1482,6 @@ function check_calendar_event_location_availability($location_id, $event_start, 
 
             end_time as normal_end_time,
 
-            UNIX_TIMESTAMP(start_time) as start_time, 
-
-            UNIX_TIMESTAMP(end_time) as end_time,
-
             recurrence,
 
             recurrence_number,
@@ -1488,15 +1516,7 @@ function check_calendar_event_location_availability($location_id, $event_start, 
     while ($row = mysqli_fetch_assoc($result)) {
         // If this is not a recurring event, then do a simple check
         if ($row['recurrence'] == 0) {
-            $event_start_date_and_time = $row['start_time'];
-            $event_end_date_and_time = $row['end_time'];
-            if (($event_start_date_and_time <= $event_start) && ($event_end_date_and_time > $event_start)) {
-                return $row['id'];
-            }
-            if (($event_start_date_and_time > $event_start) && ($event_start_date_and_time < $event_end)) {
-                return $row['id'];
-            }
-            if (($event_end_date_and_time > $event_start) && ($event_end_date_and_time <= $event_end)) {
+            if (pg_calendar_single_event_conflicts($row['normal_start_time'], $row['normal_end_time'], $event_start, $event_end)) {
                 return $row['id'];
             }
         } else {

@@ -157,13 +157,41 @@
             var approve = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('apv_approve'), 'bi-check2');
             var reject = h.button('btn btn-sm btn-outline theme-warning', t('apv_reject'), 'bi-x-lg');
 
-            approve.addEventListener('click', function () {
+            var decide = function (note) {
                 approve.disabled = true;
-                h.api('ws_approval_decide', { approval_id: approval.id, decision: 'approve' }).then(function (data) {
+                h.api('ws_approval_decide', { approval_id: approval.id, decision: 'approve', note: note }).then(function (data) {
                     refreshed(view, data);
                 }).catch(function (error) {
                     approve.disabled = false;
                     h.fail(error);
+                });
+            };
+
+            approve.addEventListener('click', function () {
+                // A flow's approval box may ask for an answer with the
+                // approval: required, a number when it asks for one (the
+                // server checks it again).
+                if (approval.answer !== 'text' && approval.answer !== 'number') {
+                    decide('');
+                    return;
+                }
+
+                var answer = el('input', 'form-control form-control-sm');
+
+                answer.type = 'text';
+                answer.maxLength = 255;
+                answer.required = true;
+                answer.placeholder = t(approval.answer === 'number' ? 'apv_answer_number' : 'apv_answer');
+                answer.setAttribute('aria-label', approval.answer_label || answer.placeholder);
+
+                if (approval.answer === 'number') {
+                    answer.inputMode = 'decimal';
+                }
+
+                h.ask(approval.answer_label || t('apv_answer_confirm'), t('apv_approve'), false, answer).then(function (yes) {
+                    if (yes) {
+                        decide(answer.value);
+                    }
                 });
             });
 

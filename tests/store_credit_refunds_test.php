@@ -49,6 +49,29 @@ function test_store_credit_refund_card_amount_adds_the_bonus_rounded()
 	pg_assert_same(20000, pg_credit_refund_card_amount(10000, 250), 'capped at 100 percent');
 }
 
+function test_store_credit_refund_bonus_only_on_the_bonus_base()
+{
+	pg_assert_same(10500, pg_credit_refund_card_amount_on(10000, 5000, 10), 'half earns ten percent');
+	pg_assert_same(10000, pg_credit_refund_card_amount_on(10000, 0, 10), 'no base gives no bonus');
+	pg_assert_same(11000, pg_credit_refund_card_amount_on(10000, 20000, 10), 'the base is capped at the refund');
+	pg_assert_same(10000, pg_credit_refund_card_amount_on(10000, -50, 10), 'a negative base is none');
+	pg_assert_same(0, pg_credit_refund_card_amount_on(0, 100, 10), 'nothing refunded gives nothing');
+	pg_assert_same(1036, pg_credit_refund_card_amount_on(999, 999, 3.7), 'rounded as the whole refund');
+}
+
+function test_store_credit_refund_cancelled_order_bonus_skips_the_gift_card_part()
+{
+	pg_assert_same(10000, pg_credit_refund_cancel_card_amount(array('payment' => 0, 'gift_card' => 10000, 'total' => 10000), 10),
+		'an order paid with store credit only gets it back without a bonus');
+	pg_assert_same(10600, pg_credit_refund_cancel_card_amount(array('payment' => 6000, 'gift_card' => 4000, 'total' => 10000), 10),
+		'the bonus is on the payment part');
+	pg_assert_same(11000, pg_credit_refund_cancel_card_amount(array('payment' => 10000, 'gift_card' => 0, 'total' => 10000), 10),
+		'a paid order gets the whole bonus');
+	pg_assert_same(10000, pg_credit_refund_cancel_card_amount(array('payment' => 6000, 'gift_card' => 4000, 'total' => 10000), 0),
+		'no bonus set');
+	pg_assert_same(0, pg_credit_refund_cancel_card_amount(array(), 10), 'nothing owed');
+}
+
 function test_store_credit_refund_reference_names_the_card()
 {
 	pg_assert_same('store_credit:42', pg_credit_refund_reference(42), 'reference');

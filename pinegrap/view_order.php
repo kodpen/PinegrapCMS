@@ -2537,10 +2537,11 @@ if (!$_POST) {
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
 
         // A customer's order may get what it owes as store credit instead
-        // (pg_credit_refund_cancelled_order()), the site's bonus on top.
+        // (pg_credit_refund_cancelled_order()), the site's bonus on top of
+        // the payment part.
         $output_refund_credit_choice = '';
         if (($status == 'cancelled') && ($refund_owed['total'] > 0) && pg_credit_refund_possible($order_customer_id)) {
-            $refund_credit_cents = pg_credit_refund_card_amount($refund_owed['total'], pg_credit_refund_bonus());
+            $refund_credit_cents = pg_credit_refund_cancel_card_amount($refund_owed, pg_credit_refund_bonus());
             $output_refund_credit_choice = '
                                 <div class="mb-3">
                                     <div class="form-field">
@@ -3331,18 +3332,24 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
-        // Record the refund.
-        $new_refunded_total = (int)($order_row['refunded_amount'] ?? 0) + $refund_cents;
-        db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "', " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
+        // Record the refund. Added to the column, then read back: a return or
+        // store credit refund recorded during the payment service call has
+        // added its own amount, which the total read above does not hold.
+        db("UPDATE orders SET refunded_amount = " . pg_order_refunded_add_expr($refund_cents) . ", " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
+        $new_refunded_total = (int) db_value("SELECT COALESCE(refunded_amount, 0) FROM orders WHERE id = '" . e($order_id) . "'");
 
         // A refund by lines takes those lines' reward points back. The points
         // taken are noted on the refund row, which a later cancellation (a
         // full refund) reads so it does not take them a second time; without
         // the notes column nothing could be noted, so nothing is taken here.
+        // On an order without an invoice the lines given back are noted too
+        // (erp_order_refund_lines_note()), so the next refund by lines does
+        // not give the same line back again.
         $refund_points_marker = '';
         if (is_array($refund_by_lines) && pg_schema_has('order_refunds', 'notes')) {
             $refund_points = pg_credit_points_lines_refunded($order_id, pg_credit_points_erp_quantities($order_id, $refund_source, (array) $refund_by_lines['quantities']));
-            $refund_points_marker = pg_credit_points_marker($refund_points['total']);
+            $refund_points_marker = trim(pg_credit_points_marker($refund_points['total'])
+                . ((($refund_source['source'] ?? '') === 'order') ? ' ' . erp_order_refund_lines_note((array) $refund_by_lines['quantities']) : ''));
         }
 
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id" . (($refund_points_marker !== '') ? ', notes' : '') . ", created_at)

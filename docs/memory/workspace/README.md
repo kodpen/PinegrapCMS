@@ -152,6 +152,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists
 - workspace-flows-api-filters.md: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122); the Flows screen's start filter (C4, PR #2391)
 - workspace-flows-api-templates.md: Flow templates over the external API (A6, #2298): GET /workspace/flow-templates, POST /workspace/flows with template and answers, what is checked, what never happens (publish)
+- workspace-flows-approval-answer.md: The answer an approval box asks with Approve (#7015, PR #7446): settings answer/answer_label, the check, where it is stored, the outputs answer, answer_number, decided_by
 - workspace-flows-approval-box.md: The approval box of a flow (F5c, PR #2142): asks, waits on approval:<id>, leaves on approved, rejected, expired, withdrawn or failed; deadline in hours, woken by approval.decided or the hourly look
 - workspace-flows-arrows-always.md: Arrows on always in a flow (PR #2249): taken however the box ended, as a scheduled follow-up on always; which boxes have it, routing a failure, the timeout check, canvas
 - workspace-flows-box-look.md: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, palette wrapping
@@ -219,7 +220,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 - workspace-flows-table-box-form.md: The canvas form of the add-row and change-row flow boxes (F6b-2, #3359): tables offered, a field per column, cells kept as JSON one key at a time, the JSON fallback, threads
 - workspace-flows-table-boxes.md: The table boxes of flows (F6b-1 #3189): row_add adds a workflow table row, row_set changes cells of one; cells as JSON text, owner's edit reach, store writers, pause, what non-editors read
-- workspace-flows-template-events.md: The flow templates started by a site event that wait, ask for approval or follow up (plan flows-next T1-T5): their boxes, what each is offered with, how they are tested
+- workspace-flows-template-events.md: The flow templates started by a site event that wait, ask for approval or follow up (plan flows-next T1-T5, T10-T12): their boxes, what each is offered with, how they are tested
 - workspace-flows-template-flow-only.md: The flow templates a scheduled action never had (G3): new_customer, quote_approval, text_review; their boxes, the one person setting, how they are tested
 - workspace-flows-template-format.md: Flow templates (G1 #2161, flow_templates.php): format, the scheduled templates that came over or wait, the gallery
 - workspace-flows-template-last-day.md: The forms, orders and chain flow templates (R1b, #2787): counts of the last day once a day, the orders webhook, chain a manual start a "Start a flow" box starts
@@ -302,6 +303,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, scope buttons that follow a department pick, pressed week buttons, the announced task count
+- workspace-task-reminders.md: Task reminders, overdue and meeting notices (reminders.php): who is told, the per-recipient mail and its channel line, claims against double sending, time zone and DST
 - workspace-task-zero-dates.md: A task's start or due date of 0000-00-00 is no date when the board or /postpone moves it and when the start-after-due check runs (ws_task_move_dates(), ws_task_starts_after_due())
 - workspace-text-fold.md: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains(), SQL helpers in commands.php): what folds, who calls it, why not mb_stripos()
 - workspace-text-headings.md: Headings "#" to "###" and "---" rules in Workspace notes only (#2649): server rule and fast path, plain text, editor twins, tools, Enter/Backspace, "# " autoformat, the import

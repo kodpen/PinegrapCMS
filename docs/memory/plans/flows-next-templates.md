@@ -20,19 +20,19 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T5 (done, #7116): a cancelled order (in place of an e-mail to answer, see `workspace-flows-template-events.md`): an order is cancelled → a line in the channel and a task to follow it up.
 
-- T6 (after A1): goods received: by hand or each morning → an approval "Did the delivery arrive, how many?" with a number answer → add it to a stock table row (B5 when it lands).
+- T6 (done, PR #7454): goods received: by hand or each morning → an approval "Did the delivery arrive, how many?" with a number answer → add it to a stock table row (B5 when it lands).
 
-- T7 (after A1, A2): daily cash count: each evening → an approval asking the counted amount → Calculate the difference from the expected amount → tell the manager when it is not zero.
+- T7 (done, PR #7454): daily cash count: each evening → an approval asking the counted amount → Calculate the difference from the expected amount → tell the manager when it is not zero.
 
 - T8 (after C1): a low review: a product review is written → rating 2 or less → a task to answer it and a line in the channel.
 
 - T9 (after C1): a failed subscription payment: tell the owner and open a task to contact the customer.
 
-- T10 (after B4): booking reminder: a booking is confirmed → wait until a day before it → tell the person who hosts it (an e-mail to the guest after B8).
+- T10 (done, #7435): booking reminder: a booking is confirmed → wait until a day before it → tell the person who hosts it (an e-mail to the guest after B8).
 
-- T11 (after B6): failed runs to the team: a run fails → a line in the channel with the flow, the box and its sentence.
+- T11 (done, #7435): failed runs to the team: a run fails → a line in the channel with the flow, the box and its sentence.
 
-- T12 (after C3): overdue invoice follow-up: an invoice becomes overdue → a task for the person who collects it → still unpaid after 7 days → tell the manager.
+- T12 (done, #7435): overdue invoice follow-up: an invoice becomes overdue → a task for the person who collects it → still unpaid after 7 days → tell the manager.
 
 - T13 (after C1, B1): quote follow-up: a cart quote is made → wait 2 days → read the quote → not ordered: a task to call the customer (an e-mail after B8).
 

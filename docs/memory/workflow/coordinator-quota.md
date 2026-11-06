@@ -13,7 +13,7 @@ description: Coordinator worker count by the 5-hour quota (owner, 2026-11-02): 8
 
 ## How many workers?
 - At a window's start: 8.
-- Each hour of the window (from the hourly routine), U against the target H = hours since the window's start (a fraction is fine) × 20%: U above H+10: two fewer; H+5 to H+10: one fewer; within ±5: same; H−10 to H−5: one more; below H−10: two more. Never under 4 or over 10; the extra bug hunters of `coordinator-idle-bug-hunt.md` are outside this count.
+- Each hour of the window (from the hourly routine), U against the target H = hours since the window's start (a fraction is fine) × 20%: U above H+10: two fewer; H+5 to H+10: one fewer; within ±5: same; H−10 to H−5: one more; below H−10: two more. Never under 4 or over 10.
 - Fewer: running workers are not stopped; a finished worker is not replaced. More: at most one new worker a minute.
 - A warning (`allowed_warning`) changes nothing: the hourly count goes on. Refused (`rejected`): no new worker until `resetsAt`.
 - Under 4 only for the reasons in `coordinator-limits.md` (queue limit, no free step).

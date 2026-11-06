@@ -408,6 +408,7 @@
     "Your agent for this home": "Bu evin danışmanı",
     "Your agent here": "Buradaki danışmanınız",
     "Your answer": "Yanıtınız",
+    "Your answer (a number)": "Cevabınız (sayı)",
     "Your answer goes to {var:1} and cannot be changed afterwards. This link works until {var:2}.": "Yanıtınız {var:1} adlı kişiye iletilir ve sonradan değiştirilemez. Bu bağlantı {var:2} tarihine kadar geçerli.",
     "Your application has reached us. We read every one and answer within a week; if it fits, we invite you for a coffee and a short talk in one of our cafés.": "Başvurunuz bize ulaştı. Her başvuruyu okur, bir hafta içinde yanıt veririz; uygun olursa sizi kafelerimizden birinde bir kahve ve kısa bir sohbete davet ederiz.",
     "Your application opens its own page, and an account for you if you have none.": "Başvurunuz kendi sayfasını açar; hesabınız yoksa sizin için bir hesap da açılır.",
