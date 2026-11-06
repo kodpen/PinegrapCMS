@@ -12,3 +12,8 @@ module: calendar
 - As long as the event itself: `pg_calendar_occurrence_window($occurrence_date, $start, $end)` starts the occurrence on its own date at the event's start time and adds the event's length in seconds.
 - Before #4632 the end was the end time on the occurrence's start date, so a recurring overnight event (22:00 to 02:00) ended before it started and a multi-day one lasted only its first day: such events never blocked the room, and the location could be double-booked.
 - Tests: `tests/calendar_occurrence_window_test.php`.
+
+## How are a one-off event's times read?
+- In PHP: `pg_calendar_single_event_conflicts($start, $end, $new_start, $new_end)` runs `strtotime()` on the stored DATETIME, like the new booking's times, and keeps the three overlap cases (back to back is free).
+- Before the fix the query read `UNIX_TIMESTAMP(start_time)`. The MySQL session sits at the request day's fixed offset (`init.php`, `date('P')`), so in a daylight saving zone an event of the other season was an hour off: booked in winter, a summer 10:00-11:00 event blocked 11:00-12:00 and let 10:30 through.
+- Tests: `tests/calendar_location_conflict_test.php`.
