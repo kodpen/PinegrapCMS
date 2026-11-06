@@ -14,7 +14,7 @@ module: image_editor
 - Designer: `designer/image-editor-tool.md`. Workspace: below.
 
 ## How does the live site's edit button work?
-- In edit mode `get_page_content.php` prints the loader (signed-in editors only: owner answer 4 of `plans/image-editor.md`). The buttons of `add_edit_button_for_images()` (`includes/fn/content.php`) and of the inline editor (`frontend.src.js`, hand-edited `frontend.min.js` twin) show the still mascot (`ui/brand-logo.md`) and carry `data-pg-image-edit`, `data-pg-image-object`, `-object-id`, `-column`.
+- In edit mode `get_page_content.php` prints the loader (signed-in editors only: owner answer 4 of #4203, `workflow/decisions-made-product-15.md`). The buttons of `add_edit_button_for_images()` (`includes/fn/content.php`) and of the inline editor (`frontend.src.js`, hand-edited `frontend.min.js` twin) show the still mascot (`ui/brand-logo.md`) and carry `data-pg-image-edit`, `data-pg-image-object`, `-object-id`, `-column`.
 - A replace changes every page using the file. A copy (the user may not write over it) is put into the content by API action `content` `{ object_type, object_id, column, from: name, to: id }`: `pg_image_editor_content_places()` names table, id and column, `pg_image_editor_content_allowed()` keeps the old screen's per-type checks for the user role (3), `update_image_in_content()` rewrites the `<img>`. A converted common region is left alone.
 
 ## How does Workspace save?

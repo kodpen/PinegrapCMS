@@ -13,7 +13,7 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - Tests: sample tables of small MP4 and WebM fixtures under Node; the seek point for a time.
 
 - V2 (M) The video layer.
-  - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`image-editor-steps-5.md`).
+  - `type: 'video'` with its file, source in and out, place on the timeline, speed, volume, muted. Drawn at the playhead under or over other layers; playing in step with the play bar; added from Files or this computer through E31's Import menu (`ui/image-editor-import.md`).
 
 - V3 (M) Timeline editing.
   - Clip rows on the tracks (AN2): trim the ends, split at the playhead (two layers on one source), move, snap; the document's length follows its clips.
@@ -42,4 +42,4 @@ description: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, vid
   - One list of rows, touch-sized trim handles, the sound rows folded.
 
 - V11 (S) Access and close-out. The holder.
-  - Keys (J, K, L, I, O), names, captions of the controls; lasting decisions to topic files and these plan files deleted.
+  - Keys (J, K, L, I, O), names, captions of the controls; lasting decisions to topic files; these plan files, `image-editor-workers.md`, `image-editor-visuals.md` and `plans/image-editor/` (the screens and the prototype) deleted, the image editor's own plan files having gone in E20 (#PRNUM).
