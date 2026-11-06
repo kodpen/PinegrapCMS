@@ -57,6 +57,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 - `page_type_pane`: clean (type rights, layout type rule, offer rights, contact group, private folder and custom form guards, form name check, pane CSRF, folder access and collaboration lock checked)
 
 - `parasut`: clean (request and 429 retry, credentials and token cache, connect and settings card escaping, inbox totals and list filters, VKN lookup, Create Invoice and E-Shipment flows, kept-id SQL, order screen notices checked)
+- Second round: parasut taken (changes since 2026-11-01 and the whole module)
 
 - `passkeys`: clean
 
