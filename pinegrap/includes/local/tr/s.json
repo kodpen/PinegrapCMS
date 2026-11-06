@@ -3067,6 +3067,7 @@
     "Started by a “Start a flow” box of another flow; says which flow finished and what it did.": "Başka bir akışın “Bir akış başlat” kutusuyla başlar; hangi akışın bittiğini ve ne yaptığını söyler.",
     "Started by hand": "Elle başlatılır",
     "Started by hand.": "Elle başlatıldı.",
+    "Started by its web address.": "Web adresiyle başlatıldı.",
     "Started by the flow “{var:1}”.": "“{var:1}” akışı tarafından başlatıldı.",
     "Started by {var:1}": "{var:1} başlattı",
     "Started by {var:1}.": "{var:1} başlattı.",

@@ -189,7 +189,7 @@ function test_ws_flow_ai_catalogue_hints()
 	pg_assert_false(strpos(ws_flow_ai_catalogue_text($plain), 'one of order') !== false, 'the plain catalogue says nothing of it');
 
 	$description = ws_flow_ai_tool($catalogue)['function']['description'];
-	pg_assert_contains('A box that starts the flow (manual, schedule, event, join, row, no_order) asks nothing and no arrow leads into it.', $description, 'a start box is no step');
+	pg_assert_contains('A box that starts the flow (manual, schedule, event, join, row, no_order, web) asks nothing and no arrow leads into it.', $description, 'a start box is no step');
 	pg_assert_contains('is an approval box, whose arrows leave on approved and rejected', $description, 'a yes-or-no question is an approval');
 	pg_assert_contains('a condition box only compares', $description, 'a condition is no question');
 	pg_assert_contains('a post box only says something and waits for no answer', $description, 'a message is no question');

@@ -36,7 +36,8 @@ function test_workspace_flow_web_start_kind()
 	pg_assert_same('web', ws_flow_start_names()['web']);
 	pg_assert_false(isset(ws_flow_anchor_kinds()['web']), 'no hidden scheduled action: the address starts it');
 	pg_assert_false(in_array('web', ws_flow_member_kinds(), true), 'staff only: a role-3 member\'s flow starts no address');
-	pg_assert_contains('web', ws_flow_ai_catalogue_text(ws_flow_ai_catalogue_hints(ws_flow_kind_catalogue(), array())), 'Pinegrap AI drafts it');
+	pg_assert_contains('posts to the flow\'s own web address', ws_flow_ai_catalogue_text(ws_flow_ai_catalogue_hints(ws_flow_kind_catalogue(), array())), 'Pinegrap AI drafts it');
+	pg_assert_contains("case 'ws_flow_web_address':", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php'));
 	pg_assert_same(array('fields' => array()), ws_flow_config_normalize('web', null));
 }
 
@@ -183,7 +184,7 @@ function test_workspace_flow_web_start_sealed()
 	$found = false;
 
 	foreach (pg_reseal_registry() as $entry) {
-		if (($entry['table'] === 'config_text') && (strpos((string) $entry['where'], 'ws_flow_web') !== false)) {
+		if (($entry['table'] === 'config_text') && (strpos((string) $entry['where'], 'ws\\_flow\\_web\\_') !== false)) {
 			$found = ($entry['kind'] === 'iv') && ($entry['key'] === 'name');
 		}
 	}
