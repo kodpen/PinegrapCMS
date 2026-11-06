@@ -24,9 +24,9 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T7 (done, PR #7454): daily cash count: each evening → an approval asking the counted amount → Calculate the difference from the expected amount → tell the manager when it is not zero.
 
-- T8 (after C1): a low review: a product review is written → rating 2 or less → a task to answer it and a line in the channel.
+- T8 (done, PR #7461): a low review: a product review is written → rating 2 or less → a task to answer it and a line in the channel.
 
-- T9 (after C1): a failed subscription payment: tell the owner and open a task to contact the customer.
+- T9 (done, PR #7461): a failed subscription payment: tell the owner and open a task to contact the customer.
 
 - T10 (done, #7435): booking reminder: a booking is confirmed → wait until a day before it → tell the person who hosts it (an e-mail to the guest after B8).
 
@@ -34,6 +34,6 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T12 (done, #7435): overdue invoice follow-up: an invoice becomes overdue → a task for the person who collects it → still unpaid after 7 days → tell the manager.
 
-- T13 (after C1, B1): quote follow-up: a cart quote is made → wait 2 days → read the quote → not ordered: a task to call the customer (an e-mail after B8).
+- T13 (after a `cart_quote` kind in the Read a record box: `ws_flow_record_get_fields()` has none yet, so the quote cannot be read after the wait): quote follow-up: a cart quote is made → wait 2 days → read the quote → not ordered: a task to call the customer (an e-mail after B8).
 
 - T14 (after B2): sort incoming forms: a form is submitted → Pinegrap AI picks sales, support or spam → a task for the right person, spam ends.

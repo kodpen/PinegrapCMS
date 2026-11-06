@@ -128,6 +128,7 @@
     "Make a template": "Bir şablon hazırlayın",
     "Make a template of this channel": "Bu kanaldan şablon yap",
     "Make a token on {var:1} and paste it here. A read-only one is enough for the tools that read.": "{var:1} üzerinde bir jeton oluşturup buraya yapıştırın. Okuyan araçlar için yalnızca okuma izinli bir jeton yeterlidir.",
+    "Make an address": "Adres oluştur",
     "Make an invoice draft from this quote, at the prices quoted and dated today?": "Bu tekliften, teklif edilen fiyatlarla ve bugünün tarihiyle bir fatura taslağı oluşturulsun mu?",
     "Make an offer": "Teklif verin",
     "Make and Body": "Marka ve Kasa",

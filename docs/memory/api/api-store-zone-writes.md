@@ -20,4 +20,4 @@ module: store_zones
 - `zone.created|updated|deleted`, `tax_zone.created|updated|deleted` with `id` and `name`, from the shared functions: a change on the zone screens is announced too.
 
 ## Why?
-- Plan `external-api-coverage` X1a: an outside system that syncs shipping and tax needs to write zones before shipping methods can name them (X1b).
+- Gap list #5239 (`api-panel-coverage.md`): an outside system that syncs shipping and tax needs to write zones before shipping methods can name them (X1b).

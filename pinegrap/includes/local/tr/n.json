@@ -952,6 +952,7 @@
     "No field carries the <strong>Title</strong> role, so the records get no name and keep their reference code. Select a control and assign it in Form Field → RSS / list role.": "Hiçbir alana <strong>Başlık</strong> rolü verilmedi: kayıtlar ad almaz ve referans koduyla açılmaya devam eder. Bir kontrolü seçip Form Alanı → RSS / liste rolü'nden atayın.",
     "No field carries the <strong>Title</strong> role: the submissions appear unnamed in the list. Select a control and assign it in Form Field → RSS / list role.": "Hiçbir alana <strong>Başlık</strong> rolü verilmedi: gönderimler listede adsız görünür. Bir kontrolü seçip Form Alanı → RSS / liste rolü'nden atayın.",
     "No field of this form is marked as the RSS title, so the page keeps its own title. Pick a field here.": "Bu formda RSS başlığı olarak işaretli bir alan yok, bu yüzden sayfa kendi başlığını korur. Buradan bir alan seçin.",
+    "No field read yet": "Henüz okunan alan yok",
     "No fields were deleted because none were selected.": "Seçilmediği için hiçbir alan silinmedi.",
     "No figures yet. Google publishes them two or three days late; the daily job downloads them as they come.": "Henüz veri yok. Google verileri iki üç gün gecikmeyle yayımlar; günlük iş geldikçe indirir.",
     "No figures yet. They are read from Google Analytics within the hour.": "Henüz rakam yok. Bir saat içinde Google Analytics'ten okunur.",

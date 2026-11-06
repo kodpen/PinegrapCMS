@@ -126,6 +126,7 @@
         join: { name: 'fl_kind_join', group: 'start', into: false, out: ['next'] },
         row: { name: 'fl_kind_row', group: 'start', into: false, out: ['next'] },
         no_order: { name: 'fl_kind_no_order', group: 'start', into: false, out: ['next'] },
+        web: { name: 'fl_kind_web', group: 'start', into: false, out: ['next'] },
         task: { name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
         post: { name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
         email: { name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
@@ -189,6 +190,7 @@
         ['join', 'fl_kind_join'],
         ['row', 'fl_kind_row'],
         ['no_order', 'fl_kind_no_order'],
+        ['web', 'fl_kind_web'],
         ['task', 'fl_add_task'],
         ['condition', 'fl_kind_condition'],
         ['delay', 'fl_kind_delay'],
@@ -695,6 +697,10 @@
 
         if (node.kind === 'no_order') {
             return t('fl_no_order_meta', config.days || 30);
+        }
+
+        if (node.kind === 'web') {
+            return webFieldKeys(config).join(', ') || t('fl_web_meta');
         }
 
         if ((node.kind === 'row_add') || (node.kind === 'row_set') || (node.kind === 'row_get')) {
@@ -4771,6 +4777,14 @@
                 rowCellValues(node.config).forEach(function (item) { add('trigger.', item); });
             }
 
+            if (node.kind === 'web') {
+                (node.config.fields || []).forEach(function (item) {
+                    if (/^[a-z_][a-z0-9_]{0,31}$/.test(item.key || '')) {
+                        add('trigger.', { key: item.key, label: item.key, type: (item.type === 'number') ? 'number' : 'text' });
+                    }
+                });
+            }
+
             return list;
         }
 
@@ -5829,6 +5843,11 @@
 
         if (node.kind === 'no_order') {
             noOrderFields(box, node);
+        }
+
+        if (node.kind === 'web') {
+            webFields(box, node);
+            webAddressField(box);
         }
 
         if (KINDS[node.kind] && (KINDS[node.kind].group === 'start')) {
@@ -7295,6 +7314,129 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_no_order_days'), days, t('fl_no_order_days_help')));
+    }
+
+    // The names a web address box reads, as the server keeps them
+    // (ws_flow_web_normalize()).
+    function webFieldKeys(config) {
+        return (config.fields || []).map(function (item) { return item.key || ''; }).filter(function (key) {
+            return /^[a-z_][a-z0-9_]{0,31}$/.test(key);
+        });
+    }
+
+    // A web address box's fields: a name (small letters, digits and _ as it
+    // is typed) and a type each, at most FL.limits.web_fields.
+    function webFields(box, node) {
+        var config = node.config;
+        var list = el('div', 'wsf-constants');
+        var redraw = function () {
+            if (state.outline) {
+                drawOutline();
+            } else {
+                drawSettings();
+            }
+        };
+
+        config.fields = Array.isArray(config.fields) ? config.fields : [];
+        list.setAttribute('role', 'group');
+        list.setAttribute('aria-label', t('fl_web_fields'));
+
+        config.fields.forEach(function (item, index) {
+            var line = el('div', 'wsf-constant');
+            var name = textInput(item.key, 32, function (value) {
+                var clean = value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').slice(0, 32);
+
+                item.key = clean;
+
+                if (name.value !== clean) {
+                    name.value = clean;
+                }
+
+                refreshNode(node);
+            });
+            var type = K.select([['text', t('fl_constants_text')], ['number', t('fl_constants_number')]], (item.type === 'number') ? 'number' : 'text');
+            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_constants_remove', item.key || String(index + 1)));
+
+            name.placeholder = t('fl_web_field_name');
+            name.setAttribute('aria-label', t('fl_web_field_name'));
+            name.setAttribute('data-refocus', 'web-field-' + node.id + '-' + index);
+            type.setAttribute('aria-label', t('fl_constants_type'));
+            type.addEventListener('change', function () {
+                item.type = type.value;
+                refreshNode(node);
+            });
+            remove.addEventListener('click', function () {
+                config.fields.splice(index, 1);
+                state.refocus = 'web-add-' + node.id;
+                refreshNode(node);
+                redraw();
+            });
+
+            line.appendChild(name);
+            line.appendChild(type);
+            line.appendChild(remove);
+            list.appendChild(line);
+        });
+
+        box.appendChild(el('div', 'form-label small fw-semibold', t('fl_web_fields')));
+        box.appendChild(list);
+
+        var add = K.button('btn btn-sm btn-outline theme-secondary mb-5', t('fl_web_field_add'), 'bi-plus-lg');
+
+        add.setAttribute('data-refocus', 'web-add-' + node.id);
+        add.disabled = config.fields.length >= ((FL.limits && FL.limits.web_fields) || 20);
+        add.addEventListener('click', function () {
+            config.fields.push({ key: '', type: 'text' });
+            state.refocus = 'web-field-' + node.id + '-' + (config.fields.length - 1);
+            refreshNode(node);
+            redraw();
+        });
+        box.appendChild(add);
+        box.appendChild(el('p', 'small fg-secondary', t('fl_web_fields_help')));
+    }
+
+    // The flow's web address (ws_flow_web_address action): only to whoever
+    // may edit the flow, read when the box is drawn; making it again ends
+    // the old one, after a confirmation.
+    function webAddressField(box) {
+        var flow = state.flow;
+        var url = el('input', 'form-control form-control-sm font-monospace');
+        var renew = K.button('btn btn-sm btn-outline theme-secondary mt-2', t('fl_web_address_make'), 'bi-arrow-repeat');
+        var show = function (address) {
+            url.value = address || '';
+            url.placeholder = t('fl_web_address_none');
+            renew.lastChild.textContent = address ? t('fl_web_address_renew') : t('fl_web_address_make');
+        };
+
+        if (!state.edit || !flow || !flow.id) {
+            return;
+        }
+
+        url.readOnly = true;
+        url.setAttribute('aria-label', t('fl_web_address'));
+        url.addEventListener('focus', function () { url.select(); });
+        renew.addEventListener('click', function () {
+            if (url.value && !window.confirm(t('fl_web_address_renew_confirm'))) {
+                return;
+            }
+
+            renew.disabled = true;
+            K.api('ws_flow_web_address', { flow_id: flow.id, renew: 1 }).then(function (data) {
+                renew.disabled = false;
+                show(data.url);
+            }).catch(function (error) {
+                renew.disabled = false;
+                K.fail(error);
+            });
+        });
+        var holder = field(t('fl_web_address'), url, t('fl_web_address_help'));
+
+        holder.appendChild(renew);
+        box.appendChild(holder);
+        show('');
+        K.api('ws_flow_web_address', { flow_id: flow.id }).then(function (data) {
+            show(data.url);
+        }).catch(function () {});
     }
 
     // When a run tells the flow's owner it ended (ws_flow_tell_normalize()):
@@ -8849,6 +8991,8 @@
             config = { channel_id: 0 };
         } else if (kind === 'no_order') {
             config = { days: 30 };
+        } else if (kind === 'web') {
+            config = { fields: [] };
         } else if (kind === 'row') {
             // The one table there is is taken; of several, none yet.
             var tables = stepLists().tables;
