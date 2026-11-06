@@ -1318,6 +1318,8 @@
     "Click here": "buraya tıklayın",
     "Click rate": "Tıklama oranı",
     "Click the Panel button in the menu and you will find the widget theme settings in the list it opens.": "Menüdeki Panel düğmesine tıklarsan açılan listede widget tema ayarları çıkıyor.",
+    "Click the shape to add a pin. Drag a pin to bend the shape around the others.": "Pim eklemek için şekle tıklayın. Şekli diğer pimlerin çevresinde bükmek için bir pimi sürükleyin.",
+    "Click the shape to pin it, then drag a pin to bend it. Alt and a click remove a pin.": "Sabitlemek için şekle tıklayın, sonra bükmek için bir pimi sürükleyin. Alt ile tıklama pimi kaldırır.",
     "Click the tag under any post, or search for the word here: the tag's page lists every live post that carries it.": "Herhangi bir gönderinin altındaki etikete tıklayın ya da kelimeyi burada arayın: etiketin sayfası onu taşıyan tüm yayındaki gönderileri listeler.",
     "Click the {var:1} button to update totals, or click the {var:2} button to update totals and complete your order on our secure server.": "Toplamları güncellemek için {var:1} düğmesine, toplamları güncelleyip siparişinizi güvenli sunucumuzda tamamlamak için {var:2} düğmesine tıklayın.",
     "Click to add a text there. Double-click a text to change it; the handles size and turn it.": "Metin eklemek için tıklayın. Bir metni değiştirmek için çift tıklayın; tutamaçlar boyutunu ve açısını değiştirir.",
