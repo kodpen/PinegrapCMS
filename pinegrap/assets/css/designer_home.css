@@ -741,7 +741,8 @@ button.sdh-page:hover {
   min-width: 0;
 }
 
-.sd-tpl-look .btn {
+.sd-tpl-look .btn,
+.sd-tpl-pal-own {
   --bs-btn-padding-y: .25rem;
   --bs-btn-padding-x: .6rem;
   --bs-btn-font-size: .8125rem;

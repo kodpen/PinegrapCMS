@@ -186,6 +186,13 @@ function test_preview_strips_every_script()
 	pg_assert_same('<p>no script</p>', pg_design_preview_strip_scripts('<p>no script</p>'));
 }
 
+function test_preview_strips_event_handlers_but_not_text()
+{
+	$html = '<img src="a.jpg" onerror="var f=this.getAttribute(\'x\');if(f>1)this.src=f" alt="A > B">'
+		. '<a href="/x" ONCLICK=go() title="on=1">Say onload="hi" here</a>';
+	pg_assert_same('<img src="a.jpg" alt="A > B"><a href="/x" title="on=1">Say onload="hi" here</a>', pg_design_preview_strip_scripts($html));
+}
+
 function test_preview_etag_follows_page_design_and_version()
 {
 	$a = pg_design_preview_etag(5, 100, 200, '2026.11.0');
@@ -213,4 +220,15 @@ function test_preview_placeholder_is_a_plain_escaped_page()
 	pg_assert_contains('<meta name="robots" content="noindex">', $html);
 	pg_assert_contains('<p>No &lt;page&gt;</p>', $html);
 	pg_assert_false(stripos($html, '<script') !== false, 'no script');
+}
+
+function test_preview_address_and_request_still()
+{
+	$url = pg_design_preview_address('panel', array('template' => 'pinegrap-cafe', 'still' => true));
+	pg_assert_contains('design_preview.php?template=pinegrap-cafe&still=1', $url);
+	pg_assert_false(strpos(pg_design_preview_address('panel', array('template' => 'pinegrap-cafe', 'still' => true, 'tour' => true)), 'still') !== false, 'a tour keeps its scripts');
+	pg_assert_false(strpos(pg_design_preview_address('install', array('template' => 'pinegrap-cafe', 'still' => true)), 'still') !== false, 'the installer has none');
+	pg_assert_true(pg_design_preview_request(array('template' => 'pinegrap-cafe', 'still' => '1'))['still']);
+	pg_assert_false(pg_design_preview_request(array('template' => 'pinegrap-cafe', 'still' => '1', 'tour' => '1'))['still'], 'not for a tour');
+	pg_assert_false(pg_design_preview_request(array('template' => 'pinegrap-cafe'))['still']);
 }

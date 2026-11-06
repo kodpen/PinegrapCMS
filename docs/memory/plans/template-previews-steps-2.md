@@ -8,7 +8,7 @@ description: Steps TP4-TP5 of plans/template-previews.md: real pictures on the V
 
 ## Which steps are there?
 
-- TP4 (M) The editor home and Choose a Template. After TP3.
+- TP4 (M) The editor home and Choose a Template. done (#PR).
   - `includes/designer_screen.php`, `assets/css/designer_home.css`, `assets/js/designer_home.js`: the large card's browser frame and every tile show the design's first openable page (`design_preview.php?page_id=`, the page the card's Edit opens); the drawing stays the fallback, the blank outline for a design with no page. The address bar of the large card stays.
   - The template start card's three minis and every card of the dialog show the template's home page (`pg_design_preview_address()`, panel); a template whose home page cannot be drawn keeps its drawing. The version badge stays on the picture.
   - Dialog: an "Önizle" button (the tour in a new tab) beside "Bu Şablonu Kullan"; "Bu temayı kullan" goes.

@@ -9,6 +9,8 @@
  *                                     file (pg_design_template_preview_html()),
  *                                     custom templates too; its links lead to
  *                                     the template's other pages here.
+ *   ...&still=1                       the same without its scripts, for a
+ *                                     live picture (its frame runs none).
  *   ...&tour=1                        the template's tour; its button opens
  *                                     the editor on the template.
  *   ?page_id=                         a visual design page, drafts too, as a
@@ -116,7 +118,7 @@ if ($request['kind'] !== 'page') {
     }
 
     header('Cache-Control: private, max-age=300');
-    print $html;
+    print $request['still'] ? pg_design_preview_strip_scripts($html) : $html;
     exit();
 }
 

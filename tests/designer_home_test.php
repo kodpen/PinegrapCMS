@@ -163,10 +163,10 @@ function test_designer_home_template_picture_address()
 	}
 	pg_assert_true($tpl !== null, 'a shipped template with pages');
 	$src = pg_designer_template_picture_src($tpl, 'organic', 'cocoa');
-	pg_assert_contains('design_preview.php?template=' . $tpl['id'] . '&look=organic&palette=cocoa', $src);
+	pg_assert_contains('design_preview.php?template=' . $tpl['id'] . '&still=1&look=organic&palette=cocoa', $src);
 	pg_assert_false(strpos($src, '&page=') !== false, 'the home page: no page key');
 	// The script's twin builds the same address from the card's base.
-	$base = pg_design_preview_address('panel', array('template' => $tpl['id']));
+	$base = pg_design_preview_address('panel', array('template' => $tpl['id'], 'still' => true));
 	pg_assert_same($src, pg_designer_template_theme_query($base, 'organic', 'cocoa'));
 	pg_assert_same($base, pg_designer_template_theme_query($base, 'nope', 'file-3'), 'unknown look and file palette dropped');
 	// No page a preview can show: the drawing stays.

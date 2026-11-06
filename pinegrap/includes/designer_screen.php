@@ -1889,13 +1889,13 @@ function pg_designer_template_card_theme($summary, $look, $palette)
 
 /**
  * The address of a template's picture: its home page in the given look and
- * palette (design_preview.php); '' when the template has no page a preview
+ * palette, without its scripts (design_preview.php ...&still=1); '' when the template has no page a preview
  * can show, so its drawing stays.
  */
 function pg_designer_template_picture_src($tpl, $look = '', $palette = '')
 {
     if (!is_array($tpl) || !isset($tpl['id']) || !pg_design_template_preview_pages($tpl)) return '';
-    return pg_design_preview_address('panel', array('template' => (string)$tpl['id'], 'look' => $look, 'palette' => $palette));
+    return pg_designer_template_theme_query(pg_design_preview_address('panel', array('template' => (string)$tpl['id'], 'still' => true)), $look, $palette);
 }
 
 /**
@@ -1954,7 +1954,7 @@ function pg_designer_template_modal($templates, $from_pages)
         // own; any other choice opens every card in that one.
         $theme_attrs = ' data-look="' . h((string)$s['look']) . '" data-palette="' . h((string)$s['palette']) . '"'
                      . ' data-has-look="' . ($s['look'] !== null ? '1' : '0') . '" data-has-palette="' . ($s['palette'] !== null ? '1' : '0') . '"'
-                     . ' data-picture="' . h($picture_src !== '' ? pg_design_preview_address('panel', array('template' => $s['id'])) : '') . '"'
+                     . ' data-picture="' . h($picture_src !== '' ? pg_design_preview_address('panel', array('template' => $s['id'], 'still' => true)) : '') . '"'
                      . ' data-tour="' . h($tour_src) . '"';
         $theme_names = '';
         if ($s['look'] !== null || $s['palette'] !== null) {
@@ -2113,7 +2113,7 @@ function pg_designer_template_theme_picker()
     }
     $own = lang('the template\'s own palette');
     $pal_btns = '<input type="radio" class="btn-check" name="sd_tpl_palette" id="sd-tpl-pal-0" value="@template" checked data-name="' . h($own) . '" autocomplete="off">'
-              . '<label class="btn btn-outline theme-secondary rounded-pill no-popover" for="sd-tpl-pal-0"><i class="bi bi-stars me-1" aria-hidden="true"></i>' . h(lang('Template\'s palette')) . '</label>';
+              . '<label class="btn btn-outline theme-secondary rounded-pill no-popover sd-tpl-pal-own" for="sd-tpl-pal-0"><i class="bi bi-stars me-1" aria-hidden="true"></i>' . h(lang('Template\'s palette')) . '</label>';
     $bs = pg_design_bootstrap_colors();
     $palettes = array('' => array('name' => lang('Bootstrap'), 'primary' => $bs['primary'], 'secondary' => $bs['secondary']));
     $palettes = array_merge($palettes, pg_design_palettes());
