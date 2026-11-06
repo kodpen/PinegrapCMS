@@ -134,8 +134,8 @@ $standard_pages[] = array(
 );
 
 // Community News: every post of the site's own news, newest first, with a
-// search; beside the list, a few members to meet, each opening their
-// profile, and the way to share a photo.
+// search; beside the list, a few members to meet, each opening the people
+// list searched for their name, and the way to share a photo.
 $news_members = array();
 foreach (array_slice(array_keys($members), 0, 4) as $news_key) {
     $news_member = $members[$news_key];
@@ -143,7 +143,6 @@ foreach (array_slice(array_keys($members), 0, 4) as $news_key) {
         $avatar($news_key),
         $el('span', 'd-block', lang('Words'), array(
             $span($news_member['name'], 'd-block fw-semibold', lang('Name')),
-            $span('@' . $news_member['handle'], 'd-block small text-body-secondary', lang('User Name')),
         )),
     ), array('href' => $member_url($news_key)));
 }

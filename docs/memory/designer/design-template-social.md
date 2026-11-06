@@ -11,6 +11,7 @@ description: Social Community template (pinegrap-social): member photo posts and
 - As Marketplace ([[design-template-market]]): `pinegrap-social.php` includes `parts.php`, `mail.php`, then `pages_public.php`, `posts.php`, `profiles.php`, `reports.php`, `standard.php`, `account.php` in one scope, each return kept as `$…_part`.
 - Trap: `parts.php` keeps the samples in `$topics`, `$members`, `$social_posts`; a part's return under those names would overwrite them. The blog's card is `$news_card`.
 - `member` is the public profile, `my_profile` the member's own; `profile` stays the account page.
+- A static sample member card opens `{{page:people}}?query=<name>`, not `member`: `?member=` matches a record's author name, never a sample handle (#7507).
 
 ## How does it work without new product behaviour?
 - A post is a Posts form record (collection, sent signed in): photo (image kind, `posts` folder), alt text, caption, topic (parts.php's titles), tags (`contains ?tag=`), place; office `status` Live/Hidden and `featured`. Every public list and the post view carry `status is not equal to Hidden` (the live rule); `staff_posts` shows all; its rows link no post page (the live rule holds for staff too): the pencil opens the record (#7509).
