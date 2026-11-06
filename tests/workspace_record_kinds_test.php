@@ -232,7 +232,7 @@ function workspace_record_kinds_test_lists()
 		'events' => array(
 			'where'  => 'an event of ws_events_catalog() in includes/workspace/watch.php',
 			'kinds'  => array_values(array_unique(workspace_record_kinds_test_events())),
-			'except' => array_fill_keys(array('product_group', 'offer', 'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote', 'file'),
+			'except' => array_fill_keys(array('product_group', 'offer', 'erp_account', 'waybill', 'file'),
 				'no event a scheduled action starts on is about it'),
 			'others' => array('task', 'channel', 'approval'),
 		),

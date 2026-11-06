@@ -1216,6 +1216,12 @@ function erp_overdue_check($force = false, $from_job = false)
         db("UPDATE erp_invoices SET overdue_second_notified_at = '" . $now . "' WHERE id IN (" . implode(',', $ids_second) . ")");
     }
 
+    // Each document listed for the first time, once, after its stamp: a
+    // flow may start on it (erp.invoice.overdue).
+    foreach ((function_exists('erp_event_invoice') ? $candidates['new'] : array()) as $row) {
+        erp_event_invoice((int) $row['id'], 'erp.invoice.overdue', array('days_overdue' => (int) $row['days']));
+    }
+
     // After the stamp: a document is announced for the first time once, so
     // it opens its follow-up once even if the task is closed in the meantime.
     if (ERP_OVERDUE_FOLLOWUP && $candidates['new']) {

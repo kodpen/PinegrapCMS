@@ -32,9 +32,12 @@ function test_watch_recorded_events_leave_out_workspace_and_erp()
 		pg_assert_true(in_array($event, $events, true), $event . ' kept');
 	}
 
+	// Of the ERP's only the ones a flow may start on.
+	$erp = array('erp.invoice.created', 'erp.invoice.paid', 'erp.invoice.overdue', 'erp.invoice.edoc_changed', 'erp.receipt.created', 'erp.edoc.received', 'erp.quote.accepted', 'erp.quote.rejected');
+
 	foreach ($events as $event) {
 		pg_assert_false(strpos($event, 'workspace.') === 0, $event . ' is not the workspace\'s own');
-		pg_assert_false(strpos($event, 'erp.') === 0, $event . ' is not the ERP\'s');
+		pg_assert_false((strpos($event, 'erp.') === 0) && !in_array($event, $erp, true), $event . ' is not an ERP event a flow starts on');
 	}
 }
 
