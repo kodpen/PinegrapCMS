@@ -1748,6 +1748,26 @@ function pg_contact_owner_sql($user_id, $column)
 }
 
 /**
+ * The query counting the contacts a person may open: every contact from the
+ * manager role up, only those of the contact groups given to them for the
+ * user role (pg_contact_owner_sql()). Summaries that show a contact total use
+ * it, so a group-limited person never learns the size of the contact base.
+ *
+ * @param array $user the signed-in user row (id, role)
+ * @return string
+ */
+function pg_contact_count_sql($user)
+{
+    $sql = 'SELECT COUNT(*) FROM contacts';
+
+    if ((int) ($user['role'] ?? 3) >= 3) {
+        $sql .= ' WHERE ' . pg_contact_owner_sql((int) ($user['id'] ?? 0), 'contacts.id');
+    }
+
+    return $sql;
+}
+
+/**
  * The referral sources a contact's lead source is chosen from, in the order
  * the checkout and the forms show them: rows of name and code. The code is
  * what is stored, as the billing information already writes it into
