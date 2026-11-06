@@ -268,6 +268,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-reference-price.md: Reference price ("price before the discount"): pg_price_history_reference(), the window query (PR #1803), the rule setting pg_price_reference_rule() (11.0.49), coverage, labels
 - product-review-order.md: How a product's review thread is read (2026.11.0, decided in #2426): verified purchases only, newest first, no featured count, filter or pinning; what it hides
 - product-review-photos.md: Photo reviews (11.0.57; #2426, #2818): config.review_photos, which switch lets a thread take a file, the image check, forms, thumbnails in the classic list, moderation and the comments widget
+- product-review-purchase-stands.md: A verified product review hides while its order is cancelled or the reviewed item's whole quantity on it is refunded (#7202): pg_review_purchase_stands_sql(), its refreshes
 - product-review-request-email.md: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #1316): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
 - product-review-store-reply.md: The store's reply under a product review (comments.seller_reply, seller_reply_at; 2026.11.0, PR #698): where it is written and shown, when its date is set, the verified marker in moderation
 - product-reviews-verified.md: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
