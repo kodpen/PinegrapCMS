@@ -264,6 +264,7 @@
     "Vignette": "Vinyet",
     "Villa": "Villa",
     "Villa with a pool and a view of the bay": "Havuzlu ve koy manzaralı villa",
+    "Village clinics, health workers and care for mothers and newborns.": "Köy klinikleri, sağlık çalışanları, anneler ve yenidoğanlar için bakım.",
     "Villas from $750,000; rents from $3,000 a month": "Villalar 750.000 $'dan; kiralar ayda 3.000 $'dan başlayan fiyatlarla",
     "Vis": "Vis",
     "Visa": "Visa",
@@ -377,6 +378,7 @@
     "Voice messages in this private channel will be sent to {var:1} to be transcribed. Allow it?": "Bu özel kanaldaki sesli mesajlar yazıya dökülmek üzere {var:1} hizmetine gönderilecek. İzin verilsin mi?",
     "Voice recording is not supported in this browser.": "Bu tarayıcı ses kaydını desteklemiyor.",
     "Void": "Geçersiz kıl",
+    "Volunteer": "Gönüllü Ol",
     "Volunteer observers log a record 40,000 meteor sightings": "Gönüllü gözlemciler 40.000 meteor gözlemiyle rekor kırdı",
     "Volunteers are needed at every mile marker, and sign-ups are open on the race's website.": "Parkurun her kilometre noktasında gönüllülere ihtiyaç var; gönüllü kayıtları yarışın internet sitesinde açık.",
     "Volunteers carrying crates of pumpkins in a garden": "Bir bahçede kasalarla bal kabağı taşıyan gönüllüler",
@@ -411,6 +413,7 @@
     "viewing, visit, appointment, see the house": "gezme, ziyaret, randevu, evi görmek",
     "viewing, visit, inspection": "gezme, ziyaret, inceleme",
     "villa, detached house, pool, garden, view": "villa, müstakil ev, havuz, bahçe, manzara",
+    "villages we work with": "köyle birlikte çalışıyoruz",
     "visit-us": "bizi-ziyaret-edin",
     "visitor report": "ziyaretçi raporu",
     "visitor report ({var:1}) was created": "ziyaretçi raporu ({var:1}) oluşturuldu",
@@ -420,5 +423,6 @@
     "visitor was not allowed to {var:1} because the visitor's IP address ({var:2}) was banned": "ziyaretçinin IP adresi ({var:2}) yasaklandığından ziyaretçinin {var:1} yapmasına izin verilmedi",
     "visitor's request was denied because the spam protection service reported that visitor's IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})": "spam koruma hizmeti, ziyaretçinin IP adresinin spam gönderenler tarafından kullanıldığını bildirdiği için ziyaretçinin isteği reddedildi. (güven: %{var:1}, sıklık: {var:2})",
     "visitor, analytics, tracking code, tracking, statistics, google analytics": "visitor, analytics, tracking code, tracking, statistics, google analytics, ziyaretci, ziyaretçi, analitik, takip kodu, istatistik",
-    "visitors": "ziyaretçi"
+    "visitors": "ziyaretçi",
+    "volunteers who give their time": "gönüllü zamanını veriyor"
 }
