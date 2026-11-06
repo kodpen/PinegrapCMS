@@ -7,7 +7,8 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 - `link_resolve`: done (#4976: names in other letter case were broken links)
 - `list_paging`: clean (page window, limit, search terms and Turkish folding, label order, row output checked)
 - `list_period`: clean
-- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` (transport choice, address errors, attachments, DKIM, failure notice) and the three comment mails read: clean (conditional admin lists are validated when the field is saved)
+- `mail`: done (#5009: plain text capitalised bodies and links); `email()` and the comment mails: clean
+  - Second round (2026-11-06): mail #7596 (read: changes since 2026-11-01 in full; `email()`, `create_auto_email_campaigns()`, `replace_variables()` whole)
 - `mail_parse`: done (#4992: a quoted-printable part ending on a soft break kept its `=`)
 - `mail_queue`: done #4654 (rest checked: retry ladder, give-up and notices, property encoding and attachments, job-alive check, claim race, sweeps, List-Unsubscribe headers)
 - `maintenance_mode`: clean
