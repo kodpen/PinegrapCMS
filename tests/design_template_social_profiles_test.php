@@ -151,3 +151,16 @@ function test_social_profiles_turkish_words()
 		pg_assert_true(isset($map[$key]) && $map[$key] !== '', "Turkish for '$key'");
 	}
 }
+
+// A member who sent the profile form again shows once, with the newest
+// profile, in People and in the staff list; the card lists keep their cap.
+function test_social_profiles_lists_one_card_per_member()
+{
+	$w = _test_social_profiles_load()['widgets'];
+	foreach (array('people_list', 'staff_members_list') as $key) {
+		pg_assert_true(!empty($w[$key]['config']['one_per_submitter']), "$key lists each member once");
+	}
+	foreach (array('my_profile_card', 'member_profile') as $key) {
+		pg_assert_same(1, $w[$key]['config']['max_results'], "$key shows one profile");
+	}
+}
