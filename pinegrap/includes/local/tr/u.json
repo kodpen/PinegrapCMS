@@ -529,6 +529,7 @@
     "update, channel, beta, stable, version": "update, channel, beta, stable, version, guncelleme, güncelleme, kanal, kararli, surum, sürüm",
     "updated": "güncellendiğinde",
     "updated:7d finds the notes changed in the last seven days.": "updated:7d, son yedi günde değişen notları bulur.",
+    "updates, follow, newsletter, news": "güncellemeler, takip, bülten, haberler",
     "updates, security, software, support, lifetime": "güncelleme, güvenlik, yazılım, destek, kullanım ömrü",
     "updates, software, security, how long": "güncelleme, yazılım, güvenlik, ne kadar süre",
     "upload of {var:1} was refused because files of that type are not allowed": "{var:1} yüklemesi reddedildi çünkü bu türden dosyalara izin verilmiyor",
