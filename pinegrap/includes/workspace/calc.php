@@ -2264,15 +2264,15 @@ function ws_calc_templates()
 }
 
 /**
- * What the writing windows are told about sums (assets/js/workspace_editor.js):
- * the templates, the functions offered with a word on each, the functions a
- * group heading takes, and the setting words of the site's language.
+ * The functions offered to people who write formulas, each with a word on
+ * what it does: the writing windows' list and the flow canvas's Calculate
+ * rule read the same one.
  *
- * @return array
+ * @return array canonical name => help
  */
-function ws_calc_js_config()
+function ws_calc_function_help()
 {
-    $help = array(
+    return array(
         'SUM'         => lang('Adds the values up'),
         'AVERAGE'     => lang('The average of the values'),
         'MIN'         => lang('The smallest value'),
@@ -2291,10 +2291,20 @@ function ws_calc_js_config()
         'MEDIAN'      => lang('The middle value'),
         'INSTALLMENT' => lang('A loan installment: (rate; periods; amount)'),
     );
+}
 
+/**
+ * What the writing windows are told about sums (assets/js/workspace_editor.js):
+ * the templates, the functions offered with a word on each, the functions a
+ * group heading takes, and the setting words of the site's language.
+ *
+ * @return array
+ */
+function ws_calc_js_config()
+{
     $functions = array();
 
-    foreach ($help as $name => $text) {
+    foreach (ws_calc_function_help() as $name => $text) {
         $functions[] = array('name' => ws_calc_local_name($name), 'canonical' => $name, 'help' => $text);
     }
 

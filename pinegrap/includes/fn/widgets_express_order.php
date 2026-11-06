@@ -18,6 +18,38 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+/**
+ * The api.php address the express order page's scripts post to (installment
+ * plans, live tax, shipping methods). On a page drawn in another site
+ * language it carries pg_lang, as the jQuery requests of a translated page do
+ * (frontend.src.js): those scripts use fetch(), which adds nothing, and
+ * without it api.php answers shipping method names and messages in the
+ * source language.
+ *
+ * @param string|null $base_path      the site path; null reads OUTPUT_PATH
+ * @param string|null $software_dir   null reads OUTPUT_SOFTWARE_DIRECTORY
+ * @param string|null $language       the page's language code, '' in the
+ *                                    source language; null reads the page's
+ * @return string
+ */
+function pg_express_order_api_url($base_path = null, $software_dir = null, $language = null)
+{
+    if ($base_path === null) {
+        $base_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    }
+    if ($software_dir === null) {
+        $software_dir = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software';
+    }
+    if ($language === null) {
+        $language = (function_exists('pg_tr_active') && pg_tr_active()) ? (string) pg_tr_language() : '';
+    }
+
+    $url = $base_path . $software_dir . '/api.php';
+    $language = (string) $language;
+
+    return ($language !== '') ? $url . '?pg_lang=' . rawurlencode($language) : $url;
+}
+
 // ── Designer bindings: walk tree for express-order section markers ──────────
 // Uses the SAME convention as the catalog widget: `props._bindings.section`
 // (not a top-level `_bindings`). Values are prefixed `eo_` so they don't
@@ -3081,9 +3113,7 @@ function _eo_render_installment_box($lf)
     // The fetcher JS lives in the monolithic _eo_render_payment_methods so it
     // ALSO needs to be emitted here for the bindings render path. Idempotent
     // — multiple installment containers on a page register only once.
-    $api_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-    if (defined('OUTPUT_SOFTWARE_DIRECTORY')) $api_path .= OUTPUT_SOFTWARE_DIRECTORY . '/';
-    $api_url = $api_path . 'api.php';
+    $api_url = pg_express_order_api_url();
     $html .= '<script>(function(){'
           . 'if(window.__pgEoInstInit)return;window.__pgEoInstInit=1;'
           . 'var apiUrl=' . json_encode($api_url) . ';'
@@ -3304,11 +3334,7 @@ function _eo_render_payment_methods($lf, $cfg, $hosted_card_html = '')
         if ($is_iyzipay_gateway && $max_installments >= 2) {
             // Installment fetcher — debounced, scoped per-form so multiple
             // EO widgets on the same page don't clobber each other.
-            $api_base_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-            if (defined('OUTPUT_SOFTWARE_DIRECTORY')) {
-                $api_base_path .= OUTPUT_SOFTWARE_DIRECTORY . '/';
-            }
-            $api_url = $api_base_path . 'api.php';
+            $api_url = pg_express_order_api_url();
             $html .= '<script>(function(){'
                   .   'if(window.__pgEoInstInit)return;window.__pgEoInstInit=1;'
                   .   'var apiUrl=' . json_encode($api_url) . ';'
@@ -4243,9 +4269,7 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     // and `validate_date()` rejects HTML5 ISO dates so the visitor would
     // hit "Delivery Date must contain a valid date" without the conversion.
     // Shipping-related JS is conditional on $needs_shipping below.
-    $api_url = $base_path
-             . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
-             . '/api.php';
+    $api_url = pg_express_order_api_url($base_path);
     $rids = array();
     if ($needs_shipping && is_array($recipients)) {
         foreach ($recipients as $r) $rids[] = (int)$r['id'];

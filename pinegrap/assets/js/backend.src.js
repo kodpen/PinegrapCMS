@@ -2039,11 +2039,6 @@ $(document).ready(function () {
             options["info"] = true;
         }
 
-        // A list that names a panel action is paged on the server.
-        if ($('table.chart[data-pg-list-action]').length === 1) {
-            pgListServerOptions(options, $('table.chart[data-pg-list-action]'));
-        }
-
         // A list comes back on the page, length and search it was left on:
         // panel pages are sent no-store, so Back loads the screen again.
         // Every table.chart shares these options, so only a single list is
@@ -3034,14 +3029,6 @@ function edit_chart_content(action, name) {
     }
 }
 
-/**
- * DataTables options for a list paged on the server (includes/fn/list_paging.php).
- * The table names its panel action in data-pg-list-action and what the action
- * needs besides the page (the filter) in data-pg-list-params. Each draw asks
- * the action for one page with the page window and the search box; a row
- * comes back as its cells' content, with the cells' classes in DT_RowData.
- * Sorting stays the headings' links, so DataTables sends no order.
- */
 // The loading curtain of a list screen waits for its table
 // (pg_preloader_markup()); the first table drawn lifts it.
 function pgListCurtainDone() {
@@ -3050,80 +3037,13 @@ function pgListCurtainDone() {
     }
 }
 
-function pgListServerOptions(options, $table) {
-    var params = {};
-
-    try {
-        params = JSON.parse($table.attr('data-pg-list-params') || '{}') || {};
-    } catch (e) {
-        params = {};
-    }
-
-    options.serverSide = true;
-    options.searchDelay = 400;
-
-    options.ajax = function (request, callback) {
-        var body = $.extend({}, params, {
-            action: $table.attr('data-pg-list-action'),
-            token: software_token,
-            draw: request.draw,
-            start: request.start,
-            length: request.length,
-            search: (request.search && request.search.value) || ''
-        });
-
-        $.ajax({
-            contentType: 'application/json',
-            url: 'api.php',
-            type: 'POST',
-            dataType: 'json',
-            data: JSON.stringify(body)
-        }).done(function (response) {
-            if (response && (response.status === 'success')) {
-                callback(response);
-            } else {
-                pgListServerFailed(callback, request.draw, $table, response && response.message);
-            }
-        }).fail(function (xhr) {
-            pgListServerFailed(callback, request.draw, $table, xhr.responseJSON && xhr.responseJSON.message);
-        });
-    };
-
-    // The cells' classes and other attributes (a quick edit's data-pg-edit);
-    // cells holds hidden columns' cells too.
-    options.createdRow = function (row, data, index, cells) {
-        var classes = (data && data.DT_RowData && data.DT_RowData.pgCells) || [];
-        var attributes = (data && data.DT_RowData && data.DT_RowData.pgAttrs) || {};
-
-        for (var i = 0; (i < classes.length) && cells && (i < cells.length); i++) {
-            cells[i].className = classes[i];
-
-            for (var name in (attributes[i] || {})) {
-                if (Object.prototype.hasOwnProperty.call(attributes[i], name)) {
-                    cells[i].setAttribute(name, attributes[i][name]);
-                }
-            }
-        }
-    };
-
-    // Hints, menus and lazy pictures of the rows that just arrived.
-    $table.on('draw.dt', function () {
-        pgInitInjected($table.find('tbody'));
-
-        if ($.fn.Lazy) {
-            pgLazyStill($table.find('img.lazy'));
-            $table.find('img.lazy:not(.delayed)').Lazy(pgLazyOptions);
-        }
-    });
-}
-
-// A button of a row that came from the server asks its data-confirm-content
-// question here: the software-wide confirm handler binds at DOM ready to the
-// buttons on the page then, before these rows exist. A list table driver
-// row's button (a delete in the mail queue) is marked no-submit, so the rows
-// printed with the page are not asked twice.
+// A list table driver row's button (a delete in the mail queue) asks its
+// data-confirm-content question here: the software-wide confirm handler
+// binds at DOM ready to the buttons on the page then, before rows loaded
+// later exist. Such a button is marked no-submit, so the rows printed with
+// the page are not asked twice.
 $(function () {
-    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content], .pg-list-table button.no-submit[data-confirm-content]', function (event) {
+    $(document).on('click', '.pg-list-table button.no-submit[data-confirm-content]', function (event) {
         if (!window.confirm($(this).attr('data-confirm-content'))) {
             event.preventDefault();
         }
@@ -3312,12 +3232,6 @@ function pgListHeadingCopies(api) {
             .attr('inert', '')
             .find('a[href], button, input, select, textarea, [tabindex]').attr('tabindex', '-1');
     }
-}
-
-// An empty page with the reason in the table's empty row.
-function pgListServerFailed(callback, draw, $table, message) {
-    callback({ draw: draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
-    $table.find('tbody td.dt-empty').text(message || lang('Query failed.'));
 }
 
 function chart_checkbox_state_change() {
@@ -9511,23 +9425,31 @@ function bindPageRenameRedirect(ids) {
             const lbl = this.template.label;
             const DPI = 96;
             const mmToPx = mm => mm * DPI / 25.4;
-            const W = mmToPx(lbl.width);
-            const H = mmToPx(lbl.height);
+            // The template is stored JSON anyone with the product screens
+            // may save, and the barcode a free text: every value below is
+            // read as a number, a CSS value or escaped text before it goes
+            // into the markup of the print window, which shares the panel's
+            // origin.
+            const num = (v, d) => this._num(v, d);
+            const css = (v, d) => this._css(v, d);
+            const W = mmToPx(num(lbl.width, 50));
+            const H = mmToPx(num(lbl.height, 30));
 
             let elementsHTML = '';
             this.template.elements.forEach((el, elIdx) => {
-                const l = mmToPx(el.x);
-                const t = mmToPx(el.y);
-                const w = mmToPx(el.width);
-                const h = mmToPx(el.height);
-                const rotStyle = el.rotation ? `transform:rotate(${el.rotation}deg);transform-origin:center center;` : '';
+                const l = mmToPx(num(el.x, 0));
+                const t = mmToPx(num(el.y, 0));
+                const w = mmToPx(num(el.width, 0));
+                const h = mmToPx(num(el.height, 0));
+                const rotation = num(el.rotation, 0);
+                const rotStyle = rotation ? `transform:rotate(${rotation}deg);transform-origin:center center;` : '';
                 const base = `position:absolute;left:${l}px;top:${t}px;width:${w}px;height:${h}px;overflow:hidden;box-sizing:border-box;z-index:${elIdx};${rotStyle}`;
 
                 if (el.type === 'barcode') {
                     const BC_FONT = 10;
                     const bcH = Math.max(15, h - (el.showText !== false ? BC_FONT + 8 : 4));
                     const baseNoClip = `position:absolute;left:${l}px;top:${t}px;width:${w}px;height:${h}px;box-sizing:border-box;z-index:${elIdx};${rotStyle}`;
-                    elementsHTML += `<div style="${baseNoClip}"><svg id="print-bc-${el.id}" style="display:block;" data-bc-type="${el.barcodeType || 'CODE128'}" data-bc-show-text="${el.showText !== false}" data-bc-h="${bcH}" data-bc-fs="${BC_FONT}"></svg></div>`;
+                    elementsHTML += `<div style="${baseNoClip}"><svg id="print-bc-${this._esc(el.id)}" style="display:block;" data-bc-type="${this._esc(el.barcodeType || 'CODE128')}" data-bc-show-text="${el.showText !== false}" data-bc-h="${bcH}" data-bc-fs="${BC_FONT}"></svg></div>`;
                 } else if (el.type === 'text') {
                     let txt = '';
                     if (el.field === 'custom') txt = el.text || '';
@@ -9535,17 +9457,18 @@ function bindPageRenameRedirect(ids) {
                     else if (el.field === 'sku') txt = data.sku || '';
                     else if (el.field === 'price') txt = data.price || '';
                     else if (el.field === 'attributes') txt = data.attributes || '';
-                    const transform = el.scrollX ? `transform:translateX(${el.scrollX}px);` : '';
+                    const scrollX = num(el.scrollX, 0);
+                    const transform = scrollX ? `transform:translateX(${scrollX}px);` : '';
                     elementsHTML += `<div style="${base}display:flex;align-items:center;justify-content:${el.align === 'center' ? 'center' : (el.align === 'right' ? 'flex-end' : 'flex-start')};padding:0 2px;">
-                        <span style="font-size:${el.fontSize || 8}px;font-weight:${el.fontWeight || 'normal'};color:${el.color || '#000'};white-space:nowrap;${transform}">${this._esc(txt)}</span></div>`;
+                        <span style="font-size:${num(el.fontSize, 8) || 8}px;font-weight:${css(el.fontWeight, 'normal')};color:${css(el.color, '#000')};white-space:nowrap;${transform}">${this._esc(txt)}</span></div>`;
                 } else if (el.type === 'image') {
                     const src = (el.field === 'product_image')
                         ? (data.productImageSrc || el.src || '')
                         : (el.src || '');
                     elementsHTML += `<img src="${this._esc(src)}" style="${base}object-fit:contain;"/>`;
                 } else if (el.type === 'rect') {
-                    const fill = el.fill && el.fill !== 'none' ? el.fill : 'transparent';
-                    elementsHTML += `<div style="${base}border:${el.borderWidth || 1}px solid ${el.borderColor || '#000'};background:${fill};border-radius:${el.borderRadius || 0}px;"></div>`;
+                    const fill = el.fill && el.fill !== 'none' ? css(el.fill, 'transparent') : 'transparent';
+                    elementsHTML += `<div style="${base}border:${num(el.borderWidth, 1) || 1}px solid ${css(el.borderColor, '#000')};background:${fill};border-radius:${num(el.borderRadius, 0)}px;"></div>`;
                 }
             });
 
@@ -9566,7 +9489,7 @@ function bindPageRenameRedirect(ids) {
   @media print {
     html, body { margin:0; padding:0; width:${W}px; height:${H}px; }
   }
-  .label { position:relative; width:${W}px; height:${H}px; background:${lbl.background || '#fff'}; overflow:hidden; }
+  .label { position:relative; width:${W}px; height:${H}px; background:${css(lbl.background, '#fff')}; overflow:hidden; }
 </style>
 </head><body>
 <div class="label">${elementsHTML}</div>
@@ -9574,7 +9497,7 @@ function bindPageRenameRedirect(ids) {
 window.onload = function() {
   document.querySelectorAll('[id^="print-bc-"]').forEach(function(svg) {
     try {
-      JsBarcode(svg, ${JSON.stringify(data.barcode || '0000000000')}, {
+      JsBarcode(svg, ${JSON.stringify(String(data.barcode || '0000000000')).replace(/</g, '\\u003c')}, {
         format: svg.dataset.bcType || 'CODE128',
         displayValue: svg.dataset.bcShowText !== 'false',
         margin: 2, lineColor: '#000', width: 1.5,
@@ -9591,6 +9514,20 @@ window.onload = function() {
 
         _esc(str) {
             return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        },
+
+        // A template number, or `fallback` when it is not a finite number.
+        _num(value, fallback) {
+            const n = parseFloat(value);
+            return isFinite(n) ? n : fallback;
+        },
+
+        // A template CSS value (a colour, a weight): only the characters
+        // such a value is written with, so it cannot end the declaration,
+        // the attribute or the element; `fallback` otherwise.
+        _css(value, fallback) {
+            const s = String(value == null ? '' : value).trim();
+            return /^[#a-zA-Z0-9.,%() -]+$/.test(s) ? s : fallback;
         }
     };
 

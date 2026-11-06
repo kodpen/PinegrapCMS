@@ -126,10 +126,13 @@ function pg_subscription_renewal_next_at($created_at, $period, $now)
     $anchor = (int) date('j', $created_at);
     $next = pg_subscription_next_charge_at($created_at, $period, $anchor);
 
+    // Each date is counted from the first charge, not from the date before
+    // it: a date in the hour the clocks skip falls an hour later, and taken
+    // as the next start it would move every later charge by that hour.
     // Ten years of weekly charges at most; one step further than that is
     // counted from now.
-    for ($step = 0; ($next > 0) && ($next <= (int) $now) && ($step < 600); $step++) {
-        $next = pg_subscription_next_charge_at($next, $period, $anchor);
+    for ($step = 1; ($next > 0) && ($next <= (int) $now) && ($step <= 600); $step++) {
+        $next = pg_subscription_next_charge_at($created_at, $period, $anchor, $step + 1);
     }
 
     return ($next > (int) $now) ? $next : pg_subscription_next_charge_at((int) $now, $period, $anchor);

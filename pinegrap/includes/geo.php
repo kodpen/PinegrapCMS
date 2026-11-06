@@ -96,36 +96,65 @@ function pg_geo_country_code()
 }
 
 /**
- * Whether the peer is an edge whose headers are believed: a Cloudflare edge
- * address, or a proxy the operator listed as trusted (the address of a
- * Cloudflare Tunnel's cloudflared, a load balancer). The same rule
- * waf_client_ip() applies to the address headers, so the country and the
- * address of a request always come from the same place.
+ * The edges whose location headers this request's peer may set, cached for
+ * the request: see pg_geo_edge_sources().
+ *
+ * @return array 'cloudflare' and/or 'cloudfront'
  */
-function pg_geo_trusted_edge()
+function pg_geo_trusted_sources()
 {
-    static $trusted = null;
+    static $sources = null;
 
-    if ($trusted !== null) {
-        return $trusted;
+    if ($sources === null) {
+        $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+        $sources = pg_geo_edge_sources(waf_setting('waf_trusted_proxies', ''), $remote);
     }
 
-    $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
-    $trusted = false;
+    return $sources;
+}
+
+/**
+ * The edges whose location headers a peer may set: a Cloudflare edge address
+ * sets Cloudflare's (CF-IPCountry, CF-IPCity); a trusted proxy only the ones
+ * its Trusted Proxies entry stands for, the same rule waf_client_ip() applies
+ * to the address headers (waf_proxy_client_headers()). An entry naming
+ * cf-connecting-ip (a Cloudflare Tunnel's cloudflared) stands for Cloudflare;
+ * an entry saved without a header keeps the old reading, both edges; any other
+ * entry stands for none, because such a proxy only adds X-Forwarded-For and
+ * passes the visitor's own CF-IPCountry through. The country then comes from
+ * the database by the resolved address.
+ *
+ * @param string $raw the Trusted Proxies list as stored
+ * @param string $remote the peer's address
+ * @return array 'cloudflare' and/or 'cloudfront'
+ */
+function pg_geo_edge_sources($raw, $remote)
+{
+    $remote = (string) $remote;
 
     if (($remote === '') || !waf_is_ip($remote)) {
-        return $trusted;
+        return array();
     }
 
     if (waf_ip_in_any($remote, waf_cloudflare_ranges())) {
-        $trusted = true;
-        return $trusted;
+        return array('cloudflare');
     }
 
-    $proxies = waf_proxy_ranges(waf_setting('waf_trusted_proxies', ''));
-    $trusted = ($proxies && waf_ip_in_any($remote, $proxies));
+    foreach (waf_parse_list($raw) as $entry) {
+        $entry = waf_proxy_entry($entry);
 
-    return $trusted;
+        if (!waf_ip_matches($remote, $entry['range'])) {
+            continue;
+        }
+
+        if ($entry['header'] === '') {
+            return array('cloudflare', 'cloudfront');
+        }
+
+        return ($entry['header'] === 'cf-connecting-ip') ? array('cloudflare') : array();
+    }
+
+    return array();
 }
 
 /**
@@ -141,12 +170,10 @@ function pg_geo_header_country()
 {
     $none = array('code' => '', 'source' => '');
 
-    if (!pg_geo_trusted_edge()) {
-        return $none;
-    }
+    $trusted = pg_geo_trusted_sources();
 
     foreach (array('HTTP_CF_IPCOUNTRY' => 'cloudflare', 'HTTP_CLOUDFRONT_VIEWER_COUNTRY' => 'cloudfront') as $header => $source) {
-        if (empty($_SERVER[$header])) {
+        if (empty($_SERVER[$header]) || !in_array($source, $trusted, true)) {
             continue;
         }
 
@@ -185,7 +212,7 @@ function pg_geo_city()
 
     $city = '';
 
-    if (!empty($_SERVER['HTTP_CF_IPCITY']) && pg_geo_trusted_edge()) {
+    if (!empty($_SERVER['HTTP_CF_IPCITY']) && in_array('cloudflare', pg_geo_trusted_sources(), true)) {
         $city = pg_geo_clean_city((string) $_SERVER['HTTP_CF_IPCITY']);
     }
 

@@ -255,9 +255,11 @@ function pg_image_format_writer($format)
  * a still, so an animation optimized in place stops moving and nothing says
  * why. Cheaper to leave those files alone.
  *
- * Counts Graphic Control Extension blocks (00 21 F9 04); a still GIF has at
- * most one. Read in chunks with an overlap so a marker straddling a chunk
- * boundary is still seen.
+ * Walks the file's blocks and counts image descriptors: a still GIF has one.
+ * Extensions and the image data are skipped sub-block by sub-block, so bytes
+ * inside them that look like a block are never counted, and a frame counts
+ * whether or not a Graphic Control Extension comes before it. A file cut
+ * short or broken ends the walk with the frames counted so far.
  *
  * @param string $file_path
  * @return bool
@@ -270,33 +272,60 @@ function pg_image_is_animated_gif($file_path)
         return false;
     }
 
-    $count     = 0;
-    $carry     = '';
-    $marker    = "\x00\x21\xF9\x04";
+    $frames = 0;
+    $head = @fread($handle, 13);
 
-    while (!feof($handle)) {
+    if (is_string($head) && (strlen($head) === 13) && (substr($head, 0, 3) === 'GIF')) {
 
-        $chunk = @fread($handle, 262144);
+        // The global colour table follows the logical screen descriptor.
+        $flags = ord($head[10]);
+        $walking = !($flags & 0x80) || (@fseek($handle, 3 << (($flags & 0x07) + 1), SEEK_CUR) === 0);
 
-        if ($chunk === false || $chunk === '') {
-            break;
+        while ($walking && ($frames < 2)) {
+
+            $introducer = @fread($handle, 1);
+
+            if ($introducer === "\x21") {
+                // Extension: its label, then data sub-blocks.
+                $walking = (strlen((string) @fread($handle, 1)) === 1);
+
+            } elseif ($introducer === "\x2C") {
+                $descriptor = @fread($handle, 9);
+
+                if (!is_string($descriptor) || (strlen($descriptor) !== 9)) {
+                    break;
+                }
+
+                $frames++;
+                $flags = ord($descriptor[8]);
+
+                // The local colour table, then the LZW minimum code size,
+                // then the image data's sub-blocks.
+                $walking = (!($flags & 0x80) || (@fseek($handle, 3 << (($flags & 0x07) + 1), SEEK_CUR) === 0))
+                    && (strlen((string) @fread($handle, 1)) === 1);
+
+            } else {
+                // Trailer, end of file or a byte no block starts with.
+                break;
+            }
+
+            while ($walking) {
+                $size = @fread($handle, 1);
+
+                if (!is_string($size) || ($size === '')) {
+                    $walking = false;
+                } elseif ($size === "\x00") {
+                    break;
+                } elseif (@fseek($handle, ord($size), SEEK_CUR) !== 0) {
+                    $walking = false;
+                }
+            }
         }
-
-        $buffer = $carry . $chunk;
-        $count += substr_count($buffer, $marker);
-
-        if ($count > 1) {
-            fclose($handle);
-            return true;
-        }
-
-        // Keep the last three bytes: a four byte marker can start there.
-        $carry = substr($buffer, -3);
     }
 
     fclose($handle);
 
-    return ($count > 1);
+    return ($frames > 1);
 }
 
 

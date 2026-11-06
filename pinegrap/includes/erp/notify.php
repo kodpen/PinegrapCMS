@@ -238,15 +238,33 @@ function erp_overdue_notify_slot($now, $with_hour = true)
     $hour = ($with_hour && defined('ERP_OVERDUE_NOTIFY_HOUR')) ? min(23, max(0, (int) ERP_OVERDUE_NOTIFY_HOUR)) : 0;
     $weekly = (defined('ERP_OVERDUE_NOTIFY_FREQUENCY') && (ERP_OVERDUE_NOTIFY_FREQUENCY === 'weekly'));
 
-    $slot = mktime($hour, 0, 0, (int) date('n', $now), (int) date('j', $now), (int) date('Y', $now));
+    return erp_overdue_calendar_slot((int) $now, $hour, $weekly);
+}
 
-    if ($weekly) {
-        // Back to this week's Monday, ISO numbering.
-        $slot -= ((int) date('N', $now) - 1) * 86400;
-    }
+/**
+ * The start of the period holding $now, at $hour local time: today's (or,
+ * weekly, this ISO week's Monday's) $hour, or the one before it when that has
+ * not come yet. Stepped back by calendar days through mktime(), never by
+ * 86400 seconds: across a clock change a day lasts 23 or 25 hours, and a
+ * slot an hour late made a digest sent at the hour count as unsent, so a
+ * second one went out on the autumn change.
+ *
+ * @param int  $now
+ * @param int  $hour    0 to 23
+ * @param bool $weekly
+ * @return int
+ */
+function erp_overdue_calendar_slot($now, $hour, $weekly)
+{
+    $year = (int) date('Y', $now);
+    $month = (int) date('n', $now);
+    // This week's Monday, ISO numbering, for the weekly period.
+    $day = (int) date('j', $now) - ($weekly ? ((int) date('N', $now) - 1) : 0);
+
+    $slot = mktime((int) $hour, 0, 0, $month, $day, $year);
 
     if ($slot > $now) {
-        $slot -= ($weekly ? 7 : 1) * 86400;
+        $slot = mktime((int) $hour, 0, 0, $month, $day - ($weekly ? 7 : 1), $year);
     }
 
     return $slot;
@@ -1196,6 +1214,12 @@ function erp_overdue_check($force = false, $from_job = false)
 
     if ($ids_second && erp_overdue_notify_followups_ready()) {
         db("UPDATE erp_invoices SET overdue_second_notified_at = '" . $now . "' WHERE id IN (" . implode(',', $ids_second) . ")");
+    }
+
+    // Each document listed for the first time, once, after its stamp: a
+    // flow may start on it (erp.invoice.overdue).
+    foreach ((function_exists('erp_event_invoice') ? $candidates['new'] : array()) as $row) {
+        erp_event_invoice((int) $row['id'], 'erp.invoice.overdue', array('days_overdue' => (int) $row['days']));
     }
 
     // After the stamp: a document is announced for the first time once, so

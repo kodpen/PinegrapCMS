@@ -12,7 +12,9 @@
  * in a several-line field Enter starts a new line and Ctrl+Enter goes on;
  * a several-choice field is a group of check boxes, saved when the focus
  * leaves the group); Escape puts the stored value back. The value goes to the screen's
- * pg_list_edit_request() endpoint, one cell per request, and the answer
+ * pg_list_edit_request() endpoint, one cell per request, with the value
+ * the cell opened with ("was"), so the screen can refuse a value changed
+ * elsewhere since the list was drawn; the answer
  * draws the cell (and the other cells of the row it names) from what was
  * stored. A refused value stays in the field, marked, with the reason
  * under it; nothing is saved.
@@ -72,14 +74,17 @@
         return !!this.last;
     };
 
-    /** What to write back to undo the last save; it can be taken once. */
+    /**
+     * What to write back to undo the last save, each over the value the
+     * save left; it can be taken once.
+     */
     QuickEdits.prototype.takeUndo = function () {
         var last = this.last || [];
 
         this.last = null;
 
         return last.map(function (change) {
-            return { id: String(change.id), field: change.field, value: String(change.before) };
+            return { id: String(change.id), field: change.field, value: String(change.before), was: String(change.after) };
         });
     };
 
@@ -626,8 +631,11 @@
         return field ? field.value : '';
     };
 
-    /** One cell's value to the screen's endpoint; resolves its answer. */
-    D.post = function (field, id, value) {
+    /**
+     * One cell's value to the screen's endpoint, with the value the cell
+     * opened with; resolves its answer.
+     */
+    D.post = function (field, id, value, was) {
         var body = new FormData();
         var self = this;
 
@@ -636,6 +644,7 @@
         body.append('field', field);
         body.append('id', id);
         body.append('value', value);
+        body.append('was', was);
 
         return window.fetch(this.editUrl, {
             method: 'POST',
@@ -790,7 +799,7 @@
         cell.pgQuickBusy = true;
         cell.setAttribute('aria-busy', 'true');
 
-        this.post(field, id, value).then(function (data) {
+        this.post(field, id, value, stored).then(function (data) {
             cell.pgQuickBusy = false;
             cell.removeAttribute('aria-busy');
 
@@ -845,8 +854,9 @@
     };
 
     /**
-     * Writes one value per row, one request at a time; resolves the
-     * changes written and the number refused.
+     * Writes one value per row, one request at a time, each over the
+     * value its cell shows (or the write's 'was' for a row not on screen);
+     * resolves the changes written and the number refused.
      */
     D.writeAll = function (writes) {
         var self = this;
@@ -859,7 +869,7 @@
                 var cell = self.fieldCell(write.row, write.field);
                 var before = cell ? (cell.getAttribute('data-pg-edit-value') || '') : null;
 
-                return self.post(write.field, write.id, write.value).then(function (data) {
+                return self.post(write.field, write.id, write.value, (before === null) ? String(write.was || '') : before).then(function (data) {
                     if (!data.ok) {
                         failed++;
 
@@ -940,7 +950,7 @@
             var cell = tbody.querySelector('td[data-pg-edit="' + quote(change.field) + '"][data-pg-edit-id="' + quote(change.id) + '"]');
             var row = cell ? cell.closest('tr').getAttribute('data-pg-id') : '';
 
-            return { row: row, id: change.id, field: change.field, value: change.value, before: '' };
+            return { row: row, id: change.id, field: change.field, value: change.value, was: change.was, before: '' };
         });
 
         this.applying = true;

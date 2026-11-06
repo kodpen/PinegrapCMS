@@ -16,9 +16,9 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T3 (done, #7113): a return to handle: a return is requested → a task for the person who handles returns, due in 2 days and a line in the channel; the task not done in time → the person is told.
 
-- T4 (now): a cancelled booking: a booking is cancelled → a line in the channel and a task to offer the guest another time.
+- T4 (done, #7116): a cancelled booking: a booking is cancelled → a line in the channel and a task to offer the guest another time.
 
-- T5 (now): an e-mail to answer: an e-mail is received → a task for the person on duty, due today → not done within a working day → tell the manager.
+- T5 (done, #7116): a cancelled order (in place of an e-mail to answer, see `workspace-flows-template-events.md`): an order is cancelled → a line in the channel and a task to follow it up.
 
 - T6 (after A1): goods received: by hand or each morning → an approval "Did the delivery arrive, how many?" with a number answer → add it to a stock table row (B5 when it lands).
 

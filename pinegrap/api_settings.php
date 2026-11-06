@@ -378,7 +378,7 @@ if ($_POST) {
 
 			log_activity(lang(array(
 				'string' => 'API event subscription ({var:1}) was set to {var:2}.',
-				'vars'   => array($hook['url'], $new_status)
+				'vars'   => array(pg_ops_alert_mask_url($hook['url']), $new_status)
 			)), $_SESSION['sessionusername']);
 
 			// The Webhooks tile on System Status reads these rows.
@@ -440,7 +440,7 @@ if ($_POST) {
 
 			log_activity(lang(array(
 				'string' => 'API event subscription ({var:1}) was removed.',
-				'vars'   => $hook['url']
+				'vars'   => pg_ops_alert_mask_url($hook['url'])
 			)), $_SESSION['sessionusername']);
 
 		}

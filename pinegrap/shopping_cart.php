@@ -457,7 +457,7 @@ foreach ($order_items as $order_item) {
                 }
                 
                 $recurring_number_of_payments = $order_item['number_of_payments'];
-                $recurring_start_date = date('Y-m-d', time() + (86400 * $order_item['start']));
+                $recurring_start_date = date('Y-m-d', pg_calendar_days_later($order_item['start']));
             }
             
             // update recurring fields for order item

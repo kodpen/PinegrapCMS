@@ -474,12 +474,20 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
         WHERE folder = '" . e($source_id) . "'");
 
     if ($files) {
+        // Team chat attachments this person may not open stay behind: the
+        // copy would be an ordinary file of the new folder.
+        $chat_refused = pg_chat_attachment_refused_ids(array_column($files, 'id'), $user);
+
         foreach ($files as $file) {
 
             // Design files stay designer-only, the same rule the single file
             // copy applies, and the signing key is never copied; the rest of
             // the folder still comes across.
-            if ((($file['design'] == 1) && ($user['role'] > 1)) || pg_file_withheld($file['name'])) {
+            if (
+                (($file['design'] == 1) && ($user['role'] > 1))
+                || pg_file_withheld($file['name'])
+                || in_array((int) $file['id'], $chat_refused, true)
+            ) {
                 $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $file['name']));
                 continue;
             }

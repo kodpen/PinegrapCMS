@@ -8,6 +8,7 @@ description: What customer returns cover and leave out (no exchanges; any quanti
 
 ## What do returns cover, and what not?
 - A return sends back goods of one delivery, any quantity of each line up to what is left on it, variants included (order-returns.md, "How much of a line can still be asked for?").
+- A gift card line is never returnable, even when its product is shippable and the line has a recipient: the card it issued stays spendable, so a refund paid its value out twice. `pg_return_order_lines()` reads `products.gift_card`, gives the line `gift_card` and `returnable` 0, and `pg_return_check_lines()` refuses it with "<name> is a gift card and cannot be returned." (customer, panel, API alike). An unwanted gift card goes through cancellation, which ends the issued cards. Tests: `tests/returns_gift_card_test.php`.
 - An exchange (another size or product instead) is not part of it: the customer returns the goods and orders again.
 - A full return of a delivery that has not left is a cancellation (`process_order_cancellation()`), not a return. A return never changes the order's totals or status; the order screen's full refund still cancels (order-returns-refund.md).
 - The money goes back through the order's payment driver, or is recorded when it went back another way; the ERP return invoice is offered to someone with ERP rights and never issued on its own (order-returns-refund.md).

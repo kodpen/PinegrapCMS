@@ -45,7 +45,7 @@ function ws_flow_templates_test_fill($overrides = array())
 		'recap_ai' => false,
 		'join'     => true,
 		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided',
-			'order.delivered', 'order.return.requested'),
+			'order.delivered', 'order.return.requested', 'booking.cancelled', 'order.cancelled'),
 	);
 }
 
@@ -221,7 +221,7 @@ function test_workspace_flow_templates_need_their_starts()
 		return array_column(ws_flow_templates(ws_flow_templates_test_fill($fill)), 'key');
 	};
 	$started = array('welcome', 'order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event',
-		'review_request', 'restock_approval', 'return_task');
+		'review_request', 'restock_approval', 'return_task', 'booking_cancelled', 'order_cancelled');
 
 	pg_assert_same(array(), array_values(array_diff($started, $keys(array()))), 'offered with the join start and the events');
 	pg_assert_same(array(), array_values(array_intersect($started, $keys(array('join' => false, 'events' => array())))), 'left out without them');
@@ -251,7 +251,10 @@ function test_workspace_flow_templates_event_follow_ups()
 		}, $by_key[$key]['graph']['edges']);
 	};
 
-	foreach (array('review_request' => 'order.delivered', 'restock_approval' => 'stock.low', 'return_task' => 'order.return.requested') as $key => $event) {
+	$events = array('review_request' => 'order.delivered', 'restock_approval' => 'stock.low', 'return_task' => 'order.return.requested',
+		'booking_cancelled' => 'booking.cancelled', 'order_cancelled' => 'order.cancelled');
+
+	foreach ($events as $key => $event) {
 		$graph = $by_key[$key]['graph'];
 		$node_kinds = array_column($graph['nodes'], 'kind', 'id');
 
@@ -295,9 +298,22 @@ function test_workspace_flow_templates_event_follow_ups()
 	pg_assert_same('post', $return['tell']['kind'], 'the line goes to the channel open');
 	pg_assert_same('notify', $return['late']['kind']);
 
+	// A cancelled booking or order: a line and a task at once, both on the
+	// start's one outcome.
+	foreach (array('booking_cancelled' => 'offer', 'order_cancelled' => 'ask') as $key => $task) {
+		$nodes = array_column($by_key[$key]['graph']['nodes'], null, 'id');
+		pg_assert_same(array('start:next', 'start:next'), $on($key), $key . ' arrows');
+		pg_assert_same('post', $nodes['tell']['kind'], $key . ' line in the channel open');
+		pg_assert_same('task_open', $nodes[$task]['kind'], $key . ' task');
+		pg_assert_true(strpos($nodes[$task]['config']['description'], '{{record_link}}') !== false, $key . ' links the record');
+	}
+
 	// Without a channel open, the line goes to the person.
 	$alone = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
-	pg_assert_same('notify', array_column($alone['return_task']['graph']['nodes'], null, 'id')['tell']['kind']);
+
+	foreach (array('return_task', 'booking_cancelled', 'order_cancelled') as $key) {
+		pg_assert_same('notify', array_column($alone[$key]['graph']['nodes'], null, 'id')['tell']['kind'], $key . ' alone');
+	}
 }
 
 // Where the texts go: the channel open when one is, else the person.

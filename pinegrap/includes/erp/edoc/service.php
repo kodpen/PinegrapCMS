@@ -961,6 +961,23 @@ function erp_edoc_invoice_send_stalled($invoice, $now = null)
 }
 
 /**
+ * The condition that claims an invoice row for a send: its id, and the
+ * status, provider id and last write the send gate judged. Once one send has
+ * marked the row 'sending' (and moved updated_at), a second send that read
+ * the same row matches nothing. Pure but for escape().
+ *
+ * @param array $invoice  The erp_invoices row the gate read
+ * @return string  A WHERE condition without the keyword
+ */
+function erp_edoc_invoice_send_claim_where($invoice)
+{
+    return "id = '" . (int) ($invoice['id'] ?? 0) . "'
+        AND edoc_status = '" . escape((string) ($invoice['edoc_status'] ?? 'none')) . "'
+        AND edoc_external_id = '" . escape((string) ($invoice['edoc_external_id'] ?? '')) . "'
+        AND updated_at = '" . (int) ($invoice['updated_at'] ?? 0) . "'";
+}
+
+/**
  * May this invoice be sent now, and if not, why not - in the operator's words.
  *
  * @param array $invoice  An erp_invoices row
@@ -1162,9 +1179,17 @@ function erp_edoc_invoice_send($invoice_id, $user_id = 0)
     $provider = $gate['provider'];
     $lines = (array) db_items("SELECT * FROM erp_invoice_items WHERE invoice_id = '" . $invoice_id . "' ORDER BY line_no ASC, id ASC");
 
-    // Marked before the call: a second click while the first is in flight
-    // finds the row "sending" and stops at the gate.
-    erp_query("UPDATE erp_invoices SET edoc_status = 'sending', edoc_error = '', updated_at = '" . time() . "' WHERE id = '" . $invoice_id . "'");
+    // Marked before the call, and only where the row still stands as the
+    // gate read it: a second send that passed the gate in the same moment
+    // (a double click, a bulk send beside the invoice screen) matches no row
+    // here and stops instead of creating a second record at the provider. A
+    // later one finds the row "sending" and stops at the gate.
+    $claimed = erp_query("UPDATE erp_invoices SET edoc_status = 'sending', edoc_error = '', updated_at = '" . time() . "'
+        WHERE " . erp_edoc_invoice_send_claim_where($invoice));
+
+    if (($claimed === false) || (mysqli_affected_rows(db::$con) !== 1)) {
+        return array('success' => false, 'message' => '', 'error' => lang('The document has already gone; ask after its status instead of sending it twice.'));
+    }
 
     // The card the account is linked to at the provider, when the link is
     // beyond doubt: the provider then puts the invoice on it instead of

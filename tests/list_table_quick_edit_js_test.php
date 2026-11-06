@@ -46,9 +46,9 @@ JS
 	pg_assert_same(true, $result['one']);
 	pg_assert_same(true, $result['unchanged'], 'a save that changed nothing keeps the one before undoable');
 	pg_assert_same(array(
-		array('id' => '7', 'field' => 'price', 'value' => '12'),
-		array('id' => '8', 'field' => 'price', 'value' => '9'),
-	), $result['group'], 'the whole last save goes back, rows it did not change left out');
+		array('id' => '7', 'field' => 'price', 'value' => '12', 'was' => '15'),
+		array('id' => '8', 'field' => 'price', 'value' => '9', 'was' => '15'),
+	), $result['group'], 'the whole last save goes back over the value it left, rows it did not change left out');
 	pg_assert_same(array(false, array()), $result['afterTake'], 'one undo, then nothing');
 	pg_assert_same(false, $result['dropped']);
 }

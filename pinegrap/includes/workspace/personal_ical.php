@@ -341,8 +341,10 @@ function ws_personal_ical_sync($row)
 
     $body = (string) $answer['body'];
 
+    // A gzip body unpacks to at most 8 MB: a small file that unpacks to gigabytes
+    // would stop the job that reads every calendar.
     if ((substr($body, 0, 2) === "\x1f\x8b") && function_exists('gzdecode')) {
-        $decoded = @gzdecode($body);
+        $decoded = @gzdecode($body, 8 * 1024 * 1024);
         $body = is_string($decoded) ? $decoded : $body;
     }
 
@@ -437,7 +439,7 @@ function ws_personal_ical_place($days, $events, $layer = '')
             $day_start = strtotime($date . ' 00:00:00');
             $day_end = strtotime($date . ' 00:00:00 +1 day');
 
-            if (((int) $event['starts_at'] >= $day_end) || ((int) $event['ends_at'] < $day_start)) {
+            if (!ws_personal_ical_touches($event, $day_start, $day_end)) {
                 continue;
             }
 
@@ -456,6 +458,23 @@ function ws_personal_ical_place($days, $events, $layer = '')
     }
 
     return $days;
+}
+
+/**
+ * Whether an event touches the span from $day_start up to (not including)
+ * $day_end. Its end is the moment it stops, so an event until midnight stays
+ * on its own day; an event with no length counts at its start. Pure.
+ *
+ * @param array $event starts_at, ends_at
+ * @param int   $day_start
+ * @param int   $day_end
+ * @return bool
+ */
+function ws_personal_ical_touches($event, $day_start, $day_end)
+{
+    $starts = (int) $event['starts_at'];
+
+    return ($starts < (int) $day_end) && (max((int) $event['ends_at'], $starts + 1) > (int) $day_start);
 }
 
 /**
@@ -564,6 +583,10 @@ function ws_personal_ical_events($text, $from, $to)
         }
 
         $length = ($length > 0) ? $length : ($all_day ? 86400 : 0);
+
+        // An all-day event lasts whole calendar days: an occurrence on a day of
+        // 23 or 25 hours (a clock change) still ends at its own midnight.
+        $span_days = $all_day ? max(1, (int) round($length / 86400)) : 0;
         $title = mb_substr(ws_ical_text($event['SUMMARY']['value'] ?? ''), 0, 120);
         $title = ($title !== '') ? $title : lang('Busy');
         $uid = trim((string) ($event['UID']['value'] ?? ''));
@@ -669,7 +692,7 @@ function ws_personal_ical_events($text, $from, $to)
                 $out[] = array(
                     'title'     => $title,
                     'starts_at' => $at,
-                    'ends_at'   => $all_day ? ($at + $length - 1) : ($at + $length),
+                    'ends_at'   => $all_day ? ((clone $moment)->modify('+' . $span_days . ' days')->getTimestamp() - 1) : ($at + $length),
                     'all_day'   => $all_day,
                 );
             }

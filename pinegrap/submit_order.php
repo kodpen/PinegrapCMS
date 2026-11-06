@@ -733,7 +733,8 @@ function submit_order($type) {
             tax_exempt,
             offline_payment_allowed,
             reference_code,
-            special_offer_code
+            special_offer_code,
+            affiliate_code
         FROM orders
         WHERE id = ?";
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
@@ -758,6 +759,7 @@ function submit_order($type) {
     $tax_exempt = $row['tax_exempt'];
     $offline_payment_allowed = $row['offline_payment_allowed'];
     $reference_code = $row['reference_code'];
+    $order_affiliate_code = (string) $row['affiliate_code'];
     $special_offer_code = $row['special_offer_code'];
     
     // if tax is on, apply taxes to order
@@ -3365,7 +3367,7 @@ function submit_order($type) {
 
     // The affiliate's commission is a value of the order; its rows are
     // written once the order is completed.
-    $affiliate_code = get_affiliate_code();
+    $affiliate_code = pg_order_submit_affiliate_code(get_affiliate_code(), $order_affiliate_code);
     $affiliate_rate = null;
 
     if ((AFFILIATE_PROGRAM == true) && ($affiliate_code != '')) {
@@ -3645,35 +3647,35 @@ function submit_order($type) {
                 if ($product['recurring_start_date'] <= date('Y-m-d')) {
                     switch ($product['recurring_payment_period']) {
                         case 'Monthly':
-                            $start_date = date($start_date_format, time() + 86400 * 30);
+                            $start_date = date($start_date_format, pg_calendar_days_later(30));
                             break;
 
                         case 'Weekly':
-                            $start_date = date($start_date_format, time() + 86400 * 7);
+                            $start_date = date($start_date_format, pg_calendar_days_later(7));
                             break;
 
                         case 'Every Two Weeks':
-                            $start_date = date($start_date_format, time() + 86400 * 14);
+                            $start_date = date($start_date_format, pg_calendar_days_later(14));
                             break;
 
                         case 'Twice every Month':
-                            $start_date = date($start_date_format, time() + 86400 * 15);
+                            $start_date = date($start_date_format, pg_calendar_days_later(15));
                             break;
 
                         case 'Every Four Weeks':
-                            $start_date = date($start_date_format, time() + 86400 * 28);
+                            $start_date = date($start_date_format, pg_calendar_days_later(28));
                             break;
 
                         case 'Quarterly':
-                            $start_date = date($start_date_format, time() + 86400 * 90);
+                            $start_date = date($start_date_format, pg_calendar_days_later(90));
                             break;
 
                         case 'Twice every Year':
-                            $start_date = date($start_date_format, time() + 86400 * 180);
+                            $start_date = date($start_date_format, pg_calendar_days_later(180));
                             break;
 
                         case 'Yearly':
-                            $start_date = date($start_date_format, time() + 86400 * 365);
+                            $start_date = date($start_date_format, pg_calendar_days_later(365));
                             break;
                     }
                     
