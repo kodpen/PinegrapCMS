@@ -3989,6 +3989,7 @@
     "The quote is signed already, so it cannot be sent as a guest link.": "Teklif zaten imzalanmış; misafir bağlantısıyla gönderilemez.",
     "The quote is unchanged since it was signed.": "Teklif imzalandığından beri değişmedi.",
     "The quote was changed after it was signed; the signature is no longer printed on it.": "Teklif imzalandıktan sonra değiştirildi; imza artık teklife basılmıyor.",
+    "The quote was changed after this page was opened. Read it again before signing.": "Teklif bu sayfa açıldıktan sonra değiştirildi. İmzalamadan önce yeniden okuyun.",
     "The quote was e-mailed with a new guest link. The earlier guest link no longer works.": "Teklif yeni bir misafir bağlantısıyla e-postayla gönderildi. Önceki misafir bağlantısı artık çalışmıyor.",
     "The quote was e-mailed.": "Teklif e-postayla gönderildi.",
     "The quote was signed and is accepted.": "Teklif imzalandı ve kabul edildi.",
