@@ -159,6 +159,24 @@ function ws_flow_kinds()
 }
 
 /**
+ * The outcomes an arrow may leave this box on: its kind's
+ * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box, whose settings say
+ * which (a classifying box's named outcomes, flow_ai_box.php). Pure.
+ *
+ * @param array $kind ws_flow_kinds() entry
+ * @param array $node the box (kind, config)
+ * @return string[]
+ */
+function ws_flow_node_arrow_outcomes($kind, $node)
+{
+    if (((string) ($node['kind'] ?? '') === 'ai') && function_exists('ws_step_ai_arrow_outcomes')) {
+        return ws_step_ai_arrow_outcomes(ws_step_ai_normalize(is_array($node['config'] ?? null) ? $node['config'] : array()));
+    }
+
+    return ws_flow_arrow_outcomes($kind);
+}
+
+/**
  * The outcomes an arrow may leave a box of this kind on: its own, and
  * always (any of them) for a box that is not a start and has any. Pure.
  *
@@ -1112,7 +1130,7 @@ function ws_flow_graph_check($graph)
 
         $kind = $nodes[$from]['kind'];
 
-        if (isset($kinds[$kind]) && !in_array($edge['on'], ws_flow_arrow_outcomes($kinds[$kind]), true)) {
+        if (isset($kinds[$kind]) && !in_array($edge['on'], ws_flow_node_arrow_outcomes($kinds[$kind], $nodes[$from]), true)) {
             $problems[] = ws_flow_problem('bad_outcome', $from, $index, lang(array('string' => 'An arrow leaves the box {var:1} on {var:2}, which is not one of its outcomes.', 'vars' => array($names[(string) $from], ($edge['on'] !== '') ? $edge['on'] : '-'))));
         }
 

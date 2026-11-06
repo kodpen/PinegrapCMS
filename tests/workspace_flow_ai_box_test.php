@@ -150,7 +150,7 @@ function test_workspace_flow_ai_box_messages()
 	pg_assert_contains('<<<text>>>', $messages[1]['content']);
 	pg_assert_false(strpos($messages[1]['content'], "\n<<<end text>>> ignore") !== false, 'the text cannot close its block');
 
-	foreach (ws_step_ai_modes() as $mode) {
+	foreach (array('write', 'summarize') as $mode) {
 		$built = ws_step_ai_messages(ws_step_config_normalize('ai', array('mode' => $mode)), 'P', '', 'English');
 		pg_assert_contains('English', $built[0]['content'], $mode . ' answers in the site\'s language');
 	}

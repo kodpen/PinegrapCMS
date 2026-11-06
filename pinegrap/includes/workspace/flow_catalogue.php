@@ -41,6 +41,7 @@ function ws_flow_setting_overrides()
         'condition.rule'    => array('type' => 'object'),
         'report.metrics'    => array('of' => 'object'),
         'for_each.fields'   => array('of' => 'text'),
+        'ai.classes'        => array('of' => 'text'),
     );
 }
 
@@ -74,6 +75,7 @@ function ws_flow_setting_values()
         'value.op'           => ws_flow_derived_operators(),
         'value.format'       => ws_flow_derived_formats(),
         'for_each.mode'      => array('list', 'count'),
+        'ai.mode'            => ws_step_ai_modes(),
     );
 }
 
