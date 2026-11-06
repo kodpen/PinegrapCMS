@@ -281,6 +281,8 @@ function ws_flow_event_outputs()
         'workspace.guest.message'       => array($value('guest', 'text', lang('Guest')), $value('text', 'text', lang('What the guest wrote')), $channel, $value('message_id', 'number', lang('Message'))),
         'workspace.mail.received'       => array($value('customer', 'text', lang('Customer')), $value('customer_email', 'text', lang('E-mail')), $value('subject', 'text', lang('Subject')),
             $value('conversation_id', 'number', lang('Conversation')), $channel, $value('message_id', 'number', lang('Message'))),
+        'workspace.flow.run.failed'     => array($value('flow_id', 'number', lang('Flow')), $value('flow_name', 'text', lang('The name of the flow')), $value('run_id', 'number', lang('Run')),
+            $value('box', 'text', lang('The box that failed')), $value('sentence', 'text', lang('What went wrong')), $channel),
     );
 }
 

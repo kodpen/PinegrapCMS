@@ -2299,6 +2299,7 @@ function workspace_flows_parity_table()
 			array(array('contact_group.joined'), 3, 'event trigger box: a contact joins a contact group, one start per contact, narrowed to one group'),
 			array(array('booking.created', 'booking.confirmed', 'booking.rescheduled', 'booking.cancelled'), 3, 'event trigger box: staff agenda events (once the booking tables exist), each checked against the bookings the creator\'s agenda shows (ws_events_creator_sees())'),
 			array(array('workspace.task.completed', 'workspace.task.status_changed', 'workspace.task.overdue', 'workspace.approval.decided', 'workspace.guest.message', 'workspace.mail.received'), 3, 'event trigger box: Workspace events, each checked against what the creator reads (ws_events_creator_sees())'),
+			array(array('workspace.flow.run.failed'), 3, 'event trigger box: a run of another flow fails (with flows only), checked against the runs the creator reads; never the flow that failed (ws_events_own_failure())'),
 		),
 		'event_filters' => array(
 			array(array('page'), 3, 'event trigger box: which form'),
@@ -2466,6 +2467,7 @@ function workspace_flows_parity_table()
 			array(array('ws_event_depth in ws_event'), 3, 'depth through events: a Workspace event carries the depth of the run that caused it'),
 			array(array('ws_event_depth in ws_step_run'), 3, 'depth through step boxes: a flow\'s step says its run\'s depth while it works, so the Workspace and site events it causes carry it'),
 			array(array('ws_event_depth in ws_step_change_approved_write'), 3, 'depth through an approved change: the change a role-3 member\'s box proposed is written at its run\'s depth, as a step box writes'),
+			array(array('ws_event_depth in ws_flow_run_keep_failed'), 3, 'depth through a failed run: the failure is kept at the failed run\'s depth, so flows starting on one another\'s failures stop at the chain limit'),
 		),
 		'starts' => array(
 			array(array('ws_scheduled_run() in includes/workspace/actions.php ws_handle_action case \'ws_tick\''), 3, 'driver: an open screen\'s ws_tick runs what is due, anchors too'),
@@ -2480,6 +2482,7 @@ function workspace_flows_parity_table()
 			array(array('ws_events_process() in includes/workspace/scheduled.php ws_scheduled_run', 'ws_events_start((int) $row[\'id\']) in includes/workspace/watch.php ws_events_process'), 3, 'event trigger box: the events kept (pg_event_record(), ws_event()) taken in on each run, each starting the actions that wait on it'),
 			array(array('ws_scheduled_joined(ws_channel($channel[\'id\'])) in includes/workspace/channels.php ws_channel_add_members', 'ws_scheduled_joined($channel) in includes/workspace/channels.php ws_channel_join'), 3, 'join trigger box: people added to a channel, or joining one'),
 			array(array('ws_event(\'workspace.task.completed\') in includes/workspace/tasks.php ws_task_set_status', 'ws_event(\'workspace.task.status_changed\') in includes/workspace/tasks.php ws_task_set_status', 'ws_event(\'workspace.task.overdue\') in includes/workspace/reminders.php ws_task_overdue_run', 'ws_event(\'workspace.approval.decided\') in includes/workspace/approvals.php ws_approval_settle', 'ws_event(\'workspace.guest.message\') in includes/workspace/guests.php ws_guest_send', 'ws_event(\'workspace.mail.received\') in includes/workspace/mail.php ws_mail_ingest'), 3, 'event trigger box: the Workspace\'s own events, kept where they happen'),
+			array(array('ws_event(\'workspace.flow.run.failed\') in includes/workspace/flow_run_events.php ws_flow_run_keep_failed'), 3, 'event trigger box: a failed run, kept beside its webhook by the request whose end UPDATE took the row'),
 			array(array('ws_event($event) in includes/workspace/wtable_shares.php ws_wtable_row_announce'), 3, 'row trigger box: a workflow table\'s row added, changed or deleted, kept where the store writes it, quiet during an import'),
 		),
 		'tokens' => array(

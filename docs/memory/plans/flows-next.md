@@ -15,7 +15,7 @@ description: Plan (owner 2026-11-05): flow boxes other automation tools have and
 ## What is there already?
 - 22 start events: orders (created, status, shipped, delivered, cancelled, return requested), stock.low, contacts, form.submitted, contact group, bookings, tasks, approval decided, a guest writes, an e-mail is received.
 - Read a row, Repeat N times, date words in derived values (#6874, #6897, #6873, size warning #7000).
-- The flow's owner is told when a run fails (`ws_flow_run_tell_owner()`), and `workspace.flow.run.failed` is a webhook event (`workspace-flows-run-events.md`), not yet a start.
+- The flow's owner is told when a run fails (`ws_flow_run_tell_owner()`), and `workspace.flow.run.failed` is a webhook event (`workspace-flows-run-events.md`) and a start (B6, `workspace-flows-run-failed-start.md`).
 - Decided 2026-11-05: #7015 (the approval box's answer) and #7016 (a Calculate rule): steps A1 and A2, `workflow/decisions-made-product-32.md` and `-33.md`.
 
 ## Which decisions bind the steps? (#7110, owner 2026-11-05, `workflow/decisions-made-product-33.md`)

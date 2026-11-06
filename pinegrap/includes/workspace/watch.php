@@ -219,6 +219,13 @@ function ws_events_catalog()
         $catalog['workspace.mail.received'] = array('label' => lang('An e-mail is received'), 'when' => lang('When an e-mail is received'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
     }
 
+    // A run of another flow that failed: checked against the runs the
+    // creator reads (ws_events_creator_sees()); a flow never starts on its
+    // own failure (ws_events_own_failure()).
+    if (function_exists('ws_flows_ready') && ws_flows_ready()) {
+        $catalog['workspace.flow.run.failed'] = array('label' => lang('A flow run fails'), 'when' => lang('When a run of a flow fails'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
+    }
+
     return $catalog;
 }
 
@@ -237,6 +244,7 @@ function ws_events_own()
         'workspace.approval.decided',
         'workspace.guest.message',
         'workspace.mail.received',
+        'workspace.flow.run.failed',
         'workspace.wtable.row.created',
         'workspace.wtable.row.updated',
         'workspace.wtable.row.deleted',
@@ -252,6 +260,22 @@ function ws_events_own()
 function ws_events_is_own($event)
 {
     return in_array((string) $event, ws_events_own(), true);
+}
+
+/**
+ * Is the event the failure of the very flow a rule would start? A flow never
+ * starts on its own failure: a run that fails again would start the next.
+ * Pure.
+ *
+ * @param string $event
+ * @param array  $payload
+ * @param int    $flow_id the flow the waiting rule starts, 0 for a plain scheduled action
+ * @return bool
+ */
+function ws_events_own_failure($event, $payload, $flow_id)
+{
+    return ((string) $event === 'workspace.flow.run.failed') && ((int) $flow_id > 0)
+        && ((int) (((array) $payload)['flow_id'] ?? 0) === (int) $flow_id);
 }
 
 /**
@@ -434,6 +458,18 @@ function ws_events_creator_sees($user_id, $event, $payload)
         return $task && ws_can_see_task($viewer, $task);
     }
 
+    // A failed run: one the creator reads (ws_flow_run_access()), whatever
+    // its channel; a run of no channel is read by the flow's own people.
+    if ((string) $event === 'workspace.flow.run.failed') {
+        if (!function_exists('ws_flow_run_access')) {
+            return false;
+        }
+
+        $run = ws_flow_run((int) ($payload['run_id'] ?? 0));
+
+        return $run && (ws_flow_run_access($viewer, ws_flow((int) $run['flow_id']), $run) !== '');
+    }
+
     // A row of a workflow table: the table read, its owner on the team
     // (ws_wtable_flow_gate()).
     if (strpos((string) $event, 'workspace.wtable.') === 0) {
@@ -526,6 +562,11 @@ function ws_events_record_of($event, $payload)
 
     if (($event === 'workspace.guest.message') || ($event === 'workspace.mail.received')) {
         return array('channel', (int) ($payload['channel_id'] ?? 0));
+    }
+
+    // A failed run: the channel it ran in, none for a flow with no home.
+    if ($event === 'workspace.flow.run.failed') {
+        return ((int) ($payload['channel_id'] ?? 0) > 0) ? array('channel', (int) $payload['channel_id']) : array('', 0);
     }
 
     switch ($event) {
@@ -789,10 +830,12 @@ function ws_events_start($event_id, $event, $payload)
     if ($waiting === null) {
         $waiting = array();
 
-        foreach ((array) db_items("SELECT id, rules, created_by FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
+        $flow_column = (function_exists('ws_flows_ready') && ws_flows_ready()) ? ', flow_id' : '';
+
+        foreach ((array) db_items("SELECT id, rules, created_by" . $flow_column . " FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
                 if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row'), true)) {
-                    $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by']);
+                    $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by'], 'flow_id' => (int) ($row['flow_id'] ?? 0));
                 }
             }
         }
@@ -813,6 +856,10 @@ function ws_events_start($event_id, $event, $payload)
 
     foreach ($waiting as $action_id => $item) {
         if (!ws_events_rule_matches($item['rule'], $event, $payload)) {
+            continue;
+        }
+
+        if (ws_events_own_failure($event, $payload, $item['flow_id'])) {
             continue;
         }
 
@@ -862,6 +909,20 @@ function ws_events_fill_values($viewer, $event, $payload)
         '{{actor}}'         => '',
         '{{message}}'       => '',
     );
+
+    // A failed run: its channel's tag, the flow's name and the box's
+    // sentence, only for a creator who reads the run.
+    if ((string) $event === 'workspace.flow.run.failed') {
+        if (!is_array($viewer) || !ws_events_creator_sees((int) ($viewer['id'] ?? 0), $event, (array) $payload)) {
+            return $values;
+        }
+
+        $values['{{record}}'] = (($type !== '') && ($id > 0)) ? '<#' . $type . ':' . $id . '>' : '';
+        $values['{{record_title}}'] = (string) ($payload['flow_name'] ?? '');
+        $values['{{message}}'] = trim((string) ($payload['box'] ?? '') . ': ' . (string) ($payload['sentence'] ?? ''), ': ');
+
+        return $values;
+    }
 
     if (($type === '') || ($id <= 0)) {
         return $values;
