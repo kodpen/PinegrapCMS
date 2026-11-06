@@ -10,7 +10,8 @@ module: widgets_booking
 
 ## How does the script find its parts?
 - By binding, never by class. Section bindings `booking_step_service|staff|when|details|done`, `booking_staff`, `booking_calendar`, `booking_times`, `booking_summary`, `booking_form`, `booking_done`, `booking_status` become `data-pg-booking-part="<name without booking_>"` (`pg_booking_widget_mark()`, list in `pg_booking_widget_parts()`, editor twin `_sdSectionOptions('booking')`). Actions `booking_service` (row button, gets `data-pg-booking-service="<id>"`) and `booking_back` become `data-pg-booking-action`; a bound button is forced to `type="button"`.
-- With services the widget is wrapped in `<div data-pg-booking="{json}">`: endpoint, staff per service, zone, hold minutes, words. Same for every visitor, so the page cache may serve it. No services: no wrapper, no script.
+- With services the widget is wrapped in `<div data-pg-booking="{json}">`: endpoint, staff per service, zone, hold minutes, words. Same for every visitor of the page in one language, so the page cache may serve it.
+- On a page in another site language the endpoint carries `?pg_lang=<code>` (`pg_booking_widget_endpoint()`): `fetch()` misses the jQuery `pg_lang` prefilter, so messages and the deposit step came back in the source language (`tests/booking_widget_language_test.php`). The deposit form still posts without it. No services: no wrapper, no script.
 
 ## What loads on the page?
 - `get_page_content.php` calls `pg_booking_widget_inject()` (`assets/js/pg_booking.js`, defer). `data-pg-booking` is in `pg_site_datetime_pattern()`, so the site date control (library + `pg_datetime.js`) comes too; the calendar is `pgDateTime.month()` (always open, `disableAllDates` + `enableDates`, `days()` swaps the free days and keeps the month).

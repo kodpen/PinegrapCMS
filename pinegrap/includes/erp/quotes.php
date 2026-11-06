@@ -506,22 +506,36 @@ function erp_quote_invoice_refusal($quote)
  */
 function erp_quote_to_invoice($quote_id, $user_id)
 {
+    $fail = function ($message) {
+        erp_tx_rollback();
+        return array('success' => false, 'invoice_id' => 0, 'error' => $message);
+    };
+
+    // The quote row is locked before its state is read, so two presses at
+    // once (screen, API or Workspace) cannot both find it invoiceable and
+    // make two drafts: the second waits, then reads it as invoiced.
+    if (!erp_tx_begin()) {
+        return array('success' => false, 'invoice_id' => 0, 'error' => lang('Could not start a database transaction.'));
+    }
+
+    db("SELECT id FROM erp_quotes WHERE id = '" . (int) $quote_id . "' LIMIT 1 FOR UPDATE");
+
     $quote = erp_quote($quote_id);
 
     if ($quote === null) {
-        return array('success' => false, 'invoice_id' => 0, 'error' => lang('The quote could not be found.'));
+        return $fail(lang('The quote could not be found.'));
     }
 
     $refusal = erp_quote_invoice_refusal($quote);
 
     if ($refusal !== '') {
-        return array('success' => false, 'invoice_id' => 0, 'error' => $refusal);
+        return $fail($refusal);
     }
 
     $data = json_decode((string) $quote['form_data'], true);
 
     if (!is_array($data)) {
-        return array('success' => false, 'invoice_id' => 0, 'error' => lang('The quote\'s lines could not be read.'));
+        return $fail(lang('The quote\'s lines could not be read.'));
     }
 
     $base = erp_base_currency();
@@ -547,14 +561,18 @@ function erp_quote_to_invoice($quote_id, $user_id)
     $saved = erp_invoice_draft_save($data, 0);
 
     if (empty($saved['success'])) {
-        return array('success' => false, 'invoice_id' => 0, 'error' => (string) $saved['error']);
+        return $fail((string) $saved['error']);
     }
 
-    db("UPDATE erp_quotes SET status = 'invoiced', invoice_id = '" . (int) $saved['invoice_id'] . "',
+    $marked = db("UPDATE erp_quotes SET status = 'invoiced', invoice_id = '" . (int) $saved['invoice_id'] . "',
             decided_by = IF(decided_at > 0, decided_by, '" . (int) $user_id . "'),
             decided_at = IF(decided_at > 0, decided_at, UNIX_TIMESTAMP()),
             updated_at = UNIX_TIMESTAMP()
         WHERE id = '" . (int) $quote['id'] . "'");
+
+    if (($marked === false) || !erp_tx_commit()) {
+        return $fail(lang('The invoice draft could not be saved.'));
+    }
 
     erp_event_quote((int) $quote['id'], 'erp.quote.invoiced');
 

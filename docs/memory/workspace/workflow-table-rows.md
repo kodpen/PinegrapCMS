@@ -12,6 +12,9 @@ description: Workflow table rows (wtable_rows.php, T1b): add, change, delete, mo
 - Add: `UPDATE ws_wtables SET row_count = row_count + 1 … AND row_count < 5000` first; no affected row is `too_many_rows` (409), so two adds at once cannot pass the limit. A failed INSERT gives the count back.
 - Delete: only when the DELETE removed the row, the rows after it move up one and `row_count` drops (never below 0). New rows go last (`MAX(position) + 1`); positions are 1..n.
 
+## How are rows paged?
+- `ws_wtable_rows_page()` reads in (position, id) order. The API cursor carries the last row's position and id, and the next page starts past both (`ws_wtable_rows_after_sql()`): two rows added at once can get the same `MAX(position) + 1`, and by position alone the second was skipped when a page ended on the first. The table screen's `after` link still pages by position only.
+
 ## How does a change made meanwhile get refused?
 - A change must name `revision` (`revision_missing` 422 otherwise); a different one is `changed_meanwhile` 409 with the row's `revision` now. The write is one `UPDATE … WHERE revision = ?` bumping it, so a race is refused too.
 - Delete takes `revision` optionally, checked the same way. A move keeps the revision: the cells did not change.

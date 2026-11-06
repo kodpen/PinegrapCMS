@@ -5,7 +5,7 @@ description: GET /customers/{id}/subscriptions, the pause/resume/cancel moves wi
 
 ## What does GET /customers/{id}/subscriptions answer?
 - Route `customers.subscriptions`, scope `customers:read`, handler `api_customers_subscriptions()` (`includes/api/resources/customers.php`), object `Subscription` (`api_subscription_schema()`).
-- Rows of `subscriptions` whose `user_id` is an account with `user.user_contact` = the customer, newest first, cursor paged by id. Product name from the first order's line, else the product; `customer_id`, `customer_name`, `customer_email` since `GET /subscriptions` shares the object (`api-subscriptions-list.md`). Never `card_ref`, `remote_id` or `driver`.
+- Rows of `subscriptions` whose `user_id` is an account with `user.user_contact` = the customer, newest first, cursor paged by id. Product name from the first order's line, else the product; `customer_id`, `customer_name`, `customer_email` since `GET /subscriptions` shares the object (`api-subscriptions-list.md`). Never `card_ref`, `remote_id` or `driver`. `customer_name`, `customer_email` and `card_last4` are null unless the key also holds `orders:read` (`api-subscriptions-list.md`).
 - `actions`: `pg_subscription_customer_actions()` minus `update_card` (the card page needs the customer's browser), so the same moves My Account offers.
 - Legacy gateway profiles (`recurring_payment_*` columns) are not listed. No table → empty list.
 

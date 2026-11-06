@@ -1359,9 +1359,23 @@ function ws_claude_draft_accept($viewer, $draft_id)
         return array('ok' => false, 'error' => lang('Somebody on this task is away then. Only a lead or somebody with the team board can hand it over anyway.'), 'task_id' => 0);
     }
 
+    // Claimed before the task is opened: of two presses at once (or an
+    // accept and a dismiss) only one changes the pending row, so one task
+    // is opened.
+    db("UPDATE ws_ai_drafts SET status = 'accepted', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
+        WHERE id = '" . (int) $draft['id'] . "' AND status = 'pending'");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'), 'task_id' => 0);
+    }
+
     $result = ws_task_create($viewer, $data);
 
     if (!$result['ok']) {
+        // No task: the proposal waits again, unless something else moved it.
+        db("UPDATE ws_ai_drafts SET status = 'pending', decided_by = 0, decided_at = 0
+            WHERE id = '" . (int) $draft['id'] . "' AND status = 'accepted' AND task_id = 0");
+
         return array('ok' => false, 'error' => $result['error'], 'task_id' => 0);
     }
 
@@ -1371,9 +1385,7 @@ function ws_claude_draft_accept($viewer, $draft_id)
         db("UPDATE ws_tasks SET source_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $result['task_id'] . "'");
     }
 
-    db("UPDATE ws_ai_drafts SET status = 'accepted', task_id = '" . (int) $result['task_id'] . "',
-            decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
-        WHERE id = '" . (int) $draft['id'] . "'");
+    db("UPDATE ws_ai_drafts SET task_id = '" . (int) $result['task_id'] . "' WHERE id = '" . (int) $draft['id'] . "'");
 
     ws_message_touch($draft['message_id']);
 
@@ -1403,8 +1415,13 @@ function ws_claude_draft_dismiss($viewer, $draft_id)
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
     }
 
+    // Only a pending row: an accept that got there first keeps its task.
     db("UPDATE ws_ai_drafts SET status = 'dismissed', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
-        WHERE id = '" . (int) $draft['id'] . "'");
+        WHERE id = '" . (int) $draft['id'] . "' AND status = 'pending'");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'));
+    }
 
     ws_message_touch($draft['message_id']);
 
@@ -1781,8 +1798,9 @@ Work through the queue:
       question put to people is an approval box (approved, rejected), a post box
       only says something; a text setting may take {{node.ID.VALUE}} (a value
       of an earlier box) or {{trigger.FIELD}}; a value box (kind value) whose
-      rule reads two values (join, compare, add, subtract, add_days) needs both
+      rule reads two values (join, compare, add, subtract, add_days, replace, cut, split) needs both
       a and b - join writes a, a space, then b, so split a text between them -
+      replace and split also read c (what goes in, the part to take) -
       and reads {{date}} (Y-m-d), {{time}} (H:i) and {{weekday}} as the moment
       it is worked out;
       the subject of a box started by hand (kind manual) is the kind of record

@@ -10,7 +10,7 @@ description: ERP late payment fee (10.61): the rate setting, the pure day-by-day
 
 ## How is it written?
 - Only as a one-line sales invoice draft by `erp_late_fee_draft()`, dated today, in the base currency, with each invoice's days and fee in the notes. The fee panel (`erp_late_fee_panel()`) on the account screen (`edit_erp_account.php`) and the reconciliation screen (`erp_reconciliation.php`) posts to `add_erp_late_fee_invoice.php`. Nothing reaches the ledger until the draft is issued; deleting it charges nothing.
-- With a fee draft of the account already waiting, no second one is written: that draft is returned.
+- With a fee draft of the account already waiting, no second one is written: that draft is returned. The look and the write run under the account's `erp_start_lock('late_fee', …)`: a button pressed twice wrote two drafts, and issuing both charged the same days twice.
 - An issued fee invoice carries `erp_invoices.late_fee_through` (the period's last day); the next fee starts the day after (`erp_late_fee_charged_through()`), so no day is charged twice. A fee invoice itself earns no fee.
 
 ## What does the API do? (`includes/erp/api_reports.php`)

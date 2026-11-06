@@ -756,6 +756,11 @@ if (!$_POST) {
 
             // Loop through all fields in order to save data for each one.
             foreach ($fields as $field) {
+                // A signature keeps the row written when the form was created.
+                if (!pg_submitted_form_edit_writes_field($field)) {
+                    continue;
+                }
+
                 // if this is not an office use only field or the user has access to edit office use only fields, then update field
                 if (
                     ($field['office_use_only'] == 0)

@@ -120,6 +120,37 @@ function api_store_currency_values($row, $params) {
 
 }
 
+// The columns an update leaves as they stand: the exchange rate and the
+// base switch when the checked values do not change them. The rate refresh
+// and a currency made the base elsewhere write both, so an update that only
+// renames writes them back as read and undoes what landed meanwhile.
+// Nothing is kept on a create. Pure.
+function api_store_currency_kept($row, $values) {
+
+	if ($row === null) {
+
+		return array();
+
+	}
+
+	$kept = array();
+
+	if (number_format((float)$row['exchange_rate'], 5, '.', '') === number_format((float)$values['exchange_rate'], 5, '.', '')) {
+
+		$kept[] = 'exchange_rate';
+
+	}
+
+	if ((((int)$row['base'] === 1) ? 1 : 0) === (((int)$values['base'] === 1) ? 1 : 0)) {
+
+		$kept[] = 'base';
+
+	}
+
+	return $kept;
+
+}
+
 // The screen's refusals for a currency, field => message: a blank name, a
 // code that is not three letters, a symbol too long for the column, the
 // stored base switched off, a rate the column cannot keep. Pure.
@@ -218,7 +249,7 @@ function api_store_currency_prepare($params, $row) {
 
 	$values['exchange_rate'] = api_store_currency_rate_stored($values['exchange_rate'], $values['base']);
 
-	return array('id' => $id, 'values' => $values);
+	return array('id' => $id, 'values' => $values, 'kept' => api_store_currency_kept($row, $values));
 
 }
 
@@ -227,7 +258,7 @@ function api_store_currency_commit($prepared) {
 
 	$app = api_current_app();
 
-	$saved = pg_store_currency_save($prepared['id'], $prepared['values'], (int)$app['owner']['id']);
+	$saved = pg_store_currency_save($prepared['id'], $prepared['values'], (int)$app['owner']['id'], isset($prepared['kept']) ? $prepared['kept'] : array());
 
 	if ($saved <= 0) {
 

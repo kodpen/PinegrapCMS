@@ -189,29 +189,49 @@ function pg_booking_pay_pending_forget()
  * out while the day still offers its time, holds again for the policy's
  * minutes. False when the row is no longer a hold or its time is gone.
  *
+ * It runs under the staff member's lock, as pg_booking_insert() does: a hold
+ * that ran out counts as free there, so without the lock another visitor's
+ * hold on an overlapping time could be written between the check and the
+ * write, and both would stand. The write must change the row: a hold removed
+ * or cancelled meanwhile (pg_booking_clear_expired_hold()) is not kept.
+ *
  * @param int $booking_id
  * @param int $now
  * @return bool
  */
 function pg_booking_pay_keep_hold($booking_id, $now)
 {
+    $staff_id = (int) db_value("SELECT staff_id FROM bookings WHERE id = '" . (int) $booking_id . "' LIMIT 1");
+
+    if ($staff_id <= 0) {
+        return false;
+    }
+
+    $lock = pg_booking_lock_name($staff_id);
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 10)") !== 1) {
+        return false;
+    }
+
     $row = db_item("SELECT id, service_id, staff_id, start_at, status, hold_until FROM bookings WHERE id = '" . (int) $booking_id . "' LIMIT 1");
-
-    if (!$row || ($row['status'] !== 'held')) {
-        return false;
-    }
-
     $policy = pg_booking_widget_policy();
+    $kept = false;
 
-    if (((int) $row['hold_until'] < (int) $now)
-        && !pg_booking_widget_still_offered((int) $row['service_id'], (int) $row['staff_id'], (int) $row['start_at'], $now, $policy)) {
-        return false;
+    if ($row && ($row['status'] === 'held')
+        && (((int) $row['hold_until'] >= (int) $now)
+            || pg_booking_widget_still_offered((int) $row['service_id'], (int) $row['staff_id'], (int) $row['start_at'], $now, $policy))) {
+        $until = (int) $now + (max(1, (int) $policy['hold_minutes']) * 60);
+        $result = db_q("UPDATE bookings SET hold_until = ?, updated_at = ? WHERE id = ? AND status = 'held'",
+            array($until, (int) $now, (int) $booking_id));
+        // A repeat in the same second changes no value, so MySQL counts no
+        // changed row: the row is read back then.
+        $kept = $result && ((mysqli_affected_rows(db::$con) === 1)
+            || ((int) db_value("SELECT COUNT(*) FROM bookings WHERE id = '" . (int) $booking_id . "' AND status = 'held' AND hold_until = '" . $until . "'") === 1));
     }
 
-    db_q("UPDATE bookings SET hold_until = ?, updated_at = ? WHERE id = ? AND status = 'held'",
-        array((int) $now + (max(1, (int) $policy['hold_minutes']) * 60), (int) $now, (int) $booking_id)) or output_error('Query failed.');
+    db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
-    return true;
+    return $kept;
 }
 
 /**

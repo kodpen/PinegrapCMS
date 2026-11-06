@@ -283,9 +283,15 @@ if (!$_POST) {
                                 }
                             } else {
                                 $new_inventory_quantity = (int) $new_inventory_quantity;
-                                $sql_inventory_quantity = "inventory_quantity = '" . $new_inventory_quantity . "',";
+                                $sql_inventory_quantity = pg_explorer_bulk_quantity_sql($quantity_process, $quantity_value) . ',';
                             }
                         }
+
+                        // An increase or a decrease ends where the UPDATE
+                        // finds the count, not where this read put it: its
+                        // out-of-stock mark is set from the stored row after
+                        // the write.
+                        $relative_quantity_write = ($new_inventory_quantity !== null) && ($quantity_process !== 'value');
 
                         // Stock tracking on or off, when it was chosen.
                         $sql_inventory = '';
@@ -318,7 +324,7 @@ if (!$_POST) {
                         // it. An untouched tracking choice stays '' (strict
                         // test: on PHP 7 '' == 0 read as "tracking off").
                         $sql_out_of_stock = '';
-                        if ($stock_stored) {
+                        if ($stock_stored && !$relative_quantity_write) {
                             $tracking_choice = (string) ($_POST['edit_inventory'] ?? '');
                             if ($tracking_choice !== '') {
                                 $tracking_choice = ($tracking_choice === '1') ? '1' : '0';
@@ -384,6 +390,10 @@ if (!$_POST) {
                             WHERE id = '" . escape($product_id) . "'");
 
                         pg_audit_record('update', 'products', $product_id, $audit_before);
+
+                        if ($relative_quantity_write) {
+                            pg_stock_refresh_out_of_stock($product_id);
+                        }
 
                         // The quantity at the chosen location, once tracking
                         // is written. A product that does not track stock has

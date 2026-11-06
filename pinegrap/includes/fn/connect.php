@@ -1125,6 +1125,36 @@ function pg_connect_disconnect($id)
 }
 
 
+/**
+ * Ends every connection a person owns (user_id = theirs), each the way
+ * pg_connect_disconnect() ends one: the provider is told where it can be,
+ * then the row goes. Called when the account is deleted: MySQL 5.7 hands the
+ * highest user id out again after a restart, and a new account would
+ * otherwise sign in to the old owner's Drive, calendar or notes.
+ *
+ * @param int $user_id
+ * @return int how many connections were ended
+ */
+function pg_connect_forget_user($user_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !pg_connect_schema_ready()) {
+        return 0;
+    }
+
+    $ended = 0;
+
+    foreach (pg_connect_accounts(array('user_id' => $user_id)) as $account) {
+        if (pg_connect_disconnect($account['id']) !== null) {
+            $ended++;
+        }
+    }
+
+    return $ended;
+}
+
+
 /* ---------------------------------------------------------------------------
    Tokens
    --------------------------------------------------------------------------- */

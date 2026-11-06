@@ -9,6 +9,9 @@ module: cloud_file_picker
 - On click the browser opens a window at once (pop-up rule), asks `cloud_action=token` with `cloud_provider=onedrive`; the server reads Graph `/me/drive` (`driveType`, `webUrl`) and `pg_cloud_picker_onedrive_drive()` answers where the picker opens: personal → `https://onedrive.live.com/picker`, token scope `OneDrive.ReadOnly`; business → `https://<tenant>-my.sharepoint.com/_layouts/15/FilePicker.aspx`, token `https://<host>/.default`.
 - The window gets a form POST (`filePicker` settings in the query, `access_token` field); then the MessageChannel: `initialize` → `activate`; each `authenticate` command posts its `resource` back to the token route, `pg_cloud_picker_onedrive_scopes()` gives a token only for the same tenant's SharePoint hosts (`contoso.` / `contoso-my.sharepoint.com`), a personal account always `OneDrive.ReadOnly`; `pick` sends `{drive_id, item_id}`.
 
+## Which window gets a token?
+- The `initialize` message is taken only from the opened window, with the channel id (16 random bytes from `crypto.getRandomValues`) and from the picker's origin: `pickerOriginAllowed()` accepts the origin of `picker_url`, and for `onedrive.live.com` also `https://my.microsoftpersonalcontent.com`. Before, a window navigated to another site that named the channel id got the port and every `authenticate` token. Tested under Node in `tests/cloud_file_picker_test.php`.
+
 ## How is the file taken?
 - `pg_cloud_picker_source('onedrive')`: ids `^[A-Za-z0-9!_-]{1,200}$` (personal ids carry `!`) → Graph `/v1.0/drives/{d}/items/{i}?$select=name,size,file`, then `/content`, both with the Graph token. The picker's `@sharePoint.endpoint` is never used.
 - No `file` facet (OneNote notebook = `package`, folder) → refused, named (`pg_cloud_picker_onedrive_meta()`).

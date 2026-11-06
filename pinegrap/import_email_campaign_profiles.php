@@ -34,8 +34,8 @@ if (!$_POST) {
     echo
     pg_page_shell([
         'title'=> lang('Import Campaign Profiles'),
-        'extra classes'=>'setting',
-        'icon'=>'setting',
+        'extra classes'=>'campaign',
+        'icon'=>'campaign',
         'heading'=>lang('Import Campaign Profiles'),
         'heading_description' => lang('Import new and update existing campaign profiles.'),
         'cancel'=>array('enable'=>'true','url'=>'view_email_campaign_profiles.php')
@@ -67,7 +67,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12  my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'accept'=>'.csv,text/csv', 'class'=>'form-control w-auto', 'required'=>'required')) . '
                                             ' . pg_upload_limit_hint() . '
                                         </div>
                                     </div>
@@ -78,7 +78,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_button" value="Import Campaign Profiles" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import') ) . '</span></button>
+                                <button type="submit" id="submit_import_email_campaign_profiles" name="submit_button" value="Import Campaign Profiles" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3" aria-hidden="true">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -132,7 +132,11 @@ if (!$_POST) {
     $columns = array();
     // Headings the import does not know, named in the result.
     $unknown_headings = array();
-    
+
+    // Columns the screen's own export writes for reading only (labels and
+    // record history); a re-imported export skips them without a warning.
+    $export_only_headings = array('action_item', 'page_name', 'created', 'created_username', 'last_modified', 'last_modified_username');
+
     // Loop through the columns in order to determine which are valid.
     foreach ($row as $number => $name) {
         // The heading is matched whatever its case and spacing ("Subject",
@@ -163,7 +167,7 @@ if (!$_POST) {
             $columns[$name] = array(
                 'name' => $name,
                 'number' => $number);
-        } else {
+        } elseif (!in_array($name, $export_only_headings, true)) {
             $unknown_headings[] = $row[$number];
         }
     }
@@ -218,8 +222,8 @@ if (!$_POST) {
 
         $existing_profile = db_item(
             "SELECT
-                id, created_user_id, name, enabled, action, action_item_id, format, page_id,
-                from_email_address, reply_email_address, bcc_email_address,
+                id, created_user_id, name, enabled, action, action_item_id, subject, format, page_id,
+                from_name, from_email_address, reply_email_address, bcc_email_address,
                 schedule_time, schedule_length, schedule_unit, schedule_period, schedule_base, purpose
             FROM email_campaign_profiles
             WHERE name = '" . e($name) . "'");
@@ -243,8 +247,10 @@ if (!$_POST) {
             'enabled' => '1',
             'action' => '',
             'action_item_id' => '0',
+            'subject' => '',
             'format' => 'plain_text',
             'page_id' => '0',
+            'from_name' => '',
             'from_email_address' => '',
             'reply_email_address' => '',
             'bcc_email_address' => '',
@@ -267,6 +273,13 @@ if (!$_POST) {
         // Each row is checked with the rules of the create and edit form, so
         // a value the form refuses is not written either.
         $reason = pg_email_campaign_profile_values_problem($values, ECOMMERCE && USER_MANAGE_ECOMMERCE);
+
+        // The required subject and from name, and every text column within
+        // its length: a longer cell would be cut on the write.
+        if ($reason === '') {
+            $text_problems = pg_email_campaign_profile_text_problems($values);
+            $reason = $text_problems ? reset($text_problems) : '';
+        }
 
         // Before the upgrade adds the group action it would be stored as ''.
         if (($reason === '') && in_array($action, pg_email_campaign_profile_group_actions(), true) && !pg_email_campaign_profile_group_action_ready()) {

@@ -160,6 +160,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_booking_deposit();         // 11.0.169
 	upgrade_2026_11_0_contact_group_joined_campaigns(); // 11.0.170
 	upgrade_2026_11_0_credit_campaigns();         // 11.0.171
+	upgrade_2026_11_0_api_device_access_scopes(); // 11.0.71
 
 }
 
@@ -5324,5 +5325,18 @@ function upgrade_2026_11_0_credit_campaigns() {
 	}
 
 	install_note('E-mail campaigns: automatic e-mails gain the store credit issued and store credit expiring actions. Nothing is sent until such a profile is created.');
+
+}
+
+// The scopes an OAuth refresh narrowed the new access token to (2026.11.0,
+// 11.0.71; RFC 6749 6): a JSON list like scopes, NULL when the token holds the
+// whole consent - every existing row, every team device and every refresh
+// sent without a scope. Written by api_device_rotate_pair(), read by
+// api_device_authenticate(); scopes, the consent, never changes.
+function upgrade_2026_11_0_api_device_access_scopes() {
+
+	install_add_column('api_devices', 'access_scopes', "TEXT NULL");
+
+	install_note('OAuth connections: a refresh that asks for fewer permissions now gives an access token limited to them. Existing connections keep working as before.');
 
 }

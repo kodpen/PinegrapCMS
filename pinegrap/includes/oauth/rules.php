@@ -310,6 +310,84 @@ function pg_oauth_scope_string($scopes) {
 
 }
 
+// The access scopes a refresh asks for (RFC 6749 6): $scope is the request's
+// scope value, $known every scope the site has, $granted the consent with
+// each write scope's read added (api_scopes_expand()). Values the site has no
+// scope of are passed over, as on the consent screen. Returns null when the
+// new access token holds the whole consent - no scope sent, nothing known
+// asked for, or all of it asked for again - false when more than was granted
+// is asked for, else the narrower list, sorted. The consent itself never
+// changes, so the next refresh may ask for all of it again.
+function pg_oauth_refresh_scopes($scope, $known, $granted) {
+
+	$granted = is_array($granted) ? array_values($granted) : array();
+
+	$asked = array_values(array_intersect(pg_oauth_scope_parse($scope), is_array($known) ? $known : array()));
+
+	if (empty($asked)) {
+
+		return null;
+
+	}
+
+	if (count(array_diff($asked, $granted)) > 0) {
+
+		return false;
+
+	}
+
+	if (count(array_diff($granted, $asked)) === 0) {
+
+		return null;
+
+	}
+
+	sort($asked);
+
+	return $asked;
+
+}
+
+// What an access token may do on this request: $effective is the
+// connection's scopes today (pg_oauth_effective_scopes()), $narrowed the set
+// its last refresh asked for, with each write scope's read added, or null when
+// it asked for none. The person's rights and the ceiling still apply, since
+// $effective is worked out on every call.
+function pg_oauth_access_scopes($effective, $narrowed) {
+
+	$effective = is_array($effective) ? array_values($effective) : array();
+
+	if (!is_array($narrowed)) {
+
+		return $effective;
+
+	}
+
+	$scopes = array_intersect($effective, $narrowed);
+
+	sort($scopes);
+
+	return array_values($scopes);
+
+}
+
+// The narrowed set stored on a connection's row (api_devices.access_scopes,
+// a JSON list) as a list, or null when the column is empty, missing or not a
+// list: then the consent applies.
+function pg_oauth_stored_access_scopes($value) {
+
+	if (($value === null) || ($value === '')) {
+
+		return null;
+
+	}
+
+	$list = json_decode((string)$value, true);
+
+	return is_array($list) ? array_values(array_filter($list, 'is_string')) : null;
+
+}
+
 // The scopes an authorization request asks for, as the consent screen offers
 // them: $known is every scope the site has, $available what this person may
 // hand over. Values the site has no scope of - openid, offline_access, a

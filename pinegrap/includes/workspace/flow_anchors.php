@@ -246,6 +246,17 @@ function ws_flow_event_outputs()
     $task = array($value('title', 'text', lang('Title')), $value('status', 'text', lang('Status')));
     $channel = $value('channel_id', 'number', lang('Channel'));
     $actor = $value('actor_id', 'number', lang('The person who did it'));
+    $return = array($order, $value('return_id', 'number', lang('Return')), $value('reason', 'text', lang('Reason')));
+    $invoice = array($value('number', 'text', lang('Invoice number')), $value('direction', 'text', lang('Direction')), $value('doc_type', 'text', lang('Type')),
+        $value('status', 'text', lang('Status')), $value('account_id', 'number', lang('Current account')), $value('order_id', 'number', lang('Order')),
+        $value('issue_date', 'text', lang('Issue date')), $value('due_date', 'text', lang('Due date')), $value('currency', 'text', lang('Currency')),
+        $value('edoc_status', 'text', lang('E-document status')));
+    $quote = array($value('number', 'text', lang('Quote number')), $value('status', 'text', lang('Status')), $value('account_id', 'number', lang('Current account')),
+        $value('issue_date', 'text', lang('Issue date')), $value('valid_until', 'text', lang('Valid until')), $value('currency', 'text', lang('Currency')));
+    $credit = array($value('customer_id', 'number', lang('Contact')), $value('account_id', 'number', lang('User')), $value('kind', 'text', lang('Kind')),
+        $value('reason', 'text', lang('Reason')), $value('expires_at', 'text', lang('Expires')));
+    $subscription = array($value('customer_id', 'number', lang('Contact')), $value('product_id', 'number', lang('Product')), $value('status', 'text', lang('Status')),
+        $value('previous_status', 'text', lang('Previous status')), $value('order_id', 'number', lang('Order')), $value('retry_count', 'number', lang('Retries')));
 
     return array(
         'order.created'          => array($order),
@@ -254,11 +265,44 @@ function ws_flow_event_outputs()
         'order.delivered'        => array($order, $value('delivery_date', 'text', lang('Delivery date'))),
         'order.cancelled'        => array($order),
         'order.return.requested' => array($order),
+        'order.return.approved'  => $return,
+        'order.return.received'  => $return,
+        'order.return.refunded'  => array_merge($return, array($value('refund_method', 'text', lang('How it was refunded')))),
+        'marketplace.order.imported' => array($order, $value('provider', 'text', lang('Marketplace')), $value('remote_order_id', 'text', lang('The marketplace\'s order number'))),
+        'cart_quote.created'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact'))),
+        'cart_quote.ordered'     => array($value('status', 'text', lang('Status')), $value('contact_id', 'number', lang('Contact')), $order),
+        'subscription.renewed'   => $subscription,
+        'subscription.failed'    => $subscription,
+        'subscription.cancelled' => $subscription,
+        'product.review.created' => array($value('item_id', 'number', lang('Product')), $value('rating', 'number', lang('Rating')), $value('status', 'text', lang('Status'))),
+        'form.paid'              => array($value('reference_code', 'text', lang('Reference code')), $value('contact_id', 'number', lang('Contact')), $order),
+        'inventory.changed'      => array($value('product_id', 'number', lang('Product')), $value('quantity', 'number', lang('Quantity'))),
         'stock.low'              => array($value('name', 'text', lang('Product')), $value('quantity', 'number', lang('Quantity')), $value('threshold', 'number', lang('Threshold'))),
         'customer.created'       => array($value('email', 'text', lang('E-mail'))),
         'customer.updated'       => array($value('email', 'text', lang('E-mail'))),
         'form.submitted'         => array(),
         'contact_group.joined'   => array($value('contact_id', 'number', lang('Contact')), $value('group_id', 'number', lang('Contact group')), $value('group_name', 'text', lang('The name of the contact group'))),
+        'user.created'           => array($value('username', 'text', lang('Username')), $value('email', 'text', lang('E-mail')), $value('role', 'text', lang('Role'))),
+        'customer.consent_changed' => array($value('consent_channel', 'text', lang('Channel')), $value('consent_purpose', 'text', lang('Purpose')), $value('consent_status', 'text', lang('Status')), $value('consent_source', 'text', lang('Source'))),
+        'mail.bounced'           => array($value('address', 'text', lang('E-mail')), $value('kind', 'text', lang('Kind')), $value('source', 'text', lang('Source')),
+            $value('suppressed', 'number', lang('Mail to it is stopped')), $value('contact_id', 'number', lang('Contact')), $value('campaign_id', 'number', lang('Campaign'))),
+        'campaign.sent'          => array($value('id', 'number', lang('Campaign')), $value('channel', 'text', lang('Channel')), $value('type', 'text', lang('Type'))),
+        'page.created'           => array($value('name', 'text', lang('Page'))),
+        'page.updated'           => array($value('name', 'text', lang('Page'))),
+        'calendar_event.reserved' => array($value('recurrence_number', 'number', lang('Repeat')), $value('quantity', 'number', lang('Quantity')), $value('order_id', 'number', lang('Order')), $order, $value('contact_id', 'number', lang('Contact'))),
+        'erp.invoice.created'    => $invoice,
+        'erp.invoice.paid'       => $invoice,
+        'erp.invoice.overdue'    => array_merge($invoice, array($value('days_overdue', 'number', lang('Days overdue')))),
+        'erp.invoice.edoc_changed' => $invoice,
+        'erp.receipt.created'    => array($value('direction', 'text', lang('Direction')), $value('date', 'text', lang('Date')), $value('currency', 'text', lang('Currency')),
+            $value('account_id', 'number', lang('Current account')), $value('cash_account_id', 'number', lang('Till or bank account')), $value('payment_method', 'text', lang('Payment method')),
+            $value('invoice_id', 'number', lang('Invoice')), $value('description', 'text', lang('Description'))),
+        'erp.edoc.received'      => array($value('gib_number', 'text', lang('Document number')), $value('invoice_type', 'text', lang('Type')), $value('issue_date', 'text', lang('Issue date')),
+            $value('supplier_title', 'text', lang('Supplier')), $value('supplier_tax_number', 'text', lang('Tax number')), $value('currency', 'text', lang('Currency'))),
+        'erp.quote.accepted'     => $quote,
+        'erp.quote.rejected'     => $quote,
+        'credit.issued'          => $credit,
+        'credit.expired'         => $credit,
         'workspace.task.completed'      => array_merge($task, array($value('priority', 'text', lang('Priority')), $channel, $actor)),
         'workspace.task.status_changed' => array_merge($task, array($value('previous_status', 'text', lang('Previous status')), $value('priority', 'text', lang('Priority')), $channel, $actor)),
         'workspace.task.overdue'        => array_merge($task, array($channel, $value('due_date', 'text', lang('Due date')))),
@@ -266,6 +310,8 @@ function ws_flow_event_outputs()
         'workspace.guest.message'       => array($value('guest', 'text', lang('Guest')), $value('text', 'text', lang('What the guest wrote')), $channel, $value('message_id', 'number', lang('Message'))),
         'workspace.mail.received'       => array($value('customer', 'text', lang('Customer')), $value('customer_email', 'text', lang('E-mail')), $value('subject', 'text', lang('Subject')),
             $value('conversation_id', 'number', lang('Conversation')), $channel, $value('message_id', 'number', lang('Message'))),
+        'workspace.flow.run.failed'     => array($value('flow_id', 'number', lang('Flow')), $value('flow_name', 'text', lang('The name of the flow')), $value('run_id', 'number', lang('Run')),
+            $value('box', 'text', lang('The box that failed')), $value('sentence', 'text', lang('What went wrong')), $channel),
     );
 }
 

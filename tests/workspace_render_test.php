@@ -292,3 +292,17 @@ function test_workspace_render_guest_page_address_ends_at_quotes()
 	pg_assert_same(workspace_render_test_link('https://kodpen.com', true) . '&#039;da.', ws_guest_render("https://kodpen.com'da."), "'da");
 	pg_assert_same(workspace_render_test_link('https://a.test/?a=1&amp;b=2', true), ws_guest_render('https://a.test/?a=1&b=2'), '&amp; in the query');
 }
+
+function test_workspace_render_plain_table_rows_read_apart()
+{
+	$viewer = array('id' => 1, 'role' => 0);
+	$body = "Photo shoot schedule:\n| Time | Product | Who |\n|---|---|---|\n| 09:00 | Linen throws | Mehmet |\n| 10:30 | Ceramic bowls | Ayşe |";
+	$line = 'Photo shoot schedule: Time · Product · Who / 09:00 · Linen throws · Mehmet / 10:30 · Ceramic bowls · Ayşe';
+
+	pg_assert_same($line, ws_plain_line($viewer, $body, array()), 'cells joined by a dot, rows by a slash, outer pipes gone');
+	pg_assert_same($line, ws_plain_text($viewer, $body, array()), 'the plain text the same');
+	pg_assert_same('A · a|b / 1 · c', ws_plain_line($viewer, "| A | a\\|b |\n| :-- | --: |\n| 1 | | c |", array()), 'an escaped pipe kept, an empty cell dropped');
+	pg_assert_same('x / y after', ws_plain_text($viewer, "| x |\n|---|\n| y |\n\nafter", array()), 'running text after the table on the same line');
+	pg_assert_same('| a | b | | c | d |', ws_plain_line($viewer, "| a | b |\n| c | d |", array()), 'no row of dashes: no table, kept as written');
+	pg_assert_same('| A | B | | 1 | 2 |', ws_plain_line($viewer, "```\n| A | B |\n|---|---|\n| 1 | 2 |\n```", array()), 'in code: as before');
+}

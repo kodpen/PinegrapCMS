@@ -391,3 +391,27 @@ function test_contact_list_posted_group_ids_read_only_text()
 	pg_assert_contains("pg_contact_list_posted_group_ids(\$_POST['add_to_contact_groups'] ?? '')", $save, 'the added groups are read as text');
 	pg_assert_contains("pg_contact_list_posted_group_ids(\$_POST['remove_from_contact_groups'] ?? '')", $save, 'the removed groups are read as text');
 }
+
+// The mass delete's notice is HTML: a group's name is escaped there, and a
+// group the user may not see, or one that is gone, is left out rather than
+// named or turned into a PHP warning.
+function test_contact_list_deleted_groups_label()
+{
+	$groups = array(
+		array('id' => '3', 'name' => '<img src=x onerror=alert(1)>'),
+		array('id' => '7', 'name' => 'Ali & Veli'),
+	);
+	$none = '[' . lang('None') . ']';
+	$all = '[' . lang('All') . ']';
+
+	pg_assert_same('&lt;img src=x onerror=alert(1)&gt;', pg_contact_list_deleted_groups_label(false, array(), '3', $groups));
+	pg_assert_same($all, pg_contact_list_deleted_groups_label(false, array(), $all, $groups));
+	pg_assert_same($none, pg_contact_list_deleted_groups_label(false, array(), $none, $groups));
+	pg_assert_same('', pg_contact_list_deleted_groups_label(false, array(), '99', $groups));
+
+	pg_assert_same($none . ', Ali &amp; Veli', pg_contact_list_deleted_groups_label(true, array($none, '7', '99'), '3', $groups));
+	pg_assert_same('', pg_contact_list_deleted_groups_label(true, '', '3', $groups));
+
+	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/view_contacts.php');
+	pg_assert_contains('pg_contact_list_deleted_groups_label($advanced_filters', $screen, 'the delete notice names the groups through the helper');
+}

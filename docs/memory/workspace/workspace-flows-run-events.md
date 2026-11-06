@@ -27,4 +27,4 @@ description: Webhook events of flow runs (A7, #2406): workspace.flow.run.finishe
 - Words (flow name, box name, sentence, outputs) only for a run of a public channel, as a task note's text (`ws_flow_run_event_words()`); a private channel, guest room or no channel gives ids and states alone. Even in public: the sentence and values a reader without edit reads (`ws_step_result_shown(..., false)`, no change or start-a-flow values).
 
 ## Is a flow started or woken by these?
-- No: they are not in `pg_event_workspace_events()`, so the workspace never records them and no flow triggers or wakes on another run (no loops). Chaining is the start-a-flow box.
+- Only `failed` starts flows, never the flow that failed (`workspace-flows-run-failed-start.md`); the others are webhooks only. Chaining is the start-a-flow box.

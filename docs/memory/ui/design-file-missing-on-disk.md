@@ -12,10 +12,7 @@ description: What the theme, file, design file, comment and quote signature scre
 - The note is one existing `tr.json` string; no new keys.
 
 ## What happens when Save, Duplicate or Create File cannot write the file?
-- `edit_theme_css.php`, `edit_javascript.php`, `editor_edit_file.php` (Save and Duplicate) and `create_file.php` write through `pg_file_write_whole()` (`includes/fn/files.php`): a checked temporary file renamed over the stored one; on failure the old file stays and it returns false.
-- On false no `files` row is written or updated and no success notice is shown. The editors open again with "{var:1} could not be written to disk." and the typed code (kept in the liveform field `code`, read before `file_get_contents()`); Create File answers with `output_error()` and Go back.
-- Before, the editors unlinked and wrote unchecked: lost changes, `fwrite(false)` fatals, cut-off stylesheets.
-- Not yet covered: `add_theme_file.php` (rows inserted before the write), `import_design.php` and `update_imported_items.php` (bulk import, would need a summary of failed items), `edit_file.php` / `edit_design_file.php`.
+- The old file stays and nothing is recorded: `platform/file-write-keeps-old.md`.
 
 ## Why can saving Edit Theme change a theme's name by itself?
 - `prepare_file_name()` collapses doubled underscores, so a record named `theme__noise.css` is stored as `theme_noise.css` on the first Save even with the name field untouched. With the file on the disk, the file is renamed with it; that is existing behaviour, left as is.

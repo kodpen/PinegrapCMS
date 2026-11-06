@@ -118,6 +118,57 @@ function test_api_store_currency_values_lay_the_sent_fields_over_the_row()
 	);
 }
 
+// An update leaves the exchange rate and the base switch alone unless it
+// changes them: a rate refresh, or another currency made the base, landing
+// between the read and the write is kept instead of overwritten with the
+// figures read at the start.
+function test_api_store_currency_kept_columns_unless_changed()
+{
+	$row = array('name' => 'Euro', 'code' => 'EUR', 'symbol' => '&euro;', 'exchange_rate' => '0.02800', 'base' => '0');
+
+	$values = api_store_currency_values($row, array('name' => 'Euro zone'));
+	$values['exchange_rate'] = api_store_currency_rate_stored($values['exchange_rate'], $values['base']);
+
+	pg_assert_same(array('exchange_rate', 'base'), api_store_currency_kept($row, $values), 'a name change keeps the rate and the base');
+
+	$values['exchange_rate'] = '0.02900';
+	pg_assert_same(array('base'), api_store_currency_kept($row, $values), 'a new rate is written');
+
+	$values['base'] = 1;
+	$values['exchange_rate'] = api_store_currency_rate_stored($values['exchange_rate'], $values['base']);
+	pg_assert_same(array(), api_store_currency_kept($row, $values), 'made the base: base and rate 1 written');
+
+	$base_row = array('name' => 'Lira', 'code' => 'TRY', 'symbol' => '&#8378;', 'exchange_rate' => '1.00000', 'base' => '1');
+	$values = api_store_currency_values($base_row, array('symbol' => 'TL'));
+	$values['exchange_rate'] = api_store_currency_rate_stored($values['exchange_rate'], $values['base']);
+
+	pg_assert_same(array('exchange_rate', 'base'), api_store_currency_kept($base_row, $values), 'the base resent keeps both');
+	pg_assert_same(array(), api_store_currency_kept(null, $values), 'a create writes every column');
+}
+
+// The UPDATE the shared write builds: kept columns stay out of it. Pure.
+function test_store_currency_update_sets_leave_kept_columns_out()
+{
+	$values = array('name' => 'Euro', 'code' => 'EUR', 'symbol' => '&euro;', 'exchange_rate' => '0.02800', 'base' => 0);
+
+	pg_assert_same(
+		array(array('name = ?', 'base = ?', 'code = ?', 'symbol = ?', 'exchange_rate = ?'), array('Euro', 0, 'EUR', '&euro;', '0.02800')),
+		pg_store_currency_update_sets($values, array()),
+		'nothing kept writes every column'
+	);
+
+	pg_assert_same(
+		array(array('name = ?', 'code = ?', 'symbol = ?'), array('Euro', 'EUR', '&euro;')),
+		pg_store_currency_update_sets($values, array('exchange_rate', 'base')),
+		'a kept rate and base are not written'
+	);
+
+	$save = api_store_currencies_test_body('includes/fn/store_currencies.php', 'pg_store_currency_save');
+
+	pg_assert_contains("!in_array('base', \$kept, true)", $save, 'the other bases are cleared only when the base is written');
+	pg_assert_contains('$prepared[\'kept\']', api_store_currencies_test_body('includes/api/resources/store_currencies.php', 'api_store_currency_commit'), 'the API passes what it keeps');
+}
+
 // The API symbol is plain text both ways: escaped into the stored HTML,
 // decoded back by api_currency_symbol_text().
 function test_api_store_currency_symbol_round_trips_as_text()

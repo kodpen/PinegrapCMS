@@ -26,7 +26,7 @@ function test_every_lazy_call_takes_the_shared_options()
 	$source = lazy_picture_failure_source('assets/js/backend.src.js');
 
 	preg_match_all('/\.Lazy\(([^)]*)\)/', $source, $matches);
-	pg_assert_same(2, count($matches[1]), 'two Lazy calls');
+	pg_assert_same(1, count($matches[1]), 'one Lazy call');
 	foreach ($matches[1] as $argument) {
 		pg_assert_same('pgLazyOptions', trim($argument), 'Lazy call without the shared options');
 	}

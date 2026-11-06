@@ -143,3 +143,72 @@ function pg_audience_door_message()
 {
     return lang('A contact group filled by rules cannot be changed by hand; its rules decide who is in it.');
 }
+
+/**
+ * The contacts a storefront door's join put into the group, as
+ * pg_announce_contact_group_members() takes them: the contact when the door
+ * wrote a new membership row, none when the group is filled by rules or
+ * gone, the contact was already in it, or the insert failed.
+ *
+ * @param int  $contact_id
+ * @param int  $group_id
+ * @param bool $hand_group    the group exists and a hand door may write to it
+ * @param bool $member        the contact was already in the group
+ * @param int  $inserted_rows mysqli_affected_rows() of the insert
+ * @return int[]
+ */
+function pg_audience_door_joined($contact_id, $group_id, $hand_group, $member, $inserted_rows)
+{
+    $contact_id = (int) $contact_id;
+
+    if (($contact_id <= 0) || ((int) $group_id <= 0) || !$hand_group || $member || ((int) $inserted_rows !== 1)) {
+        return array();
+    }
+
+    return array($contact_id);
+}
+
+/**
+ * Puts a contact into a group from a storefront door (the registration or
+ * membership group of a new account) and announces the join through
+ * pg_announce_contact_group_members(), as every other door does, so "joined
+ * a group" campaign profiles, flows and webhooks hear a sign-up too. A group
+ * filled by rules or gone is skipped in silence; a contact already in it is
+ * left as it is and announces nothing.
+ *
+ * @param int $contact_id
+ * @param int $group_id
+ * @return bool whether a membership row was written
+ */
+function pg_audience_door_join($contact_id, $group_id)
+{
+    $contact_id = (int) $contact_id;
+    $group_id = (int) $group_id;
+
+    if (($contact_id <= 0) || ($group_id <= 0)) {
+        return false;
+    }
+
+    $name = db_value("SELECT name FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql() . " LIMIT 1");
+    $hand_group = ($name !== null) && ($name !== false);
+
+    $member = $hand_group && (bool) db_value(
+        "SELECT contact_id FROM contacts_contact_groups_xref
+        WHERE (contact_id = '" . $contact_id . "') AND (contact_group_id = '" . $group_id . "') LIMIT 1");
+
+    $inserted = 0;
+
+    if ($hand_group && !$member) {
+        db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
+            VALUES ('" . $contact_id . "', '" . $group_id . "')");
+        $inserted = (int) mysqli_affected_rows(db::$con);
+    }
+
+    $joined = pg_audience_door_joined($contact_id, $group_id, $hand_group, $member, $inserted);
+
+    if ($joined && function_exists('pg_announce_contact_group_members')) {
+        pg_announce_contact_group_members($group_id, $joined, array(), (string) $name);
+    }
+
+    return (bool) $joined;
+}

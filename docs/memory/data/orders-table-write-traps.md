@@ -15,6 +15,7 @@ description: Traps when INSERTing into orders, the next_order_number lock and wh
 ## When does the Commerce settings save write the next number?
 - Only when the posted Next Order Number differs from the hidden `ecommerce_next_order_number_was` the pane was opened with: before, every save of the pane wrote back the value loaded at opening, so an order completed meanwhile got a number already used (`orders.order_number` has no unique index).
 - A changed value must pass `pg_next_order_number_refusal()` (`includes/fn/order_completion.php`): digits only, at least 1, above `MAX(orders.order_number)`; checked before the config UPDATE, then written with UPDATE (INSERT when the row is missing), never DELETE + INSERT.
+- Under the lock the save reads the counter again (`pg_next_order_number_set_back()`): when orders moved it since the screen was opened and the typed value is below it, nothing is written and a warning names the current counter after the unlock. The MAX() check runs before the lock and misses an order completed in between (or one that took its number and has not stored it yet), whose number would otherwise be given out again.
 
 ## What are the orders.type values?
 - `online` / `marketplace` / `local`.

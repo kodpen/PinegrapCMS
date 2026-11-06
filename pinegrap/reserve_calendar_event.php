@@ -122,6 +122,20 @@ if ($calendar_event['product_id'] == '') {
     output_error(lang('You do not have access to reserve this calendar event because the product for it no longer exists.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
+// A recurring event with separate spots per occurrence takes only an
+// occurrence it has that was not removed from the calendar.
+$calendar_event_exceptions = array();
+$result = db_q("SELECT recurrence_number FROM calendar_event_exceptions WHERE calendar_event_id = ?", array((string) $calendar_event_id)) or output_error('Query failed.');
+
+while ($row = mysqli_fetch_assoc($result)) {
+    $calendar_event_exceptions[] = $row['recurrence_number'];
+}
+
+if (!pg_calendar_reserve_occurrence_ok($recurrence_number, $calendar_event['recurrence'], $calendar_event['total_recurrence_number'], $calendar_event['separate_reservations'], $calendar_event_exceptions)) {
+    log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because the occurrence does not take place.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);
+    output_error(lang('Sorry, you may not reserve this event because this date does not take place.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+}
+
 // if the event is in the past, then log activity and output error
 if (strtotime($calendar_event['end_date_and_time']) < time()) {
     log_activity(pg_log_lang(array('string' => 'access denied to reserve calendar event ({var:1}) for page ({var:2}) because the calendar event has ended.', 'vars' => array($calendar_event['name'], $page_name))), $_SESSION['sessionusername']);

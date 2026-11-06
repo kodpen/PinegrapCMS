@@ -23,7 +23,7 @@ function test_email_campaign_schedule_label_immediately_with_time()
 {
 	$label = pg_email_campaign_profile_schedule_label(0, 'days', 'after', 'action', '10:00');
 
-	pg_assert_same(lang(array('string' => 'Schedule: {var:1} {var:2} {var:3}, at {var:4}', 'vars' => array(lang('immediately'), lang('after'), lang('from action'), '10:00'))), $label);
+	pg_assert_same(lang(array('string' => '{var:1} {var:2} {var:3}, at {var:4}', 'vars' => array(lang('immediately'), lang('after'), lang('from action'), '10:00'))), $label);
 	pg_assert_same('10:00', substr($label, -5), 'the time is the last piece');
 }
 
@@ -31,7 +31,7 @@ function test_email_campaign_schedule_label_one_day_with_time()
 {
 	$label = pg_email_campaign_profile_schedule_label(1, 'days', 'after', 'action', '10:00');
 
-	pg_assert_same(lang(array('string' => 'Schedule: {var:1} {var:2} {var:3}, at {var:4}', 'vars' => array('1 ' . lang('day'), lang('after'), lang('from action'), '10:00'))), $label);
+	pg_assert_same(lang(array('string' => '{var:1} {var:2} {var:3}, at {var:4}', 'vars' => array('1 ' . lang('day'), lang('after'), lang('from action'), '10:00'))), $label);
 	pg_assert_same('10:00', substr($label, -5), 'the time is the last piece');
 	pg_assert_false(strpos($label, '(') !== false, 'no parenthesis');
 	pg_assert_false(strpos($label, '  ') !== false, 'no double space');
@@ -41,7 +41,7 @@ function test_email_campaign_schedule_label_hours_before_event_without_time()
 {
 	$label = pg_email_campaign_profile_schedule_label(2, 'hours', 'before', 'calendar_event_start_time', '');
 
-	pg_assert_same(lang(array('string' => 'Schedule: {var:1} {var:2} {var:3}', 'vars' => array('2 ' . lang('hours'), lang('before'), lang('from calendar event start time')))), $label);
+	pg_assert_same(lang(array('string' => '{var:1} {var:2} {var:3}', 'vars' => array('2 ' . lang('hours'), lang('before'), lang('from calendar event start time')))), $label);
 	pg_assert_false(strpos($label, '(') !== false, 'no parenthesis');
 	pg_assert_false(strpos($label, '  ') !== false, 'no double space');
 	pg_assert_same($label, trim($label), 'no edge space');
@@ -51,8 +51,23 @@ function test_email_campaign_schedule_turkish_values()
 {
 	$map = pg_test_language_map();
 
-	pg_assert_same('Zamanlama: {var:3} {var:1} {var:2}', $map['Schedule: {var:1} {var:2} {var:3}'] ?? null);
-	pg_assert_same('Zamanlama: {var:3} {var:1} {var:2}, saat {var:4}', $map['Schedule: {var:1} {var:2} {var:3}, at {var:4}'] ?? null);
+	pg_assert_same('{var:3} {var:1} {var:2}', $map['{var:1} {var:2} {var:3}'] ?? null);
+	pg_assert_same('{var:3} {var:1} {var:2}, saat {var:4}', $map['{var:1} {var:2} {var:3}, at {var:4}'] ?? null);
+}
+
+// The Schedule column's heading names it, so a cell carries no prefix; the
+// profile screens' descriptions and the duplicate notice read as Turkish.
+function test_email_campaign_profile_cell_and_notice_wording()
+{
+	$map = pg_test_language_map();
+
+	pg_assert_same(0, strpos(pg_email_campaign_profile_schedule_label(3, 'hours', 'after', 'action', '21:30'), '3 '), 'the schedule cell starts with the amount');
+	pg_assert_same('Kampanya profili çoğaltıldı ve şimdi kopyayı düzenliyorsunuz.', $map['The campaign profile has been duplicated, and you are now editing the duplicate.'] ?? null, 'duplicate notice');
+	pg_assert_contains("lang('The campaign profile has been duplicated, and you are now editing the duplicate.')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/duplicate_email_campaign_profile.php'), 'duplicate screen uses the notice');
+
+	foreach (array('Modify the Campaign that is created automatically when a certain action is completed (e.g. Visitor reserves Calendar Event).', 'Setup a Campaign to be created automatically when a certain action is completed (e.g. Visitor reserves Calendar Event).') as $key) {
+		pg_assert_contains('(ör. bir ziyaretçi bir takvim etkinliği rezerve ettiğinde)', $map[$key] ?? '', $key);
+	}
 }
 
 function test_email_campaign_wording_opt_in_values()

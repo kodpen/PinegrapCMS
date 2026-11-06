@@ -216,6 +216,28 @@ function erp_invoice_recurrence_create($invoice_id, $options, $user_id)
         return $fail(lang('Repeating invoices come with the software update; run the update to use them.'));
     }
 
+    if (!erp_start_lock('invoice_recurrence', (int) $invoice_id)) {
+        return $fail(lang('This invoice already repeats. Stop it first to start it again differently.'));
+    }
+
+    $made = erp_invoice_recurrence_create_locked((int) $invoice_id, $options, $user_id, $fail);
+    erp_start_unlock('invoice_recurrence', (int) $invoice_id);
+
+    return $made;
+}
+
+/**
+ * erp_invoice_recurrence_create() under its lock (erp_start_lock()), so
+ * a form sent twice cannot start two active repeats of one invoice.
+ *
+ * @param int      $invoice_id
+ * @param array    $options
+ * @param int      $user_id
+ * @param callable $fail
+ * @return array
+ */
+function erp_invoice_recurrence_create_locked($invoice_id, $options, $user_id, $fail)
+{
     $invoice = db_item("SELECT * FROM erp_invoices WHERE id = '" . (int) $invoice_id . "' LIMIT 1");
 
     if (!is_array($invoice)) {
@@ -236,7 +258,7 @@ function erp_invoice_recurrence_create($invoice_id, $options, $user_id)
     }
 
     $first = (string) ($options['first_date'] ?? '');
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $first)) {
+    if (!erp_recurring_date_ok($first)) {
         return $fail(lang('Please enter a valid date.'), 'recur_first');
     }
 
@@ -249,7 +271,7 @@ function erp_invoice_recurrence_create($invoice_id, $options, $user_id)
     }
 
     $end = (string) ($options['end_date'] ?? '');
-    if (($end !== '') && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end) || ($end < $first))) {
+    if (($end !== '') && (!erp_recurring_date_ok($end) || ($end < $first))) {
         return $fail(lang('The end date must come after the first date.'), 'recur_end');
     }
 
@@ -403,9 +425,17 @@ function erp_invoice_recurring_run($today = null, $limit = 50)
                     // Given back its date, so the next run tries again once
                     // whatever stood in the way (an account, a rate) is put right.
                     $result['errors'][] = '#' . (int) $recurrence['id'] . ' ' . $date . ': ' . $saved['error'];
+                    // Only while the date is still the one this run moved
+                    // it to: a run beside it that has written that later
+                    // date since would otherwise be wound back under it and
+                    // the later invoice written twice.
                     db("UPDATE erp_invoice_recurrences SET next_date = '" . escape($date) . "', last_error = '" . escape(mb_substr((string) $saved['error'], 0, 255)) . "'"
                         . ($ended ? ", status = 'active', stopped_at = 0" : '') . "
-                        WHERE id = '" . (int) $recurrence['id'] . "'");
+                        WHERE id = '" . (int) $recurrence['id'] . "' AND next_date = '" . escape($following) . "'");
+
+                    if (mysqli_affected_rows(db::$con) !== 1) {
+                        db("UPDATE erp_invoice_recurrences SET last_error = '" . escape(mb_substr((string) $saved['error'], 0, 255)) . "' WHERE id = '" . (int) $recurrence['id'] . "'");
+                    }
                     break;
                 }
             }

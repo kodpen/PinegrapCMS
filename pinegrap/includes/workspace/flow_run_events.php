@@ -24,9 +24,10 @@
  * sentence and its values - and even then as a reader who may not change
  * the flow reads them (ws_step_result_shown()); a run of a private channel,
  * a guest room or of no channel carries its ids and states alone, as a
- * private channel's task note does. The events are webhooks only: the
- * workspace does not record them (pg_event_workspace_events()), so no flow
- * starts or wakes on another's run.
+ * private channel's task note does. pg_announce() does not record them for
+ * the workspace (pg_event_workspace_events()); a failed run alone is kept
+ * beside its webhook through ws_event() (ws_flow_run_keep_failed()), so
+ * another flow may start on it, never the flow that failed.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -281,9 +282,64 @@ function ws_flow_run_event_body($run_fields, $context, $words, $about)
     ) + $about;
 }
 
+/**
+ * What a failed run gives the flows that start on it (ws_event()): the run,
+ * its flow, its channel, and the box that failed first with its sentence as
+ * a reader without edit reads it (ws_flow_run_event_box() with words). Kept
+ * inside the site: the starting flow reads it only when its owner reads the
+ * run (ws_events_creator_sees()). Pure.
+ *
+ * @param array      $run_fields ws_flow_run_event_run()
+ * @param array      $context    ws_flow_run_context()
+ * @param array|null $box        ws_flow_run_event_box(), null when no box failed
+ * @return array
+ */
+function ws_flow_run_failed_payload($run_fields, $context, $box)
+{
+    $box = is_array($box) ? $box : array();
+
+    return array(
+        'id'         => (int) $run_fields['id'],
+        'run_id'     => (int) $run_fields['id'],
+        'flow_id'    => (int) $run_fields['flow_id'],
+        'flow_name'  => (string) ($context['flow_name'] ?? ''),
+        'channel_id' => (int) ($run_fields['channel_id'] ?? 0),
+        'node_id'    => (string) ($box['node_id'] ?? ''),
+        'box'        => (string) ($box['name'] ?? ''),
+        'sentence'   => (string) ($box['result'] ?? ''),
+    );
+}
+
 /* ---------------------------------------------------------------------------
    Announcing
    --------------------------------------------------------------------------- */
+
+/**
+ * Keeps a failed run for the flows that start on it, at the failed run's
+ * own chain depth: a flow it starts stands one step further down, so a ring
+ * of flows starting on one another's failures stops at the chain's limit
+ * (ws_events_start()). Nothing is kept while no flow waits for it
+ * (ws_event()).
+ *
+ * @param array      $read ws_flow_run_event_read()
+ * @param array|null $step the box that failed first, ws_flow_run_steps row
+ * @return bool whether it was kept
+ */
+function ws_flow_run_keep_failed($read, $step)
+{
+    if (!function_exists('ws_event') || !function_exists('ws_event_depth')) {
+        return false;
+    }
+
+    $run = $read['run'];
+    $box = $step ? ws_flow_run_event_box($step, $read['graph'], true) : null;
+    $outer = ws_event_depth();
+    ws_event_depth((int) ($run['depth'] ?? 0));
+    $kept = ws_event('workspace.flow.run.failed', ws_flow_run_failed_payload($read['fields'], $read['context'], $box));
+    ws_event_depth($outer - 1);
+
+    return $kept;
+}
 
 /**
  * The run as its event needs it, read again: the row as the write that
@@ -342,6 +398,7 @@ function ws_flow_run_announce_end($run_id, $state)
     // announced (ws_flow_run_end_event() says which state is which).
     if ($event === 'workspace.flow.run.failed') {
         pg_announce('workspace.flow.run.failed', ws_flow_run_event_body($read['fields'], $read['context'], $read['words'], $about));
+        ws_flow_run_keep_failed($read, $step);
     } else {
         pg_announce('workspace.flow.run.finished', ws_flow_run_event_body($read['fields'], $read['context'], $read['words'], $about));
     }

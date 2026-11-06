@@ -211,6 +211,22 @@ function pg_commission_list_search_columns()
 }
 
 /**
+ * The join of the affiliate behind a code: one contact per code, the oldest,
+ * as the API finds it (api_commission_affiliates()). Contacts imported before
+ * the importer refused a taken code can share one, and a plain join on the
+ * code gave a row per contact, so a commission was listed twice.
+ *
+ * @param string $code_column the joined table's affiliate code column
+ * @return string
+ */
+function pg_commission_affiliate_join($code_column)
+{
+    return 'LEFT JOIN (SELECT affiliate_code, MIN(id) AS id FROM contacts WHERE affiliate_code <> \'\' GROUP BY affiliate_code) AS affiliate_contact
+            ON affiliate_contact.affiliate_code = ' . $code_column . '
+        LEFT JOIN contacts ON contacts.id = affiliate_contact.id';
+}
+
+/**
  * The joins of the commissions list; each finds one row at most.
  *
  * @return string
@@ -218,7 +234,7 @@ function pg_commission_list_search_columns()
 function pg_commission_list_from()
 {
     return 'commissions
-        LEFT JOIN contacts ON commissions.affiliate_code = contacts.affiliate_code
+        ' . pg_commission_affiliate_join('commissions.affiliate_code') . '
         LEFT JOIN orders ON commissions.order_id = orders.id
         LEFT JOIN recurring_commission_profiles ON commissions.recurring_commission_profile_id = recurring_commission_profiles.id
         LEFT JOIN user AS created_user ON commissions.created_user_id = created_user.user_id
@@ -546,11 +562,7 @@ function pg_commission_profile_list_source($user, $params)
     return pg_list_table_source(array(
         'list' => 'view_recurring_commission_profiles',
         'columns' => pg_commission_profile_list_columns(),
-        'from' => 'recurring_commission_profiles
-            LEFT JOIN contacts ON recurring_commission_profiles.affiliate_code = contacts.affiliate_code
-            LEFT JOIN orders ON recurring_commission_profiles.order_id = orders.id
-            LEFT JOIN user AS created_user ON recurring_commission_profiles.created_user_id = created_user.user_id
-            LEFT JOIN user AS last_modified_user ON recurring_commission_profiles.last_modified_user_id = last_modified_user.user_id',
+        'from' => pg_commission_profile_list_from(),
         'id' => 'recurring_commission_profiles.id',
         'id_order' => 'desc',
         'select' => 'recurring_commission_profiles.id, recurring_commission_profiles.affiliate_code, recurring_commission_profiles.enabled,
@@ -566,6 +578,43 @@ function pg_commission_profile_list_source($user, $params)
             return array_map('pg_commission_profile_list_row', $records);
         },
     ));
+}
+
+/**
+ * The joins of the recurring commission profiles list; each finds one row
+ * at most.
+ *
+ * @return string
+ */
+function pg_commission_profile_list_from()
+{
+    return 'recurring_commission_profiles
+        ' . pg_commission_affiliate_join('recurring_commission_profiles.affiliate_code') . '
+        LEFT JOIN orders ON recurring_commission_profiles.order_id = orders.id
+        LEFT JOIN user AS created_user ON recurring_commission_profiles.created_user_id = created_user.user_id
+        LEFT JOIN user AS last_modified_user ON recurring_commission_profiles.last_modified_user_id = last_modified_user.user_id';
+}
+
+/**
+ * The rows of the commissions screen's status totals (status, total) as one minor-unit total per
+ * status; a status without commissions is 0. Pure.
+ *
+ * @param array $rows status, total
+ * @return array status => int
+ */
+function pg_commission_list_totals(array $rows)
+{
+    $totals = array_fill_keys(array_keys(pg_commission_list_statuses()), 0);
+
+    foreach ($rows as $row) {
+        $status = (string) ($row['status'] ?? '');
+
+        if (array_key_exists($status, $totals)) {
+            $totals[$status] = (int) round((float) $row['total']);
+        }
+    }
+
+    return $totals;
 }
 
 /**

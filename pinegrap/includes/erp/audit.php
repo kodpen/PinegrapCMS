@@ -196,6 +196,9 @@ function erp_audit_event($event, $payload)
         $amount = (int) ($payload['amount'] ?? 0);
     } elseif (($type === 'account') || ($type === 'stock_count')) {
         $label = (string) ($payload['title'] ?? '');
+    } elseif ($type === 'edoc') {
+        $label = trim((string) ($payload['supplier_title'] ?? '') . ' · ' . (string) ($payload['gib_number'] ?? ''), ' ·');
+        $amount = (int) ($payload['total'] ?? 0);
     } elseif ($type === 'quote_template') {
         $label = (string) ($payload['name'] ?? '');
     } elseif ($type === 'expense') {
@@ -307,6 +310,8 @@ function erp_audit_event_text($row)
         'erp.invoice.cancelled' => lang('Invoice cancelled'),
         'erp.invoice.edoc_changed' => lang('E-document status changed'),
         'erp.invoice.note_changed' => lang('Invoice note changed'),
+        'erp.invoice.overdue' => lang('Invoice overdue'),
+        'erp.edoc.received' => lang('E-document received'),
         'erp.account.created' => lang('Account opened'),
         'erp.waybill.created' => lang('Delivery note issued'),
         'erp.waybill.cancelled' => lang('Delivery note cancelled'),

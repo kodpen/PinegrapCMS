@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'actions', 'menu');
 }
 
 /**
@@ -113,6 +113,7 @@ function pg_image_editor_strings_core()
         'tool_vector'    => lang('Vector'),
         'tool_scissors'  => lang('Scissors'),
         'tool_warp'      => lang('Warp'),
+        'tool_puppet'    => lang('Free deformation'),
         'tool_builder'   => lang('Shape builder'),
         'tool_area'      => lang('Select area'),
         'tool_artboard'  => lang('Canvas'),
@@ -1362,7 +1363,7 @@ function pg_image_editor_strings_draw()
 {
     return array(
         'hintDraw'       => lang('Drag to draw. Shift: straight angles and squares.'),
-        'hintEraser'     => lang('Drag over pen strokes to erase them.'),
+        'hintEraser'     => lang('Drag over pen strokes, shapes and paths to erase them. Locked layers stay.'),
         'drawKinds'      => lang('Shapes'),
         'layer_arrow'    => lang('Arrow'),
         'layer_line'     => lang('Line'),
@@ -1375,7 +1376,7 @@ function pg_image_editor_strings_draw()
         'layer_pen'      => lang('Pen'),
         'eraser'         => lang('Eraser'),
         'eraserSize'     => lang('Eraser size'),
-        'eraserNote'     => lang('The eraser cuts pen strokes. Delete a shape with Select or the Delete key.'),
+        'eraserNote'     => lang('The eraser takes away what it passes over from pen strokes, shapes and paths. Locked layers stay as they are.'),
         'drawColor'      => lang('Color'),
         'strokeWidth'    => lang('Line width'),
         'strokeThin'     => lang('Thin'),
@@ -4548,6 +4549,28 @@ function pg_image_editor_strings_warp()
         'warpReset'      => lang('Reset mesh'),
         'warpExpand'     => lang('Expand'),
         'warpExpandNote' => lang('Expand turns the warp into the path for good.'),
+    );
+}
+
+// -- Free deformation (pg_image_editor_puppet.js) --
+
+/**
+ * The free deformation's labels.
+ *
+ * @return array
+ */
+function pg_image_editor_strings_puppet()
+{
+    return array(
+        'hintPuppet'       => lang('Click the shape to pin it, then drag a pin to bend it. Alt and a click remove a pin.'),
+        'puppetNote'       => lang('Select one path, shape or outlined text to pin it.'),
+        'puppetTextNote'   => lang('A text takes pins once its letters are outlines.'),
+        'puppetHowTo'      => lang('Click the shape to add a pin. Drag a pin to bend the shape around the others.'),
+        'puppetCount'      => lang('Pins: {n}'),
+        'puppetPin'        => lang('Deformation pin'),
+        'puppetRemove'     => lang('Remove pin'),
+        'puppetClear'      => lang('Remove all pins'),
+        'puppetExpandNote' => lang('Expand turns the bent shape into the path for good.'),
     );
 }
 

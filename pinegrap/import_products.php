@@ -776,7 +776,7 @@ if (!$_POST) {
                     // If an enabled column exists and the product is disabled, then delete tag cloud keywords.
                     if (
                         ($enabled_column_exists == true)
-                        && ($enabled == 0)
+                        && pg_products_import_disables($enabled)
                     ) {
                         db("DELETE FROM tag_cloud_keywords WHERE (item_id = '" . escape($product_id) . "') AND (item_type = 'product')");
                     }
