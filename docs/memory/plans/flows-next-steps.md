@@ -31,7 +31,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 ## C: flows reaching the rest of the site
 - C1 (free, S, done #7261): events the site sends as webhooks (`api_webhook_events()`) but flows cannot start on: product.review.created, order.return.approved/received/refunded, cart_quote.created/ordered, marketplace.order.imported, subscription.failed/renewed/cancelled, form.paid, inventory.changed. Their lines in `ws_events_catalog()` with record, right, filter and outputs. watch.php.
 
-- C2 (done, PR #C2PR): people and content: user.created, customer.consent_changed, mail.bounced, campaign.sent, page.created/updated, calendar_event.reserved, credit.issued/expired. watch.php.
+- C2 (done, PR #7416): people and content: user.created, customer.consent_changed, mail.bounced, campaign.sent, page.created/updated, calendar_event.reserved, credit.issued/expired. watch.php.
 
 - C3 (free, M): ERP events not sent today: an invoice issued, paid and overdue, a payment received, an e-document received or answered, a sales quote accepted or rejected; `ws_event()` where the ERP writes them (`docs/memory/erp/`), then their catalogue lines.
 
