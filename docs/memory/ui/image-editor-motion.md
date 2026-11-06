@@ -31,11 +31,11 @@ module: image_editor
 - On a phone held upright (`max-width: 599.98px`) it comes first in the sheet instead.
 - Rebuilt only when what it shows changes (`stageBarKey`): a zoom or a scrub keeps it.
 - Each frame calls only `applyMotion()` and `updateBar()`.
-- In the Animate tool K plays or pauses (the button's label says so). Space pans; Escape pauses first; M picks the tool (`KEY_TOOLS`). The access part loads after this one, so an open `?` sheet takes K.
+- Timeline keys (K, arrows, Home, End): `image-editor-animation.md`. Escape pauses first; M picks the tool (`KEY_TOOLS`); an open `?` sheet takes the keys.
 
 ## What does the panel offer with nothing to move?
 - With nothing selected, the layers to pick (`layerList()`); with no layer that may move, Add text and Add a sticker (`motionEmpty()`, #5062). The whole animation's fields follow.
 
 ## What is left out, and what never moves?
 - Redaction layers never move: one moving away in an export would show what it hides.
-- Tracks `image-editor-tracks.md`, keyframes `image-editor-keyframes.md`, frames `image-editor-render.md`. Not here yet: timeline keys other than K (AN11).
+- Tracks `image-editor-tracks.md`, keyframes `image-editor-keyframes.md`, frames `image-editor-render.md`. Names and the 5-second note: `image-editor-animation.md`.
