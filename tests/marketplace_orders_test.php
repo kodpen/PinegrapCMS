@@ -208,3 +208,18 @@ function test_marketplace_orders_case_blind_match_needs_a_single_mapping()
 	pg_assert_true(($exact !== false) && ($blind !== false) && ($exact < $blind), 'the exact code is tried first');
 	pg_assert_true(($barcode !== false) && ($blind < $barcode), 'the mappings before the catalogue');
 }
+
+// A marketplace cancellation puts the stock back only when this call cancelled
+// the order. 'already' is a cancellation that landed between the status read
+// and the call: a webhook delivery and the job's pull applying the same
+// cancelled package (that pass gave the stock back), or the shop's own cancel
+// (which puts nothing back). Giving it back again counted the goods twice.
+function test_marketplace_orders_cancel_returns_stock_only_for_its_own_cancellation()
+{
+	pg_assert_true(mp_order_cancel_returns_stock('success'));
+	pg_assert_false(mp_order_cancel_returns_stock('already'));
+	pg_assert_false(mp_order_cancel_returns_stock('shipped'));
+	pg_assert_false(mp_order_cancel_returns_stock('error'));
+	pg_assert_false(mp_order_cancel_returns_stock('not_found'));
+	pg_assert_false(mp_order_cancel_returns_stock(''));
+}
