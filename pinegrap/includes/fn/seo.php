@@ -5694,6 +5694,39 @@ function pg_sitemap_page_types()
 }
 
 /**
+ * Whether the filters of a legacy form list view (form_list_view_filters
+ * rows) compare a field with the viewer: no fixed value and the dynamic value
+ * 'viewer' or 'viewers email address'. Such a list shows each visitor other
+ * records (with nobody signed in, every record sent while signed out), so the
+ * sitemap, kept for every visitor and drawn by whoever asks first, lists none
+ * of them. The designed lists' twin is pg_sw_filters_compare_viewer(). Pure.
+ *
+ * @param array $filters form_list_view_filters rows
+ * @return bool
+ */
+function pg_sitemap_legacy_filters_compare_viewer($filters)
+{
+    if (!is_array($filters)) {
+        return false;
+    }
+
+    foreach ($filters as $filter) {
+        if (!is_array($filter)) {
+            continue;
+        }
+
+        $value = isset($filter['value']) ? (string) $filter['value'] : '';
+        $dynamic = isset($filter['dynamic_value']) ? (string) $filter['dynamic_value'] : '';
+
+        if (($value === '') && (($dynamic === 'viewer') || ($dynamic === 'viewers email address'))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * The address sitemap.xml lists for an item under a legacy catalog page: a
  * browse product group under the catalog page, a select product group or a
  * product under its catalog detail page. An item with no address name has no
