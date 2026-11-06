@@ -89,7 +89,8 @@ function pg_bundle_items_normalize($items, $bundle_id = 0)
 /**
  * Why a product cannot go into a bundle, '' when it can.
  *
- * @param array $product products row: bundle, selection_type, gift_card, recurring
+ * @param array $product products row: bundle, selection_type, gift_card, recurring,
+ *                       grant_private_access
  * @return string the reason, in English for lang()
  */
 function pg_bundle_component_problem($product)
@@ -108,6 +109,12 @@ function pg_bundle_component_problem($product)
 
     if (!empty($product['recurring'])) {
         return 'A recurring product cannot be part of a bundle.';
+    }
+
+    // Completion reads only the bundle's own flags, so a component's folder
+    // access would be paid for and never granted.
+    if (!empty($product['grant_private_access'])) {
+        return 'A product that grants private access cannot be part of a bundle.';
     }
 
     return '';
@@ -233,7 +240,12 @@ function pg_bundle_items($bundle_id)
             products.price,
             products.inventory,
             products.inventory_quantity,
-            products.backorder
+            products.backorder,
+            products.bundle,
+            products.selection_type,
+            products.gift_card,
+            products.recurring,
+            products.grant_private_access
         FROM product_bundle_items
         INNER JOIN products ON products.id = product_bundle_items.product_id
         WHERE product_bundle_items.bundle_id = ?
@@ -279,7 +291,7 @@ function pg_bundle_items_problem($bundle_id, $items)
     }
 
     $found = db_items(
-        "SELECT id, bundle, selection_type, gift_card, recurring
+        "SELECT id, bundle, selection_type, gift_card, recurring, grant_private_access
         FROM products
         WHERE id IN (" . implode(',', $ids) . ")");
 

@@ -1939,6 +1939,236 @@ function pg_order_complete_line_folder_access(array $line, $user_id)
 }
 
 /**
+ * What taking back an order line's folder access does to the buyer's access
+ * row: a limited access (private_days > 0) loses days x quantity from its
+ * end and goes when that end is past; an access that never ends goes. A row
+ * with edit rights, or one that never ends after a limited purchase, was not
+ * written by the purchase (pg_order_folder_access_extends()) and stays. The
+ * row carries no order, so a grant staff added on the same folder goes with
+ * it. Pure.
+ *
+ * @param string $rights          aclfolder_rights, '' for no row
+ * @param string $expiration_date the row's expiration date, '' for no row
+ * @param int    $private_days    the product's days, 0 for access that never ends
+ * @param int    $quantity        the units taken back
+ * @param string $today           Y-m-d
+ * @return array action ('keep', 'delete' or 'update'), expiration_date (for update)
+ */
+function pg_order_folder_access_revoked($rights, $expiration_date, $private_days, $quantity, $today)
+{
+    $keep = array('action' => 'keep', 'expiration_date' => '');
+
+    if (((string) $rights !== '1') || ((int) $quantity <= 0)) {
+        return $keep;
+    }
+
+    if ((int) $private_days <= 0) {
+        return array('action' => 'delete', 'expiration_date' => '');
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $expiration_date) || ($expiration_date === '0000-00-00')) {
+        return $keep;
+    }
+
+    // Calendar days, as pg_order_extended_until() added them.
+    $end = date('Y-m-d', strtotime('-' . ((int) $private_days * (int) $quantity) . ' day', strtotime($expiration_date)));
+
+    if ($end < (string) $today) {
+        return array('action' => 'delete', 'expiration_date' => '');
+    }
+
+    return array('action' => 'update', 'expiration_date' => $end);
+}
+
+/**
+ * An order's lines that grant private access, with the units each still
+ * holds: the line's quantity less what refunded returns gave back. Lines
+ * saved for later are left out.
+ *
+ * @param int $order_id
+ * @return array rows: order_item_id, quantity (still held), grant_private_access,
+ *               private_folder, private_days, send_to_page
+ */
+function pg_order_folder_access_lines($order_id)
+{
+    $order_id = (int) $order_id;
+
+    $lines = db_items(
+        "SELECT
+            order_items.id AS order_item_id,
+            order_items.quantity,
+            products.grant_private_access,
+            products.private_folder,
+            products.private_days,
+            products.send_to_page
+        FROM order_items
+        INNER JOIN products ON products.id = order_items.product_id
+        WHERE
+            (order_items.order_id = '$order_id')
+            AND (products.grant_private_access = '1')" . pg_order_item_active_sql() . "
+        ORDER BY order_items.id ASC");
+
+    $returned = pg_credit_points_order_refunded($order_id)['returned'];
+
+    return pg_order_folder_access_held(is_array($lines) ? $lines : array(), $returned);
+}
+
+/**
+ * The lines with their quantity less the units returned and refunded, never
+ * below 0. Pure.
+ *
+ * @param array $lines    rows with order_item_id and quantity
+ * @param array $returned order item id => quantity refunded
+ * @return array the rows, quantity replaced
+ */
+function pg_order_folder_access_held(array $lines, array $returned)
+{
+    foreach ($lines as $index => $line) {
+        $id = (int) $line['order_item_id'];
+        $lines[$index]['quantity'] = max(0, (int) $line['quantity'] - (int) ($returned[$id] ?? 0));
+    }
+
+    return $lines;
+}
+
+/**
+ * Takes back the folder access of an order's lines from its customer
+ * (pg_order_folder_access_revoked()), for the units given.
+ *
+ * @param array $lines   rows: quantity (the units taken back),
+ *                       grant_private_access, private_folder, private_days
+ * @param int   $user_id
+ * @return int the access rows changed or removed
+ */
+function pg_order_folder_access_take_back(array $lines, $user_id)
+{
+    $user_id = (int) $user_id;
+    $changed = 0;
+
+    if ($user_id <= 0) {
+        return 0;
+    }
+
+    foreach ($lines as $line) {
+        $folder = (int) $line['private_folder'];
+
+        if (empty($line['grant_private_access']) || ($folder <= 0)) {
+            continue;
+        }
+
+        $row = db_item(
+            "SELECT aclfolder_rights AS rights, expiration_date
+            FROM aclfolder
+            WHERE (aclfolder_user = '$user_id') AND (aclfolder_folder = '$folder')");
+
+        $plan = pg_order_folder_access_revoked($row['rights'] ?? '', $row['expiration_date'] ?? '', $line['private_days'], $line['quantity'], date('Y-m-d'));
+
+        if ($plan['action'] === 'delete') {
+            db("DELETE FROM aclfolder WHERE (aclfolder_user = '$user_id') AND (aclfolder_folder = '$folder')");
+            $changed++;
+        } elseif ($plan['action'] === 'update') {
+            db("UPDATE aclfolder SET expiration_date = '" . e($plan['expiration_date']) . "'
+                WHERE (aclfolder_user = '$user_id') AND (aclfolder_folder = '$folder')");
+            $changed++;
+        }
+    }
+
+    return $changed;
+}
+
+/**
+ * A cancelled order's folder access goes: each line's units its refunded
+ * returns did not take back already.
+ *
+ * @param array $order id, user_id, order_number
+ * @return int the access rows changed or removed
+ */
+function pg_order_folder_access_cancelled(array $order)
+{
+    $changed = pg_order_folder_access_take_back(pg_order_folder_access_lines($order['id']), $order['user_id'] ?? 0);
+
+    if ($changed > 0) {
+        log_activity(pg_log_lang(array(
+            'string' => 'Private folder access granted by order #{var:1} taken back.',
+            'vars'   => array(pg_order_log_number($order)))));
+    }
+
+    return $changed;
+}
+
+/**
+ * A restored order grants its folder access again, through the completion
+ * step, for the units its refunded returns did not take back. The user's
+ * home page is left as it is.
+ *
+ * @param array $order id, user_id, order_number
+ * @return int the lines granted again
+ */
+function pg_order_folder_access_restored(array $order)
+{
+    $user_id = (int) ($order['user_id'] ?? 0);
+    $granted = 0;
+
+    if ($user_id <= 0) {
+        return 0;
+    }
+
+    foreach (pg_order_folder_access_lines($order['id']) as $line) {
+        if (((int) $line['quantity'] <= 0) || ((int) $line['private_folder'] <= 0)) {
+            continue;
+        }
+
+        pg_order_complete_line_folder_access(array('send_to_page' => 0) + $line, $user_id);
+        $granted++;
+    }
+
+    if ($granted > 0) {
+        log_activity(pg_log_lang(array(
+            'string' => 'Private folder access granted by order #{var:1} given again.',
+            'vars'   => array(pg_order_log_number($order)))));
+    }
+
+    return $granted;
+}
+
+/**
+ * A refunded return takes back the folder access of its lines. A cancelled
+ * order's access went with the cancellation.
+ *
+ * @param int   $order_id
+ * @param array $quantities order item id => quantity refunded
+ * @return int the access rows changed or removed
+ */
+function pg_order_folder_access_lines_refunded($order_id, array $quantities)
+{
+    $order = db_item("SELECT id, user_id, status, order_number FROM orders WHERE id = '" . (int) $order_id . "'");
+
+    if (!is_array($order) || ((int) $order['user_id'] <= 0) || in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
+        return 0;
+    }
+
+    $lines = array();
+
+    foreach (pg_order_folder_access_lines($order['id']) as $line) {
+        $units = (int) ($quantities[(int) $line['order_item_id']] ?? 0);
+
+        if ($units > 0) {
+            $lines[] = array('quantity' => $units) + $line;
+        }
+    }
+
+    $changed = pg_order_folder_access_take_back($lines, $order['user_id']);
+
+    if ($changed > 0) {
+        log_activity(pg_log_lang(array(
+            'string' => 'Private folder access granted by order #{var:1} taken back for the refunded return.',
+            'vars'   => array(pg_order_log_number($order)))));
+    }
+
+    return $changed;
+}
+
+/**
  * How many gift cards an order line issues: one per unit, at most 100 (each
  * unit has its own recipient form, and a larger quantity would mean as many
  * forms). Pure.

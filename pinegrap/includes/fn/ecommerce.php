@@ -11457,6 +11457,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // order cancelled with the credit kept. Once, like the steps above.
     pg_credit_points_order_cancelled($order);
 
+    // ── Take back the folder access the order's lines granted ──────────
+    // Once, like the steps above; a restore grants it again.
+    pg_order_folder_access_cancelled($order);
+
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
     // order's payment has a driver that can cancel (pg_payment_cancel_driver():
@@ -11809,7 +11813,7 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
     // order number and the time of the cancellation.
     $has_cancel_columns = pg_schema_has('orders', 'cancelled_at');
     $cancelled_order = db_item(
-        "SELECT id, order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
+        "SELECT id, user_id, order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
          FROM orders
          WHERE id = '" . $order_id . "' AND status = 'cancelled'
          LIMIT 1");
@@ -11843,6 +11847,9 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
 
     // Its reviews count again.
     pg_review_refresh_order($order_id);
+
+    // The folder access the cancellation took back.
+    pg_order_folder_access_restored($cancelled_order);
 
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 
