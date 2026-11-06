@@ -13,7 +13,7 @@ description: Design of plans/design-template-school.md: which shipped features t
 - Not built (new behaviour): fee payment, a parent portal with grades, attendance or timetables, a class messaging app, a calendar feed.
 
 ## Look and names
-- Prefix `psc-` for classes (`psc-brand`, `psc-display`, `psc-eyebrow`, `psc-hero`, `psc-lift`, `psc-stat`), `sc-` for field ids. Two fonts: Nunito headings, Inter body. Look `playful`, palette `sunset`, order 93 (79 gym, 81 charity, 83 travel, 85 photo, 87 wedding, 89 construction, 90 forum, 91 music), icon `bi-backpack`. No `opacity-*` on text ([[design-template-text-contrast]]). No fixed date or year in the sample; children are never named or pictured by face in the sample.
+- Prefix `psh-` for classes (`psh-brand`, `psh-display`, `psh-eyebrow`, `psh-hero`, `psh-lift`, `psh-stat`; `psc-` is Social's), `sh-` for field ids. Two fonts: Nunito headings, Inter body. Look `playful`, palette `sunset`, order 93 (79 gym, 81 charity, 83 travel, 85 photo, 87 wedding, 89 construction, 90 forum, 91 music), icon `bi-backpack`. No `opacity-*` on text ([[design-template-text-contrast]]). No fixed date or year in the sample; children are never named or pictured by face in the sample.
 - Turkish: "program" for a programme, "sınıf" for a class, "ön kayıt başvurusu" for an admission application, "okul ziyareti" for a visit, "etkinlik" for an event, "öğretmen" / "kadro" for staff, "veli" for a parent, "Haberler" for News; check every shared key in tr.json before reuse.
 
 Related: docs/memory/plans/design-template-school.md

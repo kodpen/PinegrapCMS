@@ -11,7 +11,7 @@ description: Plan: the Private School / Kindergarten design template (pinegrap-s
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-school-design]].
 
 ## Steps (claim as `[plan:design-template-school] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the school's data: programmes with age ranges, classes, daily routine, approach pillars, facilities, staff, figures, accreditations, parents' words, event samples, pick lists; shared parts: account bar, notice, header, footer, admissions band, staff bar; programme, staff, event and testimonial cards, form fields, comment thread, blog parts); `tests/design_template_school_test.php`.
+- 1 (done, #7582): `parts.php` (node builders, the school's data: programmes with age ranges, classes, daily routine, approach pillars, facilities, staff, figures, accreditations, parents' words, event samples, pick lists; shared parts: account bar, notice, header, footer, admissions band, staff bar; programme, staff, event and testimonial cards, form fields, comment thread, blog parts); `tests/design_template_school_test.php`.
 
 - 2: `pages_public.php`: home (`home_events`, `home_posts`), `programmes` and one `programme_<key>` per programme, `day`, `approach`, `campus`, `staff_team`, `about`, `fees`, `faq`; `tests/design_template_school_public_test.php`.
 
@@ -23,10 +23,10 @@ description: Plan: the Private School / Kindergarten design template (pinegrap-s
 
 - 6: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
-- 7: assembly: `pinegrap-school.php` (order, search sections, look, fonts, `psc-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-school.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
+- 7: assembly: `pinegrap-school.php` (order, search sections, look, fonts, `psh-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-school.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Model files: `pinegrap-construction/`, `pinegrap-gym/`, `pinegrap-travel/`. The application reads `?programme=` (programme pages) in `$application_programme_choices`; the event list filters `?programme=` in `$programme_titles`. Later tests share `_test_sc_page_keys()` from `tests/design_template_school_test.php`.
+- The next free step is the lowest one not marked done. Model files: `pinegrap-construction/`, `pinegrap-gym/`, `pinegrap-travel/`. The application reads `?programme=` (programme pages) in `$application_programme_choices`; the event list filters `?programme=` in `$programme_titles`. Later tests share `_test_sh_page_keys()` from `tests/design_template_school_test.php`.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
