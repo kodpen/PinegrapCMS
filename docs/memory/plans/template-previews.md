@@ -21,5 +21,5 @@ description: Plan (owner 2026-11-05): template and design pictures drawn live fr
 - No schema change, no new setting.
 
 ## Where does it start?
-- TP1 is done (#7258). TP2 and TP3 run side by side after it (different files); TP4 after TP3; TP5 closes.
+- TP1 is done (#7258), TP2 (#7409). TP2 and TP3 run side by side after it (different files); TP4 after TP3; TP5 closes.
 - Read first: `designer/designer-home-screen.md`, `platform/design-template-install-at-setup.md`, `platform/background-render.md`.

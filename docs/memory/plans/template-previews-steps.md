@@ -14,7 +14,7 @@ description: Steps TP1-TP3 of plans/template-previews.md: the live picture and t
   - `assets/js/pg_live_picture.js`, bundle `pg_live_picture.min.js` (`window.PGLivePicture`): loads on view (IntersectionObserver), scales the 1280×800 frame to the box (ResizeObserver), `sandbox=""`, `tabindex="-1"`, `aria-hidden`, a quiet wait state, the fallback after 12 s, `set(el, src)` to swap.
   - `.pg-live-picture` in `backend.src.css` (16:10, both themes). Tests `tests/design_previews_test.php`; memory `designer/design-live-pictures.md`.
 
-- TP2 (M) The installer's design step and width. After TP1.
+- TP2 (M) The installer's design step and width. done (#7409).
   - `install/index.php`: one lead line with the three shared points; the chosen template's block (its home page in `.pg-design-frame`, a click on it or on "Tüm sayfaları yeni sekmede gör" opens the tour; name, pages, description, highlights in a `<details>`, look, palette, desktop or phone); a grid of tiles with live pictures (the radios and data attributes as now, Önerilen on the first, the chosen one checked); Standard installation as a slim row at the end. The page and e-mail rows go.
   - Picking a template sets the look and palette to its own (`pg_design_template_theme()`), both still changeable.
   - `install_action=design_tour` beside `design_preview`, printing `pg_design_tour_html()`; "Bu şablonla devam et" closes the tab (opened with `window.open`), else says it can be closed.

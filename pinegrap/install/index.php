@@ -481,6 +481,57 @@ if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'design_pre
 
 }
 
+// The tour of a design template opened from the design step in a new tab: every page and e-mail
+// of the template with a bar to walk them (pg_design_tour_html()); its continue button closes the
+// tab, or says it can be closed.
+if ((isset($_GET['install_action'])) && ($_GET['install_action'] === 'design_tour')) {
+
+	if (!defined('ECOMMERCE')) {
+
+		define('ECOMMERCE', true);
+
+	}
+
+	$design_tour_options = array(
+		'where' => 'install',
+		'template' => (isset($_GET['template'])) ? (string) $_GET['template'] : '',
+		'page' => (isset($_GET['page'])) ? (string) $_GET['page'] : '',
+		'local' => SOFTWARE_LANGUAGE
+	);
+
+	// a look or a palette the address leaves out is the template's own
+	foreach (array('look', 'palette') as $design_tour_key) {
+
+		if ((isset($_GET[$design_tour_key])) && (is_string($_GET[$design_tour_key]))) {
+
+			$design_tour_options[$design_tour_key] = $_GET[$design_tour_key];
+
+		}
+
+	}
+
+	$design_tour_html = pg_design_tour_html($design_tour_options);
+
+	header('Content-Type: text/html; charset=utf-8');
+
+	header('Cache-Control: no-store');
+
+	header('X-Robots-Tag: noindex');
+
+	if ($design_tour_html === '') {
+
+		http_response_code(404);
+
+		exit();
+
+	}
+
+	print $design_tour_html;
+
+	exit();
+
+}
+
 // If a config file path is not set, then set it to the default which is a path
 // inside the software directory. A custom config file path is used when
 // an adminstrator wants the config file to be located in a different area.
@@ -2740,81 +2791,60 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	// the first template is the one recommended
 	$design_template_number = 0;
 
+	// The language the tiles' pictures are drawn in until the screen knows the starter site's.
+	$install_design_local = (defined('SOFTWARE_LANGUAGE')) ? SOFTWARE_LANGUAGE : 'en';
+
 	foreach ($install_design_templates as $design_template) {
 
 		$design_template_number++;
 
 		$design_template_summary = pg_design_template_summary($design_template);
 
-		// the points the card lists: what every template gives, then the template's own
-		$design_template_points = array(
-			lang('Every page is changed on the page itself: drag blocks, write on the canvas, publish.'),
-			lang('The look and the colours change with a click, now or later.'),
-			lang('Fits every screen: phone, tablet and desktop.'));
+		// The tile shows the template's home page in the look and the palette its file names;
+		// the large preview above the grid follows the pickers.
+		$design_template_look = (string) $design_template_summary['look'];
 
-		foreach ($design_template_summary['highlights'] as $design_template_highlight) {
+		$design_template_palette = (string) $design_template_summary['palette'];
 
-			$design_template_points[] = $design_template_highlight;
+		$design_template_home = (string) key(pg_design_template_preview_pages($design_template));
 
-		}
+		$design_template_picture = pg_design_preview_address('install', array(
+			'template' => $design_template['id'],
+			'look' => $design_template_look,
+			'palette' => $design_template_palette,
+			'local' => $install_design_local,
+			'page' => $design_template_home
+		));
 
-		$output_design_points = '';
-
-		foreach ($design_template_points as $design_template_point) {
-
-			$output_design_points .= '<li><i class="bi bi-check2 fg-primary"></i>' . h($design_template_point) . '</li>';
-
-		}
-
-
-		$design_template_preview = array();
-
-		foreach (pg_design_template_preview_pages($design_template) as $design_page_key => $design_page_title) {
-
-			$design_template_preview[] = array('key' => $design_page_key, 'title' => $design_page_title, 'email' => false);
-
-		}
-
-		// the e-mails the site sends are pages of the template too
-		foreach (pg_design_template_email_pages($design_template) as $design_page_key => $design_page_title) {
-
-			$design_template_preview[] = array('key' => $design_page_key, 'title' => $design_page_title, 'email' => true);
-
-		}
+		$design_template_selected = ($install_design_selected == $design_template['id']);
 
 		$output_design_choices .= '
-		<div class="col-12 md:col-6">
-			<div class="pg-source pg-design pg-design-template h-100 mb-0' . (($install_design_selected == $design_template['id']) ? ' selected' : '') . '" data-design="' . h($design_template['id']) . '" data-kinds="' . h(json_encode(pg_design_template_starter_kinds($design_template, true))) . '" data-preview-pages="' . h(json_encode($design_template_preview)) . '">
-				<input type="radio" class="visually-hidden pg-choice-input" name="pg_design_choice" value="' . h($design_template['id']) . '" aria-labelledby="pg_design_name_' . $design_template_number . '"' . (($install_design_selected == $design_template['id']) ? ' checked' : '') . '>
-				<span class="pg-radio"></span>
-				<div class="flex-grow-1">
-					<div class="d-flex flex-wrap align-items-center gap-1 mb-1">
-						' . (($design_template_number == 1) ? '<span class="badge theme-primary"><i class="bi bi-stars me-1"></i>' . lang('Recommended') . '</span>' : '') . '
-						<span class="badge theme-secondary">' . h($design_template_summary['framework_label']) . '</span>
-						<span class="badge theme-secondary">' . lang(array('string' => '{var:1} pages', 'vars' => count($design_template['pages']))) . '</span>
-					</div>
-					<div class="fw-semibold pg-design-name" id="pg_design_name_' . $design_template_number . '"><i class="bi ' . h($design_template_summary['icon']) . ' me-1 fg-primary"></i>' . h($design_template_summary['name']) . '</div>
-					<div class="small fg-secondary">' . h($design_template_summary['description']) . '</div>
-					<div class="small fw-semibold fg-primary mt-3"><i class="bi bi-magic me-1"></i>' . lang('Made to be edited in the Visual Page Editor') . '</div>
-					<ul class="pg-design-points list-unstyled small fg-secondary mb-0 mt-1">' . $output_design_points . '</ul>
+			<div class="pg-source pg-design pg-design-template pg-design-tile mb-0' . ($design_template_selected ? ' selected' : '') . '" data-design="' . h($design_template['id']) . '" data-kinds="' . h(json_encode(pg_design_template_starter_kinds($design_template, true))) . '" data-home="' . h($design_template_home) . '" data-look="' . h($design_template_look) . '" data-palette="' . h($design_template_palette) . '" data-icon="' . h($design_template_summary['icon']) . '" data-pages="' . h(lang(array('string' => '{var:1} pages', 'vars' => count($design_template_summary['pages'])))) . '" data-description="' . h($design_template_summary['description']) . '" data-highlights="' . h(json_encode($design_template_summary['highlights'])) . '">
+				<input type="radio" class="visually-hidden pg-choice-input" name="pg_design_choice" value="' . h($design_template['id']) . '" aria-labelledby="pg_design_name_' . $design_template_number . '"' . ($design_template_selected ? ' checked' : '') . '>
+				<div class="pg-design-tile-picture">
+					' . pg_design_live_picture($design_template_picture, array(
+						'fallback' => pg_design_thumb_svg($design_template_look, $design_template_palette, '', '', $design_template_summary['thumb'])
+					)) . '
+					' . (($design_template_number == 1) ? '<span class="badge theme-primary pg-design-tile-badge"><i class="bi bi-stars me-1"></i>' . lang('Recommended') . '</span>' : '') . '
+					<span class="pg-design-tile-check" aria-hidden="true"><i class="bi bi-check-lg"></i></span>
 				</div>
-			</div>
-		</div>';
+				<div class="pg-design-tile-text">
+					<div class="fw-semibold pg-design-name" id="pg_design_name_' . $design_template_number . '"><i class="bi ' . h($design_template_summary['icon']) . ' me-1 fg-primary"></i>' . h($design_template_summary['name']) . '</div>
+					<div class="small fg-secondary text-truncate">' . h($design_template_summary['description']) . '</div>
+				</div>
+			</div>';
 
 	}
 
-	$output_design_choices .= '
-		<div class="col-12 md:col-6">
-			<div class="pg-source pg-design h-100 mb-0' . (($install_design_selected == 'standard') ? ' selected' : '') . '" id="pg_design_standard" data-design="standard">
+	$output_design_standard = '
+			<div class="pg-source pg-design pg-design-standard mb-0' . (($install_design_selected == 'standard') ? ' selected' : '') . '" id="pg_design_standard" data-design="standard">
 				<input type="radio" class="visually-hidden pg-choice-input" name="pg_design_choice" value="standard" aria-labelledby="pg_design_name_standard"' . (($install_design_selected == 'standard') ? ' checked' : '') . '>
 				<span class="pg-radio"></span>
 				<div class="flex-grow-1">
 					<div class="fw-semibold pg-design-name" id="pg_design_name_standard"><i class="bi bi-box-seam me-1 fg-primary"></i>' . lang('Standard installation') . '</div>
-					<div class="small fg-secondary">' . lang('The starter site is installed as it is, with its own pages and page styles.') . '</div>
-					<div class="small fg-secondary mt-3"><i class="bi bi-info-circle me-1"></i>' . lang('Its pages are classic pages: they are not built with the Visual Page Editor.') . '</div>
+					<div class="small fg-secondary">' . lang('The starter site is installed with its own classic pages; they are not built with the Visual Page Editor.') . '</div>
 				</div>
-			</div>
-		</div>';
+			</div>';
 
 	// The look and the colour palette a template is installed in, the same choices the
 	// template dialog of the editor offers (pg_designer_template_theme_picker()), without the
@@ -2827,9 +2857,25 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	$install_design_palettes = array_merge(array('' => array_merge(array('name' => lang('Bootstrap')), pg_design_bootstrap_colors())), pg_design_palettes());
 
-	if (($liveform->field_in_session('design_template_look') == false) || (!isset($install_design_looks[$install_design_look]))) {
+	// Until the form has been sent, the pickers hold the chosen template's own look and palette,
+	// as picking a template sets them.
+	if (($liveform->field_in_session('design_template_look') == false) && (isset($install_design_templates[$install_design_selected]))) {
+
+		$install_design_selected_theme = pg_design_template_theme($install_design_templates[$install_design_selected]);
+
+		$install_design_look = (string) $install_design_selected_theme['look'];
+
+		$install_design_palette = (string) $install_design_selected_theme['palette'];
+
+	} elseif (($liveform->field_in_session('design_template_look') == false) || (!isset($install_design_looks[$install_design_look]))) {
 
 		$install_design_look = pg_design_default_look();
+
+	}
+
+	if (!isset($install_design_looks[$install_design_look])) {
+
+		$install_design_look = '';
 
 	}
 
@@ -3051,6 +3097,26 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		.pg-source:has(> .pg-choice-input:focus-visible) { outline: 2px solid var(--pg-primary-ink); outline-offset: 2px; }
 		.pg-design-points li { display: flex; gap: .4rem; margin-top: .2rem; }
 		.pg-design-custom { padding: 1rem; border: 1px solid var(--pg-border-color); border-radius: 1rem; background: var(--pg-bg-1); }
+		.pg-design-chosen:not(.d-none) { display: grid; gap: 1.15rem; grid-template-columns: minmax(0, 1fr); }
+		@media (min-width: 1280px) { .pg-design-chosen:not(.d-none) { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); } }
+		.pg-design-chosen-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+		.pg-design-chosen summary { cursor: pointer; }
+		.pg-design-frame-open { position: absolute; inset: 0; }
+		.pg-design-frame:not(.pg-mobile) iframe { pointer-events: none; }
+		.pg-design-frame.pg-mobile .pg-design-frame-open { display: none; }
+		.pg-design-tour-link { position: absolute; right: .75rem; bottom: .75rem; box-shadow: 0 .25rem .75rem color-mix(in srgb, #000 18%, transparent); }
+		.pg-design-tiles { display: grid; gap: .75rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+		@media (min-width: 768px) { .pg-design-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+		@media (min-width: 1280px) { .pg-design-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+		@media (min-width: 1536px) { .pg-design-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+		.pg-source.pg-design-tile { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; overflow: hidden; border-radius: .75rem; }
+		.pg-design-tile-picture { position: relative; }
+		.pg-design-tile .pg-live-picture { border: 0; border-bottom: 1px solid var(--pg-border-color); border-radius: 0; }
+		.pg-design-tile-badge { position: absolute; top: .4rem; left: .4rem; }
+		.pg-design-tile-check { position: absolute; top: .4rem; right: .4rem; display: none; width: 1.5rem; height: 1.5rem; align-items: center; justify-content: center; border-radius: 50%; background: var(--pg-primary); color: var(--pg-bg-body); }
+		.pg-design-tile.selected .pg-design-tile-check { display: inline-flex; }
+		.pg-design-tile-text { padding: .5rem .65rem .6rem; min-width: 0; }
+		.pg-design-standard { border-style: dashed; }
 		.pg-design-swatch { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--pg-border-color); cursor: pointer; }
 		.pg-design-swatch i { flex: 1; }
 		.btn-check:checked + .pg-design-swatch { border-color: var(--pg-bg-body); box-shadow: 0 0 0 2px var(--pg-fg-emphasis); }
@@ -3092,7 +3158,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		.pg-review { display: grid; grid-template-columns: 1fr; gap: 0 1.5rem; }
 		.pg-review div { display: flex; justify-content: space-between; gap: 1rem; padding: .4rem 0; border-bottom: 1px dashed var(--pg-border-color); }
 		@media (min-width: 768px) { .pg-review { grid-template-columns: 1fr 1fr; } }
-		main#content.pg-install { max-width: 1280px; }
+		main#content.pg-install { max-width: 1440px; }
 		.pg-wizard-grid { display: grid; gap: 1.15rem; grid-template-columns: minmax(0, 1fr); }
 		@media (min-width: 1024px) {
 			.pg-wizard-grid { grid-template-columns: 240px minmax(0, 1fr); }
@@ -3101,6 +3167,9 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		@media (min-width: 1280px) {
 			.pg-wizard-grid { grid-template-columns: 250px minmax(0, 1fr) 310px; }
 			.pg-side { grid-column: auto; display: block; position: sticky; top: 5rem; }
+			/* the design step takes the side column\'s room */
+			.pg-wizard-grid.pg-wide-step { grid-template-columns: 250px minmax(0, 1fr); }
+			.pg-wizard-grid.pg-wide-step .pg-side { display: none; }
 		}
 		/* the upgrade screen has no step rail, so it only has the panel and the side column */
 		@media (min-width: 1024px) {
@@ -3156,7 +3225,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		.pg-install-console .pg-error { color: #f87171; }
 		.pg-install-console .pg-detail { opacity: .6; }
 		#pg_run_bar { background: linear-gradient(90deg, var(--pg-logo-color-1), var(--pg-logo-color-2)); }
-	}</style>
+	}</style>' . pg_js_bundle_tags('assets/js/pg_live_picture.min.js') . '
 	<nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body pg-print-none">
 	  	<ul class="navbar-nav me-auto">
 			<li class="nav-item"><button onclick="javascript:history.go(-1)" type="button" class="nav-link" title="' . h(lang('Cancel')) . '" aria-label="' . h(lang('Cancel')) . '"><span class=" material-icons">arrow_back</span></button></li>
@@ -3288,7 +3357,8 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										<i class="bi bi-palette me-3"></i>' . lang('Site Design') . '
 									</div>
 									<div class="card-body">
-										<p class="fg-secondary">' . lang('How should the site look after the installation?') . '</p>
+										<p class="fg-secondary mb-1">' . lang('How should the site look after the installation?') . '</p>
+										<p class="small fg-secondary d-flex gap-3"><i class="bi bi-magic fg-primary" aria-hidden="true"></i><span>' . lang('Every template is edited in the Visual Page Editor; the look and the colours change with a click, and it fits every screen.') . '</span></p>
 										<div class="alert theme-secondary small d-flex gap-3 d-none" id="pg_design_only_starter">
 											<i class="bi bi-info-circle"></i>
 											<div>' . lang('A design template can be used with a starter site only. A backup or a zip file is restored exactly as it was.') . '</div>
@@ -3299,34 +3369,46 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										'name' => 'design_template'
 										)) . '
 										<input type="hidden" name="design_template_starters" id="design_template_starters" value="">
-										<div class="row g-5" role="radiogroup" aria-label="' . h(lang('Site Design')) . '">' . $output_design_choices . '</div>
-										<div class="pg-design-custom mt-5 d-none" id="pg_design_custom">
-											<div class="mb-5">
-												<div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal fg-secondary">— ' . lang('corners, shadows, type and buttons') . '</span></div>
-												<div class="d-flex flex-wrap gap-1" role="radiogroup" aria-label="' . h(lang('Look')) . '">' . $output_design_looks . '</div>
-											</div>
-											<div class="mb-5">
-												<div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal fg-secondary">— <span id="pg_design_palette_name"></span></span></div>
-												<div class="d-flex flex-wrap gap-3" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $output_design_palettes . '</div>
-											</div>
-											<div class="d-flex flex-wrap align-items-center gap-3 mb-3">
-												<span class="small fw-semibold me-1"><i class="bi bi-eye me-1"></i>' . lang('Preview') . '</span>
-												<div class="d-flex flex-wrap gap-1" id="pg_design_pages"></div>
-											</div>
-											<div class="d-flex flex-wrap align-items-center gap-3 mb-3 d-none" id="pg_design_mails_row">
-												<span class="small fw-semibold me-1"><i class="bi bi-envelope me-1"></i>' . lang('E-mails') . '</span>
-												<div class="d-flex flex-wrap gap-1" id="pg_design_mails"></div>
-												<div class="btn-group btn-group-sm ms-auto" role="group" aria-label="' . h(lang('Preview')) . '">
-													<button type="button" class="btn btn-outline theme-secondary active" id="pg_design_desktop" title="' . lang('Desktop') . '"><i class="bi bi-display"></i><span class="visually-hidden">' . lang('Desktop') . '</span></button>
-													<button type="button" class="btn btn-outline theme-secondary" id="pg_design_mobile" title="' . lang('Mobile') . '"><i class="bi bi-phone"></i><span class="visually-hidden">' . lang('Mobile') . '</span></button>
+										<div class="pg-design-custom pg-design-chosen mb-5 d-none" id="pg_design_custom">
+											<div class="pg-design-chosen-picture">
+												<div class="pg-design-frame" id="pg_design_frame_box">
+													<iframe id="pg_design_frame" title="' . h(lang('Preview')) . '" sandbox="allow-scripts" tabindex="-1"></iframe>
+													<div class="pg-design-frame-wait"><span class="spinner-border spinner-border-sm me-3"></span>' . lang('Loading') . '</div>
+													<a class="pg-design-frame-open" id="pg_design_tour_cover" href="#" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true"></a>
+													<a class="btn btn-sm btn-solid theme-primary rounded-pill pg-design-tour-link" id="pg_design_tour" href="#" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1"></i>' . lang('See all pages in a new tab') . '</a>
 												</div>
-												<a class="btn btn-sm btn-outline theme-secondary" id="pg_design_open" href="#" target="_blank" rel="noopener" title="' . lang('Open in a new tab') . '"><i class="bi bi-box-arrow-up-right"></i><span class="visually-hidden">' . lang('Open in a new tab') . '</span></a>
 											</div>
-											<div class="pg-design-frame" id="pg_design_frame_box">
-												<iframe id="pg_design_frame" title="' . h(lang('Preview')) . '" sandbox="allow-scripts"></iframe>
-												<div class="pg-design-frame-wait"><span class="spinner-border spinner-border-sm me-3"></span>' . lang('Loading') . '</div>
+											<div class="pg-design-chosen-text">
+												<div class="d-flex align-items-start gap-3 mb-1">
+													<div class="fw-semibold fs-lg flex-grow-1"><i class="bi me-1" id="pg_design_chosen_icon" aria-hidden="true"></i><span id="pg_design_chosen_name"></span> <span class="badge theme-secondary align-middle" id="pg_design_chosen_pages"></span></div>
+													<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Preview')) . '">
+														<button type="button" class="btn btn-outline theme-secondary active" id="pg_design_desktop" title="' . lang('Desktop') . '" aria-pressed="true"><i class="bi bi-display"></i><span class="visually-hidden">' . lang('Desktop') . '</span></button>
+														<button type="button" class="btn btn-outline theme-secondary" id="pg_design_mobile" title="' . lang('Mobile') . '" aria-pressed="false"><i class="bi bi-phone"></i><span class="visually-hidden">' . lang('Mobile') . '</span></button>
+													</div>
+												</div>
+												<div class="small fg-secondary pg-design-chosen-description" id="pg_design_chosen_description"></div>
+												<details class="small mt-3" id="pg_design_chosen_more">
+													<summary class="fg-primary">' . lang('What this template has') . '</summary>
+													<ul class="pg-design-points list-unstyled fg-secondary mb-0 mt-1" id="pg_design_chosen_points"></ul>
+												</details>
+												<div class="mt-5">
+													<div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal fg-secondary">— ' . lang('corners, shadows, type and buttons') . '</span></div>
+													<div class="d-flex flex-wrap gap-1" role="radiogroup" aria-label="' . h(lang('Look')) . '">' . $output_design_looks . '</div>
+												</div>
+												<div class="mt-5">
+													<div class="small fw-semibold mb-1">' . lang('Colour palette') . ' <span class="fw-normal fg-secondary">— <span id="pg_design_palette_name"></span></span></div>
+													<div class="d-flex flex-wrap gap-3" role="radiogroup" aria-label="' . h(lang('Colour palette')) . '">' . $output_design_palettes . '</div>
+												</div>
+												<div class="form-text">' . lang('You can change both later in the editor, under Settings, Design, Theme.') . '</div>
 											</div>
-											<div class="form-text">' . lang('The pages are drawn with sample content, as a first-time visitor sees them.') . ' ' . lang('You can change both later in the editor, under Settings, Design, Theme.') . '</div>
+										</div>
+										<div class="d-flex flex-wrap justify-content-between align-items-baseline gap-3 mb-3">
+											<div class="fw-semibold">' . lang('Templates') . ' <span class="fw-normal fg-secondary">' . count($install_design_templates) . '</span></div>
+											<div class="small fg-secondary">' . lang('Click a template; its home page opens above.') . '</div>
+										</div>
+										<div role="radiogroup" aria-label="' . h(lang('Site Design')) . '">
+											<div class="pg-design-tiles">' . $output_design_choices . '</div>
+											<div class="mt-5">' . $output_design_standard . '</div>
 										</div>
 										<div class="alert theme-primary small d-flex gap-3 mt-5 mb-0">
 											<i class="bi bi-info-circle"></i>
@@ -4314,6 +4396,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			pg_install_step = step;
 			$(".pg-step-panel").removeClass("active");
 			$(".pg-step-panel[data-panel=" + step + "]").addClass("active");
+			$(".pg-wizard-grid").not(".pg-upgrade-grid").toggleClass("pg-wide-step", step === 3);
 			$(".pg-install-step").each(function() {
 				var number = parseInt($(this).attr("data-step"), 10);
 				var item = $(this).closest(".stepper-item");
@@ -4375,10 +4458,13 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		// the screen offers first, and a backup or a zip file the standard installation.
 		var pg_install_design_chosen = false;
 
-		function pg_install_select_design(element) {
+		// apply_theme: the pickers take the template\'s own look and palette (a template picked
+		// by hand, or offered first)
+		function pg_install_select_design(element, apply_theme) {
 			if ((!element) || ($(element).hasClass("disabled"))) { return; }
 			$(".pg-design").removeClass("selected");
 			$(element).addClass("selected");
+			if ((apply_theme) && ($(element).hasClass("pg-design-template"))) { pg_install_apply_template_theme($(element)); }
 			$(element).find(".pg-choice-input").prop("checked", true);
 			$("#design_template").val($(element).attr("data-design"));
 			// layouts built for another choice are built again when the installation starts
@@ -4394,37 +4480,39 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			if ((!starter) && ($("#design_template").val() !== "standard")) {
 				pg_install_select_design(document.getElementById("pg_design_standard"));
 			} else if ((starter) && (!pg_install_design_chosen) && ($("#design_template").val() === "standard") && ($(".pg-design-template").length > 0)) {
-				pg_install_select_design($(".pg-design-template")[0]);
+				pg_install_select_design($(".pg-design-template")[0], true);
 			}
 			pg_install_update_preview();
 		}
 
-		// The preview of a template: its pages drawn by the server without a site
+		// The preview of the chosen template: its home page drawn by the server without a site
 		// (install_action=design_preview), in the look and the palette chosen here and in the
 		// language of the starter site. The frame holds a 1280 pixel wide page scaled down to
-		// the panel, or a phone-wide one; its links open the template\'s other pages in place,
-		// and each page says which it is, so the page buttons follow.
-		var pg_design_preview_page = "";
-
-		// null until the preview is first shown: a narrow screen starts on the phone view
-		var pg_design_preview_mobile = null;
+		// the block, or a phone-wide one; a click on it opens the tour of every page and e-mail
+		// (install_action=design_tour) in a new tab.
+		// the desktop page scaled down, on every screen; the phone view on request
+		var pg_design_preview_mobile = false;
 
 		function pg_install_preview_device(mobile) {
 			pg_design_preview_mobile = mobile;
-			$("#pg_design_desktop").toggleClass("active", !mobile);
-			$("#pg_design_mobile").toggleClass("active", mobile);
+			$("#pg_design_desktop").toggleClass("active", !mobile).attr("aria-pressed", mobile ? "false" : "true");
+			$("#pg_design_mobile").toggleClass("active", mobile).attr("aria-pressed", mobile ? "true" : "false");
 			$("#pg_design_frame_box").toggleClass("pg-mobile", mobile);
 			pg_install_scale_preview();
 		}
 
-		function pg_install_preview_url(page) {
+		function pg_install_preview_language() {
+			return $(".pg-source.selected").not(".pg-design").first().attr("data-language") || "en";
+		}
+
+		function pg_install_preview_url(action, template, page, look, palette) {
 			return window.location.pathname + "?" + $.param({
-				install_action: "design_preview",
-				template: $(".pg-design.selected").attr("data-design") || "",
+				install_action: action,
+				template: template,
 				page: page,
-				look: $("input[name=design_template_look]:checked").val() || "",
-				palette: $("input[name=design_template_palette]:checked").val() || "",
-				local: $(".pg-source.selected").not(".pg-design").first().attr("data-language") || "en"
+				look: look,
+				palette: palette,
+				local: pg_install_preview_language()
 			});
 		}
 
@@ -4443,10 +4531,27 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			frame.style.height = Math.ceil(box.clientHeight / scale) + "px";
 		}
 
-		function pg_install_mark_preview_page() {
-			$("#pg_design_pages button, #pg_design_mails button").each(function() {
-				$(this).toggleClass("active", $(this).attr("data-page") === pg_design_preview_page);
+		// Each tile shows its template\'s home page in the template\'s own look and palette, in the
+		// language of the starter site; the pictures are drawn when they come into view.
+		var pg_design_tiles_language = null;
+
+		function pg_install_update_tiles() {
+			var language = pg_install_preview_language();
+			if ((language === pg_design_tiles_language) || (!window.PGLivePicture)) { return; }
+			pg_design_tiles_language = language;
+			$(".pg-design-tile").each(function() {
+				var tile = $(this);
+				var box = tile.find("[data-pg-live-picture]")[0];
+				if (box) {
+					window.PGLivePicture.set(box, pg_install_preview_url("design_preview", tile.attr("data-design"), tile.attr("data-home") || "", tile.attr("data-look") || "", tile.attr("data-palette") || ""));
+				}
 			});
+		}
+
+		// The look and the palette pickers take the template\'s own; both stay changeable.
+		function pg_install_apply_template_theme(card) {
+			$("input[name=design_template_look]").filter(function() { return this.value === (card.attr("data-look") || ""); }).prop("checked", true);
+			$("input[name=design_template_palette]").filter(function() { return this.value === (card.attr("data-palette") || ""); }).prop("checked", true);
 		}
 
 		function pg_install_update_preview() {
@@ -4454,24 +4559,26 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var template = card.hasClass("pg-design-template");
 			$("#pg_design_custom").toggleClass("d-none", !template);
 			$("#pg_design_palette_name").text($("input[name=design_template_palette]:checked").attr("data-name") || "");
-			// drawn only when it can be seen
-			if ((!template) || (!$(".pg-step-panel[data-panel=3]").hasClass("active"))) { return; }
-			var pages = [];
-			try { pages = JSON.parse(card.attr("data-preview-pages") || "[]"); } catch (error) { pages = []; }
-			var keys = $.map(pages, function(page) { return page.key; });
-			if ($.inArray(pg_design_preview_page, keys) === -1) { pg_design_preview_page = (keys.length > 0) ? keys[0] : ""; }
-			var buttons = $("#pg_design_pages").empty();
-			var mails = $("#pg_design_mails").empty();
-			$.each(pages, function(index, page) {
-				$("<button type=\"button\" class=\"btn btn-sm btn-outline theme-secondary rounded-pill\"></button>").attr("data-page", page.key).text(page.title).appendTo(page.email ? mails : buttons);
+			pg_install_update_tiles();
+			if (!template) { return; }
+			$("#pg_design_chosen_icon").attr("class", "bi me-1 fg-primary " + (card.attr("data-icon") || ""));
+			$("#pg_design_chosen_name").text($.trim(card.find(".pg-design-name").text()));
+			$("#pg_design_chosen_pages").text(card.attr("data-pages") || "");
+			$("#pg_design_chosen_description").text(card.attr("data-description") || "");
+			var points = [];
+			try { points = JSON.parse(card.attr("data-highlights") || "[]"); } catch (error) { points = []; }
+			var list = $("#pg_design_chosen_points").empty();
+			$.each(points, function(index, point) {
+				$("<li><i class=\"bi bi-check2 fg-primary\" aria-hidden=\"true\"></i><span></span></li>").find("span").text(point).end().appendTo(list);
 			});
-			$("#pg_design_mails_row").toggleClass("d-none", mails.children().length === 0);
-			pg_install_mark_preview_page();
-			if (pg_design_preview_mobile === null) {
-				pg_install_preview_device($("#pg_design_frame_box").width() < 560);
-			}
-			var url = pg_install_preview_url(pg_design_preview_page);
-			$("#pg_design_open").attr("href", url);
+			$("#pg_design_chosen_more").toggleClass("d-none", points.length === 0);
+			var look = $("input[name=design_template_look]:checked").val() || "";
+			var palette = $("input[name=design_template_palette]:checked").val() || "";
+			var tour = pg_install_preview_url("design_tour", card.attr("data-design"), "", look, palette);
+			$("#pg_design_tour, #pg_design_tour_cover").attr("href", tour);
+			// drawn only when it can be seen
+			if (!$(".pg-step-panel[data-panel=3]").hasClass("active")) { return; }
+			var url = pg_install_preview_url("design_preview", card.attr("data-design"), card.attr("data-home") || "", look, palette);
 			var frame = document.getElementById("pg_design_frame");
 			if ((frame) && (frame.getAttribute("data-url") !== url)) {
 				frame.setAttribute("data-url", url);
@@ -4616,7 +4723,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			$(".pg-design").on("click", function() {
 				if ($(this).hasClass("disabled")) { return; }
 				pg_install_design_chosen = true;
-				pg_install_select_design(this);
+				pg_install_select_design(this, !$(this).hasClass("selected"));
 			});
 
 			$("#pg_backup_select").on("change", function() {
@@ -4806,11 +4913,6 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				pg_install_update_preview();
 			});
 
-			$("#pg_design_pages, #pg_design_mails").on("click", "button", function() {
-				pg_design_preview_page = $(this).attr("data-page");
-				pg_install_update_preview();
-			});
-
 			$("#pg_design_desktop, #pg_design_mobile").on("click", function() {
 				pg_install_preview_device(this.id === "pg_design_mobile");
 			});
@@ -4819,12 +4921,13 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				$("#pg_design_frame_box").removeClass("pg-loading");
 			});
 
-			// a link inside the preview opened another page of the template
-			window.addEventListener("message", function(event) {
-				var frame = document.getElementById("pg_design_frame");
-				if ((!frame) || (event.source !== frame.contentWindow) || (!event.data) || (typeof event.data.pgDesignPreview !== "string")) { return; }
-				pg_design_preview_page = event.data.pgDesignPreview;
-				pg_install_mark_preview_page();
+			// The tour opens from a script, so its continue button can close its tab again.
+			$("#pg_design_tour, #pg_design_tour_cover").on("click", function(event) {
+				var tour = window.open(this.href, "_blank");
+				if (tour) {
+					event.preventDefault();
+					try { tour.opener = null; } catch (error) {}
+				}
 			});
 
 			$(window).on("resize", pg_install_scale_preview);
