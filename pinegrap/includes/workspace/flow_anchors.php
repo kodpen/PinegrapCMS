@@ -247,6 +247,8 @@ function ws_flow_event_outputs()
     $channel = $value('channel_id', 'number', lang('Channel'));
     $actor = $value('actor_id', 'number', lang('The person who did it'));
     $return = array($order, $value('return_id', 'number', lang('Return')), $value('reason', 'text', lang('Reason')));
+    $credit = array($value('customer_id', 'number', lang('Contact')), $value('account_id', 'number', lang('User')), $value('kind', 'text', lang('Kind')),
+        $value('reason', 'text', lang('Reason')), $value('expires_at', 'text', lang('Expires')));
     $subscription = array($value('customer_id', 'number', lang('Contact')), $value('product_id', 'number', lang('Product')), $value('status', 'text', lang('Status')),
         $value('previous_status', 'text', lang('Previous status')), $value('order_id', 'number', lang('Order')), $value('retry_count', 'number', lang('Retries')));
 
@@ -274,6 +276,16 @@ function ws_flow_event_outputs()
         'customer.updated'       => array($value('email', 'text', lang('E-mail'))),
         'form.submitted'         => array(),
         'contact_group.joined'   => array($value('contact_id', 'number', lang('Contact')), $value('group_id', 'number', lang('Contact group')), $value('group_name', 'text', lang('The name of the contact group'))),
+        'user.created'           => array($value('username', 'text', lang('Username')), $value('email', 'text', lang('E-mail')), $value('role', 'text', lang('Role'))),
+        'customer.consent_changed' => array($value('consent_channel', 'text', lang('Channel')), $value('consent_purpose', 'text', lang('Purpose')), $value('consent_status', 'text', lang('Status')), $value('consent_source', 'text', lang('Source'))),
+        'mail.bounced'           => array($value('address', 'text', lang('E-mail')), $value('kind', 'text', lang('Kind')), $value('source', 'text', lang('Source')),
+            $value('suppressed', 'number', lang('Mail to it is stopped')), $value('contact_id', 'number', lang('Contact')), $value('campaign_id', 'number', lang('Campaign'))),
+        'campaign.sent'          => array($value('id', 'number', lang('Campaign')), $value('channel', 'text', lang('Channel')), $value('type', 'text', lang('Type'))),
+        'page.created'           => array($value('name', 'text', lang('Page'))),
+        'page.updated'           => array($value('name', 'text', lang('Page'))),
+        'calendar_event.reserved' => array($value('recurrence_number', 'number', lang('Repeat')), $value('quantity', 'number', lang('Quantity')), $value('order_id', 'number', lang('Order')), $order, $value('contact_id', 'number', lang('Contact'))),
+        'credit.issued'          => $credit,
+        'credit.expired'         => $credit,
         'workspace.task.completed'      => array_merge($task, array($value('priority', 'text', lang('Priority')), $channel, $actor)),
         'workspace.task.status_changed' => array_merge($task, array($value('previous_status', 'text', lang('Previous status')), $value('priority', 'text', lang('Priority')), $channel, $actor)),
         'workspace.task.overdue'        => array_merge($task, array($channel, $value('due_date', 'text', lang('Due date')))),

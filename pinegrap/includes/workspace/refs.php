@@ -70,6 +70,9 @@ function ws_viewer($user)
     // The user list is the managers' screen (edit_user.php asks for 'manager').
     $viewer['users'] = $staff;
 
+    // E-mail and SMS campaigns (validate_email_access()).
+    $viewer['emails'] = $staff || $yes($user['manage_emails'] ?? false);
+
     return $viewer;
 }
 

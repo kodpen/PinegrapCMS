@@ -3358,6 +3358,8 @@
     "Store credit card #{var:1} of user #{var:2} was voided: {var:3}": "#{var:2} numaralı kullanıcının #{var:1} numaralı mağaza kredisi kartı geçersiz kılındı: {var:3}",
     "Store credit changes on the gift card's screen, which records it in the audit trail.": "Mağaza kredisi, değişikliği denetim kaydına yazan hediye kartı ekranında değiştirilir.",
     "Store credit expired on {var:1} with {var:2} unused.": "Mağaza kredisinin süresi {var:1} tarihinde doldu; {var:2} kullanılmadan kaldı.",
+    "Store credit expires": "Mağaza kredisinin süresi dolar",
+    "Store credit is issued": "Mağaza kredisi verilir",
     "Store credit is not deleted: void it on the customer's Store credit card.": "Mağaza kredisi silinmez: müşterinin Mağaza kredisi kartından geçersiz kılın.",
     "Store credit is not installed yet: the database has to be updated first.": "Mağaza kredisi henüz kurulmadı: önce veritabanı güncellenmeli.",
     "Store credit of {var:1} was issued to user #{var:2} through the API by the application {var:3}: {var:4}": "{var:3} uygulaması API üzerinden #{var:2} numaralı kullanıcıya {var:1} mağaza kredisi verdi: {var:4}",

@@ -625,6 +625,8 @@ function api_pages_update($params) {
 		'vars'   => array($existing['page_name'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
+	// api_webhook_enqueue() keeps the event for the Workspace too, so a page
+	// changed through the API starts flows without a second record.
 	api_webhook_enqueue('page.updated', array('id' => $id, 'name' => $existing['page_name']));
 
 	$row = api_row(api_page_select() . " WHERE page.page_id = '" . $id . "' LIMIT 1");
