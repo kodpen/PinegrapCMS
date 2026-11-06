@@ -34,6 +34,6 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T12 (done, #7435): overdue invoice follow-up: an invoice becomes overdue → a task for the person who collects it → still unpaid after 7 days → tell the manager.
 
-- T13 (done, PR #PRNUM; its `cart_quote` kind in Read a record: #7474): quote follow-up: a cart quote is made → wait 2 days → read the quote → still open: a task to call the customer (an e-mail after B8).
+- T13 (done, PR #7486; its `cart_quote` kind in Read a record: #7474): quote follow-up: a cart quote is made → wait 2 days → read the quote → still open: a task to call the customer (an e-mail after B8).
 
 - T14 (after B2): sort incoming forms: a form is submitted → Pinegrap AI picks sales, support or spam → a task for the right person, spam ends.
