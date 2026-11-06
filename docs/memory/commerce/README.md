@@ -113,6 +113,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gateway-masked-keys.md: Legacy gateway keys kept plain but drawn masked on the Commerce card; a blank box keeps them; the Givex password kept only for its saved hostnames
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
+- gift-card-code-in-site-log.md: Site Log lines name a gift card by its last four characters (pg_gift_card_log_code()), never the full spendable code.
 - gift-card-email-variables.md: The product screen's Email Gift Card variable buttons (^^code^^, ^^amount^^ …): where the list lives, how it stays in step with the sender (#4449), what ^^amount^^ prints, the starter dumps' texts
 - gift-card-line-quantity-limit.md: A gift card line holds at most 100 units; every door that writes a line quantity refuses more with one translated error (#6806, #6820)
 - gift-card-recipient-check.md: The order preview refuses an order while a gift card unit has no recipient row with a valid e-mail; why a card used to be issued with no recipient and a 1971 end date
