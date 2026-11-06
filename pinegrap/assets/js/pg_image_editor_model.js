@@ -5427,7 +5427,18 @@
         }
 
         try {
-            return (kind === 'mp4') ? mp4Demux(b) : webmDemux(b);
+            var d = (kind === 'mp4') ? mp4Demux(b) : webmDemux(b);
+
+            // A file cut off after its index: samples past its end.
+            d.tracks.forEach(function (tr) {
+                tr.samples.forEach(function (s) {
+                    if (s.at + s.size > b.length) {
+                        throw videoFail('video-broken');
+                    }
+                });
+            });
+
+            return d;
         } catch (e) {
             throw /^video-/.test(e && e.message) ? e : videoFail('video-broken');
         }

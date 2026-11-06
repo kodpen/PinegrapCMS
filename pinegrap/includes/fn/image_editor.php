@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'actions', 'menu');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'video', 'actions', 'menu');
 }
 
 /**
@@ -5110,5 +5110,25 @@ function pg_image_editor_strings_record()
         'recPick'      => lang('Select one layer to record its move.'),
         'recHint'      => lang('Recording: drag the layer, letting go stops it · Esc cancels the recording'),
         'recHintPhone' => lang('Drag the layer; letting go stops the recording.'),
+    );
+}
+
+// -- Reading a video (pg_image_editor_video.js) --
+
+/**
+ * The video reading part's labels: what is said when a video cannot be
+ * opened or this browser cannot decode it.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_video()
+{
+    return array(
+        'videoFormat'     => lang('This file is not an MP4 or WebM video.'),
+        'videoBroken'     => lang('This video could not be read: the file is damaged or incomplete.'),
+        'videoFragmented' => lang('This video is saved in parts for streaming and cannot be edited. Save it again as a normal MP4.'),
+        'videoNoTrack'    => lang('This file has no picture track.'),
+        'videoNoCodecs'   => lang('This browser cannot edit videos. Use a current Chrome, Edge, Safari or Firefox.'),
+        'videoCodec'      => lang('This browser cannot play {var:1} video. Save the video as H.264 MP4 or WebM, or open it in another browser.'),
     );
 }

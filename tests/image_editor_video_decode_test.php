@@ -28,7 +28,7 @@ function image_editor_video_decode_node($name, $script)
 	return image_editor_render_node(
 		'var file = new Uint8Array(require("fs").readFileSync(' . json_encode(__DIR__ . '/fixtures/video/' . $name) . '));' . "\n"
 		. 'function table(tr) { return tr.samples.map(function (s) { return [s.at, s.size, s.ts, s.dur, s.key ? 1 : 0]; }); }' . "\n"
-		. 'try { console.log(JSON.stringify((function () { ' . $script . ' }()))); } catch (e) { console.log(JSON.stringify({ error: String(e && e.stack || e) })); }'
+		. 'try { var r = (function () { ' . $script . ' }()); if (r !== undefined) { console.log(JSON.stringify(r)); } } catch (e) { console.log(JSON.stringify({ error: String(e && e.stack || e) })); }'
 	);
 }
 
@@ -177,7 +177,7 @@ function test_image_editor_video_bad_files()
 {
 	$r = image_editor_video_decode_node('h264_bframes.mp4',
 		'function code(b) { try { M.videoDemux(b); return "read"; } catch (e) { return e.message; } }'
-		. ' return [code(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0])), code(file.subarray(0, 900)), code(file.subarray(0, 40)),'
+		. ' return [code(new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0])), code(file.subarray(0, 900)), code(file.subarray(0, 40)), code(file.subarray(0, 4000)),'
 		. ' code(new Uint8Array([0x1A, 0x45, 0xDF, 0xA3, 0x80])), code(file), M.videoKind(file), M.videoKind(new Uint8Array(3))];'
 	);
 
@@ -185,5 +185,50 @@ function test_image_editor_video_bad_files()
 		return;
 	}
 
-	pg_assert_same(array('video-format', 'video-broken', 'video-broken', 'video-broken', 'read', 'mp4', ''), $r, 'codes');
+	pg_assert_same(array('video-format', 'video-broken', 'video-broken', 'video-broken', 'video-broken', 'read', 'mp4', ''), $r, 'codes');
+}
+
+// The part's source over a stand-in VideoDecoder that gives frames out in
+// presentation order two samples late: the first frame decoded from the
+// key frame with the lookahead, the next ones decoded on without a seek,
+// one far ahead from its key frame after a reset, the last after a
+// flush, a frame asked twice from the cache, H.265 refused with its name.
+function test_image_editor_video_source()
+{
+	$r = image_editor_video_decode_node('h264_bframes.mp4',
+		'var log = [];'
+		. ' function VD(o) { this.o = o; this.held = []; this.state = "unconfigured"; }'
+		. ' VD.isConfigSupported = function (c) { return Promise.resolve({ supported: !/^hvc1/.test(c.codec) }); };'
+		. ' VD.prototype.configure = function () { this.state = "configured"; };'
+		. ' VD.prototype.out = function (n) { var o = this.o; this.held.sort(function (a, b) { return a - b; }); while (this.held.length > n) { var ts = this.held.shift(); o.output({ timestamp: ts, close: function () {}, clone: function () { return { timestamp: this.timestamp, close: function () {} }; } }); } };'
+		. ' VD.prototype.decode = function (c) { log.push((c.type === "key" ? "K" : "") + c.timestamp / 100000); this.held.push(c.timestamp); this.out(2); };'
+		. ' VD.prototype.flush = function () { log.push("flush"); this.out(0); return Promise.resolve(); };'
+		. ' VD.prototype.reset = function () { log.push("reset"); this.held = []; this.state = "unconfigured"; };'
+		. ' VD.prototype.close = function () { this.state = "closed"; };'
+		. ' global.window = { VideoDecoder: VD, EncodedVideoChunk: function (o) { Object.assign(this, o); }, PgImageEditor: { parts: { Editor: function () {}, M: M, t: function (k) { return { videoCodec: "No {var:1}" }[k] || k; } } } };'
+		. ' require(' . json_encode(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_video.js') . ');'
+		. ' var V = window.PgImageEditor.parts.video, res = {}, src;'
+		. ' function step(name, ms) { return src.frameAt(ms).then(function (f) { res[name] = [f && f.timestamp / 100000, log.join(" ")]; log = []; }); }'
+		. ' V.open(file).then(function (s) { src = s; res.size = [s.width, s.height, s.duration, s.codec]; return step("first", 0); })'
+		. '.then(function () { return step("next", 150); }).then(function () { return step("on", 750); }).then(function () { return step("cached", 150); })'
+		. '.then(function () { return step("last", 1199); }).then(function () { return step("back", 0); })'
+		. '.then(function () { return V.open(require("fs").readFileSync(' . json_encode(__DIR__ . '/fixtures/video/hevc.mp4') . ')); })'
+		. '.then(null, function (e) { res.hevc = V.message(e); return V.open(new Uint8Array(20)); }).then(null, function (e) { res.png = V.message(e); console.log(JSON.stringify(res)); });'
+		. ' return undefined;'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(32, 16, 1200, 'avc1.4d400a'), $r['size'], 'source');
+	pg_assert_same(array(0, 'reset K0 3 1 2 4'), $r['first'], 'from the key frame with the lookahead');
+	pg_assert_same(array(1, ''), $r['next'], 'decoded already');
+	pg_assert_same(array(7, 'K5 8 6 7 9 K10 11'), $r['on'], 'decoded on, no seek');
+	pg_assert_same(array(1, ''), $r['cached'], 'from the cache');
+	pg_assert_same(array(11, 'flush'), $r['last'], 'flushed out at the end');
+	pg_assert_same(array(0, ''), $r['back'], 'still cached');
+	pg_assert_same('No H.265 (HEVC)', $r['hevc'], 'no decoder: the codec named');
+	pg_assert_same('videoFormat', $r['png'], 'not a video');
 }
