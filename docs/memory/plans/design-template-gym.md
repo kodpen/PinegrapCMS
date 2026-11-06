@@ -28,9 +28,9 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 - 8: assembly: `pinegrap-gym.php` (order, search sections, look, fonts, `pgy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-gym.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 5. `parts.php` has `$plans` (sku, days, prices per currency) and `$money`; copy the shop pages and the membership catalog from the Courses template ([[design-template-courses]]) and `pinegrap-hotel/shop.php`. The order e-mail uses `mail.php`'s builders (`$mail_page`, `$mail_heading`, `$mail_line`, `$mail_box`, `$mail_settings`).
+- Step 5. `parts.php` has `$plans` (sku, days, prices per currency) and `$money`; copy the shop pages and the membership catalog from the Courses template ([[design-template-courses]]) and `pinegrap-hotel/shop.php`. The order e-mail uses `mail.php`'s builders.
 - `classes.php` already ships `privacy` and `email_reply`; step 7's e-mail pages are the account ones only. The template file (step 8) includes `mail.php` right after `parts.php`, before every page file.
-- Translation trap: an existing key may carry another template's word (`First visit` is the Clinic's "İlk muayene"); check the Turkish before reusing a key.
+- Translation trap: an existing key may carry another template's word (`First visit` reads "İlk muayene"): check it before reuse.
 - PHP 7.1 traps met so far: no trailing comma after a call's last argument (step 2 failed CI on it). Commit with committer `Erdal Güral`, or the branch guard fails.
 
 ## Open questions
