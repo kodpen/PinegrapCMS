@@ -8210,6 +8210,193 @@
         guidedFilter: guidedFilter, matteMask: matteMask, SUBJECT_MAX_STROKES: SUBJECT_MAX_STROKES, SUBJECT_EDGE_MAX: SUBJECT_EDGE_MAX
     };
 
+    // ---- SOUND (pg_image_editor_sound.js) ----
+
+    // Music and sounds on the whole animation's timeline: doc.sounds lists
+    // { id, fileId, name, src, length, start, from, to, volume, fadeIn,
+    // fadeOut, muted }. Times in ms: length is the file's, from and to cut
+    // it, start places the cut on the timeline (every scene back to back).
+    var SOUND_TYPES = ['mp3', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus'];
+    var SOUND_MAX = 20;
+    var SOUND_MIN = 100;
+
+    function soundNumber(v, min, max, fallback) {
+        v = Number(v);
+
+        return isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
+    }
+
+    // A sound's address may only be the site's own: a path from the root
+    // or an http(s) address of the same origin. A document from elsewhere
+    // never makes the editor fetch another host.
+    function soundSrcOk(src, origin) {
+        src = String(src || '');
+
+        if (/^\/(?![\/\\])/.test(src)) {
+            return true;
+        }
+
+        return !!origin && /^https?:\/\//i.test(src) && (src.slice(0, origin.length + 1).toLowerCase() === (origin + '/').toLowerCase());
+    }
+
+    // The document's sounds as the editor uses them: entries that are no
+    // object, have no id or address, or another origin's address are left
+    // out; the numbers are put in range.
+    function soundList(doc, origin) {
+        var list = (doc && Array.isArray(doc.sounds)) ? doc.sounds : [];
+
+        return list.filter(function (s) {
+            return s && (typeof s === 'object') && s.id && soundSrcOk(s.src, origin);
+        }).slice(0, SOUND_MAX).map(function (s) {
+            var length = soundNumber(s.length, 0, 36e5, 0);
+            var from = soundNumber(s.from, 0, length, 0);
+            var to = soundNumber(s.to, from, length, length);
+
+            return {
+                id: String(s.id), fileId: Number(s.fileId) || 0, name: String(s.name || ''), src: String(s.src), length: length,
+                start: soundNumber(s.start, 0, 36e5, 0), from: from, to: to, volume: soundNumber(s.volume, 0, 1, 1),
+                fadeIn: soundNumber(s.fadeIn, 0, to - from, 0), fadeOut: soundNumber(s.fadeOut, 0, to - from, 0), muted: !!s.muted
+            };
+        });
+    }
+
+    // A file from Files as a new sound at start, cut to what fits the
+    // timeline (all of it when the timeline is shorter than 0.1 s past it).
+    function soundNew(doc, file, length, start, total) {
+        length = Math.max(0, Math.round(Number(length) || 0));
+        start = Math.max(0, Math.round(Number(start) || 0));
+
+        var room = Math.max(0, (Number(total) || 0) - start);
+
+        return {
+            id: soundId(doc), fileId: Number(file.id) || 0, name: String(file.name || ''), src: String(file.url || ''), length: length,
+            start: start, from: 0, to: (room >= SOUND_MIN) ? Math.min(length, room) : length, volume: 1, fadeIn: 0, fadeOut: 0, muted: false
+        };
+    }
+
+    // Where the sound lies on the timeline.
+    function soundSpan(s) {
+        return { from: s.start, to: s.start + (s.to - s.from) };
+    }
+
+    // The gain at timeline time t: the volume, rising over the fade in and
+    // falling over the fade out; 0 outside the span or muted.
+    function soundGain(s, t) {
+        var sp = soundSpan(s), g = s.muted ? 0 : s.volume;
+
+        if ((t < sp.from) || (t > sp.to)) {
+            return 0;
+        }
+
+        if (s.fadeIn > 0) {
+            g *= Math.min(1, (t - sp.from) / s.fadeIn);
+        }
+
+        if (s.fadeOut > 0) {
+            g *= Math.min(1, (sp.to - t) / s.fadeOut);
+        }
+
+        return g;
+    }
+
+    // What to play from timeline time t: wait ms, then offset ms into the
+    // file for dur ms; null when the sound is over, muted or empty.
+    function soundPlan(s, t) {
+        var sp = soundSpan(s), wait = Math.max(0, sp.from - t);
+
+        if (s.muted || (s.volume <= 0) || (t >= sp.to) || (sp.to - sp.from < 1)) {
+            return null;
+        }
+
+        return { wait: wait, offset: s.from + Math.max(0, t - sp.from), dur: sp.to - Math.max(t, sp.from) };
+    }
+
+    // A drag on the sound's bar by dt ms: 'move' shifts it, 'start' trims
+    // its beginning (the rest stays in place), 'end' trims its end. Snapped
+    // to 0.1 s unless fine; at least 0.1 s stays. Answers the changed fields.
+    function soundEdit(s, grip, dt, fine) {
+        var step = fine ? 10 : 100, snap = function (v) { return Math.round(v / step) * step; };
+
+        if (grip === 'move') {
+            return { start: Math.max(0, snap(s.start + dt)) };
+        }
+
+        if (grip === 'start') {
+            var d = snap(dt);
+
+            d = Math.max(-s.from, -s.start, Math.min(d, s.to - s.from - SOUND_MIN));
+
+            return { start: s.start + d, from: s.from + d };
+        }
+
+        return { to: Math.max(s.from + SOUND_MIN, Math.min(s.length, snap(s.to + dt))) };
+    }
+
+    // Split at timeline time t into two sounds on the same file: the first
+    // keeps its id and fade in, the second (newId) its fade out. Null when t
+    // is not 0.1 s inside the sound.
+    function soundSplit(s, t, newId) {
+        var sp = soundSpan(s), cut = Math.round(t);
+
+        if ((cut < sp.from + SOUND_MIN) || (cut > sp.to - SOUND_MIN)) {
+            return null;
+        }
+
+        var at = s.from + (cut - sp.from);
+
+        return [
+            Object.assign({}, s, { to: at, fadeOut: 0, fadeIn: Math.min(s.fadeIn, at - s.from) }),
+            Object.assign({}, s, { id: newId, start: cut, from: at, fadeIn: 0, fadeOut: Math.min(s.fadeOut, s.to - at) })
+        ];
+    }
+
+    // An unused sound id.
+    function soundId(doc) {
+        var used = (doc && Array.isArray(doc.sounds)) ? doc.sounds.map(function (s) { return s.id; }) : [], n = 1;
+
+        while (used.indexOf('s' + n) >= 0) {
+            n++;
+        }
+
+        return 's' + n;
+    }
+
+    // n peaks (0-1) of a channel's samples from..to, for the waveform.
+    function soundPeaks(samples, n, from, to) {
+        var out = [], len = samples ? samples.length : 0, i, j, a, b, peak, v;
+
+        from = Math.max(0, Math.min(len, Math.floor(from || 0)));
+        to = Math.max(from, Math.min(len, (to === undefined) ? len : Math.floor(to)));
+
+        for (i = 0; i < n; i++) {
+            a = from + Math.floor((to - from) * i / n);
+            b = Math.max(a + 1, from + Math.floor((to - from) * (i + 1) / n));
+            peak = 0;
+
+            for (j = a; (j < b) && (j < to); j++) {
+                v = Math.abs(samples[j]);
+                peak = (v > peak) ? v : peak;
+            }
+
+            out.push(Math.min(1, Math.round(peak * 1000) / 1000));
+        }
+
+        return out;
+    }
+
+    // A file name's sound type, lower case, or '' for another type.
+    function soundType(name) {
+        var m = /\.([a-z0-9]+)$/i.exec(String(name || '')), ext = m ? m[1].toLowerCase() : '';
+
+        return (SOUND_TYPES.indexOf(ext) >= 0) ? ext : '';
+    }
+
+    var SOUND = {
+        SOUND_TYPES: SOUND_TYPES, SOUND_MAX: SOUND_MAX, SOUND_MIN: SOUND_MIN, soundSrcOk: soundSrcOk, soundList: soundList, soundNew: soundNew,
+        soundSpan: soundSpan, soundGain: soundGain, soundPlan: soundPlan, soundEdit: soundEdit, soundSplit: soundSplit, soundId: soundId,
+        soundPeaks: soundPeaks, soundType: soundType
+    };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -8227,7 +8414,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU, SOUND].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

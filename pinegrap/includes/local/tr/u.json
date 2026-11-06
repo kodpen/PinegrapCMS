@@ -130,6 +130,7 @@
     "Unlock pin is not correct": "Kilit açma pini doğru değil",
     "Unlocked for {var:1} more minutes": "Kilit açık · {var:1} dakika",
     "Unlocks this session: the device limit may sign it out again when the account is full, and the member can sign it out from their own screen.": "Bu oturumun kilidini açar: hesap dolduğunda cihaz sınırı onu yeniden kapatabilir, üye de kendi ekranından oturumu kapatabilir.",
+    "Unmute": "Sesi aç",
     "Unnamed application": "Adsız uygulama",
     "Unordered List": "Sırasız Liste",
     "Unpaid": "Ödenmedi",

@@ -395,6 +395,7 @@
     "Voice messages in this private channel will be sent to {var:1} to be transcribed. Allow it?": "Bu özel kanaldaki sesli mesajlar yazıya dökülmek üzere {var:1} hizmetine gönderilecek. İzin verilsin mi?",
     "Voice recording is not supported in this browser.": "Bu tarayıcı ses kaydını desteklemiyor.",
     "Void": "Geçersiz kıl",
+    "Volume": "Ses düzeyi",
     "Volunteer": "Gönüllü Ol",
     "Volunteer Open Evening": "Gönüllü Tanışma Akşamı",
     "Volunteer Received E-mail": "Gönüllü Başvurusu Alındı E-postası",
