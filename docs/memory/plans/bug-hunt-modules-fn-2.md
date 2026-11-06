@@ -6,6 +6,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 ## Which includes/fn/ modules (price_history to waf_rescue) are hunted?
 - `price_history`: clean
 - `privacy`: clean
+- Second round (2026-11-06): privacy clean (read: the six changes since 2026-11-01 in full, the bounce lift on proving sources, the mail_bounces, store credit, Fediverse comments and bookings erasure entries and their apply hooks; pg_consent_log_answers, pg_privacy_erase_scope, pg_privacy_erase_run, pg_privacy_erase, _pg_privacy_erase_write and the workflow table and audit row helpers whole).
 - `privacy_export`: taken by LA, #4589
 - `privacy_retention`: taken by LV, #4680
 - `product_customs`: clean (NF)
