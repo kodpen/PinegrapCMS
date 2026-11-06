@@ -14,15 +14,15 @@ description: Plan: the Wedding Planner and Venue design template (pinegrap-weddi
 - 1 (done, #7503): `parts.php` (data, shared parts, cards, form fields, comment thread, blog parts); test.
 - 2 (done, #7585): `pages_public.php` (home, about, services, packages, venue, gallery, timeline, faq); test.
 - 3 (done, #7616): `weddings.php` (`weddings`, `wedding`, `wedding_new`, `home_weddings`); test.
-- 4 (in progress): `mail.php` (the e-mail builders) and `enquiries.php`: consultation enquiries (`enquiry` with `?package=`, `?service=`, `?space=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`) and `book_visit` (the booking widget's starter beside the enquiry, [[booking-templates]]); test.
+- 4 (done, #7634): `mail.php` (the e-mail builders) and `enquiries.php`: consultation enquiries (`enquiry` with `?package=`, `?service=`, `?space=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`) and `book_visit` (the booking widget's starter beside the enquiry, [[booking-templates]]); test.
 - 5: `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (a date-hold deposit per package, gift cards); test.
 - 6: `standard.php`: contact, inbox, conversation, newsletter, blog (Wedding Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 8: assembly: `pinegrap-wedding.php` (order, search sections, look, fonts, `pwd-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-wedding.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
-## Where to start (step 4)
-- Read `pinegrap-wedding/parts.php` for the enquiry's pick lists (`$package_choices`, `$service_choices`, `$space_choices`, `$season_choices`, `$budget_choices`, `$ceremony_choices`, `$contact_choices`, `$enquiry_statuses`) and the form builders; the cards already link `{{page:enquiry}}?package=|service=|space=` and the Real Weddings page sends `?space=` (#7616), so the enquiry's fields read those names through `_cf.url_param`.
-- Copy the shape of `pinegrap-travel/bookings.php` and `mail.php` (or Hotel's) for the request form, view, My Enquiries, the staff list, `privacy`, `email_reply`; `book_visit` follows [[booking-templates]] (booking widget `'tree' => 'starter'`, a link back to the enquiry).
+## Where to start (step 5)
+- `pinegrap-wedding/enquiries.php` (#7634) ships `privacy`, `email_reply` and the e-mail builders of `mail.php` (`$mail_page`, `$mail_heading`, `$mail_para`, `$mail_button`, `$mail_line`, `$mail_box`, `$mail_greeting`, `$mail_settings`, `$email_header_tree`, `$email_footer_tree`); `email_order` reuses them. Its e-mail pages are `email_enquiry_new` and `email_enquiry_received` (in `_test_wd_page_keys()`).
+- Copy the shape of `pinegrap-hotel/shop.php` (or the Events tickets) for the deposit per package (`$deposit`, `$package_titles`) and gift cards (`$gift_cards`), `shippable => false`; only shop pages carry `requires => ecommerce`.
 - Turkish: add keys with `tools/tr_add.php --from=<json>`; when `development` moves, a conflict lands only in `tr/*.json`: take `development`'s shard and re-add the keys.
 
 ## Open questions
