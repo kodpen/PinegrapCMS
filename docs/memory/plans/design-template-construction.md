@@ -28,7 +28,7 @@ description: Plan: the Construction Firm design template (pinegrap-construction)
 - 8: assembly: `pinegrap-construction.php` (order, search sections, look, fonts, `pcn-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-construction.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Model files: `pinegrap-gym/`, `pinegrap-travel/`, `pinegrap-law/` (careers and applications). The quote request reads `?service=` (service pages) in `$quote_service_choices`, the application `?job=` in `$application_job_choices`; the project list filters `?sector=` (footer) in `$sector_titles`. Later tests share `_test_cn_page_keys()` from `tests/design_template_construction_test.php` when their file name sorts after it (a `…_public_test.php` loads first, so it lists its keys itself). Service pages are `service_<key>` with translated slugs (`$service_slugs`).
+- The next free step is the lowest one not marked done. Models: `pinegrap-gym/`, `pinegrap-travel/`, `pinegrap-law/` (careers). The quote request reads `?service=` (`$quote_service_choices`), the application `?job=` (`$application_job_choices`); the project list filters `?sector=` and `?service=`. Service pages are `service_<key>` under `$service_slugs`. `_test_cn_page_keys()` is shared by test files sorting after `…_test.php`.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
