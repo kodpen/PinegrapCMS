@@ -21,14 +21,14 @@ description: Plan: the Travel Agency design template (pinegrap-travel): destinat
 
 - 5 (done, #7617): `enquiries.php` (`enquiry` with `?destination=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, the enquiry e-mails) and `shop.php` (`packages`, product, cart, checkout, order, `email_order`; the Tour Packages group: a deposit per tour, the gift cards).
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, blog (Travel Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #7640): `standard.php`: contact, inbox, conversation, newsletter, Travel Journal, post, Traveller Help search, error, the message and welcome e-mails, `home_posts`, `google_reviews`.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-travel.php` (order, search sections, look, fonts, `ptv-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-travel.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. The tour page's comments already name `{{tab:email_reply}}` (step 4 makes it); the booking form reads `?tour=` (tour page, deals table) and `?deal=` (deal cards) with `$booking_tour_choices` and `$deal_choices`. The tests share `_test_tv_page_keys()` and `_test_tv_shop_keys()` from `tests/design_template_travel_test.php`.
+- The next free step is the lowest one not marked done. Step 7's `blog_new` form gives the fields `standard.php` reads (`title`, `summary`, `content`, `cover_image`) and the sample posts; the Hotel's `account.php` is the model. The tests share `_test_tv_page_keys()` and `_test_tv_shop_keys()` from `tests/design_template_travel_test.php`.
 - Include order: `parts.php`, `mail.php`, then `bookings.php` before `enquiries.php` (it uses `$detail`, `$bound`, `$traveller_name`, `$mail_reference`, `$mail_new_account`). `bookings.php` has the e-mail pages of the booking form and `email_reply`; `mail.php` gives `$mail_page`, `$mail_heading`, `$mail_para`, `$mail_button`, `$mail_line`, `$mail_box`, `$mail_greeting`, `$mail_settings` and the shared `email_header`/`email_footer` trees. Some shared booking keys read "randevu" in Turkish ("We received your booking request", "Booking Card"): use keys that say "rezervasyon" (the bookings test checks it).
 
 ## Open questions
