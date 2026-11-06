@@ -394,17 +394,16 @@ $vehicle_widgets = array(
         'tree'   => $vehicle_grid(),
     ),
 
-    // The home page's three newest used cars, lowest mileage first.
+    // The home page's three latest used cars: the list's default order,
+    // the date the car was added, newest first.
     'home_used' => array(
         'page'   => 'home',
         'slug'   => lang('form-list'),
         'config' => $vehicle_list_config(array(
-            'items_per_page'     => 3,
-            'max_results'        => 3,
-            'order_by_field'     => 'mileage',
-            'order_by_direction' => 'ASC',
-            'filters'            => array($vehicle_filter('condition', 'is not equal to', $conditions['new']), $vehicle_unsold),
-            'empty_message'      => lang('No used cars in stock this week. Ask us: we often know of one before it comes in.'),
+            'items_per_page' => 3,
+            'max_results'    => 3,
+            'filters'        => array($vehicle_filter('condition', 'is not equal to', $conditions['new']), $vehicle_unsold),
+            'empty_message'  => lang('No used cars in stock this week. Ask us: we often know of one before it comes in.'),
         )),
         'tree'   => $vehicle_grid(),
     ),

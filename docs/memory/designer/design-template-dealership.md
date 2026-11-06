@@ -13,7 +13,7 @@ description: Car Dealership template (pinegrap-dealership): vehicles as a collec
 - `requests.php` owns `privacy` and `email_reply` with its `email_comment` widget; `standard.php` owns `google_reviews` (added at assembly: the home placed it, no part defined it).
 
 ## How does it work without new product behaviour?
-- A vehicle is a record of the Vehicles form, a collection ([[collection-fields]]): price, year, mileage and power number kinds, `photo_1`-`photo_4` image kinds, office fields `status` and `featured`. Lists filter `?make=`, `?body=`, `?fuel=`, `?condition=` ([[collection-lists]]) and leave out sold cars.
+- A vehicle is a record of the Vehicles form, a collection ([[collection-fields]]): price, year, mileage and power number kinds, `photo_1`-`photo_4` image kinds, office fields `status` and `featured`. Lists filter `?make=`, `?body=`, `?fuel=`, `?condition=` ([[collection-lists]]) and leave out sold cars. `home_used`: newest added first (#7511).
 - Test drive, trade-in and finance requests are records of their own forms as Real Estate's viewing ([[design-template-realestate]]): the car from `?vehicle=` (`_cf.url_param`), office-only status, messages on the record page's Comments widget (`test_drive_messages`, `tradein_messages`, `finance_messages`), views `submitter_only`, staff lists. Trade-in photos go to the `private` folder. A finance request asks for bands (deposit, term, income), never an ID or bank number.
 - Not built (new behaviour): a finance calculator or credit check, price-range filters, live stock feeds, online reservation with a payment, saved searches with alerts.
 

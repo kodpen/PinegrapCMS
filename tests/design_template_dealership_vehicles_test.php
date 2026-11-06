@@ -98,6 +98,15 @@ function test_dealership_vehicles_part_shape()
 	}
 }
 
+function test_dealership_home_used_lists_the_latest_cars()
+{
+	$d = _test_dlv_load();
+	$c = $d['part']['widgets']['home_used']['config'];
+	pg_assert_same('submitted_date_and_time', $c['order_by_field'], 'Latest used cars sorts on the date the car was added');
+	pg_assert_same('DESC', $c['order_by_direction'], 'Latest used cars puts the newest first');
+	pg_assert_same(3, $c['max_results'], 'Latest used cars shows three');
+}
+
 function test_dealership_vehicle_samples_fill_the_form()
 {
 	$d = _test_dlv_load();
