@@ -76,6 +76,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - image-editor-steps-5.md: Steps E23b, E30-E32, E31b of plans/image-editor.md: Fotoğraf and Vektör rail groups, the picture as bottom layer, Import, SVG rules for use, a context menu; claim as [plan:image-editor] E<n>
 - image-editor-steps.md: Steps E1-E10 of plans/image-editor.md: core modal, crop, server save, adjust, layers, shapes, text, stickers, the switch that removes the old editor, redaction; claim as [plan:image-editor] E<n>
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
+- image-editor-video-visuals.md: Screens of plans/image-editor-video.md (V0), 35 onwards in plans/image-editor/: what each shows and which step builds it
 - image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound added or detached, layers over video, export with sound; held with image-editor.md
 - image-editor-visuals.md: The image editor prototype the owner approved on 2026-10-31: its screens and source in plans/image-editor/, what each screen shows and which step of plans/image-editor.md builds it
 - image-editor-workers.md: How workers take the free steps of plans/image-editor.md and its animation and video plans: which run side by side, the files a step owns, what its PR shows, the holder's review
