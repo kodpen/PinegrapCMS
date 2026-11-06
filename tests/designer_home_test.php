@@ -151,8 +151,10 @@ function test_designer_home_template_card_theme_follows_the_choice()
 	pg_assert_same(array('look' => 'organic', 'palette' => 'cocoa'), pg_designer_template_card_theme($own, '@template', '@template'), 'the template\'s own theme');
 	pg_assert_same(array('look' => 'minimal', 'palette' => 'cocoa'), pg_designer_template_card_theme($own, 'minimal', '@template'), 'another look, its own palette');
 	pg_assert_same(array('look' => '', 'palette' => ''), pg_designer_template_card_theme($own, '', ''), 'plain Bootstrap');
-	// A template that names no theme opens in plain Bootstrap.
-	pg_assert_same(array('look' => '', 'palette' => ''), pg_designer_template_card_theme(array('look' => null, 'palette' => null), '@template', '@template'), 'nothing named');
+	// A template that names no look opens in the default look; no palette named stays plain.
+	pg_assert_same(array('look' => pg_design_default_look(), 'palette' => ''), pg_designer_template_card_theme(array('look' => null, 'palette' => null), '@template', '@template'), 'nothing named');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_true(strpos($source, "' data-look=\"' . h((\$s['look'] !== null) ? (string)\$s['look'] : \$look0)") !== false, 'the card tells the script the default look when the template names none');
 }
 
 function test_designer_home_template_picture_address()

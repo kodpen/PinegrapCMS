@@ -1872,14 +1872,16 @@ function pg_designer_start_action($user, $style_id)
 /**
  * The look and palette a template card opens in, for the picker's choice
  * ($look, $palette: a key, '' for plain Bootstrap, or '@template' for the
- * template's own). The template's own is what its file names; nothing named
- * is plain Bootstrap. $summary: pg_design_template_summary(). Pure.
+ * template's own). The template's own is what its file names; a template
+ * that names no look wears the default look (pg_design_default_look()), as
+ * the drawings and the installer do. $summary: pg_design_template_summary().
+ * Pure.
  *
  * @return array look, palette
  */
 function pg_designer_template_card_theme($summary, $look, $palette)
 {
-    $own_look = (is_array($summary) && isset($summary['look']) && is_string($summary['look'])) ? $summary['look'] : '';
+    $own_look = (is_array($summary) && isset($summary['look']) && is_string($summary['look'])) ? $summary['look'] : (function_exists('pg_design_default_look') ? pg_design_default_look() : '');
     $own_palette = (is_array($summary) && isset($summary['palette']) && is_string($summary['palette'])) ? $summary['palette'] : '';
     return array(
         'look' => ((string)$look === '@template') ? $own_look : (string)$look,
@@ -1952,7 +1954,7 @@ function pg_designer_template_modal($templates, $from_pages)
         // The theme the template is made for: the picker's first choices
         // ("Template's theme", "Template's palette") open each card in its
         // own; any other choice opens every card in that one.
-        $theme_attrs = ' data-look="' . h((string)$s['look']) . '" data-palette="' . h((string)$s['palette']) . '"'
+        $theme_attrs = ' data-look="' . h(($s['look'] !== null) ? (string)$s['look'] : $look0) . '" data-palette="' . h((string)$s['palette']) . '"'
                      . ' data-has-look="' . ($s['look'] !== null ? '1' : '0') . '" data-has-palette="' . ($s['palette'] !== null ? '1' : '0') . '"'
                      . ' data-picture="' . h($picture_src !== '' ? pg_design_preview_address('panel', array('template' => $s['id'], 'still' => true)) : '') . '"'
                      . ' data-tour="' . h($tour_src) . '"';

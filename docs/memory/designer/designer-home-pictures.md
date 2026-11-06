@@ -9,7 +9,7 @@ module: design_previews
 
 ## What does Choose a Template show?
 - Choose a Template: each card the template's home page (`&still=1`: no script), the version badge on it; a template with no page a preview can show keeps its drawing. "Preview" (an `<a target="_blank">`) opens the tour in the card's theme; "Use this theme" is gone (template-previews plan, owner 2026-11-05).
-- Picker (`pg_designer_template_theme_picker()`): first choices "Template's theme" / "Template's palette" (`@template`), checked: each card shows and opens in the theme its file names (nothing named: plain Bootstrap). Another choice sets each card's wanted address; 300 ms after the last change `PGLivePicture.set()` redraws, cards in view first. Use This Template always carries `&look=&palette=` (empty = plain). A palette from a theme file is not in `pg_design_palettes()`: the pictures drop it, Use carries it.
+- Picker (`pg_designer_template_theme_picker()`): first choices "Template's theme" / "Template's palette" (`@template`), checked: each card shows and opens in the theme its file names (no look named: the default look, `pg_design_default_look()`, as the installer since #7409; no palette named: none). Another choice sets each card's wanted address; 300 ms after the last change `PGLivePicture.set()` redraws, cards in view first. Use This Template always carries `&look=&palette=` (empty = plain). A palette from a theme file is not in `pg_design_palettes()`: the pictures drop it, Use carries it.
 - Twins: `pg_designer_template_card_theme()` / `theme()`, `pg_designer_template_theme_query()` / `themed()`; the PHP address equals the script's, so the first sync reloads nothing.
 
 ## Where is it?
