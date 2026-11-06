@@ -24,6 +24,7 @@
 		{"name": "add_short_link", "path": "add_short_link.php"},
 		{"name": "add_contact", "path": "add_contact.php"},
 		{"name": "edit_contact", "path": "edit_contact.php?id={contact_id}"},
+		{"name": "approve_affiliate", "path": "approve_affiliate.php?id={contact_id}"},
 		{"name": "add_email_campaign", "path": "add_email_campaign.php"},
 		{"name": "edit_email_campaign", "path": "edit_email_campaign.php?id={email_campaign_id}"},
 		{"name": "view_pages", "path": "view_pages.php"},
