@@ -14,7 +14,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 ## B: new boxes (what other tools have)
 - B1 (done, PR #7388): Read a record (`record_get`): an order, product, contact, booking, task or form submission by id (a value), its fields as outputs, read with the run owner's rights as the change box checks them; `found` 0/1 instead of failing. As Zapier's Find and Make's Search steps. new flow_record_get.php, steps.php, the form.
 
-- B2 (free, M then M): Pinegrap AI box: a prompt with values only, through `pg_ai_chat()` on the site's quota; modes write, summarize, extract, classify into the named outcomes that become its arrows (else `other`); waits like the approval box.
+- B2 (free, M then M; 1st #7467, 2nd the canvas): Pinegrap AI box: a prompt with values only, through `pg_ai_chat()` on the site's quota; modes write, summarize, extract, classify into the named outcomes that become its arrows (else `other`); waits like the approval box.
 
 - B3 (done, #7411): text rules in the derived value box: replace, extract a number, extract an e-mail address, upper or lower case, trim and cut to N characters, split and take part N. As Zapier Formatter. flow_values.php.
 
