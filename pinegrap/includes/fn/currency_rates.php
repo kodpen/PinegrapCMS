@@ -28,6 +28,31 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The visitor's chosen currency row as init.php uses it, or an empty array
+ * when it cannot be used: no row, or an exchange rate that is not above
+ * zero. Prices are shown as base amount times this rate and a typed donation
+ * is divided by it, so a rate of 0 (a currency kept hidden from the pickers
+ * with 0, chosen by a direct post to update_currency.php or before its rate
+ * was cleared) showed every price as 0.00 and stopped the donation pages on
+ * PHP 8. The caller then falls back to the base currency.
+ *
+ * @param mixed $row currencies row (id, code, symbol, exchange_rate) or false
+ * @return array
+ */
+function pg_visitor_currency_row($row)
+{
+    if (!is_array($row) || !isset($row['id']) || ((string) $row['id'] === '')) {
+        return array();
+    }
+
+    if (!isset($row['exchange_rate']) || !is_numeric($row['exchange_rate']) || ((float) $row['exchange_rate'] <= 0)) {
+        return array();
+    }
+
+    return $row;
+}
+
+/**
  * The Site Log line for one Update Exchange Rates run, as lang() properties
  * for pg_log_lang(): how many of the requested rates were written, or that
  * none could be fetched. Null when no currency besides the base was asked
