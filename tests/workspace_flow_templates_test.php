@@ -973,3 +973,60 @@ function test_workspace_flow_templates_cart_quote_follow_up()
 	$left = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('events' => array('order.created')))), null, 'key');
 	pg_assert_false(isset($left['cart_quote_follow_up']), 'it needs its event');
 }
+
+// Incoming forms sorted: the submission read, Pinegrap AI picks sales,
+// support or spam, a task for sales and one for support; spam ends, and a
+// form it cannot place is told. Offered only with the event and Pinegrap
+// AI set up.
+function test_workspace_flow_templates_sort_incoming_forms()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_ai_box.php');
+
+	$kinds = ws_flow_kinds();
+	$fill = array('channel' => 3, 'recap_ai' => true);
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill($fill)), null, 'key');
+	pg_assert_true(isset($by_key['form_sort']), 'offered with the event and Pinegrap AI');
+	$template = $by_key['form_sort'];
+	$graph = $template['graph'];
+	$nodes = array_column($graph['nodes'], null, 'id');
+
+	pg_assert_same('form.submitted', $graph['nodes'][0]['config']['event']);
+	pg_assert_same(array('record' => 'form', 'id' => '{{trigger.record_id}}'), array_intersect_key($nodes['read']['config'], array('record' => 0, 'id' => 0)));
+	pg_assert_true(isset(ws_flow_record_get_fields()['form']['fields']['answers']), 'the box gives the answers');
+
+	$ai = ws_step_ai_normalize($nodes['sort']['config']);
+	pg_assert_same('ai', $nodes['sort']['kind']);
+	pg_assert_same('classify', $ai['mode']);
+	pg_assert_same('{{node.read.answers}}', $ai['text']);
+	pg_assert_same(3, count($ai['classes']), 'sales, support, spam');
+	pg_assert_same(array(), ws_step_ai_problems($ai, 'sort'));
+
+	pg_assert_same(array('read:done', 'sort:class_1', 'sort:class_2', 'sort:class_3', 'sort:other'), array_values(array_map(function ($edge) {
+		return $edge['from'] . ':' . $edge['on'];
+	}, array_slice($graph['edges'], 1))));
+
+	foreach ($graph['edges'] as $edge) {
+		$node = $nodes[$edge['from']];
+		$outcomes = ($node['kind'] === 'ai') ? ws_step_ai_arrow_outcomes($ai) : $kinds[$node['kind']]['outcomes'];
+		pg_assert_true(in_array($edge['on'], $outcomes, true), $edge['from'] . ' on ' . $edge['on']);
+	}
+
+	pg_assert_same('task_open', $nodes['sales']['kind']);
+	pg_assert_same('task_open', $nodes['support']['kind']);
+	pg_assert_same('end', $nodes['spam']['kind']);
+	pg_assert_same('notify', $nodes['unsure']['kind']);
+	pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($template)), 'text'), 'it publishes');
+	pg_assert_same(array('person'), array_column($template['settings'], 'type'));
+
+	// The model's answer takes the arrow of its class; spam has a box that
+	// only ends, anything else goes to the person.
+	pg_assert_same('class_1', ws_step_ai_parse($ai, '{"class": "' . $ai['classes'][0] . '"}')['outcome']);
+	pg_assert_same('class_3', ws_step_ai_parse($ai, mb_strtolower($ai['classes'][2]))['outcome']);
+	pg_assert_same('other', ws_step_ai_parse($ai, 'a job application')['outcome']);
+
+	$keys = function ($overrides) {
+		return array_column(ws_flow_templates(ws_flow_templates_test_fill($overrides)), 'key');
+	};
+	pg_assert_false(in_array('form_sort', $keys(array('recap_ai' => false)), true), 'it needs Pinegrap AI');
+	pg_assert_false(in_array('form_sort', $keys(array('recap_ai' => true, 'events' => array('order.created'))), true), 'it needs its event');
+}
