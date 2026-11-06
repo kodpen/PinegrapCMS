@@ -11,7 +11,7 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-gym-design]].
 
 ## Steps (claim as `[plan:design-template-gym] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7469): `parts.php` (node builders, the gym's data: classes, timetable, trainers, plans, facilities, testimonials, pick lists; shared parts: account bar, notice, header, footer, join band, staff bar; class, trainer, plan and testimonial cards, form fields, comment thread, blog parts); `tests/design_template_gym_test.php`.
+- 1 (done, #7472): `parts.php` (node builders, the gym's data: classes, timetable, trainers, plans, facilities, testimonials, pick lists; shared parts: account bar, notice, header, footer, join band, staff bar; class, trainer, plan and testimonial cards, form fields, comment thread, blog parts); `tests/design_template_gym_test.php`.
 
 - 2: `pages_public.php`: home, `classes`, `timetable`, `plans`, `facilities`, `about`, `faq`, `location`; `tests/design_template_gym_public_test.php`.
 
