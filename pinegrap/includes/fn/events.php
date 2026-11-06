@@ -404,7 +404,8 @@ function pg_event_record($event, $payload = array())
         return;
     }
 
-    $json = json_encode(pg_event_payload_depth(pg_event_workspace_payload($event, (array) $payload)), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    $payload = pg_event_workspace_payload($event, (array) $payload);
+    $json = json_encode(pg_event_payload_depth((array) $payload), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
     db("INSERT INTO ws_events_in (event, payload, created_at, taken_at)
         VALUES ('" . e((string) $event) . "', '" . e(($json === false) ? '{}' : $json) . "', UNIX_TIMESTAMP(), 0)");
