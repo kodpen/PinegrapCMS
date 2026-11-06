@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * What a coordinator can give its workers, in one short listing: the plan
- * steps that are not done and that no open PR holds, the open issues that no
- * open PR names, and the queue count. It stands in for reading
- * docs/memory/plans/README.md, the plan files and the issue lists one by
- * one, which filled a new coordinator's context in its first turn.
+ * steps that are not done and that no open PR holds, and the queue count.
+ * Bug issues and the bug-hunt plan files are not listed: workers are not
+ * given them. It stands in for reading docs/memory/plans/README.md and the
+ * plan files one by one, which filled a new coordinator's context in its
+ * first turn.
  *
  * Usage:  php tools/free_work.php
  * Exit:   0; 1 when git or gh fails.
@@ -27,7 +28,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 define('FREE_WORK_REPO', 'repos/kodpen/pinegrapcms');
-define('FREE_WORK_QUEUE_LIMIT', 20);
+define('FREE_WORK_QUEUE_LIMIT', 25);
 define('FREE_WORK_LINE', 110);
 
 // The plan a file belongs to: the X of "[plan:X]" in its description (the
@@ -56,6 +57,10 @@ function free_work_shelved($description, $file = '')
 // with no such heading has them in any section. Lines under the order and
 // side-by-side headings name steps without being one, and so do lines whose
 // ID is followed by a comma, a colon or "alone", "first", "is done".
+// A bare number (the design templates' "- 4 Topic: …", "- 4: …",
+// "- 4 (done, #n): …", "- 4 Done (#n). …") is a step only under a steps
+// heading, where "- 4: …" is one too (its colon is dropped); a number
+// followed by "-" or "×" is a date, a range or a size, not a step.
 // Returns a list of array(id, rest of the line).
 function free_work_steps($text)
 {
@@ -72,9 +77,23 @@ function free_work_steps($text)
 			continue;
 		}
 
-		if ($take && preg_match('/^- \**([A-Z]{1,3}\d+[a-z]?)\b\**\s*(.*)$/', $line, $match)
-			&& !preg_match('/^(?:[,:]|alone\b|first\b|is done\b)/i', $match[2])) {
-			$steps[] = array($match[1], trim($match[2]));
+		if (!$take || !preg_match('/^- \**([A-Z]{1,3})?(\d+[a-z]?)\b\**(?![-\x{2013}\x{00D7}\d])\s*(.*)$/u', $line, $match)) {
+			continue;
+		}
+
+		$numbered = ($match[1] === '');
+		$rest = $match[3];
+
+		if ($numbered) {
+			if (!$headed) {
+				continue;
+			}
+
+			$rest = preg_replace('/^:\s*/', '', $rest);
+		}
+
+		if (!preg_match('/^(?:[,:]|alone\b|first\b|is done\b)/i', $rest)) {
+			$steps[] = array($match[1] . $match[2], trim($rest));
 		}
 	}
 
@@ -93,37 +112,34 @@ function free_work_step_done($line)
 }
 
 // The open PR that holds a step: its title names "[plan:<plan>]" and the
-// step's ID as a word. $titles is number => title. Returns the number or 0.
+// step's ID as a word. A numbered step is looked for only between the tag
+// and the " — " before the topic, so a number in the topic holds nothing.
+// $titles is number => title. Returns the number or 0.
 function free_work_holder($plan, $id, array $titles)
 {
 	$tag = '[plan:' . $plan . ']';
+	$pattern = '/(?<![A-Za-z0-9.])' . preg_quote((string) $id, '/') . '(?![A-Za-z0-9])/';
 
 	foreach ($titles as $number => $title) {
-		if ((strpos((string) $title, $tag) !== false) && preg_match('/(?<![A-Za-z0-9])' . preg_quote($id, '/') . '(?![A-Za-z0-9])/', (string) $title)) {
+		$at = strpos((string) $title, $tag);
+
+		if ($at === false) {
+			continue;
+		}
+
+		$named = (string) $title;
+
+		if (ctype_digit(substr((string) $id, 0, 1))) {
+			$named = substr($named, $at + strlen($tag));
+			$named = preg_split('/\s+(?:\x{2014}|--?)\s+/u', $named, 2)[0];
+		}
+
+		if (preg_match($pattern, $named)) {
 			return (int) $number;
 		}
 	}
 
 	return 0;
-}
-
-// The issue numbers a PR body says it fixes: "Fixes #1", "Closes #2, #3",
-// "Resolves: #4 and #5".
-function free_work_fixed_issues($body)
-{
-	$numbers = array();
-
-	if (preg_match_all('/\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)\b\s*:?\s*((?:#\d+(?:\s*(?:,|and|&)\s*)?)+)/i', (string) $body, $matches)) {
-		foreach ($matches[1] as $list) {
-			preg_match_all('/#(\d+)/', $list, $found);
-
-			foreach ($found[1] as $number) {
-				$numbers[(int) $number] = true;
-			}
-		}
-	}
-
-	return array_keys($numbers);
 }
 
 // A line cut to the listing's width, on a character boundary.
@@ -179,12 +195,11 @@ function free_work_gh_lines($path, $jq)
 free_work_run('git fetch -q origin development');
 
 $titles = array();
-$fixed = array();
 $queue = 0;
 $drafts = 0;
 
-foreach (free_work_gh_lines('pulls?state=open&per_page=100', '.[]|[.number,.draft,.head.ref,.title,(.body // "")]|@json') as $pr) {
-	list($number, $draft, $branch, $title, $body) = $pr;
+foreach (free_work_gh_lines('pulls?state=open&per_page=100', '.[]|[.number,.draft,.head.ref,.title]|@json') as $pr) {
+	list($number, $draft, $branch, $title) = $pr;
 
 	if (strpos((string) $branch, 'merge-train/') === 0) {
 		continue;
@@ -198,9 +213,6 @@ foreach (free_work_gh_lines('pulls?state=open&per_page=100', '.[]|[.number,.draf
 		$queue++;
 	}
 
-	foreach (free_work_fixed_issues($body) as $issue) {
-		$fixed[$issue] = (int) $number;
-	}
 }
 
 $files = array();
@@ -224,7 +236,6 @@ foreach ($files as $file => $plan) {
 
 $free = array();
 $held = array();
-$hunts = array();
 
 foreach ($files as $file => $plan) {
 	list($name, , $text) = $plan;
@@ -233,9 +244,8 @@ foreach ($files as $file => $plan) {
 		continue;
 	}
 
+	// The bug hunt stopped: its module lists are no work to give out.
 	if (strpos($file, 'bug-hunt') === 0) {
-		$hunts[] = $file;
-
 		continue;
 	}
 
@@ -256,26 +266,15 @@ foreach ($files as $file => $plan) {
 	}
 }
 
-$issues = array();
 $architect = array();
 
-foreach (free_work_gh_lines('issues?state=open&per_page=100', '.[]|select(.pull_request|not)|[.number,([.labels[].name]|join(",")),.title]|@json') as $issue) {
-	list($number, $labels, $title) = $issue;
-
-	if (in_array('architect', explode(',', (string) $labels), true)) {
-		$architect[] = '#' . $number;
-	} elseif (isset($fixed[(int) $number])) {
-		$held[] = "issue #$number #" . $fixed[(int) $number];
-	} else {
-		$issues[] = '  ' . free_work_cut("#$number " . (($labels === '') ? '' : "[$labels] ") . $title);
-	}
+foreach (free_work_gh_lines('issues?state=open&labels=architect&per_page=100', '.[]|select(.pull_request|not)|[.number]|@json') as $issue) {
+	$architect[] = '#' . $issue[0];
 }
 
 echo "Queue: $queue of " . FREE_WORK_QUEUE_LIMIT . " open PRs (drafts and merge trains not counted); $drafts drafts.\n";
 echo "Free plan steps (not done, no open PR; read the step's \"After\" before giving it out):\n";
 echo ($free ? implode("\n", $free) : '  none') . "\n";
-echo 'Open issues no open PR names: ' . ($issues ? "\n" . implode("\n", $issues) : 'none') . "\n";
-echo 'Bug-hunt plans (open groups inside): ' . ($hunts ? implode(', ', $hunts) : 'none') . "\n";
 echo 'Architect issues open: ' . ($architect ? implode(' ', $architect) : 'none') . "\n";
 echo 'Held by an open PR: ' . ($held ? implode(', ', $held) : 'none') . "\n";
 echo 'Shelved plans skipped: ' . ($shelved ? implode(', ', array_keys($shelved)) : 'none') . "\n";

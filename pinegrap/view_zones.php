@@ -17,9 +17,28 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/zone_list_edit.php');
 
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+$quick_edit = pg_zone_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the zone screen's (validate_ecommerce_access()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ((int) $user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_zone_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
+// Every zone is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -51,54 +70,19 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified'         => 'zones.timestamp',
 ));
 
-$query = "SELECT
-            zones.id,
-            zones.name,
-            zones.base_rate,
-            zones.primary_weight_rate,
-            zones.secondary_weight_rate,
-            zones.item_rate,
-            user.user_username as user,
-            zones.timestamp
-        FROM zones
-        LEFT JOIN user ON zones.user = user.user_id
-        ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-while ($row = mysqli_fetch_array($result)) {
-    $id = $row['id'];
-    $name = h($row['name']);
-    $base_rate = $row['base_rate'] / 100;
-    $primary_weight_rate = $row['primary_weight_rate'] / 100;
-    $secondary_weight_rate = $row['secondary_weight_rate'] / 100;
-    $item_rate = $row['item_rate'] / 100;
-    $timestamp = $row['timestamp'];
-
-    $output_link_url ='edit_zone.php?id=' . $id;
-
-        
-    $last_modified_username = '';
-        
-    if ($row['user']) {
-        $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($row['user']) ) ) );
-    }
-    $output_rows .=
-        '<tr>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-            </td>
-            <td class="align-middle chart_label">' . $name . '</td>
-            <td class="align-middle text-end">' . prepare_amount($base_rate) . '</td>
-            <td class="align-middle text-end">' . prepare_amount($primary_weight_rate) . '</td>
-            <td class="align-middle text-end">' . prepare_amount($secondary_weight_rate) . '</td>
-            <td class="align-middle text-end">' . prepare_amount($item_rate) . '</td>
-            <td>' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . $last_modified_username . '</td>
-        </tr>';
+foreach ((array) db_items(pg_zone_list_sql() . " ORDER BY " . $order_by) as $zone) {
+    $list_rows[] = array('id' => (int) $zone['id'], 'cells' => pg_zone_list_cells($zone, $quick_edit));
 }
 
-print 
+$list = pg_list_table_printed(array(
+    'list' => 'view_zones',
+    'columns' => pg_zone_list_columns(true),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'edit' => array('url' => 'view_zones.php', 'columns' => $quick_edit),
+));
+
+print
 pg_page_shell([
         'title'=> lang('All Shipping Zones'),
         'extra classes'=>'products',
@@ -111,29 +95,11 @@ pg_page_shell([
         <div class="col-12">
             ' . pg_screen_toolbar(array(
                 'primary' => array('label' => lang('Create'), 'url' => 'add_zone.php', 'icon' => 'bi-plus-circle'),
-                'search'  => pg_list_sort_menu('view_zones.php', $sort_columns, $sort_levels, $sort_default),
+                'search'  => array(pg_list_table_search_box('view_zones'), pg_list_sort_menu('view_zones.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
-                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th style="text-align: right">' . get_column_heading(lang('Base Rate'), $sort_levels, '', '', 'base_rate') . '</th>
-                                <th style="text-align: right">' . get_column_heading(lang('Primary W. Rate'), $sort_levels, '', '', 'primary_weight_rate') . '</th>
-                                <th style="text-align: right">' . get_column_heading(lang('Secondary W. Rate'), $sort_levels, '', '', 'secondary_weight_rate') . '</th>
-                                <th style="text-align: right">' . get_column_heading(lang('Item Rate'), $sort_levels, '', '', 'item_rate') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Shipping Zones')) . '
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
-?>

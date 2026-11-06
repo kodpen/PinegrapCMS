@@ -638,10 +638,8 @@ function pg_member_register($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) REGISTRATION_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
-        db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
-            VALUES ('" . $contact_id . "', '" . $group_id . "')");
-    }
+    // Skips a group filled by rules (pg_audience_hand_sql()) and announces the join.
+    pg_audience_door_join($contact_id, $group_id);
 
     // The account. create_member_user() writes the modern hash and returns
     // the id; contact, start page and hint travel as data.
@@ -919,15 +917,9 @@ function pg_member_activate($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) MEMBERSHIP_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
-        $in_group = db_value(
-            "SELECT contact_id FROM contacts_contact_groups_xref
-            WHERE contact_id = '" . $contact_id . "' AND contact_group_id = '" . $group_id . "'");
-        if (!$in_group) {
-            db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
-                VALUES ('" . $contact_id . "', '" . $group_id . "')");
-        }
-    }
+    // Skips a group filled by rules (pg_audience_hand_sql()) or one the
+    // contact is already in, and announces the join.
+    pg_audience_door_join($contact_id, $group_id);
 
     $create = array(
         'username'      => $username,
@@ -1659,6 +1651,49 @@ function pg_session_cookie_allow_cross_site()
         header('Set-Cookie: ' . session_name() . '=; Path=' . $default_path
             . '; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Max-Age=0', false);
     }
+}
+
+/**
+ * Whether a browser sent this request from a page of another site. The
+ * session-only JSON actions (api.php's public site actions, booking_slots.php)
+ * carry no form token and lean on the Lax session cookie, which a cross-site
+ * POST does not carry; but once pg_session_cookie_allow_cross_site() has
+ * re-issued the cookie as SameSite=None, it does, and a page elsewhere can
+ * post a text/plain body that decodes as their JSON. Sec-Fetch-Site decides
+ * when the browser sends it (same-site is a sibling subdomain, kept); else
+ * an Origin naming another host and port, or the opaque "null", is
+ * cross-site. A request with neither header is not a browser's cross-site
+ * request.
+ *
+ * @param array $server $_SERVER
+ * @return bool
+ */
+function pg_request_cross_site(array $server)
+{
+    if (isset($server['HTTP_SEC_FETCH_SITE']) && is_string($server['HTTP_SEC_FETCH_SITE']) && (trim($server['HTTP_SEC_FETCH_SITE']) !== '')) {
+        return (strtolower(trim($server['HTTP_SEC_FETCH_SITE'])) === 'cross-site');
+    }
+
+    $origin = (isset($server['HTTP_ORIGIN']) && is_string($server['HTTP_ORIGIN'])) ? trim($server['HTTP_ORIGIN']) : '';
+
+    if ($origin === '') {
+        return false;
+    }
+
+    if (strtolower($origin) === 'null') {
+        return true;
+    }
+
+    $host = (isset($server['HTTP_HOST']) && is_string($server['HTTP_HOST'])) ? strtolower(trim($server['HTTP_HOST'])) : '';
+    $parts = parse_url($origin);
+
+    if (($host === '') || !is_array($parts) || empty($parts['host'])) {
+        return true;
+    }
+
+    $from = strtolower($parts['host']) . (isset($parts['port']) ? ':' . $parts['port'] : '');
+
+    return !hash_equals($host, $from);
 }
 
 // Non-remember logins get a session-scoped token only so they can be counted
@@ -4207,7 +4242,8 @@ function validate_token_field()
 /**
  * Whether this request renders pages as a visitor who is not signed in,
  * whoever started it: a search index run (UPDATE_SEARCH_INDEX) or an audit
- * run from the panel (audit_run.php, PG_ANONYMOUS_RENDER). Such a request
+ * run from the panel (audit_run.php) or a design preview (design_preview.php),
+ * both PG_ANONYMOUS_RENDER. Such a request
  * loads no user from the session or the remember-me cookie; the script
  * checks its caller's role from the session itself.
  *
@@ -4812,13 +4848,107 @@ function pg_login_throttle_subjects($identifier)
         $subjects['a'] = $address_subject;
     }
 
-    $identifier = trim((string) $identifier);
+    $account = pg_login_throttle_account_subject($identifier);
 
-    if ($identifier !== '') {
-        $subjects['u'] = mb_strtolower($identifier);
+    if ($account !== '') {
+        $subjects['u'] = $account;
     }
 
     return $subjects;
+}
+
+/**
+ * The account subject of a typed name: the key the user table's collation
+ * sorts it under (WEIGHT_STRING()), so every spelling the sign-in query
+ * takes for the same account counts on one counter. Lower case alone left
+ * "ádmin", "ADMİN" or a full-width "ａdmin" a fresh counter each, while
+ * validate_login() found the account "admin" for all of them: the account
+ * limit, the one that stops guessing spread over many addresses, never
+ * closed. A made-up name is folded the same way, so the counting tells
+ * nothing about which names exist. '' for an empty name.
+ *
+ * @param mixed $identifier the email address or username typed
+ * @return string
+ */
+function pg_login_throttle_account_subject($identifier)
+{
+    static $keys = array();
+
+    $identifier = is_scalar($identifier) ? trim((string) $identifier) : '';
+
+    if ($identifier === '') {
+        return '';
+    }
+
+    if (isset($keys[$identifier])) {
+        return $keys[$identifier];
+    }
+
+    $key = '';
+    $collation = pg_login_identifier_collation();
+
+    if ($collation !== '') {
+        $charset = substr($collation, 0, strpos($collation . '_', '_'));
+        $result = db_q("SELECT HEX(WEIGHT_STRING(CONVERT(_utf8mb4? USING " . $charset . ") COLLATE " . $collation . "))", array($identifier));
+        $row = $result ? mysqli_fetch_row($result) : null;
+
+        if (is_array($row) && isset($row[0]) && ((string) $row[0] !== '')) {
+            $key = 'w:' . strtolower((string) $row[0]);
+        }
+    }
+
+    // No database to ask (the test runner) or no answer: the same folding
+    // done in PHP, without case, the marks a letter decomposes into and
+    // compatibility forms.
+    if ($key === '') {
+        $folded = $identifier;
+
+        if (class_exists('Normalizer')) {
+            $decomposed = Normalizer::normalize($folded, Normalizer::FORM_KD);
+
+            if (is_string($decomposed)) {
+                $folded = (string) preg_replace('/\p{Mn}+/u', '', $decomposed);
+            }
+        }
+
+        $key = 'f:' . mb_strtolower($folded, 'UTF-8');
+    }
+
+    $keys[$identifier] = $key;
+
+    return $key;
+}
+
+/**
+ * The collation of user.user_username, the one validate_login() compares
+ * the typed name with, read once per request; '' when there is no
+ * connection to ask or the answer is not a collation name.
+ *
+ * @return string
+ */
+function pg_login_identifier_collation()
+{
+    static $collation = null;
+
+    if ($collation !== null) {
+        return $collation;
+    }
+
+    $collation = '';
+
+    if (!class_exists('db', false) || !isset(db::$con) || !db::$con) {
+        return $collation;
+    }
+
+    $result = @mysqli_query(db::$con, "SHOW FULL COLUMNS FROM user WHERE Field = 'user_username'");
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+    $name = (is_array($row) && isset($row['Collation'])) ? (string) $row['Collation'] : '';
+
+    if (preg_match('/^[a-z0-9]+_[a-z0-9_]+$/', $name) === 1) {
+        $collation = $name;
+    }
+
+    return $collation;
 }
 
 /**
@@ -5120,7 +5250,8 @@ function pg_login_captcha_check($answer)
         return 'expired';
     }
 
-    $answer = trim((string) $answer);
+    // An answer posted as an array (login_captcha_answer[]=) is a wrong one.
+    $answer = is_scalar($answer) ? trim((string) $answer) : '';
 
     return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $pending['answer'])) ? 'ok' : 'wrong';
 }
@@ -5999,8 +6130,10 @@ function pg_login_unlock($username, $email)
 }
 
 /**
- * The distinct counter subjects one account can be held under, folded to lower
- * case the same way pg_login_throttle_subjects() folds them.
+ * The distinct counter subjects one account can be held under, folded the
+ * same way pg_login_throttle_subjects() folds them, and the lower case form
+ * counters were opened under before that folding, until their lockout runs
+ * out.
  */
 function pg_login_lock_identifiers($username, $email)
 {
@@ -6014,6 +6147,7 @@ function pg_login_lock_identifiers($username, $email)
             continue;
         }
 
+        $subjects[pg_login_throttle_account_subject($identifier)] = true;
         $subjects[mb_strtolower($identifier)] = true;
     }
 

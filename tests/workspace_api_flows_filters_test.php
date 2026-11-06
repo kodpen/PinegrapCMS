@@ -93,8 +93,8 @@ function test_workspace_api_flows_filters_route_params()
 	$params = ws_api_flows_filters_test_params();
 
 	pg_assert_same('enum', $params['start']['type']);
-	pg_assert_same(array('time', 'event', 'join', 'manual'), $params['start']['values']);
-	pg_assert_same(array_values(array_unique(ws_flow_start_names())), array('time', 'event', 'join', 'manual'), 'a row box starts on an event');
+	pg_assert_same(array('time', 'event', 'join', 'manual', 'web'), $params['start']['values']);
+	pg_assert_same(array_values(array_unique(ws_flow_start_names())), array('time', 'event', 'join', 'manual', 'web'), 'a row box starts on an event');
 	pg_assert_same('enum', $params['status']['type']);
 	pg_assert_same(array('draft', 'live', 'paused'), $params['status']['values']);
 	pg_assert_same('int', $params['channel_id']['type']);

@@ -18,9 +18,41 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_file_list_edit.php');
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the design file screen's (validate_area_access() 'designer').
+if (pg_list_edit_requested()) {
+    // select_folder() reads the signed-in user; a request without one is
+    // refused by pg_list_edit_request() as an expired session.
+    $choices = array('folders' => array(), 'classes' => array());
+
+    if (defined('USER_LOGGED_IN') && USER_LOGGED_IN) {
+        $user = validate_user();
+        $choices = pg_design_file_quick_folder_choices();
+    }
+
+    $quick_edit = pg_design_file_quick_edit_columns($choices['folders'], $choices['classes']);
+
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return (int) $user['role'] <= 1;
+    });
+
+    $saved = pg_design_file_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
 
 $user = validate_user();
 validate_area_access($user, 'designer');
+
+// The folders the design file screen's picker offers (select_folder()); a
+// Designer or an Administrator sees every one.
+$choices = pg_design_file_quick_folder_choices();
+$quick_edit = pg_design_file_quick_edit_columns($choices['folders'], $choices['classes']);
 
 $liveform = new liveform('view_design_files');
 
@@ -55,32 +87,8 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified' => 'timestamp',
 ));
 
-// get all files
-$query =
-    "SELECT
-        files.id,
-        files.name,
-        files.folder,
-        folder.folder_name,
-        folder.folder_archived,
-        files.description,
-        files.type,
-        files.size,
-        files.optimized,
-        user.user_username,
-        files.timestamp,
-        files.design
-    FROM files
-    LEFT JOIN folder ON files.folder = folder.folder_id
-    LEFT JOIN user ON files.user = user.user_id
-    WHERE (files.design = '1')" . pg_design_files_bin_where() . "
-    ORDER BY $order_by";
+$files = (array) db_items(pg_design_file_list_sql() . " ORDER BY " . $order_by);
 
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-$files = array();
-while ($row = mysqli_fetch_assoc($result)) {
-    $files[] = $row;
-}
 // Set once a row is an image: the image editor's configuration is printed
 // once after the list, never inside a cell, where the list search would
 // match it.
@@ -101,78 +109,34 @@ $show_optimize_percent = ($unoptimized_count <= 30);
 
 // Every design file is printed: the list table driver sorts and searches
 // them in the browser (browser mode) and keeps a heading's sort in the
-// session. Modify Selected and Delete Selected post the selected ids as
-// files[] (edit_files.php).
+// session. Modify Selected (its changes asked in a dialog of the page,
+// pg_design_files_modify_dialog()) and Delete Selected post the selected
+// ids as files[] (edit_files.php).
 $list_rows = array();
-$image_types = array('bmp', 'gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'webp');
 
 foreach ($files as $file) {
-    $file_type = pg_file_name_extension($file['name']);
-    $is_image = in_array($file_type, $image_types, true);
-    $output_optimize_button = '';
-    $output_edit_image_button = '';
-
-    if ($is_image && ($file_type !== 'tif')) {
-        if (!$file['optimized'] && (extension_loaded('imagick') || extension_loaded('gd'))) {
-            $optimize_percent_html = $show_optimize_percent
-                ? '<span class="ps-1 fs-smaller">' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name'])))) . '</span>'
-                : '';
-            $output_optimize_button = '<a class="btn btn-sm btn-text theme-success" title="' . h(lang('Optimize this image')) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . h('&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_design_files.php')) . '"><i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Optimize this image')) . '</span>' . $optimize_percent_html . '</a>';
-        }
-
-        $output_edit_image_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor'))))) . '" aria-label="' . h(lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor'))))) . '" data-pg-image-edit="' . h($file['name']) . '"><i class="bi bi-brush" aria-hidden="true"></i></button>';
-        $has_image = true;
-    }
-
-    $output_thumbnail = '';
-
-    if ($is_image) {
-        // The dimensions in the File Manager's format ("20 × 10 px");
-        // nothing for a file that is not a readable image.
-        $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file['name']);
-        $output_image_dimensions = ($image_size !== false) ? pg_image_dimensions_label($image_size[0], $image_size[1]) : '';
-        $output_thumbnail = '<img style="width: 50px;height:50px;object-fit:cover;" title="' . h($output_image_dimensions) . '" alt="" class="img-fluid img-thumbnail" data-pg-thumb="' . h(pg_image_panel_thumb_url(PATH . encode_url_path($file['name']))) . '" />';
-    }
+    $built = pg_design_file_list_cells($file, $quick_edit, $show_optimize_percent, REQUEST_URL);
+    $has_image = $has_image || $built['image'];
 
     $list_rows[] = array(
         'id' => $file['id'],
         // A file inside an archived folder is shown in italics.
         'class' => ($file['folder_archived'] == '1') ? 'fst-italic' : '',
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_design_file.php?id=' . (int) $file['id'] . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '" data-pg-open title="' . h($file['name']) . '">' . h($file['name']) . '</a>'),
-            'thumbnail' => pg_list_cell($output_thumbnail),
-            'type' => pg_list_cell(h($file_type)),
-            'size' => pg_list_cell(h(convert_bytes_to_string($file['size'], 'auto')), 'align-middle', array('data-pg-sort-value' => (int) $file['size'])),
-            'optimized' => pg_list_table_check_cell($file['optimized']),
-            'folder' => pg_list_cell(pg_folder_list_name($file['folder_name']), 'align-middle text-wrap'),
-            'description' => pg_list_cell('<div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h($file['description'])) . '</div>'),
-            'last_modified' => pg_list_table_when_cell($file['timestamp'], $file['user_username'] ?? ''),
-            'actions' => pg_list_cell($output_optimize_button . $output_edit_image_button
-                . '<a class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Download')) . '" aria-label="' . h(lang('Download')) . '" download="' . h($file['name']) . '" href="' . OUTPUT_PATH . h($file['name']) . '"><i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i></a>'),
-        ),
+        'cells' => $built['cells'],
     );
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_design_files',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'thumbnail' => array('heading' => lang('Thumbnail'), 'kind' => 'image'),
-        'type' => array('heading' => lang('Type')),
-        'size' => array('heading' => lang('Size'), 'kind' => 'number'),
-        'optimized' => array('heading' => lang('Optimized'), 'kind' => 'check'),
-        'folder' => array('heading' => lang('Folder')),
-        'description' => array('heading' => lang('Description')),
-        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
-        'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
-    ),
+    'columns' => pg_design_file_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
     'ids_field' => 'files[]',
+    'edit' => array('url' => 'view_design_files.php', 'columns' => $quick_edit),
 ));
 
 $output_bulk_buttons =
-    '<button type="button" value="Modify Selected" class="btn btn-sm btn-solid theme-primary" onclick="window.open(\'edit_files.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>'
+    '<button type="button" value="Modify Selected" class="no-submit btn btn-sm btn-solid theme-primary" data-pg-modify-open><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Modify Selected') . '</button>'
     . '<button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('files'))))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete Selected') . '</button>';
 
 print
@@ -198,12 +162,9 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <form name="form" action="edit_files.php" method="post">
+            <form name="form" id="view_design_files_form" action="edit_files.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="action" />
-                <input type="hidden" name="move_to_folder" />
-                <input type="hidden" name="edit_design" />
-                <input type="hidden" name="optimize">
                 <input type="hidden" name="from" value="view_design_files" />
                 <input type="hidden" name="send_to" value="' . h(get_request_uri()) . '" />
                 ' . pg_list_table_html($list['source'], $list['page'], lang('All Design Files'), $output_bulk_buttons) . '
@@ -212,6 +173,7 @@ pg_page_shell(
     </div>
     ' . ($has_image ? pg_image_editor_includes() : '') . '
 </main>
+' . pg_design_files_modify_dialog($user, 'view_design_files_form') . '
 ' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();

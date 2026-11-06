@@ -13,7 +13,7 @@
  *   action=close     the case is settled outside these steps
  *   action=label     a return label from the carrier label service of the
  *                    approval's carrier; its code becomes the return code
- *   action=refund    refund_amount, refund_method (driver or manual),
+ *   action=refund    refund_amount, refund_method (driver, manual or credit),
  *                    refund_reference: the money back once the goods are here
  *
  * Every form also posts status_was, the status the page showed: a return
@@ -126,6 +126,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($refunded['amount'] === 0) {
             $done = lang('The return was marked as refunded.');
+        } elseif (!empty($refunded['credit'])) {
+            $done = $refunded['mailed']
+                ? lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}. The customer was told by e-mail.', 'vars' => array(pg_return_money_text($refunded['amount']), pg_return_money_text($refunded['credit']))))
+                : lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}, but the e-mail to the customer could not be sent.', 'vars' => array(pg_return_money_text($refunded['amount']), pg_return_money_text($refunded['credit']))));
         } elseif ($refunded['mailed']) {
             $done = lang(array('string' => 'The refund of {var:1} was recorded. The customer was told by e-mail.', 'vars' => array(pg_return_money_text($refunded['amount']))));
         } else {
@@ -465,29 +469,57 @@ if ($return_labels || $label_drivers) {
 // it went back another way.
 $refund_plan = ($status === 'received') ? pg_return_refund_plan($return) : null;
 
+// A cancelled order's money went back with the cancellation: no refund form,
+// only why (pg_return_refund() refuses it as well).
+if (($refund_plan !== null) && !pg_return_refund_order_open($refund_plan['order']['status'])) {
+    $refund_plan = null;
+    $output_forms .= '
+            <div class="card mb-7">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Payment Refund')) . '</span>
+                </div>
+                <div class="card-body">
+                    <p class="small fg-secondary mb-0">' . h(lang('The order was cancelled: its money goes back with the cancellation, not with the return.')) . '</p>
+                </div>
+            </div>';
+}
+
 if ($refund_plan !== null) {
     $money = function ($cents) {
         return pg_format_money((int) $cents / 100, BASE_CURRENCY_SYMBOL);
     };
 
     $by_driver = ($refund_plan['driver'] !== '');
+    $by_credit = pg_credit_refund_possible((int) db_value("SELECT user_id FROM orders WHERE id = '" . (int) $return['order_id'] . "'"));
     $method = $field_value('refund_method', $by_driver ? 'driver' : 'manual');
 
-    if (!$by_driver) {
+    if ((!$by_driver && ($method === 'driver')) || (!$by_credit && ($method === 'credit')) || !in_array($method, array('driver', 'manual', 'credit'), true)) {
         $method = 'manual';
     }
 
-    $output_methods = $by_driver ? '
-                        <div class="mb-5">
+    // Store credit: a card bound to the order's customer, the site's bonus
+    // on top (pg_credit_refund_card_amount()).
+    $refund_bonus = pg_credit_refund_bonus();
+    $output_credit_method = $by_credit ? '
+                            <div class="form-field">
+                                <input class="radio" type="radio" name="refund_method" id="refund_method_credit" value="credit"' . (($method === 'credit') ? ' checked' : '') . '>
+                                <label class="" for="refund_method_credit">' . h(($refund_bonus > 0)
+                                    ? lang(array('string' => 'Give it as store credit, with a {var:1}% bonus', 'vars' => array(pg_format_number($refund_bonus, (floor($refund_bonus) == $refund_bonus) ? 0 : 2))))
+                                    : lang('Give it as store credit')) . '</label>
+                            </div>' : '';
+
+    $output_methods = ($by_driver || $by_credit) ? '
+                        <div class="mb-5">' . ($by_driver ? '
                             <div class="form-field">
                                 <input class="radio" type="radio" name="refund_method" id="refund_method_driver" value="driver"' . (($method === 'driver') ? ' checked' : '') . '>
                                 <label class="" for="refund_method_driver">' . h(lang(array('string' => 'Refund through {var:1}', 'vars' => array($refund_plan['driver_label'])))) . '</label>
-                            </div>
+                            </div>' : '') . '
                             <div class="form-field">
                                 <input class="radio" type="radio" name="refund_method" id="refund_method_manual" value="manual"' . (($method === 'manual') ? ' checked' : '') . '>
                                 <label class="" for="refund_method_manual">' . h(lang('Record a refund made another way')) . '</label>
-                            </div>
-                        </div>' : '
+                            </div>' . $output_credit_method . '
+                        </div>' . ($by_driver ? '' : '
+                        <p class="small fg-secondary">' . h(lang('The payment of this order cannot be refunded from here. Give the money back another way (a bank transfer, for example), then record it here.')) . '</p>') : '
                         <input type="hidden" name="refund_method" value="manual">
                         <p class="small fg-secondary">' . h(lang('The payment of this order cannot be refunded from here. Give the money back another way (a bank transfer, for example), then record it here.')) . '</p>';
 
@@ -595,7 +627,13 @@ if (((int) $return['refunded_at'] > 0) && array_key_exists('refund_method', $ret
                                 <span class="col text-end text-break">' . h($refund_reference) . '</span>
                             </div>' : '') . '
                         </div>';
-    } elseif (in_array($refund_method, array('driver', 'manual'), true)) {
+    } elseif (in_array($refund_method, array('driver', 'manual', 'credit'), true)) {
+        $refund_method_text = array(
+            'driver' => lang('Through the payment service'),
+            'manual' => lang('Recorded, made another way'),
+            'credit' => lang('Store credit'),
+        );
+
         $output_refund = '
                         <div class="mt-5 small">
                             <div class="row">
@@ -604,12 +642,15 @@ if (((int) $return['refunded_at'] > 0) && array_key_exists('refund_method', $ret
                             </div>
                             <div class="row">
                                 <span class="col fg-secondary">' . h(lang('Refund method')) . ':</span>
-                                <span class="col text-end">' . h(($refund_method === 'driver') ? lang('Through the payment service') : lang('Recorded, made another way')) . '</span>
+                                <span class="col text-end">' . h($refund_method_text[$refund_method]) . '</span>
                             </div>
-                            ' . (($refund_reference !== '') ? '<div class="row">
+                            ' . ((($refund_method === 'credit') && ((int) $refund_reference > 0)) ? '<div class="row">
+                                <span class="col fg-secondary">' . h(lang('Store credit card')) . ':</span>
+                                <span class="col text-end"><a href="edit_gift_card.php?id=' . (int) $refund_reference . '">#' . (int) $refund_reference . '</a></span>
+                            </div>' : (($refund_reference !== '') ? '<div class="row">
                                 <span class="col fg-secondary">' . h(lang('Refund reference')) . ':</span>
                                 <span class="col text-end text-break">' . h($refund_reference) . '</span>
-                            </div>' : '') . '
+                            </div>' : '')) . '
                             ' . (((int) $return['refund_unclear'] === 1) ? '<div class="alert theme-warning small mt-3 mb-0">' . h(lang('The payment service has not confirmed this refund. If this note stays, check the refund on the service\'s screen.')) . '</div>' : '') . '
                         </div>';
     } else {

@@ -49,7 +49,7 @@ function api_webhook_events() {
 		'order.return.requested' => 'A return was requested for an order: by the customer in My Account, recorded by staff on the panel, or recorded through the API (a withdrawn request is not announced)',
 		'order.return.approved'  => 'A return request was approved, one event per request a bulk approval takes (a rejection is not announced)',
 		'order.return.received'  => 'The goods of a return arrived back at the shop (the customer saying the parcel left is not announced)',
-		'order.return.refunded'  => 'A received return was refunded through the payment service, or recorded as refunded another way; unclear: true when the service gave no clear answer and the refund is booked unconfirmed (closing a return is not announced)',
+		'order.return.refunded'  => 'A received return was refunded through the payment service, recorded as refunded another way, or given as store credit (refund_method credit); unclear: true when the service gave no clear answer and the refund is booked unconfirmed (closing a return is not announced)',
 		// A marketplace package (includes/api/outbound/orders.php, sync.php).
 		// id is the order's, as in every order.* event; the account, the
 		// provider and the marketplace's own order and package ids follow.
@@ -97,6 +97,12 @@ function api_webhook_events() {
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
 		'subscription.paused'    => 'A subscription was paused: nothing is charged until it is resumed',
 		'subscription.resumed'   => 'A paused subscription was resumed and is charged again from next_charge_at',
+		// A customer's store credit (includes/fn/store_credit_events.php): id is
+		// the card's (GET /gift-cards/{id}); account_id, customer_id, kind,
+		// reason, amount, balance and expires_at follow, never the code.
+		'credit.issued'  => 'Store credit was given to a customer: reward points converted, a refund paid as credit, or issued by staff on the customer\'s screen or through the API; GET /customers/{id}/credit lists the cards',
+		'credit.used'    => 'An order spent a customer\'s store credit card; order_id and amount_used name the order and what it took, balance what is left (giving it back when the order is cancelled is not announced)',
+		'credit.expired' => 'A store credit card reached its end with money left and was closed by the scheduled job; expired_amount is what was left (a card voided by staff, through the API or by an erasure is not announced)',
 		// An affiliate commission's status (includes/fn/commission_list.php,
 		// pg_commission_status_save()): id is the commission's; reference_code,
 		// status, previous_status, affiliate_code, order_id and amount follow.
@@ -311,11 +317,13 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 
 	}
 
-	$body = json_encode(array(
-		'event'      => $event,
-		'created_at' => gmdate('Y-m-d\TH:i:s\Z'),
-		'data'       => $payload
-	), JSON_UNESCAPED_UNICODE);
+	$body = api_webhook_body($event, $payload, gmdate('Y-m-d\TH:i:s\Z'));
+
+	if ($body === null) {
+
+		return 0;
+
+	}
 
 	$queued = 0;
 
@@ -373,6 +381,22 @@ function api_webhook_enqueue($event, $payload, $recorded = false) {
 	}
 
 	return $queued;
+
+}
+
+// The body every subscriber of an event is sent: the envelope as JSON,
+// written by pg_json_encode_answer() so that bytes which are not UTF-8 (a
+// name cut inside a character, a legacy row) become U+FFFD instead of making
+// json_encode() answer false, which queued and signed an empty body no
+// receiver could read. Null when the payload cannot be written at all (INF or
+// NAN): nothing is queued then. Pure.
+function api_webhook_body($event, $payload, $created_at) {
+
+	return pg_json_encode_answer(array(
+		'event'      => (string)$event,
+		'created_at' => (string)$created_at,
+		'data'       => $payload
+	));
 
 }
 
@@ -517,6 +541,19 @@ function api_webhook_max_attempts() {
 
 }
 
+// The activity log line for a delivery given up after its last attempt. The
+// address is cut to scheme and host (pg_ops_alert_mask_url()): the log is read
+// by every manager and by API apps with site_log:read, and Slack, Discord and
+// Zapier addresses carry their secret in the path. Pure.
+function api_webhook_given_up_note($url, $attempts, $error) {
+
+	return lang(array(
+		'string' => 'A webhook delivery to {var:1} was given up after {var:2} attempts: {var:3}',
+		'vars'   => array(pg_ops_alert_mask_url($url), (int)$attempts, (string)$error)
+	));
+
+}
+
 // Send one queued row. Answers true when it is done with - delivered, or given
 // up on - and false when it is waiting for another attempt.
 function api_webhook_deliver($row) {
@@ -599,10 +636,7 @@ function api_webhook_deliver($row) {
 		// an integration is discovered to be broken a week later.
 		db("UPDATE api_webhooks SET status = 'failing' WHERE id = '" . (int)$hook['id'] . "'");
 
-		log_activity(lang(array(
-			'string' => 'A webhook delivery to {var:1} was given up after {var:2} attempts: {var:3}',
-			'vars'   => array($hook['url'], $attempts, $error)
-		)), 'SYSTEM');
+		log_activity(api_webhook_given_up_note($hook['url'], $attempts, $error), 'SYSTEM');
 
 		return true;
 

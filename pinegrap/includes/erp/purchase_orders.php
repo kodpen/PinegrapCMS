@@ -447,13 +447,20 @@ function erp_purchase_order_mark_sent($order_id)
         return array('success' => false, 'error' => $refusal);
     }
 
-    $first = ((int) $order['sent_at'] === 0);
+    // The first send is claimed by a guarded update: of two presses at once
+    // one stamps sent_at and announces it. Neither moves an order cancelled
+    // or received in full since it was read.
+    $waiting = "status NOT IN ('cancelled', 'received')";
+
+    db("UPDATE erp_purchase_orders SET sent_at = UNIX_TIMESTAMP()
+        WHERE id = '" . (int) $order['id'] . "' AND sent_at = 0 AND " . $waiting);
+
+    $first = (mysqli_affected_rows(db::$con) === 1);
 
     db("UPDATE erp_purchase_orders SET
             status = IF(status = 'open', 'sent', status),
-            sent_at = IF(sent_at = 0, UNIX_TIMESTAMP(), sent_at),
             updated_at = UNIX_TIMESTAMP()
-        WHERE id = '" . (int) $order['id'] . "'");
+        WHERE id = '" . (int) $order['id'] . "' AND " . $waiting);
 
     if ($first) {
         erp_event_purchase_order((int) $order['id'], 'erp.purchase_order.sent');
@@ -485,15 +492,40 @@ function erp_purchase_order_set_status($order_id, $to)
         return array('success' => false, 'error' => $refusal);
     }
 
+    // Guarded on the status the move starts from: a second press moves and
+    // announces nothing, and a cancel never overwrites an order whose last
+    // goods came in since it was read. Either answers with what stopped it.
+    $moved = function () use ($order, $to) {
+        if (mysqli_affected_rows(db::$con) === 1) {
+            return '';
+        }
+
+        $now = erp_purchase_order((int) $order['id']);
+        $refusal = is_array($now) ? erp_purchase_order_status_refusal($now, $to) : '';
+
+        return ($refusal !== '') ? $refusal : lang('The purchase order cannot be moved to that status.');
+    };
+
     if ($to === 'cancelled') {
-        db("UPDATE erp_purchase_orders SET status = 'cancelled', updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'");
+        db("UPDATE erp_purchase_orders SET status = 'cancelled', updated_at = UNIX_TIMESTAMP()
+            WHERE id = '" . (int) $order['id'] . "' AND status NOT IN ('cancelled', 'received')");
+
+        if (($refusal = $moved()) !== '') {
+            return array('success' => false, 'error' => $refusal);
+        }
+
         erp_event_purchase_order((int) $order['id'], 'erp.purchase_order.cancelled');
 
         return array('success' => true, 'error' => '');
     }
 
     if ($to === 'open') {
-        db("UPDATE erp_purchase_orders SET status = IF(sent_at > 0, 'sent', 'open'), updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'");
+        db("UPDATE erp_purchase_orders SET status = IF(sent_at > 0, 'sent', 'open'), updated_at = UNIX_TIMESTAMP()
+            WHERE id = '" . (int) $order['id'] . "' AND status = 'cancelled'");
+
+        if (($refusal = $moved()) !== '') {
+            return array('success' => false, 'error' => $refusal);
+        }
 
         if (function_exists('erp_purchase_order_refresh')) {
             erp_purchase_order_refresh((int) $order['id']);
@@ -1170,16 +1202,34 @@ function erp_purchase_order_to_invoice($order_id, $user_id)
         return array('success' => false, 'invoice_id' => 0, 'error' => $message);
     };
 
+    // What is left is read with the order's row locked and the draft written
+    // before the lock goes: of two presses at once the second waits, then
+    // finds the goods on the first one's draft, rather than drafting them
+    // again and receiving them twice once both are issued.
+    if (!erp_tx_begin()) {
+        return $fail(lang('Could not start a database transaction.'));
+    }
+
+    $refuse = function ($message) use ($fail) {
+        erp_tx_rollback();
+
+        return $fail($message);
+    };
+
+    if (!is_array(db_item("SELECT id FROM erp_purchase_orders WHERE id = '" . (int) $order_id . "' LIMIT 1 FOR UPDATE"))) {
+        return $refuse(lang('The purchase order could not be found.'));
+    }
+
     $order = erp_purchase_order($order_id);
 
     if ($order === null) {
-        return $fail(lang('The purchase order could not be found.'));
+        return $refuse(lang('The purchase order could not be found.'));
     }
 
     $progress = erp_purchase_order_order_progress($order);
 
     if (($refusal = erp_purchase_order_invoice_refusal($order, $progress)) !== '') {
-        return $fail($refusal);
+        return $refuse($refusal);
     }
 
     $lines = array();
@@ -1235,13 +1285,25 @@ function erp_purchase_order_to_invoice($order_id, $user_id)
     $saved = erp_invoice_draft_save($data, 0);
 
     if (empty($saved['success'])) {
+        // A refusal inside the draft's own transaction has rolled it back.
+        if (erp_tx_depth() > 0) {
+            erp_tx_rollback();
+        }
+
         return $fail((string) $saved['error']);
     }
 
     // What is on drafts is part of the order as it is read; a client that
     // follows changes by updated_at sees it.
-    db("UPDATE erp_purchase_orders SET updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'");
+    if (erp_query("UPDATE erp_purchase_orders SET updated_at = UNIX_TIMESTAMP() WHERE id = '" . (int) $order['id'] . "'") === false) {
+        return $refuse(erp_db_error());
+    }
+
     erp_event_purchase_order((int) $order['id'], 'erp.purchase_order.invoiced');
+
+    if (!erp_tx_commit()) {
+        return $refuse(erp_db_error());
+    }
 
     return array('success' => true, 'invoice_id' => (int) $saved['invoice_id'], 'error' => '');
 }

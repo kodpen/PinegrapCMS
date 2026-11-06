@@ -65,7 +65,7 @@ function pg_product_group_form_unselected_rows($products, $show_image)
             $uoutput_image_column .
             '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . (($urow['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
-            '<td class="align-middle text-end">' . prepare_amount($urow['price']) . '</td>' .
+            '<td class="align-middle text-end" data-sort="' . h((string) $urow['price']) . '">' . prepare_amount($urow['price']) . '</td>' .
             '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $urow['id'] . '" size="5" value="" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $urow['name']) . '" style="text-align: right;width:60px;" /></td>' .
             '<td></td>' .
             '</tr>';
@@ -332,25 +332,27 @@ function pg_product_group_form_products_card($form)
                             <div class="card mb-7' . $form['card_class'] . '">
                                 <h2 class="card-header bg-reset text-uppercase fg-primary h5 fw-bold">' . $form['title'] . '</h2>
                                 <div class="card-body p-0 position-relative">
-                                    <table id="' . $form['table_id'] . '" class="chart table-hover table datatable-restricted-mode" style="width:100%;display:none">
+                                    <div class="table-responsive">
+                                    <table id="' . $form['table_id'] . '" class="table table-hover mb-0" data-pg-sort>
                                         <thead>
                                             <tr>
-                                                <th class="noVis">
+                                                <th data-pg-sort="none">
                                                     <div class="form-field">
-                                                        <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
+                                                        <div class="switch"><input class="" title="' . h(lang('Select/Deselect All')) . '" aria-label="' . h(lang('Select/Deselect All')) . '" type="checkbox" id="select_all"></div>
                                                     </div>
                                                 </th>
-                                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
+                                                <th data-pg-sort="none">' . lang('Action') . '</th>
                                                 ' . $form['image_header'] . '
                                                 <th>' . lang('Name') . '</th>
                                                 <th>' . lang('Short Description') . '</th>
                                                 <th class="text-end">' . lang('Price') . '</th>
-                                                <th>' . lang('Sorting') . '</th>
-                                                <th class="noVis"></th>
+                                                <th data-pg-sort="none">' . lang('Sorting') . '</th>
+                                                <th data-pg-sort="none"></th>
                                             </tr>
                                         </thead>
                                         <tbody>' . $form['rows'] . '</tbody>
                                     </table>
+                                    </div>
                                 </div>
                                 ' . ($form['total_unselected'] > $form['loaded'] ? '
                                 <div class="p-5 border-top">
@@ -363,6 +365,26 @@ function pg_product_group_form_products_card($form)
                         <script>
                         (function() {
                             var loadedOffset = ' . (int) $form['loaded'] . ';
+                            var $productsTable = $("#' . $form['table_id'] . '");
+
+                            // The rows hold form fields, so the table is a plain one
+                            // (every row stays in the form); Select All ticks every
+                            // product box, rows loaded later included, and shows a
+                            // mixed state while only some are ticked.
+                            function syncSelectAll() {
+                                var $boxes = $productsTable.find("tbody .select-all input[type=checkbox]").not(":disabled");
+                                var ticked = $boxes.filter(":checked").length;
+                                $("#select_all")
+                                    .prop("indeterminate", (ticked > 0) && (ticked < $boxes.length))
+                                    .prop("checked", (ticked > 0) && (ticked === $boxes.length));
+                                $boxes.each(function() { $(this).closest("tr").toggleClass("selected", this.checked); });
+                            }
+                            $productsTable.on("change", "#select_all", function() {
+                                $productsTable.find("tbody .select-all input[type=checkbox]").not(":disabled").prop("checked", this.checked);
+                                syncSelectAll();
+                            });
+                            $productsTable.on("change", "tbody .select-all input[type=checkbox]", syncSelectAll);
+                            syncSelectAll();
                             var loadMoreBusy = false;
 
                             // The button is enabled again or hidden on every answer: a batch
@@ -404,7 +426,7 @@ function pg_product_group_form_products_card($form)
                                             return;
                                         }
 
-                                        var $table = $("#' . $form['table_id'] . '");
+                                        var $table = $productsTable;
                                         var $rows = response.rows ? $(response.rows).filter("tr") : $();
                                         // A product already in the table is not added again. The tick
                                         // box is the key: a selected child group row uses its group id
@@ -414,11 +436,8 @@ function pg_product_group_form_products_card($form)
                                             return !id || !$table.find("input[name=\"products[]\"][value=\"" + id + "\"]").length;
                                         });
                                         if ($rows.length) {
-                                            var dt = $table.DataTable();
-                                            $rows.each(function() {
-                                                dt.row.add(this);
-                                            });
-                                            dt.draw(false);
+                                            $table.children("tbody").append($rows);
+                                            syncSelectAll();
 
                                             // Immediately resolve lazy images in loaded rows (they are on-demand anyway).
                                             $rows.find("img.lazy").each(function() {

@@ -151,6 +151,17 @@ function test_dealership_vehicle_lists_filter_known_fields()
 	}
 }
 
+// The home page's "Latest used cars" are the cars added last, not a fixed
+// set picked by another column.
+function test_dealership_home_used_lists_the_latest_cars()
+{
+	$d = _test_dlv_load();
+	$c = $d['part']['widgets']['home_used']['config'];
+	pg_assert_same('submitted_date_and_time', $c['order_by_field'], 'home_used: sorted by when the car was added');
+	pg_assert_same('DESC', $c['order_by_direction'], 'home_used: the newest first');
+	pg_assert_same(3, $c['max_results'], 'home_used: three cars');
+}
+
 function test_dealership_vehicle_links_name_template_pages()
 {
 	$d = _test_dlv_load();

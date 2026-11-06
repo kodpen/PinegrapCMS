@@ -20,7 +20,9 @@
 
 include('init.php');
 $user = validate_user();
-if (!validate_erp_access($user)) {
+// The read-only accountant is told on arrival, not after filling the form in.
+if (!validate_erp_access($user)
+    || (defined('USER_ERP_READONLY') && USER_ERP_READONLY && !validate_erp_access($user, 'write'))) {
     exit();
 }
 
@@ -232,17 +234,18 @@ if (!$_POST) {
                 <div class="card my-7">
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Amount and tax') . '</div>
                     <div class="card-body">
-                        <div class="d-flex flex-wrap gap-7 mb-5">
-                            <span>' . lang('Net') . ': <b>' . h(erp_money_out_currency((int) $existing['net_amount'], $paid_currency)) . '</b></span>
-                            <span>' . h(erp_tax_label('tax')) . ' ' . h(erp_percent_text((float) $existing['tax_rate'])) . ': <b>' . h(erp_money_out_currency((int) $existing['tax_amount'], $paid_currency)) . '</b></span>
-                            <span>' . lang('Total') . ': <b>' . h(erp_money_out_currency((int) $existing['total_amount'], $paid_currency)) . '</b></span>
-                        </div>
                         <div class="form-field">
                             <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'tax_deductible', 'name' => 'tax_deductible', 'value' => '1', 'class' => 'no-bs')) . '</div>
                             <label class="" for="tax_deductible">' . lang('Tax taken back') . '</label>
                         </div>
                     </div>
                 </div>';
+        $output_figures = '
+                        <div class="d-flex flex-column gap-3">
+                            <span>' . lang('Net') . ': <b>' . h(erp_money_out_currency((int) $existing['net_amount'], $paid_currency)) . '</b></span>
+                            <span>' . h(erp_tax_label('tax')) . ' ' . h(erp_percent_text((float) $existing['tax_rate'])) . ': <b>' . h(erp_money_out_currency((int) $existing['tax_amount'], $paid_currency)) . '</b></span>
+                            <span>' . lang('Total') . ': <b>' . h(erp_money_out_currency((int) $existing['total_amount'], $paid_currency)) . '</b></span>
+                        </div>';
     } else {
         $output_money_card = '
                 <div class="card my-7">
@@ -282,11 +285,6 @@ if (!$_POST) {
                             'string' => 'Leave the {var:1} amount empty to have it worked out from the rate; type it when the receipt prints it, so the books carry the same figure. Switch off "Tax taken back" for a receipt whose tax cannot be deducted: it then counts as cost.',
                             'vars' => erp_tax_label('tax'),
                         ))) . '</div>
-                        <div class="d-flex flex-wrap gap-7 mt-5 p-3 rounded-4 bg-1 small" id="erp_expense_preview" aria-live="polite">
-                            <span>' . lang('Net') . ': <b data-part="net">—</b></span>
-                            <span>' . h(erp_tax_label('tax')) . ': <b data-part="tax">—</b></span>
-                            <span>' . lang('Total') . ': <b data-part="total">—</b></span>
-                        </div>
                         ' . ($fx_on
                             ? '<div class="row mt-3">
                             <div class="col-12 sm:col-4 lg:col-3 my-3">
@@ -302,6 +300,13 @@ if (!$_POST) {
                             : '') . '
                     </div>
                 </div>';
+        // Worked out by the script below as the figures are typed.
+        $output_figures = '
+                        <div class="d-flex flex-column gap-3" id="erp_expense_preview" aria-live="polite">
+                            <span>' . lang('Net') . ': <b data-part="net">—</b></span>
+                            <span>' . h(erp_tax_label('tax')) . ': <b data-part="tax">—</b></span>
+                            <span>' . lang('Total') . ': <b data-part="total">—</b></span>
+                        </div>';
     }
 
     // Repeating: a new expense can be written again by itself, every month
@@ -347,6 +352,14 @@ if (!$_POST) {
                 </div>';
     }
 
+    // A change reaches the active repeat (erp_expense_recurrence_follow()).
+    $repeating = is_array($existing) ? erp_expense_recurrence_of($existing) : null;
+
+    if (is_array($repeating) && ((string) $repeating['status'] === 'active')) {
+        $output_repeat = '
+                <div class="alert theme-info my-7">' . lang('This expense repeats: the active repeat takes these values too (supplier, category, description, amount, tax). The expenses it wrote already stay as they are.') . '</div>';
+    }
+
     $output_file = '';
     $kept = is_array($existing) ? erp_archive_file('expense', $id) : null;
 
@@ -377,7 +390,7 @@ if (!$_POST) {
     ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 2xl:col-10">
+        <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
@@ -385,6 +398,8 @@ if (!$_POST) {
             <form name="form" action="add_erp_expense.php' . h($form_query) . '" method="post" enctype="multipart/form-data" id="erp_expense_form" data-decimal-comma="' . (erp_decimal_comma() ? '1' : '0') . '">
                 ' . get_token_field() . '
                 ' . (($id > 0) ? '<input type="hidden" name="id" value="' . $id . '" />' : '') . '
+                <div class="row">
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card my-7">
                     <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('What was spent') . '</div>
                     <div class="card-body">
@@ -430,7 +445,20 @@ if (!$_POST) {
                 </div>
                 ' . $output_repeat . '
                 ' . $output_file . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                </div>
+                <!-- The figures to read sit beside the form; written after it,
+                     so on a narrow screen they do not push the first field down. -->
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <div class="position-sticky" style="top:3.3rem;">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Total') . '</div>
+                            <div class="card-body">' . $output_figures . '
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" name="submit_save" value="save" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
@@ -438,6 +466,8 @@ if (!$_POST) {
                         </div>
                     </div>
                 </nav>
+                </div>
+                </div>
             </form>
         </div>
     </div>
@@ -639,6 +669,16 @@ if (!$_POST) {
         go($back);
     }
 
+    // A repeat's end date that is not a date is refused before anything is
+    // saved: read as empty, it made the repeat run with no end.
+    $repeat_asked = ($id === 0) && ((string) $liveform->get_field_value('repeat') !== '');
+    $repeat_end = $repeat_asked ? $date_in('repeat_end') : '';
+
+    if ($repeat_end === false) {
+        $liveform->mark_error('repeat_end', lang('Please enter a valid date.'));
+        go($back);
+    }
+
     // The currency and the rate of its day, as a receipt reads them.
     $currency = $base;
     $exchange_rate = 1.0;
@@ -718,15 +758,14 @@ if (!$_POST) {
     // does not cost the operator the expense; the view says why.
     $repeat_warning = '';
 
-    if (($id === 0) && ((string) $liveform->get_field_value('repeat') !== '') && erp_expense_recurring_ready()) {
-        $repeat_end = $date_in('repeat_end');
+    if ($repeat_asked && erp_expense_recurring_ready()) {
         $repeat = erp_expense_recurrence_create($saved_id, array(
             'every_months' => (int) $liveform->get_field_value('repeat_every'),
             'due_days' => (int) $liveform->get_field_value('repeat_due_days'),
             'pay' => $pay && ((string) $liveform->get_field_value('repeat_pay') !== ''),
             'cash_account_id' => (int) $liveform->get_field_value('cash_account_id'),
             'payment_method' => (string) $liveform->get_field_value('payment_method'),
-            'end_date' => is_string($repeat_end) ? $repeat_end : '',
+            'end_date' => (string) $repeat_end,
         ), (int) $user['id']);
 
         if (!$repeat['success']) {
@@ -752,7 +791,7 @@ if (!$_POST) {
 
     if ($another && ($file_warning === '') && ($repeat_warning === '')) {
         $liveform_next = new liveform('add_erp_expense');
-        $liveform_next->add_notice(h(lang(array('string' => 'Expense #{var:1} recorded. The next one:', 'vars' => $saved_id))) . ' <a class="alert-link" href="edit_erp_expense.php?id=' . $saved_id . '">' . lang('Open the expense') . '</a>');
+        $liveform_next->add_notice(h(lang(array('string' => 'Expense #{var:1} recorded; enter the next one below.', 'vars' => $saved_id))) . ' <a class="alert-link" href="edit_erp_expense.php?id=' . $saved_id . '">' . lang('Open the expense') . '</a>');
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_expense.php');
     }
 

@@ -429,7 +429,23 @@ function api_openapi_type($param) {
 
 		case 'decimal':
 
-			return array('type' => 'number');
+			// The router refuses a decimal outside its bounds
+			// (api_validate_bounds()), so the document states them.
+			$schema = array('type' => 'number');
+
+			if (isset($param['min'])) {
+
+				$schema['minimum'] = $param['min'];
+
+			}
+
+			if (isset($param['max'])) {
+
+				$schema['maximum'] = $param['max'];
+
+			}
+
+			return $schema;
 
 		case 'bool':
 
@@ -668,6 +684,8 @@ function api_openapi_objects()
         'SearchReport' => 'api_search_report_schema',
         'PagesReport' => 'api_pages_report_schema',
         'SiteLogEntry' => 'api_site_log_schema',
+        'FediverseFollower' => 'api_fediverse_follower_schema',
+        'FediverseDelivery' => 'api_fediverse_delivery_schema',
         'AuditLogEntry' => 'api_audit_log_schema',
         'Campaign'     => 'api_campaign_schema',
         'CampaignRecipient' => 'api_campaign_recipient_schema',
@@ -690,6 +708,8 @@ function api_openapi_objects()
         'WishlistItem'      => 'api_wishlist_item_schema',
         'Consent'           => 'api_consent_schema',
         'Subscription'      => 'api_subscription_schema',
+        'CustomerCredit'    => 'api_customer_credit_schema',
+        'StoreCreditCard'   => 'api_store_credit_card_schema',
         'User'              => 'api_user_schema',
         'UserPermissions'   => 'api_user_permissions_schema',
         'UserTwoStep'       => 'api_user_two_step_schema',
@@ -726,6 +746,8 @@ function api_openapi_objects()
         'SmsCampaignOutbox'  => 'api_sms_campaign_outbox_schema',
         'DesignAd'           => 'api_design_ad_schema',
         'DesignAdRegion'     => 'api_design_ad_region_schema',
+        'DesignAutoDialog'   => 'api_design_auto_dialog_schema',
+        'DesignCommonRegion' => 'api_design_common_region_schema',
     );
 
     // A module declares the objects its own endpoints answer with, the same way

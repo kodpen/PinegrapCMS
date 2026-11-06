@@ -497,6 +497,15 @@ function pg_panel_software_update($request, $action)
                 ));
             }
 
+            // With update checks off in data/config.php the server is not
+            // asked, as on the Kodpen API path above and in the daily check.
+            if (!$repair && defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK != true)) {
+                respond(array(
+                    'status' => 'error',
+                    'message' => pg_update_check_error_text(array('error' => 'checks_off'))
+                ));
+            }
+
             $server = pg_update_server_version();
 
             if ($server['error'] === 'curl_missing') {
@@ -553,58 +562,10 @@ function pg_panel_software_update($request, $action)
                 ));
             }
 
-            $response = array('version' => $server['version']);
+            // Numerically, part by part, and without a warning when either
+            // version has fewer than three parts (pg_update_version_newer()).
+            $software_update_available = pg_update_version_newer($server['version'], VERSION) ? 1 : 0;
 
-            // If the software update check is not disabled in the config.php file,
-            // then continue to determine if there is a software update.
-            if (
-                (defined('SOFTWARE_UPDATE_CHECK') == FALSE)
-                || (SOFTWARE_UPDATE_CHECK == TRUE)
-            ) {
-                // figure out if new version is greater than old version
-
-                $new_version = trim($response['version']);
-                $new_version_parts = explode('.', $new_version);
-
-                $old_version = VERSION;
-                $old_version_parts = explode('.', $old_version);
-
-                // assume that new version is not greater than old version, until we find out otherwise
-                $new_version_is_greater_than_old_version = FALSE;
-
-                // if the major number of the new version is greater than the major number of the old version,
-                // then the new version is greater than the old version
-                if ($new_version_parts[0] > $old_version_parts[0]) {
-                    $new_version_is_greater_than_old_version = TRUE;
-
-                    // else if the major number of the new version is equal to the major number of the old version,
-                    // then continue to check
-                } elseif ($new_version_parts[0] == $old_version_parts[0]) {
-                    // if the minor number of the new version is greater than the minor number of the old version,
-                    // then the new version is greater than the old version
-                    if ($new_version_parts[1] > $old_version_parts[1]) {
-                        $new_version_is_greater_than_old_version = TRUE;
-
-                        // else if the minor number of the new version is equal to the minor number of the old version,
-                        // then continue to check
-                    } elseif ($new_version_parts[1] == $old_version_parts[1]) {
-                        // if the maintenance number of the new version is greater than the maintenance number of the old version,
-                        // then the new version is greater than the old version
-                        if ($new_version_parts[2] > $old_version_parts[2]) {
-                            $new_version_is_greater_than_old_version = TRUE;
-                        }
-                    }
-                }
-
-                // assume that there is not an available software update until we find out otherwise
-                $software_update_available = 0;
-
-                // if the new version is greater than the old version, then there is an available software update
-                if ($new_version_is_greater_than_old_version == TRUE) {
-                    $software_update_available = 1;
-                }
-
-            }
             //there is no software
             if ($software_update_available == 0) {
                 //return error json output

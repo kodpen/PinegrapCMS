@@ -196,7 +196,68 @@ function test_commission_edit_screens_print_the_summary()
 {
 	foreach (array('edit_commission.php', 'edit_recurring_commission_profile.php') as $file) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-		pg_assert_contains('pg_commission_edit_summary($', $source, $file . ' names the record');
+		pg_assert_contains('pg_commission_edit_layout(', $source, $file . ' names the record');
 		pg_assert_contains('orders.status AS order_status', $source, $file . ' reads the order status');
 	}
+}
+
+// The commission and profile edit screens use the wide layout: the Status
+// card in the form column, the Summary in the sticky status column.
+function test_commission_edit_layout()
+{
+	$html = pg_commission_edit_layout('<div id="cards"></div>', array('affiliate_name' => 'Ann', 'affiliate_code' => 'A1', 'amount' => '100', 'order_id' => '0', 'order_number' => ''), '<button id="b"></button>');
+
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1">' . '<div id="cards"></div>', $html, 'the cards in the form column');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $html, 'the status column');
+	pg_assert_contains('position-sticky" style="top:3.3rem;"', $html, 'its sticky box below the top bar');
+	pg_assert_true(strpos($html, 'order-2') < strpos($html, lang('Summary')), 'the Summary sits in the status column');
+	pg_assert_true(strpos($html, 'order-3') < strpos($html, '<button id="b">'), 'the buttons in the save bar');
+	pg_assert_same(4, substr_count($html, '<dt class="fw-normal">'), 'name, code, amount and order rows');
+
+	foreach (array('edit_commission.php', 'edit_recurring_commission_profile.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_commission_edit_layout(', $source, $file . ': the layout');
+		pg_assert_contains("'name'=>'id', 'value'=>\$id", $source, $file . ': the checked id');
+	}
+}
+
+// Two contacts can carry the same affiliate code (contacts imported before
+// the importer refused a taken code): a plain join on the code would list
+// each of the affiliate's commissions twice. The lists join one contact per
+// code, the oldest, as the API does.
+function test_commission_list_joins_one_contact_per_code()
+{
+	foreach (array(pg_commission_list_from(), pg_commission_profile_list_from()) as $from) {
+		pg_assert_contains('MIN(id) AS id', $from);
+		pg_assert_contains('GROUP BY affiliate_code', $from);
+		pg_assert_contains('ON contacts.id = affiliate_contact.id', $from);
+		pg_assert_false(strpos($from, '.affiliate_code = contacts.affiliate_code') !== false, 'no plain join on the code');
+	}
+
+	pg_assert_contains("ON affiliate_contact.affiliate_code = commissions.affiliate_code", pg_commission_list_from());
+	pg_assert_contains("ON affiliate_contact.affiliate_code = recurring_commission_profiles.affiliate_code", pg_commission_profile_list_from());
+}
+
+// The status totals above the list read commissions alone: a join on the
+// affiliate code counted a commission once per contact holding the code.
+function test_commission_list_totals_read_commissions_alone()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_commissions.php');
+
+	pg_assert_false(strpos($source, 'JOIN') !== false, 'no join in the totals');
+	pg_assert_contains('GROUP BY status', $source);
+	pg_assert_contains('(created_timestamp >= ?) AND (created_timestamp <= ?)', $source);
+	pg_assert_contains('pg_commission_list_totals($status_rows)', $source);
+}
+
+// The totals rows as the four status figures, a missing status as 0.
+function test_commission_list_totals_from_rows()
+{
+	pg_assert_same(
+		array('pending' => 1250, 'payable' => 0, 'ineligible' => 0, 'paid' => 300),
+		pg_commission_list_totals(array(
+			array('status' => 'pending', 'total' => '1250'),
+			array('status' => 'paid', 'total' => '300'),
+			array('status' => '', 'total' => '99'),
+		)));
 }

@@ -147,7 +147,7 @@
         if (action.kind === "approve") {
             request.action = "ws_approval_decide";
             request.approval_id = action.approval_id;
-            request.decision = "approved";
+            request.decision = "approve";
         } else {
             request.action = "ws_flow_step_mend";
             request.run_id = action.run_id;

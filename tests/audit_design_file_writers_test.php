@@ -83,7 +83,8 @@ function test_audit_add_design_file_records_each_upload()
 function test_audit_edit_design_file_records_save_and_delete()
 {
 	audit_design_file_writers_test_writes('edit_design_file.php', 'DELETE FROM files', 'delete', 1);
-	audit_design_file_writers_test_writes('edit_design_file.php', 'UPDATE files', 'update', 1);
+	audit_design_file_writers_test_writes('edit_design_file.php', 'UPDATE files', 'update', 0);
+	audit_design_file_writers_test_writes('includes/forms/design_file_form.php', 'UPDATE files', 'update', 1);
 }
 
 // The two system-theme paths record after the size UPDATE, the upload path after its INSERT.
@@ -106,6 +107,9 @@ function test_audit_edit_theme_file_records_save_delete_and_deactivation()
 {
 	$file = 'edit_theme_file.php';
 	audit_design_file_writers_test_writes($file, 'DELETE FROM files', 'delete', 1);
+
+	// The save is shared with the All Themes list's quick edit.
+	$file = 'includes/forms/theme_file_form.php';
 	audit_design_file_writers_test_writes($file, 'UPDATE files', 'update', 3);
 	$source = audit_design_file_writers_test_source($file);
 	pg_assert_same(2, substr_count($source, "pg_audit_record('update', 'files', (int) \$old_activated_theme_id, "), $file . ': both deactivations record the old theme');
@@ -139,7 +143,7 @@ function test_audit_edit_file_records_content_digest()
 	$source = audit_design_file_writers_test_source('edit_file.php');
 	$read = strpos($source, 'pg_audit_fetch_file((int) $file_id, $stored_file_path)');
 	$rename = ($read === false) ? false : strpos($source, '@rename($old_file_path, $file_path)', $read);
-	$write = ($rename === false) ? false : strpos($source, "fwrite(\$handle, \$_POST['code'])", $rename);
+	$write = ($rename === false) ? false : strpos($source, "pg_file_write_whole(\$file_path, \$_POST['code'])", $rename);
 	$update = ($write === false) ? false : strpos($source, 'UPDATE files SET', $write);
 	$record = ($update === false) ? false : strpos($source, 'pg_audit_record_file((int) $file_id, $audit_before_content, $file_path)', $update);
 	pg_assert_true($rename !== false && $write !== false, 'the digest is read before the rename and the write');

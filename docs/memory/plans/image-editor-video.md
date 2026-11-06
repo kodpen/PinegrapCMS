@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-03): video editing inside the image editor: cli
 
 ## What is it?
 - A video is a layer of the editor's document, on the animation timeline (AN1, AN2, AN9) and in scenes (AN7): trim, split, move, speed, volume. Pictures, texts, stickers, shapes and their motion lie over it; effects and transitions apply to clips.
-- Sound: the sound of a clip, music or sounds from Files, detached into its own row, volume and fades, muted.
+- Sound: the sound of a clip, music or sounds from Files, detached into its own row, volume and fades, muted. An animation without a video takes music and sounds the same way, and its MP4 or WebM carries them (owner 2026-11-05).
 - Export to MP4 or WebM with sound through the animation export (AN6's muxers), saved into Files (AN4); its document is kept, so the project opens again.
 
 ## Which decisions bind it?
@@ -22,4 +22,4 @@ description: Plan (owner 2026-11-03): video editing inside the image editor: cli
 - Files larger than one request: uploaded and saved in chunks (V8); the limits are settings.
 
 ## Which files hold the rest?
-- `image-editor-video-steps.md`: steps V0-V11. The screens come with V0 in `plans/image-editor/`.
+- `image-editor-video-steps.md`: steps V0-V11. The screens: 35-42 in `plans/image-editor/`, read with `image-editor-video-visuals.md`.

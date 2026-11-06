@@ -481,6 +481,18 @@ $facts = array(
     lang('Created') => h(pg_booking_agenda_time($booking['created_at'], true)),
 );
 
+// The deposit: paid or not, when, and its order for those who may open orders.
+$deposit = pg_booking_deposit_view(pg_booking_deposit_rows(array($booking))[0]);
+
+if ($deposit['state'] !== 'none') {
+    $order_label = h(lang('Order')) . ' ' . h(($deposit['order_number'] !== '') ? '#' . $deposit['order_number'] : '#' . $deposit['order_id']);
+    $facts[lang('Deposit')] = '<span class="badge badge-subtle ' . (($deposit['state'] === 'paid') ? 'theme-success' : 'theme-warning') . '">' . h(pg_booking_deposit_label($deposit)) . '</span>'
+        . (($deposit['paid_at'] > 0) ? ' ' . h(pg_booking_agenda_time($deposit['paid_at'], true)) : '')
+        . '<br>' . ((((int) $user['role'] <= 2) || !empty($user['manage_ecommerce']))
+            ? '<a href="view_order.php?id=' . (int) $deposit['order_id'] . '">' . $order_label . '</a>'
+            : $order_label);
+}
+
 $facts_html = '';
 
 foreach ($facts as $label => $value) {
@@ -498,6 +510,14 @@ $cancel_field = in_array('cancelled', $status_options, true) && ($booking['statu
                             </script>'
     : '';
 
+// Where it was talked about in the workspace, and the tasks about it.
+$workspace_button = '';
+
+if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    $workspace_button = ws_record_button($user, 'booking', (int) $booking['id'], lang('Booking') . ' #' . (int) $booking['id'], 'btn btn-sm btn-text theme-secondary');
+}
+
 echo
 pg_page_shell(array(
     'title'               => lang('Booking') . ' #' . (int) $booking['id'],
@@ -508,6 +528,7 @@ pg_page_shell(array(
     'breadcrumb'          => array_merge($booking_breadcrumb, array(array('label' => lang('Booking') . ' #' . (int) $booking['id']))),
 )) . '
 <main id="content" class="container-fluid">
+    ' . (($workspace_button !== '') ? pg_screen_toolbar(array('secondary' => array($workspace_button))) : '') . '
     ' . $liveform->output_errors() . '
     ' . $liveform->output_notices() . '
     <form action="edit_booking.php" method="post">

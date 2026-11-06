@@ -33,10 +33,12 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-connected-accounts.md: The site as an OAuth client (connected accounts, includes/fn/connect.php, 2026.4.10, model A): provider and purpose files, the Connect button, tokens and provider calls, refresh, service tokens
 - api-currency-symbol.md: External API currency symbol is plain text (₺, €), not the HTML entity the currency screen stores (&#8378;, &euro;): one rule, api_currency_symbol_text(), for GET /meta and GET /store/currencies
 - api-customer-consents.md: GET /customers/{id}/consents (the consent_log rows of a customer and its accounts) and the customer.consent_changed webhook announced by pg_consent_log_record(); what is left out and why
+- api-customer-credit.md: Store credit over the API: GET/POST /customers/{id}/credit and void under gift_cards:*, the account pick, credit.* events, export and erasure of a customer's cards
 - api-customer-subscriptions.md: GET /customers/{id}/subscriptions, the pause/resume/cancel moves with dry_run (PR #4399), and the subscription.* webhooks announced from pg_subscription_mail_send()
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
 - api-design-ads.md: Ads and ad regions over the external API (/design/ads, /design/ad-regions): the write path the four screens share, the routes, refusals, the region that keeps its ads
+- api-design-dialogs-regions.md: Auto dialogs and common regions over the external API (/design/auto-dialogs, /design/common-regions): the write path the four screens share, routes, refusals, the converted region that keeps its row
 - api-device-pairing.md: Pairing a team device with a QR code (device_pairing.php, POST /auth/pair, table api_device_pairings): code storage, who may make one, the exchange, limits, revocation
 - api-device-refresh-rotation.md: Refresh-token exchange (api_device_rotate_pair, devices and OAuth): next pair derived from the presented token so concurrent refreshes agree; conditional UPDATE; 60 s grace from the first exchange
 - api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation
@@ -44,6 +46,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-dry-run.md: Making an external API write rehearsable (X-Dry-Run or ?dry_run=true): the route flag, where api_dry_run_stop() goes, batch endpoints, the *_check() split, side effects a rehearsal skips
 - api-endpoint-rules.md: Writing an external API endpoint: one route row, one presenter, list paging and batch reads, body checks, nullable fields, error codes, formats, partial updates, mirroring panel changes
 - api-experiments.md: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move, experiments:read/write for roles 0-1, two events
+- api-fediverse.md: GET /fediverse/followers and /fediverse/deliveries (fediverse:read): shapes, paging, the state filter, who may hold the scope; the personal data export and erasure of a Fediverse account
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies
 - api-folder-access-widening.md: External API page and folder moves keep or narrow access: access type rank, and for private folders the aclfolder reader list (PR #1786); 409 access_widening_refused
@@ -65,6 +68,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-order-money-fields.md: The external API's order totals, the gift card and instalment amounts, and payment_installment (PR #3842)
 - api-orders-create.md: POST /orders records a counter (local) sale through the counter screen's completion: lines, customer, payment, the checks before the write, dry run, Idempotency-Key, what it answers
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
+- api-panel-coverage.md: How far the external API covers what the panel manages (gap list #5239, steps X1-X13 landed), how a new write route reuses the screen's write path, and what deliberately has no endpoint
 - api-product-bundles.md: Product bundles in the external API: the bundle block on Product, the bundle fields POST /products/{id} writes, what it refuses, the price batch and inventory answers for a bundle
 - api-response-json-encoding.md: API and MCP answers as JSON (pg_json_encode_answer()): broken UTF-8 bytes, keys too, become U+FFFD on every PHP version; INF or NAN becomes a 500 or -32603, never an empty body
 - api-returns.md: GET /returns, GET /returns/{id}, POST /returns/{id} (approve, reject, ship, receive, close, refund) through the return screen's write functions, the action check, codes, events
@@ -72,6 +76,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-sales-report-periods.md: GET /reports/sales: periods are site days and months by site.timezone's rules across clock changes; only periods with orders come back, at most 400; more is refused with 422 instead of being cut
 - api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
 - api-settings-no-endpoint.md: Why settings, firewall, sessions, backups and updates have no external API endpoint (#5238), and the two doors that stay open
+- api-single-value-fields.md: The external API refuses a JSON list or object in a field that takes one value (422), before any cast.
 - api-sms-campaigns.md: GET /campaigns/sms (campaigns:read) as My SMS Campaigns lists them, the user-role rule, the queue figures read in one batch, and the campaign.sent event for e-mail and SMS campaigns
 - api-store-arrival-dates.md: /store/arrival-dates over the external API: shape, partial update, shipping cut-offs sent or kept, the plain-text description, refusals
 - api-store-country-state-writes.md: Country and state writes (store:write): the write path shared with the four screens (includes/fn/store_regions.php), the screens' checks, partial updates, code_taken, what a delete takes
@@ -87,6 +92,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-users-write.md: External API POST /users, POST /users/{id}, DELETE and POST /users/{id}/delete (users:write, administrator owners only): the bounds in the handler, the fields, what is never written, events
 - api-visitor-reports.md: The visitor report routes under visitors:read (traffic, top-content, visitors, search, pages, ai-visibility, vitals): what each reads, the window, linked false, how pages meet Google addresses
 - api-webhook-events.md: Announcing webhook events: pg_announce() from any screen, contact helpers, the event catalogue, no events from bulk imports, Workspace channel events, queue, signature and retries
+- api-webhook-log-address.md: Site Log lines about an event subscription name its address as scheme and host only (pg_ops_alert_mask_url()): API change and secret renewal, panel stop/resume and removal, given-up delivery
 - api-webhook-queue.md: Outgoing webhook queue (includes/api/outbound/webhooks.php): which subscriptions get an event, held rows for a failing subscription, the retry ladder, retry and the atomic claim of a row
 - api-webhook-stock-events.md: pg_product_stock_changed(): rules, callers, quiet writers, the out_of_stock flag; panel writers announcing product.updated
 - application-access-keys.md: Application Access (api_settings.php): rows made and secrets issued through includes/api/keys.php, 24 h grace, keyless rows refused, rows of a higher-ranked owner locked, one OAuth app, per-app logs
@@ -94,6 +100,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - external-api-iis-environment.md: What IIS and the WAF impose on the external API: path-based API detection, rate buckets outside the sensitive limit, no PATCH/DELETE, POST twins, the webhooks exception, first-match routing
 - forms-api-request-checks.md: get_forms / get_form panel actions refuse a malformed limit, offset, fields, filter or sort value with a JSON error before any query
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on Visitor Tracking, batchRunReports cached by an hourly job, state in a sealed service entry
+- mailchimp-sync-running-claim.md: How the MailChimp sync in the general job keeps two overlapping runs from syncing at once.
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
 - mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context and /customer, refs/{type}/{id}) read by their GET routes; prompts channel_summary, weekly_report; who sees them, errors, caching
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state

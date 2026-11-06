@@ -12,7 +12,7 @@ description: Working rules (2026-10-25) for every session: why, one open PR, no 
 - From green CI to the next step: `session-lifecycle.md`.
 
 ## Are issues used?
-- For decision questions: an issue labelled `architect`, which the architect decides with the owner (`architect.md`). For faults found in testing: a `bug` issue, a worker's free work (`test-coordinator.md`). No claim, hand-off or follow-up issue: a claim is a draft PR and a hand-off is the PR itself.
+- For decision questions: an issue labelled `architect`, which the architect decides with the owner (`architect.md`). For faults found in testing: a `bug` issue, which waits for the owner; no worker takes it (`test-coordinator.md`, `coordinator-no-plans.md`). No claim, hand-off or follow-up issue: a claim is a draft PR and a hand-off is the PR itself.
 
 ## How much checking, how many agents?
 - The tests of your area and what the change touches, no sandbox without a reason, no sub-agents or review chains: `session-checks.md`.
@@ -21,9 +21,9 @@ description: Working rules (2026-10-25) for every session: why, one open PR, no 
 - About 1,000 product lines or fewer: changed lines in files under `pinegrap/`, `.min.js` bundles and language files not counted; tests, tools and memory never count. A plan's steps are cut to it when the plan is written. A finished PR over it still lands, in a train of its own; the split is asked of the next step.
 
 ## When may nobody start a task?
-- While more than 20 PRs are open, drafts and `merge-train/*` PRs not counted (the command is in `CLAUDE.md`, Working mode 8). Checked before the draft PR that claims the task; a session whose work is done still marks its PR ready.
+- While more than 25 PRs are open, drafts and `merge-train/*` PRs not counted (command: `CLAUDE.md`, Working mode 8). Checked before the claiming draft PR; finished work is still marked ready.
 - Only work the merging session can take holds a place: a PR waiting on a decision goes back to draft until it comes (`session-lifecycle.md`, `architect.md`).
-- Each account's coordinator runs its workers (`coordinator.md`), and its workers hold at most 6 of the 20 places, so one fast account does not fill the queue for the others. Two sessions never hold the same plan or the same files.
+- Each account's coordinator runs its workers (`coordinator.md`), and its workers hold at most 8 of the 25 places, so one account does not fill the queue. Two sessions never hold the same plan or the same files.
 
 ## What about changelog.txt?
 - A PR does not edit it. The Changelog section of its body names the `[NEW]` line, the `[SCHEME]` item or "none"; the merging session writes it when it lands the PR (`merge-train.md`).

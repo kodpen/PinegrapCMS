@@ -59,6 +59,23 @@ function pg_sms_campaign_statuses()
 }
 
 /**
+ * One row of the SMS campaign screen's status column (inside a card's
+ * .row): the label left, the value right, a line under it. Pure.
+ *
+ * @param string $label  The label, plain text
+ * @param string $value  The value, already HTML
+ * @return string  HTML
+ */
+function pg_sms_campaign_status_row($label, $value)
+{
+    return '
+                        <div class="col-12 d-flex justify-content-between gap-3 py-2 border-bottom">
+                            <span>' . h($label) . '</span>
+                            <span class="fw-bold text-end text-break">' . $value . '</span>
+                        </div>';
+}
+
+/**
  * The queue reference of one campaign message: what makes a second run of
  * the same campaign find the message already queued.
  *
@@ -239,7 +256,9 @@ function pg_sms_campaign_queue($campaign, $audience, $now, $enqueue = 'pg_sms_en
     $counts = array('queued' => 0, 'refused' => 0);
 
     foreach ($audience as $number => $contact_id) {
-        $result = call_user_func($enqueue, (string) $number, (string) $campaign['body'], 'marketing', array(
+        // With its plus: the layer reads the number again, and bare digits
+        // would refuse a foreign number or take one for a Turkish mobile.
+        $result = call_user_func($enqueue, pg_sms_dial((string) $number), (string) $campaign['body'], 'marketing', array(
             'reference'  => pg_sms_campaign_reference($campaign['id'], $contact_id),
             'expires_at' => (int) $now + pg_sms_campaign_expiry(),
         ));

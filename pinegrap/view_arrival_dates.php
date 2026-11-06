@@ -18,13 +18,30 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/arrival_date_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/arrival_date_list_edit.php');
 
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+$quick_edit = pg_arrival_date_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn,
+// with the arrival date screen's rights (validate_ecommerce_access()) and
+// checks (pg_arrival_date_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_arrival_date_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
+// Every arrival date is printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 $user = validate_user();
 validate_ecommerce_access($user);
-
-$number_of_results = 0;
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -57,80 +74,17 @@ $order_by = pg_list_order_by($sort_levels, array(
 // Get the current date so that later we can figure out if arrival dates are active.
 $current_date = date('Y-m-d');
 
-$query = "SELECT
-            arrival_dates.id as id,
-            arrival_dates.name as name,
-            arrival_dates.arrival_date as arrival_date,
-            arrival_dates.status as status,
-            arrival_dates.start_date as start_date,
-            arrival_dates.end_date as end_date,
-            arrival_dates.custom as custom,
-            user.user_username as user,
-            arrival_dates.timestamp as timestamp
-        FROM arrival_dates
-        LEFT JOIN user ON arrival_dates.user = user.user_id
-        ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-while ($row = mysqli_fetch_array($result)) {
-
-    $id = $row['id'];
-    $name = $row['name'];
-    // An unset date (AT-ONCE, or one the customer enters) is not 0/0/0000.
-    $arrival_date = pg_arrival_date_form_date_text($row['arrival_date']);
-    if (($arrival_date === '') && ($row['custom'] == 1)) {
-        $arrival_date = lang('Chosen by the customer');
-    }
-    $status = $row['status'];
-    $start_date = pg_arrival_date_form_date_text($row['start_date']);
-    $end_date = pg_arrival_date_form_date_text($row['end_date']);
-    $username = $row['user'];
-    $timestamp = $row['timestamp'];
-    
-    $output_link_url = 'edit_arrival_date.php?id=' . (int) $id;
-
-    // If this arrival date is active, then use class that shows green color.
-    if (
-        ($row['status'] == 'enabled')
-        && ($row['start_date'] <= $current_date)
-        && ($row['end_date'] >= $current_date)
-    ) {
-        $output_status_class = 'status_enabled';
-        $output_state = '';
-
-    // Otherwise this arrival date is not active, so use class that shows red
-    // color and say so: the Status badge still reads Enabled outside the dates.
-    } else {
-        $output_status_class = 'status_disabled';
-        $output_state = pg_list_status_word(lang('Inactive'));
-    }
-     
-    $number_of_results++;
-    $status_class = '';
-    if($status == 'enabled'){
-        $status_class = 'bg-success';
-    } else{
-        $status_class = 'bg-danger';
-    }
-    $output_username = '';
-    if($username){
-        $output_username = lang(array('string'=>'by {var:1}','vars'=>h($username) ));
-    }
-    
-    $output_rows .=
-        '<tr>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-            </td>
-            <td class="chart_label ' . $output_status_class . '" nowrap>' . h($name) . $output_state . '</td>
-            <td class="align-center" nowrap>' . $arrival_date . '</td>
-            <td class="align-center"><span class="badge fg-white fw-light ' . $status_class . '">' . lang(ucwords($status)) . '</span></td>
-            <td class="align-center" nowrap>' . $start_date . '</td>
-            <td class="align-center" nowrap>' . $end_date . '</td>
-            <td class="align-center">' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . $output_username . '</td>
-        </tr>';
+foreach ((array) db_items(pg_arrival_date_list_sql() . " ORDER BY " . $order_by) as $row) {
+    $list_rows[] = array('id' => (int) $row['id'], 'cells' => pg_arrival_date_list_cells($row, $quick_edit, $current_date));
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_arrival_dates',
+    'columns' => pg_arrival_date_list_columns(true),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'edit' => array('url' => 'view_arrival_dates.php', 'columns' => $quick_edit),
+));
 
 print 
 pg_page_shell([
@@ -145,29 +99,11 @@ pg_page_shell([
         <div class="col-12">
             ' . pg_screen_toolbar(array(
                 'primary' => array('label' => lang('Create'), 'url' => 'add_arrival_date.php', 'icon' => 'bi-plus-circle'),
-                'search'  => pg_list_sort_menu('view_arrival_dates.php', $sort_columns, $sort_levels, $sort_default),
+                'search'  => array(pg_list_table_search_box('view_arrival_dates'), pg_list_sort_menu('view_arrival_dates.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table" style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th nowrap>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th nowrap>' . get_column_heading(lang('Arrival Date'), $sort_levels, '', '', 'arrival_date') . '</th>
-                                <th nowrap>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
-                                <th nowrap>' . get_column_heading(lang('Start Date'), $sort_levels, '', '', 'start_date') . '</th>
-                                <th nowrap>' . get_column_heading(lang('End Date'), $sort_levels, '', '', 'end_date') . '</th>
-                                <th nowrap>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Shipping Arrival Dates')) . '
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
-?>

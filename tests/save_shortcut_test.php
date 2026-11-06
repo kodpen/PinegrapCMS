@@ -152,7 +152,7 @@ function test_save_shortcut_order_invoice_form_is_excluded()
 {
 	$order = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
 
-	pg_assert_contains('<form method="post" action="add_erp_invoice.php" class="d-inline disable_shortcut">', $order, 'the Issue the Invoice form');
+	pg_assert_contains('<form method="post" action="add_erp_invoice.php" class="d-contents disable_shortcut">', $order, 'the Issue the Invoice form');
 }
 
 // Screens whose save button carries another name (submit_button, erp_action)

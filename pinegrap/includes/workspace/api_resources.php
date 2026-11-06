@@ -463,6 +463,12 @@ function ws_api_channels_update($params)
     $archived = ((int) $channel['archived_at'] > 0);
     $name = array_key_exists('name', $data) ? ws_channel_clean_name($data['name']) : (string) $channel['name'];
 
+    // A discussion is concluded through its own route, never archived or
+    // brought back (ws_channel_archivable()); refused before a dry run too.
+    if (($archive !== null) && ($archive !== $archived) && !ws_channel_archivable($channel)) {
+        api_fail_validation(lang('A discussion is concluded, not archived.'), 'archived');
+    }
+
     if (array_key_exists('name', $data) && ($name === '')) {
         api_fail_validation(lang('A channel needs a name.'), 'name');
     }
@@ -3536,7 +3542,7 @@ function ws_api_approvals_decide($params)
     // meets the same refusals. An answer after the request's time closes it,
     // as in the panel; a dry run leaves that to the next answer or the hourly
     // job.
-    $checked = ws_approval_decide_check($viewer, $approval, (string) $params['decision']);
+    $checked = ws_approval_decide_check($viewer, $approval, (string) $params['decision'], (string) ($params['note'] ?? ''));
 
     if (!$checked['ok']) {
         if ($checked['expired'] && !api_dry_run_requested()) {
@@ -4394,10 +4400,13 @@ function ws_api_refs_get($params)
         );
     }
 
+    // Tasks need tasks:read, as every other Workspace read of tasks.
     $tasks = array();
 
-    foreach ($refs['tasks'] as $task) {
-        $tasks[] = (int) $task['id'];
+    if (api_has_scope(api_current_scopes(), 'tasks:read')) {
+        foreach ($refs['tasks'] as $task) {
+            $tasks[] = (int) $task['id'];
+        }
     }
 
     $channels = array();

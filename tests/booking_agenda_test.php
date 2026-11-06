@@ -235,3 +235,37 @@ function test_booking_agenda_audit_fields_leave_the_customer_out()
 	pg_assert_same(array('service_id' => 2, 'staff_id' => 4, 'start_at' => 100, 'end_at' => 200, 'status' => 'confirmed', 'source' => 'panel', 'notes_length' => 3), $fields);
 	pg_assert_same(array(), pg_booking_agenda_audit_fields(array()));
 }
+
+// A scope reaches every booking (null), the staff member's own (an id) or
+// none (false).
+function test_booking_agenda_scope_allows()
+{
+	pg_assert_true(pg_booking_agenda_scope_allows(null, 7), 'roles 0-2: any staff member');
+	pg_assert_true(pg_booking_agenda_scope_allows(null, 0), 'roles 0-2: a booking without a staff member');
+	pg_assert_true(pg_booking_agenda_scope_allows(7, 7), 'the staff member\'s own');
+	pg_assert_false(pg_booking_agenda_scope_allows(7, 8), 'another staff member\'s');
+	pg_assert_false(pg_booking_agenda_scope_allows(false, 7), 'no agenda');
+	pg_assert_false(pg_booking_agenda_scope_allows(0, 0), 'a zero scope reaches nothing');
+}
+
+function test_booking_agenda_list_columns_and_row()
+{
+	$columns = pg_booking_agenda_list_columns();
+	pg_assert_same(array('time', 'status', 'customer', 'contact', 'service', 'staff'), array_keys($columns));
+	pg_assert_same('link', $columns['time']['kind']);
+
+	$row = pg_booking_agenda_list_row(array(
+		'id' => '12', 'staff_id' => '3', 'name' => 'A<b', 'email' => 'a@example.com', 'phone' => '',
+		'start_at' => '1700000000', 'status' => 'confirmed', 'service_name' => null,
+	), array(3 => array('id' => 3, 'name' => 'Ece')), '<i>d</i>');
+
+	pg_assert_same(12, $row['id']);
+	pg_assert_same(array('time', 'status', 'customer', 'contact', 'service', 'staff'), array_keys($row['cells']), 'cells keyed by column');
+	pg_assert_contains('href="edit_booking.php?id=12"', $row['cells']['time']['html']);
+	pg_assert_contains('data-pg-open', $row['cells']['time']['html'], 'the time opens the booking');
+	pg_assert_same('1700000000', $row['cells']['time']['attributes']['data-pg-sort-value'], 'sorted by its Unix time');
+	pg_assert_contains('<i>d</i>', $row['cells']['status']['html'], 'deposit badge beside the status');
+	pg_assert_same('A&lt;b', $row['cells']['customer']['html']);
+	pg_assert_same('a@example.com', $row['cells']['contact']['html'], 'no line break without a phone');
+	pg_assert_same('Ece', $row['cells']['staff']['html']);
+}

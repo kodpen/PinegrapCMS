@@ -486,7 +486,7 @@ function pg_product_list_columns($view, $quick_edit)
         'last_modified' => '10rem', 'out_of_stock_date' => '10rem',
     );
     // The input each quick edit field type opens as.
-    $inputs = array('text' => 'text', 'select' => 'select', 'money' => 'money', 'integer' => 'number', 'decimal' => 'number');
+    $inputs = array('text' => 'text', 'select' => 'select', 'multiselect' => 'multiselect', 'money' => 'money', 'integer' => 'number', 'decimal' => 'number');
 
     $spec = function ($code, $heading) use ($view, $sql, $kinds, $widths, $quick_edit, $inputs) {
         $column = array('heading' => $heading, 'kind' => $kinds[$code] ?? 'text');
@@ -689,6 +689,8 @@ function pg_product_list_select($view)
         products.order_receipt_message, products.order_receipt_bcc_email_address, products.email_bcc,
         email_page.page_name AS email_page, contact_groups.name AS contact_group_name,
         page.page_name AS start_page, folder.folder_name AS private_folder,
+        products.send_to_page, products.private_folder AS private_folder_id,
+        products.email_page AS email_page_id, products.contact_group_id,
         ' . $barcodes . ' AS barcode_count,
         user.user_username AS user,
         products.out_of_stock, products.out_of_stock_timestamp, products.timestamp';
@@ -699,7 +701,7 @@ function pg_product_list_select($view)
  * page: one query for the page's zones and one for all of them.
  *
  * @param array $product_ids
- * @return array product id => array('allowed' => names, 'disallowed' => names)
+ * @return array product id => array('allowed' => zone id => name, 'disallowed' => zone id => name)
  */
 function pg_product_list_zones($product_ids)
 {
@@ -729,7 +731,7 @@ function pg_product_list_zones($product_ids)
 
         // By name, as the zones were read.
         foreach ($zones as $zone_id => $name) {
-            $answer[$product_id][isset($allowed[$product_id][$zone_id]) ? 'allowed' : 'disallowed'][] = $name;
+            $answer[$product_id][isset($allowed[$product_id][$zone_id]) ? 'allowed' : 'disallowed'][$zone_id] = $name;
         }
     }
 
@@ -740,17 +742,20 @@ function pg_product_list_zones($product_ids)
  * The rows of a page: the pictures behind each cover and the zones of all
  * of them in one query each.
  *
- * @param array $view     pg_product_list_view()'s answer
- * @param array $products rows of pg_product_list_select()
+ * @param array      $view     pg_product_list_view()'s answer
+ * @param array      $products rows of pg_product_list_select()
+ * @param array|null $choices  pg_pb_quick_edit_choices() of the user, for
+ *                             a view that shows a column picked from them
  * @return array rows for the list table driver (pg_product_list_row())
  */
-function pg_product_list_rows($view, $products)
+function pg_product_list_rows($view, $products, $choices = null)
 {
     $ids = array_map('intval', array_column($products, 'id'));
     $context = array(
-        'quick_edit' => pg_pb_quick_edit_columns(),
+        'quick_edit' => pg_pb_quick_edit_columns($choices),
+        'fields' => pg_pb_quick_edit_fields($choices),
         'more_images' => ($view['show_image'] && $ids) ? pg_product_more_images($ids) : array(),
-        'zones' => in_array('allowed_zones', $view['columns'], true) ? pg_product_list_zones($ids) : array(),
+        'zones' => array_intersect(array('allowed_zones', 'disallowed_zones'), $view['columns']) ? pg_product_list_zones($ids) : array(),
     );
 
     $rows = array();
@@ -787,6 +792,8 @@ function pg_product_list_days($days)
  * @param array $product a row of pg_product_list_select()
  * @param array $view    pg_product_list_view()'s answer
  * @param array $context array('quick_edit' => pg_pb_quick_edit_columns(),
+ *                       'fields' => pg_pb_quick_edit_fields() (the ones
+ *                       without choices when left out),
  *                       'more_images' => pg_product_more_images(),
  *                       'zones' => pg_product_list_zones())
  * @return array array('id', 'class', 'cells' => column key => pg_list_cell())
@@ -990,14 +997,20 @@ function pg_product_list_row($product, $view, $context)
     }
 
     // Every other value the product screen changes opens as a field in
-    // quick edit (pg_pb_quick_edit_more_fields()).
-    $more = pg_pb_quick_edit_more_fields();
+    // quick edit (pg_pb_quick_edit_fields()), where the product screen
+    // would show it (pg_pb_quick_cell_editable()).
+    $more = isset($context['fields']) ? $context['fields'] : pg_pb_quick_edit_more_fields();
+
+    // The zone cells open with the product's allowed zones, read for the page.
+    if (isset($context['zones'][$id])) {
+        $product['allowed_zone_ids'] = implode(',', array_keys($context['zones'][$id]['allowed']));
+    }
 
     foreach (array_keys($cells) as $code) {
         $field = pg_pb_quick_edit_field_of($code);
 
-        if (isset($more[$field], $quick_edit[$field])) {
-            $attributes = pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_pb_quick_edit_value($field, $product));
+        if (isset($more[$field], $quick_edit[$field]) && pg_pb_quick_cell_editable($field, $product, $more)) {
+            $attributes = pg_list_edit_cell_attributes($quick_edit, $field, $id, pg_pb_quick_edit_value($field, $product, $more));
 
             if ($attributes) {
                 $cells[$code]['attributes'] = array_merge($cells[$code]['attributes'] ?? array(), array_map('strval', $attributes));
@@ -1035,7 +1048,10 @@ function pg_product_list_source($user, $params)
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
     $view = pg_product_list_site_view(pg_product_list_filter_name((is_array($params) && isset($params['filter'])) ? $params['filter'] : ''));
-    $quick_edit = pg_pb_quick_edit_columns();
+    // The pages, folders and contact groups the user may pick, read only
+    // for a view that shows a column chosen from them.
+    $choices = array_intersect($view['columns'], pg_pb_quick_edit_choice_codes()) ? pg_pb_quick_edit_choices($user) : null;
+    $quick_edit = pg_pb_quick_edit_columns($choices);
 
     // The traffic behind the impact figure joins only the list's read.
     return pg_list_table_source(array(
@@ -1048,8 +1064,8 @@ function pg_product_list_source($user, $params)
         'select' => pg_product_list_select($view),
         'search' => pg_product_list_search_columns($view),
         'levels' => $view['sort_levels'],
-        'rows' => function ($records) use ($view) {
-            return pg_product_list_rows($view, $records);
+        'rows' => function ($records) use ($view, $choices) {
+            return pg_product_list_rows($view, $records, $choices);
         },
         'params_out' => array('filter' => $view['filter']),
         'edit' => array('url' => 'view_products.php', 'columns' => $quick_edit),

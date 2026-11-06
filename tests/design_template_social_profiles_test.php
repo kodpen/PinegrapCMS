@@ -123,6 +123,16 @@ function test_social_profiles_lists_read_what_links_send()
 	pg_assert_false((bool)preg_match('/"href":"website"/', $json), 'a member\'s address is never a link');
 }
 
+// A post's byline is the account's name (submitter_name), not the profile's
+// display name: the field's hint says so instead of promising the posts.
+function test_social_profiles_display_name_hint_tells_where_it_shows()
+{
+	$d = _test_social_profiles_load();
+	$tree = json_encode($d['widgets']['profile_form']['tree']);
+	pg_assert_false(strpos($tree, json_encode(lang('The name members see on your page and beside your posts.'))) !== false, 'the hint does not promise the posts');
+	pg_assert_contains(substr(json_encode(lang('The name members see on your page and in the people list. Your posts show the name in your account details.')), 1, -1), $tree, 'the hint names the account details');
+}
+
 function test_social_profiles_links_name_template_pages()
 {
 	$d = _test_social_profiles_load();
@@ -139,5 +149,18 @@ function test_social_profiles_turkish_words()
 	foreach (array_unique($m[1]) as $raw) {
 		$key = stripslashes($raw);
 		pg_assert_true(isset($map[$key]) && $map[$key] !== '', "Turkish for '$key'");
+	}
+}
+
+// A member who sent the profile form again shows once, with the newest
+// profile, in People and in the staff list; the card lists keep their cap.
+function test_social_profiles_lists_one_card_per_member()
+{
+	$w = _test_social_profiles_load()['widgets'];
+	foreach (array('people_list', 'staff_members_list') as $key) {
+		pg_assert_true(!empty($w[$key]['config']['one_per_submitter']), "$key lists each member once");
+	}
+	foreach (array('my_profile_card', 'member_profile') as $key) {
+		pg_assert_same(1, $w[$key]['config']['max_results'], "$key shows one profile");
 	}
 }

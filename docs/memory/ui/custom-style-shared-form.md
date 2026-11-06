@@ -5,7 +5,7 @@ description: The custom page style create and edit screens share includes/forms/
 
 ## Where is the custom page style form?
 - `includes/forms/custom_style_form.php` (gate `PG_FUNCTIONS_DIR`). `add_custom_style.php` and `edit_custom_style.php` stay at the root as thin wrappers and `require_once` it.
-- `pg_custom_style_form_cards($style, $social_networking)` prints the Page Style Options card (name, code editor) and the Additional Options card (collection, layout type override, the social networking position list only while `SOCIAL_NETWORKING` is on).
+- `pg_custom_style_form_cards($style, $social_networking, $name_error, $status_rows)` prints the two columns of the wide layout (`ui/edit-screen-wide-layout.md`, B11): the form column with Page Style Options (name, code editor), the sticky status column with Additional Options (collection, layout type override, the social networking position list only while `SOCIAL_NETWORKING` is on) and, when `$status_rows` is given (edit, `pg_custom_style_form_edit_status_rows()`), a Summary of the folders and pages using the style and Last Modified. `pg_custom_style_form_layout($cards, $buttons)` wraps them with the sticky save bar.
 - `$style` is the stored `style` row on edit; create passes `pg_custom_style_form_defaults()`: empty name, a page skeleton with `<system>` between two `<pregion>`s, collection A, no override, bottom left.
 - Collection B is checked only for a stored `b`; an empty collection (left by an old save) shows A. The layout override list's first option reads 'No override (the page type layout)'.
 - `view_styles.php` prints the Layout Type column through `pg_style_layout_type_label()` (System / Custom translated, '' for none), not `ucwords()` of the enum.
@@ -15,7 +15,7 @@ description: The custom page style create and edit screens share includes/forms/
 
 ## What stays in the screens?
 - Create: the INSERT, the notice on the style list.
-- Edit: the not-found guard, the record load, heading, last-modified line and Duplicate link, the folder/page use count that turns delete into a refusal, the Recycle Bin or hard delete, the UPDATE, Save / Save & Return and `send_to`.
+- Edit: the not-found guard, the record load, heading, the name and Duplicate link in the toolbar (Last Modified moved to the Summary), the folder/page use count that turns delete into a refusal, the Recycle Bin or hard delete, the UPDATE, Save / Save & Return and `send_to`.
 - Tests: `tests/custom_style_form_test.php`; `db_q_contacts_forms_test.php` and `db_q_pages_regions_test.php` count the screens' `db_q()` calls.
 
 ## Can a custom page style be saved without a name?

@@ -54,8 +54,11 @@ function subscriptions_account_test_io(array &$store, array &$calls, $answer = n
 			$calls[] = array('event', $kind, $detail);
 			return 1;
 		},
+		'first_order' => function ($row) {
+			return array('order' => array('id' => (int) $row['order_id'], 'billing_email_address' => 'buyer@example.com'), 'item' => array());
+		},
 		'call' => function ($driver, $operation, $driver_row) use (&$calls, $answer) {
-			$calls[] = array('call', $driver, $operation, $driver_row['return_url'] ?? '');
+			$calls[] = array('call', $driver, $operation, $driver_row['return_url'] ?? '', $driver_row['order']['billing_email_address'] ?? '');
 			return ($answer !== null) ? $answer : array('success' => true);
 		},
 		'card_shared' => function ($row) use ($shared) {
@@ -63,6 +66,11 @@ function subscriptions_account_test_io(array &$store, array &$calls, $answer = n
 		},
 		'log' => function ($message) use (&$calls) {
 			$calls[] = array('log');
+		},
+		'lock' => function ($id, $wait = 0) {
+			return true;
+		},
+		'unlock' => function ($id) {
 		},
 	);
 }
@@ -81,6 +89,23 @@ function test_subscription_customer_actions_by_status()
 	pg_assert_same('cancelled', pg_subscription_customer_action_status('cancel'));
 	pg_assert_same('', pg_subscription_customer_action_status('update_card'));
 	pg_assert_same(null, pg_subscription_customer_action_status('end'));
+}
+
+// A row held for a renewal's outcome (next_charge_at 0: pending, unclear or
+// awaiting confirmation) is not paused: the service's later paid report
+// only settles a running row, and a resumed held row would never be due.
+function test_subscription_customer_actions_held_row_offers_no_pause()
+{
+	pg_assert_same(array('cancel', 'update_card'), pg_subscription_customer_actions(subscriptions_account_test_row(array('next_charge_at' => '0'))));
+	pg_assert_same(array('cancel', 'update_card'), pg_subscription_customer_actions(subscriptions_account_test_row(array('status' => 'past_due', 'next_charge_at' => '0'))));
+	pg_assert_same(array('pause', 'cancel', 'update_card'), pg_subscription_customer_actions(subscriptions_account_test_row(array('next_charge_at' => (string) mktime(0, 0, 0, 1, 1, 2020)))), 'a row past its date but not held is paused');
+	pg_assert_same(array('resume', 'cancel', 'update_card'), pg_subscription_customer_actions(subscriptions_account_test_row(array('status' => 'paused', 'next_charge_at' => '0'))));
+	pg_assert_same(array('pause', 'cancel', 'update_card'), pg_subscription_customer_actions(array('status' => 'active')), 'a row read without the column keeps its moves');
+
+	$store = subscriptions_account_test_row(array('next_charge_at' => '0'));
+	$calls = array();
+	pg_assert_same('refused', pg_subscription_customer_action(17, 7, 'pause', '', subscriptions_account_test_io($store, $calls))['result']);
+	pg_assert_same('active', $store['status']);
 }
 
 function test_subscription_customer_action_check()
@@ -140,6 +165,48 @@ function test_subscription_customer_move_lost_to_a_concurrent_one()
 	pg_assert_same(array(), $calls, 'no card forgotten for a cancel that was not written');
 }
 
+// A move waits for the renewal's row lock: a charge in flight while the row
+// is paused or cancelled would leave its paid period unrecorded, so a
+// resumed row would be charged for it again.
+function test_subscription_customer_move_holds_the_renewal_lock()
+{
+	$store = subscriptions_account_test_row();
+	$calls = array();
+	$io = subscriptions_account_test_io($store, $calls);
+	$io['lock'] = function ($id, $wait = 0) use (&$calls) {
+		$calls[] = array('lock', (int) $id, $wait > 0);
+		return true;
+	};
+	$io['unlock'] = function ($id) use (&$calls) {
+		$calls[] = array('unlock', (int) $id);
+	};
+
+	pg_assert_same('done', pg_subscription_customer_action(17, 7, 'cancel', '', $io)['result']);
+	pg_assert_same(array(
+		array('lock', 7, true),
+		array('event', 'status_cancelled', 'customer'),
+		array('call', 'stripe', 'subscription_cancel', '', ''),
+		array('unlock', 7),
+	), $calls, 'status and card forgetting inside the lock');
+}
+
+function test_subscription_customer_move_refused_while_a_renewal_runs()
+{
+	$store = subscriptions_account_test_row();
+	$calls = array();
+	$io = subscriptions_account_test_io($store, $calls);
+	$io['lock'] = function ($id, $wait = 0) {
+		return false;
+	};
+	$io['unlock'] = function ($id) use (&$calls) {
+		$calls[] = array('unlock');
+	};
+
+	pg_assert_same('refused', pg_subscription_customer_action(17, 7, 'pause', '', $io)['result']);
+	pg_assert_same('active', $store['status'], 'not paused under a running charge');
+	pg_assert_same(array(), $calls, 'nothing written, no lock released');
+}
+
 // A renewal that failed between the action's read and its write moved the
 // row to past_due: the pause checked against "active" is not written, so the
 // retries of a past_due row are never stopped by a customer's pause.
@@ -171,7 +238,7 @@ function test_subscription_customer_cancel_keeps_the_paid_period()
 	pg_assert_same('cancelled', $store['status']);
 	pg_assert_same((string) $next, (string) $store['next_charge_at'], 'runs until the date already paid');
 	pg_assert_same(1000, $store['cancelled_at']);
-	pg_assert_same(array(array('event', 'status_cancelled', 'customer'), array('call', 'stripe', 'subscription_cancel', '')), $calls,
+	pg_assert_same(array(array('event', 'status_cancelled', 'customer'), array('call', 'stripe', 'subscription_cancel', '', '')), $calls,
 		'the card is forgotten after the move');
 
 	// Never charged again: a cancelled row is not due.
@@ -222,7 +289,7 @@ function test_subscription_customer_update_card()
 
 	pg_assert_same(array('result' => 'redirect', 'url' => 'https://checkout.stripe.com/c/pay/cs_1'), $result);
 	pg_assert_same('past_due', $store['status'], 'no move');
-	pg_assert_same(array(array('call', 'stripe', 'update_card', 'https://shop.example/account'), array('event', 'card_update_opened', 'customer')), $calls);
+	pg_assert_same(array(array('call', 'stripe', 'update_card', 'https://shop.example/account', 'buyer@example.com'), array('event', 'card_update_opened', 'customer')), $calls);
 
 	foreach (array(array('success' => false), array('success' => true, 'redirect_url' => 'http://plain.example/'), array('success' => true, 'redirect_url' => 'javascript:x')) as $answer) {
 		$calls = array();

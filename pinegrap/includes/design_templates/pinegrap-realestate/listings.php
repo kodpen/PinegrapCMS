@@ -48,6 +48,12 @@ $url_filters = function ($params) use ($filter) {
 };
 // A home still on the market.
 $on_market = $filter('status', 'is equal to', $listing_statuses[0]);
+// A deal not yet closed: sold and rented homes leave the lists a visitor
+// browses, a home under offer stays with its badge.
+$not_closed = array(
+    $filter('status', 'is not equal to', $listing_statuses[2]),
+    $filter('status', 'is not equal to', $listing_statuses[3]),
+);
 
 // A link to a template page that sends values of the record it is drawn
 // in: $params maps the address name to the field it takes (the renderer's
@@ -280,7 +286,7 @@ $listing_widgets = array(
         'slug'   => lang('form-list'),
         'config' => $list_config(array(
             'items_per_page' => 12,
-            'filters'        => array_merge(array($filter('deal', 'is equal to', $deals['sale'])), $url_filters(array('type' => 'type', 'area' => 'area'))),
+            'filters'        => array_merge(array($filter('deal', 'is equal to', $deals['sale'])), $not_closed, $url_filters(array('type' => 'type', 'area' => 'area'))),
         )),
         'tree'   => $card_grid(),
     ),
@@ -291,7 +297,7 @@ $listing_widgets = array(
         'slug'   => lang('form-list'),
         'config' => $list_config(array(
             'items_per_page' => 12,
-            'filters'        => array_merge(array($filter('deal', 'is equal to', $deals['rent'])), $url_filters(array('type' => 'type', 'area' => 'area'))),
+            'filters'        => array_merge(array($filter('deal', 'is equal to', $deals['rent'])), $not_closed, $url_filters(array('type' => 'type', 'area' => 'area'))),
         )),
         'tree'   => $card_grid(),
     ),
@@ -303,7 +309,7 @@ $listing_widgets = array(
         'slug'   => lang('form-list'),
         'config' => $list_config(array(
             'items_per_page' => 12,
-            'filters'        => $url_filters(array('deal' => 'deal', 'type' => 'type', 'area' => 'area')),
+            'filters'        => array_merge($not_closed, $url_filters(array('deal' => 'deal', 'type' => 'type', 'area' => 'area'))),
             'search_enabled' => true,
             'search_fields'  => array('title', 'area', 'type', 'features', 'description'),
             'search_width'   => 'full',

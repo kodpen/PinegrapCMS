@@ -137,7 +137,7 @@ function get_photo_gallery($properties) {
                             // if user is not logged in or has an invalid login, and if the user is not browsing the site as a Guest,
                             // then forward user to Registration Entrance screen
                             if ((pg_session_signed_in() == FALSE) 
-                                && ($_SESSION['software']['guest'] !== true)) {
+                                && (($_SESSION['software']['guest'] ?? false) !== true)) {
                                 header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(get_request_uri()));
                                 exit();
                             }
@@ -260,7 +260,7 @@ function get_photo_gallery($properties) {
                             // then the user does not have access
                             if (
                                 (pg_session_signed_in() == FALSE) 
-                                && ($_SESSION['software']['guest'] !== true)
+                                && (($_SESSION['software']['guest'] ?? false) !== true)
                             ) {
                                 $has_access = FALSE;
                             }
@@ -278,8 +278,8 @@ function get_photo_gallery($properties) {
                             if (pg_session_signed_in() == FALSE) {
                                 $has_access = FALSE;
                             
-                            // else if user does not have edit rights to this folder, then we need to validate membership
-                            } elseif (check_edit_access($folder_id) == false) {
+                            // else if user does not have edit rights to this album, then we need to validate membership
+                            } elseif (check_edit_access($child_folder['id']) == false) {
                                 // get user information so we can find contact for user
                                 $query = "SELECT user_contact FROM user WHERE user_username = ?";
                                 $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');
@@ -761,7 +761,7 @@ function get_photo_gallery($properties) {
                         // if user is not logged in or has an invalid login, and if the user is not browsing the site as a Guest,
                         // then forward user to Registration Entrance screen
                         if ((pg_session_signed_in() == FALSE) 
-                            && ($_SESSION['software']['guest'] !== true)) {
+                            && (($_SESSION['software']['guest'] ?? false) !== true)) {
                             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?allow_guest=true&send_to=' . urlencode(get_request_uri()));
                             exit();
                         }
@@ -883,7 +883,7 @@ function get_photo_gallery($properties) {
                         // then the user does not have access
                         if (
                             (pg_session_signed_in() == FALSE) 
-                            && ($_SESSION['software']['guest'] !== true)
+                            && (($_SESSION['software']['guest'] ?? false) !== true)
                         ) {
                             $has_access = FALSE;
                         }
@@ -901,8 +901,8 @@ function get_photo_gallery($properties) {
                         if (pg_session_signed_in() == FALSE) {
                             $has_access = FALSE;
                         
-                        // else if user does not have edit rights to this folder, then we need to validate membership
-                        } elseif (check_edit_access($folder_id) == false) {
+                        // else if user does not have edit rights to this album, then we need to validate membership
+                        } elseif (check_edit_access($child_folder['id']) == false) {
                             // get user information so we can find contact for user
                             $query = "SELECT user_contact FROM user WHERE user_username = ?";
                             $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed');

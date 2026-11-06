@@ -27,6 +27,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calc.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates.php');
@@ -44,7 +46,9 @@ function ws_flow_templates_test_fill($overrides = array())
 			'comments_pending', 'visitors_yesterday', 'stock_low', 'invoices_overdue', 'orders_new'),
 		'recap_ai' => false,
 		'join'     => true,
-		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided'),
+		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided',
+			'order.delivered', 'order.return.requested', 'booking.cancelled', 'order.cancelled', 'booking.confirmed', 'workspace.flow.run.failed',
+			'erp.invoice.overdue', 'product.review.created', 'subscription.failed', 'cart_quote.created'),
 	);
 }
 
@@ -219,7 +223,9 @@ function test_workspace_flow_templates_need_their_starts()
 	$keys = function ($fill) {
 		return array_column(ws_flow_templates(ws_flow_templates_test_fill($fill)), 'key');
 	};
-	$started = array('welcome', 'order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event');
+	$started = array('welcome', 'order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event',
+		'review_request', 'restock_approval', 'return_task', 'booking_cancelled', 'order_cancelled', 'booking_reminder', 'failed_runs',
+		'invoice_overdue_follow_up', 'cart_quote_follow_up');
 
 	pg_assert_same(array(), array_values(array_diff($started, $keys(array()))), 'offered with the join start and the events');
 	pg_assert_same(array(), array_values(array_intersect($started, $keys(array('join' => false, 'events' => array())))), 'left out without them');
@@ -234,6 +240,148 @@ function test_workspace_flow_templates_need_their_starts()
 		$by_key['approval_event']['graph']['nodes'][0]['config'], 'approved requests of the channel open');
 	pg_assert_same('task_open', $by_key['stock_event']['graph']['nodes'][1]['kind']);
 	pg_assert_same('post', $by_key['order_event']['graph']['nodes'][1]['kind'], 'to the channel open');
+}
+
+// The event templates that wait, ask or follow up: each arrow on an outcome
+// its box has, the engine's check finds nothing to stop them, and each asks
+// for the people (and the approval for its channel).
+function test_workspace_flow_templates_event_follow_ups()
+{
+	$kinds = ws_flow_kinds();
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+	$on = function ($key) use ($by_key) {
+		return array_map(function ($edge) {
+			return $edge['from'] . ':' . $edge['on'];
+		}, $by_key[$key]['graph']['edges']);
+	};
+
+	$events = array('review_request' => 'order.delivered', 'restock_approval' => 'stock.low', 'return_task' => 'order.return.requested',
+		'booking_cancelled' => 'booking.cancelled', 'order_cancelled' => 'order.cancelled');
+
+	foreach ($events as $key => $event) {
+		$graph = $by_key[$key]['graph'];
+		$node_kinds = array_column($graph['nodes'], 'kind', 'id');
+
+		pg_assert_same('event', $by_key[$key]['start'], $key . ' starts on an event');
+		pg_assert_same($event, $graph['nodes'][0]['config']['event'], $key . ' event');
+		pg_assert_same('sales', $by_key[$key]['category'], $key . ' category');
+
+		foreach ($graph['edges'] as $edge) {
+			pg_assert_true(in_array($edge['on'], $kinds[$node_kinds[$edge['from']]]['outcomes'], true), $key . ': ' . $edge['from'] . ' on ' . $edge['on']);
+		}
+
+		pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($by_key[$key])), 'text'), $key . ' publishes');
+		pg_assert_true(in_array('person', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for people');
+	}
+
+	// Review request: a week's wait, the longest a delay box takes, then
+	// a task about the order.
+	$review = array_column($by_key['review_request']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('start:next', 'wait:done'), $on('review_request'));
+	pg_assert_same(array('amount' => 7, 'unit' => 'days'), array_intersect_key($review['wait']['config'], array('amount' => 0, 'unit' => 0)));
+	pg_assert_true(7 * 1440 <= WS_FLOW_DELAY_MAX, 'a week fits the delay box');
+	pg_assert_same('task_open', $review['ask']['kind']);
+	pg_assert_true(strpos($review['ask']['config']['description'], '{{record_link}}') !== false, 'the task links the order');
+
+	// Restock: nothing is ordered before somebody approves it in a channel;
+	// rejected or left undecided, the person is told.
+	$restock = array_column($by_key['restock_approval']['graph']['nodes'], null, 'id');
+	pg_assert_same('approval', $restock['ask']['kind']);
+	pg_assert_same(3, $restock['ask']['config']['channel_id'], 'asked in the channel open');
+	pg_assert_true($restock['ask']['config']['closes_in'] !== '', 'the approval has a deadline');
+	pg_assert_same(array('start:next', 'ask:approved', 'ask:rejected', 'ask:expired'), $on('restock_approval'));
+	pg_assert_same('task_open', $restock['order']['kind']);
+	pg_assert_true(in_array('channel', array_column($by_key['restock_approval']['settings'], 'type'), true), 'asks for a channel');
+
+	// Return: a task that waits two days and a line at once; the person is
+	// told when the task is still open.
+	$return = array_column($by_key['return_task']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('start:next', 'start:next', 'handle:timeout'), $on('return_task'));
+	pg_assert_same('task', $return['handle']['kind']);
+	pg_assert_same(48, $return['handle']['config']['timeout']);
+	pg_assert_same('post', $return['tell']['kind'], 'the line goes to the channel open');
+	pg_assert_same('notify', $return['late']['kind']);
+
+	// A cancelled booking or order: a line and a task at once, both on the
+	// start's one outcome.
+	foreach (array('booking_cancelled' => 'offer', 'order_cancelled' => 'ask') as $key => $task) {
+		$nodes = array_column($by_key[$key]['graph']['nodes'], null, 'id');
+		pg_assert_same(array('start:next', 'start:next'), $on($key), $key . ' arrows');
+		pg_assert_same('post', $nodes['tell']['kind'], $key . ' line in the channel open');
+		pg_assert_same('task_open', $nodes[$task]['kind'], $key . ' task');
+		pg_assert_true(strpos($nodes[$task]['config']['description'], '{{record_link}}') !== false, $key . ' links the record');
+	}
+
+	// Without a channel open, the line goes to the person.
+	$alone = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+
+	foreach (array('return_task', 'booking_cancelled', 'order_cancelled') as $key) {
+		pg_assert_same('notify', array_column($alone[$key]['graph']['nodes'], null, 'id')['tell']['kind'], $key . ' alone');
+	}
+}
+
+// A booking reminder, failed runs to the team and an overdue invoice: each
+// arrow on an outcome of its box, and what each must hold.
+function test_workspace_flow_templates_reminder_failed_runs_overdue()
+{
+	$kinds = ws_flow_kinds();
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+	$on = function ($key) use ($by_key) {
+		return array_map(function ($edge) {
+			return $edge['from'] . ':' . $edge['on'];
+		}, $by_key[$key]['graph']['edges']);
+	};
+	$events = array('booking_reminder' => 'booking.confirmed', 'failed_runs' => 'workspace.flow.run.failed',
+		'invoice_overdue_follow_up' => 'erp.invoice.overdue');
+
+	foreach ($events as $key => $event) {
+		$graph = $by_key[$key]['graph'];
+		$node_kinds = array_column($graph['nodes'], 'kind', 'id');
+
+		pg_assert_same($event, $graph['nodes'][0]['config']['event'], $key . ' event');
+
+		foreach ($graph['edges'] as $edge) {
+			pg_assert_true(in_array($edge['on'], $kinds[$node_kinds[$edge['from']]]['outcomes'], true), $key . ': ' . $edge['from'] . ' on ' . $edge['on']);
+		}
+
+		pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($by_key[$key])), 'text'), $key . ' publishes');
+	}
+
+	// Booking: read, wait until a day before its start, read again, and
+	// only a booking still confirmed tells the host and mails the guest.
+	$booking = array_column($by_key['booking_reminder']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('start:next', 'read:done', 'wait:done', 'again:done', 'still:yes', 'still:yes'), $on('booking_reminder'));
+	pg_assert_same(array('record' => 'booking', 'id' => '{{trigger.record_id}}'), array_intersect_key($booking['again']['config'], array('record' => 0, 'id' => 0)));
+	pg_assert_same(array('mode' => 'until', 'at' => '{{node.read.start}}', 'amount' => 1, 'unit' => 'days'),
+		array_intersect_key($booking['wait']['config'], array('mode' => 0, 'at' => 0, 'amount' => 0, 'unit' => 0)));
+	pg_assert_same('{{node.again.status}}', $booking['still']['config']['rule']['ref']);
+	pg_assert_same('confirmed', $booking['still']['config']['rule']['value']);
+	pg_assert_same('notify', $booking['host']['kind']);
+	pg_assert_same('email', $booking['guest']['kind']);
+	pg_assert_same(array('record_person', 'info'), array($booking['guest']['config']['recipient'], $booking['guest']['config']['purpose']), 'the guest, never typed, no marketing');
+	pg_assert_same(array('person'), array_column($by_key['booking_reminder']['settings'], 'type'));
+
+	// Failed runs: the start narrowed to the channel the line goes to, one
+	// setting for both.
+	$failed = array_column($by_key['failed_runs']['graph']['nodes'], null, 'id');
+	pg_assert_same('team', $by_key['failed_runs']['category']);
+	pg_assert_same(3, $failed['start']['config']['channel_id'], 'runs of the channel open');
+	pg_assert_same('post', $failed['tell']['kind']);
+	pg_assert_same(3, $failed['tell']['config']['channel_id']);
+	pg_assert_true(strpos($failed['tell']['config']['body'], '{{message}}') !== false, 'the box and its sentence');
+	pg_assert_same(array(array('type' => 'channel', 'targets' => array(array('start', 'channel_id'), array('tell', 'channel_id')))),
+		$by_key['failed_runs']['settings']);
+	$alone = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+	pg_assert_same('post', $alone['failed_runs']['graph']['nodes'][1]['kind'], 'a channel is asked, never the person alone');
+
+	// Overdue invoice: a task that waits a week, then the person is told.
+	$invoice = array_column($by_key['invoice_overdue_follow_up']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('start:next', 'collect:timeout'), $on('invoice_overdue_follow_up'));
+	pg_assert_same('task', $invoice['collect']['kind']);
+	pg_assert_same(168, $invoice['collect']['config']['timeout']);
+	pg_assert_true(168 <= WS_FLOW_TIMEOUT_MAX, 'a week fits the task box');
+	pg_assert_true(strpos($invoice['collect']['config']['description'], '{{record_link}}') !== false, 'the task links the invoice');
+	pg_assert_same('notify', $invoice['late']['kind']);
 }
 
 // Where the texts go: the channel open when one is, else the person.
@@ -691,4 +839,194 @@ function test_workspace_flow_template_threads_with_a_fallback()
 	));
 
 	pg_assert_same(array(array('from' => 'check', 'to' => 'hook', 'key' => 'text')), ws_flow_template_threads($graph));
+}
+
+// Goods received and the daily cash count: an approval that asks a number
+// with the approval, and what the flow does with the answer.
+function test_workspace_flow_templates_answer_a_number()
+{
+	$kinds = ws_flow_kinds();
+
+	foreach (array(0, 3) as $channel) {
+		$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => $channel))), null, 'key');
+
+		foreach (array('goods_received', 'cash_count') as $key) {
+			pg_assert_true(isset($by_key[$key]), $key . ' offered');
+
+			$nodes = array_column($by_key[$key]['graph']['nodes'], null, 'id');
+			$ask = ws_step_config_normalize('approval', $nodes['ask']['config']);
+
+			pg_assert_same('number', $ask['answer'], $key . ' asks a number');
+			pg_assert_true($ask['answer_label'] !== '', $key . ' asks a question');
+			pg_assert_true(in_array('channel', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for a channel');
+			pg_assert_true(in_array('person', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for people');
+			pg_assert_true($by_key[$key]['threads'] > 0, $key . ' reads the answer');
+
+			foreach ($by_key[$key]['graph']['edges'] as $edge) {
+				pg_assert_true(in_array($edge['on'], $kinds[$nodes[$edge['from']]['kind']]['outcomes'], true), $key . ': ' . $edge['from'] . ' on ' . $edge['on']);
+			}
+
+			pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($by_key[$key])), 'text'), $key . ' publishes');
+		}
+
+		// Goods received: started by hand when a delivery is due; the number
+		// that arrived is told, a delivery not there is told too.
+		$goods = array_column($by_key['goods_received']['graph']['nodes'], null, 'id');
+		pg_assert_same('manual', $by_key['goods_received']['start']);
+		pg_assert_true(strpos(json_encode($goods['got']['config']), '{{node.ask.answer_number}}') !== false, 'tells how many arrived');
+
+		// Cash count: each evening; the difference from the expected amount
+		// worked out by Calculate, told only when it is not zero.
+		$cash = array_column($by_key['cash_count']['graph']['nodes'], null, 'id');
+		pg_assert_same('schedule', $by_key['cash_count']['start']);
+		pg_assert_same('daily', $cash['start']['config']['repeat']);
+		pg_assert_same('constants', $cash['expected']['kind']);
+		pg_assert_same('calculate', $cash['diff']['config']['rule']);
+		pg_assert_same('{{node.ask.answer_number}} - {{node.expected.expected}}', $cash['diff']['config']['a']);
+		pg_assert_same(array('type' => 'value', 'ref' => '{{node.diff.value}}', 'op' => 'neq', 'value' => '0'),
+			array_intersect_key($cash['check']['config']['rule'], array('type' => 0, 'ref' => 0, 'op' => 0, 'value' => 0)));
+		pg_assert_same('notify', $cash['off']['kind'], 'the manager is told');
+	}
+
+	// The difference as the run works it out: 1250 counted, 1200 expected.
+	pg_assert_same('50', ws_flow_derived_calculate('{{node.ask.answer_number}} - {{node.expected.expected}}',
+		array('ask' => array('answer_number' => '1250'), 'expected' => array('expected' => '1200')), 2));
+}
+
+// A low review and a failed subscription payment: offered with their
+// events, a review read by its rating, the person told and a task.
+function test_workspace_flow_templates_low_review_and_failed_subscription()
+{
+	$kinds = ws_flow_kinds();
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+	$events = array('low_review' => 'product.review.created', 'subscription_failed' => 'subscription.failed');
+
+	foreach ($events as $key => $event) {
+		$graph = $by_key[$key]['graph'];
+		$nodes = array_column($graph['nodes'], null, 'id');
+
+		pg_assert_same($event, $graph['nodes'][0]['config']['event'], $key . ' event');
+
+		foreach ($graph['edges'] as $edge) {
+			pg_assert_true(in_array($edge['on'], $kinds[$nodes[$edge['from']]['kind']]['outcomes'], true), $key . ': ' . $edge['from'] . ' on ' . $edge['on']);
+		}
+
+		pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($by_key[$key])), 'text'), $key . ' publishes');
+
+		$left = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('events' => array_values(array_diff(ws_flow_templates_test_fill()['events'], array($event)))))), null, 'key');
+		pg_assert_false(isset($left[$key]), $key . ' needs its event');
+	}
+
+	$review = array_column($by_key['low_review']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('type' => 'value', 'ref' => '{{trigger.rating}}', 'op' => 'lte', 'value' => '2'),
+		array_intersect_key($review['low']['config']['rule'], array('type' => 0, 'ref' => 0, 'op' => 0, 'value' => 0)));
+	pg_assert_same('task_open', $review['answer']['kind']);
+	pg_assert_same('post', $review['tell']['kind']);
+
+	// Two stars holds, four does not, a review without stars never.
+	$rule = ws_flow_condition_normalize($review['low']['config'])['rule'];
+	pg_assert_true(ws_flow_condition_value_holds($rule, array(WS_STEP_TRIGGER => array('rating' => 2)))['holds']);
+	pg_assert_false(ws_flow_condition_value_holds($rule, array(WS_STEP_TRIGGER => array('rating' => 4)))['holds']);
+	pg_assert_false(ws_flow_condition_value_holds($rule, array(WS_STEP_TRIGGER => array('rating' => null)))['holds'], 'no stars');
+
+	$failed = array_column($by_key['subscription_failed']['graph']['nodes'], null, 'id');
+	pg_assert_same('notify', $failed['told']['kind']);
+	pg_assert_same('task_open', $failed['contact']['kind']);
+	pg_assert_same('high', $failed['contact']['config']['priority']);
+}
+
+
+// A cart quote followed up: made, two days later read again, a task to call
+// only for one still open (not ordered, cancelled or past its last day).
+function test_workspace_flow_templates_cart_quote_follow_up()
+{
+	$kinds = ws_flow_kinds();
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+	$template = $by_key['cart_quote_follow_up'];
+	$graph = $template['graph'];
+	$nodes = array_column($graph['nodes'], null, 'id');
+
+	pg_assert_same('cart_quote.created', $graph['nodes'][0]['config']['event']);
+	pg_assert_same(array('amount' => 2, 'unit' => 'days'), array_intersect_key($nodes['wait']['config'], array('amount' => 0, 'unit' => 0)));
+	pg_assert_same(array('record' => 'cart_quote', 'id' => '{{trigger.record_id}}'), array_intersect_key($nodes['read']['config'], array('record' => 0, 'id' => 0)));
+	pg_assert_true(isset(ws_flow_record_get_fields()['cart_quote']['fields']['status']), 'the box gives the quote\'s state');
+	pg_assert_same('task_open', $nodes['call']['kind']);
+
+	foreach ($graph['edges'] as $edge) {
+		pg_assert_true(in_array($edge['on'], $kinds[$nodes[$edge['from']]['kind']]['outcomes'], true), $edge['from'] . ' on ' . $edge['on']);
+	}
+
+	pg_assert_same(array('wait:done', 'read:done', 'open:yes'), array_values(array_map(function ($edge) {
+		return $edge['from'] . ':' . $edge['on'];
+	}, array_slice($graph['edges'], 1))));
+	pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($template)), 'text'), 'it publishes');
+	pg_assert_same(array('person'), array_column($template['settings'], 'type'));
+
+	// Open holds; ordered, cancelled, expired or a quote not found do not.
+	$rule = ws_flow_condition_normalize($nodes['open']['config'])['rule'];
+	pg_assert_true(ws_flow_condition_value_holds($rule, array('read' => array('status' => 'open')))['holds']);
+
+	foreach (array('ordered', 'cancelled', 'expired', '') as $status) {
+		pg_assert_false(ws_flow_condition_value_holds($rule, array('read' => array('status' => $status)))['holds'], $status);
+	}
+
+	$left = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('events' => array('order.created')))), null, 'key');
+	pg_assert_false(isset($left['cart_quote_follow_up']), 'it needs its event');
+}
+
+// Incoming forms sorted: the submission read, Pinegrap AI picks sales,
+// support or spam, a task for sales and one for support; spam ends, and a
+// form it cannot place is told. Offered only with the event and Pinegrap
+// AI set up.
+function test_workspace_flow_templates_sort_incoming_forms()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_ai_box.php');
+
+	$kinds = ws_flow_kinds();
+	$fill = array('channel' => 3, 'recap_ai' => true);
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill($fill)), null, 'key');
+	pg_assert_true(isset($by_key['form_sort']), 'offered with the event and Pinegrap AI');
+	$template = $by_key['form_sort'];
+	$graph = $template['graph'];
+	$nodes = array_column($graph['nodes'], null, 'id');
+
+	pg_assert_same('form.submitted', $graph['nodes'][0]['config']['event']);
+	pg_assert_same(array('record' => 'form', 'id' => '{{trigger.record_id}}'), array_intersect_key($nodes['read']['config'], array('record' => 0, 'id' => 0)));
+	pg_assert_true(isset(ws_flow_record_get_fields()['form']['fields']['answers']), 'the box gives the answers');
+
+	$ai = ws_step_ai_normalize($nodes['sort']['config']);
+	pg_assert_same('ai', $nodes['sort']['kind']);
+	pg_assert_same('classify', $ai['mode']);
+	pg_assert_same('{{node.read.answers}}', $ai['text']);
+	pg_assert_same(3, count($ai['classes']), 'sales, support, spam');
+	pg_assert_same(array(), ws_step_ai_problems($ai, 'sort'));
+
+	pg_assert_same(array('read:done', 'sort:class_1', 'sort:class_2', 'sort:class_3', 'sort:other'), array_values(array_map(function ($edge) {
+		return $edge['from'] . ':' . $edge['on'];
+	}, array_slice($graph['edges'], 1))));
+
+	foreach ($graph['edges'] as $edge) {
+		$node = $nodes[$edge['from']];
+		$outcomes = ($node['kind'] === 'ai') ? ws_step_ai_arrow_outcomes($ai) : $kinds[$node['kind']]['outcomes'];
+		pg_assert_true(in_array($edge['on'], $outcomes, true), $edge['from'] . ' on ' . $edge['on']);
+	}
+
+	pg_assert_same('task_open', $nodes['sales']['kind']);
+	pg_assert_same('task_open', $nodes['support']['kind']);
+	pg_assert_same('end', $nodes['spam']['kind']);
+	pg_assert_same('notify', $nodes['unsure']['kind']);
+	pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($template)), 'text'), 'it publishes');
+	pg_assert_same(array('person'), array_column($template['settings'], 'type'));
+
+	// The model's answer takes the arrow of its class; spam has a box that
+	// only ends, anything else goes to the person.
+	pg_assert_same('class_1', ws_step_ai_parse($ai, '{"class": "' . $ai['classes'][0] . '"}')['outcome']);
+	pg_assert_same('class_3', ws_step_ai_parse($ai, mb_strtolower($ai['classes'][2]))['outcome']);
+	pg_assert_same('other', ws_step_ai_parse($ai, 'a job application')['outcome']);
+
+	$keys = function ($overrides) {
+		return array_column(ws_flow_templates(ws_flow_templates_test_fill($overrides)), 'key');
+	};
+	pg_assert_false(in_array('form_sort', $keys(array('recap_ai' => false)), true), 'it needs Pinegrap AI');
+	pg_assert_false(in_array('form_sort', $keys(array('recap_ai' => true, 'events' => array('order.created'))), true), 'it needs its event');
 }

@@ -518,3 +518,29 @@ function test_image_editor_model_panel_title()
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
 	pg_assert_same(array('layers', 'layers', 'tool_adjust', 'layers', 'tool_artboard', 'layer_text', 'layer_rect', 'selection'), $r, 'the title follows the list, the selection, the canvas and the tool');
 }
+
+// A selection box takes the visible, unlocked layers its box touches, a
+// turned layer by its upright bounds, bottom to top; a locked or hidden
+// layer stays out.
+function test_image_editor_model_layers_in_box()
+{
+	$r = image_editor_model_node(
+		'var doc = { layers: [{ id: "a", type: "rect", x: 0, y: 0, w: 100, h: 100, rot: 0 },'
+		. ' { id: "b", type: "rect", x: 300, y: 0, w: 200, h: 20, rot: 90 },'
+		. ' { id: "c", type: "rect", x: 150, y: 150, w: 10, h: 10, rot: 0, locked: true },'
+		. ' { id: "d", type: "rect", x: 170, y: 150, w: 10, h: 10, rot: 0, hidden: true }] };' . "\n"
+		. 'console.log(JSON.stringify({ all: M.layersInBox(doc, { x: -10, y: -10, w: 1000, h: 1000 }), corner: M.layersInBox(doc, { x: 90, y: 90, w: 5, h: 5 }),'
+		. ' turned: M.layersInBox(doc, { x: 395, y: 60, w: 5, h: 5 }), upright: M.layersInBox(doc, { x: 450, y: 5, w: 5, h: 5 }), none: M.layersInBox(doc, { x: 140, y: 140, w: 50, h: 50 }) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('a', 'b'), $r['all'], 'a box over everything takes the visible, unlocked layers, bottom to top');
+	pg_assert_same(array('a'), $r['corner'], 'a box touching a layer\'s corner takes it');
+	pg_assert_same(array('b'), $r['turned'], 'a turned layer is met where it is drawn');
+	pg_assert_same(array(), $r['upright'], 'not where its unturned box would be');
+	pg_assert_same(array(), $r['none'], 'locked and hidden layers stay out');
+}

@@ -540,6 +540,12 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
         // relative date) comes back as it is.
         if ($filters !== null) $data = pg_sw_fill_value($data, $mods);
 
+        // A submitted value that starts a link's or a form's address must not
+        // carry a scheme that runs script when the address is followed.
+        if (pg_sw_token_starts_address($template, $whole_string) && pg_sw_address_runs_script($data)) {
+            $data = '#';
+        }
+
         $template = preg_replace(
             '/' . preg_quote($whole_string, '/') . '/',
             addcslashes($data, '\\$'),
@@ -549,6 +555,25 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
     }
 
     return $template;
+}
+
+// Whether the first $token in $template opens an href, action or formaction
+// value: the address then starts with what the field holds.
+function pg_sw_token_starts_address($template, $token)
+{
+    $at = strpos($template, $token);
+    if ($at === false) return false;
+    return (bool)preg_match('/\b(?:href|action|formaction)\s*=\s*["\']?$/i', substr($template, max(0, $at - 40), min(40, $at)));
+}
+
+// Whether an address escaped for HTML ($html) opens with a scheme that runs
+// script. Browsers drop control characters and spaces inside a scheme
+// ("java\tscript:"), so they are dropped before the check.
+function pg_sw_address_runs_script($html)
+{
+    $raw = html_entity_decode((string)$html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $raw = strtolower(preg_replace('/[\x00-\x20]+/', '', $raw));
+    return (bool)preg_match('/^(?:javascript|vbscript|livescript|data):/', $raw);
 }
 
 // Make one loop row's element ids its own.
@@ -1736,6 +1761,9 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //                       today and the days before it
 //   filters             list  the classic form list view's filters, see
 //                             pg_sw_form_list_filter_sql()
+//   one_per_submitter   bool (default false): each signed-in submitter's
+//                       newest record only, see
+//                       pg_sw_form_list_one_per_submitter_sql()
 //   filter_title        string the page title while a value from the address
 //                             is applied with "is equal to" and records
 //                             match; {value} stands
@@ -1790,6 +1818,33 @@ function pg_sw_form_list_empty_message($configured, $search_active)
     $configured = is_string($configured) ? $configured : '';
 
     return ($configured !== '') ? $configured : lang('No records found.');
+}
+
+/**
+ * The form list's "newest record per submitter" condition: with the
+ * one_per_submitter option on, a record of a signed-in submitter
+ * (forms.user_id > 0) is listed only when no newer complete record of the
+ * same form has the same submitter, so a member who sent the form again
+ * shows once, with the newest record. Records without a submitter
+ * (user_id 0) are never collapsed. The condition looks at every complete
+ * record of the form, before the list's filters, the visitor's search and
+ * the viewer filter, which then apply to what is left: an older record
+ * never stands in for a newer one those hold back, and the count and the
+ * pages number the cards shown.
+ *
+ * @param  array $cfg the widget's system_region_config
+ * @return string An " AND (...)" fragment over the unaliased forms table,
+ *                or '' when the option is off.
+ */
+function pg_sw_form_list_one_per_submitter_sql($cfg)
+{
+    if (!is_array($cfg) || empty($cfg['one_per_submitter'])) return '';
+
+    return " AND (forms.user_id = 0 OR NOT EXISTS (SELECT 1 FROM forms newer_form
+                  WHERE newer_form.page_id = forms.page_id
+                    AND newer_form.complete = 1
+                    AND newer_form.user_id = forms.user_id
+                    AND newer_form.id > forms.id))";
 }
 
 function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
@@ -2075,6 +2130,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $filter_sql['tokens'] = array();
     }
     $filter_where = $filter_sql['where'];
+    // The submitter's older records leave the list before anything else
+    // counts them; the address check below reads the same rows.
+    $filter_where .= pg_sw_form_list_one_per_submitter_sql($cfg);
     // The value from the address, printed only once records match it
     // exactly, so the page never repeats text that names nothing in the
     // data.
@@ -6459,6 +6517,7 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
         return $seen[$folder_id];
     };
     $base_sql = "FROM page LEFT JOIN folder ON page.page_folder = folder.folder_id
+                 LEFT JOIN style ON style.style_id = page.page_style
                  WHERE page.page_search = '1' AND folder.folder_archived = '0'
                    AND page.page_id NOT IN ($not_featured)$binned";
 
@@ -6489,28 +6548,34 @@ function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
     }
 
     // Title, meta description, keywords and — for a page built in the visual
-    // editor — the text of its layout tree.
-    $tree_ready = function_exists('pg_multi_page_design_ready') && pg_multi_page_design_ready();
+    // editor — the words of the tree it is drawn from (its own, else its
+    // design's) and of the shared components it places, as the legacy
+    // Search Results page counts them. A page whose words sit only in a
+    // placed component is a candidate through that component's id.
+    $tree_expr  = pg_page_tree_sql_expr();
+    $components = pg_tree_search_components();
+    $shared_sql = pg_tree_search_shared_ref_sql($tree_expr, pg_tree_search_matching_components($components, $query));
     $candidates = db_items(
         "SELECT page.page_id, page.page_name, page.page_folder, page.page_title,
-                page.page_meta_description, page.page_search_keywords"
-             . ($tree_ready ? ", page.page_tree_json" : "") . "
+                page.page_meta_description, page.page_search_keywords,
+                $tree_expr AS page_tree
          $base_sql
            AND (page.page_title LIKE $like OR page.page_meta_description LIKE $like
-                OR page.page_search_keywords LIKE $like"
-             . ($tree_ready ? " OR page.page_tree_json LIKE $like" : "") . ")");
+                OR page.page_search_keywords LIKE $like
+                OR $tree_expr LIKE $like"
+             . (($shared_sql !== '') ? " OR " . $shared_sql : "") . ")");
     foreach ((array)$candidates as $r) {
         $pid = (int)$r['page_id'];
         if (!$allowed($r['page_folder'])) continue;
         $info[$pid] = $r;
         $hits = 0;
-        if ($tree_ready && (string)$r['page_tree_json'] !== '') {
-            $tree      = json_decode((string)$r['page_tree_json'], true);
-            $tree_text = _pg_sw_tree_text($tree);
+        if ((string)$r['page_tree'] !== '') {
+            $tree      = json_decode((string)$r['page_tree'], true);
+            $tree_text = pg_tree_search_plain_text($tree, $components);
             $hits += mb_substr_count(mb_strtolower($tree_text), $needle);
             if ($tree_text !== '') $texts[$pid] = (isset($texts[$pid]) ? $texts[$pid] . ' ' : '') . $tree_text;
             // The topics of its search sections count as the page's words.
-            if (strpos((string)$r['page_tree_json'], 'searchSection') !== false) {
+            if (strpos((string)$r['page_tree'], 'searchSection') !== false) {
                 $hits += 2 * mb_substr_count(_pg_search_fold(pg_search_section_topics($tree)), _pg_search_fold($query));
             }
         }

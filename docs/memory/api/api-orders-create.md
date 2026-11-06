@@ -15,6 +15,7 @@ description: POST /orders records a counter (local) sale through the counter scr
 
 ## What do the refusals say?
 - 422 `items` names the product (`Product 7: Only 2 in stock; lower the quantity.`); a cash `received` short of the total → `received`; split errors → `payment_parts` (`payment_parts` only with `split`, needs the ERP and the cash right).
+- A `payment_parts` item that is not an object or whose `amount` is not a whole number from 0 up (a decimal, `"12.50"`, a negative, missing) is 422 `payment_parts` naming the item (`api_local_sale_parts()` `bad`); digit strings from a form body are taken. Before, it was read as 0, which the counter skips as an empty part, so the money it stood for was booked as owed (bug hunt, PR #7009).
 - An invoice or receipt that could not be recorded is not a refusal: the order stays complete and the reason is in `warnings`, as on the screen.
 
 ## Idempotency?

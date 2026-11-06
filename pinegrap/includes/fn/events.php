@@ -54,6 +54,12 @@ function pg_announce($event, $data = array())
         pg_ap_heard($event);
     }
 
+    // Contacts put into a group get the mail of the campaign profiles that
+    // follow the group (includes/fn/mail.php).
+    if (function_exists('pg_contact_group_joined_heard')) {
+        pg_contact_group_joined_heard($event, (array) $data);
+    }
+
     // Chosen Workspace events to the Slack, Teams and Telegram targets.
     if (function_exists('pg_notify_announced')) {
         pg_notify_announced($event, (array) $data);
@@ -206,13 +212,47 @@ function pg_announce_contact_group_members($contact_group_id, $added = array(), 
         }
     }
 
-    pg_announce('contact_group.members_changed', pg_contact_group_members_event($contact_group_id, $name, $added, $removed));
+    $event = pg_contact_group_members_event($contact_group_id, $name, $added, $removed);
+
+    pg_announce('contact_group.members_changed', $event);
+
+    // Flows hear each contact who joined on their own (contact_group.joined):
+    // a run is about one contact, so a change of two hundred keeps two
+    // hundred rows, worked off by the workspace's event run. The webhooks
+    // keep the one members_changed event above.
+    foreach (pg_contact_group_joined_events($event) as $joined) {
+        pg_event_record('contact_group.joined', $joined);
+    }
+}
+
+// What contact_group.joined carries for each contact a members_changed event
+// put into the group: the contact (id, as every contact event names it, and
+// contact_id for a flow's {{trigger.contact_id}}), the group and its name.
+// Nobody added, or no event, gives an empty list.
+function pg_contact_group_joined_events($event)
+{
+    $out = array();
+
+    if (!is_array($event) || ((int) ($event['id'] ?? 0) <= 0)) {
+        return $out;
+    }
+
+    foreach ((array) ($event['added'] ?? array()) as $contact_id) {
+        $out[] = array(
+            'id'         => (int) $contact_id,
+            'contact_id' => (int) $contact_id,
+            'group_id'   => (int) $event['id'],
+            'group_name' => (string) ($event['name'] ?? ''),
+        );
+    }
+
+    return $out;
 }
 
 // The events the workspace listens to (includes/workspace/watch.php): what
 // starts a scheduled action with an event rule, and what is written into the
-// channels that watch a record. Only these are kept from pg_announce(): the
-// ERP's (erp.*) have nobody here to read them, and the workspace keeps its
+// channels that watch a record. Only these are kept from pg_announce() and
+// erp_event(): of the ERP's (erp.*) only the ones a flow may start on, and the workspace keeps its
 // own (workspace.*) through ws_event(), only while a scheduled action waits
 // for one - a public channel announces every message.
 function pg_event_workspace_events()
@@ -227,9 +267,126 @@ function pg_event_workspace_events()
         'stock.low',
         'customer.created',
         'customer.updated',
+        'contact_group.joined',
         'product.updated',
         'form.submitted',
+        'booking.created',
+        'booking.confirmed',
+        'booking.rescheduled',
+        'booking.cancelled',
+        'product.review.created',
+        'order.return.approved',
+        'order.return.received',
+        'order.return.refunded',
+        'cart_quote.created',
+        'cart_quote.ordered',
+        'marketplace.order.imported',
+        'subscription.failed',
+        'subscription.renewed',
+        'subscription.cancelled',
+        'form.paid',
+        'inventory.changed',
+        'user.created',
+        'customer.consent_changed',
+        'mail.bounced',
+        'campaign.sent',
+        'page.created',
+        'page.updated',
+        'calendar_event.reserved',
+        'credit.issued',
+        'credit.expired',
+        'erp.invoice.created',
+        'erp.invoice.paid',
+        'erp.invoice.overdue',
+        'erp.invoice.edoc_changed',
+        'erp.receipt.created',
+        'erp.edoc.received',
+        'erp.quote.accepted',
+        'erp.quote.rejected',
     );
+}
+
+// The payload as the workspace keeps it: what a flow's start box reads must
+// be a single value (ws_flow_event_outputs()), so a consent's nested answer
+// is laid out flat, a bounce's yes/no becomes 0/1 and a bounce names the
+// contact of its address ($contact_of: address => contact id, 0 for none).
+// The webhook's own body is left as it is. Pure but for $contact_of.
+function pg_event_workspace_payload($event, $payload, $contact_of = 'pg_event_contact_of_address')
+{
+    $payload = (array) $payload;
+
+    if ((string) $event === 'customer.consent_changed') {
+        $consent = is_array($payload['consent'] ?? null) ? $payload['consent'] : array();
+
+        foreach (array('channel', 'purpose', 'status', 'source') as $key) {
+            $payload['consent_' . $key] = (string) ($consent[$key] ?? '');
+        }
+    }
+
+    // An invoice's e-document: its status as a single value.
+    if ((strpos((string) $event, 'erp.invoice.') === 0) && is_array($payload['edoc'] ?? null)) {
+        $payload['edoc_status'] = (string) ($payload['edoc']['status'] ?? '');
+    }
+
+    if ((string) $event === 'mail.bounced') {
+        $payload['suppressed'] = empty($payload['suppressed']) ? 0 : 1;
+        $payload['contact_id'] = (int) call_user_func($contact_of, (string) ($payload['address'] ?? ''));
+    }
+
+    return $payload;
+}
+
+// The contact an e-mail address belongs to, the oldest of them, 0 for none.
+function pg_event_contact_of_address($address)
+{
+    $address = trim((string) $address);
+
+    return ($address === '') ? 0 : (int) db_value("SELECT id FROM contacts WHERE email_address = '" . e($address) . "' ORDER BY id LIMIT 1");
+}
+
+// The site's events kept only while an active scheduled action or flow
+// names them: a stock change comes with every line of every sale, and rows
+// nobody waits for would hold up the run's batch for the events people do.
+function pg_event_workspace_on_demand()
+{
+    return array('inventory.changed');
+}
+
+// Is the event kept, given the rules of the active scheduled actions that
+// may name it? Every event but the on-demand ones is; an on-demand one only
+// when an event rule names it. Pure.
+function pg_event_workspace_awaited($event, $rules_rows)
+{
+    if (!in_array((string) $event, pg_event_workspace_on_demand(), true)) {
+        return true;
+    }
+
+    foreach ((array) $rules_rows as $rules) {
+        foreach ((array) json_decode((string) $rules, true) as $rule) {
+            if (is_array($rule) && (($rule['type'] ?? '') === 'event') && ((string) ($rule['event'] ?? '') === (string) $event)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+// The rules of the active scheduled actions that may name an on-demand
+// event, read once a request for each event.
+function pg_event_workspace_waiting_rules($event)
+{
+    static $read = array();
+
+    $event = (string) $event;
+
+    if (!isset($read[$event])) {
+        $read[$event] = pg_schema_has('ws_scheduled_actions')
+            ? array_column((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active' AND rules LIKE '%" . e($event) . "%' LIMIT 50"), 'rules')
+            : array();
+    }
+
+    return $read[$event];
 }
 
 // Keeps an event for the workspace to pick up (ws_events_in).
@@ -256,6 +413,11 @@ function pg_event_record($event, $payload = array())
         return;
     }
 
+    if (in_array((string) $event, pg_event_workspace_on_demand(), true) && !pg_event_workspace_awaited($event, pg_event_workspace_waiting_rules($event))) {
+        return;
+    }
+
+    $payload = pg_event_workspace_payload($event, (array) $payload);
     $json = json_encode(pg_event_payload_depth((array) $payload), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
     db("INSERT INTO ws_events_in (event, payload, created_at, taken_at)

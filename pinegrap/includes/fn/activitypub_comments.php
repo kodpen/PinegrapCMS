@@ -228,12 +228,7 @@ function pg_ap_reply_thread($ref, $site)
     if ($ref['kind'] === 'c') {
         $row = pg_ap_comments_row("SELECT id, page_id, item_type, item_id FROM comments WHERE id = ? AND published = '1' AND remote_actor = ''", array((string) (int) $ref['id']));
 
-        if (!$row) {
-            return null;
-        }
-
-        return array('page_id' => (int) $row['page_id'], 'item_type' => (string) $row['item_type'], 'item_id' => (int) $row['item_id'],
-            'parent_id' => (int) $row['id']);
+        return $row ? pg_ap_comment_thread($row, pg_ap_published($site, pg_ap_settings()), $site) : null;
     }
 
     $published = pg_ap_published($site, pg_ap_settings());
@@ -261,6 +256,29 @@ function pg_ap_reply_thread($ref, $site)
     }
 
     return array('page_id' => (int) $entry['record_page']['page_id'], 'item_type' => 'submitted_form', 'item_id' => (int) $ref['id'], 'parent_id' => 0);
+}
+
+/**
+ * The thread of a comment written on the site that a remote note answers,
+ * only while that thread's page or record is published to the Fediverse:
+ * a comment id alone would otherwise let any server post into the thread of
+ * a private, member-only or binned page. Pure.
+ *
+ * @param array $row       the comment's id, page_id, item_type, item_id
+ * @param array $published pg_ap_published()
+ * @param array $site      pg_ap_site()
+ * @return array|null page_id, item_type, item_id, parent_id
+ */
+function pg_ap_comment_thread($row, $published, $site)
+{
+    $objects = pg_ap_thread_objects($site, (int) $row['page_id'], (string) $row['item_type'], (int) $row['item_id']);
+
+    if (!$objects || !isset($published[$objects[0]])) {
+        return null;
+    }
+
+    return array('page_id' => (int) $row['page_id'], 'item_type' => (string) $row['item_type'], 'item_id' => (int) $row['item_id'],
+        'parent_id' => (int) $row['id']);
 }
 
 /**
@@ -481,4 +499,76 @@ function pg_ap_reply_send($comment_id)
         . pg_comment_view_query(get_query_string_for_page_url($page_type, $comment['item_id'], $comment['item_type']), $comment['id']) . '#c-' . (int) $comment['id'];
 
     return pg_ap_queue(pg_ap_local_reply_activity($site, $comment, $parent), $inbox);
+}
+
+/**
+ * The object addresses whose likes and boosts a comment thread shows: a
+ * record's thread is its record (r), a page's own thread the page (p). The
+ * thread of a product, a product group or an event is never published, so
+ * it has none. Pure.
+ *
+ * @param array  $site      pg_ap_site()
+ * @param int    $page_id   the drawn page
+ * @param string $item_type the thread's item type ('' for the page's own)
+ * @param int    $item_id
+ * @return array of object addresses
+ */
+function pg_ap_thread_objects($site, $page_id, $item_type, $item_id)
+{
+    if ($item_type === 'submitted_form') {
+        return ((int) $item_id > 0) ? array(pg_ap_object_id($site, 'r', (int) $item_id)) : array();
+    }
+
+    if (($item_type === '') || ($item_type === null)) {
+        return ((int) $page_id > 0) ? array(pg_ap_object_id($site, 'p', (int) $page_id)) : array();
+    }
+
+    return array();
+}
+
+/**
+ * The grouped ap_reactions rows as counts per kind. Pure.
+ *
+ * @param mixed $rows rows of kind and n
+ * @return array like, announce (int)
+ */
+function pg_ap_reaction_counts_read($rows)
+{
+    $counts = array('like' => 0, 'announce' => 0);
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        if (is_array($row) && isset($row['kind'], $row['n']) && isset($counts[$row['kind']]) && is_numeric($row['n'])) {
+            $counts[$row['kind']] += max(0, (int) $row['n']);
+        }
+    }
+
+    return $counts;
+}
+
+/**
+ * How many likes and boosts the objects have. A failed query (before
+ * 11.0.167 made ap_reactions) reads as none.
+ *
+ * @param array $object_ids
+ * @return array like, announce (int)
+ */
+function pg_ap_reaction_counts($object_ids)
+{
+    $object_ids = array_values(array_unique(array_filter(array_map('strval', (array) $object_ids), 'strlen')));
+
+    if (!$object_ids) {
+        return pg_ap_reaction_counts_read(array());
+    }
+
+    $result = db_q(
+        "SELECT kind, COUNT(*) AS n FROM ap_reactions WHERE object_id IN (" . implode(', ', array_fill(0, count($object_ids), '?')) . ") GROUP BY kind",
+        $object_ids
+    );
+    $rows = array();
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $rows[] = $row;
+    }
+
+    return pg_ap_reaction_counts_read($rows);
 }

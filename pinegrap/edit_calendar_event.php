@@ -251,7 +251,7 @@ if (!$_POST) {
             'heading_description' => lang('View, edit, or publish this calendar event.'),
             'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('calendars.php')),
         
-            'breadcrumb' => array(array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))))),
+            'breadcrumb' => array(array('label' => lang('Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php'), array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))))),
         )
     ) . '
 <main id="content" class="container-fluid">

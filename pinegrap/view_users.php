@@ -18,6 +18,30 @@
 
 include('init.php');
 
+// A cell of the list changed in place (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen; the checks and the rights are the user screen's
+// (pg_user_quick_update()). The fields depend on the editor's role and the
+// view, so they are read for the signed-in user; without one the request is
+// refused below.
+if (pg_list_edit_requested()) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_list.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_list_edit.php');
+
+    $quick_user = (defined('USER_LOGGED_IN') && USER_LOGGED_IN) ? validate_user() : null;
+    $quick_filter = pg_user_list_filter((isset($_GET['filter']) && is_string($_GET['filter'])) ? $_GET['filter'] : 'default');
+
+    $edit = pg_list_edit_request(pg_user_quick_edit_columns_for($quick_user, $quick_filter), function ($user) {
+        // The list's own gate (pg_user_list_source()); each write checks
+        // the user's role against the editor's.
+        return isset($user['role']) && is_numeric($user['role']) && ((int) $user['role'] <= 2);
+    });
+
+    $saved = pg_user_quick_update($edit['user'], $edit['id'], $edit['field'], $edit['value'], $quick_filter);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $liveform = new liveform('view_users');
 
 $user = validate_user();

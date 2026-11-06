@@ -360,6 +360,22 @@ function pg_visitors_sections()
 }
 
 /**
+ * The anchor of a section on the screen, also the menu's and the alerts'
+ * #fragment. The section name, except where the panel shell already uses
+ * the name as an id: <main> is #content, the skip link's target, so the
+ * content section is #content_section. Pure.
+ *
+ * @param string $name a key of pg_visitors_sections()
+ * @return string
+ */
+function pg_visitors_anchor($name)
+{
+    $name = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $name));
+
+    return ($name === 'content') ? 'content_section' : $name;
+}
+
+/**
  * Whether a section's file is there yet.
  *
  * @param string $name a key of pg_visitors_sections()

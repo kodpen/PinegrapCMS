@@ -137,12 +137,12 @@ function test_shipping_method_services_match_the_column_and_the_picker()
 	sort($services);
 	pg_assert_same($enum, $services, 'the list is the ENUM');
 
-	foreach (array(PG_FUNCTIONS_DIR . '/includes/templates/shipping_method_service.php') as $template) {
-		preg_match_all('/value="([a-z_0-9]+)"/', file_get_contents($template), $values);
-		$picked = $values[1];
-		sort($picked);
-		pg_assert_same($services, $picked, basename(dirname($template)) . ' picker offers the same services');
-	}
+	require_once(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+
+	$choices = pg_shipping_method_service_choices(array('usps' => true, 'ups' => true, 'fedex' => true), null);
+	$picked = call_user_func_array('array_merge', array_values($choices['groups']));
+	sort($picked);
+	pg_assert_same($services, $picked, 'the screen picker offers the same services');
 }
 
 function test_api_shipping_method_routes_and_events()

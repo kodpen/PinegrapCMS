@@ -594,11 +594,79 @@ function api_validate_bounds($param, $value) {
 
 }
 
+// Whether a value fits a field that takes one value. A JSON list or object
+// decodes to an array, and (string) on an array gives "Array" with a PHP
+// warning: a text field was stored as "Array" with 200. Only the list and
+// object types take one.
+function api_value_is_single($param, $raw) {
+
+	$type = isset($param['type']) ? $param['type'] : 'string';
+
+	if (in_array($type, array('list', 'object'), true)) {
+
+		return true;
+
+	}
+
+	return !is_array($raw) && !is_object($raw);
+
+}
+
+// Whether every item of a list declared with a one-value item type
+// ('of' => 'string' or 'integer') is a single value. The handlers cast each
+// item with (string) or (int), and (string) on a nested JSON list or object
+// gave "Array" and a PHP warning before the refusal. A list of objects ('of'
+// as a field map) or one with no item type is checked by its handler.
+function api_list_items_are_single($param, $raw) {
+
+	if (!isset($param['of']) || !is_string($param['of']) || !is_array($raw)) {
+		return true;
+	}
+
+	foreach ($raw as $item) {
+		if (is_array($item) || is_object($item)) {
+			return false;
+		}
+	}
+
+	return true;
+
+}
+
+// Whether a money value is a whole number of minor units: a JSON integer or a
+// string of digits with an optional minus sign. is_numeric() alone also takes
+// the exponent form, and (int)"1999e-2" is 19, so a price of 19.99 written
+// that way would be stored as 0.19. A JSON float is refused for the same
+// reason a decimal string is: the field counts kurus, not lira.
+function api_money_is_whole($raw) {
+
+	if (is_int($raw)) {
+
+		return true;
+
+	}
+
+	if (!is_string($raw)) {
+
+		return false;
+
+	}
+
+	return (bool)preg_match('/^-?\d+$/', trim($raw));
+
+}
+
 function api_validate_value($param, $raw) {
 
 	$name = $param['name'];
 
 	$type = isset($param['type']) ? $param['type'] : 'string';
+
+	if (!api_value_is_single($param, $raw)) {
+
+		api_fail_validation(lang(array('string' => '{var:1} must be a single value, not a list or an object.', 'vars' => $name)), $name);
+
+	}
 
 	switch ($type) {
 
@@ -617,7 +685,7 @@ function api_validate_value($param, $raw) {
 			// Minor units only. A decimal here means the caller is thinking in
 			// lira while the field counts kurus, and quietly rounding it would
 			// change a price by a hundredfold in the wrong direction.
-			if (!is_numeric($raw) || strpos((string)$raw, '.') !== false || strpos((string)$raw, ',') !== false) {
+			if (!api_money_is_whole($raw)) {
 
 				api_fail_validation(lang(array(
 					'string' => '{var:1} must be a whole number of minor units, with no decimal separator.',
@@ -728,6 +796,15 @@ function api_validate_value($param, $raw) {
 				api_fail_validation(lang(array(
 					'string' => '{var:1} holds more than the {var:2} items accepted in one request.',
 					'vars'   => array($name, $param['max_items'])
+				)), $name);
+
+			}
+
+			if (!api_list_items_are_single($param, $raw)) {
+
+				api_fail_validation(lang(array(
+					'string' => '{var:1} must hold single values, not lists or objects.',
+					'vars'   => $name
 				)), $name);
 
 			}

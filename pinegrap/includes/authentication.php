@@ -639,7 +639,7 @@ function check_view_access($folder_id, $always_grant_access_for_registration_and
             // If the visitor should always be granted access for guest access control,
             // or if the visitor has logged in, or if the visitor has selected to be a guest,
             // then the visitor has access.
-            if (($always_grant_access_for_registration_and_guest == true) || (USER_LOGGED_IN == true) || ($_SESSION['software']['guest'] == true)) {
+            if (($always_grant_access_for_registration_and_guest == true) || (USER_LOGGED_IN == true) || (($_SESSION['software']['guest'] ?? false) == true)) {
                 $access = true;
             }
             break;
@@ -898,4 +898,100 @@ function pg_chat_attachment_access_verdict($user_id, $role, $conversations)
     }
 
     return false;
+}
+
+/**
+ * Whether any of the chat attachments named is one the user may not open
+ * (pg_chat_attachment_access_verdict()). Pure.
+ *
+ * @param array $by_file file id => conversation rows carrying it
+ * @param int   $user_id
+ * @param int   $role
+ * @return bool
+ */
+function pg_chat_attachment_files_refused($by_file, $user_id, $role)
+{
+    foreach ((array) $by_file as $conversations) {
+        if (!pg_chat_attachment_access_verdict($user_id, $role, $conversations)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The panel conversations carrying each of the files named by id or by
+ * stored name, keyed by file id; files no team chat message carries are
+ * left out. Empty before the chat tables or the attachment column exist.
+ * Needs functions.php (get_file.php runs its own query).
+ *
+ * @param int[]    $ids
+ * @param string[] $names
+ * @return array file id => rows with initiator_user_id and target_user_id
+ */
+function pg_chat_attachment_conversations_by_file($ids, $names)
+{
+    $ids = array_values(array_filter(array_map('intval', (array) $ids)));
+    $names = array_values(array_filter(array_map('strval', (array) $names), 'strlen'));
+
+    if ((!$ids && !$names) || !pg_schema_has('chat_messages', 'attachment_file_id') || !pg_schema_has('chat_conversations', 'channel')) {
+        return array();
+    }
+
+    $where = array();
+
+    if ($ids) {
+        $where[] = "f.id IN ('" . implode("', '", $ids) . "')";
+    }
+
+    if ($names) {
+        $where[] = "f.name IN ('" . implode("', '", array_map('escape', $names)) . "')";
+    }
+
+    $rows = db_items("SELECT f.id AS file_id, c.initiator_user_id, c.target_user_id
+        FROM files f
+        INNER JOIN chat_messages m ON m.attachment_file_id = f.id
+        INNER JOIN chat_conversations c ON c.id = m.conversation_id AND c.channel = 'backend'
+        WHERE " . implode(' OR ', $where));
+
+    $by_file = array();
+
+    foreach ((array) $rows as $row) {
+        $by_file[(int) $row['file_id']][] = $row;
+    }
+
+    return $by_file;
+}
+
+/**
+ * The files an image editor request names, the ones pg_image_editor_api()
+ * opens, saves over or copies: file_id, to and target as ids, file_name as
+ * a stored name. Anything but one positive number or one non-empty string
+ * names nothing. Pure.
+ *
+ * @param array|null $request the decoded JSON body
+ * @return array ['ids' => int[], 'names' => string[]]
+ */
+function pg_image_editor_request_files($request)
+{
+    $files = array('ids' => array(), 'names' => array());
+
+    if (!is_array($request)) {
+        return $files;
+    }
+
+    foreach (array('file_id', 'to', 'target') as $key) {
+        $id = (isset($request[$key]) && is_scalar($request[$key])) ? (int) $request[$key] : 0;
+
+        if (($id > 0) && !in_array($id, $files['ids'], true)) {
+            $files['ids'][] = $id;
+        }
+    }
+
+    if (isset($request['file_name']) && is_string($request['file_name']) && ($request['file_name'] !== '')) {
+        $files['names'][] = $request['file_name'];
+    }
+
+    return $files;
 }

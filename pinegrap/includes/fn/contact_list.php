@@ -32,6 +32,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/contact_list_edit.php');
+
 /**
  * Whether this user may merge duplicate contacts: a role above the user role
  * (3). The duplicates view is not offered to role 3 either; the merge action
@@ -130,6 +132,54 @@ function pg_contact_list_groups($user)
 }
 
 /**
+ * The contact groups a mass delete ran on, for its notice and log line: the
+ * picked groups (advanced filters) or the one group of the picker. The
+ * notice is printed as HTML, so a name is escaped; an id the user has no
+ * access to, or of a group deleted meanwhile, is left out.
+ *
+ * @param bool         $advanced     whether the advanced filters are on
+ * @param array|string $picked       the advanced filters' picked group ids
+ * @param string       $group_filter the picker's group id, [All] or [None]
+ * @param array        $groups       the user's groups (pg_contact_list_groups())
+ * @return string escaped, comma-separated names
+ */
+function pg_contact_list_deleted_groups_label($advanced, $picked, $group_filter, array $groups)
+{
+    $none = '[' . lang('None') . ']';
+    $all = '[' . lang('All') . ']';
+
+    $names = array();
+    foreach ($groups as $group) {
+        $names[(string) $group['id']] = (string) $group['name'];
+    }
+
+    $label = function ($value) use ($none, $all, $names) {
+        $value = is_scalar($value) ? (string) $value : '';
+
+        if (($value === $none) || ($value === $all)) {
+            return $value;
+        }
+
+        return isset($names[$value]) ? h($names[$value]) : '';
+    };
+
+    if (!$advanced) {
+        return $label($group_filter);
+    }
+
+    $labels = array();
+    foreach ((is_array($picked) ? $picked : array()) as $value) {
+        $text = $label($value);
+
+        if ($text !== '') {
+            $labels[] = $text;
+        }
+    }
+
+    return implode(', ', $labels);
+}
+
+/**
  * The contact groups the Organize Selected dialog offers: the ones the user
  * may edit and that are filled by hand. A group filled by rules is left
  * out, as on the import screen and the contact card: edit_contacts.php
@@ -175,6 +225,24 @@ function pg_contact_list_organized_count(array $moved)
     }
 
     return count($ids);
+}
+
+/**
+ * The group ids an Organize Selected post names in one field: the dialog
+ * posts them as one comma-separated text. Anything else (a field sent as an
+ * array) names no group: explode() on it ended the request with a fatal
+ * error. The ids are checked later (pg_audience_hand_ids()). Pure.
+ *
+ * @param mixed $value the posted add_to_contact_groups or remove_from_contact_groups
+ * @return array the parts, as text
+ */
+function pg_contact_list_posted_group_ids($value)
+{
+    if (!is_string($value) || (trim($value) === '')) {
+        return array();
+    }
+
+    return explode(',', $value);
 }
 
 /**
@@ -645,7 +713,16 @@ function pg_contact_list_sort($filter)
         $sort_columns['opt_in'] = lang('Opt-In');
         $sort_sql['user'] = 'contact_user.user_username';
         $sort_sql['opt_in'] = 'contacts.opt_in';
+
+        foreach (pg_contact_list_phone_columns() as $column => $spec) {
+            $sort_columns[$column] = $spec['heading'];
+            $sort_sql[$column] = $spec['sort'];
+        }
     } else {
+        $sort_columns['address'] = lang('Address') . ' 1';
+        $sort_columns['address_2'] = lang('Address') . ' 2';
+        $sort_sql['address'] = 'contacts.' . $prefix . 'address_1';
+        $sort_sql['address_2'] = 'contacts.' . $prefix . 'address_2';
         $sort_columns['city'] = lang('City');
         $sort_columns['state'] = lang('State');
         $sort_columns['zip_code'] = lang('Zip Code');
@@ -769,16 +846,17 @@ function pg_contact_list_columns($filter, $shows_groups)
 
     if ($duplicates) {
         $columns['address'] = array('heading' => lang('Address'), 'width' => '16rem');
-        $columns['phone'] = array('heading' => lang('Phone'), 'width' => '12rem');
+        $columns += pg_contact_list_phone_columns();
         $columns['user'] = array('heading' => lang('User'), 'width' => '9rem', 'sort' => 'contact_user.user_username');
     } elseif ($prefix !== '') {
-        $columns['address'] = array('heading' => lang('Address'), 'width' => '16rem');
+        $columns['address'] = array('heading' => lang('Address') . ' 1', 'width' => '14rem', 'sort' => 'contacts.' . $prefix . 'address_1');
+        $columns['address_2'] = array('heading' => lang('Address') . ' 2', 'width' => '12rem', 'sort' => 'contacts.' . $prefix . 'address_2');
         $columns['city'] = array('heading' => lang('City'), 'width' => '9rem', 'sort' => 'contacts.' . $prefix . 'city');
         $columns['state'] = array('heading' => lang('State'), 'width' => '8rem', 'sort' => 'contacts.' . $prefix . 'state');
         $columns['zip_code'] = array('heading' => lang('Zip Code'), 'width' => '7rem', 'sort' => 'contacts.' . $prefix . 'zip_code');
         $columns['country'] = array('heading' => lang('Country'), 'width' => '8rem', 'sort' => 'contacts.' . $prefix . 'country');
     } else {
-        $columns['phone'] = array('heading' => lang('Phone'), 'width' => '12rem');
+        $columns += pg_contact_list_phone_columns();
         $columns['email'] = array('heading' => lang('Email'), 'width' => '14rem', 'sort' => 'contacts.email_address');
         $columns['user'] = array('heading' => lang('User'), 'width' => '9rem', 'sort' => 'contact_user.user_username');
         $columns['opt_in'] = array('heading' => lang('Opt-In'), 'kind' => 'check', 'sort' => 'contacts.opt_in');
@@ -792,6 +870,20 @@ function pg_contact_list_columns($filter, $shows_groups)
     $columns['actions'] = array('heading' => lang('Action'), 'width' => '5rem', 'kind' => 'actions');
 
     return $columns;
+}
+
+/**
+ * The three phone columns, one value each, so each changes in place.
+ *
+ * @return array key => spec
+ */
+function pg_contact_list_phone_columns()
+{
+    return array(
+        'business_phone' => array('heading' => lang('Business Phone'), 'width' => '10rem', 'sort' => 'contacts.business_phone'),
+        'home_phone' => array('heading' => lang('Home Phone'), 'width' => '10rem', 'sort' => 'contacts.home_phone'),
+        'mobile_phone' => array('heading' => lang('Mobile Phone'), 'width' => '10rem', 'sort' => 'contacts.mobile_phone'),
+    );
 }
 
 /**
@@ -833,10 +925,11 @@ function pg_contact_list_source($user, $params)
     $list = pg_contact_list_filter($user, $filter, $groups);
     $shows_groups = pg_contact_list_shows_groups($filter);
     $duplicates = ($filter == 'all_duplicate_contacts');
+    $quick_edit = pg_contact_quick_edit_columns($filter, pg_contact_quick_group_options($user));
 
     return pg_list_table_source(array(
         'list' => 'view_contacts',
-        'columns' => pg_contact_list_columns($filter, $shows_groups),
+        'columns' => pg_contact_list_editable_columns(pg_contact_list_columns($filter, $shows_groups), $quick_edit),
         'from' => $list['tables'],
         'where' => $list['condition'],
         'params' => $list['params'],
@@ -852,7 +945,30 @@ function pg_contact_list_source($user, $params)
         },
         'all' => $duplicates,
         'params_out' => array('filter' => $filter),
+        // The cells that change in place (pg_contact_quick_edit_columns()),
+        // written by the list's own screen with the contact screen's checks.
+        'edit' => array('url' => 'view_contacts.php?filter=' . rawurlencode($filter), 'columns' => $quick_edit),
     ));
+}
+
+/**
+ * The list's columns with each one a quick edit field writes marked
+ * editable, by the field's input. Without the mark the driver offers no
+ * quick edit (pg_list_table_edit_spec()). Pure.
+ *
+ * @param array $columns    pg_contact_list_columns()
+ * @param array $quick_edit pg_contact_quick_edit_columns()
+ * @return array
+ */
+function pg_contact_list_editable_columns(array $columns, array $quick_edit)
+{
+    foreach ($quick_edit as $field => $definition) {
+        if (isset($columns[$field])) {
+            $columns[$field]['editable'] = (string) $definition['type'];
+        }
+    }
+
+    return $columns;
 }
 
 /**
@@ -984,6 +1100,7 @@ function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
     }
 
     $rows = array();
+    $group_options = $shows_groups ? pg_contact_quick_group_options($user) : array();
 
     foreach ($contacts as $contact) {
         $group_names = array();
@@ -996,7 +1113,8 @@ function pg_contact_list_rows($user, $filter, $groups, $shows_groups, $contacts)
             }
         }
 
-        $rows[] = pg_contact_list_row($contact, $user, $filter, implode(',<br />', $group_names), pg_contact_picture_name($contact['file_id'], $files));
+        $rows[] = pg_contact_list_row($contact, $user, $filter, implode(',<br />', $group_names), pg_contact_picture_name($contact['file_id'], $files),
+            $memberships[(int) $contact['id']] ?? array(), $group_options);
     }
 
     return $rows;
@@ -1051,9 +1169,14 @@ function pg_contact_list_row_name($contact)
  * @param string $filter
  * @param string $group_names the contact's groups, escaped
  * @param string $file_name   the picture's file name when the picture is a file
+ * @param array  $member_ids  the ids of every group the contact is in, read
+ *                            when the list shows the groups
+ * @param array  $group_options the groups field's choices
+ *                            (pg_contact_quick_group_options()), empty
+ *                            when the groups are not a field
  * @return array array('id', 'class', 'cells' => key => pg_list_cell())
  */
-function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
+function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name, array $member_ids = array(), array $group_options = array())
 {
     $id = (int) $contact['id'];
     $address_view = (pg_contact_list_address_prefix($filter) !== '');
@@ -1081,7 +1204,6 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
     );
 
     $user_cell = '';
-    $phones = array();
 
     if (!$address_view) {
         if ($contact['user_id']) {
@@ -1090,14 +1212,11 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
                 : h($contact['user_username']);
         }
 
-        foreach (array('business_phone' => lang('Business'), 'home_phone' => lang('Home'), 'mobile_phone' => lang('Mobile')) as $column => $label) {
-            if ($contact[$column] != '') {
-                $phones[] = $label . ': ' . h($contact[$column]);
-            }
+        foreach (array('business_phone', 'home_phone', 'mobile_phone') as $column) {
+            $cells[$column] = pg_list_cell(h($contact[$column]));
         }
 
-        $cells['email'] = pg_list_cell('<a class="pg-link-secondary" href="mailto:' . h($contact['email_address']) . '">' . h($contact['email_address']) . '</a>');
-        $cells['phone'] = pg_list_cell(implode('<br />', $phones));
+        $cells['email'] = pg_list_cell(($contact['email_address'] != '') ? '<a class="pg-link-secondary" href="mailto:' . h($contact['email_address']) . '">' . h($contact['email_address']) . '</a>' : '');
         $cells['user'] = pg_list_cell($user_cell);
     }
 
@@ -1120,9 +1239,9 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
 
         $cells['address'] = pg_list_cell(implode('<br />', $lines));
     } elseif ($address_view) {
-        $cells['address'] = pg_list_cell(h($contact['address_1']) . (($contact['address_2'] != '') ? ',<br />' . h($contact['address_2']) : ''));
+        $cells['address'] = pg_list_cell(h($contact['address_1']));
 
-        foreach (array('city', 'state', 'zip_code', 'country') as $column) {
+        foreach (array('address_2', 'city', 'state', 'zip_code', 'country') as $column) {
             $cells[$column] = pg_list_cell(h($contact[$column]));
         }
     } else {
@@ -1131,6 +1250,18 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
 
     $cells['groups'] = pg_list_cell($group_names);
     $cells['last_modified'] = pg_list_cell(pg_list_when($contact['timestamp'], $contact['last_modified_username'] ?? ''));
+
+    // A cell that changes in place carries its field; the rest stay text.
+    // The groups are a field only where the list read them.
+    $quick_edit = pg_contact_quick_edit_columns($filter, $group_options);
+
+    foreach (array_keys($quick_edit) as $field) {
+        if (isset($cells[$field])) {
+            $value = ($field === 'groups') ? pg_contact_quick_group_value($member_ids, $group_options) : pg_contact_quick_edit_value($field, $contact, $filter);
+            $cells[$field] = pg_list_cell($cells[$field]['html'], $cells[$field]['class'],
+                pg_list_edit_cell_attributes($quick_edit, $field, $id, $value));
+        }
+    }
 
     return array('id' => (string) $id, 'class' => '', 'cells' => $cells);
 }

@@ -1087,7 +1087,8 @@ function pg_field_form_session_values($liveform, $field)
  * @param array $context  form_type, quiz, position (the field it follows or
  *                        'top'), form_id (the page, product or set id),
  *                        page_type, upload_folder_row (print the upload folder
- *                        picker)
+ *                        picker), form_label (the form, HTML, first Summary
+ *                        row), status_rows (more Summary rows, HTML)
  * @return string
  */
 function pg_field_form_cards($liveform, $field, $context)
@@ -1188,16 +1189,23 @@ function pg_field_form_cards($liveform, $field, $context)
         $name_attributes['value'] = h($field['name']);
     }
 
+    // The Summary: the form, and the type and name as they change; a screen
+    // adds its own rows (edit: Last Modified).
+    $status_rows = (string) ($context['status_rows'] ?? '');
+    $summary = pg_field_form_status_row(lang('Form'), (string) ($context['form_label'] ?? ''), false)
+        . pg_field_form_status_row(lang('Field Type'), '<span id="field_summary_type">' . ($field['type'] !== '' ? h(get_field_type_name($field['type'])) : '') . '</span>', false)
+        . pg_field_form_status_row(lang('Name'), '<span id="field_summary_name">' . h($field['name']) . '</span>', $status_rows === '')
+        . $status_rows;
+
     return '
-                    <div class="row">
-                        <div class="col-12 md:col-4 lg:col-3 xl:col-2">
-                            <div class="card my-7 position-sticky" style="top:56px;">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <label for="type" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Field Type') . '
                                 </label>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12">
+                                        <div class="col-12 md:col-6">
                                             <select id="type" name="type" required class="form-control collapse-if-selected" data-bs-target="#options_field_row" onchange="change_field_type(this.options[this.selectedIndex].value)"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('field'))) . '-</option>' .  select_field_type($field['type'], $form_type) . '</select>
                                             <script>
                                                 $(document).ready(function() {
@@ -1208,132 +1216,201 @@ function pg_field_form_cards($liveform, $field, $context)
                                     </div>
                                 </div>
                             </div>
+                            <div class="collapse" id="options_field_row">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Field Settings') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <div class="row">
+                                            <div class="col-12 md:col-6 lg:col-4 my-3">
+                                                <label for="name" class="form-label">' . lang('Name') . '</label>
+                                                ' . $liveform->output_field($name_attributes) . '
+                                            </div>
+                                            ' . $output_rss_field_row . '
+                                            <div class="col-12 md:col-12 lg:col-4 my-3 collapse" id="label_row">
+                                                <label for="label" class="form-label">' . lang('Label') . '</label>
+                                                <input type="text" name="label" value="' . h($field['label']) . '" placeholder="' . lang('Label to display on pages') . '" id="label" class="form-control" maxlength="255" />
+                                            </div>
+                                            <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="size_row">
+                                                <label for="size" class="form-label">' . lang('Size') . '</label>
+                                                <input type="number" placeholder="' . lang('Auto') . '" name="size" value="' . h($field['size']) . '" id="size" class="form-control" min="0" max="1000" step="1" />
+                                            </div>
+                                            <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="maxlength_row">
+                                                <label for="maxlength" class="form-label">' . lang('Maximum Characters') . '</label>
+                                                <input type="number" placeholder="' . lang('Unlimited') . '" name="maxlength" value="' . h($field['maxlength']) . '" id="maxlength" class="form-control" min="0" max="65535" step="1" />
+                                            </div>
+                                            <div class="col-12 md:col-6  lg:col-4 my-3 collapse" id="position_row">
+                                                <label for="position" class="form-label">' . lang('Position') . '</label>
+                                                <select name="position" id="position" class="form-control">' . select_field_position($context['position'], $field['id'], $context['form_id'], $context['page_type'], $form_type) . '</select>
+                                            </div>
+                                            ' . $output_contact_field_row . '
+                                            <div class="col-12 my-1 collapse" id="required_row">
+                                                <div class="form-field">
+                                                    <div class="switch"><input class="" type="checkbox" id="required" name="required" value="1"' . pg_field_form_checked($field['required']) . '></div>
+                                                    <label class="" for="required">' . lang('Is This Field Required?') . '</label>
+                                                </div>
+                                            </div>
+                                            ' . $output_office_use_only_row . '
+                                            ' . $output_translate_values_row . '
+                                            <div class="col-12 my-1 collapse" id="wysiwyg_row">
+                                                <div class="form-field">
+                                                    <div class="switch"><input class="" type="checkbox" id="wysiwyg" name="wysiwyg" value="1"' . pg_field_form_checked($field['wysiwyg']) . '></div>
+                                                    <label class="" for="wysiwyg">' . lang('Enable Rich-text Editor') . '</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 my-1 collapse" id="multiple_row">
+                                                <div class="form-field">
+                                                    <div class="switch"><input class="" type="checkbox" id="multiple" name="multiple" value="1"' . pg_field_form_checked($field['multiple']) . '></div>
+                                                    <label class="" for="multiple">' . lang('Allow Multiple Selection') . '</label>
+                                                </div>
+                                            </div>
+                                            ' . $output_quiz_rows . '
+                                            <div class="col-12 collapse" id="spacing_row">
+                                                <div class="my-1">
+                                                    <div class="form-field">
+                                                        <div class="switch"><input class="" type="checkbox" id="spacing_above" name="spacing_above" value="1"' . pg_field_form_checked($field['spacing_above']) . '></div>
+                                                        <label class="" for="spacing_above">' . lang('Add Spacing Above') . '</label>
+                                                    </div>
+                                                </div>
+                                                <div class="my-1">
+                                                    <div class="form-field">
+                                                        <div class="switch"><input class="" type="checkbox" id="spacing_below" name="spacing_below" value="1"' . pg_field_form_checked($field['spacing_below']) . '></div>
+                                                        <label class="" for="spacing_below">' . lang('Add Spacing Below') . '</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 collapse" id="default_value_row">
+                                                <div class="form-field">
+                                                    <div class="switch"><input class="collapse-switcher" type="checkbox" id="use_folder_name_for_default_value" name="use_folder_name_for_default_value" value="1"' . pg_field_form_checked($field['use_folder_name_for_default_value']) . ' data-bs-target="#default_value_input_row"></div>
+                                                    <label class="" for="use_folder_name_for_default_value">' . lang('Use Folder name for field default value') . '</label>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-12 md:col-6 lg:col-4 my-3  collapse show-reverse" id="default_value_input_row">
+                                                        <label for="default_value" class="form-label">' . lang('Default Value') . '</label>
+                                                        <input value="' . h($field['default_value']) . '" type="text" name="default_value" id="default_value" class="form-control" maxlength="255"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            ' . $output_upload_folder_id_row . '
+                                            <div class="col-12 my-1 collapse" id="rows_row">
+                                                <h3 class="h6 fg-secondary">' . lang('Amount of Rows and Columns to Display') . '</h3>
+                                                <div class="w-100 border-3 border-top border-start position-relative">
+                                                    <div style="background: var(--pg-border-color);width: 3px;height: 14px;right: 0px;position: absolute;"></div>
+                                                    <div style="background: var(--pg-border-color);width: 14px;height: 3px;bottom: 0px;position: absolute;"></div>
+                                                    <div class="m-5 position-relative"  style="height:150px;">
+                                                        <div class="position-absolute end-0 top-0">
+                                                            <label for="cols" class="form-label float-end">' . lang('Columns') . '</label>
+                                                            <input type="text" placeholder="' . lang('Columns') . '" name="cols" id="cols" value="' . h($field['cols']) . '" class="form-control text-end"  maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="1000"/>
+                                                        </div>
+                                                        <div class="position-absolute start-0 bottom-0">
+                                                            <input type="text" name="rows" placeholder="' . lang('Rows') . '" id="rows" value="' . h($field['rows']) . '" class="form-control text-end" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="1000"/>
+                                                            <label for="rows" class="form-label mb-0 mt-3">' . lang('Rows') . '</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card mb-7 collapse" id="information_row">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold" id="information_heading">
+                                    ' . lang('Information') . '
+                                    </h2>
+                                    <div class="card-body p-0">
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <textarea id="information" name="information" aria-labelledby="information_heading">' . h(prepare_rich_text_editor_content_for_output($field['information'])) . '</textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card mb-7 collapse" id="choices_row">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Value Options') . '
+                                    </h2>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-12 md:col-12 lg:col-6">
+                                                <textarea name="options" id="options" aria-label="' . h(lang('Value Options')) . '" placeholder="' . lang('Please Enter Values Here') . '" class="form-control rounded-4 bg-1" style="min-height: calc(20em + .75rem + 2px);height:100%;" wrap="off">' . h($field['options']) . '</textarea>
+                                                ' . pg_code_editor_attach(array('id' => 'options', 'code_type' => 'plain')) . '
+                                            </div>
+                                            <div class="col-12 md:col-12 lg:col-6">
+                                                ' . pg_field_form_choices_help() . '
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-12 md:col-8 lg:col-9 xl:col-10 collapse" id="options_field_row">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . lang('Field Settings') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
-                                            <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            ' . $liveform->output_field($name_attributes) . '
-                                        </div>
-                                        ' . $output_rss_field_row . '
-                                        <div class="col-12 md:col-12 lg:col-4 my-3 collapse" id="label_row">
-                                            <label for="label" class="form-label">' . lang('Label') . '</label>
-                                            <input type="text" name="label" value="' . h($field['label']) . '" placeholder="' . lang('Label to display on pages') . '" id="label" class="form-control" maxlength="255" />
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="size_row">
-                                            <label for="size" class="form-label">' . lang('Size') . '</label>
-                                            <input type="number" placeholder="' . lang('Auto') . '" name="size" value="' . h($field['size']) . '" id="size" class="form-control" min="0" max="1000" step="1" />
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="maxlength_row">
-                                            <label for="maxlength" class="form-label">' . lang('Maximum Characters') . '</label>
-                                            <input type="number" placeholder="' . lang('Unlimited') . '" name="maxlength" value="' . h($field['maxlength']) . '" id="maxlength" class="form-control" min="0" max="65535" step="1" />
-                                        </div>
-                                        <div class="col-12 md:col-6  lg:col-4 my-3 collapse" id="position_row">
-                                            <label for="position" class="form-label">' . lang('Position') . '</label>
-                                            <select name="position" id="position" class="form-control">' . select_field_position($context['position'], $field['id'], $context['form_id'], $context['page_type'], $form_type) . '</select>
-                                        </div>
-                                        ' . $output_contact_field_row . '
-                                        <div class="col-12 my-1 collapse" id="required_row">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="required" name="required" value="1"' . pg_field_form_checked($field['required']) . '></div>
-                                                <label class="" for="required">' . lang('Is This Field Required?') . '</label>
-                                            </div>
-                                        </div>
-                                        ' . $output_office_use_only_row . '
-                                        ' . $output_translate_values_row . '
-                                        <div class="col-12 my-1 collapse" id="wysiwyg_row">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="wysiwyg" name="wysiwyg" value="1"' . pg_field_form_checked($field['wysiwyg']) . '></div>
-                                                <label class="" for="wysiwyg">' . lang('Enable Rich-text Editor') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-1 collapse" id="multiple_row">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="multiple" name="multiple" value="1"' . pg_field_form_checked($field['multiple']) . '></div>
-                                                <label class="" for="multiple">' . lang('Allow Multiple Selection') . '</label>
-                                            </div>
-                                        </div>
-                                        ' . $output_quiz_rows . '
-                                        <div class="col-12 collapse" id="spacing_row">
-                                            <div class="my-1">
-                                                <div class="form-field">
-                                                    <div class="switch"><input class="" type="checkbox" id="spacing_above" name="spacing_above" value="1"' . pg_field_form_checked($field['spacing_above']) . '></div>
-                                                    <label class="" for="spacing_above">' . lang('Add Spacing Above') . '</label>
-                                                </div>
-                                            </div>
-                                            <div class="my-1">
-                                                <div class="form-field">
-                                                    <div class="switch"><input class="" type="checkbox" id="spacing_below" name="spacing_below" value="1"' . pg_field_form_checked($field['spacing_below']) . '></div>
-                                                    <label class="" for="spacing_below">' . lang('Add Spacing Below') . '</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 collapse" id="default_value_row">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="collapse-switcher" type="checkbox" id="use_folder_name_for_default_value" name="use_folder_name_for_default_value" value="1"' . pg_field_form_checked($field['use_folder_name_for_default_value']) . ' data-bs-target="#default_value_input_row"></div>
-                                                <label class="" for="use_folder_name_for_default_value">' . lang('Use Folder name for field default value') . '</label>
-                                            </div>
-                                            <div class="row">
-                                                <div class="col-12 md:col-6 lg:col-4 my-3  collapse show-reverse" id="default_value_input_row">
-                                                    <label for="default_value" class="form-label">' . lang('Default Value') . '</label>
-                                                    <input value="' . h($field['default_value']) . '" type="text" name="default_value" id="default_value" class="form-control" maxlength="255"/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        ' . $output_upload_folder_id_row . '
-                                        <div class="col-12 my-1 collapse" id="rows_row">
-                                            <h3 class="h6 fg-secondary">' . lang('Amount of Rows and Columns to Display') . '</h3>
-                                            <div class="w-100 border-3 border-top border-start position-relative">
-                                                <div style="background: var(--pg-border-color);width: 3px;height: 14px;right: 0px;position: absolute;"></div>
-                                                <div style="background: var(--pg-border-color);width: 14px;height: 3px;bottom: 0px;position: absolute;"></div>
-                                                <div class="m-5 position-relative"  style="height:150px;">
-                                                    <div class="position-absolute end-0 top-0">
-                                                        <label for="cols" class="form-label float-end">' . lang('Columns') . '</label>
-                                                        <input type="text" placeholder="' . lang('Columns') . '" name="cols" id="cols" value="' . h($field['cols']) . '" class="form-control text-end"  maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="1000"/>
-                                                    </div>
-                                                    <div class="position-absolute start-0 bottom-0">
-                                                        <input type="text" name="rows" placeholder="' . lang('Rows') . '" id="rows" value="' . h($field['rows']) . '" class="form-control text-end" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="1000"/>
-                                                        <label for="rows" class="form-label mb-0 mt-3">' . lang('Rows') . '</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">' . $summary . '
+                                        </dl>
                                     </div>
                                 </div>
                             </div>
-                            <div class="card my-7 collapse" id="information_row">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold" id="information_heading">
-                                ' . lang('Information') . '
-                                </h2>
-                                <div class="card-body p-0">
-                                    <div class="row">
-                                        <div class="col-12">
-                                            <textarea id="information" name="information" aria-labelledby="information_heading">' . h(prepare_rich_text_editor_content_for_output($field['information'])) . '</textarea>
-                                        </div>
+                        </div>
+                        <script>
+                            // The Summary follows the type and the name as they change.
+                            (function () {
+                                var type = document.getElementById("type");
+                                var name = document.getElementById("name");
+                                var type_summary = document.getElementById("field_summary_type");
+                                var name_summary = document.getElementById("field_summary_name");
+                                var show_type = function () {
+                                    var option = type.options[type.selectedIndex];
+                                    type_summary.textContent = (option && option.value !== "") ? option.text : "";
+                                };
+                                type.addEventListener("change", show_type);
+                                name.addEventListener("input", function () { name_summary.textContent = name.value; });
+                                show_type();
+                            })();
+                        </script>';
+}
+
+/**
+ * One Summary row of the status column: a label and its value.
+ *
+ * @param string $label  The label, plain text
+ * @param string $value  The value, already HTML
+ * @param bool   $last   False draws the line under the row
+ * @return string
+ */
+function pg_field_form_status_row($label, $value, $last = true)
+{
+    return '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . $value . '</dd>
+                                            </div>';
+}
+
+/**
+ * The screen row: the columns (pg_field_form_cards()) and the sticky save
+ * bar with the given buttons.
+ *
+ * @param string $cards    pg_field_form_cards()
+ * @param string $buttons  The buttons inside the bar's group
+ * @return string
+ */
+function pg_field_form_layout($cards, $buttons)
+{
+    return '
+                    <div class="row">' . $cards . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
                                     </div>
                                 </div>
-                            </div>
-                            <div class="card my-7 collapse" id="choices_row">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . lang('Value Options') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-12 lg:col-6">
-                                            <textarea name="options" id="options" aria-label="' . h(lang('Value Options')) . '" placeholder="' . lang('Please Enter Values Here') . '" class="form-control rounded-4 bg-1" style="min-height: calc(20em + .75rem + 2px);height:100%;" wrap="off">' . h($field['options']) . '</textarea>
-                                            ' . pg_code_editor_attach(array('id' => 'options', 'code_type' => 'plain')) . '
-                                        </div>
-                                        <div class="col-12 md:col-12 lg:col-6">
-                                            ' . pg_field_form_choices_help() . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            </nav>
                         </div>
                     </div>';
 }

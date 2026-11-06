@@ -75,7 +75,7 @@ if (!$_POST) {
             'heading_description' => lang('Create a new event on one or more calendars, and publish it at any time.'),
             'cancel'=>array('enable'=>'true','url'=>'calendars.php'),
         
-            'breadcrumb' => array(array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Event'))))),
+            'breadcrumb' => array(array('label' => lang('Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php'), array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Event'))))),
         )
     ) . '
 <main id="content" class="container-fluid">

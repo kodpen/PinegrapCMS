@@ -146,6 +146,20 @@ function test_commerce_delete_confirm_shipping_method()
 		'both');
 	pg_assert_same(array(1, 2), $both[0]['vars'], 'both counts in order');
 	pg_assert_same(array('', 's'), $both[0]['suffix'], 'each count picks its own ending');
+
+	$cutoff = 'WARNING: The shipping cut-off{suffix:1} for this shipping method on {var:1} arrival date{suffix:1} will be permanently deleted too.';
+	pg_assert_same(
+		array('WARNING: This {var:1} will be permanently deleted.', $cutoff),
+		commerce_delete_confirm_keys(pg_shipping_method_form_delete_confirm(0, 0, 1)),
+		'arrival date cut-offs are named in a second sentence');
+
+	$all = pg_shipping_method_form_delete_confirm(1, 2, 3);
+	pg_assert_same(2, count($all), 'cut-offs beside both');
+	pg_assert_same(array(3), $all[1]['vars'], 'the cut-off count');
+	pg_assert_same(array('s'), $all[1]['suffix'], 'plural cut-offs');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+	pg_assert_contains('SELECT COUNT(*) FROM shipping_cutoffs WHERE shipping_method_id = ?', $source, 'the cut-offs pg_shipping_method_delete() removes are counted');
 }
 
 function test_commerce_delete_confirm_zone()
@@ -215,8 +229,8 @@ function test_commerce_delete_confirm_product_attribute()
 function test_commerce_delete_confirm_screens_use_the_helpers()
 {
 	$pins = array(
-		'edit_state.php' => 'pg_state_form_delete_confirm(...pg_state_form_delete_counts(',
-		'edit_country.php' => "pg_country_form_delete_confirm(...pg_zone_form_member_delete_counts('country', ",
+		'edit_state.php' => 'pg_state_form_delete_confirm(...$delete_counts)',
+		'edit_country.php' => 'pg_country_form_delete_confirm(...$usage)',
 		'edit_shipping_method.php' => 'pg_shipping_method_form_delete_confirm(...pg_shipping_method_form_delete_counts(',
 		'edit_zone.php' => 'pg_zone_form_delete_confirm(...$usage)',
 		'edit_product_attribute.php' => 'pg_product_attribute_form_delete_confirm(...$usage)',
@@ -224,6 +238,10 @@ function test_commerce_delete_confirm_screens_use_the_helpers()
 
 	// Edit Zone reads the counts once: the summary column shows them too.
 	pg_assert_contains('$usage = pg_zone_form_delete_counts($id);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_zone.php'), 'edit_zone.php counts the zone\'s users');
+	// So does Edit Country: its Summary shows the shipping and tax zones.
+	pg_assert_contains('$usage = pg_zone_form_member_delete_counts(\'country\', $id);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_country.php'), 'edit_country.php counts the country\'s zones');
+	// So does Edit State: its Summary shows the zones and addresses.
+	pg_assert_contains('$delete_counts = pg_state_form_delete_counts($id);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_state.php'), 'edit_state.php counts its zones and addresses');
 	// So does Edit Product Attribute: its Summary shows the products and groups.
 	pg_assert_contains('$usage = pg_product_attribute_form_delete_counts($id);', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_product_attribute.php'), 'edit_product_attribute.php counts its products and groups');
 
@@ -246,7 +264,7 @@ function test_commerce_delete_confirm_turkish_values()
 		pg_country_form_delete_confirm(0, 0, 0, 0),
 		pg_shipping_method_form_delete_confirm(2, 0),
 		pg_shipping_method_form_delete_confirm(0, 2),
-		pg_shipping_method_form_delete_confirm(2, 2),
+		pg_shipping_method_form_delete_confirm(2, 2, 2),
 		pg_zone_form_delete_confirm(2, 0, 0, 0),
 		pg_zone_form_delete_confirm(0, 2, 0, 0),
 		pg_zone_form_delete_confirm(2, 2, 2, 2),
@@ -284,7 +302,7 @@ function test_commerce_delete_confirm_turkish_words_match_the_screens()
 		pg_state_form_delete_confirm(2),
 		pg_shipping_method_form_delete_confirm(2, 0),
 		pg_shipping_method_form_delete_confirm(0, 2),
-		pg_shipping_method_form_delete_confirm(2, 2),
+		pg_shipping_method_form_delete_confirm(2, 2, 2),
 		pg_zone_form_delete_confirm(2, 2, 2, 2),
 		pg_zone_form_delete_confirm(0, 2, 0, 2)
 	) as $sentence) {

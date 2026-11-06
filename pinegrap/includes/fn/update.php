@@ -108,10 +108,12 @@ function pg_curl_tls($ch)
  *                    with cap or sink, whose write callback takes the body
  *                    alone)
  *   allow_http       true to accept http as well as https for this request
- *                    (never for a redirect): only for an address the
- *                    operator types and the site reaches itself, such as a
- *                    migration source on the same host or LAN; leave
- *                    check_address off with it
+ *                    (never for a redirect). Without check_address, only for
+ *                    an address the operator types and the site reaches
+ *                    itself, such as a migration source on the same host or
+ *                    LAN; with it, for a public service that answers on
+ *                    plain http (a time stamp authority), whose address is
+ *                    still checked and pinned
  *   cap              bytes the body may have, counted by pg_curl_run()'s
  *                    write callback whatever Content-Length or libcurl says:
  *                    the piece that goes over ends the transfer
@@ -360,7 +362,7 @@ function pg_curl_run($method, $url, $options = array())
             return $result;
         }
 
-        $check = api_http_check_url($url);
+        $check = api_http_check_url($url, !empty($options['allow_http']));
 
         if (!$check['ok']) {
             $result['error'] = $check['error'];
@@ -1499,6 +1501,8 @@ function pg_looks_like_zip($bytes)
  *
  *   1. The archive opens with CHECKCONS, so a truncated or corrupt download is
  *      rejected before a single file is touched rather than half-applied.
+ *      Every entry name must be a plain relative path under the destination
+ *      (pg_update_safe_entry()); one that is not refuses the whole archive.
  *   2. Every file the archive is about to replace can be replaced. A file that
  *      exists and cannot be written to - left behind by another system user,
  *      or made read-only - is unlinked first, since deleting needs only the
@@ -1556,10 +1560,29 @@ function pg_extract_archive($archive_path, $destination)
     // name => array(size, crc) for every file entry; directories are skipped
     $entries = array();
 
+    // Entries whose name is not a plain relative path under the destination
+    // ('..' or '.' segments, absolute, drive letter, empty segment, NUL).
+    // The checks below and the proof after extraction join the raw name to
+    // the destination, so such a name would make them touch - and the
+    // permission repair delete - a file outside it, while extractTo()
+    // rewrites the name on its own terms. The archive is refused whole.
+    $unsafe = array();
+
     for ($i = 0; $i < $zip->numFiles; $i++) {
         $stat = $zip->statIndex($i);
 
-        if ($stat && isset($stat['name']) && substr($stat['name'], -1) !== '/') {
+        if (!$stat || !isset($stat['name'])) {
+            continue;
+        }
+
+        $is_directory = (substr($stat['name'], -1) === '/');
+
+        if (pg_update_safe_entry($is_directory ? substr($stat['name'], 0, -1) : $stat['name']) === '') {
+            $unsafe[] = $stat['name'];
+            continue;
+        }
+
+        if (!$is_directory) {
             // %08x prints the CRC the way hash_file('crc32b') does, on 32-bit
             // builds too, where the value arrives negative.
             $entries[$stat['name']] = array(
@@ -1567,6 +1590,17 @@ function pg_extract_archive($archive_path, $destination)
                 'crc'  => isset($stat['crc']) ? sprintf('%08x', $stat['crc']) : '',
             );
         }
+    }
+
+    if ($unsafe) {
+        $zip->close();
+
+        $failure['message'] = lang(array(
+            'string' => 'The archive names {var:1} file(s) outside the folder it is unpacked into. Nothing was changed: {var:2}',
+            'vars' => array(count($unsafe), implode(', ', array_slice($unsafe, 0, 10)) . (count($unsafe) > 10 ? ', …' : '')),
+        ));
+        $failure['blocked'] = $unsafe;
+        return $failure;
     }
 
     $destination = rtrim($destination, '/\\') . '/';
@@ -1949,6 +1983,34 @@ function pg_update_repair_decision($server_version, $installed, $checks_enabled)
         'message' => lang(array('string' => 'Downloading {var:1}...', 'vars' => array($server_version))),
         'newer' => false,
     );
+}
+
+/**
+ * Whether the version the update server offers is newer than the installed
+ * one: numerically, part by part, whatever the number of parts. A version of
+ * fewer than three parts (the 2026 release) once made the three-part
+ * comparison read a part that is not there and warn. Anything that is not
+ * digits and dots (an empty answer, an error page, a list) offers nothing.
+ *
+ * No database or network access.
+ *
+ * @param mixed  $server_version what the update server offers
+ * @param string $installed      VERSION
+ * @return bool
+ */
+function pg_update_version_newer($server_version, $installed)
+{
+    if (!is_scalar($server_version)) {
+        return false;
+    }
+
+    $server_version = trim((string) $server_version);
+
+    if (preg_match('/^\d+(\.\d+)*$/', $server_version) !== 1) {
+        return false;
+    }
+
+    return version_compare($server_version, trim((string) $installed), '>');
 }
 
 // ----------------------------------------------------------------------------

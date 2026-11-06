@@ -131,7 +131,9 @@ if (!empty($_SERVER['HTTP_HOST'])) {
 }
 
 $file = array();
-$file['name'] = $_GET['name'];
+// A missing or array-valued name (?name[]=x) is no file: escape() takes a
+// string only.
+$file['name'] = (isset($_GET['name']) && is_string($_GET['name'])) ? $_GET['name'] : '';
 
 // Check to see if file exists in database and get file info.
 // We get the official name of the file, even though we already have the name
@@ -421,7 +423,7 @@ if (
             // then forward user to registration entrance screen with guest option
             if (
                 (USER_LOGGED_IN == FALSE)
-                && ($_SESSION['software']['guest'] !== TRUE)
+                && (($_SESSION['software']['guest'] ?? false) !== TRUE)
             ) {
                 get_file_sign_in_redirect('registration_entrance.php?allow_guest=true');
             }
@@ -1709,6 +1711,11 @@ function initialize_user()
 
         // check_view_access() reads USER_MEMBER for membership folders; mirror the
         // active-member rule used by initialize_user() in includes/fn/auth.php.
+        // The day is the site's: this file never runs init.php, so without
+        // the site time zone a membership that ended yesterday on the site
+        // would still count as running while the server's day lags behind.
+        initialize_timezone();
+
         if ((USER_MEMBER_ID != '') && ((USER_EXPIRATION_DATE == '') || (USER_EXPIRATION_DATE == '0000-00-00') || (USER_EXPIRATION_DATE >= date('Y-m-d')))) {
             define('USER_MEMBER', true);
         } else {

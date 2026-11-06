@@ -1,6 +1,6 @@
 ---
 name: detail-screen-values
-description: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; ERP quarter option wording
+description: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; Visit Details' wide layout; ERP quarter option wording
 ---
 
 ## How is a read-only value printed under its caption?
@@ -11,6 +11,9 @@ description: Read-only values on details screens (Visit Details, submitted forms
 
 ## How do long links fit a phone?
 - The referrer URL, host name and landing page links on Visit Details carry `text-break`; neither the panel CSS nor Bootstrap 6 wraps or clips `.card` content (#2957).
+
+## How is Visit Details laid out?
+- `view_visitor.php` follows the wide layout (`edit-screen-wide-layout.md`), no save bar (nothing to save): the main column holds Referral Information, UTM (only with a UTM source) and Actions performed during Visit as value tiles (`$output_tile`, `col-12 md:col-6 xl:col-4`; Page Views and Order Total first, as `h4`); the sticky column holds a Summary (visitor number, start and end time, IP address, currency) and the location as `<dl>` rows (`$output_fact`). Five full-width cards in one column spent a wide screen on three short rows (B11). Pinned by `tests/visit_details_test.php`.
 
 ## How is the ERP quarter option worded?
 - `erp_profit.php` and `erp_vat_report.php` print `lang('{var:1} / Q{var:2}')` with the year and quarter number (Turkish "2026 / 3. Çeyrek"); the option value stays `Y-Qn`, which the period parser reads (#2957).

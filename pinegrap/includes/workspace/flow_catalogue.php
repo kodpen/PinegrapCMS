@@ -41,6 +41,8 @@ function ws_flow_setting_overrides()
         'condition.rule'    => array('type' => 'object'),
         'report.metrics'    => array('of' => 'object'),
         'for_each.fields'   => array('of' => 'text'),
+        'ai.classes'        => array('of' => 'text'),
+        'web.fields'        => array('of' => 'object'),
     );
 }
 
@@ -59,6 +61,9 @@ function ws_flow_setting_values()
         'task.priority'      => $priorities,
         'task_open.priority' => $priorities,
         'delay.unit'         => array_keys(ws_flow_delay_units()),
+        'delay.mode'         => array('for', 'until'),
+        'email.recipient'    => ws_flow_mail_recipients(),
+        'email.purpose'      => ws_flow_mail_purposes(),
         'webhook.format'     => array('generic', 'text', 'discord'),
         'web_check.mode'     => array('status', 'ssl'),
         'task_digest.mode'   => array('mine', 'channel'),
@@ -70,6 +75,8 @@ function ws_flow_setting_values()
         'value.rule'         => array_values(array_unique(array_merge(array('join'), array_keys(ws_flow_derived_rules())))),
         'value.op'           => ws_flow_derived_operators(),
         'value.format'       => ws_flow_derived_formats(),
+        'for_each.mode'      => array('list', 'count'),
+        'ai.mode'            => ws_step_ai_modes(),
     );
 }
 

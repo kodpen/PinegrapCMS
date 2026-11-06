@@ -20,6 +20,12 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_method_list_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/key_code_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/key_code_list_edit.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/gift_card_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/gift_card_list_edit.php');
 
 function commerce_list_driver_test_source($file)
 {
@@ -31,7 +37,7 @@ function test_commerce_list_specs_follow_the_sort_menu_and_quick_edit()
 	$specs = pg_commerce_list_specs(
 		array('name' => array('heading' => 'Name'), 'zones' => array('heading' => 'Zones'), 'rate' => array('heading' => 'Rate', 'kind' => 'money')),
 		array('name' => 'Name', 'rate' => 'Rate'),
-		array('rate' => array('type' => 'money'), 'name' => array('type' => 'textarea')));
+		array('rate' => array('type' => 'money'), 'name' => array('type' => 'colour')));
 
 	pg_assert_false(isset($specs['name']['sortable']), 'a sort menu column keeps its sort');
 	pg_assert_same(false, $specs['zones']['sortable'], 'a column the menu does not offer does not sort');
@@ -64,9 +70,9 @@ function test_commerce_lists_quick_edit_columns_are_columns()
 {
 	$pairs = array(
 		array(pg_order_list_columns(true, 'Member ID'), pg_order_quick_edit_columns(), 'select'),
-		array(pg_gift_card_list_columns(), pg_gift_card_edit_columns(), 'text'),
-		array(pg_key_code_list_columns(), pg_key_code_edit_columns(), 'select'),
-		array(pg_shipping_method_list_columns(true), pg_shipping_method_edit_columns(), 'money'),
+		array(pg_gift_card_list_columns(), pg_gift_card_edit_columns(), null),
+		array(pg_key_code_list_columns(), pg_key_code_edit_columns(), null),
+		array(pg_shipping_method_list_columns(true), pg_shipping_method_edit_columns(), null),
 	);
 
 	foreach ($pairs as $pair) {
@@ -74,7 +80,9 @@ function test_commerce_lists_quick_edit_columns_are_columns()
 
 		foreach (array_keys($pair[1]) as $field) {
 			pg_assert_true(isset($specs[$field]), $field . ' is a column');
-			pg_assert_same($pair[2], $specs[$field]['editable'], $field . ' changes in place');
+			// null: each field's own type, an integer drawn as a number box.
+			$type = ($pair[2] !== null) ? $pair[2] : str_replace('integer', 'number', $pair[1][$field]['type']);
+			pg_assert_same($type, $specs[$field]['editable'], $field . ' changes in place');
 		}
 	}
 }

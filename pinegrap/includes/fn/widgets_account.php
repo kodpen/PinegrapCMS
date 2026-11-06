@@ -1529,7 +1529,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
 
     // This browser's own token, to mark "this device".
     $current_selector = '';
-    if (isset($_COOKIE['software']['auth'])) {
+    if (isset($_COOKIE['software']['auth']) && is_string($_COOKIE['software']['auth'])) {
         $auth_parts = explode(':', (string)$_COOKIE['software']['auth'], 2);
         $current_selector = (string)$auth_parts[0];
     }
@@ -1878,8 +1878,10 @@ function _pg_acct_staff_url($staff_page_id)
 // (the member's subscriptions with their actions,
 // pg_subscription_customer_section_html()), bookings (the member's upcoming
 // and past appointments, each upcoming one linking to its manage page,
-// pg_booking_customer_section_html()). Flags: has_orders, no_orders,
-// is_staff, has_bookings.
+// pg_booking_customer_section_html()), store_credit (shop sites: the
+// balance, the cards with the orders that spent them and the reward points
+// conversion form, pg_credit_account_section_html()). Flags: has_orders,
+// no_orders, is_staff, has_bookings, has_store_credit.
 function _pg_my_account_extras($logged_in, $cfg = array())
 {
     $shop  = defined('ECOMMERCE') && ECOMMERCE;
@@ -1894,8 +1896,9 @@ function _pg_my_account_extras($logged_in, $cfg = array())
     );
     // 'orders' and 'order_view_url': the history's rows and the view order
     // page, for a list of the member's orders (pg_sw_list_account_rows()).
-    $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => ''),
-                 'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false, 'has_bookings' => false),
+    $out = array('links' => $links, 'sections' => array('order_history' => '', 'subscriptions' => '', 'bookings' => '', 'store_credit' => ''),
+                 'flags' => array('has_orders' => false, 'no_orders' => true, 'is_staff' => false, 'has_bookings' => false,
+                                  'has_store_credit' => false),
                  'orders' => array(), 'order_view_url' => '');
     if (!$logged_in) return $out;
 
@@ -1944,6 +1947,11 @@ function _pg_my_account_extras($logged_in, $cfg = array())
             $out['flags']['has_orders'] = true;
             $out['flags']['no_orders']  = false;
         }
+        // Balance, cards with the orders that spent them, and the points
+        // conversion form, which comes back here with its notice.
+        $out['sections']['store_credit'] = pg_credit_account_section_html(
+            pg_credit_account_view((int)USER_ID, _pg_acct_page_url(0, 'view order'), time()));
+        $out['flags']['has_store_credit'] = ($out['sections']['store_credit'] !== '');
         // The actions post back to the page the member is on.
         $out['sections']['subscriptions'] = pg_subscription_customer_section_html(
             pg_subscription_customer_rows((int)USER_ID),

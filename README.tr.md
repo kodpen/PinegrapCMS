@@ -7,9 +7,13 @@
 ![Lisans](https://img.shields.io/badge/Lisans-MIT-green?style=flat-square)
 ![Durum](https://img.shields.io/badge/Durum-Aktif%20Geli%C5%9Ftirme-success?style=flat-square)
 
-Pinegrap, PHP ile yazılmış, açık kaynaklı, hepsi bir arada bir web sitesi platformudur. Kendi tasarımıyla bir web sitesi, online mağaza, ön muhasebe (ERP), ekip çalışma alanı ve dış API tek kod tabanında yer alır; hazır bir tasarım şablonuyla yeni bir site dakikalar içinde yayına hazır olur.
+Pinegrap, PHP ile yazılmış, açık kaynaklı, hepsi bir arada bir web sitesi platformudur. Kendi tasarımıyla bir web sitesi, online mağaza, ön muhasebe (ERP), ekip çalışma alanı ve dış API tek kod tabanında yer alır; hazır bir tasarım şablonuyla yeni bir site dakikalar içinde yayına hazır olur. Yerleşik MCP sunucusu sayesinde Claude ve ChatGPT gibi yapay zekâ uygulamaları siteye kişinin kendi yetkileriyle bağlanıp çalışabilir.
 
 Pinegrap, LiveSite'tan doğdu ve 2017'den beri Kodpen tarafından geliştirilmektedir. Paylaşımlı bir cPanel hesabından özel bir IIS sunucusuna kadar PHP'nin çalıştığı her yerde çalışır; Composer adımı, build pipeline ya da kurulacak bir dış hizmet gerekmez.
+
+<p align="center">
+  <img src=".github/readme/editor.webp" width="100%" alt="Online Mağaza şablonu açık görsel sayfa editörü: solda sayfa ağacı, tuvalde seçili ana bölüm, sağda seçenekleri">
+</p>
 
 ---
 
@@ -51,6 +55,56 @@ Kısa bir özet; tam liste [pinegrap.com/features](https://pinegrap.com/features
 * **Composer yok, build pipeline yok, `node_modules` yok.** Dosyaları yükle, kurulumu çalıştır, bitti.
 * **Tek kod tabanı, tek dağıtım.** Her şey birlikte gelir ve sürümlü yükseltme adımlarıyla birlikte güncellenir.
 * **PHP'nin çalıştığı her yerde çalışır.** Kökleri 2001'e uzanan, gerektiğinde hâlâ düz FTP ile dağıtılabilen bir üretim kod tabanı.
+
+---
+
+## Ekran görüntüleri
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/dashboard-dark.webp">
+        <img src=".github/readme/dashboard-light.webp" alt="Pano: günün siparişleri ve ziyaretleri, hedefler, Sistem Durumu ve Claude'u bağlama kartı">
+      </picture>
+      <p align="center"><sub>Pano: günün rakamları, hedefler ve Sistem Durumu</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/workspace-dark.webp">
+        <img src=".github/readme/workspace-light.webp" alt="Çalışma Alanı: yapılacaklar listesi ve bahsetmelerle bir ekip kanalı; kararlar, görevler ve dosyalar sekmeleri">
+      </picture>
+      <p align="center"><sub>Çalışma Alanı: görevleri, kararları ve dosyalarıyla ekip kanalları</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src=".github/readme/store.webp" alt="Online Mağaza şablonuyla kurulmuş bir mağazanın ana sayfası: arama, kategori menüsü, kampanya blokları ve kategoriler">
+      <p align="center"><sub>Online Mağaza şablonuyla kurulmuş bir mağaza</sub></p>
+    </td>
+    <td width="50%" valign="top">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/readme/orders-dark.webp">
+        <img src=".github/readme/orders-light.webp" alt="Siparişler ekranı: satış toplamları, en çok satan ürünler grafiği, ödeme yöntemleri ve sipariş listesi">
+      </picture>
+      <p align="center"><sub>Satış grafikleri ve süzgeçleriyle siparişler</sub></p>
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <img src=".github/readme/phone-store.webp" width="24%" alt="Mağazanın ana sayfası telefonda">
+  <img src=".github/readme/phone-products.webp" width="24%" alt="Mağazanın fiyatlı ve Sepete Ekle düğmeli ürünleri telefonda">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/phone-dashboard-dark.webp">
+    <img src=".github/readme/phone-dashboard-light.webp" width="24%" alt="Pano telefonda">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/readme/phone-workspace-dark.webp">
+    <img src=".github/readme/phone-workspace-light.webp" width="24%" alt="Bir Çalışma Alanı kanalı telefonda">
+  </picture>
+</p>
+<p align="center"><sub>Telefonda: mağaza, ürünleri, pano ve Çalışma Alanı</sub></p>
 
 ---
 
@@ -140,7 +194,7 @@ Pinegrap, hayatına 2001'den itibaren Camelback Web Architects tarafından geli�
 
 ## Katkı ve güvenlik
 
-Katkılar memnuniyetle karşılanır: kurulum, iş bitirme ölçütleri ve issue kuralları için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın. Pull request'ler `development` dalına açılır. Güvenlik bulguları [SECURITY.md](SECURITY.md) içinde anlatıldığı gibi gizli kanaldan bildirilir; lütfen bunlar için herkese açık issue açmayın.
+Hata bildirimleri, çeviriler, tasarım şablonları ve küçük düzeltmeler memnuniyetle karşılanır. Çekirdeği (güvenlik duvarı, giriş, ödeme, muhasebe ve görsel sayfa editörü) bakımcılar değiştirir; küçük bir düzeltmeden büyük her değişiklik önce bir issue olarak açılır, böylece kod yazılmadan yaklaşımda anlaşırız. Neleri kabul ettiğimiz, kurulum, iş bitirme ölçütleri ve issue kuralları için [CONTRIBUTING.md](CONTRIBUTING.md) dosyasına bakın. Pull request'ler `development` dalına açılır. Güvenlik bulguları [SECURITY.md](SECURITY.md) içinde anlatıldığı gibi gizli kanaldan bildirilir; lütfen bunlar için herkese açık issue açmayın.
 
 ---
 

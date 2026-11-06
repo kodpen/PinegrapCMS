@@ -1970,7 +1970,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 
                 // if there is a previous menu item, then output the previous link
                 if (($current_menu_item_array_index > 0) && isset($menu_sequence[$current_menu_item_array_index - 1]) && (is_array($menu_sequence[$current_menu_item_array_index - 1]) == TRUE)) {
-                    $output_links = '<a href="' . OUTPUT_PATH . h($menu_sequence[$current_menu_item_array_index - 1]['link_page_name']) . '" class="previous">&lt;</a>&nbsp;&nbsp;&nbsp;';
+                    $output_links = '<a href="' . OUTPUT_PATH . h(encode_url_path($menu_sequence[$current_menu_item_array_index - 1]['link_page_name'])) . '" class="previous">&lt;</a>&nbsp;&nbsp;&nbsp;';
                 }
                 
                 $next_menu_item_array_index = 0;
@@ -1981,7 +1981,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 }
                 
                 // build the output
-                $menu_sequence_content = '<div class="software_menu_sequence">' . $output_links . '<a href="' . OUTPUT_PATH . h($menu_sequence[$next_menu_item_array_index]['link_page_name']) . '" class="next">&gt;</a></div>';
+                $menu_sequence_content = '<div class="software_menu_sequence">' . $output_links . '<a href="' . OUTPUT_PATH . h(encode_url_path($menu_sequence[$next_menu_item_array_index]['link_page_name'])) . '" class="next">&gt;</a></div>';
             }
         }
         
@@ -2265,7 +2265,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $_pg_sw_jsonld = _pg_build_catalog_listing_jsonld($_pg_sw_products, $page_name, $_pg_sw_detail_page_name);
                         $content = preg_replace(
                             '/<\/head>/i',
-                            pg_regex_replacement("\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . json_encode($_pg_sw_jsonld, JSON_UNESCAPED_UNICODE) . "</script>\n<!-- End Structured Data -->\n") . '</head>',
+                            pg_regex_replacement("\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . pg_jsonld_script_json($_pg_sw_jsonld) . "</script>\n<!-- End Structured Data -->\n") . '</head>',
                             $content,
                             1
                         );
@@ -2298,7 +2298,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             pg_product_question_markup_shown($page_id, $_pg_sw_product_id) ? pg_product_question_jsonld($page_id, $_pg_sw_product_id) : array());
                         $content = preg_replace(
                             '/<\/head>/i',
-                            pg_regex_replacement("\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . json_encode($_pg_sw_jsonld, JSON_UNESCAPED_UNICODE) . "</script>\n<!-- End Structured Data -->\n") . '</head>',
+                            pg_regex_replacement("\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . pg_jsonld_script_json($_pg_sw_jsonld) . "</script>\n<!-- End Structured Data -->\n") . '</head>',
                             $content,
                             1
                         );
@@ -2657,7 +2657,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                     '/<\/head>/i',
                                     pg_regex_replacement(
                                         "\n<!-- Start Structured Data -->\n"
-                                        . '<script type="application/ld+json">' . json_encode($jsonld, JSON_UNESCAPED_UNICODE) . '</script>'
+                                        . '<script type="application/ld+json">' . pg_jsonld_script_json($jsonld) . '</script>'
                                         . "\n<!-- End Structured Data -->\n") . '</head>',
                                     $content,
                                     1);
@@ -2818,7 +2818,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         if (isset($jsonld)) {
                             $strutured_data_feeds =
                                 "\n<!-- Start Structured Data -->\n"
-                                . '<script type="application/ld+json">' . json_encode($jsonld, JSON_UNESCAPED_UNICODE) . '</script>'
+                                . '<script type="application/ld+json">' . pg_jsonld_script_json($jsonld) . '</script>'
                                 . "\n<!-- End Structured Data -->\n";
                             unset($jsonld);
                         }
@@ -6221,7 +6221,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         // widget. A form whose schema type is None describes its records
         // with nothing but the page's own JSON-LD below.
         if (!empty($pg_blog_form_id) && (($pg_blog_schema_type ?? 'BlogPosting') !== 'none')) {
-            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_blogposting_jsonld(array(
+            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . pg_jsonld_script_json(pg_build_blogposting_jsonld(array(
                 'type'        => $pg_blog_schema_type ?? 'BlogPosting',
                 'headline'    => $page_title,
                 'description' => $page_meta_description,
@@ -6230,7 +6230,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                 'published'   => $pg_og_article['published'] ?? 0,
                 'modified'    => $pg_og_article['modified'] ?? 0,
                 'author'      => $pg_blog_author ?? '',
-            )), JSON_UNESCAPED_UNICODE) . '</script>';
+            ))) . '</script>';
 
             // Home > list page > post. The middle step is the page that lists
             // these records and links them here (pg_record_list_page()), by its
@@ -6251,7 +6251,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
             $pg_breadcrumb_items[] = array('name' => $page_title, 'url' => $canonical_url);
 
-            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_breadcrumb_jsonld($pg_breadcrumb_items), JSON_UNESCAPED_UNICODE) . '</script>';
+            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . pg_jsonld_script_json(pg_build_breadcrumb_jsonld($pg_breadcrumb_items)) . '</script>';
         }
 
         // The parts marked as search sections in the visual editor, named with
@@ -6266,7 +6266,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
         // The organization introduces itself once, on the front door.
         if ($page_home == 'yes') {
-            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . json_encode(pg_build_organization_jsonld(), JSON_UNESCAPED_UNICODE) . '</script>';
+            $pg_jsonld_out .= "\n" . '<script type="application/ld+json">' . pg_jsonld_script_json(pg_build_organization_jsonld()) . '</script>';
         }
 
         // Operator-authored blocks: this page's own, then the site-wide one.

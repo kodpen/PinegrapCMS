@@ -98,3 +98,21 @@ function test_page_type_pane_wiring()
 	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(strpos($js, '_sdPageTypeSync(p);') !== false, 'the pill follows the page on screen');
 }
+
+function test_page_type_posted()
+{
+	pg_assert_same('catalog', pg_page_type_posted('catalog', 'standard'), 'a known type');
+	pg_assert_same('standard', pg_page_type_posted('bogus', 'standard'), 'an unknown type');
+	pg_assert_same('custom form', pg_page_type_posted(null, 'custom form'), 'not posted');
+	pg_assert_same('standard', pg_page_type_posted(array('catalog'), 'standard'), 'not a string');
+}
+
+function test_page_screens_take_checked_type_and_layout()
+{
+	foreach (array('add_page.php', 'edit_page.php') as $file) {
+		$code = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_true(strpos($code, 'pg_page_type_pane_layout_type($') !== false, $file . ': the layout type goes through the shared check');
+		pg_assert_same(0, substr_count($code, "\$layout_type = \$_POST['layout_type']"), $file . ': no raw layout type');
+		pg_assert_true(strpos($code, 'pg_page_type_posted(') !== false, $file . ': the page type goes through the shared check');
+	}
+}

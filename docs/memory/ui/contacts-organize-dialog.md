@@ -14,5 +14,6 @@ description: Organize Selected on the Contacts list is an in-page pgUI dialog (n
 
 ## What does the save report?
 - `edit_contacts.php` `organize` counts `pg_contact_list_organized_count($moved)`: the distinct contacts really added or removed. It used to count every accessible selected contact, so "2 contacts were organized" showed and was logged when nothing changed.
+- The two fields are read by `pg_contact_list_posted_group_ids()`: text only, a field sent as an array names no group. `explode()` on an array ended the request with a fatal TypeError.
 - No group posted (and none refused by rule): notice "No contact group was selected.", no write, no log.
 - Tests: `tests/contact_list_test.php` (count, dialog pins), `tests/contact_screens_test.php` (ticked boxes read by selector), `tests/settings_group_names_test.php` (Select All names).

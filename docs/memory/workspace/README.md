@@ -26,6 +26,9 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
+- approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation
+- claude-draft-decide-once.md: A task Claude or Pinegrap AI proposes in a channel (ws_ai_drafts) is accepted or dismissed once: conditional UPDATE on the pending row, checked by affected rows, before the task is opened.
+- contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs
 - mail-api.md: Workspace e-mail conversations in the external API and MCP (api_mail.php, G7): routes, which are tools, who may answer, errors, the workspace.mail.received webhook, a mail message's mail object
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
 - mail-decisions.md: Incoming e-mail decisions: the name rule, IMAP chosen (#2444) and when a push endpoint (G9) would come, the eleven answers and their files, defaults, scope, PRs, what stays unverified
@@ -68,17 +71,22 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-api-sync-inbox.md: Keeping a Workspace app current through the API: GET /workspace/sync cursor marks, inbox deletions and reach changes for changed_since, hidden messages and touched_at, assistants carried on
 - workspace-api-task-reminder.md: A task's due time and e-mail reminder over the Workspace API and MCP (PR #1742): due_time, remind_minutes on the task writes and answers, how null clears them, the drawer's checks they go through
 - workspace-api-task-time.md: Task time over the Workspace API (PR #2288): GET /workspace/time (own rows across tasks, range, hidden task, running timer, total) and POST /workspace/tasks/{id}/time/{entry_id}/update
+- workspace-api-tasks-scope.md: Which Workspace API reads need tasks:read for the tasks they carry (my-day, search, channel context, record refs, customer history), and what they answer without it
 - workspace-app-commands.md: An application's own / commands (ws_app_commands, 11.0.87, PR #2213): register/delete routes, workspace:commands, never posted, workspace.app.command to that app alone
 - workspace-app-handles.md: How an application tag <@app:N> is drawn (Claude's link @Claude, Pinegrap AI's @ai, any other app a handle from its own name) and which apps the @ picker offers per channel
 - workspace-app-mentioned-webhook.md: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload
+- workspace-approval-decide-checks.md: What ws_approval_decide_check() refuses before a team member's answer to an approval request, shared by the panel, the external API and its dry run
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, following
 - workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
 - workspace-attachment-uploads.md: How the Workspace screen sends channel and note attachments: a form part over XMLHttpRequest with a progress card and Cancel (#3745), the shared server check, base64 still taken, limits
+- workspace-booking-record.md: Booking as a Workspace record kind (tag <#booking:N>, the agenda's row rule, tag-only, bookings:read) and the four booking.* events of scheduled actions, checked against the creator's agenda
 - workspace-bookings.md: Confirmed bookings on a staff member's Workspace calendar (#6305, #6302): one reader, Work Calendar and Today, sync item ws-booking-<id>, refused move
 - workspace-bulk-create.md: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, where a person's own rows come from
 - workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, /create product answering or sent with a channel spreadsheet, the table reader, ws_bulk_create_card()
+- workspace-bulk-step.md: The slice runner of Workspace bulk changes (ws_bulk_step()): the status read again under the lock (ws_bulk_step_verdict()), a start still matching waited for, an update's place kept before its write
 - workspace-calc-numbers.md: Figures inside a workspace sum (ws_calc_tokens(), ws_calc_inline(), #3398): read the site's way, leading %, English comma separates arguments, "=" line errors
+- workspace-calendar-month-days.md: Which days of the Work Calendar a plan item is drawn on (ws_calendar_plan_place()): the end is exclusive, so a meeting until midnight draws no 00:00 line on the next day
 - workspace-calendar-read.md: Reading a person's Google/Outlook calendar back (calendar_sync.php, #4490): syncToken and delta, what is a move, the drawer's check, refused moves written back, calendar_refused
 - workspace-calendar-side-cards.md: Work calendar side cards at laptop width (#5189): ws_minutes_label() uses no-break spaces, the "who carries the work" row puts the task count under the whole name
 - workspace-calendar-write.md: A person's Workspace tasks written to their own Google or Outlook calendar (calendar_sync.php, #4387, #4420): app-made calendar, derived ids, sealed state per person, the hourly job
@@ -90,6 +98,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-channel-composer.md: The channel's writing box in one row (C5 of workspace-channel-screen.md): no hint line, marks behind Aa; a phone's one row with the tools switch, the keyboard rules
 - workspace-channel-decisions-tab.md: The channel's Decisions tab draws each decision as a card of its own with a gap between them, not stacked like the conversation's messages
 - workspace-channel-files-tab.md: A channel's Files tab (drawFiles() in workspace.js): the groups it draws (images, videos, voice messages and audio, documents) and the one-line file row
+- workspace-channel-greeting-task-counts.md: How a channel's greeting counts its open tasks (ws_channel_task_counts()): a 0000-00-00 due date is no due date, as on the dashboard and Today
 - workspace-channel-group-events.md: Webhook events about Workspace channel groups themselves (workspace.channel_group.created/updated/access_changed/deleted): payload, who hears them, what stays quiet
 - workspace-channel-head.md: The channel header in one line (C1 of workspace-channel-screen.md, tour #6281): name and tags, people, search, info, task, tour, menu; a phone keeps back, name, ⋯; the purpose in the info drawer
 - workspace-channel-icon-templates.md: A channel template's colour and icon onto a channel made from it (ws_template_channel_look()), only where the creator chose none; the form's free bi- class vs the curated list
@@ -137,12 +146,15 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flow-ai-hints.md: What Pinegrap AI is told beyond the box catalogue when it drafts a flow, what is read for it (a lone retry, next after a step, a post meant as a question), and the hints a retry carries
 - workspace-flow-ai-start.md: New flow from a sentence (G1b #3119, #3266): ws_flow_ai_sketch() asks Pinegrap AI for a flow in propose_flow's shape, one retry, saved as a draft; the panel route and the gallery's AI card
 - workspace-flow-card-embed-server.md: Server side of the flow card's read-only canvas (K2): ws_flow_draft_view at real places with marks and dry runs; ws_flow_embed_config, labels only, for any Workspace reader
-- workspace-flow-draft-card-window.md: The flow draft card as a read-only mini flow window (D8b #3032, V7a #3393): 128 × 60 px boxes, arrows and threads to the spec, the dry run as each box's third line, link and try per box
+- workspace-flow-draft-card-window.md: The flow draft card (D8b #3032, V7a #3393, K3 #6630): a still picture at rest, a click or Enter opens the read-only Flows canvas in a 20 rem pane; the strip below with link and try
 - workspace-flow-draft-proposals.md: An application, or Claude in a channel answer, proposes a flow as a draft card ({type: flow}, A8): what is sent, checked, kept, how the card opens it, {type: scheduled}
 - workspace-flow-embed.md: PGWsFlow.embed(host, boot) in workspace_flow.js: the Flows canvas drawn read-only elsewhere (the flow draft card), one at a time; boot fields, focus-gated wheel, keys, onSelect, destroy
+- workspace-flows-ai-box-canvas.md: The Pinegrap AI box on the flow canvas (B2's second PR): KINDS.ai, a classifying box's named arrows through kindOf(), the palette gate, aiFields(), extract's values
+- workspace-flows-ai-box.md: The Pinegrap AI box of flows (kind ai, B2): modes, settings, classify's named outcomes as arrows, what is sent, the wait on its own step, the call after the response, the hourly look and the deadline
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists
 - workspace-flows-api-filters.md: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122); the Flows screen's start filter (C4, PR #2391)
 - workspace-flows-api-templates.md: Flow templates over the external API (A6, #2298): GET /workspace/flow-templates, POST /workspace/flows with template and answers, what is checked, what never happens (publish)
+- workspace-flows-approval-answer.md: The answer an approval box asks with Approve (#7015, PR #7446): settings answer/answer_label, the check, where it is stored, the outputs answer, answer_number, decided_by
 - workspace-flows-approval-box.md: The approval box of a flow (F5c, PR #2142): asks, waits on approval:<id>, leaves on approved, rejected, expired, withdrawn or failed; deadline in hours, woken by approval.decided or the hourly look
 - workspace-flows-arrows-always.md: Arrows on always in a flow (PR #2249): taken however the box ended, as a scheduled follow-up on always; which boxes have it, routing a failure, the timeout check, canvas
 - workspace-flows-box-look.md: How a flow box looks (V1, V2 of the flows look work, PRs #3118, #3158): group colour per theme, line icon, 1.5 px border, selection ring, arrows, palette wrapping
@@ -158,11 +170,16 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-condition-values.md: A condition box comparing a value of the run (data-passing D7): the value rule, its operators, reference check, how it holds at run time, masking, the canvas picker
 - workspace-flows-converted-anchor.md: A scheduled action converted into a flow (anchor converted, 5a #2558, 5b): how rows convert after the upgrade, starts, boxes write as the action, write-back, edit by any staff
 - workspace-flows-decisions.md: Lasting decisions behind Workspace Flows ("Akışlar"): the three uses, the owner's answers 1-8 (editor, builders, record writes, AI drafts only), rights, data-passing rules (#2414)
-- workspace-flows-delay-box.md: The delay box of a flow (F5b, PR #2135): amount and unit up to a week, waits as a waiting box with wake_at, settles done with waited_until, problems, try, canvas form
+- workspace-flows-delay-box.md: The delay box of a flow (F5b #2135, until mode B4): for a time or until a date from a value, at most 90 days, waits with wake_at, settles done with waited_until, try, canvas
 - workspace-flows-derived-box.md: The derived value box of a flow (kind value, T3, PR #2701): its allowlisted rules, inputs and value, how a run works it out, the transitive "comes before" check, the canvas form
+- workspace-flows-derived-calculate.md: Calculate rule of a flow's derived value box (#7016, PR #7260): one calculator formula, values bound by the resolver not pasted, places, empty on error, the check, the canvas function list
+- workspace-flows-derived-text.md: Text rules of a flow's derived value box (flows-next B3): replace, extract a number or an e-mail address, capitals, small letters, tidy spaces, cut to N, split and take part N; the third input c
+- workspace-flows-email-record-person.md: Flow e-mail box to the person of the run's record (B8): recipient record_person, purpose info or marketing, campaign consent, unsubscribe link, nothing sent with its reason
 - workspace-flows-empty-fallback.md: The per-thread "When empty, write" fallback of a Flows value (T6, PR #3729, #2415 2a): token syntax, where it is filled, which references take it, the warning rule, the chip
+- workspace-flows-erp-start-events.md: ERP events a flow can start on (flows-next C3): invoices, receipts, incoming e-documents, quote decisions; the new erp.invoice.overdue and erp.edoc.received
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-for-each-canvas.md: The For each loop on the Flows canvas (D9 canvas, #3422): kinds, arrows, the body frame, the list and collect forms, which values a box inside or outside the loop is offered
+- workspace-flows-for-each-count.md: Repeat N times (For each count mode, FL2) and value boxes inside a loop body: settings, items 1..N, checks, the pure-box loop rule, the reader's pass, a Wait box per round, canvas
 - workspace-flows-for-each.md: Flows For each loop (D9, #3312, #3323, #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, size warning
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
@@ -173,17 +190,23 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-member-canvas.md: The Flows screen for a role-3 member building their own flows (#3345 R2): the entry, the palette from ws_flow_member_kinds(), refused boxes marked, no home or shares, staff-only templates and AI draft
 - workspace-flows-member-change.md: The change box of a role-3 member's flow (R3 #3438, decided in #3345): proposes its change on an approval request to its owner, writes only once approved, fails when refused or expired
 - workspace-flows-member.md: A role-3 member's own flows (#3345 narrow, R1 #3397, flow_member.php): who builds, the kinds of box allowed, no home channel or shares, caps 10 flows and 20 starts an hour, kinds re-checked at run
+- workspace-flows-mention-start.md: Flow start "when the flow is mentioned in a channel" (flows-next C4, decision B): @ and the flow's name in the box's channel, composer only, one start per person a minute, outputs
 - workspace-flows-no-order-start.md: Flows start "a customer has not ordered for N days" (CRM seams 10.2, decided in #3416, PR #3522): hourly anchor, threshold window, start key per customer and last order, budget, outputs, rights
 - workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1-D3): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, one-pass fill, escaping per destination
 - workspace-flows-palette.md: The Flows canvas palette laid out in the order a flow is built: numbered sections (start, steps, end) and the value boxes outside the order, their hints, one start box only
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
+- workspace-flows-people-content-start-events.md: People and content webhook events a flow can start on (flows-next C2): user account, consent, bounce, campaign, page, calendar reservation, store credit; record, right, kept payload, outputs
 - workspace-flows-problem-names.md: Flow problem texts and the small drawings name boxes as the canvas (ws_flow_box_names(), numbered when untitled boxes share a kind), values as Box › Value; no id or {{…}} (#4061, PR #4189)
+- workspace-flows-record-get-box.md: The Read a record box of flows (record_get): kinds and fields, the owner's reach as the change box checks it, found 0 for a missing or unreachable record, readers, canvas
 - workspace-flows-references.md: The reference check of a flow (D4, PR #2305): bad_reference for {{node.*}} of a missing, later or field-less box; a warning for a box that may not run, unless a fallback is written
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again on its own (3d, PR #2275, retry/retry_after) or by hand or skipped (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, routes, canvas
+- workspace-flows-row-add-to-cell.md: Adding to a cell in the change-row flow box (flows-next B5, PR #7408): "+3" in a number or money cell adds to the row read at write time, on its revision
 - workspace-flows-row-box.md: The row start box of flows (#3064): a table row added, changed or deleted starts the flow; rule type row, ws_event() in ws_wtable_row_announce(), the table gate, cells as trigger values
+- workspace-flows-row-get-box.md: The Read a row box of flows (row_get): view reach with the owner's rights, pause, outputs row_id/found/cell_<id>, a missing row done with found 0, non-editors, canvas
 - workspace-flows-run-chain-notice.md: One flow_finished inbox line per chain of runs (#3526 step 1, PR #3537, #3371): root from context chain_root or start_key, fold rule, update while unread, sent again, push, failure turn
 - workspace-flows-run-channel.md: The channel a flow run opens its tasks in: the flow's home as the run starts, or the channel_id named on POST /workspace/flows/{id}/runs (decision #2413); ws_flow_run_channel_check(), shared with C2
 - workspace-flows-run-events.md: Webhook events of flow runs (A7, #2406): workspace.flow.run.finished, .failed, .cancelled, .waiting; where each is announced once, the body, words only in public channels, what is never announced
+- workspace-flows-run-failed-start.md: A failed run as a flow start (flows-next B6): workspace.flow.run.failed kept by ws_event(), its payload, who it starts for, never the flow that failed, chain depth
 - workspace-flows-run-flag.md: A flow run's flag (C1, #2903): state, duration, one-line result folded behind ▾; ws_flow_run_result_pick(), result on run reads, last_run in the flow list, runFlag() for C2
 - workspace-flows-run-notice.md: A flow run's inbox line opens that run (?flow=&run=), a failed run's own title and icon, box titles with values named, the live-flow hint, the cancel sentence by box kind and the cancel dialog (#3514)
 - workspace-flows-run-tell-choice.md: The start box's "Tell me" choice (every run / only failures / never) decides whether a run's end writes or updates the owner's flow_finished line, alone and in a chain (#3526 step 2, PR #3566, #3371)
@@ -199,7 +222,10 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
 - workspace-flows-table-box-form.md: The canvas form of the add-row and change-row flow boxes (F6b-2, #3359): tables offered, a field per column, cells kept as JSON one key at a time, the JSON fallback, threads
 - workspace-flows-table-boxes.md: The table boxes of flows (F6b-1 #3189): row_add adds a workflow table row, row_set changes cells of one; cells as JSON text, owner's edit reach, store writers, pause, what non-editors read
+- workspace-flows-template-adding.md: How a built-in flow template is added and tested (flow_templates.php, tests/workspace_flow_templates_test.php), which built-in templates exist and which memory file holds each
+- workspace-flows-template-events.md: The flow templates started by a site event that wait, ask for approval or follow up (T1-T5, T10-T13): their boxes, what each is offered with, how they are tested
 - workspace-flows-template-flow-only.md: The flow templates a scheduled action never had (G3): new_customer, quote_approval, text_review; their boxes, the one person setting, how they are tested
+- workspace-flows-template-form-sort.md: Flow template form_sort (T14, PR #7505): a submitted form read, Pinegrap AI picks sales, support or spam, a task for each of the first two, spam ends, an unsorted form told
 - workspace-flows-template-format.md: Flow templates (G1 #2161, flow_templates.php): format, the scheduled templates that came over or wait, the gallery
 - workspace-flows-template-last-day.md: The forms, orders and chain flow templates (R1b, #2787): counts of the last day once a day, the orders webhook, chain a manual start a "Start a flow" box starts
 - workspace-flows-template-saved.md: Flow templates saved on the site (G3a #3146, G3b #3242): ws_flow_templates, what a save keeps, settings, rights, panel actions, the editor's Save as template, the gallery's saved cards
@@ -215,10 +241,15 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-versions.md: A paused flow resumed on its live version (canvas Resume and API), and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 - workspace-flows-visual-spec.md: The Flows canvas look in numbers (owner, 2026-10-27): lines, type colours and tones, thread sag, icons, run flags, mini window, template motion; all on screen (#4386)
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none
+- workspace-flows-web-start.md: The web address start box (kind web, B7): flow_start.php?flow=&key=, a sealed secret per flow in config_text, editors only, 60 calls a minute per address, 64 KB, declared body fields as trigger.*
 - workspace-flows-webhook-body.md: The webhook box's answer as its body output (D9a, PR #2985, decision #2414-2): 16 KB UTF-8 cut, the run row's result budget, held back from readers who may not change the flow
+- workspace-flows-webhook-start-events.md: Webhook events a flow can start on as well (reviews, returns, cart quotes, marketplace imports, subscriptions, form fees, stock changes); record, right, outputs, stock change kept on demand
 - workspace-flows-webhook-url.md: Numbers in a webhook box's address (decision #3410, PR #3471): path or query only, digits URL-encoded, refused in host or scheme and at run when not digits; canvas lights it for numbers
 - workspace-followups.md: Workspace follow-ups (followups.php, #1790): ws_followup_task_open() opens a tagged, reminded task; "Remind me" on the customer card; quote expiry and overdue receivable jobs
 - workspace-growth-terms.md: Shared names and single owners of the Workspace growth work (2026-10-23): workflow tables, Workspace canvas, quote kinds, registries, engine words, agent keys, one proposal route, personal by default
+- workspace-guest-cleared-room.md: A guest's requests on one message (file address, tick, reaction, vote) reach only the room's current conversation, after its clear floor, as the guest page lists it
+- workspace-guest-request-input.md: How the public guest page reads the strings of its JSON body and its cookie
+- workspace-holiday-feed-overrides.md: Holiday calendar addresses (ws_ical_events()): a moved occurrence gets its own uid so it never replaces its yearly day; cancelled days are left out
 - workspace-keyboard-rows.md: Workspace div rows act as buttons through pressKeys() (Enter and Space), the inbox Join shortcut takes keys, planning board hours print through hoursText()
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
@@ -248,6 +279,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes-voice.md: A recording made in a Workspace note (V6): the note toolbar's microphone, kept as a note file through ws_note_file and linked at the caret, players under the text, no transcript
 - workspace-notes.md: Workspace notes (ws_notes): tables, limits, body format, versions, an assistant's answer under the line that asked, the paged list, what the API offers and lacks
 - workspace-office-edits.md: The cells of an Excel file or the paragraphs of a Word file posted in a channel, changed in its preview window (ws_file_office, ws_file_office_save, PR #656, #702): who may, replace or copy
+- workspace-personal-ical-days.md: On which days and Today lines a person's own iCal events are drawn (ws_personal_ical_touches(), end exclusive), how a repeating all-day event ends across a clock change, the gzip unpack limit
 - workspace-personal-ical.md: A person's own secret iCal address as a read-only layer on their Work Calendar: ws_holiday_feeds.user_id, the sealed payload, the sync path, who sees it (#3254, decided in #3180)
 - workspace-plan-day-state.md: How a plan grid day reads (ws_plan_day_state(): away, holiday, off, over, full, ok), why load 999 is an internal marker, and where a day off with work is named instead of "%999" (PR #4326, #4233)
 - workspace-polls-api.md: A poll over the Workspace API: closed_at, can_vote false past closes_at and in an earlier version (ws_poll_vote_state()), and the field a vote, change or close refusal names
@@ -259,6 +291,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-record-kind-registry.md: ws_record_kinds() (refs.php): one entry per Workspace record kind (prefixes, right, read scope, change kind, audit table, drawer, customer), the lists it is held to, the drift test
 - workspace-record-kinds.md: Every list a Workspace record kind (order, product, invoice...) must be in, the kinds each leaves out and why, the scope the assistants read a kind with, and the test that guards it
 - workspace-ref-sources.md: Notes and workflow table rows as ws_refs tag sources (#3135, decision #3138, 11.0.116): VARCHAR source_type, probe, writers with channel 0, per-source access in readers, backfill
+- workspace-root-folder.md: The Workspace folder at the top of the file manager (ws_root_folder_id()): when an existing top-level "Workspace" folder is taken over and when a new one is made beside it
 - workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it
 - workspace-sales-quote-invoice.md: A sales quote turned into an invoice draft from a change card (erp_quote action invoice, PR #1907): no fields, the shared state rule, the writer erp_quote_to_invoice(), the decision, the proposers
 - workspace-saved-replies-composer.md: Saved replies in the panel (#3114): the composer's ; list (at(), match()), {customer}/{order} filled by the server, insertStored() as one undo step, the Insert menu drawer that manages them
@@ -267,22 +300,30 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-scheduled-draft-ai.md: Pinegrap AI's propose_scheduled_action: a sentence drafted in a call of its own, kept under the answer as a flow draft card (C5b leftover), the model's texts and final words, when it is offered
 - workspace-scheduled-draft-proposals.md: A connected app proposes a scheduled action (type scheduled in workspace.changes.propose): body, the save check, kept as a flow draft card since C5b, older scheduled cards, why never on a task
 - workspace-screen-companion-scripts.md: Why the Flows canvas and the channel Board tab wait for their own bundle (workspace_flow.js, workspace_board_channel.js) instead of racing ws_bootstrap; the "script did not load" fallback (#2516)
-- workspace-screen-frame.md: Which Workspace screens pad their own main area, where sticky columns stop, how the MCP servers card wraps on a phone
+- workspace-screen-frame.md: Every Workspace screen but the channel one is padded by .ws-shell-main (no screen list), where sticky columns stop, how the MCP servers card wraps on a phone
+- workspace-screen-messages.md: Server-drawn Workspace screens show liveform errors, warnings and notices as corner toasts through ws_screen_messages(), never the panel's Notice/Warning/Error boxes (#6799)
 - workspace-settings-card-saves.md: Workspace Settings card saves: list allow-list, refused form refilled with its error, rank rule for team rows, hours and holiday checks, mailbox fields
 - workspace-settings-row-names.md: Workspace Settings rows name their person or department, hours boxes use the panel's decimal separator, the Claude guide's copy fields are named (#2918); no two active departments of one name
+- workspace-status-ai-draft.md: The Pinegrap AI draft of a channel's status update (ws_status_ai, status.php): what the model reads, why it asks through pg_ai_chat() and not ws_ai_http()
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, scope buttons that follow a department pick, pressed week buttons, the announced task count
+- workspace-task-reminders.md: Task reminders, overdue and meeting notices (reminders.php): who is told, the per-recipient mail and its channel line, claims against double sending, time zone and DST
+- workspace-task-zero-dates.md: A task's start or due date of 0000-00-00 is no date when the board or /postpone moves it and when the start-after-due check runs (ws_task_move_dates(), ws_task_starts_after_due())
 - workspace-text-fold.md: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains(), SQL helpers in commands.php): what folds, who calls it, why not mb_stripos()
 - workspace-text-headings.md: Headings "#" to "###" and "---" rules in Workspace notes only (#2649): server rule and fast path, plain text, editor twins, tools, Enter/Backspace, "# " autoformat, the import
 - workspace-text-highlight.md: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells
 - workspace-text-links.md: Where a web address in a Workspace text ends: escaped quotes, angle brackets and apostrophes stay outside the link, &amp; stays inside, punctuation after it stays text
 - workspace-text-lists.md: Lists and quotes in Workspace texts drawn by the server (#1725): which shapes become a list, which stay text so old messages look the same, plain text, guest page, approval mail
+- workspace-today-design.md: Why the Workspace Today page is drawn as new-dashboard cards: fixed cards, the look it borrows, where styles and methods live, no .ws-home-* rule left
+- workspace-today-digest-decisions.md: Today's "What happened in the channels" and "Latest decisions" cards in the new dashboard's parts: rows, badge, the Activity line, why a decision row is no button
+- workspace-today-join-about.md: Today's "Channels you could join" and "What is the Workspace?" cards in the dashboard design: markup, where their styles live, what the Join button does
 - workspace-today-page.md: The Workspace's first page, Today (?view=home, was Overview): the greeting and its count line, the cards in the drawn order, what can be done from them, where each card's data comes from
 - workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace CSS scale (radii, spaces, row and header padding, avatar sizes, shadows as --ws-* tokens), keyboard-only focus rings, dark nav tones, where the block ends
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
+- workspace-user-email-change.md: A user's e-mail changed from the Workspace is refused when it is another account's e-mail or username
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers
 - workspace-visit-contact.md: A customer visit on the Work Calendar names its contact (ws_events.contact_id, 11.0.118, #3517): pick check, card, history, holder, erasure, API field (#3796)
 - workspace-voice-asks.md: A voice message that asks Claude, Pinegrap AI or an MCP server (V4c): tags beside the mic, a voice answer, asked once transcribed (ws_voice_posted(), ws_voice_ask())

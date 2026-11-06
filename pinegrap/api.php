@@ -145,6 +145,20 @@ include('init.php');
 
 // Add header in order to start response.
 header('Content-Type: application/json');
+
+// A page of another site cannot speak for the visitor's session: the public
+// site actions (add_to_cart, site chat) check no token, and the session
+// cookie a checkout re-issued as SameSite=None rides on a cross-site
+// text/plain POST whose body decodes as an action (pg_request_cross_site()).
+// A request that signs in with a name and password brings its own account.
+if (!defined('API_USERNAME') && pg_request_cross_site($_SERVER)) {
+    header('HTTP/1.1 403 Forbidden');
+    respond(array(
+        'status' => 'error',
+        'code' => 'cross_site',
+        'message' => lang('Invalid request.')
+    ));
+}
 if (isset($request['action'])) {
     $action = $request['action'];
 } else {

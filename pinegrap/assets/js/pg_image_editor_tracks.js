@@ -125,7 +125,7 @@
         } }, [icon(TYPE_ICONS[l.type] || l.type), el('span', { text: name })]);
 
         M.trackBars(l, end).forEach(function (b) {
-            var bar = el('span', { class: 'pgie-trbar pgie-tr-' + b.phase, style: 'left: ' + pct(b.from, end) + '; width: ' + pct(b.to - b.from, end), title: barTip(l, b) });
+            var bar = el('span', { class: 'pgie-trbar pgie-tr-' + b.phase, style: 'left: ' + pct(b.from, end) + '; width: ' + pct(b.to - b.from, end), title: barTip(l, b), role: 'img', 'aria-label': barTip(l, b) });
 
             bar.addEventListener('pointerdown', function (e) { self.trackDown(e, l, b, 'move', bar); });
 
@@ -159,7 +159,8 @@
             }
         });
 
-        return el('div', { class: 'pgie-trrow' + (on ? ' on' : '') + (l.anim ? '' : ' pgie-trstill') }, [pick, lane]);
+        // A screen reader hears the layer's name before its bars and keys.
+        return el('div', { class: 'pgie-trrow' + (on ? ' on' : '') + (l.anim ? '' : ' pgie-trstill'), role: 'group', 'aria-label': name }, [pick, lane]);
     };
 
     // The panel's note under a phase's fields, where the tracks show.

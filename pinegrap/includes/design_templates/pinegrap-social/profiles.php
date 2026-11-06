@@ -284,7 +284,7 @@ $profile_widgets = array(
         'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
         'tree'   => $widget_root(array(
             $field('sc-profile-name', lang('Name shown to members'), pg_cf_with_role($input('sc-profile-name', 'text', 'display_name', 'nickname'), 'title'), 'mb-3',
-                lang('The name members see on your page and beside your posts.')),
+                lang('The name members see on your page and in the people list. Your posts show the name in your account details.')),
             $field('sc-profile-avatar', lang('Profile picture'), pg_cf_with_role($file('sc-profile-avatar', 'avatar', 'avatars'), 'media'), 'mb-3',
                 lang('A square picture looks best; it is shown in a circle.')),
             $row(array(
@@ -326,18 +326,20 @@ $profile_widgets = array(
         )),
     ),
 
-    // Every member, filtered by the topic in the address, with a search.
+    // Every member once, with their newest profile, filtered by the topic
+    // in the address, with a search.
     'people_list' => array(
         'page'   => 'people',
         'slug'   => lang('form-list'),
         'config' => $profile_list_config(array(
-            'items_per_page' => 24,
-            'filters'        => array($profile_filter('interests', 'is equal to', '', 'topic')),
-            'search_enabled' => true,
-            'search_fields'  => array('display_name', 'city', 'interests', 'bio'),
-            'search_width'   => 'full',
-            'search_label'   => lang('Search the people: a name, a city, a topic...'),
-            'empty_message'  => lang('No member matches yet. Try another topic, or be the first: set up your profile.'),
+            'items_per_page'    => 24,
+            'one_per_submitter' => true,
+            'filters'           => array($profile_filter('interests', 'is equal to', '', 'topic')),
+            'search_enabled'    => true,
+            'search_fields'     => array('display_name', 'city', 'interests', 'bio'),
+            'search_width'      => 'full',
+            'search_label'      => lang('Search the people: a name, a city, a topic...'),
+            'empty_message'     => lang('No member matches yet. Try another topic, or be the first: set up your profile.'),
         )),
         'tree'   => $profile_grid('tom'),
     ),
@@ -385,18 +387,19 @@ $profile_widgets = array(
         )),
     ),
 
-    // The staff list: every profile with its author name and a link to the
-    // member's page, searchable.
+    // The staff list: every member's newest profile with its author name
+    // and a link to the member's page, searchable.
     'staff_members_list' => array(
         'page'   => 'staff_members',
         'slug'   => lang('form-list'),
         'config' => $profile_list_config(array(
-            'items_per_page' => 30,
-            'search_enabled' => true,
-            'search_fields'  => array('display_name', 'city', 'interests', 'bio', 'website'),
-            'search_width'   => 'half',
-            'search_label'   => lang('Search the profiles'),
-            'empty_message'  => lang('No member has sent a profile yet.'),
+            'items_per_page'    => 30,
+            'one_per_submitter' => true,
+            'search_enabled'    => true,
+            'search_fields'     => array('display_name', 'city', 'interests', 'bio', 'website'),
+            'search_width'      => 'half',
+            'search_label'      => lang('Search the profiles'),
+            'empty_message'     => lang('No member has sent a profile yet.'),
         )),
         'tree'   => $widget_root(array(
             $el('div', 'list-group', lang('Rows'), array($loop(array(

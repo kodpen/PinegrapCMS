@@ -583,16 +583,22 @@ function pg_panel_get_product($request, $action)
                 custom_field_2,
                 custom_field_3,
                 custom_field_4,
-                timestamp
+                timestamp,
+                enabled
             FROM products
             WHERE id = '" . $product_id . "'"
     ) : false;
 
-    // A missing or unknown id answers in JSON before any field is read.
-    if (!$product_raw) {
+    // A missing or unknown id answers in JSON before any field is read. So
+    // does a product that is switched off or in the Recycle Bin (binning
+    // switches it off): it is not on the site, every variant chooser lists
+    // enabled products only, and its texts, price and stock stay unread.
+    if (!$product_raw || ((int) ($product_raw['enabled'] ?? 0) !== 1)) {
         echo encode_json(array('status' => 'error', 'message' => lang('Product not found.')));
         exit();
     }
+
+    unset($product_raw['enabled']);
 
 
 
@@ -1151,32 +1157,11 @@ function pg_panel_generate_product_barcode($request, $action)
     if (!$product_id)
         respond(array('status' => 'error', 'message' => lang('Product not found.')));
 
-    $attempts = 0;
-    do {
-        if ($barcode_type === 'EAN13') {
-            $digits = '';
-            for ($i = 0; $i < 12; $i++)
-                $digits .= rand(0, 9);
-            $sum = 0;
-            for ($i = 0; $i < 12; $i++)
-                $sum += ($i % 2 === 0 ? 1 : 3) * (int) $digits[$i];
-            $barcode = $digits . ((10 - ($sum % 10)) % 10);
-        } elseif ($barcode_type === 'UPC') {
-            $digits = '';
-            for ($i = 0; $i < 11; $i++)
-                $digits .= rand(0, 9);
-            $sum = 0;
-            for ($i = 0; $i < 11; $i++)
-                $sum += ($i % 2 === 0 ? 3 : 1) * (int) $digits[$i];
-            $barcode = $digits . ((10 - ($sum % 10)) % 10);
-        } else {
-            $barcode = str_pad($product_id, 5, '0', STR_PAD_LEFT) . str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
-        }
-        $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'");
-        $attempts++;
-    } while ($exists && $attempts < 20);
+    // The shared generator: a code free as a barcode and as another
+    // product's code.
+    $barcode = pg_generate_unique_barcode($barcode_type, $product_id);
 
-    if ($exists)
+    if ($barcode === '')
         respond(array('status' => 'error', 'message' => lang('Could not generate a unique barcode. Please try again.')));
 
     respond(array('status' => 'success', 'barcode' => $barcode, 'barcode_type' => $barcode_type));
@@ -1333,34 +1318,11 @@ function pg_panel_bulk_assign_barcodes($request, $action)
         if (!$pid)
             continue;
 
-        // Generate unique barcode
-        $barcode = '';
-        $attempts = 0;
-        do {
-            if ($barcode_type === 'EAN13') {
-                $digits = '';
-                for ($i = 0; $i < 12; $i++)
-                    $digits .= rand(0, 9);
-                $sum = 0;
-                for ($i = 0; $i < 12; $i++)
-                    $sum += ($i % 2 === 0 ? 1 : 3) * (int) $digits[$i];
-                $barcode = $digits . ((10 - ($sum % 10)) % 10);
-            } elseif ($barcode_type === 'UPC') {
-                $digits = '';
-                for ($i = 0; $i < 11; $i++)
-                    $digits .= rand(0, 9);
-                $sum = 0;
-                for ($i = 0; $i < 11; $i++)
-                    $sum += ($i % 2 === 0 ? 3 : 1) * (int) $digits[$i];
-                $barcode = $digits . ((10 - ($sum % 10)) % 10);
-            } else {
-                $barcode = str_pad($pid, 5, '0', STR_PAD_LEFT) . str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
-            }
-            $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'");
-            $attempts++;
-        } while ($exists && $attempts < 30);
+        // The shared generator: a code free as a barcode and as another
+        // product's code.
+        $barcode = pg_generate_unique_barcode($barcode_type, $pid);
 
-        if ($exists) {
+        if ($barcode === '') {
             $skipped++;
             continue;
         }

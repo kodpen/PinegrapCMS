@@ -631,9 +631,29 @@ function pg_booking_widget_privacy_url()
    --------------------------------------------------------------------------- */
 
 /**
+ * The address the widget's script posts to. On a page drawn in another site
+ * language it carries pg_lang, as the jQuery requests of a translated page
+ * do (frontend.src.js): the script's fetch() adds nothing, and without it
+ * booking_slots.php answers its messages (the marked fields, the booked
+ * note, a time taken or run out) and draws the deposit step in the source
+ * language.
+ *
+ * @param string $language the page's language code, '' in the source language
+ * @return string
+ */
+function pg_booking_widget_endpoint($language)
+{
+    $url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/booking_slots.php';
+    $language = (string) $language;
+
+    return ($language !== '') ? $url . '?pg_lang=' . rawurlencode($language) : $url;
+}
+
+/**
  * The settings the widget's script reads from its data-pg-booking
  * attribute: the endpoint, the staff of each service, the policy's hold
- * minutes and the words it may show. The same for every visitor.
+ * minutes and the words it may show. The same for every visitor of the
+ * page in one language.
  *
  * @param array $services
  * @param array $staff
@@ -644,7 +664,7 @@ function pg_booking_widget_settings($services, $staff)
     $policy = pg_booking_widget_policy();
 
     return array(
-        'url'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/booking_slots.php',
+        'url'   => pg_booking_widget_endpoint((function_exists('pg_tr_active') && pg_tr_active()) ? pg_tr_language() : ''),
         'staff' => pg_booking_widget_staff_map($services, $staff),
         'zone'  => (string) $policy['zone'],
         'hold'  => (int) $policy['hold_minutes'],
@@ -816,9 +836,18 @@ function pg_booking_release_session_hold($now)
     $id = isset($_SESSION['software']['booking_hold']) ? (int) $_SESSION['software']['booking_hold'] : 0;
     unset($_SESSION['software']['booking_hold'], $_SESSION['software']['booking_hold_slot']);
 
-    if (($id > 0) && pg_booking_ready()) {
-        db_q("DELETE FROM bookings WHERE id = ? AND status = 'held'", array($id));
+    if (($id <= 0) || !pg_booking_ready()) {
+        return;
     }
+
+    // A hold with a deposit order is cancelled, not removed: a payment that
+    // still arrives for the order finds its booking (pg_booking_deposit_mark_paid()).
+    if (pg_booking_deposit_ready()) {
+        db_q("UPDATE bookings SET status = 'cancelled', slot_at = NULL, hold_until = 0, updated_at = ? WHERE id = ? AND status = 'held' AND order_id > 0", array((int) $now, $id));
+        pg_booking_pay_pending_forget();
+    }
+
+    db_q("DELETE FROM bookings WHERE id = ? AND status = 'held'", array($id));
 }
 
 /**
@@ -964,6 +993,62 @@ function pg_booking_slots_request($request, $now)
 }
 
 /**
+ * Whether the day of a start still offers it to a visitor (a hold that ran
+ * out is booked or kept again only then).
+ *
+ * @param array $service booking_services row
+ * @param array $staff   the staff rows of the start (one)
+ * @param int   $start
+ * @param int   $now
+ * @param array $policy  pg_booking_widget_policy()
+ * @return bool
+ */
+function pg_booking_widget_offered($service, $staff, $start, $now, $policy)
+{
+    $day = (new DateTime('@' . (int) $start))->setTimezone(new DateTimeZone($policy['zone']))->format('Y-m-d');
+    $midnight = new DateTime($day . ' 00:00:00', new DateTimeZone($policy['zone']));
+    $from = $midnight->getTimestamp() - 86400;
+    $until = $midnight->modify('+1 day')->getTimestamp() + 86400;
+
+    foreach (pg_booking_day_times($service, $staff, $day, pg_booking_busy_between($staff, $from, $until, $now), $now, $policy) as $time) {
+        if ($time['start'] === (int) $start) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * pg_booking_widget_offered() by ids: the service bookable and the staff
+ * member still taking it.
+ *
+ * @param int   $service_id
+ * @param int   $staff_id
+ * @param int   $start
+ * @param int   $now
+ * @param array $policy
+ * @return bool
+ */
+function pg_booking_widget_still_offered($service_id, $staff_id, $start, $now, $policy)
+{
+    list($services, $staff) = pg_booking_widget_data();
+    $service = null;
+
+    foreach ($services as $row) {
+        if ((int) $row['id'] === (int) $service_id) {
+            $service = $row;
+        }
+    }
+
+    $staff = array_values(array_filter(pg_booking_staff_for($staff, (int) $service_id), function ($row) use ($staff_id) {
+        return (int) $row['id'] === (int) $staff_id;
+    }));
+
+    return ($service !== null) && $staff && pg_booking_widget_offered($service, $staff, $start, $now, $policy);
+}
+
+/**
  * Books the slot this session holds with the visitor's details. A hold that
  * ran out is booked anyway while its time is still free; otherwise the
  * answer sends the visitor back to the times ("expired" or "taken").
@@ -1016,22 +1101,23 @@ function pg_booking_confirm_request($request, $now)
         'staff_id'   => $staff_id,
         'start_at'   => $start,
     );
+    // A deposit is paid before the booking is made: the hold is kept for
+    // the payment (includes/fn/booking_deposit_pay.php).
+    if (pg_booking_widget_deposit($service) !== null) {
+        if (!pg_booking_pay_keep_hold($id, $now)) {
+            pg_booking_release_session_hold($now);
+            return $expired;
+        }
+
+        return pg_booking_pay_start($id, pg_booking_customer($booking), $request['page'] ?? '', $now);
+    }
+
     $status = !empty($policy['auto_confirm']) ? 'confirmed' : 'requested';
     $done = pg_booking_confirm($booking, $status, $now);
 
     if ($done['answer'] === 'expired') {
         // The hold ran out: book the time at once when the day still offers it.
-        $day = (new DateTime('@' . $start))->setTimezone(new DateTimeZone($policy['zone']))->format('Y-m-d');
-        $midnight = new DateTime($day . ' 00:00:00', new DateTimeZone($policy['zone']));
-        $from = $midnight->getTimestamp() - 86400;
-        $until = $midnight->modify('+1 day')->getTimestamp() + 86400;
-        $offered = false;
-
-        foreach (pg_booking_day_times($service, $staff, $day, pg_booking_busy_between($staff, $from, $until, $now), $now, $policy) as $time) {
-            $offered = $offered || ($time['start'] === $start);
-        }
-
-        if (!$offered) {
+        if (!pg_booking_widget_offered($service, $staff, $start, $now, $policy)) {
             pg_booking_release_session_hold($now);
             return $expired;
         }

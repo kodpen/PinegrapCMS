@@ -39,7 +39,9 @@ define('WS_FLOW_LOOP_FIELDS_MAX', 10);
 /**
  * The settings of a For each box (list: the one value holding the list, path:
  * where the list sits inside it, as data.items; fields: the keys of an item
- * it gives by name) or of an End for each box (for_each: the box whose loop
+ * it gives by name; mode: list, or count to repeat its body count times;
+ * count: a whole number from 1 to WS_FLOW_LOOP_ITEMS_MAX or one value, read
+ * in count mode only, where an item gives no fields) or of an End for each box (for_each: the box whose loop
  * it ends; collect: the one value of the body it gathers per item). Pure.
  *
  * @param string $kind for_each | for_each_end
@@ -67,11 +69,85 @@ function ws_flow_loop_normalize($kind, $config)
         }
     }
 
+    $mode = (($config['mode'] ?? '') === 'count') ? 'count' : 'list';
+    $count = $config['count'] ?? '';
+
     return array(
         'list'   => ws_flow_line($config['list'] ?? '', 200),
         'path'   => substr((string) preg_replace('/[^A-Za-z0-9_.\-]/', '', ws_flow_text($config['path'] ?? '')), 0, 200),
-        'fields' => array_slice($fields, 0, WS_FLOW_LOOP_FIELDS_MAX),
+        'fields' => ($mode === 'count') ? array() : array_slice($fields, 0, WS_FLOW_LOOP_FIELDS_MAX),
+        'mode'   => $mode,
+        'count'  => ws_flow_line((is_int($count) || is_string($count)) ? (string) $count : '', 200),
     );
+}
+
+/**
+ * The setting a For each box reads its items from: count in count mode,
+ * else list. Pure.
+ *
+ * @param array $config ws_flow_loop_normalize()
+ * @return string list | count
+ */
+function ws_flow_loop_source_key($config)
+{
+    return ((string) ($config['mode'] ?? '') === 'count') ? 'count' : 'list';
+}
+
+/**
+ * The items of a For each box in count mode: 1 to the count, kept as the
+ * items of a list are, so the body reads index and item alike. A count that
+ * is no whole number from 1 to WS_FLOW_LOOP_ITEMS_MAX fails the box with the
+ * reason. Pure.
+ *
+ * @param string|null $text the count as written or filled in
+ * @return array ok, items, json, error (as ws_flow_loop_items())
+ */
+function ws_flow_loop_count_items($text)
+{
+    $text = trim((string) $text);
+
+    if (!preg_match('/^[0-9]{1,4}$/', $text) || ((int) $text < 1) || ((int) $text > WS_FLOW_LOOP_ITEMS_MAX)) {
+        return array('ok' => false, 'items' => array(), 'json' => '',
+            // The value read stays out of the reason: it may come from a box
+            // whose outputs a reader of the run does not see.
+            'error' => lang(array('string' => 'The count the box read is not a whole number from 1 to {var:1}.', 'vars' => WS_FLOW_LOOP_ITEMS_MAX)));
+    }
+
+    $items = range(1, (int) $text);
+
+    return array('ok' => true, 'items' => $items, 'json' => (string) json_encode($items), 'error' => '');
+}
+
+/**
+ * What is wrong with a For each box's count as written, '' for nothing: a
+ * whole number from 1 to WS_FLOW_LOOP_ITEMS_MAX, or one value alone, read
+ * as it is. Pure.
+ *
+ * @param string $count the box's count setting
+ * @param string $name  the box's name
+ * @return string
+ */
+function ws_flow_loop_count_problem($count, $name)
+{
+    $count = trim((string) $count);
+
+    if ($count === '') {
+        return lang(array('string' => 'The box {var:1} needs the number of times it repeats.', 'vars' => $name));
+    }
+
+    if (ws_step_value_has_fallback($count)) {
+        return lang(array('string' => 'The count of {var:1} cannot have a “When empty, write” text: remove it, the count is read as it is.', 'vars' => $name));
+    }
+
+    if (ws_step_value_single($count)) {
+        return '';
+    }
+
+    if (!ws_flow_loop_count_items($count)['ok']) {
+        return lang(array('string' => 'The box {var:1} repeats a whole number of times from 1 to {var:2}, or as many as one value says.', 'vars' => array($name, WS_FLOW_LOOP_ITEMS_MAX)));
+    }
+
+    return '';
 }
 
 /**
@@ -268,7 +344,9 @@ function ws_flow_loop_problems($graph, $nodes, $names = null)
         }
 
         if ((string) $node['kind'] === 'for_each') {
-            $refused = ws_flow_loop_list_problem((string) $node['config']['list'], $name($id));
+            $refused = (ws_flow_loop_source_key($node['config']) === 'count')
+                ? ws_flow_loop_count_problem((string) ($node['config']['count'] ?? ''), $name($id))
+                : ws_flow_loop_list_problem((string) $node['config']['list'], $name($id));
 
             if ($refused !== '') {
                 $problems[] = ws_flow_problem('bad_config', (string) $id, null, $refused);
@@ -358,9 +436,12 @@ function ws_flow_loop_problems($graph, $nodes, $names = null)
     }
 
     // A value of the body, or of the current item, has no meaning outside
-    // its loop: the End box gives what the items gave.
+    // its loop: the End box gives what the items gave. A value box takes the
+    // loop of the boxes reading it (ws_flow_loop_pure_of()).
+    $pure = ws_flow_loop_pure_of($nodes, $loops);
+
     foreach ($nodes as $id => $node) {
-        $own = ws_flow_loop_of($loops, $id);
+        $own = $pure[(string) $id] ?? ws_flow_loop_of($loops, $id);
 
         foreach (ws_flow_node_texts($node) as $text) {
             if (!preg_match_all(WS_STEP_VALUE_PATTERN, (string) $text, $found, PREG_SET_ORDER)) {
@@ -389,14 +470,103 @@ function ws_flow_loop_problems($graph, $nodes, $names = null)
 }
 
 /**
- * The most boxes a run of a graph can start: each box that runs once (not
- * the start, not a value box, which never runs), and each box of a loop's
- * body once per item, up to WS_FLOW_LOOP_ITEMS_MAX items. A box behind a
- * condition counts as if it ran. Pure.
+ * The loop each value box (constants, derived value) counts as in: a value
+ * box never runs, it is worked out at the pass of the box reading it
+ * (ws_step_run_values()), so it is in the loop whose body holds every box
+ * that reads it, directly or through other value boxes; read inside and
+ * outside a loop, in two loops, or by nothing, it is in none (''), and a
+ * value of a body it reads is refused there as from any box outside. Pure.
  *
  * @param array $nodes node id => box
  * @param array $loops ws_flow_loops()
- * @return array total, loops (for_each id => boxes its items can start)
+ * @return array value box id => loop id ('' for none)
+ */
+function ws_flow_loop_pure_of($nodes, $loops)
+{
+    $kinds = ws_flow_kinds();
+    $readers = array();
+    $out = array();
+
+    foreach ($nodes as $id => $node) {
+        if (!empty($kinds[(string) $node['kind']]['pure'])) {
+            $out[(string) $id] = '';
+            $readers[(string) $id] = array();
+        }
+    }
+
+    if (empty($out)) {
+        return array();
+    }
+
+    foreach ($nodes as $id => $node) {
+        foreach (ws_flow_node_texts($node) as $text) {
+            if (preg_match_all(WS_STEP_VALUE_PATTERN, (string) $text, $found, PREG_SET_ORDER)) {
+                foreach ($found as $match) {
+                    if (isset($readers[(string) $match[1]]) && ((string) $match[1] !== (string) $id)) {
+                        $readers[(string) $match[1]][(string) $id] = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // A value box read only by value boxes takes their loop once theirs is
+    // known: as many rounds as there are value boxes settle every chain.
+    for ($round = 0; $round <= count($out); $round++) {
+        $changed = false;
+
+        foreach ($readers as $id => $by) {
+            $seen = array();
+
+            foreach (array_keys($by) as $reader) {
+                $seen[array_key_exists($reader, $out) ? $out[$reader] : ws_flow_loop_of($loops, $reader)] = true;
+            }
+
+            $loop = ((count($seen) === 1) && (key($seen) !== '')) ? (string) key($seen) : '';
+
+            if ($loop !== $out[$id]) {
+                $out[$id] = $loop;
+                $changed = true;
+            }
+        }
+
+        if (!$changed) {
+            break;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The most items a For each box can take: a count typed as a whole number
+ * in Repeat N times mode is that number (at most WS_FLOW_LOOP_ITEMS_MAX);
+ * a list, or a count read from a value, may be as long as the cap. Pure.
+ *
+ * @param array $config the For each box's settings
+ * @return int
+ */
+function ws_flow_loop_items_most($config)
+{
+    $count = trim((string) ($config['count'] ?? ''));
+
+    if ((($config['mode'] ?? '') === 'count') && preg_match('/^[1-9][0-9]*$/', $count)) {
+        return min((int) $count, WS_FLOW_LOOP_ITEMS_MAX);
+    }
+
+    return WS_FLOW_LOOP_ITEMS_MAX;
+}
+
+/**
+ * The most boxes a run of a graph can start: each box that runs once (not
+ * the start, not a value box, which never runs), and each box of a loop's
+ * body once per item, up to the most items its For each box takes
+ * (ws_flow_loop_items_most()). A box behind a condition counts as if it
+ * ran. Pure.
+ *
+ * @param array $nodes node id => box
+ * @param array $loops ws_flow_loops()
+ * @return array total, loops (for_each id => boxes, items, runs)
  */
 function ws_flow_loop_box_runs($nodes, $loops)
 {
@@ -419,8 +589,9 @@ function ws_flow_loop_box_runs($nodes, $loops)
             }
         }
 
-        $out['loops'][(string) $id] = array('boxes' => $boxes, 'runs' => $boxes * WS_FLOW_LOOP_ITEMS_MAX);
-        $out['total'] += $boxes * WS_FLOW_LOOP_ITEMS_MAX;
+        $items = ws_flow_loop_items_most($nodes[$id]['config'] ?? array());
+        $out['loops'][(string) $id] = array('boxes' => $boxes, 'items' => $items, 'runs' => $boxes * $items);
+        $out['total'] += $boxes * $items;
     }
 
     foreach (array_keys($nodes) as $id) {
@@ -458,7 +629,7 @@ function ws_flow_loop_size_warnings($nodes, $loops, $name)
         if ($loop['boxes'] > 0) {
             $warnings[] = ws_flow_problem('loop_size', (string) $id, null, lang(array(
                 'string' => 'The loop of {var:1} can run {var:2} boxes ({var:3} items × {var:4} boxes in it); with the rest of the flow a run can pass its limit of {var:5} boxes, and a long list then fails on its last items.',
-                'vars'   => array($name($id), $loop['runs'], WS_FLOW_LOOP_ITEMS_MAX, $loop['boxes'], $limit),
+                'vars'   => array($name($id), $loop['runs'], $loop['items'], $loop['boxes'], $limit),
             )), true);
         }
     }
@@ -575,6 +746,32 @@ function ws_flow_loop_try($graph, $node, $values, $chosen)
     $kind = (string) ($node['kind'] ?? '');
     $config = (array) ($node['config'] ?? array());
     $name = ws_flow_box_name($node);
+
+    if (($kind === 'for_each') && (ws_flow_loop_source_key($config) === 'count')) {
+        $refused = ws_flow_loop_count_problem((string) ($config['count'] ?? ''), $name);
+
+        if ($refused !== '') {
+            return array('said' => $refused, 'outcome' => '');
+        }
+
+        $text = trim((string) $config['count']);
+
+        if (preg_match(WS_STEP_VALUE_PATTERN, $text, $match) === 1) {
+            $text = (string) ($values[ws_step_value_box($match)][$match[2]] ?? '');
+
+            if ($text === '') {
+                return array('said' => $chosen ? lang('The run chosen gave no value for the count.') : lang('Choose a run to read the count with the values it gave.'), 'outcome' => '');
+            }
+        }
+
+        $list = ws_flow_loop_count_items($text);
+
+        if (!$list['ok']) {
+            return array('said' => $list['error'], 'outcome' => 'failed');
+        }
+
+        return array('said' => lang(array('string' => 'Repeats {var:1} times.', 'vars' => count($list['items']))), 'outcome' => 'each');
+    }
 
     if ($kind === 'for_each') {
         $refused = ws_flow_loop_list_problem((string) ($config['list'] ?? ''), $name);
@@ -902,6 +1099,42 @@ function ws_flow_loop_outer($graph, $loops, $body)
 }
 
 /**
+ * The boxes skipped behind a box of a run at one pass, as
+ * ws_flow_skipped_behind() finds them, read the way the walk wrote them: at
+ * pass 0 on the graph outside the loops, where a For each box leads to its
+ * End box (ws_flow_loop_outer()), so a For each box tried again, or a box
+ * before it, takes back its End box and what follows it; inside a body on
+ * that item's rows alone. Pure.
+ *
+ * @param array   $graph   ws_flow_graph_normalize()
+ * @param array[] $rows    the run's steps: node_id, pass, status, outcome; oldest first
+ * @param string  $node_id the box tried again or skipped
+ * @param int     $pass    its pass
+ * @return string[]
+ */
+function ws_flow_loop_skipped_behind($graph, $rows, $node_id, $pass)
+{
+    $pass = (int) $pass;
+    $loops = ws_flow_loops($graph);
+
+    if (($pass === 0) && !empty($loops)) {
+        $body = array();
+
+        foreach ($loops as $loop) {
+            $body += array_fill_keys($loop['body'], true);
+        }
+
+        $graph = ws_flow_loop_outer($graph, $loops, $body);
+    }
+
+    $same = array_filter((array) $rows, function ($row) use ($pass) {
+        return (int) ($row['pass'] ?? 0) === $pass;
+    });
+
+    return ws_flow_skipped_behind($graph, ws_flow_step_states($same), (string) $node_id);
+}
+
+/**
  * How a run of a graph with loops stands, as ws_flow_run_state() says it: a
  * box of a body that failed fails its item, not the run (its End box counts
  * it), so only a failed box outside the loops fails the run. Pure.
@@ -1051,13 +1284,15 @@ function ws_flow_loop_start_run($run, $step, $node, $owner)
 {
     $graph = ws_flow_run_graph($run);
     $values = ws_step_run_values($run, $graph, $owner, ws_flow_run_context($run), $step);
-    $text = null;
+    $count = ws_flow_loop_source_key($node['config']) === 'count';
+    $source = trim((string) ($count ? ($node['config']['count'] ?? '') : $node['config']['list']));
+    $text = ($count && (preg_match(WS_STEP_VALUE_PATTERN, $source) !== 1)) ? $source : null;
 
-    if (preg_match(WS_STEP_VALUE_PATTERN, (string) $node['config']['list'], $match) === 1) {
+    if (preg_match(WS_STEP_VALUE_PATTERN, $source, $match) === 1) {
         $text = $values[ws_step_value_box($match)][$match[2]] ?? null;
     }
 
-    $list = ws_flow_loop_items($text, (string) $node['config']['path']);
+    $list = $count ? ws_flow_loop_count_items($text) : ws_flow_loop_items($text, (string) $node['config']['path']);
 
     if (!$list['ok']) {
         $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed', false);
@@ -1065,10 +1300,10 @@ function ws_flow_loop_start_run($run, $step, $node, $owner)
         return;
     }
 
-    $count = count($list['items']);
+    $said = $count ? lang(array('string' => 'Repeats {var:1} times.', 'vars' => count($list['items'])))
+        : lang(array('string' => 'The list holds {var:1} items.', 'vars' => count($list['items'])));
 
-    ws_flow_step_settle($step, 'running', 'done', 'each', lang(array('string' => 'The list holds {var:1} items.', 'vars' => $count)),
-        array('count' => $count, 'items' => $list['json']));
+    ws_flow_step_settle($step, 'running', 'done', 'each', $said, array('count' => count($list['items']), 'items' => $list['json']));
 }
 
 /**

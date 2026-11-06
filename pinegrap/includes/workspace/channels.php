@@ -672,6 +672,21 @@ function ws_channel_make_private($viewer, $channel)
 }
 
 /**
+ * May the archive switch archive the channel or bring it back? Not a
+ * discussion: it is concluded (ws_thread_close()), read only until its purge
+ * deletes it, and never opened again. Bringing its channel row back would let
+ * its people write in a discussion whose purge still waits; archiving it
+ * would close it without concluding it, so it would never be purged.
+ *
+ * @param array|null $channel
+ * @return bool
+ */
+function ws_channel_archivable($channel)
+{
+    return is_array($channel) && ((string) ($channel['kind'] ?? '') !== 'thread');
+}
+
+/**
  * Archives a channel, or brings it back.
  *
  * @param array $viewer
@@ -683,6 +698,10 @@ function ws_channel_archive($viewer, $channel, $archive = true)
 {
     if (!ws_can_manage_channel($viewer, $channel)) {
         return array('ok' => false, 'error' => lang('Only the owner of the channel can change it.'));
+    }
+
+    if (!ws_channel_archivable($channel)) {
+        return array('ok' => false, 'error' => lang('A discussion is concluded, not archived.'));
     }
 
     if (!$archive && ws_channel_name_taken($channel['name'], $channel['id'])) {

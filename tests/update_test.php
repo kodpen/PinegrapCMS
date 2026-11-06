@@ -173,3 +173,41 @@ function test_update_check_source_order()
 	pg_assert_false(strpos($screen, 'log_activity(lang(\'software update check') !== false, 'the screen does not log the check a second time');
 	pg_assert_contains('h($new_version)', $screen, 'the server version is escaped');
 }
+
+// Whether the update server's version is newer than the installed one. A
+// version of fewer than three parts (the 2026 release, a cut-short answer)
+// is compared as well, without a warning; anything that is not digits and
+// dots offers nothing.
+function test_update_version_newer()
+{
+	pg_assert_true(pg_update_version_newer('2026.11.1', '2026.11.0'), 'patch');
+	pg_assert_true(pg_update_version_newer(' 2026.11.0 ', '2026.4.10'), 'month 11 after month 4');
+	pg_assert_false(pg_update_version_newer('2026.4.10', '2026.11.0'), 'older');
+	pg_assert_false(pg_update_version_newer('2026.11.0', '2026.11.0'), 'same');
+	pg_assert_true(pg_update_version_newer('2026.4.8', '2026'), 'from the 2026 release');
+	pg_assert_false(pg_update_version_newer('2026', '2026.4.8'), 'a two-digit answer is older');
+	pg_assert_false(pg_update_version_newer('', '2026.4.8'), 'no version');
+	pg_assert_false(pg_update_version_newer('<html>', '2026.4.8'), 'not a version');
+	pg_assert_false(pg_update_version_newer('2026.11.0-beta1', '2026.4.8'), 'a tag is not a version');
+	pg_assert_false(pg_update_version_newer(array('2027.1.0'), '2026.4.8'), 'a list is not a version');
+}
+
+// The update steps' check refuses before asking the server while update
+// checks are off in data/config.php, on the api2 path as on the Kodpen API
+// path, and both version checks compare through pg_update_version_newer().
+function test_update_check_step_source()
+{
+	$steps = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/software.php');
+	$checks_off = strpos($steps, "pg_update_check_error_text(array('error' => 'checks_off'))");
+	$api2_ask = strpos($steps, '$server = pg_update_server_version();');
+
+	pg_assert_true($checks_off !== false, 'the check step names the checks-off reason');
+	pg_assert_true(($api2_ask !== false) && ($checks_off < $api2_ask), 'refused before the api2 request');
+	pg_assert_contains('pg_update_version_newer($server[\'version\'], VERSION)', $steps, 'the check step compares with the helper');
+	pg_assert_false(strpos($steps, '$new_version_parts') !== false, 'no hand-made comparison in the steps');
+
+	$daily = (string) file_get_contents(PG_FUNCTIONS_DIR . '/software_update_check.php');
+
+	pg_assert_contains('pg_update_version_newer(', $daily, 'the daily check compares with the helper');
+	pg_assert_false(strpos($daily, '$new_version_parts') !== false, 'no hand-made comparison in the daily check');
+}

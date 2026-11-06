@@ -91,11 +91,42 @@ $booking_separators = pg_number_separators();
 $booking_currency = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
 $booking_today = date('Y-m-d');
 
+// The deposit boxes come with the 11.0.169 columns and only while the store
+// is on: the deposit is charged as an order.
+$booking_deposit_on = defined('ECOMMERCE') && (ECOMMERCE == true)
+    && function_exists('pg_booking_deposit_ready') && pg_booking_deposit_ready();
+$booking_deposit_products = $booking_deposit_on ? pg_booking_settings_deposit_products() : array();
+
+// The deposit box and the product its order line names.
+$booking_deposit_fields = function ($name, $id, $service) use ($booking_separators, $booking_currency, $booking_deposit_products) {
+
+    $product_id = (int) ($service['deposit_product_id'] ?? 0);
+    $options = '<option value="0">' . h(lang('No product')) . '</option>';
+
+    foreach ($booking_deposit_products as $option_id => $option_name) {
+        $options .= '<option value="' . (int) $option_id . '"' . (($option_id === $product_id) ? ' selected="selected"' : '') . '>' . h($option_name) . '</option>';
+    }
+
+    return '
+                                <div class="pg-f-xs">
+                                    <label for="' . $id . '_deposit" class="form-label">' . lang('Deposit') . '</label>
+                                    <label class="form-control form-adorn form-adorn-end">
+                                        <span class="form-adorn-text" aria-hidden="true">' . h($booking_currency) . '</span>
+                                        <input type="text" name="' . $name . '[deposit]" id="' . $id . '_deposit" class="form-ghost" value="' . h(pg_booking_settings_price_text((int) ($service['deposit'] ?? 0), $booking_separators)) . '" maxlength="16" inputmode="decimal" style="text-align: right;"/>
+                                    </label>
+                                </div>
+                                <div class="pg-f-md">
+                                    <label for="' . $id . '_deposit_product" class="form-label">' . lang('Deposit product') . '</label>
+                                    <select name="' . $name . '[deposit_product]" id="' . $id . '_deposit_product" class="form-control">' . $options . '</select>
+                                    <div class="form-text">' . lang('The deposit is paid in advance as a one-line order of this product. A deposit of 0 asks for none.') . '</div>
+                                </div>';
+};
+
 // ── Services ──
 // One block per service and an empty one at the end; a name typed there
 // adds a service on save. A service is never deleted here: bookings point at
 // it, so one that is no longer offered is switched off.
-$booking_service_block = function ($key, $service, $legend) use ($booking_separators, $booking_currency) {
+$booking_service_block = function ($key, $service, $legend) use ($booking_separators, $booking_currency, $booking_deposit_on, $booking_deposit_fields) {
 
     $name = 'booking_service[' . $key . ']';
     $id = 'booking_service_' . $key;
@@ -136,7 +167,7 @@ $booking_service_block = function ($key, $service, $legend) use ($booking_separa
                                         <span class="form-adorn-text" aria-hidden="true">' . h($booking_currency) . '</span>
                                         <input type="text" name="' . $name . '[price]" id="' . $id . '_price" class="form-ghost" value="' . h(pg_booking_settings_price_text($service['price'], $booking_separators)) . '" maxlength="16" inputmode="decimal" style="text-align: right;"/>
                                     </label>
-                                </div>
+                                </div>' . ($booking_deposit_on ? $booking_deposit_fields($name, $id, $service) : '') . '
                                 <div class="pg-f-xs">
                                     <label for="' . $id . '_order" class="form-label">' . lang('Display order') . '</label>
                                     <input type="number" name="' . $name . '[order]" id="' . $id . '_order" class="form-control" value="' . (int) $service['sort_order'] . '" min="0" max="65535" inputmode="numeric"/>
@@ -170,7 +201,7 @@ foreach ($booking_services as $service_id => $service) {
 
 $output_booking_services .= $booking_service_block('new', array(
     'name' => '', 'description' => '', 'length_minutes' => 30, 'buffer_before' => 0, 'buffer_after' => 0,
-    'price' => 0, 'enabled' => 1, 'sort_order' => $booking_next_order,
+    'price' => 0, 'deposit' => 0, 'deposit_product_id' => 0, 'enabled' => 1, 'sort_order' => $booking_next_order,
 ), lang('New service'));
 
 $output_booking_services .= '

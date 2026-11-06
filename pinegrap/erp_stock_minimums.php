@@ -68,9 +68,16 @@ $quick_edit = (!$readonly && $ready) ? erp_stock_minimum_edit_columns() : array(
 // keyed the way the answer names them.
 $list_rows = array();
 
+// Read in the status column: how many products the list holds and how many
+// of them have a minimum; the low count is the site-wide one the filter shows.
+$summary_products = 0;
+$summary_set = 0;
+
 foreach ($rows as $row) {
     $product_id = (int) $row['product_id'];
     $minimum = (int) $row['min_quantity'];
+    $summary_products++;
+    $summary_set += ($minimum > 0) ? 1 : 0;
     $enabled = ((string) $row['enabled'] === '1');
     $label = erp_stock_product_label($row);
     $sku = trim((string) $row['product_sku']);
@@ -121,10 +128,12 @@ pg_page_shell([
 ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-        <div class="col-12 2xl:col-9">
+        <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+        </div>
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . ($can_order ? '<form method="get" action="add_erp_purchase_order.php" id="erp_order_form" class="d-none"></form>' : '') . '
@@ -143,6 +152,24 @@ pg_page_shell([
                 ' . ($list_rows ? pg_list_table_html($list['source'], $list['page'], lang('Minimum stock'), $can_order ? '<button type="submit" form="erp_order_form" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('Purchase order for the selected') . '</button>' : '')
                     : '<p class="text-center fg-secondary py-7 mb-0">' . (($show === 'low') ? lang('No product on sale is at or below its minimum.') : lang('No product that tracks stock matches.')) . '</p>') . '
                 <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'Products that track stock, at most {var:1} at a time; search to narrow the list. Empty is no minimum. The stock is the store\'s own count, the one orders take from.', 'vars' => 500))). '</div>
+            </div>
+        </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky my-7" style="top:3.3rem;">
+                <div class="card">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                    <div class="card-body">
+                        <dl class="row small mb-0">
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Products')) . '</dt>
+                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_products, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('With a minimum')) . '</dt>
+                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_set, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('At or below the minimum')) . '</dt>
+                            <dd class="col-4 text-end mb-0' . ($low_count ? ' fg-danger fw-semibold' : '') . '">' . pg_format_number($low_count, 0) . '</dd>
+                        </dl>
+                        ' . ($can_order ? '<div class="form-text mt-5">' . h(lang('Tick products in the list to open a purchase order with what each needs to get back to its minimum.')) . '</div>' : '') . '
+                    </div>
+                </div>
             </div>
         </div>
     </div>

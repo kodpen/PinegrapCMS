@@ -141,7 +141,7 @@ function test_returns_events_workspace_trigger()
 	pg_assert_true(in_array('order.return.requested', $kept, true), 'the Workspace keeps order.return.requested');
 
 	foreach (array('order.return.approved', 'order.return.received', 'order.return.refunded') as $event) {
-		pg_assert_false(in_array($event, $kept, true), $event . ' starts nothing, so it is not kept');
+		pg_assert_true(in_array($event, $kept, true), $event . ' is kept: a flow may start on it');
 	}
 
 	$payload = pg_return_event_payload(returns_events_test_row(), '99001');

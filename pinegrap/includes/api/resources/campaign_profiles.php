@@ -42,7 +42,9 @@ function api_campaign_profile_actions() {
 	return array_merge(
 		array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'),
 		pg_email_campaign_profile_commerce_actions(),
-		pg_email_campaign_profile_booking_actions()
+		pg_email_campaign_profile_booking_actions(),
+		pg_email_campaign_profile_group_actions(),
+		pg_email_campaign_profile_credit_actions()
 	);
 
 }
@@ -403,6 +405,18 @@ function api_campaign_profile_prepare($params, $row) {
 	if (in_array($values['action'], pg_email_campaign_profile_booking_actions(), true) && !(function_exists('pg_booking_ready') && pg_booking_ready())) {
 
 		api_fail(503, 'service_unavailable', lang('Booking actions wait for the database update that adds bookings.'), 'action');
+
+	}
+
+	if (in_array($values['action'], pg_email_campaign_profile_group_actions(), true) && !pg_email_campaign_profile_group_action_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The contact group action waits for the database update that adds it.'), 'action');
+
+	}
+
+	if (in_array($values['action'], pg_email_campaign_profile_credit_actions(), true) && !pg_credit_mail_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The store credit actions wait for the database update that adds them.'), 'action');
 
 	}
 

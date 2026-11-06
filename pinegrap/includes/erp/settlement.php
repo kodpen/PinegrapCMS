@@ -103,6 +103,64 @@ function erp_invoice_open_amount($invoice)
 }
 
 /**
+ * Whether a stored date column holds no date.
+ *
+ * @param mixed $date
+ * @return bool
+ */
+function erp_invoice_date_empty($date)
+{
+    $date = (string) $date;
+
+    return ($date === '') || ($date === '0000-00-00');
+}
+
+/**
+ * The payment date an invoice should store after its paid figure was worked
+ * out again, or '' when the stored one stays.
+ *
+ * The day the invoice was paid off is the day of the receipt that closed it,
+ * filled in only when the document does not already state one. An invoice
+ * that is no longer paid (its closing receipt was cancelled) loses a date
+ * that a receipt gave it, so the receipt that closes it next dates it again;
+ * kept, the cancelled receipt's date would stay on the document, the API and
+ * the e-document for good. An internet sale keeps its date, which the gateway
+ * gave and no receipt did. A cancelled or draft invoice keeps its status, so
+ * there only an invoice left with no money at all loses its date.
+ *
+ * @param string $status            The status just worked out
+ * @param int    $paid              The allocated total, minor units
+ * @param string $stored            The stored payment_date
+ * @param int    $is_internet_sale
+ * @param string $closing_date      The latest allocation's doc_date ('' when not looked up)
+ * @return string  'Y-m-d', '0000-00-00' to clear it, or '' to keep the stored one
+ */
+function erp_invoice_payment_date_next($status, $paid, $stored, $is_internet_sale, $closing_date)
+{
+    $status = (string) $status;
+
+    if ($status === 'paid') {
+        if (erp_invoice_date_empty($stored) && !erp_invoice_date_empty($closing_date)) {
+            return (string) $closing_date;
+        }
+
+        return '';
+    }
+
+    if (((int) $is_internet_sale !== 0) || erp_invoice_date_empty($stored)) {
+        return '';
+    }
+
+    $unpaid = (($status === 'issued') || ($status === 'partially_paid'));
+
+    if ($unpaid || ((int) $paid <= 0)) {
+        return '0000-00-00';
+    }
+
+    return '';
+}
+
+/**
  * Work the paid figure out again from the allocations, and set the status to match.
  *
  * Derived rather than incremented, like the balances: a counter that is only ever
@@ -154,23 +212,14 @@ function erp_invoice_refresh_paid($invoice_id)
         }
     }
 
-    // The day the invoice was paid off is the day of the receipt that closed
-    // it. Only filled in when the document does not already state one: an
-    // internet sale carries the gateway's date from the order.
-    $payment_date = '';
-    if (($status === 'paid') && ((string) ($invoice['payment_date'] ?? '0000-00-00') === '0000-00-00')) {
-        $payment_date = (string) db_value("SELECT COALESCE(MAX(doc_date), '') FROM erp_settlements
+    $closing_date = '';
+    if (($status === 'paid') && erp_invoice_date_empty($invoice['payment_date'] ?? '')) {
+        $closing_date = (string) db_value("SELECT COALESCE(MAX(doc_date), '') FROM erp_settlements
             WHERE invoice_id = '" . $invoice_id . "'");
     }
 
-    // The date came from a receipt, and the receipt is gone: nothing was
-    // collected any more, so the invoice does not say when it was paid. An
-    // internet sale keeps its date, which the gateway gave and no receipt
-    // did. The order's own paid mark is not touched either way.
-    if (($paid <= 0) && ((int) ($invoice['is_internet_sale'] ?? 0) === 0)
-        && ((string) ($invoice['payment_date'] ?? '0000-00-00') !== '0000-00-00')) {
-        $payment_date = '0000-00-00';
-    }
+    $payment_date = erp_invoice_payment_date_next($status, $paid,
+        (string) ($invoice['payment_date'] ?? ''), (int) ($invoice['is_internet_sale'] ?? 0), $closing_date);
 
     $updated = (erp_query("UPDATE erp_invoices
         SET paid_total = '" . $paid . "',
@@ -614,6 +663,51 @@ function erp_settlement_after_reopen($invoice_id, $currency, $created_by = 0)
 }
 
 /**
+ * Why an allocation of $amount from a receipt to an invoice cannot be
+ * written now, or '' when it can.
+ *
+ * Read under the locks erp_settlement_allocate() takes, so the figures are
+ * the committed ones: the invoice still open, never more than it is short
+ * of, never more than the receipt has left unallocated. The unique pair
+ * means an allocation to this invoice from this receipt replaces the earlier
+ * figure, so what it already holds counts as free on both sides.
+ *
+ * @param array $invoice     The invoice row, read with its lock
+ * @param int   $txn_id      The receipt's ledger row
+ * @param int   $amount      Kurus
+ * @param bool  $is_payment  A payment rather than a collection, for the wording
+ * @return string
+ */
+function erp_settlement_amount_refusal($invoice, $txn_id, $amount, $is_payment)
+{
+    $txn_id = (int) $txn_id;
+    $invoice_id = (int) $invoice['id'];
+
+    if (((string) $invoice['doc_type'] !== 'invoice') || !in_array((string) $invoice['status'], array('issued', 'partially_paid'), true)) {
+        return lang('That invoice is already closed.');
+    }
+
+    $held = (int) db_value("SELECT COALESCE(SUM(amount), 0) FROM erp_settlements
+        WHERE account_txn_id = '" . $txn_id . "' AND invoice_id = '" . $invoice_id . "'");
+
+    $open = erp_invoice_open_amount($invoice) + $held;
+
+    if ($open <= 0) {
+        return lang('That invoice is already closed.');
+    }
+
+    if ((int) $amount > $open) {
+        return lang('That amount is more than the invoice is short of.');
+    }
+
+    if ((int) $amount > erp_txn_unallocated($txn_id) + $held) {
+        return $is_payment ? lang('That amount is more than is unallocated on this payment.') : lang('That amount is more than is unallocated on this receipt.');
+    }
+
+    return '';
+}
+
+/**
  * Tie part of a receipt to an invoice, after the fact.
  *
  * Everything erp_post_receipt() checks when it allocates at recording time is
@@ -692,28 +786,29 @@ function erp_settlement_allocate($data)
         )));
     }
 
-    // The unique pair means an allocation to this invoice from this receipt
-    // replaces the earlier figure, so what it already holds counts as free
-    // on both sides: on the receipt and on the invoice.
-    $held = (int) db_value("SELECT COALESCE(SUM(amount), 0) FROM erp_settlements
-        WHERE account_txn_id = '" . $txn_id . "' AND invoice_id = '" . $invoice_id . "'");
-
-    $open = erp_invoice_open_amount($invoice) + $held;
-
-    if ($open <= 0) {
-        return $fail(lang('That invoice is already closed.'));
-    }
-
-    if ($amount > $open) {
-        return $fail(lang('That amount is more than the invoice is short of.'));
-    }
-
-    if ($amount > erp_txn_unallocated($txn_id) + $held) {
-        return $fail($is_payment ? lang('That amount is more than is unallocated on this payment.') : lang('That amount is more than is unallocated on this receipt.'));
-    }
-
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
+    }
+
+    // Two allocations at the same moment (two tabs, the receipt screen and
+    // the API) would both read the same open figures and together allocate
+    // more than the invoice is short of or the receipt holds. The receipt's
+    // ledger row and then the invoice are locked, in that fixed order (the
+    // order erp_post_receipt() writes them in), before anything else is read
+    // in the transaction, so the second request waits for the first and
+    // every figure below is read after its commit.
+    $locked_txn = db_item("SELECT id FROM erp_account_transactions WHERE id = '" . $txn_id . "' LIMIT 1 FOR UPDATE");
+    $invoice = db_item("SELECT id, account_id, direction, doc_type, currency, full_number, grand_total, grand_total_base, paid_total, status
+        FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1 FOR UPDATE");
+
+    if (!is_array($locked_txn) || !is_array($invoice)) {
+        erp_tx_rollback();
+        return $fail(is_array($invoice) ? lang('The receipt could not be found.') : lang('The invoice could not be found.'));
+    }
+
+    if (($refusal = erp_settlement_amount_refusal($invoice, $txn_id, $amount, $is_payment)) !== '') {
+        erp_tx_rollback();
+        return $fail($refusal);
     }
 
     $settled = erp_settle(array(

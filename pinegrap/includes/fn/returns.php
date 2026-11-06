@@ -678,12 +678,21 @@ function pg_return_goods_left($has_tracking, $shipped_quantity, $ship_date, $tod
 /**
  * How many of a line may still be asked for.
  *
- * @param int $quantity the line's quantity
- * @param int $held     the quantity open returns already hold
+ * A gift card line has nothing to ask for: a shippable gift card product
+ * travels with a recipient like goods, but the card it issued stays
+ * spendable, so a refund of the line would pay its value out a second time.
+ *
+ * @param int  $quantity  the line's quantity
+ * @param int  $held      the quantity open returns already hold
+ * @param bool $gift_card the line is a gift card product
  * @return int
  */
-function pg_return_returnable($quantity, $held)
+function pg_return_returnable($quantity, $held, $gift_card = false)
 {
+    if ($gift_card) {
+        return 0;
+    }
+
     return max(0, (int) $quantity - (int) $held);
 }
 
@@ -695,7 +704,7 @@ function pg_return_returnable($quantity, $held)
  * of the delivery's, none above what is left on it.
  *
  * @param mixed $requested order item id => quantity
- * @param array $lines     order item id => name, returnable
+ * @param array $lines     order item id => name, returnable, gift_card
  * @return array ok, error, lines (order item id => quantity)
  */
 function pg_return_check_lines($requested, $lines)
@@ -738,12 +747,20 @@ function pg_return_check_lines($requested, $lines)
             return $refuse(lang('An item is not part of this delivery.'));
         }
 
+        $name = isset($lines[$id]['name']) ? (string) $lines[$id]['name'] : '#' . $id;
+
+        if (!empty($lines[$id]['gift_card'])) {
+            return $refuse(lang(array(
+                'string' => '{var:1} is a gift card and cannot be returned.',
+                'vars'   => array($name))));
+        }
+
         $returnable = isset($lines[$id]['returnable']) ? (int) $lines[$id]['returnable'] : 0;
 
         if ($count > $returnable) {
             return $refuse(lang(array(
                 'string' => '{var:1}: at most {var:2} can be returned.',
-                'vars'   => array(isset($lines[$id]['name']) ? (string) $lines[$id]['name'] : '#' . $id, $returnable))));
+                'vars'   => array($name, $returnable))));
         }
 
         $out[$id] = $count;
@@ -881,7 +898,8 @@ function pg_return_held($order_id)
  * @param int $order_id
  * @param int $ship_to_id one delivery only, or 0 for all
  * @return array order item id => id, ship_to_id, product_id, name, code,
- *               quantity, price, shipped_quantity, held, returnable
+ *               quantity, price, shipped_quantity, held, gift_card,
+ *               returnable (0 on a gift card line)
  */
 function pg_return_order_lines($order_id, $ship_to_id = 0)
 {
@@ -897,7 +915,8 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
             order_items.quantity,
             order_items.price,
             order_items.shipped_quantity,
-            products.short_description
+            products.short_description,
+            products.gift_card
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
         WHERE
@@ -914,6 +933,7 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
         $id = (int) $row['id'];
         $name = trim((string) $row['short_description']);
         $line_held = isset($held[$id]) ? $held[$id] : 0;
+        $gift_card = ((int) $row['gift_card'] === 1);
 
         $lines[$id] = array(
             'id'               => $id,
@@ -925,7 +945,8 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
             'price'            => (int) $row['price'],
             'shipped_quantity' => (int) $row['shipped_quantity'],
             'held'             => $line_held,
-            'returnable'       => pg_return_returnable($row['quantity'], $line_held),
+            'gift_card'        => $gift_card,
+            'returnable'       => pg_return_returnable($row['quantity'], $line_held, $gift_card),
         );
     }
 
@@ -3889,6 +3910,22 @@ function pg_return_refund_plan($return)
 }
 
 /**
+ * Can a return of an order in this status be refunded: only while the order
+ * is complete or exported, the statuses a return is created on
+ * (pg_return_create_check()). A cancelled order's money goes back with the
+ * cancellation (the payment's void, pg_order_cancel_refund_owed()), and
+ * orders.refunded_amount does not show it: a refund of its return would pay
+ * the same money a second time.
+ *
+ * @param string $status orders.status
+ * @return bool
+ */
+function pg_return_refund_order_open($status)
+{
+    return in_array((string) $status, array('complete', 'exported'), true);
+}
+
+/**
  * Gives the money of a received return back and marks it refunded.
  *
  * Through the payment's driver ('driver': the one that took the order's
@@ -3908,16 +3945,20 @@ function pg_return_refund_plan($return)
  * The caller has checked the person's commerce rights.
  *
  * @param int   $return_id
- * @param array $options amount (minor units), method (driver or manual),
+ * @param array $options amount (minor units), method (driver, manual or credit),
  *                       reference (of a manual refund), log_user (the name
  *                       the activity log lines carry; '' is the signed-in
  *                       person, as on the panel)
  * @param int   $user_id
  * @return array ok, error, code (why it was refused: not_installed,
- *               not_found, busy, not_received, no_driver, amount,
- *               amount_exceeds, changed, refused, unclear; '' when ok),
+ *               not_found, busy, not_received, order_cancelled (the
+ *               order is no longer complete or exported), no_driver, amount,
+ *               amount_exceeds, changed, refused, unclear, no_customer
+ *               (no account for store credit), credit (no card written);
+ *               '' when ok),
  *               amount, method, mailed, erp (pg_return_refund_plan()'s),
- *               unclear (the driver's answer did not say; ok is false)
+ *               unclear (the driver's answer did not say; ok is false),
+ *               credit (what the store credit card holds, minor units)
  */
 function pg_return_refund($return_id, $options, $user_id = 0)
 {
@@ -3937,7 +3978,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     }
 
     $options = is_array($options) ? $options : array();
-    $method = (isset($options['method']) && ($options['method'] === 'driver')) ? 'driver' : 'manual';
+    $method = (isset($options['method']) && in_array($options['method'], array('driver', 'credit'), true)) ? (string) $options['method'] : 'manual';
     $amount = isset($options['amount']) ? (int) $options['amount'] : -1;
     $lock = pg_return_lock_name($return['order_id']);
 
@@ -3966,13 +4007,27 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         return $fail(lang('The order could not be found.'), 'not_found');
     }
 
+    if (!pg_return_refund_order_open($plan['order']['status'])) {
+        $release();
+
+        return $fail(lang('The order was cancelled: its money goes back with the cancellation, not with the return.'), 'order_cancelled');
+    }
+
     if (($method === 'driver') && ($plan['driver'] === '')) {
         $release();
 
         return $fail(lang('The payment of this order cannot be refunded from here. Refund it another way and record it.'), 'no_driver');
     }
 
-    if (($amount < 0) || (($method === 'driver') && ($amount === 0))) {
+    $customer_id = (int) db_value("SELECT user_id FROM orders WHERE id = '" . (int) $return['order_id'] . "'");
+
+    if (($method === 'credit') && !pg_credit_refund_possible($customer_id)) {
+        $release();
+
+        return $fail(lang('This order has no customer account to give store credit to.'), 'no_customer');
+    }
+
+    if (($amount < 0) || (($method !== 'manual') && ($amount === 0))) {
         $release();
 
         return $fail(lang('The refund amount must be greater than 0.'), 'amount');
@@ -3996,6 +4051,29 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     $reference = pg_return_text(isset($options['reference']) ? $options['reference'] : '', 255);
     $unclear = null;
     $kept = pg_schema_has('order_returns', 'refund_method');
+    $credit = 0;
+
+    if ($method === 'credit') {
+        // The card is the refund: its id is the reference, the bonus is on
+        // the card only and only on payment money not refunded yet
+        // (plan remaining), never on what gift cards paid. No card written
+        // puts the return back to received.
+        $issued = pg_credit_refund_issue($customer_id, $amount,
+            'Refund of return request #' . (int) $return['id'] . ' of order #' . $plan['order']['order_number'], (int) $user_id,
+            min($amount, (int) $plan['remaining']));
+
+        if ($issued['card_id'] <= 0) {
+            db("UPDATE order_returns SET status = 'received', refunded_at = 0" . pg_return_touch_sql() . "
+                WHERE (id = '" . (int) $return['id'] . "') AND (status = 'refunded')");
+
+            $release();
+
+            return $fail(lang('The store credit could not be written.'), 'credit');
+        }
+
+        $reference = (string) $issued['card_id'];
+        $credit = $issued['credit'];
+    }
 
     if ($method === 'driver') {
         // A driver refund keeps only the service's own id of the refund: the
@@ -4058,7 +4136,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             VALUES (
                 '" . (int) $return['order_id'] . "',
                 '" . $amount . "',
-                '" . (($method === 'driver') ? 'return' : 'return_manual') . "',
+                '" . (($method === 'driver') ? 'return' : (($method === 'credit') ? 'return_credit' : 'return_manual')) . "',
                 '" . e($reference) . "',
                 '" . e('Return request #' . (int) $return['id'] . (($unclear !== null) ? ' (unconfirmed: no clear answer from ' . $plan['driver_label'] . ')' : '')) . "',
                 NOW())");
@@ -4089,6 +4167,19 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     }
 
     pg_credit_points_lines_refunded($return['order_id'], $returned_quantities);
+
+    // And the folder access those lines granted.
+    pg_order_folder_access_lines_refunded($return['order_id'], $returned_quantities);
+
+    // A product whose whole ordered quantity is now refunded loses that
+    // order's review from its rating (pg_review_purchase_stands_sql()).
+    $returned_products = array();
+
+    foreach ((array) $return['items'] as $item) {
+        $returned_products[] = isset($item['product_id']) ? (int) $item['product_id'] : 0;
+    }
+
+    pg_review_refresh_products($returned_products);
 
     $release();
 
@@ -4135,9 +4226,13 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     $vars = array((int) $return['id'], $plan['order']['order_number'], pg_return_money_text($amount));
 
-    log_activity(($method === 'driver')
-        ? lang(array('string' => 'Return request {var:1} of order {var:2} was refunded: {var:3}.', 'vars' => $vars))
-        : lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.', 'vars' => $vars)), $log_user);
+    if ($method === 'credit') {
+        log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was refunded as store credit: {var:3}, the card holds {var:4}.', 'vars' => array_merge($vars, array(pg_return_money_text($credit))))), $log_user);
+    } else {
+        log_activity(($method === 'driver')
+            ? lang(array('string' => 'Return request {var:1} of order {var:2} was refunded: {var:3}.', 'vars' => $vars))
+            : lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.', 'vars' => $vars)), $log_user);
+    }
 
     return array(
         'ok'     => true,
@@ -4145,9 +4240,10 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         'code'   => '',
         'amount' => $amount,
         'method' => $method,
-        'mailed' => ($amount > 0) ? pg_return_send_refund_mail($return['id'], $amount, $method) : false,
+        'mailed' => ($amount > 0) ? pg_return_send_refund_mail($return['id'], $amount, $method, $credit) : false,
         'erp'    => $plan['erp'],
         'unclear' => false,
+        'credit' => $credit,
     );
 }
 
@@ -4320,6 +4416,9 @@ function pg_return_refund_mail_body($data)
             'vars'   => array(isset($data['order_number']) ? (string) $data['order_number'] : '', isset($data['amount']) ? (string) $data['amount'] : '')))))
         . (($items !== '') ? '<ul style="margin:0 0 12px;padding-left:20px;">' . $items . '</ul>' : '')
         . (!empty($data['by_payment']) ? $paragraph(h(lang('The money goes back the way you paid. Your bank may take a few days to show it.'))) : '')
+        . ((isset($data['credit']) && ((string) $data['credit'] !== '')) ? $paragraph(h(lang(array(
+            'string' => 'The refund was added to your account as store credit of {var:1}. It is used at checkout when you are signed in.',
+            'vars'   => array((string) $data['credit']))))) : '')
         . '<p style="margin:16px 0 0;color:#666;font-size:12px;">' . h(isset($data['from_name']) ? (string) $data['from_name'] : '') . '</p>'
         . '</div></body></html>';
 }
@@ -4330,10 +4429,11 @@ function pg_return_refund_mail_body($data)
  *
  * @param int    $return_id
  * @param int    $amount minor units
- * @param string $method driver or manual
+ * @param string $method driver, manual or credit
+ * @param int    $credit what the store credit card holds (method credit)
  * @return bool sent or queued
  */
-function pg_return_send_refund_mail($return_id, $amount, $method)
+function pg_return_send_refund_mail($return_id, $amount, $method, $credit = 0)
 {
     $context = pg_return_mail_context($return_id);
 
@@ -4354,6 +4454,7 @@ function pg_return_send_refund_mail($return_id, $amount, $method)
             'lines'        => $context['lines'],
             'amount'       => pg_return_money_text($amount),
             'by_payment'   => ($method === 'driver'),
+            'credit'       => ($method === 'credit') ? pg_return_money_text($credit) : '',
             'from_name'    => $context['from_name'],
         )),
         'type'               => 'system',

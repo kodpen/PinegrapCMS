@@ -224,10 +224,12 @@ function test_social_standard_news_members_and_search_topics()
 	$found = 0;
 	foreach (array_keys($members) as $key) {
 		if (strpos($blog, json_encode($members[$key]['name'], JSON_UNESCAPED_UNICODE)) === false) continue;
-		pg_assert_contains($member_url($key), $blog, "$key: opens the member's profile");
+		pg_assert_contains($member_url($key), $blog, "$key: opens the member in the people list");
+		pg_assert_true(strpos($blog, '@' . $members[$key]['handle']) === false, "$key: no user name the site does not have");
 		$found++;
 	}
 	pg_assert_true($found >= 3, 'members to meet');
+	pg_assert_true(strpos($blog, '{{page:member}}?member=') === false, 'no sample member links the member page');
 	pg_assert_contains('"templateWidget":"blog_list"', $blog);
 	pg_assert_contains('{{page:people}}', $blog);
 

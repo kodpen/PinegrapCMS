@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The dynamic region form, shared by the create and the edit screens
- * (add_dynamic_region.php, edit_dynamic_region.php): the Options card and
- * the values a save writes. The screens keep what differs: the edit screen
- * loads the record, shows its body tag and offers delete.
+ * (add_dynamic_region.php, edit_dynamic_region.php): the form and status
+ * columns and the values a save writes. The screens keep what differs: the
+ * edit screen loads the record, adds its Summary rows and offers delete.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -17,48 +17,84 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
-// The name error markup and the lookup are shared with the cregion forms.
+// The name error markup, the lookup, the save bar layout and the Summary
+// row are shared with the cregion forms.
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/common_region_form.php');
 
 /**
- * The Options card: name between <dregion> tags, then the PHP code snippet.
+ * The form column (Options card: the name between <dregion> tags; PHP Code
+ * card: the code snippet in the code editor) and the sticky status column
+ * (a Summary of the body tag, plus the screen's own rows), in the edit
+ * screen layout of product_builder.php. Below lg the status column follows
+ * the form in source order. The screens wrap it in
+ * pg_common_region_form_layout() for the save bar.
  *
  * @param string $name  The region name ('' on create)
  * @param string $code  The PHP code ('' on create)
- * @param string $name_error  Why the posted name was refused, '' for none
+ * @param array  $form  'name_error' (why the posted name was refused, ''
+ *                      for none), 'status' (extra Summary rows, HTML)
  * @return string
  */
-function pg_dynamic_region_form_card($name = '', $code = '', $name_error = '')
+function pg_dynamic_region_form_cards($name = '', $code = '', $form = array())
 {
+    $form = array_merge(array('name_error' => '', 'status' => ''), $form);
+    $name_error = (string) $form['name_error'];
+
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Dynamic Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<dregion>') . '</div>
                                                 <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . pg_region_form_name_error_attributes($name_error) . '" maxlength="100" required="required" />
-                                                <div class="input-group-text">' . h('</dregion>') . '</div>
+                                                <div class="input-group-text pg-tag-close">' . h('</dregion>') . '</div>
                                             </div>' . pg_region_form_name_error($name_error) . '
-                                        </div>
-                                        <h3 class="h5 mt-12">' . lang('PHP Code to appear on associated Pages') . '</h3>
-                                        <div class="col-12 my-3">
-                                            <label for="code" class="form-label">' . lang('PHP Code Snippet') . '</label>
-                                            <textarea name="code" id="code" rows="30" cols="60" wrap="off">' . h($code) . '</textarea>
-                                            ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'php')) . '
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('PHP Code to appear on associated Pages') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <div class="my-3">
+                                        <label for="code" class="form-label">' . lang('PHP Code Snippet') . '</label>
+                                        <textarea name="code" id="code" rows="30" cols="60" wrap="off">' . h($code) . '</textarea>
+                                        ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'php')) . '
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-';
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">
+                                            <div class="py-2' . ($form['status'] !== '' ? ' border-bottom' : '') . '">
+                                                <dt class="fw-normal">' . lang('Page Style Body Tag') . '</dt>
+                                                <dd class="mb-0 text-break"><code id="dregion_summary_tag">' . h('<dregion>' . $name . '</dregion>') . '</code></dd>
+                                            </div>' . $form['status'] . '
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            $(document).on(\'input\', \'#name\', function () {
+                                $(\'#dregion_summary_tag\').text(\'<dregion>\' + this.value + \'</dregion>\');
+                            });
+                        </script>';
 }
 
 /**

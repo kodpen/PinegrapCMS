@@ -89,7 +89,8 @@ function pg_bundle_items_normalize($items, $bundle_id = 0)
 /**
  * Why a product cannot go into a bundle, '' when it can.
  *
- * @param array $product products row: bundle, selection_type, gift_card, recurring
+ * @param array $product products row: bundle, selection_type, gift_card, recurring,
+ *                       grant_private_access
  * @return string the reason, in English for lang()
  */
 function pg_bundle_component_problem($product)
@@ -108,6 +109,12 @@ function pg_bundle_component_problem($product)
 
     if (!empty($product['recurring'])) {
         return 'A recurring product cannot be part of a bundle.';
+    }
+
+    // Completion reads only the bundle's own flags, so a component's folder
+    // access would be paid for and never granted.
+    if (!empty($product['grant_private_access'])) {
+        return 'A product that grants private access cannot be part of a bundle.';
     }
 
     return '';
@@ -233,7 +240,12 @@ function pg_bundle_items($bundle_id)
             products.price,
             products.inventory,
             products.inventory_quantity,
-            products.backorder
+            products.backorder,
+            products.bundle,
+            products.selection_type,
+            products.gift_card,
+            products.recurring,
+            products.grant_private_access
         FROM product_bundle_items
         INNER JOIN products ON products.id = product_bundle_items.product_id
         WHERE product_bundle_items.bundle_id = ?
@@ -279,7 +291,7 @@ function pg_bundle_items_problem($bundle_id, $items)
     }
 
     $found = db_items(
-        "SELECT id, bundle, selection_type, gift_card, recurring
+        "SELECT id, bundle, selection_type, gift_card, recurring, grant_private_access
         FROM products
         WHERE id IN (" . implode(',', $ids) . ")");
 
@@ -537,11 +549,18 @@ function pg_bundle_ids_among($product_ids)
  * and inside a bundle is counted once. Other lines are not limited. A
  * bundle with no contents allows none.
  *
- * @param array $lines rows with id, product_id, quantity and, for a bundle,
+ * A line the stock would cut below its product's minimum quantity allows
+ * none and takes nothing, so its units go to the lines after it: a cut line
+ * under the minimum is raised back by check_quantity() on the next submit
+ * and cut again here, and the checkout never goes through.
+ *
+ * @param array $lines rows with id, product_id, quantity, optional minimum
+ *                     (products.minimum_quantity) and, for a bundle,
  *                     components: rows with product_id and quantity
  * @param array $stock product_id => array(tracked, quantity, backorder)
  * @return array line id => array(allowed, unavailable): unavailable is true
- *               when the stock alone, before any other line, allows none
+ *               when the stock alone, before any other line, cannot cover
+ *               one unit or the minimum
  */
 function pg_bundle_cart_allowance($lines, $stock)
 {
@@ -560,6 +579,7 @@ function pg_bundle_cart_allowance($lines, $stock)
 
     foreach ((array) $lines as $line) {
         $wanted = max(0, (int) $line['quantity']);
+        $minimum = max(1, (int) ($line['minimum'] ?? 0));
 
         if (isset($line['components'])) {
             $allowed = $line['components'] ? $wanted : 0;
@@ -575,6 +595,10 @@ function pg_bundle_cart_allowance($lines, $stock)
                 }
             }
 
+            if (($allowed < $wanted) && ($allowed < $minimum)) {
+                $allowed = 0;
+            }
+
             foreach ($line['components'] as $component) {
                 $product_id = (int) $component['product_id'];
 
@@ -583,7 +607,7 @@ function pg_bundle_cart_allowance($lines, $stock)
                 }
             }
 
-            $answer[$line['id']] = array('allowed' => $allowed, 'unavailable' => ($alone === 0));
+            $answer[$line['id']] = array('allowed' => $allowed, 'unavailable' => ($alone < min($wanted, $minimum)));
             continue;
         }
 
@@ -595,9 +619,14 @@ function pg_bundle_cart_allowance($lines, $stock)
         }
 
         $allowed = min($wanted, $left[$product_id]);
+
+        if (($allowed < $wanted) && ($allowed < $minimum)) {
+            $allowed = 0;
+        }
+
         $left[$product_id] -= $allowed;
 
-        $answer[$line['id']] = array('allowed' => $allowed, 'unavailable' => ($initial[$product_id] === 0));
+        $answer[$line['id']] = array('allowed' => $allowed, 'unavailable' => ($initial[$product_id] < min($wanted, $minimum)));
     }
 
     return $answer;
@@ -725,7 +754,8 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
             products.out_of_stock_message,
             products.inventory,
             products.inventory_quantity,
-            products.backorder
+            products.backorder,
+            products.minimum_quantity
         FROM order_items
         LEFT JOIN products ON order_items.product_id = products.id
         LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
@@ -738,7 +768,7 @@ function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
 
     foreach ($rows as $row) {
         $product_id = (int) $row['product_id'];
-        $line = array('id' => (int) $row['id'], 'product_id' => $product_id, 'quantity' => (int) $row['quantity']);
+        $line = array('id' => (int) $row['id'], 'product_id' => $product_id, 'quantity' => (int) $row['quantity'], 'minimum' => (int) $row['minimum_quantity']);
 
         if (isset($bundle_ids[$product_id])) {
             if (!isset($contents[$product_id])) {

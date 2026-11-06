@@ -52,6 +52,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-bundle-lines.md: A product bundle on an ERP invoice (#2727): one line, the component snapshot in erp_invoice_item_components, one stock move per component on issue, return and cancel, the profit report.
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
+- erp-cheque-bank-till-and-due.md: Which bank till a cheque step may use (screen and API alike), and what the cheque list's "Due within a week" card counts.
 - erp-cheque-form-checks.md: Cheque and note form and step checks (PR #5636): the amount limit, the step reason in the notes, the full status filter, required and labelled fields, action-named step buttons.
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake
 - erp-cheques.md: ERP cheques and promissory notes (4.101): the steps, money only through erp_post_receipt and erp_post_transfer, a step never rewrites an earlier movement, which tills hold them.
@@ -71,7 +72,8 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-edoc-send-readiness.md: What the provider would refuse, asked before it is: missing-field lists and format helpers, the repair form, the not-ready filter, the final-consumer number, sales-only rules, GİB's date order.
 - erp-edoc-settings-card.md: Where the e-document provider settings card lives (pgset-invoice), how it saves, the connection test endpoint, and the owner decision to keep it there.
 - erp-efatura-threshold.md: The e-Fatura threshold warning (includes/erp/efatura_threshold.php): the two threshold settings, what counts as a sale, the daily cached sum, the System Status tile and its deadline.
-- erp-expense-form-checks.md: Expense form and screen checks: numbers that are not numbers, the field a refusal marks, the paid cancel's till right, send_to through a change, repeat end dates, and card-body row grids.
+- erp-expense-change-reaches-repeat.md: Changing an expense also updates the active repeat of its family (supplier, tax number, category, description, amount, tax rate, tax_deductible); frequency, day, end and till stay
+- erp-expense-form-checks.md: Expense screen checks: non-numbers, the field a refusal marks, the paid cancel's till right, send_to, repeat end dates, refused category saves, kept dates, card-body grids, the form layout.
 - erp-expense-receipts.md: An ERP expense's receipt file: one door for form and API, type read from the bytes, replacing keeps the old copy (erp_archive_store again), readers take the newest row, MAX(id) in direct joins.
 - erp-expense-recurring-restart.md: Starting a stopped repeating expense again goes on from where it stopped and does not write past periods a second time; a restart keeps the first expense as its source
 - erp-expenses.md: ERP expenses (4.95): why an expense is nobody's debt, how payment and cancel post to the till, amount and base figures, date and till rules, categories, the API's cash gate and events.
@@ -87,6 +89,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-invoice-note-and-cancelled-pdf.md: The issued invoice's internal note (erp_invoice_notes_save(), erp.invoice.note_changed) and the cancelled invoice's PDF drawn live with a CANCELLED ribbon (label.cancelled).
 - erp-invoice-public-link.md: Public address of an invoice PDF (#3743, step 11.0.65, PR #3780): erp_invoices.public_token_hash, erp_invoice.php, token rules, revoke, 404s, WAF; what n11 and Trendyol require of the link
 - erp-invoice-register-cap.md: The ERP invoice register reads at most 500 rows; a full list is counted over the same conditions and the note and a line under the table name both numbers
+- erp-invoice-screen-layout.md: Invoice create and draft, new quote and new purchase order screens: the columns option of erp_invoice_form_cards(), what the status column holds, why the split starts at 2xl, the save bar column.
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting, and why balance caches never feed a report.
 - erp-isbasi-driver.md: Logo İşbaşı e-document driver (edoc/isbasi.php): source document, fields and environments, login without getplatform, session and quota, request helper, success envelope, test limits.
 - erp-isbasi-internet-sale.md: What an internet sale adds to the İşbaşı SimpleInv body: the e-Arşiv block, the carrier, the payment type codes, and the open test-environment refusal.
@@ -95,7 +98,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-late-fee.md: ERP late payment fee (10.61): the rate setting, the pure day-by-day calculation, what lowers what is owed, draft-only writing, late_fee_through so no day is charged twice, the API.
 - erp-line-quantity-places.md: Line quantities are priced at the four places they are stored with: erp_quantity_round(), erp_decimal_units() (float units, 32-bit safe), the editor's quantityRound(), the e-invoice inbox fold.
 - erp-line-total-and-rate-rounding.md: Line totals and rates round half away from zero on the exact product of the written decimals (erp_multiply_units(), #1243): every PHP version and width, the editor, the checkout (#1329).
-- erp-list-edit-screen-pattern.md: How ERP list and add/edit screens are built (table.chart, separate edit pages, liveform fields, menu highlight), which lists must not be DataTables and how they sort, list filters.
+- erp-list-edit-screen-pattern.md: How ERP list and add/edit screens are built (list table driver, separate edit pages, liveform fields, menu highlight), which lists stay plain tables and how they sort, list filters.
 - erp-local-sale.md: Counter sale (add_order.php) and the ERP: customer in the session, walk-in account opened on first need, VAT per rate, invoice from the order screen, waybill from an invoice and its write-back.
 - erp-manual-invoice-draft-issue.md: Manual ERP invoices: files and endpoints, the draft boundary (_D series, no number), the issue transaction and its refusals, what may change after issue, invoice_manual.php functions, FX drafts.
 - erp-manual-invoice-form-and-snapshot.md: Manual invoice form mechanics (lines[n][field] arrays, template row, JS vs PHP totals), the account snapshot columns (4.51, 4.64 district and postcode) and extra document data.
@@ -110,6 +113,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-order-charges-vat.md: Order shipping, surcharge and instalment charge on the invoice (VAT with the goods on each rate's sum); the checkout's and the invoice's kurus lower for an out-of-reach rate total (9.99 shows 9.98)
 - erp-order-documents-flow.md: The order screen's documents card (includes/erp/order_flow.php): the four documents, step states, the one Next button, and why a step only calls its own screen's function.
 - erp-order-invoice-header.md: An order's invoice header: header-only order amounts, charge lines and gift card, subtotal and grand_total, and the status and total checks that refuse before a number is spent.
+- erp-order-refund-lines-noted.md: The order screen's refund by lines on an order without an ERP invoice notes the lines it gave back (lines:<id>=<qty>) on order_refunds.notes, so the same line is not refunded twice (#7129)
 - erp-order-tax-number-difference.md: Contact card's tax number not on the order's ERP account: automatic invoice held, documents card shows both numbers, bell and log neither (owner decision 2026-10-23, #1307)
 - erp-overdue-reminders.md: ERP overdue receivable reminders (erp_overdue_check): thresholds, one summary per period, delivery channels, scheduling, recipients, Workspace collection follow-up.
 - erp-overdue-second-notice.md: ERP overdue round 2 (migration 4.56): candidate states, second notice at threshold+30, snooze, bell/menu badge, customer e-mail switches and stamps.
@@ -128,9 +132,11 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-legacy-order-buttons.md: The order screen's Paraşüt buttons (Create Invoice, E-Shipment): the ERP's card (#639), a sent order (#1084, #1407), E-Shipment's VKN/TCKN check (#1418), stock movement lines (#1458)
 - erp-parasut-legacy-order-gates-limits.md: What the order gates of #1628 do not cover: an ERP invoice whose Paraşüt record was deleted there, and orders whose "Sent" flag was set by a failed e-document before 2026.4.4
 - erp-parasut-legacy-order-gates.md: Which orders the order screen's Paraşüt Create Invoice and E-Shipment go for (a finished sale, not one the ERP invoiced through a provider), and what the status row says (#1628, #1660)
+- erp-parasut-legacy-press-claim.md: The order screen's Paraşüt Create Invoice and E-Shipment run under one named lock per order, so two presses at once cannot write two sales invoices, e-documents or waybills (#7570)
 - erp-parasut-legacy-shipment-deleted-products.md: E-Shipment refuses an order whose lines name a product deleted from the catalogue, naming those lines, instead of leaving them off the waybill (#1630)
 - erp-parasut-legacy-shipment-stock.md: E-Shipment's stock step: every line's product card opened first, then each Paraşüt product made ready once for the order's total; one movement per order line (#1630)
 - erp-parasut-legacy-stale-ids.md: Legacy Paraşüt buttons on an order keeping the id of a record deleted on Paraşüt's screen: read first, a 404 naming it as not found left out and its id cleared, any other answer refused (#1544)
+- erp-parasut-legacy-token-401.md: The order screen's Paraşüt buttons, inbox and VKN lookup renew a token Paraşüt answers 401 for while the cache still holds it: forget, renew once, send again (#7569)
 - erp-parasut-product-card-not-opened.md: An invoice line whose own Paraşüt card is not opened is refused in Paraşüt's words; the default product/service takes only lines without a product (erp_edoc_parasut_line_product_pick(), #1631)
 - erp-parasut-product-card-opening-stock.md: The stock a tracked Paraşüt product card opens with: Pinegrap's count plus the units the documented sale already took out of it (#1630); what each caller adds, and the orders still counted out twice
 - erp-parasut-product-card.md: The Paraşüt product card of a Pinegrap product (parasut_sync_product()): who opens it, what the create sends, the price's currency (#1631), why no stock_updates follows (#1517)
@@ -142,7 +148,9 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.
 - erp-product-suggestion-list.md: Invoice/waybill line editors: the product suggestion list leaves the lines table for the overlay host while open, fixed placement, keyboard, why (.table-responsive clipping).
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
+- erp-purchase-order-double-press.md: Two presses at once on a purchase order: the invoice draft is made under the order's row lock, status moves (sent, cancelled, opened again) are guarded updates that announce once.
 - erp-purchase-orders.md: ERP purchase orders (10.58): own table and series, the line key that ties invoice lines back, status read from purchase invoices, the draft made from an order, shared refusals, API line keys.
+- erp-quote-double-invoice.md: Two presses at once on a quote's "Turn into an invoice": the quote row is locked before its state is read, so one quote makes one invoice draft.
 - erp-quote-guest-link.md: Sales quote guest link (#3761, 2026.11.0 step 11.0.64): erp_quote_links, erp_quote.php, one live link, expiry, acceptance through erp_signatures and erp_quote_set_status(), WAF, e-mail
 - erp-quote-screen-layout.md: edit_erp_quote.php toolbar, two-column layout and where the messages of the signature, guest link and e-mail cards are drawn.
 - erp-quote-templates.md: Sales quote templates (#3717, step 11.0.63; API #3921): table, who sees and writes one, what it keeps, shared checks, events, the panel box, the API routes.
@@ -160,6 +168,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-settings-cards.md: ERP settings cards from includes/erp/settings_cards.php: Accounting pane for role < 3, erp_settings.php for role 3 only; how each saves; why the template editor stays.
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
 - erp-stock-moves-and-cost.md: ERP stock and cost from documents (4.77): which invoices change the count, stock_wanted, moves written in the transaction and applied after commit, idempotent moves, the average cost rules.
+- erp-stock-return-cost-rounding.md: A line returned in parts takes back exactly the cost and quantity its stock move recorded: each return's share is the difference of rounded running totals.
 - erp-tax-names-zones-and-second-tax.md: ERP tax captions (erp_tax_label, config.erp_tax_name), the zone rate for store and account sales, and the second tax (4.75): columns, SQL helpers, captions, the e-document limit.
 - erp-taxpayer-lookup.md: Asking GİB about a tax number from the account form and the New account dialog (Query button, erp_taxpayer_lookup.php): e-Invoice user, mailboxes, registered name, what is kept on the card
 - erp-till-below-zero.md: A cash till (drawer, received-cheque portfolio) never goes below zero on a transfer, payment or expense: the one check, where it is asked, who skips it, what an already negative till does

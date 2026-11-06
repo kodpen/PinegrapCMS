@@ -945,6 +945,21 @@ function pg_submitted_form_store_upload($field, $user_id)
 }
 
 /**
+ * Whether saving an existing submitted form writes this field. A signature is
+ * written once, when the form is created: its form_data row points at the
+ * drawn file and its form_signatures record seals it, and no edit screen
+ * offers it again, so a value posted under its id is not an answer to store.
+ * An information field holds no answer. Pure.
+ *
+ * @param array $field  form_fields row: type
+ * @return bool
+ */
+function pg_submitted_form_edit_writes_field($field)
+{
+    return !in_array((string) ($field['type'] ?? ''), array('signature', 'information'), true);
+}
+
+/**
  * Writes the posted value of one field (not a file upload or signature) as
  * form_data rows: one row per value of a check box group or multiple pick
  * list. Date, date and time and time values keep their type; a rich-text
@@ -997,4 +1012,94 @@ function pg_submitted_form_save_value($liveform, $form_id, $field)
                     ?)";
         db_q($query, array((string) $form_id, (string) $field['id'], (string) prepare_form_data_for_input($value, $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
     }
+}
+
+/**
+ * One label and value line of a status column card. Pure.
+ *
+ * @param string $label  Plain text
+ * @param string $value  HTML
+ * @param bool   $last   The last line has no rule under it
+ * @return string  HTML
+ */
+function pg_submitted_form_status_row($label, $value, $last = true)
+{
+    return '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                                <dt class="fw-normal">' . h($label) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . $value . '</dd>
+                                            </div>';
+}
+
+/**
+ * A card of the status column. Pure.
+ *
+ * @param string $title  Plain text
+ * @param string $body   HTML
+ * @return string  HTML
+ */
+function pg_submitted_form_status_card($title, $body)
+{
+    return '
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . h($title) . '
+                                    </h2>
+                                    <div class="card-body pt-0">' . $body . '
+                                    </div>
+                                </div>';
+}
+
+/**
+ * The "Form Data" card of the form column. Pure.
+ *
+ * @param string $fields  pg_submitted_form_fields_markup()['fields']
+ * @param string $notice  HTML above the fields (a loaded revision)
+ * @return string  HTML
+ */
+function pg_submitted_form_data_card($fields, $notice = '')
+{
+    return '
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Form Data') . '
+                                </h2>
+                                <div class="card-body pt-0">' . $notice . '
+                                    <div class="row">
+                                        ' . $fields . '
+                                    </div>
+                                </div>
+                            </div>';
+}
+
+/**
+ * The screen row of the wide edit layout (ui/edit-screen-wide-layout.md):
+ * the form column, the sticky status column after it (so a narrow screen
+ * shows the fields first) and the sticky save bar. Pure.
+ *
+ * @param string $form_column    The cards the operator fills
+ * @param string $status_column  The cards that are read (pg_submitted_form_status_card())
+ * @param string $buttons        The buttons inside the bar's group
+ * @return string  HTML
+ */
+function pg_submitted_form_layout($form_column, $status_column, $buttons)
+{
+    return '
+                    <div class="row">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $form_column . '
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">' . $status_column . '
+                            </div>
+                        </div>
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>';
 }

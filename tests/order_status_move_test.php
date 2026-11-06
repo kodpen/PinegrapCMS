@@ -130,3 +130,21 @@ function test_order_status_full_refund_cancels_through_the_helper()
 
 	pg_assert_same(0, preg_match('/UPDATE\s+orders\s+SET[^"]*\bstatus\s*=/i', $source), 'view_order.php writes no order status by hand');
 }
+
+// The store's one cancellation refuses a basket (an incomplete order) before
+// it writes anything: the customer's own cancel_order.php post and the order
+// screen's cancel handler reach it without a status check of their own, and
+// a cancelled basket would be mailed as a cancelled order and announced as
+// order.cancelled, with no order number.
+function test_order_status_cancellation_refuses_a_basket()
+{
+	$source = pg_test_function_source('process_order_cancellation');
+
+	$refused = strpos($source, "pg_order_status_move(\$order['status'], 'cancelled') === 'refuse'");
+	$written = strpos($source, "status              = 'cancelled'");
+
+	pg_assert_true($refused !== false, 'the status rule is asked');
+	pg_assert_true(($written !== false) && ($refused < $written), 'before the cancellation is written');
+	pg_assert_contains("pg_order_status_move_refusal(\$order['status'], 'cancelled')", $source, 'with the rule\'s own sentence');
+	pg_assert_contains("AND status NOT IN ('cancelled', 'incomplete')", $source, 'the guarded write takes no basket either');
+}

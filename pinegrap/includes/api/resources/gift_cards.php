@@ -137,6 +137,14 @@ function api_gift_card_load_or_fail($id) {
 
 }
 
+// Whether a gift_cards row is store credit: bound to a customer's account.
+// A site before the store credit update has no user_id column.
+function api_gift_card_is_store_credit(array $row) {
+
+	return isset($row['user_id']) && (int)$row['user_id'] > 0;
+
+}
+
 function api_gift_card_answer($id, $status = 200) {
 
 	$row = api_gift_card_load_or_fail($id);
@@ -315,6 +323,55 @@ function api_gift_cards_create($params) {
 
 }
 
+// The UPDATE of a gift card's sent fields ($set: column => value). A balance
+// is written only while the row still holds $balance_was, the balance the
+// request read, so a spend that landed in between makes it change nothing.
+// Pure.
+function api_gift_card_update_sql($id, array $set, $balance_was, $user_id) {
+
+	$columns = array();
+
+	foreach ($set as $column => $value) {
+
+		$columns[] = $column . " = '" . escape($value) . "'";
+
+	}
+
+	return "UPDATE gift_cards SET " . implode(', ', $columns) . ",
+			last_modified_user_id = '" . (int)$user_id . "', last_modified_timestamp = UNIX_TIMESTAMP()
+		WHERE id = '" . (int)$id . "'"
+		. (isset($set['balance']) ? " AND balance = '" . (int)$balance_was . "'" : '');
+
+}
+
+// The store credit audit fields before and after a gift card update, or null
+// when nothing is recorded: an ordinary gift card, or a balance not sent or
+// sent unchanged. Pure.
+function api_gift_card_credit_audit(array $row, array $set) {
+
+	if (!api_gift_card_is_store_credit($row) || !isset($set['balance'])
+		|| ((int)$set['balance'] === (int)$row['balance'])) {
+
+		return null;
+
+	}
+
+	$before = array(
+		'user_id'    => (int)$row['user_id'],
+		'kind'       => isset($row['kind']) ? (string)$row['kind'] : '',
+		'amount'     => (int)$row['amount'],
+		'balance'    => (int)$row['balance'],
+		'reason'     => isset($row['reason']) ? (string)$row['reason'] : '',
+		'issued_by'  => isset($row['issued_by']) ? (int)$row['issued_by'] : 0,
+		'expires_at' => isset($row['expires_at']) ? (int)$row['expires_at'] : 0
+	);
+
+	$after = array('balance' => (int)$set['balance']) + $before;
+
+	return array('before' => pg_credit_audit_fields($before), 'after' => pg_credit_audit_fields($after));
+
+}
+
 function api_gift_cards_update($params) {
 
 	$app = api_current_app();
@@ -351,17 +408,27 @@ function api_gift_cards_update($params) {
 
 	api_dry_run_stop('updated', 'gift_card', array('id' => $id, 'changes' => array_keys($set)));
 
-	$columns = array();
+	$affected = api_exec(api_gift_card_update_sql($id, $set, (int)$row['balance'], (int)$app['owner']['id']));
 
-	foreach ($set as $column => $value) {
+	// A changed balance is written only over the balance read above, as the
+	// gift cards screen does: an order spending from the card meanwhile
+	// (submit_order() takes the amount off) is not overwritten.
+	if (($affected === 0) && isset($set['balance'])
+		&& ((int)api_value("SELECT balance FROM gift_cards WHERE id = '" . $id . "'") !== (int)$set['balance'])) {
 
-		$columns[] = $column . " = '" . escape($value) . "'";
+		api_fail(409, 'balance_changed', lang('The balance of this gift card changed meanwhile. Read the card again and send the balance anew.'));
 
 	}
 
-	api_exec("UPDATE gift_cards SET " . implode(', ', $columns) . ",
-			last_modified_user_id = '" . (int)$app['owner']['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP()
-		WHERE id = '" . $id . "'");
+	// A changed balance of store credit reaches the audit trail, as on the
+	// gift cards screen and every other change of a customer's credit.
+	$audit = api_gift_card_credit_audit($row, $set);
+
+	if ($audit !== null) {
+
+		pg_audit('update', 'store_credit', $id, $audit['before'], $audit['after'], pg_credit_audit_label($row['code']));
+
+	}
 
 	log_activity(lang(array(
 		'string' => 'Gift card ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
@@ -381,6 +448,15 @@ function api_gift_cards_delete($params) {
 	$row = api_gift_card_load_or_fail($params['id']);
 
 	$id = (int)$row['id'];
+
+	// A store credit card is bound to a customer: deleting the row drops the
+	// credit without an audit line and breaks its redemptions, the customer's
+	// list and the audit link, so it is only voided, as on the gift card screen.
+	if (api_gift_card_is_store_credit($row)) {
+
+		api_fail(409, 'store_credit_not_deletable', lang('A store credit card is not deleted. Void it on the customer\'s screen or with POST /customers/{id}/credit/{card_id}/void.'));
+
+	}
 
 	api_dry_run_stop('deleted', 'gift_card', array('id' => $id, 'balance' => api_money($row['balance'])));
 

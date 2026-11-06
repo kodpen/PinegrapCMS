@@ -188,6 +188,17 @@
             box.appendChild(d);
         });
 
+        // The selection box being dragged.
+        if (this.drag && (this.drag.kind === 'box')) {
+            var a = this.drag.at, b = this.drag.to, m = el('div', { class: 'pgie-marquee' });
+
+            m.style.left = (v.x + (Math.min(a[0], b[0]) - vr.x) * k) + 'px';
+            m.style.top = (v.y + (Math.min(a[1], b[1]) - vr.y) * k) + 'px';
+            m.style.width = (Math.abs(b[0] - a[0]) * k) + 'px';
+            m.style.height = (Math.abs(b[1] - a[1]) * k) + 'px';
+            box.appendChild(m);
+        }
+
         (this.guides ? this.guides.gx : []).forEach(function (x) {
             box.appendChild(el('div', { class: 'pgie-guide pgie-gx', style: 'left: ' + (v.x + (x - vr.x) * k) + 'px' }));
         });
@@ -214,26 +225,35 @@
         if (h && one) {
             this.drag = { kind: (h === 'rot') ? 'rotate' : ((BOX_HANDLES.indexOf(h) >= 0) ? 'resize' : 'handle'), h: h, start: M.clone(one) };
         } else {
-            hit = hit || M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, layerHit);
+            // A closed shape without a fill is hit on its line; a press inside
+            // it takes it too where no other layer lies.
+            hit = hit || M.hitLayer(this.doc, p[0], p[1], 4 / this.view.k, layerHit) || M.hitLayer(this.doc, p[0], p[1], 0, function (l) {
+                var rings = M.layerRings(l);
+
+                return !!rings && M.insideRings(p, rings);
+            });
 
             if (!hit) {
+                // An empty spot: a drag draws a box that selects the layers it
+                // touches (with Shift, besides the selection); a click clears
+                // the selection.
                 if (this.sel.length && !e.shiftKey) {
                     this.select([]);
                 }
 
-                return;
-            }
+                this.drag = { kind: 'box', at: p, to: p, base: this.sel.slice() };
+            } else {
+                if (e.shiftKey) {
+                    this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
+                    return;
+                }
 
-            if (e.shiftKey) {
-                this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
-                return;
-            }
+                if (this.sel.indexOf(hit.id) < 0) {
+                    this.select([hit.id]);
+                }
 
-            if (this.sel.indexOf(hit.id) < 0) {
-                this.select([hit.id]);
+                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !l.locked; }).map(M.clone) };
             }
-
-            this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !l.locked; }).map(M.clone) };
         }
 
         e.preventDefault();
@@ -245,8 +265,27 @@
         }
     };
 
+    // The layers a selection box touches, after the ones selected before it
+    // with Shift; while the box is still a click, only those.
+    Editor.prototype.boxSelection = function (d) {
+        var k = this.view.k, box = { x: Math.min(d.at[0], d.to[0]), y: Math.min(d.at[1], d.to[1]), w: Math.abs(d.to[0] - d.at[0]), h: Math.abs(d.to[1] - d.at[1]) };
+
+        if ((box.w * k < 3) && (box.h * k < 3)) {
+            return d.base.slice();
+        }
+
+        return d.base.concat(M.layersInBox(this.doc, box).filter(function (id) { return d.base.indexOf(id) < 0; }));
+    };
+
     Editor.prototype.moveDrag = function (e) {
         var d = this.drag, p = this.toDoc(e.clientX, e.clientY), k = this.view.k;
+
+        if (d.kind === 'box') {
+            d.to = p;
+            this.sel = this.boxSelection(d);
+            this.renderView();
+            return;
+        }
 
         if (d.kind === 'move') {
             var dx = p[0] - d.at[0], dy = p[1] - d.at[1], moved = M.bounds(d.start);
@@ -273,10 +312,11 @@
             }, 'drag', true);
         } else if (d.kind === 'resize') {
             // A type with ratio (a picture) keeps its shape from a corner;
-            // Shift does the other.
+            // Shift does the other. A finger or a pen keeps it from any
+            // corner (M.keepRatio()).
             // A type's resize(start, box, handle) answers the fields that
             // change (a text scales its letters).
-            var b = M.resizeBox(d.start, d.h, p[0], p[1], e.shiftKey !== !!kind(d.start).ratio, 4 / k);
+            var b = M.resizeBox(d.start, d.h, p[0], p[1], M.keepRatio(e.pointerType, e.shiftKey, !!kind(d.start).ratio), 4 / k);
 
             if (kind(d.start).resize) {
                 b = kind(d.start).resize.call(this, d.start, b, d.h);
@@ -319,14 +359,34 @@
     };
 
     Editor.prototype.endDrag = function () {
-        if (!this.drag) {
+        var d = this.drag;
+
+        if (!d) {
             return;
         }
 
         this.drag = null;
         this.guides = null;
         this.history.key = null;
+
+        // A selection box ends in its selection; a second finger, which pans
+        // the view, gives back the one before it.
+        if (d.kind === 'box') {
+            this.select((Object.keys(this.pointers).length > 1) ? d.base : this.boxSelection(d));
+            return;
+        }
+
         this.render();
+    };
+
+    // Every layer selected: Ctrl+A, and Select all in the layers list (from
+    // a tool that does not select, Select takes over).
+    Editor.prototype.selectAll = function () {
+        if (Editor.selectTools.indexOf(this.tool) < 0) {
+            this.tool = 'select';
+        }
+
+        this.select(this.doc.layers.map(function (l) { return l.id; }));
     };
 
     // What a moved layer snaps to: the canvas's edges and middle, and the
@@ -356,7 +416,7 @@
         }
 
         if (mod && (k === 'a' || k === 'A')) {
-            this.select(this.doc.layers.map(function (l) { return l.id; }));
+            this.selectAll();
             return true;
         }
 
@@ -549,33 +609,9 @@
         }
 
         if (picked.length) {
-            var arrange = function (how) {
-                self.change(function (doc) { doc.layers = M.reorder(doc.layers, self.sel, how); });
-            };
-            var align = function (how) {
-                var target = (picked.length > 1) ? M.bounds(free) : self.viewRect(), moves = M.align(free.map(function (l) { return M.bounds([l]); }), how, target);
-
-                self.change(function (doc) {
-                    free.forEach(function (o, i) {
-                        var l = find(doc, o.id);
-
-                        l.x += moves[i][0];
-                        l.y += moves[i][1];
-                    });
-                });
-            };
-            var spread = function (axis) {
-                var moves = M.distribute(free.map(function (l) { return M.bounds([l]); }), axis);
-
-                self.change(function (doc) {
-                    free.forEach(function (o, i) {
-                        var l = find(doc, o.id);
-
-                        l.x += moves[i][0];
-                        l.y += moves[i][1];
-                    });
-                });
-            };
+            var arrange = function (how) { self.arrangeLayers(how); };
+            var align = function (how) { self.alignLayers(how); };
+            var spread = function (axis) { self.spreadLayers(axis); };
             var opacity = Math.round(100 * ((picked[0].opacity === undefined) ? 1 : picked[0].opacity));
             var value = el('span', { class: 'pgie-val', text: pct(opacity) });
             var slider = el('input', { type: 'range', class: 'pgie-range', min: '0', max: '100', step: '1', value: String(opacity), 'aria-label': t('opacity') });
@@ -628,6 +664,46 @@
         this.layerList(body);
     };
 
+    // The selected layers moved in the stack: 'top', 'up', 'down', 'bottom'
+    // (the panel's Arrange, the context menu's Order).
+    Editor.prototype.arrangeLayers = function (how) {
+        var ids = this.sel;
+
+        this.change(function (doc) { doc.layers = M.reorder(doc.layers, ids, how); });
+    };
+
+    // The unlocked selected layers lined up on how ('left' … 'bottom'): on
+    // their joint box when two or more are selected, else on the canvas.
+    Editor.prototype.alignLayers = function (how) {
+        var picked = this.selected(), free = picked.filter(function (l) { return !l.locked; });
+        var target = (picked.length > 1) ? M.bounds(free) : this.viewRect();
+
+        if (free.length) {
+            this.moveLayers(free, M.align(free.map(function (l) { return M.bounds([l]); }), how, target));
+        }
+    };
+
+    // The unlocked selected layers spaced evenly along axis 'x' or 'y'.
+    Editor.prototype.spreadLayers = function (axis) {
+        var free = this.selected().filter(function (l) { return !l.locked; });
+
+        if (free.length >= 3) {
+            this.moveLayers(free, M.distribute(free.map(function (l) { return M.bounds([l]); }), axis));
+        }
+    };
+
+    // Layers list moved by moves[i] ([dx, dy]), one undo step.
+    Editor.prototype.moveLayers = function (list, moves) {
+        this.change(function (doc) {
+            list.forEach(function (o, i) {
+                var l = find(doc, o.id);
+
+                l.x += moves[i][0];
+                l.y += moves[i][1];
+            });
+        });
+    };
+
     // The icon beside a layer's name in the list, by its type.
     var LAYER_ICONS = {
         image: 'image', text: 'text', sticker: 'sticker', glyph: 'sticker', redact: 'redact', path: 'vector', svg: 'vector',
@@ -646,6 +722,14 @@
         }
 
         var list = el('ul', { class: 'pgie-layerlist', 'aria-label': t('layers') });
+
+        // Two layers or more: Select all, for a touch screen without Shift
+        // or Ctrl+A.
+        if (this.doc.layers.length > 1) {
+            body.appendChild(el('div', { class: 'pgie-btnrow pgie-selall' }, [
+                button('pgie-btn', t('selectAll'), 'select', function () { self.selectAll(); }, true)
+            ]));
+        }
 
         this.doc.layers.slice().reverse().forEach(function (l) {
             var on = (self.sel.indexOf(l.id) >= 0);

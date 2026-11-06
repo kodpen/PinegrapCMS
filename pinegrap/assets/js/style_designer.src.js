@@ -7704,28 +7704,17 @@ const StyleDesigner = (function () {
         // ── Ctrl+G exit handler — installed ONCE on the main designer
         // document so it works no matter which pane has focus (canvas
         // iframe forwards via the listener above; properties / tree
-        // panel keys land here directly). Pulls the original frontend
-        // URL from the `send_to` query param the designer was launched
-        // with — same value the Cancel button uses (see edit_system_style.php).
-        // Fallback to history.back when send_to is absent.
+        // panel keys land here directly). Goes to the design's exit
+        // address: the `send_to` the designer was launched with, as the
+        // server checked it with pg_safe_back_url() (designer_screen.php).
+        // The raw query parameter is never read here: a browser drops
+        // spaces and tabs from an address, so " javascript:" or another
+        // host would pass any shorter check. Falls back to history.back
+        // when there is no exit address.
         if (!window._sdExitDesignerBound) {
             window._sdExitDesignerBound = true;
             window._sdExitDesigner = function () {
-                var send_to = '';
-                try {
-                    var sp = new URLSearchParams(window.location.search);
-                    send_to = sp.get('send_to') || '';
-                } catch (_) { send_to = ''; }
-                var target = '';
-                if (send_to) {
-                    // URLSearchParams.get() already decodes percent-encoding,
-                    // so assign directly. Reject obviously dangerous schemes
-                    // (mirror of pg_safe_back_url's PHP guard).
-                    var low = send_to.toLowerCase();
-                    var bad = /^(javascript:|data:|vbscript:)/.test(low) || send_to.indexOf('//') === 0;
-                    if (!bad) target = send_to;
-                }
-                if (!target && _design && _design.exitUrl) target = _design.exitUrl;
+                var target = (_design && _design.exitUrl) ? _design.exitUrl : '';
                 // Same unsaved-changes gate as the back arrow in the tab strip.
                 if (target) { _pgExit(target); return; }
                 var goBack = function () {
@@ -12110,7 +12099,7 @@ const StyleDesigner = (function () {
                     '__watcher_count_text', '__comment_anchor', '__comment_file_name', '__comment_file_url', '__comment_file_size',
                     '__comment_seller_reply_html', '__comment_seller_reply_date', '__comment_reply_url', '__comment_parent_id',
                     '__comment_parent_name', '__comment_parent_url', '__comment_quote', '__comment_depth', '__comment_reply_count',
-                    '__comments_item_name'],
+                    '__comments_item_name', '__comments_likes_count', '__comments_boosts_count', '__comments_reactions_text'],
                 flags: ['comments_open', 'comments_closed', 'can_comment', 'must_sign_in', 'featured_view', 'has_featured', 'name_is_typed',
                     'name_is_chosen', 'name_is_fixed', 'rating_on', 'files_on', 'watching_on', 'is_replying', 'is_watching', 'not_watching',
                     'can_manage_watchers', 'is_email', 'comment_is_reply', 'comment_has_quote', 'comment_has_replies', 'comment_has_file',
@@ -14638,6 +14627,9 @@ const StyleDesigner = (function () {
         '__comments_title': _sdT('3 Comments'),
         '__comments_count': '3',
         '__comments_label_plural': _sdT('Comments'),
+        '__comments_likes_count': '3',
+        '__comments_boosts_count': '1',
+        '__comments_reactions_text': _sdT('3 likes · 1 boost'),
         // A list of recent comments.
         '__comment_thread_title': _sdT('How do I reset my password?'),
         '__comment_label': _sdT('Comment'),
@@ -34624,6 +34616,15 @@ const StyleDesigner = (function () {
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-orderby-days" data-sw-id="' + sid + '" min="1" max="180" value="' + _orderDays + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Today and the days before it, 1 to 180: daily view figures are kept for six months.')) + '</div>'
                     ) : '') +
+                    // Each signed-in submitter's newest record only
+                    // (pg_sw_form_list_one_per_submitter_sql()).
+                    (_isFormListView ? row(_sdT('Newest record per submitter'),
+                        '<label class="sd-prop-switch">' +
+                            '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="one_per_submitter" data-sw-cfg-kind="bool"' + (_cfg.one_per_submitter ? ' checked' : '') + '>' +
+                            '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                        '</label>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('A member who sent the form more than once is listed once, with the newest record. Records sent without signing in are all listed.')) + '</div>'
+                    ) : '') +
                     // ── Viewer filter (form_list_view only — catalog products are public) ─
                     (_isFormListView ? row(_sdT('Filter by viewer'),
                         '<label class="sd-prop-switch">' +
@@ -40833,7 +40834,10 @@ const StyleDesigner = (function () {
             ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')],
             ['__reply_to_name',           _sdT('Name of the comment the form answers ("Replying to")')],
             ['__watcher_count_text',      _sdT('How many people are told of a new comment')],
-            ['__comments_item_name',      _sdT('Name of the product, product group or event the comments are about')]
+            ['__comments_item_name',      _sdT('Name of the product, product group or event the comments are about')],
+            ['__comments_likes_count',    _sdT('Fediverse likes of the page or record (empty at none)')],
+            ['__comments_boosts_count',   _sdT('Fediverse boosts of the page or record (empty at none)')],
+            ['__comments_reactions_text', _sdT('Fediverse likes and boosts in one line ("3 likes · 1 boost")')]
         ]},
         { label: _sdT('Links (href)'), tokens: [
             ['__comments_show_all_url',      _sdT('Show all comments (featured filter only; the link drops otherwise)')],
@@ -41970,6 +41974,7 @@ const StyleDesigner = (function () {
             out.push(['order_history',        _sdT('Order history (shop sites; hidden when there are no orders)')]);
             out.push(['subscriptions',        _sdT('Subscriptions (shop sites; hidden when there are none)')]);
             out.push(['bookings',             _sdT('My bookings (hidden when there are none)')]);
+            out.push(['store_credit',         _sdT('Store credit and points conversion (shop sites; hidden when there is none)')]);
         } else if (type === 'change_password' || type === 'set_password') {
             out.push(['password_rules',       _sdT('Strong password rules (hidden when the site setting is off)')]);
         } else if (type === 'calendar_event_view') {
@@ -43285,7 +43290,8 @@ const StyleDesigner = (function () {
             ['has_orders', _sdT('The member has orders')],
             ['no_orders',  _sdT('The member has no orders')],
             ['is_staff',   _sdT('The visitor may open the staff page')],
-            ['has_bookings', _sdT('The member has bookings')]
+            ['has_bookings', _sdT('The member has bookings')],
+            ['has_store_credit', _sdT('The member has store credit or points to convert')]
         ],
         form_list_view: [
             ['has_filter_value', _sdT('A value from the page address, compared with is equal to, finds records')],
@@ -62016,6 +62022,10 @@ const StyleDesigner = (function () {
                             _bindings: { eo_visible_if: 'has_bookings' } }),
                         createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('My Bookings'),
                             _bindings: { section: 'bookings' } }),
+                        createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Store credit'), cssClass: 'mb-3',
+                            _bindings: { eo_visible_if: 'has_store_credit' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: _sdT('Store credit'),
+                            _bindings: { section: 'store_credit' } }),
                         loopArea
                     ])
                 ]);

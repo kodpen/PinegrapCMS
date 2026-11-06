@@ -727,7 +727,7 @@ function ws_handle_action($action, $request)
             if (!empty($request['sketch'])) {
                 $result = ws_scheduled_flow_sketch($viewer, $channel_id, ws_scheduled_flow_fill($request));
 
-                return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'], 'start' => $result['start'])) : ws_action_error($result['error']);
+                return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'], 'view' => $result['view'], 'start' => $result['start'])) : ws_action_error($result['error']);
             }
 
             $result = ws_scheduled_flow_new($viewer, $channel_id, ws_scheduled_flow_fill($request) + array(
@@ -994,6 +994,28 @@ function ws_handle_action($action, $request)
             unset($result['ok'], $result['error'], $result['status'], $result['field']);
 
             return ws_action_ok(array('try' => $result));
+
+        // The web address of a flow started by one (flow_web_start.php):
+        // shown to and renewed by those who may edit the flow; a renewed
+        // address ends the old one.
+        case 'ws_flow_web_address':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            if (empty($request['renew'])) {
+                return ws_action_ok(array('url' => ws_flow_web_address($flow)));
+            }
+
+            $result = ws_flow_web_renew($viewer, $flow);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('url' => (string) $result['url']));
 
         // The shares of a flow (includes/workspace/flow_shares.php), in the
         // canvas's Share dialog: whoever reaches the flow reads them, the
@@ -1759,6 +1781,11 @@ function ws_handle_action($action, $request)
             // ws_mcp_agent_kick, ws_ai_kick), so the message is on the screen
             // without waiting for an answer.
             $asked = ws_message_ask_assistants($viewer, $channel, $result['message_id'], $body);
+
+            // A flow its words mention by name in this channel (flow_mention.php).
+            if (function_exists('ws_flow_mention_after_send')) {
+                ws_flow_mention_after_send($viewer, $channel, $result['message_id'], $body);
+            }
 
             return ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $asked['claude'], 'ai' => $asked['ai'], 'agent' => $asked['agent']));
 
@@ -3633,14 +3660,7 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('Invalid request.'));
             }
 
-            $fields = array('due_date' => $date);
-
-            if ($task['start_date'] && $task['due_date']) {
-                $shift = (int) round((strtotime($date . ' 12:00:00') - strtotime($task['due_date'] . ' 12:00:00')) / 86400);
-                $fields['start_date'] = date('Y-m-d', strtotime($task['start_date'] . ' 12:00:00 ' . (($shift >= 0) ? '+' : '') . $shift . ' days'));
-            } elseif ($task['start_date']) {
-                $fields['start_date'] = null;
-            }
+            $fields = ws_task_move_dates($task, $date);
 
             $people = ws_task_assignee_ids($task['id']);
             $from_user = (int) ($request['from_user_id'] ?? 0);

@@ -195,11 +195,11 @@ function test_contact_list_row_default_view()
 	$row = pg_contact_list_row($contact, array('role' => 2), 'default', 'G1', '');
 
 	pg_assert_same('15', $row['id']);
-	pg_assert_same(array('picture', 'first_name', 'last_name', 'company', 'actions', 'email', 'phone', 'user', 'opt_in', 'groups', 'last_modified'), array_keys($row['cells']), 'picture, 3 names, edit, e-mail, phone, user, opt-in, groups, modified');
+	pg_assert_same(array('picture', 'first_name', 'last_name', 'company', 'actions', 'business_phone', 'home_phone', 'mobile_phone', 'email', 'user', 'opt_in', 'groups', 'last_modified'), array_keys($row['cells']), 'picture, 3 names, edit, 3 phones, e-mail, user, opt-in, groups, modified');
 	pg_assert_contains('edit_contact.php?id=15', $row['cells']['picture']['html']);
 	pg_assert_contains('edit_contact.php?id=15', $row['cells']['actions']['html']);
 	pg_assert_same('&lt;b&gt;Ali&lt;/b&gt;', $row['cells']['first_name']['html']);
-	pg_assert_contains(lang('Mobile') . ': 2', $row['cells']['phone']['html']);
+	pg_assert_same('2', $row['cells']['mobile_phone']['html']);
 	pg_assert_contains('mailto:a@x', $row['cells']['email']['html']);
 	pg_assert_contains('edit_user.php?id=3', $row['cells']['user']['html'], 'a manager may open a user account');
 	pg_assert_contains('task_alt', $row['cells']['opt_in']['html']);
@@ -222,7 +222,8 @@ function test_contact_list_row_address_and_duplicates_views()
 
 	$row = pg_contact_list_row($contact, array('role' => 0), 'my_contacts_by_home_address', '', '');
 	pg_assert_false(isset($row['cells']['email']), 'the address views show no e-mail');
-	pg_assert_same('L1,<br />L2', $row['cells']['address']['html']);
+	pg_assert_same('L1', $row['cells']['address']['html']);
+	pg_assert_same('L2', $row['cells']['address_2']['html']);
 	pg_assert_same('Ci', $row['cells']['city']['html']);
 	pg_assert_contains('data-src="http://x/a.png"', $row['cells']['picture']['html'], 'a picture by address, loaded lazily');
 
@@ -377,4 +378,40 @@ function test_contact_list_organize_dialog_in_page()
 	pg_assert_contains("go(PATH . SOFTWARE_DIRECTORY . '/view_contacts.php');", $popup, 'the old popup address leads back to the list');
 	pg_assert_contains('$number_of_contacts = pg_contact_list_organized_count($moved);', $save, 'only contacts whose groups changed are counted');
 	pg_assert_contains("lang('No contact group was selected.')", $save, 'an organize with no group says so');
+}
+
+function test_contact_list_posted_group_ids_read_only_text()
+{
+	pg_assert_same(array('3', '7'), pg_contact_list_posted_group_ids('3,7'), 'the dialog posts a comma-separated list');
+	pg_assert_same(array(), pg_contact_list_posted_group_ids(''), 'an empty field names no group');
+	pg_assert_same(array(), pg_contact_list_posted_group_ids(array('3')), 'a field sent as an array names no group');
+	pg_assert_same(array(), pg_contact_list_posted_group_ids(null), 'a missing field names no group');
+
+	$save = file_get_contents(PG_FUNCTIONS_DIR . '/edit_contacts.php');
+	pg_assert_contains("pg_contact_list_posted_group_ids(\$_POST['add_to_contact_groups'] ?? '')", $save, 'the added groups are read as text');
+	pg_assert_contains("pg_contact_list_posted_group_ids(\$_POST['remove_from_contact_groups'] ?? '')", $save, 'the removed groups are read as text');
+}
+
+// The mass delete's notice is HTML: a group's name is escaped there, and a
+// group the user may not see, or one that is gone, is left out rather than
+// named or turned into a PHP warning.
+function test_contact_list_deleted_groups_label()
+{
+	$groups = array(
+		array('id' => '3', 'name' => '<img src=x onerror=alert(1)>'),
+		array('id' => '7', 'name' => 'Ali & Veli'),
+	);
+	$none = '[' . lang('None') . ']';
+	$all = '[' . lang('All') . ']';
+
+	pg_assert_same('&lt;img src=x onerror=alert(1)&gt;', pg_contact_list_deleted_groups_label(false, array(), '3', $groups));
+	pg_assert_same($all, pg_contact_list_deleted_groups_label(false, array(), $all, $groups));
+	pg_assert_same($none, pg_contact_list_deleted_groups_label(false, array(), $none, $groups));
+	pg_assert_same('', pg_contact_list_deleted_groups_label(false, array(), '99', $groups));
+
+	pg_assert_same($none . ', Ali &amp; Veli', pg_contact_list_deleted_groups_label(true, array($none, '7', '99'), '3', $groups));
+	pg_assert_same('', pg_contact_list_deleted_groups_label(true, '', '3', $groups));
+
+	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/view_contacts.php');
+	pg_assert_contains('pg_contact_list_deleted_groups_label($advanced_filters', $screen, 'the delete notice names the groups through the helper');
 }

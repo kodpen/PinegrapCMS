@@ -363,7 +363,7 @@ JS
 	}
 
 	pg_assert_same(array('start', 'message', 'people', 'logic', 'system', 'end', 'values'), $result['order'], 'groups in the order a flow is built');
-	pg_assert_same(array('start:manual,schedule,event,join,row,no_order', 'message:post,email,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
+	pg_assert_same(array('start:manual,schedule,event,join,row,no_order,web,mention', 'message:post,email,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
 	pg_assert_same(array('end:end', 'values:constants,value'), $result['endItems'], 'the End box has its own group, the value boxes come last');
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
@@ -1897,17 +1897,66 @@ JS
 	pg_assert_same(0, $result['openAdd']);
 }
 
+// A box that reads a row: offered while the person reads a table, even one
+// they may not change; its row named by its number or one value; it gives
+// the boxes after it the row, found and each cell of its table.
+function test_workspace_flows_canvas_row_get_box()
+{
+	$result = ws_flows_canvas_test_node(
+		array('kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowCellValues', 'rowWriteMeta', 'boxValues', 'fieldTexts'),
+		<<<'JS'
+var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_get: { into: true, out: ['done', 'failed'] } };
+var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_get', 'fl_kind_row_get']];
+var VALUE_FIELDS = { row_get: [['row', 'fl_rows_row', 200]] };
+var FL = { outputs: { row_get: [{ key: 'row_id', type: 'number', label: 'Row' }, { key: 'found', type: 'number', label: 'Row found (1 or 0)' }] }, steps: { tables: [
+    { id: 5, name: 'Counters', edit: false, columns: [{ id: 7, name: 'Name', type: 'text' }, { id: 9, name: 'Count', type: 'number' }] }
+] } };
+function valueNames() { return {}; }
+var node = { id: 'get', kind: 'row_get', config: { table_id: 5, row: '12' } };
+var out = {
+    palette: paletteItems().map(function (item) { return item[0]; }),
+    values: boxValues(node).map(function (item) { return item.token + ':' + item.type; }),
+    meta: [rowWriteMeta(node), rowWriteMeta({ kind: 'row_get', config: { table_id: 0, row: '' } })],
+    texts: fieldTexts(node).map(function (item) { return item.key; })
+};
+FL.steps.tables = [];
+out.none = paletteItems().map(function (item) { return item[0]; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('row', 'row_get'), $result['palette'], 'a table read but not changed: the read box, no write box');
+	pg_assert_same(array(), $result['none'], 'no table read: no read box');
+	pg_assert_same(array(
+		'{{node.get.text}}:text', '{{node.get.outcome}}:text', '{{node.get.status}}:text',
+		'{{node.get.row_id}}:number', '{{node.get.found}}:number', '{{node.get.cell_7}}:text', '{{node.get.cell_9}}:number',
+	), $result['values'], 'the row, found and every cell of its table');
+	pg_assert_same(array('fl_rows_meta Counters 12', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('row'), $result['texts'], 'its row reads a value');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$fields = ws_flows_canvas_test_script_function($source, 'rowGetFields');
+
+	pg_assert_contains("stepLists().tables.map", $fields, 'every table the person reads is offered');
+	pg_assert_contains("t('fl_rows_get_row_help')", $fields, 'the row field says a missing row gives found 0');
+	pg_assert_contains("rowGetFields(box, node);", $source, 'the settings draw it');
+}
+
 // The groups of the flow boxes and their colours (dark theme as the visual
 // spec gives them; workspace-flows-visual-spec.md), in their listing order.
 function ws_flows_canvas_test_groups()
 {
 	return array(
-		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row', 'no_order')),
+		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row', 'no_order', 'web', 'mention')),
 		'values' => array('#e58fd0', array('constants', 'value')),
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'record_get', 'ai'))
 	);
 }
 
@@ -2008,9 +2057,19 @@ JS
 	pg_assert_true(isset($server['mcp']), 'the server has the MCP box');
 
 	// A kind the canvas does not build yet (the table boxes) is left out.
+	// A Pinegrap AI box's arrows follow its settings: the canvas holds a
+	// writing box's, kindOf() a classifying box's (ws_step_ai_arrow_outcomes()).
 	foreach (array_intersect_key($server, $result) as $kind => $info) {
-		pg_assert_same(array_values((array) $info['outcomes']), $result[$kind], $kind . "'s outcomes");
+		$outcomes = ($kind === 'ai')
+			? array_values(array_diff(ws_step_ai_arrow_outcomes(ws_step_ai_normalize(array())), array('always')))
+			: array_values((array) $info['outcomes']);
+
+		pg_assert_same($outcomes, $result[$kind], $kind . "'s outcomes");
 	}
+
+	$kind_of = substr($source, (int) strpos($source, 'function kindOf('), 900);
+	pg_assert_contains("(node.config.mode === 'classify')", $kind_of, 'a classifying AI box leaves on its named outcomes');
+	pg_assert_contains("concat(['other', 'failed'])", $kind_of);
 
 	pg_assert_same(array(), array_values(array_diff(array_keys($result), array_keys($server))), 'the canvas has no kind the server lacks');
 
@@ -2429,6 +2488,52 @@ JS
 	pg_assert_contains("'ws_flow_template_update'", $script, 'the change goes through the panel action');
 	pg_assert_contains("'ws_flow_template_bin'", $script, 'the delete goes through the panel action');
 	pg_assert_contains("'template_save'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php'), 'the config says whether templates may be saved');
+}
+
+// Repeat N times: a For each box in count mode reads and offers its count,
+// never its list, takes a number value for it, without a fallback, and
+// says how many times it repeats.
+function test_workspace_flows_canvas_for_each_count()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
+	pg_assert_true((bool) preg_match('/\n    var VALUE_FIELDS = \{\n.*?\n    \};\n/s', $source, $fields), 'VALUE_FIELDS is in the script');
+
+	$result = ws_flows_canvas_test_node(
+		array('kindOf', 'fieldTexts', 'openFields', 'fieldTakes', 'fieldFallback'),
+		$kinds[0] . $fields[0] . <<<'JS'
+var count = { id: 'repeat', kind: 'for_each', config: { list: '{{node.hook.body}}', path: '', fields: [], mode: 'count', count: '{{node.get.cell_9}}' } };
+var list = { id: 'each', kind: 'for_each', config: { list: '', path: '', fields: [], mode: 'list', count: '' } };
+var empty = { id: 'empty', kind: 'for_each', config: { list: '', path: '', fields: [], mode: 'count', count: '' } };
+console.log(JSON.stringify({
+    texts: fieldTexts(count).map(function (item) { return item.key + '=' + item.text; }),
+    listOpen: openFields(list).map(function (item) { return item.key; }),
+    countOpen: openFields(empty).map(function (item) { return item.key; }),
+    filled: openFields(count).length,
+    takes: [fieldTakes(count, 'count', { node: { kind: 'row_get' }, value: { key: 'cell_9', type: 'number' } }), fieldTakes(count, 'count', { node: { kind: 'row_get' }, value: { key: 'cell_3', type: 'text' } })],
+    fallback: fieldFallback(count, 'count')
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('count={{node.get.cell_9}}'), $result['texts'], 'the list it no longer reads is not threaded');
+	pg_assert_same(array('list'), $result['listOpen']);
+	pg_assert_same(array('count'), $result['countOpen']);
+	pg_assert_same(0, $result['filled'], 'its one value taken, the field closes');
+	pg_assert_same(array(true, false), $result['takes'], 'a count takes a number');
+	pg_assert_false($result['fallback']);
+
+	$fields = ws_flows_canvas_test_script_function($source, 'loopFields');
+
+	pg_assert_contains("t('fl_loop_mode_count')", $fields);
+	pg_assert_contains("config.fields = [];", $fields, 'a count gives no fields');
+	pg_assert_contains("t('fl_loop_count_help')", $fields);
+	pg_assert_contains("t('fl_loop_count_meta'", $source, 'the box says how many times');
 }
 
 // For each / End for each on the canvas (data-passing D9): the canvas finds

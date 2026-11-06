@@ -110,6 +110,11 @@ function ws_flow_kinds()
         $kinds[$kind] = array('label' => $info['label'], 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array());
     }
 
+    // A start by the flow's own web address (flow_web_start.php).
+    if (function_exists('ws_flow_web_normalize')) {
+        $kinds['web'] = array('label' => lang('When a web address is called'), 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array());
+    }
+
     // One condition of a scheduled action (flow_conditions.php).
     if (function_exists('ws_flow_condition_outcomes')) {
         $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false, 'outputs' => array());
@@ -133,7 +138,7 @@ function ws_flow_kinds()
     // always: one on each enters the loop, one on failed leaves it.
     if (function_exists('ws_flow_loop_normalize')) {
         $kinds['for_each'] = array('label' => lang('For each'), 'trigger' => false, 'outcomes' => array('each', 'failed'), 'step' => false,
-            'outputs' => ws_flow_loop_outputs(array()), 'loop' => 'start', 'texts' => array('list'));
+            'outputs' => ws_flow_loop_outputs(array()), 'loop' => 'start', 'texts' => array('list', 'count'));
         $kinds['for_each_end'] = array('label' => lang('End for each'), 'trigger' => false, 'outcomes' => array('done'), 'step' => false,
             'outputs' => array(
                 array('key' => 'count', 'type' => 'number', 'label' => lang('Item count')),
@@ -156,6 +161,24 @@ function ws_flow_kinds()
     }
 
     return $kinds;
+}
+
+/**
+ * The outcomes an arrow may leave this box on: its kind's
+ * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box, whose settings say
+ * which (a classifying box's named outcomes, flow_ai_box.php). Pure.
+ *
+ * @param array $kind ws_flow_kinds() entry
+ * @param array $node the box (kind, config)
+ * @return string[]
+ */
+function ws_flow_node_arrow_outcomes($kind, $node)
+{
+    if (((string) ($node['kind'] ?? '') === 'ai') && function_exists('ws_step_ai_arrow_outcomes')) {
+        return ws_step_ai_arrow_outcomes(ws_step_ai_normalize(is_array($node['config'] ?? null) ? $node['config'] : array()));
+    }
+
+    return ws_flow_arrow_outcomes($kind);
 }
 
 /**
@@ -326,6 +349,9 @@ function ws_flow_config_normalize($kind, $config)
                 'timeout'     => (is_bool($timeout) || !is_numeric($timeout)) ? '' : max(1, min(defined('WS_FLOW_TIMEOUT_MAX') ? WS_FLOW_TIMEOUT_MAX : 720, (int) $timeout)),
             );
 
+        case 'web':
+            return function_exists('ws_flow_web_normalize') ? ws_flow_web_normalize($config) : array();
+
         case 'condition':
             return function_exists('ws_flow_condition_normalize') ? ws_flow_condition_normalize($config) : array();
 
@@ -350,6 +376,7 @@ function ws_flow_config_normalize($kind, $config)
         case 'join':
         case 'row':
         case 'no_order':
+        case 'mention':
             return function_exists('ws_flow_anchor_normalize') ? ws_flow_anchor_normalize($kind, $config) : array();
     }
 
@@ -702,14 +729,19 @@ function ws_flow_node_texts($node)
         return ((($rule['type'] ?? '') === 'value') && is_string($rule['ref'] ?? null) && ($rule['ref'] !== '')) ? array($rule['ref']) : array();
     }
 
-    // A derived value box reads its two inputs.
+    // A derived value box reads its inputs.
     if ($kind === 'value') {
-        return array_values(array_filter(array($node['config']['a'] ?? null, $node['config']['b'] ?? null), 'is_string'));
+        return array_values(array_filter(array($node['config']['a'] ?? null, $node['config']['b'] ?? null, $node['config']['c'] ?? null), 'is_string'));
+    }
+
+    // A delay box waiting until a date reads that date.
+    if ($kind === 'delay') {
+        return ((($node['config']['mode'] ?? '') === 'until') && is_string($node['config']['at'] ?? null)) ? array($node['config']['at']) : array();
     }
 
     // A loop's boxes read their list or the value they gather.
     if ($kind === 'for_each') {
-        $keys = array('list');
+        $keys = array(function_exists('ws_flow_loop_source_key') ? ws_flow_loop_source_key((array) $node['config']) : 'list');
     } elseif ($kind === 'for_each_end') {
         $keys = array('collect');
     } else {
@@ -1026,7 +1058,7 @@ function ws_flow_graph_check($graph)
             }
         }
 
-        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order'), true)) {
+        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order', 'mention'), true)) {
             foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
@@ -1107,7 +1139,7 @@ function ws_flow_graph_check($graph)
 
         $kind = $nodes[$from]['kind'];
 
-        if (isset($kinds[$kind]) && !in_array($edge['on'], ws_flow_arrow_outcomes($kinds[$kind]), true)) {
+        if (isset($kinds[$kind]) && !in_array($edge['on'], ws_flow_node_arrow_outcomes($kinds[$kind], $nodes[$from]), true)) {
             $problems[] = ws_flow_problem('bad_outcome', $from, $index, lang(array('string' => 'An arrow leaves the box {var:1} on {var:2}, which is not one of its outcomes.', 'vars' => array($names[(string) $from], ($edge['on'] !== '') ? $edge['on'] : '-'))));
         }
 
@@ -1614,14 +1646,15 @@ function ws_flows_list_where($filters)
 
 /**
  * How a flow starts, by the kind of its start box: at a time, on an event
- * (a row of a workflow table written is one too, and a customer who stopped
- * ordering), when somebody joins a channel, or by hand.
+ * (a row of a workflow table written is one too, a customer who stopped
+ * ordering, and a mention of the flow in a channel), when somebody joins a
+ * channel, or by hand.
  *
  * @return array box kind => start
  */
 function ws_flow_start_names()
 {
-    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'join' => 'join', 'manual' => 'manual');
+    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'mention' => 'event', 'join' => 'join', 'manual' => 'manual', 'web' => 'web');
 }
 
 /**
@@ -1889,6 +1922,10 @@ function ws_flow_start_rule($graph, $readable, $table_text = null)
     $kind = (string) $trigger['kind'];
     $anchors = function_exists('ws_flow_anchor_kinds') ? ws_flow_anchor_kinds() : array();
 
+    if ($kind === 'web') {
+        return array('text' => lang('When a web address is called'), 'rule' => null);
+    }
+
     if (!isset($anchors[$kind])) {
         return array('text' => lang('By hand'), 'rule' => null);
     }
@@ -1903,6 +1940,13 @@ function ws_flow_start_rule($graph, $readable, $table_text = null)
 
     if ($kind === 'no_order') {
         return array('text' => ws_flow_no_order_said($config), 'rule' => null);
+    }
+
+    // A mention box names its channel only to whoever reads it.
+    if ($kind === 'mention') {
+        $channel = (((int) $config['channel_id'] > 0) && call_user_func($readable, (int) $config['channel_id'])) ? ws_channel((int) $config['channel_id']) : null;
+
+        return array('text' => ws_flow_mention_said($channel ? (string) $channel['name'] : ''), 'rule' => null);
     }
 
     if (((int) ($config['channel_id'] ?? 0) > 0) && !call_user_func($readable, (int) $config['channel_id'])) {
@@ -2447,8 +2491,13 @@ function ws_flow_graph_present($graph, $edit = false)
                 $node['config'] = ws_flow_condition_masked($node['config']);
             }
 
-            if (!$edit && in_array((string) $node['kind'], array('row_add', 'row_set'), true)) {
+            if (!$edit && in_array((string) $node['kind'], array('row_add', 'row_set', 'row_get'), true)) {
                 $node['config'] = ws_flow_row_box_masked($node['config']);
+            }
+
+            // The record a read box names may be out of the reader's reach.
+            if (!$edit && ((string) $node['kind'] === 'record_get')) {
+                $node['config']['id'] = '';
             }
 
             $node['config'] = (object) $node['config'];
@@ -2466,13 +2515,18 @@ function ws_flow_graph_present($graph, $edit = false)
  * the values, which may be a customer's data, as a change box's. Cells the
  * server cannot read as a JSON object keep nothing. Pure.
  *
- * @param array $config ws_step_config_normalize() of row_add or row_set
+ * @param array $config ws_step_config_normalize() of row_add, row_set or row_get
  * @return array
  */
 function ws_flow_row_box_masked($config)
 {
     if (array_key_exists('row', $config)) {
         $config['row'] = '';
+    }
+
+    // A box that reads a row has no cells to hide.
+    if (!array_key_exists('cells', $config)) {
+        return $config;
     }
 
     $cells = json_decode((string) ($config['cells'] ?? ''), true);
@@ -2785,8 +2839,15 @@ function ws_flow_js_strings()
         'fl_derived_a'        => lang('Value it works from'),
         'fl_derived_b'        => lang('With'),
         'fl_derived_days'     => lang('Days to add'),
+        'fl_derived_find'     => lang('Find'),
+        'fl_derived_with'     => lang('Replace with (empty takes it out)'),
+        'fl_derived_length'   => lang('Number of characters'),
+        'fl_derived_split'    => lang('Split at (empty: spaces)'),
+        'fl_derived_part'     => lang('Part to take (1 the first, -1 the last)'),
         'fl_derived_op'       => lang('Comparison'),
         'fl_derived_places'   => lang('Decimal places'),
+        'fl_derived_formula'  => lang('Formula'),
+        'fl_derived_formula_help' => lang('Numbers, values, + - * / ^, a percent such as 18% and functions with their values split by ; as in ROUND(value; 2). A value that is not a number gives an empty value. Functions:'),
         'fl_derived_format'   => lang('Date shape'),
         'fl_derived_value'    => lang('Value'),
         'fl_derived_help'     => lang('This box has no arrows: its value is worked out from the values it reads each time a box reads it. A comparison gives 1 when it holds, else 0; a value the rule cannot read gives an empty value.'),
@@ -2903,6 +2964,13 @@ function ws_flow_js_strings()
         'fl_loop_fields'      => lang('Fields of an item'),
         'fl_loop_fields_help' => lang('Up to 10 keys of an item, separated by commas: each becomes a value of this box inside the loop.'),
         'fl_loop_no_list'     => lang('No list chosen'),
+        'fl_loop_mode'        => lang('Go through'),
+        'fl_loop_mode_list'   => lang('Each item of a list'),
+        'fl_loop_mode_count'  => lang('A number of times (Repeat N times)'),
+        'fl_loop_count'       => lang('Number of times'),
+        'fl_loop_count_help'  => lang('A whole number from 1 to 50, or one value. The boxes the each arrow leads into run that many times; Item number counts 1, 2, 3 …'),
+        'fl_loop_count_meta'  => ws_js_template('Repeat {var:1} times', 1),
+        'fl_loop_no_count'    => lang('No number of times chosen'),
         'fl_loop_ends'        => lang('Loop it ends'),
         'fl_loop_pick'        => lang('Choose a loop'),
         'fl_loop_end_meta'    => ws_js_template('Ends {var:1}', 1),
@@ -2910,6 +2978,7 @@ function ws_flow_js_strings()
         'fl_loop_collect_help' => lang('One value of a box inside the loop, gathered for every item into the list this box gives.'),
         'fl_loop_body'        => lang('Repeated for each item'),
         'fl_on_each'          => lang('For each item'),
+        'fl_on_other'         => lang('None of these'),
         'fl_digest_mode'      => lang('Which tasks'),
         'fl_digest_mine'      => lang('Each person their own open tasks'),
         'fl_digest_channel'   => lang('The open tasks of one channel'),
@@ -2937,7 +3006,15 @@ function ws_flow_js_strings()
         'fl_delay_unit_minutes' => lang('Minutes'),
         'fl_delay_unit_hours' => lang('Wait hours'),
         'fl_delay_unit_days'  => lang('Wait days'),
-        'fl_delay_help'       => lang('The boxes after it start when the time is up: at least a minute, at most a week.'),
+        'fl_delay_help'       => lang('The boxes after it start when the time is up: at least a minute, at most 90 days.'),
+        'fl_delay_mode'       => lang('Wait'),
+        'fl_delay_mode_for'   => lang('For a time'),
+        'fl_delay_mode_until' => lang('Until a date'),
+        'fl_delay_at'         => lang('Date and time'),
+        'fl_delay_at_help'    => lang('A value such as a booking\'s start, or a date written as YYYY-MM-DD HH:MM. A date that has passed lets the boxes after it start at once; at most 90 days ahead.'),
+        'fl_delay_before'     => lang('This long before it'),
+        'fl_delay_until'      => ws_js_template('until {var:1}', 1),
+        'fl_delay_until_before' => ws_js_template('{var:1} before {var:2}', 2),
         'fl_delay_none'       => lang('No time set'),
         'fl_self_retry'       => lang('Tries again after a failure'),
         'fl_self_retry_help'  => lang('0 for never; at most 7 more tries, 8 in all. The arrow on failed is taken once they are used.'),
@@ -2967,6 +3044,15 @@ function ws_flow_js_strings()
         'fl_approval_all'     => lang('All of them'),
         'fl_approval_closes'  => lang('Hours to decide'),
         'fl_approval_closes_help' => lang('Empty for no deadline; at most 720 hours (30 days). A request with no decision by then expires.'),
+        'fl_approval_answer'  => lang('Answer with the approval'),
+        'fl_approval_answer_none' => lang('No answer'),
+        'fl_approval_answer_text' => lang('A text'),
+        'fl_approval_answer_number' => lang('A number'),
+        'fl_approval_answer_help' => lang('Approve asks for it and it is required; a number is read as the calculator reads it. The flow gets the last decider\'s answer.'),
+        'fl_approval_answer_label' => lang('Question'),
+        'fl_approval_answer_out' => lang('Answer'),
+        'fl_approval_answer_number_out' => lang('Answer as a number'),
+        'fl_approval_decided_by' => lang('Decided by'),
         'fl_kind_change'      => lang('Change a record'),
         'fl_kind_lead'        => lang('Bring a customer into a channel'),
         'fl_kind_mcp'         => lang('Run a tool of an MCP server'),
@@ -3010,11 +3096,27 @@ function ws_flow_js_strings()
         'fl_event_any_channel' => lang('Any channel'),
         'fl_join_channel'     => lang('Channel joined'),
         'fl_join_any'         => lang('Any public channel'),
+        'fl_kind_mention'     => lang('When the flow is mentioned in a channel'),
+        'fl_mention_channel'  => lang('Channel'),
+        'fl_mention_pick'     => lang('Choose a channel'),
+        'fl_mention_help'     => lang('A person who writes @ and the flow\'s name in this channel starts a run, as the flow\'s owner, with the message, its author and the channel. Messages of flows, applications and assistants start nothing; one person starts at most one run this way a minute.'),
         'fl_kind_row'         => lang('When a table row changes'),
         'fl_kind_no_order'    => lang('When a customer stops ordering'),
         'fl_no_order_days'    => lang('Days since the last order'),
         'fl_no_order_days_help' => lang('Looked at every hour: each customer whose last order is this many days old starts one run, as the flow\'s owner, with the customer\'s values. A new order starts the count again; customers who never ordered start nothing.'),
         'fl_no_order_meta'    => ws_js_template('No order for {var:1} days', 1),
+        'fl_kind_web'         => lang('When a web address is called'),
+        'fl_web_meta'         => lang('No field read yet'),
+        'fl_web_fields'       => lang('Fields it reads'),
+        'fl_web_field_name'   => lang('Field name'),
+        'fl_web_field_add'    => lang('Add a field'),
+        'fl_web_fields_help'  => lang('The fields the caller sends, as a JSON object or as form fields. Each one named here is a value of the run, {{trigger.name}}; the others are left out.'),
+        'fl_web_address'      => lang('Web address'),
+        'fl_web_address_none' => lang('No address yet'),
+        'fl_web_address_make' => lang('Make an address'),
+        'fl_web_address_renew' => lang('Renew the address'),
+        'fl_web_address_renew_confirm' => lang('The old address stops working at once. Renew it?'),
+        'fl_web_address_help' => lang('Another system starts the published flow by sending a POST to this address, in the name of the flow\'s owner: at most 60 calls a minute and 64 KB each. Keep it secret: whoever has it can start the flow.'),
         'fl_row_table'        => lang('Table'),
         'fl_row_table_pick'   => lang('Choose a table'),
         'fl_row_table_help'   => lang('Each row written starts a run, as the flow\'s owner, while the flow is live and they may read the table. Rows a file import adds start nothing.'),
@@ -3028,6 +3130,39 @@ function ws_flow_js_strings()
         'fl_row_none'         => lang('No table chosen'),
         'fl_kind_row_add'     => lang('Add a row to a table'),
         'fl_kind_row_set'     => lang('Change a row of a table'),
+        'fl_kind_row_get'     => lang('Read a row of a table'),
+        'fl_rows_read_help'   => lang('The tables the flow\'s owner may read; the box reads with their rights.'),
+        'fl_kind_record_get'  => lang('Read a record'),
+        'fl_record_kind'      => lang('Kind of record'),
+        'fl_record_kind_pick' => lang('Choose a kind of record'),
+        'fl_record_kind_help' => lang('The kinds of record the flow\'s owner may read; the box reads with their rights.'),
+        'fl_record_id'        => lang('Record'),
+        'fl_record_id_help'   => lang('The record\'s number, or one value, such as {{trigger.record_id}}. A record that is not there, or one the owner may not read, gives found 0 and empty fields.'),
+        'fl_kind_ai'          => lang('Ask Pinegrap AI'),
+        'fl_ai_mode'          => lang('What it does'),
+        'fl_ai_mode_write'    => lang('Write'),
+        'fl_ai_mode_summarize' => lang('Summarize'),
+        'fl_ai_mode_extract'  => lang('Find a value'),
+        'fl_ai_mode_classify' => lang('Sort into outcomes'),
+        'fl_ai_mode_help_write' => lang('Writes the text the prompt asks for, such as a reply or a description, in the site\'s language.'),
+        'fl_ai_mode_help_summarize' => lang('Sums up the text in a few sentences; the prompt may say how.'),
+        'fl_ai_mode_help_extract' => lang('Finds in the text the value the prompt names; gives it as an answer and as a number, and found 1 or 0.'),
+        'fl_ai_mode_help_classify' => lang('Chooses which of the outcomes below the text belongs to; each outcome is an arrow, and None of these is one too.'),
+        'fl_ai_prompt'        => lang('Prompt'),
+        'fl_ai_prompt_help'   => lang('What Pinegrap AI is to do. Only this prompt and the text below, with their values, are sent; the site\'s Pinegrap AI quota is used.'),
+        'fl_ai_prompt_help_extract' => lang('The value to find, such as the order number or the delivery date.'),
+        'fl_ai_text'          => lang('Text it reads'),
+        'fl_ai_text_help'     => lang('Usually one value, such as a message or a form answer; it is sent as data, never as an instruction.'),
+        'fl_ai_classes'       => lang('Outcomes'),
+        'fl_ai_classes_help'  => lang('Up to 8 names, such as Complaint or Question. Text that fits none leaves on None of these.'),
+        'fl_ai_class_add'     => lang('Add an outcome'),
+        'fl_ai_class_n'       => ws_js_template('Outcome {var:1}', 1),
+        'fl_ai_class_remove'  => ws_js_template('Remove the outcome {var:1}', 1),
+        'fl_ai_number'        => lang('Answer as a number'),
+        'fl_ai_found'         => lang('Found (1 or 0)'),
+        'fl_ai_closes'        => lang('Hours to wait for the answer'),
+        'fl_ai_closes_help'   => lang('1 to 720 hours. Pinegrap AI is asked again every hour until it answers; with no answer by then the box leaves on failed.'),
+        'fl_rows_get_row_help' => lang('The row\'s number, or one value, such as {{trigger.row_id}}. A row that is not there gives found 0 and empty cells.'),
         'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
         'fl_rows_row'         => lang('Row'),
         'fl_rows_row_help'    => lang('The row\'s number, or one value, such as the row a box before added.'),
@@ -3047,6 +3182,8 @@ function ws_flow_js_strings()
         'fl_rows_link_kind'   => lang('Kind of record'),
         'fl_rows_link_id'     => lang('Record number'),
         'fl_rows_meta'        => ws_js_template('{var:1} · row {var:2}', 2),
+        'fl_record_meta'      => ws_js_template('{var:1} · {var:2}', 2),
+        'fl_record_none'      => lang('No kind of record chosen'),
         'fl_day_mon'         => lang('Monday'),
         'fl_day_tue'         => lang('Tuesday'),
         'fl_day_wed'         => lang('Wednesday'),
@@ -3130,9 +3267,20 @@ function ws_flow_js_strings()
         'fl_email_no_to'      => lang('No address yet'),
         'fl_email_to'         => lang('To'),
         'fl_email_to_help'    => lang('E-mail addresses, separated by commas.'),
+        'fl_email_recipient'  => lang('Write to'),
+        'fl_email_typed'      => lang('The addresses typed here'),
+        'fl_email_person'     => lang('The person of the record the run is about'),
+        'fl_email_purpose'    => lang('Why'),
+        'fl_email_purpose_info' => lang('Information (an answer, a reminder)'),
+        'fl_email_purpose_marketing' => lang('Marketing'),
+        'fl_email_purpose_help' => lang('The order\'s customer, the form\'s sender, the booking\'s guest or the e-mail\'s sender. Marketing goes only to a person who agreed to marketing e-mail, with an unsubscribe link; otherwise the box sends nothing and the run says why.'),
+        'fl_email_person_info' => lang('To the record\'s person'),
+        'fl_email_person_marketing' => lang('Marketing to the record\'s person'),
         'fl_email_subject'    => lang('Subject'),
         'fl_email_body'       => lang('Text of the e-mail'),
         'fl_values_hint'      => lang('Add value puts in what started the run or what an earlier box gave; {{date}} and the other words of scheduled actions work too.'),
+        'fl_values_hint_plain' => lang('Add value puts in what started the run or what an earlier box gave.'),
+        'fl_values_hint_value' => lang('Add value puts in what started the run or what an earlier box gave; {{date}}, {{time}} and {{weekday}} give today\'s date, the time and the day of the week.'),
         'fl_values_add'       => lang('Add value'),
         'fl_values_text'      => lang('What it did'),
         'fl_values_outcome'   => lang('Outcome'),
@@ -3480,11 +3628,11 @@ function ws_flow_js_config($viewer, $mode)
     $member = ws_flow_js_member(ws_flow_builder_kind($viewer));
     $build = ws_flows_ready() && (ws_can_schedule($viewer) || ($member['member'] && ws_flow_member($viewer)));
     $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
-        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null, 'tables' => array(), 'mcp' => array());
+        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null, 'tables' => array(), 'reads' => array(), 'mcp' => array());
 
     // The boxes that may try again on their own after a failure, and how
     // many times at most (flow_runs.php).
-    $steps['retry'] = array('kinds' => function_exists('ws_step_kinds') ? array_keys(ws_step_kinds()) : array(), 'max' => WS_FLOW_RETRY_MAX, 'after_max' => WS_FLOW_DELAY_MAX);
+    $steps['retry'] = array('kinds' => function_exists('ws_step_kinds') ? array_keys(ws_step_kinds()) : array(), 'max' => WS_FLOW_RETRY_MAX, 'after_max' => WS_FLOW_RETRY_AFTER_MAX);
 
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {
@@ -3514,6 +3662,12 @@ function ws_flow_js_config($viewer, $mode)
 
         // The workflow tables a row box may start on, with their columns.
         $steps['tables'] = function_exists('ws_flow_row_tables') ? ws_flow_row_tables($viewer) : array();
+
+        // The kinds of record a read box may read, with the values each gives.
+        $steps['reads'] = function_exists('ws_flow_record_get_kinds') ? ws_flow_record_get_kinds($viewer) : array();
+        // The Pinegrap AI box is offered while the site has it set up
+        // (ws_step_ai_check()).
+        $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
 
         // A box on customers who stopped ordering, to whoever reads orders
         // and contacts.
@@ -3580,7 +3734,8 @@ function ws_flow_js_config($viewer, $mode)
         // (ws_flow_run_contact_check() decides which).
         'run_customer' => !empty($viewer['contacts']),
         'derived'  => function_exists('ws_flow_derived_rules') ? ws_flow_derived_lists() : array(),
-        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20),
+        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
+            'web_fields' => defined('WS_FLOW_WEB_FIELDS_MAX') ? WS_FLOW_WEB_FIELDS_MAX : 20),
     );
 }
 

@@ -96,14 +96,24 @@ function test_product_list_driver_quick_edit_columns()
 	}
 }
 
+function product_list_driver_test_choices()
+{
+	return array(
+		'pages' => array('7' => 'Welcome', '9' => 'Thanks [ARCHIVED]'),
+		'folders' => array('3' => 'Members', '4' => "\u{00A0}\u{00A0}Gold"),
+		'groups' => array('5' => 'Buyers'),
+		'zones' => array('5' => 'Asia', '2' => 'Europe', '8' => 'World'),
+	);
+}
+
 function test_product_list_driver_every_screen_value_is_editable()
 {
-	// Computed, or set on the product screen with more than one box or a
-	// choice from the site: the only columns that stay text in quick edit.
-	$read_only = array('image', 'seo', 'impact', 'last_modified', 'out_of_stock_date', 'actions', 'dim', 'allowed_zones', 'disallowed_zones', 'set_start_page', 'grant_private_access', 'order_receipt_message', 'email_page', 'contact_group');
+	// Computed, or set on the product screen with several choices or rich
+	// text: the only columns that stay text in quick edit.
+	$read_only = array('image', 'seo', 'impact', 'last_modified', 'out_of_stock_date', 'actions', 'order_receipt_message');
 
 	foreach (array_keys(pg_product_list_filters()) as $filter) {
-		$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view($filter), pg_pb_quick_edit_columns()));
+		$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view($filter), pg_pb_quick_edit_columns(product_list_driver_test_choices())));
 
 		foreach ($columns as $key => $column) {
 			// A custom field changes in place where the site names it, as
@@ -143,6 +153,58 @@ function test_product_list_driver_more_fields_read_like_the_screen()
 	pg_assert_same('30', pg_pb_quick_edit_value('start', array('recurring_start' => '30')), 'the start day from the list read');
 	pg_assert_same('30', pg_pb_quick_edit_value('start', array('start' => '30')), 'the start day from the products row');
 	pg_assert_same('Monthly', pg_pb_quick_edit_value('payment_period', array('payment_period' => 'Monthly')), 'a choice opens with its value');
+}
+
+function test_product_list_driver_choice_fields()
+{
+	$fields = pg_pb_quick_edit_fields(product_list_driver_test_choices());
+	$product = array('start_page' => 'Welcome', 'membership_renewal' => '0', 'order_receipt_message' => '', 'order_receipt_bcc_email_address' => '', 'email_bcc' => '', 'contact_group_name' => 'Buyers',
+		'weight' => '0', 'primary_weight_points' => '0', 'secondary_weight_points' => '0', 'length' => '0', 'width' => '0', 'height' => '0', 'container_required' => '0',
+		'preparation_time' => '0', 'free_shipping' => '0', 'extra_shipping_cost' => '0', 'recurring_start' => '0', 'number_of_payments' => '0', 'payment_period' => '',
+		'recurring_schedule_editable_by_customer' => '0', 'grant_private_access' => '1', 'send_to_page' => '7', 'private_folder_id' => '4', 'private_folder' => 'Gold', 'email_page_id' => '0', 'email_page' => '', 'contact_group_id' => '5');
+
+	pg_assert_same(array('0', '7', '9'), array_map('strval', array_keys($fields['email_page']['edit']['options'])), 'none first, then the pages in the picker\'s order');
+	pg_assert_same('4', pg_pb_quick_edit_value('grant_private_access', $product, $fields), 'the folder id from the list read, not its name');
+	pg_assert_same('0', pg_pb_quick_edit_value('email_page', $product, $fields), 'no page opens as none');
+	pg_assert_true(pg_pb_quick_cell_editable('set_start_page', $product, $fields), 'a start page on a product that grants private access');
+	pg_assert_false(pg_pb_quick_cell_editable('set_start_page', array('grant_private_access' => '0') + $product, $fields), 'not without private access, as the screen hides it');
+	pg_assert_false(pg_pb_quick_cell_editable('contact_group', array('contact_group_id' => '6') + $product, $fields), 'a stored group outside the choices stays text');
+	pg_assert_true(pg_pb_quick_cell_editable('weight', $product, $fields), 'a value typed in a box is always a field');
+	pg_assert_false(pg_pb_quick_cell_editable('email_page', $product, pg_pb_quick_edit_more_fields()), 'no choice field without the choices');
+	pg_assert_same(array('email_page' => 9), pg_pb_quick_more_change('email_page', '9', array(), $fields)['change'], 'a page id under its column');
+	pg_assert_same(array('contact_group_id' => 0), pg_pb_quick_more_change('contact_group', '0', array(), $fields)['change'], 'none writes 0');
+	pg_assert_same('Gold', trim(pg_pb_quick_more_shown('grant_private_access', $product, $fields), "\u{00A0} "), 'the log names the folder');
+
+	$view = product_list_driver_test_view('all_product_actions');
+	$context = array('quick_edit' => pg_pb_quick_edit_columns(product_list_driver_test_choices()), 'fields' => $fields, 'more_images' => array(), 'zones' => array());
+	$row = pg_product_list_row(product_list_driver_test_product($product), $view, $context);
+
+	foreach (array('set_start_page', 'grant_private_access', 'contact_group') as $code) {
+		pg_assert_same($code, $row['cells'][$code]['attributes']['data-pg-edit'] ?? '', $code . ' opens as a choice');
+	}
+
+	pg_assert_same('Members', '' . (pg_pb_quick_edit_choice_fields(product_list_driver_test_choices())['grant_private_access']['edit']['options']['3'] ?? ''), 'the folder\'s label');
+	$row = pg_product_list_row(product_list_driver_test_product(array('grant_private_access' => '0') + $product), $view, $context);
+	pg_assert_false(isset($row['cells']['set_start_page']['attributes']['data-pg-edit']), 'no start page to change without private access');
+}
+
+function test_product_list_driver_dimensions()
+{
+	$fields = pg_pb_quick_edit_more_fields();
+
+	if (!isset($fields['dim'])) {
+		return;
+	}
+
+	pg_assert_same(array('length' => '12.0000', 'width' => '3.0000', 'height' => '4.5000'), pg_pb_quick_more_change('dim', '12 x 3 x 4,5', array())['change'], 'three sizes, either separator');
+	pg_assert_same(array('length' => '1.0000', 'width' => '2.0000', 'height' => '3.0000'), pg_pb_quick_more_change('dim', '1×2*3', array())['change'], 'x, × or *');
+	pg_assert_same(array('length' => '0.0000', 'width' => '0.0000', 'height' => '0.0000'), pg_pb_quick_more_change('dim', '', array())['change'], 'an empty cell takes them off');
+	pg_assert_false(pg_pb_quick_more_change('dim', '12 x 3', array())['ok'], 'two sizes are refused');
+	pg_assert_false(pg_pb_quick_more_change('dim', '12 x abc x 3', array())['ok'], 'a size that is not a number is refused');
+	pg_assert_false(pg_pb_quick_more_change('dim', '1 x 2 x 123456789', array())['ok'], 'a size the column cannot hold is refused');
+	pg_assert_false(pg_pb_quick_more_change('dim', '-1 x 2 x 3', array())['ok'], 'a negative size is refused');
+	pg_assert_same('12 x 3 x 4.5', pg_pb_quick_edit_value('dim', array('length' => '12.0000', 'width' => '3.0000', 'height' => '4.5000')), 'the cell opens as typed');
+	pg_assert_same('', pg_pb_quick_edit_value('dim', array('length' => '0.0000', 'width' => '0.0000', 'height' => '0.0000')), 'empty for none');
 }
 
 function test_product_list_driver_sort_columns_match_the_old_codes()
@@ -195,4 +257,42 @@ function test_product_list_driver_is_a_driver_list()
 	pg_assert_same('pg_product_list_source', $definition['source']);
 	pg_assert_true(function_exists($definition['source']), 'the source function is in its file');
 	pg_assert_same(null, pg_product_list_source(array('role' => '3', 'manage_ecommerce' => '0'), array()), 'a user without the e-commerce right may not open it');
+}
+
+function test_product_list_driver_zone_fields()
+{
+	$fields = pg_pb_quick_edit_fields(product_list_driver_test_choices());
+
+	if (!isset($fields['allowed_zones'])) {
+		return;
+	}
+
+	pg_assert_same('multiselect', $fields['allowed_zones']['edit']['type'], 'several choices');
+	pg_assert_same(array('5' => 'Asia', '2' => 'Europe', '8' => 'World'), $fields['disallowed_zones']['edit']['options'], 'every zone, by name');
+	pg_assert_false(isset(pg_pb_quick_edit_fields(array('zones' => array()))['allowed_zones']), 'no zones, no field');
+
+	$product = array('allowed_zone_ids' => '2,5');
+	pg_assert_same('5,2', pg_pb_quick_edit_value('allowed_zones', $product, $fields), 'the allowed ones in the choices\' order');
+	pg_assert_same('8', pg_pb_quick_edit_value('disallowed_zones', $product, $fields), 'the rest');
+	pg_assert_same('', pg_pb_quick_edit_value('allowed_zones', array('allowed_zone_ids' => ''), $fields), 'none allowed');
+	pg_assert_true(pg_pb_quick_cell_editable('allowed_zones', $product, $fields), 'a row read with its zones');
+	pg_assert_false(pg_pb_quick_cell_editable('allowed_zones', array(), $fields), 'not without them');
+
+	pg_assert_same(array('allowed_zone_ids' => '5,8'), pg_pb_quick_more_change('allowed_zones', array('8', '5'), array(), $fields)['change'], 'the allowed list stored as picked');
+	pg_assert_same(array('allowed_zone_ids' => '5,8'), pg_pb_quick_more_change('disallowed_zones', array('2'), array(), $fields)['change'], 'the disallowed side writes the rest');
+	pg_assert_same(array('allowed_zone_ids' => ''), pg_pb_quick_more_change('allowed_zones', array(), array(), $fields)['change'], 'none: ships nowhere, as the screen saves it');
+	pg_assert_same('Asia, Europe', pg_pb_quick_more_shown('allowed_zones', $product, $fields), 'the log names the zones');
+
+	$columns = pg_list_table_columns(pg_product_list_columns(product_list_driver_test_view('shippable_products'), pg_pb_quick_edit_columns(product_list_driver_test_choices())));
+	pg_assert_same('multiselect', $columns['disallowed_zones']['editable'], 'the column opens as several choices');
+
+	$view = product_list_driver_test_view('shippable_products');
+	$context = array('quick_edit' => pg_pb_quick_edit_columns(product_list_driver_test_choices()), 'fields' => $fields, 'more_images' => array(),
+		'zones' => array(12 => array('allowed' => array('2' => 'Europe'), 'disallowed' => array('5' => 'Asia', '8' => 'World'))));
+	$row = pg_product_list_row(product_list_driver_test_product(array('weight' => '0', 'primary_weight_points' => '0', 'secondary_weight_points' => '0', 'length' => '0', 'width' => '0', 'height' => '0',
+		'container_required' => '0', 'preparation_time' => '0', 'free_shipping' => '0', 'extra_shipping_cost' => '0')), $view, $context);
+
+	pg_assert_same('2', $row['cells']['allowed_zones']['attributes']['data-pg-edit-value'] ?? '', 'the allowed cell opens with its zone');
+	pg_assert_same('5,8', $row['cells']['disallowed_zones']['attributes']['data-pg-edit-value'] ?? '', 'the disallowed cell with the rest');
+	pg_assert_contains('Asia,<br />World', $row['cells']['disallowed_zones']['html'], 'drawn by name');
 }

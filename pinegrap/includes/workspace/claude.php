@@ -1359,9 +1359,23 @@ function ws_claude_draft_accept($viewer, $draft_id)
         return array('ok' => false, 'error' => lang('Somebody on this task is away then. Only a lead or somebody with the team board can hand it over anyway.'), 'task_id' => 0);
     }
 
+    // Claimed before the task is opened: of two presses at once (or an
+    // accept and a dismiss) only one changes the pending row, so one task
+    // is opened.
+    db("UPDATE ws_ai_drafts SET status = 'accepted', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
+        WHERE id = '" . (int) $draft['id'] . "' AND status = 'pending'");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'), 'task_id' => 0);
+    }
+
     $result = ws_task_create($viewer, $data);
 
     if (!$result['ok']) {
+        // No task: the proposal waits again, unless something else moved it.
+        db("UPDATE ws_ai_drafts SET status = 'pending', decided_by = 0, decided_at = 0
+            WHERE id = '" . (int) $draft['id'] . "' AND status = 'accepted' AND task_id = 0");
+
         return array('ok' => false, 'error' => $result['error'], 'task_id' => 0);
     }
 
@@ -1371,9 +1385,7 @@ function ws_claude_draft_accept($viewer, $draft_id)
         db("UPDATE ws_tasks SET source_message_id = '" . (int) $sent['message_id'] . "' WHERE id = '" . (int) $result['task_id'] . "'");
     }
 
-    db("UPDATE ws_ai_drafts SET status = 'accepted', task_id = '" . (int) $result['task_id'] . "',
-            decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
-        WHERE id = '" . (int) $draft['id'] . "'");
+    db("UPDATE ws_ai_drafts SET task_id = '" . (int) $result['task_id'] . "' WHERE id = '" . (int) $draft['id'] . "'");
 
     ws_message_touch($draft['message_id']);
 
@@ -1403,8 +1415,13 @@ function ws_claude_draft_dismiss($viewer, $draft_id)
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
     }
 
+    // Only a pending row: an accept that got there first keeps its task.
     db("UPDATE ws_ai_drafts SET status = 'dismissed', decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
-        WHERE id = '" . (int) $draft['id'] . "'");
+        WHERE id = '" . (int) $draft['id'] . "' AND status = 'pending'");
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return array('ok' => false, 'error' => lang('Somebody has already decided about this proposal.'));
+    }
 
     ws_message_touch($draft['message_id']);
 
@@ -1763,7 +1780,10 @@ Work through the queue:
       The person who asked applies it with one click, with their own rights, and it
       is kept among the channel's decisions. Say in the text what you propose. A 422
       answer names what was wrong with a change: fix it or leave it out and send the
-      answer again.
+      answer again. A refused answer posts nothing and the request stays open, so
+      the first answer you send is the real one: never a trial or test answer,
+      nor a change made only to see what the site says - an answer that is taken
+      is posted to the channel and ends the request.
       When the request in a channel asks to build a flow - steps run one after
       another, an automation with conditions, approvals, waits or tasks - read
       the kinds of box with GET /workspace/flow-kinds (each kind's outcomes, the
@@ -1778,12 +1798,19 @@ Work through the queue:
       question put to people is an approval box (approved, rejected), a post box
       only says something; a text setting may take {{node.ID.VALUE}} (a value
       of an earlier box) or {{trigger.FIELD}}; a value box (kind value) whose
-      rule reads two values (join, compare, add, subtract, add_days) needs both
-      a and b - join writes a, a space, then b, so split a text between them;
-      leave x and y out, the boxes are laid out for you. Nothing runs: the
-      draft waits under your answer, and the
-      person who asked opens it on the Flows canvas and publishes it. Say that
-      you drafted it, never that it is set up or running.
+      rule reads two values (join, compare, add, subtract, add_days, replace, cut, split) needs both
+      a and b - join writes a, a space, then b, so split a text between them -
+      replace and split also read c (what goes in, the part to take) -
+      and reads {{date}} (Y-m-d), {{time}} (H:i) and {{weekday}} as the moment
+      it is worked out;
+      the subject of a box started by hand (kind manual) is the kind of record
+      the flow is about (order, contact, task...)
+      or left out - never the flow's name; leave x and y out, the boxes are
+      laid out for you. A flow that could not be published is refused with
+      what stops it: fix it, or leave it out and say why. Nothing runs: the
+      draft waits under your answer, and the person who asked
+      opens it on the Flows canvas and publishes it. Say that you drafted it,
+      never that it is set up or running.
       A request may come from a person's note instead of a channel: then "note" is
       set (note.title, note.body, the whole note as written, formulas shown with
       their values) and channel.id is 0. Read the note, not a channel, as the

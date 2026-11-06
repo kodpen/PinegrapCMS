@@ -346,6 +346,11 @@ function pg_ap_inbox_apply($actions, $site)
                     array($action['kind'], $action['actor'], $action['object'], $action['activity'], pg_ap_reaction_key($action['kind'], $action['actor'], $action['object']), $now)
                 );
                 $done[] = $action['kind'];
+
+                // The comments widget shows the counts (pg_comments_widget_reactions()).
+                if (function_exists('pg_page_cache_mark_dirty')) {
+                    pg_page_cache_mark_dirty();
+                }
                 break;
 
             case 'unreact':
@@ -359,6 +364,10 @@ function pg_ap_inbox_apply($actions, $site)
                 }
 
                 $done[] = 'undo';
+
+                if (function_exists('pg_page_cache_mark_dirty')) {
+                    pg_page_cache_mark_dirty();
+                }
                 break;
 
             case 'actor_gone':

@@ -133,6 +133,55 @@ function test_arrival_date_form_errors()
 	pg_assert_true(strpos($edit, 'pg_arrival_date_form_errors($_POST)') < strpos($edit, 'pg_arrival_date_form_save_cutoffs('), 'and are replaced only after the checks');
 }
 
+function test_arrival_date_form_sort_order_range()
+{
+	$valid = array(
+		'name' => 'Anneler Günü',
+		'start_date' => arrival_date_form_test_date(2, 11, 2026),
+		'end_date' => arrival_date_form_test_date(31, 12, 2026),
+		'arrival_date' => arrival_date_form_test_date(24, 12, 2026),
+	);
+
+	foreach (array('1000', '32767', '-32768', '-100') as $sort_order) {
+		pg_assert_same(array(), pg_arrival_date_form_errors(array('sort_order' => $sort_order) + $valid), $sort_order . ' fits the smallint column');
+	}
+
+	foreach (array('32768', '-32769') as $sort_order) {
+		pg_assert_same(array('sort_order'), array_keys(pg_arrival_date_form_errors(array('sort_order' => $sort_order) + $valid)), $sort_order . ' does not');
+	}
+
+	// The box holds every value the server takes, so a stored 1000 is not
+	// shown, and saved back, as 100.
+	$form = arrival_date_form_test_source('includes/forms/arrival_date_form.php');
+	pg_assert_contains('name="sort_order" id="sort_order" maxlength="6" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="-32768" data-inputmask-max="32767"', $form, 'the sort order box');
+}
+
+function test_arrival_date_form_required_dates()
+{
+	$form = arrival_date_form_test_source('includes/forms/arrival_date_form.php');
+
+	pg_assert_contains('id="start_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date', $form, 'the start date is required');
+	pg_assert_contains('id="end_date" class="form-control" maxlength="10" autocomplete="off" required data-pg-date', $form, 'the end date is required');
+	pg_assert_contains('id="arrival_date" class="form-control" maxlength="10" autocomplete="off"\' . $arrival_date_required . \' data-pg-date', $form, 'the arrival date follows the custom switch');
+	pg_assert_contains('arrival_date_field.required = !custom.checked;', $form, 'and the switch moves the attribute');
+	pg_assert_contains('arrival_date_marker.classList.toggle("d-none", custom.checked);', $form, 'and its marker');
+}
+
+function test_arrival_date_form_error_text()
+{
+	pg_assert_same(
+		'Please enter a valid date for Start Date. Please enter a valid Name.',
+		pg_arrival_date_form_error_text(array('start_date' => 'Please enter a valid date for Start Date', 'name' => 'Please enter a valid Name.')),
+		'every message ends in one full stop'
+	);
+	pg_assert_same('A &lt;b&gt;.', pg_arrival_date_form_error_text(array('x' => 'A <b>')), 'escaped');
+	pg_assert_same('', pg_arrival_date_form_error_text(array()), 'none');
+
+	foreach (array('add_arrival_date.php', 'edit_arrival_date.php') as $file) {
+		pg_assert_contains('output_error(pg_arrival_date_form_error_text($errors)', arrival_date_form_test_source($file), $file . ': the error screen');
+	}
+}
+
 function test_arrival_date_form_date_text()
 {
 	pg_assert_same('', pg_arrival_date_form_date_text('0000-00-00'), 'an unset date is empty, not 0/0/0000');
@@ -140,7 +189,7 @@ function test_arrival_date_form_date_text()
 	pg_assert_same('', pg_arrival_date_form_date_text(null), 'null');
 	pg_assert_true(pg_arrival_date_form_date_text('2026-12-24') !== '', 'a real date is written');
 	pg_assert_contains('2026', pg_arrival_date_form_date_text('2026-12-24'), 'with its year');
-	pg_assert_contains('pg_arrival_date_form_date_text($row[\'arrival_date\'])', arrival_date_form_test_source('view_arrival_dates.php'), 'the list uses it');
+	pg_assert_contains('pg_arrival_date_form_date_text($row[\'arrival_date\'])', arrival_date_form_test_source('includes/fn/arrival_date_list_edit.php'), 'the list uses it');
 }
 
 // The cut-off rows backend.src.js adds carry their names: the select and
@@ -166,4 +215,42 @@ function test_combobox_native_select_size()
 
 	pg_assert_contains('width: 1px !important;', $rule, 'width');
 	pg_assert_contains('height: 1px !important;', $rule, 'height');
+}
+
+// The screens use the wide layout: a form column, a sticky status column
+// with the availability switches and a Summary, a sticky save bar.
+function test_arrival_date_form_wide_layout()
+{
+	$form = arrival_date_form_test_source('includes/forms/arrival_date_form.php');
+	$start = strpos($form, 'function pg_arrival_date_form_cards(');
+	$cards = substr($form, $start, strpos($form, 'function pg_arrival_date_form_status_row(') - $start);
+
+	pg_assert_contains('col-12 lg:col-8 2xl:col-9 order-1', $cards, 'the form column');
+	pg_assert_contains('col-12 lg:col-4 2xl:col-3 order-2', $cards, 'the status column');
+	pg_assert_contains('position-sticky" style="top:3.3rem;"', $cards, 'its sticky box below the top bar');
+	pg_assert_true(strpos($cards, 'order-1') < strpos($cards, 'order-2'), 'the status column follows the form column in the source');
+	pg_assert_true(strpos($cards, 'id="status"') > strpos($cards, 'order-2'), 'the enabled switch sits in the status column');
+	pg_assert_true(strpos($cards, 'id="default_selected"') > strpos($cards, 'order-2'), 'and the default switch');
+
+	foreach (array('custom_maximum_arrival_date_row', 'shipping_cutoff_heading_row', 'shipping_cutoff_row', 'shipping_cutoff_table', 'last_shipping_cutoff_number') as $id) {
+		pg_assert_contains($id, $cards . arrival_date_form_test_source('add_arrival_date.php'), 'the element ' . $id . ' the cut-off script reads');
+	}
+
+	pg_assert_contains("lang('Chosen by the customer')", $cards, 'a custom arrival date reads as chosen by the customer');
+	pg_assert_contains('MutationObserver', $cards, 'the cut-off count follows the rows');
+
+	$row = pg_arrival_date_form_status_row('A & B', '<b>1</b>');
+	pg_assert_contains('<dt class="fw-normal">A &amp; B</dt>', $row, 'the label is escaped');
+	pg_assert_contains('<b>1</b></dd>', $row, 'the value is HTML');
+	pg_assert_false(strpos($row, 'border-bottom') !== false, 'the last row draws no line');
+	pg_assert_contains('border-bottom', pg_arrival_date_form_status_row('A', '1', false), 'another row does');
+
+	foreach (array('add_arrival_date.php', 'edit_arrival_date.php') as $file) {
+		$source = arrival_date_form_test_source($file);
+		pg_assert_contains('pg_arrival_date_form_layout(pg_arrival_date_form_cards(', $source, $file . ': the layout');
+	}
+
+	$edit = arrival_date_form_test_source('edit_arrival_date.php');
+	pg_assert_contains("lang('Last Modified')", $edit, 'edit: the last change in the Summary');
+	pg_assert_contains('value="Delete" formnovalidate', $edit, 'edit: an emptied name does not block Delete');
 }

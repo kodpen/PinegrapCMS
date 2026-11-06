@@ -82,8 +82,9 @@ $post_own = function ($submitter, $watcher) {
     );
 };
 
-// The author's name on a live post: the name of the member who sent it,
-// from their profile, opening the member's page. The samples are sent by
+// The author's name on a live post: the name on the account of the member
+// who sent it (first and last name, else the nickname; never the profile's
+// display name), opening the member's page. The samples are sent by
 // the setup account, so they show none: the line leaves while it is empty.
 $post_byline = function ($sample, $class) use ($el, $link, $page_link) {
     return $el('span', 'pg-hide-if-empty', lang('Author'), array(

@@ -124,3 +124,23 @@ function test_erp_cash_screens_till_form_checks_opening_and_iban()
 		pg_assert_contains('erp_till_iban_normalise(', $source, $file . ': the IBAN is stored normalised');
 	}
 }
+
+// The create screen lays the till form out as a form column, a sticky status
+// column holding the Status field and a sticky save bar; the edit screen keeps
+// Status inside the form card, so the field is drawn exactly once on each.
+function test_erp_cash_screens_add_till_wide_layout()
+{
+	$source = erp_cash_screens_test_source('add_erp_till.php');
+	pg_assert_contains('lg:col-8 2xl:col-9 order-1', $source, 'the form column');
+	pg_assert_contains('lg:col-4 2xl:col-3 order-2', $source, 'the status column');
+	pg_assert_contains('erp_till_form_cards($liveform, false, false)', $source, 'the form card without Status');
+	pg_assert_contains('erp_till_form_status_card($liveform)', $source, 'Status in the status column');
+	pg_assert_true(strpos($source, 'order-1') < strpos($source, 'order-2'), 'the status column follows the form column in source order');
+
+	$edit = erp_cash_screens_test_source('edit_erp_till.php');
+	pg_assert_true(strpos($edit, 'erp_till_form_status_card(') === false, 'the edit screen keeps Status in the form card');
+
+	$cards = erp_cash_screens_test_body('includes/erp/till_form.php', 'erp_till_form_cards');
+	pg_assert_contains('$with_status ?', $cards, 'Status is left out only on request');
+	pg_assert_contains('erp_till_form_status_field($liveform)', erp_cash_screens_test_body('includes/erp/till_form.php', 'erp_till_form_status_card'), 'the card draws the same select');
+}

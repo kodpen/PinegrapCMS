@@ -320,6 +320,8 @@ foreach ($placeholders as $group => $names) {
 }
 
 $output_cards = '';
+$output_seller = '';
+$output_seller_title = '';
 $output_late_fee = '';
 $output_efatura_threshold = '';
 
@@ -356,25 +358,24 @@ if (!$can_site_settings && erp_settings_efatura_threshold_shown()) {
 if ($can_site_settings) {
 
     // One line instead of the cards: they are edited in the Accounting pane.
-    $output_cards = '
-            <p class="my-7">' . lang('The seller, the accounting rules, the late payment fee and the e-Fatura threshold are in the accounting settings.') . '
-                <a href="' . h(pg_settings_link('accounting')) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . '</a></p>';
+    // It is read in the status column.
+    $output_seller_title = lang('Accounting');
+    $output_seller = '
+                        <p class="small mb-0">' . lang('The seller, the accounting rules, the late payment fee and the e-Fatura threshold are in the accounting settings.') . '
+                            <a href="' . h(pg_settings_link('accounting')) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Accounting') . '</a></p>';
 } else {
-    $output_cards = '
-            <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                    ' . lang('Seller Information') . '
-                </div>
-                <div class="card-body">
-                    <p class="mb-3">' . lang('The seller title, address, logo, tax number and tax office printed on the invoice are on the Organization card.') . '
-                        ' . $organization_place . '</p>
-                    <p class="mb-3">' . lang('The address the sale was made at is on the ERP card of the accounting settings.') . '
-                        ' . $settings_place . '</p>
-                    <p class="mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) and its credentials are on the E-Invoice card of the accounting settings.') . '
-                        ' . $edoc_place . '</p>
-                </div>
-            </div>
+    // Read in the status column: where the seller printed on the documents
+    // is set. Only the rules card stays in the form column.
+    $output_seller_title = lang('Seller Information');
+    $output_seller = '
+                        <p class="small mb-3">' . lang('The seller title, address, logo, tax number and tax office printed on the invoice are on the Organization card.') . '
+                            ' . $organization_place . '</p>
+                        <p class="small mb-3">' . lang('The address the sale was made at is on the ERP card of the accounting settings.') . '
+                            ' . $settings_place . '</p>
+                        <p class="small mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) and its credentials are on the E-Invoice card of the accounting settings.') . '
+                            ' . $edoc_place . '</p>';
 
+    $output_cards = '
             <form action="erp_settings.php" method="post" id="erp_rules">
                 ' . get_token_field() . '
                 <input type="hidden" name="rules" value="1">
@@ -387,6 +388,18 @@ if ($can_site_settings) {
                     </div>
                 </div>
             </form>';
+}
+
+// Read in the status column: each document, whether it prints a saved
+// template or the built-in one, the one being edited marked.
+$output_document_states = '';
+foreach ($documents as $key => $item) {
+    $saved = (str_replace("\r\n", "\n", (string) $item['current']) !== str_replace("\r\n", "\n", (string) $item['default']));
+    $output_document_states .= '
+                            <li class="list-group-item d-flex flex-wrap align-items-center justify-content-between gap-3' . (($key === $doc) ? ' fw-bold" aria-current="page' : '') . '">
+                                <a href="' . h($self_url . (($key === 'invoice') ? '' : '?doc=' . $key)) . '">' . h($item['label']) . '</a>
+                                <span class="badge ' . ($saved ? 'theme-primary' : 'theme-secondary') . '">' . ($saved ? lang('Saved template') : lang('Built-in template')) . '</span>
+                            </li>';
 }
 
 $output_document_pills = '';
@@ -414,6 +427,9 @@ $output_screen_toolbar = $template_toolbar ? pg_screen_toolbar($template_buttons
 $output_card_buttons = $template_toolbar ? '' : '
                         <div class="d-flex flex-wrap gap-3 mb-5">' . $template_buttons['primary'] . implode('', $template_buttons['secondary']) . '</div>';
 
+// Form column and sticky status column, but no save bar column: each card
+// is its own form with its own Save, and the template's Save sits in the
+// screen toolbar (role < 3) or in its card.
 echo pg_page_shell(array(
     'title'               => $can_site_settings ? lang('Document Templates') : lang('ERP Settings'),
     'extra classes'       => 'erp erp_settings',
@@ -426,12 +442,11 @@ echo pg_page_shell(array(
 )) . '
 <main id="content" class="container-fluid">
     ' . $output_screen_toolbar . '
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
     <div class="row">
-        <div class="col-12">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->get_warnings() . '
-            ' . $liveform->output_notices() . '
-
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
 ' . $output_cards . '
 ' . $output_late_fee . '
 ' . $output_efatura_threshold . '
@@ -460,6 +475,22 @@ echo pg_page_shell(array(
                     </div>
                 </div>
             </form>
+        </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">
+                <div class="card my-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Document Templates')) . '</h2>
+                    <div class="card-body pt-0">
+                        <ul class="list-group small mb-0">' . $output_document_states . '
+                        </ul>
+                    </div>
+                </div>
+                <div class="card my-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($output_seller_title) . '</h2>
+                    <div class="card-body pt-0">' . $output_seller . '
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </main>' . output_footer();

@@ -28,7 +28,10 @@ include_once('liveform.class.php');
 // an array (page_id[]=) there is an illegal offset that stops the request.
 pg_request_single_values(array('page_id'));
 
-$liveform = new liveform('add_comment', $_POST['page_id'] ?? 0);
+// A product question keeps its own form state and anchor: the reviews widget
+// on the same page has its own form.
+$form_names = pg_product_question_form_names($_POST['kind'] ?? '');
+$liveform = new liveform($form_names['state'], $_POST['page_id'] ?? 0);
 $liveform->add_fields_to_session();
 
 // Every field this handler reads holds one value. One posted as an array
@@ -83,6 +86,13 @@ $query =
     WHERE page_id = ?";
 $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// A page deleted while its form was open takes no comment; without this every
+// read below would run against null.
+if (!$row) {
+    $liveform->remove_form();
+    output_error(lang('Sorry, the item could not be found.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.', 400);
+}
 
 $page_name = $row['page_name'];
 $folder_id = $row['folder_id'];
@@ -176,10 +186,23 @@ if (CAPTCHA == TRUE) {
     validate_captcha_answer($liveform);
 }
 
+// An attachment PHP did not take in whole (larger than upload_max_filesize,
+// cut short) arrives with its name but an empty tmp_name: it is refused here,
+// so the visitor is told instead of copy() stopping the request on PHP 8 or
+// a files row being written for a file that never arrived.
+if (isset($_FILES['file'])) {
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        $liveform->mark_error('file', h($upload_refusal));
+    }
+}
+
 // An attachment the web server would run or read as its own settings is
 // refused at validation, so the visitor is told rather than a renamed file
 // quietly landing in the upload folder.
-if (isset($_FILES['file']) && ($_FILES['file']['name'] != '') && pg_upload_name_blocked($_FILES['file']['name'])) {
+if (isset($_FILES['file']) && ($liveform->check_field_error('file') == false) && ($_FILES['file']['name'] != '') && pg_upload_name_blocked($_FILES['file']['name'])) {
     $liveform->mark_error('file', pg_upload_blocked_message(htmlspecialchars($_FILES['file']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
 }
 
@@ -196,7 +219,7 @@ if (
 
 // if an error exists, then send user back to previous screen
 if ($liveform->check_form_errors() == true) {
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#' . $form_names['anchor']);
     exit();
 }
 
@@ -267,7 +290,7 @@ if ($comment_thread['refusal'] === 'item_type') {
     $liveform->add_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)));
     $liveform->set_field('item_type', array());
     $liveform->set_field('item_id', array());
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#' . $form_names['anchor']);
     exit();
 }
 
@@ -368,7 +391,8 @@ if ($item_type == 'submitted_form') {
 
         // If this visitor submitted this form during this browser session, then grant access.
         if (
-            (is_array($_SESSION['software']['submitted_form_reference_codes']) == true)
+            isset($_SESSION['software']['submitted_form_reference_codes'])
+            && (is_array($_SESSION['software']['submitted_form_reference_codes']) == true)
             && (in_array($submitted_form['reference_code'], $_SESSION['software']['submitted_form_reference_codes']) == true)
         ) {
             $view_access = true;
@@ -398,8 +422,10 @@ if ($item_type == 'submitted_form') {
                         AND (form_fields.contact_field = 'email_address')");
 
                 // If this user has the same e-mail address as the connect-to-contact e-mail address
-                // field value for this submitted form, then the user has view access.
-                if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                // field value for this submitted form, then the user has view access. A blank
+                // address on either side never matches (a submission without an e-mail field
+                // gives null).
+                if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                     $view_access = true;
 
                 // Otherwise this user is not the submitter, but if they are a watcher,
@@ -411,7 +437,7 @@ if ($item_type == 'submitted_form') {
                         WHERE
                             (
                                 (user_id = '" . USER_ID . "')
-                                OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                OR ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') AND (email_address != ''))
                             )
                             AND (page_id = '" . escape($page_id) . "')
                             AND (item_id = '" . $submitted_form['id'] . "')
@@ -468,7 +494,7 @@ if (!$comment_parent_check['accept']) {
     log_activity(pg_log_lang(array('string' => 'access denied to submit a comment to page ({var:1}) because the comment it replies to could not be found or is not visible to the visitor', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
     $liveform->add_error(lang(array('string' => 'Sorry, the {var:1} was not added, because the one it replies to could not be found.', 'vars' => $output_comment_label_lowercase)));
     $liveform->set_field('parent_id', array());
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#' . $form_names['anchor']);
     exit();
 }
 
@@ -575,8 +601,11 @@ if (($comments_allow_file_attachments == 1) && isset($_FILES['file']) && ($_FILE
         $file_extension = mb_substr($file_name, $position_of_last_period + 1);
     }
     
-    // create file
-    copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name);
+    // The files row is written only for a file that was stored.
+    if (!@copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name)) {
+        log_activity(pg_log_lang(array('string'=>'a comment attachment ({var:1}) could not be stored','vars'=>$file_name)), $_SESSION['sessionusername'] ?? '');
+        output_error(lang(array('string' => 'The server could not accept {var:1}. Please try again.', 'vars' => array(h($file_name)))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
 
     // create file record in database
     $query =

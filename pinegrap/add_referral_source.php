@@ -24,6 +24,9 @@ validate_ecommerce_access($user);
 $output_breadcrumb_link = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_referral_sources.php">' . lang('All Referral Sources') . '</a></li>';
 
 if (!$_POST) {
+    // How many sources checkout already lists, so the new sort order has a context.
+    $other_sources = number_format((int) db_value("SELECT COUNT(*) FROM referral_sources"));
+
     $output =
         pg_page_shell(
             array(
@@ -46,15 +49,13 @@ if (!$_POST) {
                     <form name="form" action="add_referral_source.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                        ' . pg_referral_source_form_card(null) . '
-                        <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group flex-wrap justify-content-center">
-                                    <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />
+                        ' . pg_referral_source_form_layout(
+                            pg_referral_source_form_card(null)
+                            . pg_referral_source_form_status(null, pg_referral_source_form_status_row(lang('Other Referral Sources'), $other_sources)),
+                            '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                        ) . '
                     </form>
                 </div>
             </div>

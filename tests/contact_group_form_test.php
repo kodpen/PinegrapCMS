@@ -55,8 +55,8 @@ function test_contact_group_form_name_required_on_both_screens()
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact_group.php');
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
 
-	pg_assert_contains('pg_contact_group_form_card($liveform, true)', $add, 'create marks the name required');
-	pg_assert_contains('pg_contact_group_form_card($liveform, true)', $edit, 'edit marks the name required too');
+	pg_assert_contains("pg_contact_group_form_cards(\$liveform, array('required' => true))", $add, 'create marks the name required');
+	pg_assert_contains("'required' => true,", $edit, 'edit marks the name required too');
 	pg_assert_contains('name="submit_delete" value="Delete" formnovalidate', $edit, 'Delete submits with an emptied name');
 	pg_assert_contains("'class'=>'form-control') + \$required)", $form, 'required follows the class attribute');
 	pg_assert_contains('WHERE (name = ?) AND (id != ?)', $form, 'edit skips its own name');
@@ -80,11 +80,44 @@ function test_contact_group_form_screens_use_shared_form()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('includes/forms/contact_group_form.php', $source, $file . ' loads the form');
-		pg_assert_contains('pg_contact_group_form_card($liveform', $source, $file . ' prints the shared card');
+		pg_assert_contains('pg_contact_group_form_cards($liveform', $source, $file . ' prints the shared cards');
+		pg_assert_contains('pg_contact_group_form_layout(', $source, $file . ' uses the shared layout');
 		pg_assert_contains('pg_contact_group_form_validate_name($liveform, ', $source, $file . ' checks the name the shared way');
 		pg_assert_contains('pg_contact_group_form_values($liveform)', $source, $file . ' saves the shared values');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('get_token_field()', $source, $file . ' prints the token');
 		pg_assert_false(strpos($source, 'email_subscription_type_row') !== false, $file . ' keeps no copy of the card');
 	}
+}
+
+function test_contact_group_form_wide_layout_columns_and_save_bar()
+{
+	$layout = pg_contact_group_form_layout('<div id="cards"></div>', '<button id="b"></button>');
+	pg_assert_contains('<div class="row"><div id="cards"></div>', $layout, 'the cards open the row');
+	pg_assert_contains('col-12 order-3 position-sticky', $layout, 'the save bar is sticky under both columns');
+	pg_assert_contains('<button id="b"></button>', $layout, 'the buttons go in the bar');
+
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/contact_group_form.php');
+	$form_column = strpos($src, 'col-12 lg:col-8 2xl:col-9 order-1');
+	$status_column = strpos($src, 'col-12 lg:col-4 2xl:col-3 order-2');
+	pg_assert_true($form_column !== false, 'the form column');
+	pg_assert_true(($status_column !== false) && ($status_column > $form_column), 'the status column follows the form column in the source');
+	pg_assert_contains('style="top:3.3rem;"', $src, 'the status box sticks below the top bar');
+	pg_assert_false(strpos($src, '<div class="card my-7" id="pg_audience_card">') !== false, 'the rule card sits in the form column, not in a row of its own');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_contact_group.php');
+	pg_assert_contains("'cards' => (\$audience_ready ? pg_contact_group_rules_card(", $edit, 'the rule card follows the shared cards');
+	pg_assert_contains("'status' => pg_contact_group_form_members_status(\$member_count", $edit, 'the member count sits in the status column');
+}
+
+function test_contact_group_form_members_status()
+{
+	$row = pg_contact_group_form_members_status(12);
+	pg_assert_contains('id="contact_group_summary_contacts">12</dd>', $row, 'the count');
+	pg_assert_false(strpos($row, 'border-bottom') !== false, 'no rule row, no divider');
+
+	$row = pg_contact_group_form_members_status(3, 'dynamic');
+	pg_assert_contains(lang('Rules'), $row, 'a group filled by rules says so');
+	pg_assert_contains(lang('By Hand'), pg_contact_group_form_members_status(3, 'static'), 'a static group is filled by hand');
+	pg_assert_same(array('on', 'off'), array_keys(pg_contact_group_form_subscription_labels()), 'one label per switch state');
 }

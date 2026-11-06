@@ -1,6 +1,6 @@
 ---
 name: cart-line-removal
-description: How a line leaves the cart (quantity 0 on the designer or classic cart, the remove link): remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products
+description: How a line leaves or joins the cart: remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products, a refused add making no recipient
 ---
 
 ## What does a removal have to take with it?
@@ -24,3 +24,9 @@ Related: docs/memory/commerce/cart-widget-rows-and-groups.md, docs/memory/commer
 
 ## Which line does adding a product raise? (PR #6030)
 - Only the shopper's own line: `add_order_item()` finds it (`added_by_offer = '0'`) and updates its quantity or donation price by its id. Before, the UPDATEs matched by product and recipient, so an offer's gift line of the same product in the same recipient was raised too; the AJAX add (`add_to_cart.php`, no offer pass) showed the extra gift units in the mini-cart's count and total (`offer-gift-lines.md`).
+
+## In which language does the remove link answer an error?
+- The site's: `remove_item_from_cart.php` passes its four refusals (no active cart, no `order_item_id`, line not found, line of another cart) and "Query failed." through `lang()`. Before, they were raw English on every site, e.g. a remove link followed twice (back button) showed "It might have already been removed." in English on a Turkish shop.
+
+## When does an add create its recipient? (#7568)
+- Only once the add is accepted: `add_order_item()` resolves the name with `pg_ship_to_name_for_add()`, looks it up with `pg_ship_to_find_id()` (no insert), runs the gift card line limit, and only then calls `create_or_get_ship_to()`. Before, the recipient was created first, so a gift card add refused over the line limit left an empty recipient (express order asked an address and shipping for it).

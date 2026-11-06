@@ -71,17 +71,9 @@ function test_offers_list_toggle_hands_focus_on()
 {
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/view_offers.php');
 
-	pg_assert_contains("if (focused && !\$.contains(document.documentElement, btn[0])) {", $src, 'a toggle filtered out of the list hands focus on');
-	pg_assert_contains("(next.length ? next : \$('#pg-offers-toolbar [data-filter].active')).first().trigger('focus');", $src, 'the next row toggle, else the active chip');
-}
-
-function test_offers_list_toggle_off_last_page_moves_to_new_last_page()
-{
-	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/view_offers.php');
-
-	// draw(false) keeps the start, so the only row of a chip's last page left
-	// a blank table with the pager hidden; the list moves to the new last page.
-	pg_assert_contains("var info = dt.page.info();", $src, 'the toggle reads the page info after its redraw');
-	pg_assert_contains("if (info.recordsDisplay > 0 && info.start >= info.recordsDisplay) { dt.page('last').draw('page'); }", $src, 'a start past the filtered set moves to the last page');
-	pg_assert_contains("if (!next.length) { next = body.children('tr[data-status]').last().find('.pg-offer-toggle'); }", $src, 'focus falls back to the last row on the drawn page');
+	// A chip in use can hide the row whose toggle was pressed; focus moves to
+	// the next row shown, else the last one shown, else the active chip.
+	pg_assert_contains("if (focused && tr.hidden) {", $src, 'a toggle filtered out of the list hands focus on');
+	pg_assert_contains("var next = $(after.length ? after[0] : shownRows[shownRows.length - 1]).find('.pg-offer-toggle');", $src, 'the next row shown, else the last one');
+	pg_assert_contains("(next.length ? next : \$('#pg-offers-toolbar [data-filter].active')).first().trigger('focus');", $src, 'else the active chip');
 }

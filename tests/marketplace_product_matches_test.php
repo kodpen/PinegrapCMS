@@ -146,3 +146,19 @@ function test_marketplace_product_matches_shop_order_is_by_name()
 
 	pg_assert_contains("ORDER BY (marketplace_product_map.status <=> 'error') DESC, products.short_description ASC", $body);
 }
+
+// The account screen's "Send all now" queues this account only, as the shop
+// view's does: mp_enqueue_account() queued every account the products are on,
+// counted their rows as this account's and queued them while this one was
+// paused.
+function test_marketplace_product_matches_account_send_all_is_this_account_only()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/marketplace_settings.php');
+	$start = strpos($source, "if (\$action === 'push_all' && \$account) {");
+	$end = ($start === false) ? false : strpos($source, "\n\tif (\$action === ", $start + 10);
+	$body = ($start === false) ? '' : (string) substr($source, $start, ($end === false) ? null : $end - $start);
+
+	pg_assert_contains('mp_matches_send($account, null)', $body, 'the account\'s own matches are queued');
+	pg_assert_false(preg_match('/= mp_enqueue(_account)?\(/', $body) === 1, 'not through mp_enqueue(), which queues every account');
+	pg_assert_contains("\$account['status'] !== 'active'", $body, 'a paused account is told so');
+}

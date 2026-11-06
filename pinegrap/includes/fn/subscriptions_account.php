@@ -72,10 +72,19 @@ function pg_subscription_customer_actions($row)
         return array();
     }
 
+    // A running row with next_charge_at 0 is held until the payment service
+    // reports a renewal's outcome. It is not paused: the paid report settles
+    // only an active or past_due row (pg_subscription_renewal_is_held()), and
+    // a held row resumed would never be due again.
+    $held = isset($row['next_charge_at']) && ((int) $row['next_charge_at'] === 0);
     $actions = array();
 
     foreach ($by_status[$status] as $action) {
         $to = pg_subscription_customer_action_status($action);
+
+        if (($action === 'pause') && $held) {
+            continue;
+        }
 
         // A move the status rules refuse is never offered.
         if (($to === '') || pg_subscription_transition_allowed($status, $to)) {
@@ -168,6 +177,8 @@ function pg_subscription_customer_io()
         'event' => function ($id, $kind, $detail) {
             return pg_subscription_event_write($id, $kind, 0, 0, '', $detail);
         },
+        // The first order: iyzico's card page names the buyer by its e-mail.
+        'first_order' => 'pg_subscription_renewal_first_order',
         'call' => function ($driver, $operation, $driver_row) {
             return pg_payment_call((string) $driver, $operation, array($driver_row));
         },
@@ -180,6 +191,13 @@ function pg_subscription_customer_io()
         },
         'log' => function ($message) {
             log_activity($message, 'UNKNOWN');
+        },
+        // The renewal job's row lock (pg_subscription_renewal_io()).
+        'lock' => function ($id, $wait = 0) {
+            return (int) db_value("SELECT GET_LOCK('" . e('pg_subscription_renewal_' . (int) $id) . "', " . (int) $wait . ")") === 1;
+        },
+        'unlock' => function ($id) {
+            db_value("SELECT RELEASE_LOCK('" . e('pg_subscription_renewal_' . (int) $id) . "')");
         },
     );
 }
@@ -218,6 +236,12 @@ function pg_subscription_customer_action($user_id, $id, $action, $return_url, $i
     if ($action === 'update_card') {
         $driver_row = pg_subscription_driver_row($row);
         $driver_row['return_url'] = (string) $return_url;
+        $first = isset($io['first_order']) ? call_user_func($io['first_order'], $row) : null;
+
+        if (is_array($first) && isset($first['order'])) {
+            $driver_row['order'] = $first['order'];
+        }
+
         $answer = $io['call']((string) $row['driver'], 'update_card', $driver_row);
         $url = (string) ($answer['redirect_url'] ?? '');
 
@@ -257,24 +281,36 @@ function pg_subscription_store_move($row, $action, $detail, $io)
         return false;
     }
 
-    // The status the row was read with is the condition of the write: a
-    // renewal or another move made meanwhile wins and this one is refused.
-    if (!$io['set_status']((int) $row['id'], $to, (string) $detail, (string) $row['status'])) {
+    // The renewal's row lock: a charge in flight when the row is paused or
+    // cancelled would lose its save to the new status, so its next_charge_at
+    // stays due and a resumed row is charged for the same period again. A
+    // move that cannot wait for the charge is refused.
+    if (!$io['lock']((int) $row['id'], 10)) {
         return false;
     }
 
-    // Nothing is charged again: the stored card is forgotten at the service
-    // unless another subscription of the same order still runs on it. A
-    // failure there leaves the cancel standing.
-    if (($action === 'cancel') && !$io['card_shared']($row)) {
-        $answer = $io['call']((string) $row['driver'], 'subscription_cancel', pg_subscription_driver_row($row));
-
-        if (empty($answer['success'])) {
-            $io['log'](pg_log_lang(array('string' => 'The payment service did not forget the card of cancelled subscription {var:1}.', 'vars' => array((int) $row['id']))));
+    try {
+        // The status the row was read with is the condition of the write: a
+        // renewal or another move made meanwhile wins and this one is refused.
+        if (!$io['set_status']((int) $row['id'], $to, (string) $detail, (string) $row['status'])) {
+            return false;
         }
-    }
 
-    return true;
+        // Nothing is charged again: the stored card is forgotten at the
+        // service unless another subscription of the same order still runs
+        // on it. A failure there leaves the cancel standing.
+        if (($action === 'cancel') && !$io['card_shared']($row)) {
+            $answer = $io['call']((string) $row['driver'], 'subscription_cancel', pg_subscription_driver_row($row));
+
+            if (empty($answer['success'])) {
+                $io['log'](pg_log_lang(array('string' => 'The payment service did not forget the card of cancelled subscription {var:1}.', 'vars' => array((int) $row['id']))));
+            }
+        }
+
+        return true;
+    } finally {
+        $io['unlock']((int) $row['id']);
+    }
 }
 
 /**

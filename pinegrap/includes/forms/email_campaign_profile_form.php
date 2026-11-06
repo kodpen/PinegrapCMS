@@ -53,6 +53,94 @@ function pg_email_campaign_profile_booking_actions()
 }
 
 /**
+ * The store credit actions (includes/fn/store_credit_mails.php): tied to no
+ * record, they need commerce access like the order actions and are offered
+ * once the upgrade has added them (pg_credit_mail_ready()).
+ *
+ * @return array
+ */
+function pg_email_campaign_profile_credit_actions()
+{
+    return array('credit_issued', 'credit_expiring');
+}
+
+/**
+ * The contact group actions: one mail per contact put into the group the
+ * profile names (pg_contact_group_joined_heard()), whatever the commerce
+ * access. Offered once the upgrade has added the value to both action
+ * columns (pg_email_campaign_profile_group_action_ready()).
+ *
+ * @return array
+ */
+function pg_email_campaign_profile_group_actions()
+{
+    return array('contact_group_joined');
+}
+
+/**
+ * Whether email_campaigns.action takes contact_group_joined (2026.11.0,
+ * 11.0.170 adds it to both action columns): before that step a profile of
+ * the action would be stored with action ''. Read once per request.
+ *
+ * @return bool
+ */
+function pg_email_campaign_profile_group_action_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $column = db_item("SHOW COLUMNS FROM email_campaigns WHERE Field = 'action'");
+        $ready = is_array($column) && (strpos((string) ($column['Type'] ?? ''), "'contact_group_joined'") !== false);
+    }
+
+    return $ready;
+}
+
+/**
+ * The contact groups the group picker offers: every group for a manager and
+ * above, the groups given to the account for the user role; a group filled
+ * by rules is named with its kind. The stored group stays listed.
+ *
+ * @param array $user      The signed-in user (validate_user())
+ * @param int   $keep_id   The stored group
+ * @return array  label => id, after the placeholder
+ */
+function pg_email_campaign_profile_group_options($user, $keep_id = 0)
+{
+    $kind = (function_exists('pg_audience_ready') && pg_audience_ready()) ? 'contact_groups.kind' : "''";
+
+    if ((int) $user['role'] < 3) {
+        $groups = db_items("SELECT contact_groups.id, contact_groups.name, " . $kind . " AS kind FROM contact_groups ORDER BY contact_groups.name");
+    } else {
+        $groups = db_items(
+            "SELECT contact_groups.id, contact_groups.name, " . $kind . " AS kind
+            FROM contact_groups
+            LEFT JOIN users_contact_groups_xref ON (users_contact_groups_xref.contact_group_id = contact_groups.id) AND (users_contact_groups_xref.user_id = '" . (int) $user['id'] . "')
+            WHERE (users_contact_groups_xref.user_id IS NOT NULL) OR (contact_groups.id = '" . (int) $keep_id . "')
+            ORDER BY contact_groups.name");
+    }
+
+    $options = array('-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Contact Group')))) . '-' => '');
+
+    foreach ((array) $groups as $group) {
+        $label = (string) $group['name'];
+
+        if ((string) $group['kind'] === 'dynamic') {
+            $label = lang(array('string' => '{var:1} (filled by rules)', 'vars' => array($label)));
+        }
+
+        // Two groups of one name stay two options.
+        while (isset($options[$label])) {
+            $label .= ' ';
+        }
+
+        $options[$label] = (string) $group['id'];
+    }
+
+    return $options;
+}
+
+/**
  * The mail-merge fields the subscription actions fill in, as the form lists
  * them (pg_subscription_mail_fields(), then the two of
  * pg_subscription_price_mail_fields() only the price change mail fills in).
@@ -94,6 +182,9 @@ function pg_email_campaign_profile_action_item_field($action)
 
         case 'product_ordered':
             return 'product_id';
+
+        case 'contact_group_joined':
+            return 'contact_group_id';
     }
 
     return '';
@@ -108,7 +199,7 @@ function pg_email_campaign_profile_action_item_field($action)
  * @param string $action
  * @return array  'calendar_event_id', 'custom_form_page_id',
  *                'email_campaign_profile_id', 'product_id',
- *                'calendar_schedule', 'standard_schedule' => 'show' or ''
+ *                'contact_group_id', 'calendar_schedule', 'standard_schedule' => 'show' or ''
  */
 function pg_email_campaign_profile_action_rows($action)
 {
@@ -117,10 +208,12 @@ function pg_email_campaign_profile_action_rows($action)
         'custom_form_page_id' => '',
         'email_campaign_profile_id' => '',
         'product_id' => '',
+        'contact_group_id' => '',
         'calendar_schedule' => '',
         'standard_schedule' => 'show',
         'subscription_fields' => '',
         'booking_fields' => '',
+        'credit_fields' => '',
     );
 
     if (strpos((string) $action, 'subscription_') === 0) {
@@ -129,6 +222,10 @@ function pg_email_campaign_profile_action_rows($action)
 
     if (in_array((string) $action, pg_email_campaign_profile_booking_actions(), true)) {
         $rows['booking_fields'] = 'show';
+    }
+
+    if (in_array((string) $action, pg_email_campaign_profile_credit_actions(), true)) {
+        $rows['credit_fields'] = 'show';
     }
 
     $item_field = pg_email_campaign_profile_action_item_field($action);
@@ -167,7 +264,7 @@ function pg_email_campaign_profile_action_values($action, $fields)
 
     if ($item_field != '') {
         $values['action_item_id'] = isset($fields[$item_field]) ? (string) $fields[$item_field] : '';
-    } elseif (in_array($action, pg_email_campaign_profile_commerce_actions(), true) || in_array($action, pg_email_campaign_profile_booking_actions(), true)) {
+    } elseif (in_array($action, pg_email_campaign_profile_commerce_actions(), true) || in_array($action, pg_email_campaign_profile_booking_actions(), true) || in_array($action, pg_email_campaign_profile_credit_actions(), true)) {
         $values['action_item_id'] = '0';
     } else {
         return $values;
@@ -249,6 +346,12 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
         return (isset($values[$name]) && is_scalar($values[$name])) ? trim((string) $values[$name]) : '';
     };
 
+    // Import rows and API values carry raw column names, so the message
+    // names the column in quotes instead of reading it as a field label.
+    $invalid = function ($column) {
+        return lang(array('string' => 'The "{var:1}" column has an invalid value.', 'vars' => $column));
+    };
+
     $name = $value('name');
 
     if ($name === '') {
@@ -262,17 +365,17 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('enabled'), array('0', '1'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'enabled'));
+        return $invalid('enabled');
     }
 
     $action = $value('action');
-    $actions = array_merge(array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'), pg_email_campaign_profile_commerce_actions(), pg_email_campaign_profile_booking_actions());
+    $actions = array_merge(array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'), pg_email_campaign_profile_commerce_actions(), pg_email_campaign_profile_booking_actions(), pg_email_campaign_profile_group_actions(), pg_email_campaign_profile_credit_actions());
 
     if (!in_array($action, $actions, true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action'));
+        return $invalid('action');
     }
 
-    if (!$commerce && in_array($action, pg_email_campaign_profile_commerce_actions(), true)) {
+    if (!$commerce && (in_array($action, pg_email_campaign_profile_commerce_actions(), true) || in_array($action, pg_email_campaign_profile_credit_actions(), true))) {
         return lang('Sorry, you do not have access to that action.');
     }
 
@@ -280,11 +383,11 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
         (pg_email_campaign_profile_action_item_field($action) !== '')
         && !preg_match('/^[1-9]\d{0,9}$/', $value('action_item_id'))
     ) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action_item_id'));
+        return $invalid('action_item_id');
     }
 
     if (!in_array($value('format'), array('plain_text', 'html'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'format'));
+        return $invalid('format');
     }
 
     if (($value('format') === 'html') && !preg_match('/^[1-9]\d{0,9}$/', $value('page_id'))) {
@@ -292,17 +395,17 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!validate_email_address($value('from_email_address'))) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'from_email_address'));
+        return $invalid('from_email_address');
     }
 
     foreach (array('reply_email_address', 'bcc_email_address') as $column) {
         if (($value($column) !== '') && !validate_email_address($value($column))) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => $column));
+            return $invalid($column);
         }
     }
 
     if (($value('schedule_time') !== '') && !validate_time($value('schedule_time'))) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_time'));
+        return $invalid('schedule_time');
     }
 
     if (!pg_email_campaign_profile_schedule_length_valid($value('schedule_length'))) {
@@ -310,18 +413,18 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('schedule_unit'), array('days', 'hours'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_unit'));
+        return $invalid('schedule_unit');
     }
 
     // Only a calendar event reservation takes its period and base from the
     // row (pg_email_campaign_profile_action_values()).
     if ($action === 'calendar_event_reserved') {
         if (!in_array($value('schedule_period'), array('before', 'after'), true)) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_period'));
+            return $invalid('schedule_period');
         }
 
         if (!in_array($value('schedule_base'), array('action', 'calendar_event_start_time'), true)) {
-            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_base'));
+            return $invalid('schedule_base');
         }
 
         if (($value('schedule_period') === 'before') && ($value('schedule_base') === 'action')) {
@@ -330,10 +433,53 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
     }
 
     if (!in_array($value('purpose'), array('commercial', 'transactional'), true)) {
-        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'purpose'));
+        return $invalid('purpose');
     }
 
     return '';
+}
+
+/**
+ * The problems with a profile's text columns, field name => message: the
+ * subject and the from name the form requires, and every text column within
+ * its column length (name, from name and the addresses varchar(100), subject
+ * varchar(255)), counted in characters as the utf8mb4 columns count them. A
+ * longer value would be cut on the save without a word. Used by the form
+ * (pg_email_campaign_profile_form_validate()) and by the import beside
+ * pg_email_campaign_profile_values_problem().
+ *
+ * @param array $values  Column name => value; a missing column reads as ''
+ * @return array  Field name => message, empty when the text columns can be saved
+ */
+function pg_email_campaign_profile_text_problems($values)
+{
+    $problems = array();
+    $value = function ($name) use ($values) {
+        return (isset($values[$name]) && is_scalar($values[$name])) ? trim((string) $values[$name]) : '';
+    };
+
+    foreach (array('subject' => lang('Subject'), 'from_name' => lang('From Name')) as $field => $label) {
+        if ($value($field) === '') {
+            $problems[$field] = lang(array('string' => '{var:1} is required', 'vars' => $label));
+        }
+    }
+
+    $limits = array(
+        'name' => array(lang('Name'), 100),
+        'subject' => array(lang('Subject'), 255),
+        'from_name' => array(lang('From Name'), 100),
+        'from_email_address' => array(lang('From E-mail Address'), 100),
+        'reply_email_address' => array(lang('Reply to E-mail Address'), 100),
+        'bcc_email_address' => array(lang('BCC E-mail Address'), 100),
+    );
+
+    foreach ($limits as $field => $limit) {
+        if (!isset($problems[$field]) && (mb_strlen($value($field)) > $limit[1])) {
+            $problems[$field] = lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array($limit[0], $limit[1])));
+        }
+    }
+
+    return $problems;
 }
 
 /**
@@ -373,6 +519,17 @@ function pg_email_campaign_profile_access_problem($values)
                 && (USER_ID != db_value("SELECT created_user_id FROM email_campaign_profiles WHERE id = '" . $item_id . "'"))
             ) {
                 return lang('Sorry, you do not have access to that campaign profile.');
+            }
+
+            break;
+
+        case 'contact_group_joined':
+            if ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE id = '" . $item_id . "'") < 1) {
+                return lang('The contact group does not exist.');
+            }
+
+            if (!validate_contact_group_access(array('role' => USER_ROLE, 'id' => USER_ID), $item_id)) {
+                return lang('Sorry, you do not have access to that contact group.');
             }
 
             break;
@@ -496,6 +653,10 @@ function pg_email_campaign_profile_action_item_row($action, $action_item_id)
             $row = db_item("SELECT name, short_description FROM products WHERE id = '" . $action_item_id . "'");
             break;
 
+        case 'contact_group_joined':
+            $row = db_item("SELECT name FROM contact_groups WHERE id = '" . $action_item_id . "'");
+            break;
+
         default:
             return null;
     }
@@ -541,6 +702,7 @@ function pg_email_campaign_profile_action_item_label($action, $action_item_id, $
     switch ($action) {
         case 'calendar_event_reserved':
         case 'email_campaign_sent':
+        case 'contact_group_joined':
             return (string) ($row['name'] ?? '');
 
         case 'custom_form_submitted':
@@ -694,6 +856,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
         'custom_form_page_id' => '',
         'email_campaign_profile_id' => '',
         'product_id' => '',
+        'contact_group_id' => '',
     );
 
     $gone_field = pg_email_campaign_profile_action_item_field($keep_pages['action_item_gone'] ?? '');
@@ -722,6 +885,20 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
         }
     }
 
+    // The preview address of every page the body picker offers, by page id,
+    // built as the source above: the option labels carry marks such as
+    // [ARCHIVED], and the placeholder has no page, so it blanks the preview
+    // instead of loading a missing address.
+    $page_id_options = get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0);
+    $page_preview_urls = array();
+    $page_option_ids = array_filter(array_map('intval', array_values($page_id_options)));
+
+    if ($page_option_ids) {
+        foreach (db_items("SELECT page_id, page_name FROM page WHERE page_id IN (" . implode(',', $page_option_ids) . ")") as $page_row) {
+            $page_preview_urls[$page_row['page_id']] = OUTPUT_PATH . encode_url_path($page_row['page_name']) . '?edit=no&email=true';
+        }
+    }
+
     $action_options = array(
         '-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Action')) )) . '-' => '',
         lang('Auto Campaign Sent') => 'email_campaign_sent',
@@ -729,8 +906,24 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
         lang('Custom Form Submitted') => 'custom_form_submitted');
 
     $output_product_id_row = '';
+    $output_contact_group_id_row = '';
     $output_subscription_fields_row = '';
+
+    // A mail to each contact put into a group, once the upgrade has added the
+    // action, or when the profile already has it.
+    if (in_array($liveform->get_field_value('action'), pg_email_campaign_profile_group_actions(), true) || pg_email_campaign_profile_group_action_ready()) {
+        $action_options[lang('Joined a Contact Group')] = 'contact_group_joined';
+
+        $output_contact_group_id_row =
+            '<div class="col-12 md:col-6 my-3 collapse ' . $rows['contact_group_id'] . '" id="contact_group_id_row">
+                <label for="contact_group_id" class="form-label">' . lang('Contact Group') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
+                ' . $gone_notices['contact_group_id'] . '
+                ' . $liveform->output_field(array('type'=>'select', 'name'=>'contact_group_id', 'id'=>'contact_group_id', 'class'=>'form-control', 'required'=>($rows['contact_group_id'] == 'show' ? 'required' : ''), 'options'=>pg_email_campaign_profile_group_options($user, (int) $liveform->get_field_value('contact_group_id')) )) . '
+                <div class="form-text">' . h(lang('One e-mail to each contact put into the group: by hand, by a form, by an order or by the group\'s rules.')) . '</div>
+            </div>';
+    }
     $output_booking_fields_row = '';
+    $output_credit_fields_row = '';
 
     // The booking actions, once the booking tables are in place, or when the
     // profile already has one.
@@ -771,6 +964,25 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
 
         foreach (pg_email_campaign_profile_subscription_fields() as $name => $meaning) {
             $output_subscription_fields .= '<li><code>^^' . h($name) . '^^</code> ' . h($meaning) . '</li>';
+        }
+
+        // Store credit, once the upgrade has added the actions, or when the
+        // profile already has one.
+        if (pg_credit_mail_ready() || in_array($liveform->get_field_value('action'), pg_email_campaign_profile_credit_actions(), true)) {
+            $action_options[lang('Store Credit Issued')] = 'credit_issued';
+            $action_options[lang('Store Credit Expiring')] = 'credit_expiring';
+
+            $output_credit_fields = '';
+
+            foreach (pg_credit_mail_field_meanings() as $name => $meaning) {
+                $output_credit_fields .= '<li><code>^^' . h($name) . '^^</code> ' . h($meaning) . '</li>';
+            }
+
+            $output_credit_fields_row =
+                '<div class="col-12 my-3 collapse ' . $rows['credit_fields'] . '" id="credit_fields_row">
+                    <div class="form-text">' . h(lang(array('string' => 'The subject and the body can use these fields; the expiring e-mail goes {var:1} days before a card ends, once.', 'vars' => array(PG_CREDIT_EXPIRING_DAYS)))) . '</div>
+                    <ul class="form-text mb-0">' . $output_credit_fields . '</ul>
+                </div>';
         }
 
         $output_subscription_fields_row =
@@ -824,8 +1036,10 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'required'=>($rows['email_campaign_profile_id'] == 'show' ? 'required' : ''), 'options'=>get_email_campaign_profile_options($exclude_ids, $keep_pages['email_campaign_profile_id'] ?? 0) )) . '
                                 </div>
                                 ' . $output_product_id_row . '
+                                ' . $output_contact_group_id_row . '
                                 ' . $output_subscription_fields_row . '
                                 ' . $output_booking_fields_row . '
+                                ' . $output_credit_fields_row . '
                             </div>
                         </div>
                     </div>
@@ -869,7 +1083,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                                 <div class="col-12 sm:col-8 my-1">
                                                     <label class="form-label" for="page_id">' . lang('Page') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     ' . $page_gone_notice . '
-                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'required'=>($liveform->get_field_value('format') == 'html' ? 'required' : ''), 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'required'=>($liveform->get_field_value('format') == 'html' ? 'required' : ''), 'options'=>$page_id_options, 'data-bs-target'=>'#body_preview_row', 'onchange'=>'var f = document.getElementById(\'body_preview_iframe\'), u = JSON.parse(f.getAttribute(\'data-page-urls\'))[this.value]; f.src = u ? u : \'about:blank\';')) . '
                                                 </div>
                                                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -877,7 +1091,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                                         <div class="row">
                                                             <div class="col-12 my-1">
                                                                 <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
-                                                                <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
+                                                                <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" data-page-urls="' . h(json_encode($page_preview_urls, JSON_FORCE_OBJECT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1029,6 +1243,15 @@ function pg_email_campaign_profile_form_validate($liveform, $profile_id = 0)
         $liveform->set('action', '');
     }
 
+    // Before the upgrade adds the group action to the action columns it
+    // would be stored as '', so it is refused as no action.
+    if (
+        in_array($liveform->get('action'), pg_email_campaign_profile_group_actions(), true)
+        && !pg_email_campaign_profile_group_action_ready()
+    ) {
+        $liveform->set('action', '');
+    }
+
     $liveform->validate_required_field('action', lang(array('string'=>'{var:1} is required','vars'=>lang('Action'))));
 
     // If there is not already an error for the action field, then validate sub-fields for it.
@@ -1083,6 +1306,18 @@ function pg_email_campaign_profile_form_validate($liveform, $profile_id = 0)
                     && pg_email_campaign_profile_closes_ring($profile_id, $liveform->get_field_value('email_campaign_profile_id'), pg_email_campaign_profile_follow_map())
                 ) {
                     $liveform->mark_error('email_campaign_profile_id', lang('A campaign profile cannot follow itself or a profile that follows it.'));
+                }
+
+                break;
+
+            case 'contact_group_joined':
+                $liveform->validate_required_field('contact_group_id', lang(array('string'=>'{var:1} is required','vars'=>lang('Contact Group'))));
+
+                if (
+                    ($liveform->check_field_error('contact_group_id') == false)
+                    && !validate_contact_group_access(array('role' => USER_ROLE, 'id' => USER_ID), $liveform->get_field_value('contact_group_id'))
+                ) {
+                    $liveform->mark_error('contact_group_id', lang('Sorry, you do not have access to that contact group.'));
                 }
 
                 break;
@@ -1162,6 +1397,20 @@ function pg_email_campaign_profile_form_validate($liveform, $profile_id = 0)
 
     $liveform->validate_required_field('schedule_unit', lang(array('string'=>'{var:1} is required','vars'=>lang('Day(s)/Hour(s)'))));
 
+    // The text columns within their column length, so no value is cut on the
+    // save; a field that already has an error keeps that one.
+    $text_values = array();
+
+    foreach (array('name', 'subject', 'from_name', 'from_email_address', 'reply_email_address', 'bcc_email_address') as $field) {
+        $text_values[$field] = $liveform->get_field_value($field);
+    }
+
+    foreach (pg_email_campaign_profile_text_problems($text_values) as $field => $message) {
+        if ($liveform->check_field_error($field) == false) {
+            $liveform->mark_error($field, $message);
+        }
+    }
+
     // If calendar event reserved action was selected, then validate fields for that.
     if ($liveform->get_field_value('action') == 'calendar_event_reserved') {
         $liveform->validate_required_field('schedule_period', lang(array('string'=>'{var:1} is required','vars'=>lang('Before/After'))));
@@ -1205,6 +1454,7 @@ function pg_email_campaign_profile_form_columns($liveform)
         'custom_form_page_id' => $field('custom_form_page_id'),
         'email_campaign_profile_id' => $field('email_campaign_profile_id'),
         'product_id' => $field('product_id'),
+        'contact_group_id' => $field('contact_group_id'),
         'schedule_period' => $field('schedule_period'),
         'schedule_base' => $field('schedule_base'),
     ));

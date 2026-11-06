@@ -3,9 +3,12 @@
  *
  * The Visitors overview (visitors.php): the period bar, the section frame
  * and the shared pieces of includes/visitors/shell.php, then one labelled
- * block per section, which only that section's step edits. Built to
- * pg_visitors.min.css by tools/build_css.php. Colours come from the panel's
- * --pg-* tokens, light and dark alike.
+ * block per section. Built to pg_visitors.min.css by tools/build_css.php.
+ * Colours come from the panel's --pg-* tokens, light and dark alike.
+ *
+ * One frame a section, nothing framed inside it: blocks are a small heading
+ * over their table or list; numbers are tabular and right-aligned; a change
+ * is a small tinted pill, and the lack of one a quiet dash.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -15,7 +18,7 @@
 
 @layer custom {
 
-  /* ── Period bar ─────────────────────────────────────────────────────── */
+  /* ── Period bar and dates ───────────────────────────────────────────── */
 
   .pg-visitors-period {
     display: flex;
@@ -50,11 +53,26 @@
     white-space: nowrap;
   }
 
+  .pg-visitors-dates {
+    display: block;
+    font-size: .875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-visitors-dates-before {
+    display: block;
+    font-size: .75rem;
+    line-height: 1.3;
+    color: var(--pg-fg-2);
+  }
+
   /* ── Section frame ──────────────────────────────────────────────────── */
 
   .pg-visitors-section {
-    margin-bottom: 1.5rem;
-    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    padding: 1.25rem 1.5rem 1.5rem;
     border: var(--pg-border-width) solid var(--pg-border-color-translucent);
     border-radius: var(--pg-radius-lg);
     background: var(--pg-bg-body);
@@ -64,23 +82,37 @@
   .pg-visitors-section-head {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: .5rem 1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.125rem;
   }
 
   .pg-visitors-section-title {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
     margin: 0;
-    font-size: 1rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .02em;
-    color: var(--pg-primary-fg-emphasis);
+    font-size: 1.0625rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-visitors-section-icon {
+    display: inline-grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: var(--pg-radius);
+    font-size: .9375rem;
+    color: var(--pg-primary-ink);
+    background: color-mix(in srgb, var(--pg-primary-ink) 12%, transparent);
   }
 
   .pg-visitors-section-aside {
-    font-size: .875rem;
+    font-size: .8125rem;
     color: var(--pg-fg-2);
   }
 
@@ -89,65 +121,157 @@
     color: var(--pg-fg-2);
   }
 
+  @media (max-width: 575.98px) {
+    .pg-visitors-section {
+      padding: 1rem 1rem 1.25rem;
+    }
+
+    .pg-visitors-section-title {
+      font-size: 1rem;
+    }
+  }
+
+  /* ── Blocks, notes, the empty line ──────────────────────────────────── */
+
+  .pg-visitors-block {
+    min-width: 0;
+  }
+
+  .pg-visitors-subtitle,
+  .pg-visitors-conversions-subtitle,
+  .pg-visitors-places-heading {
+    margin: 0 0 .5rem;
+    font-size: .875rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-visitors-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem 2rem;
+    margin-top: 1.5rem;
+  }
+
+  @media (min-width: 1200px) {
+    .pg-visitors-grid.is-split {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pg-visitors-grid.is-split > :not(.is-half) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .pg-visitors-note {
+    margin: .75rem 0 0;
+    font-size: .8125rem;
+    color: var(--pg-fg-2);
+  }
+
   .pg-visitors-empty {
     margin: 0;
-    padding: 1.5rem 0;
+    padding: 1.25rem 0;
+    font-size: .875rem;
     text-align: center;
     color: var(--pg-fg-2);
+  }
+
+  .pg-visitors-empty.is-start,
+  .pg-visitors-block .pg-visitors-empty {
+    padding: .375rem 0;
+    text-align: start;
   }
 
   /* ── Tiles and change ───────────────────────────────────────────────── */
 
   .pg-visitors-tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
     gap: .75rem;
   }
 
   .pg-visitors-tile {
-    padding: .875rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+    min-width: 0;
+    padding: .75rem .875rem;
     border: var(--pg-border-width) solid var(--pg-border-color-translucent);
     border-radius: var(--pg-radius);
     background: var(--pg-bg-1);
   }
 
   .pg-visitors-tile-label {
-    font-size: .8125rem;
+    font-size: .75rem;
+    font-weight: 500;
+    line-height: 1.3;
     color: var(--pg-fg-2);
   }
 
   .pg-visitors-tile-value {
-    font-size: 1.5rem;
+    font-size: 1.375rem;
     font-weight: 700;
-    line-height: 1.3;
+    line-height: 1.25;
     color: var(--pg-fg-emphasis);
     font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .pg-visitors-tile-change {
+    line-height: 1.3;
   }
 
   .pg-visitors-tile-note {
-    font-size: .8125rem;
+    font-size: .75rem;
+    line-height: 1.35;
     color: var(--pg-fg-2);
+  }
+
+  @media (max-width: 575.98px) {
+    .pg-visitors-tiles {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .pg-visitors-tile-value {
+      font-size: 1.1875rem;
+    }
   }
 
   .pg-visitors-change {
     display: inline-flex;
     align-items: center;
-    gap: .25rem;
-    font-size: .8125rem;
+    gap: .125rem;
+    padding: .0625rem .375rem;
+    border-radius: var(--pg-radius-pill);
+    font-size: .75rem;
     font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
     color: var(--pg-fg-2);
+  }
+
+  .pg-visitors-change .bi {
+    font-size: .8em;
   }
 
   .pg-visitors-change.is-good {
     color: var(--pg-success-fg-emphasis);
+    background: var(--pg-success-bg-subtle);
   }
 
   .pg-visitors-change.is-bad {
     color: var(--pg-danger-fg-emphasis);
+    background: var(--pg-danger-bg-subtle);
   }
 
-  .pg-visitors-change.is-none {
+  .pg-visitors-change.is-none,
+  .pg-visitors-change.is-same {
+    padding-inline: 0;
     font-weight: 400;
+    color: var(--pg-fg-3);
   }
 
   /* ── Bars, table, chart ─────────────────────────────────────────────── */
@@ -156,7 +280,8 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: .125rem .75rem;
-    padding: .375rem 0;
+    padding: .3125rem 0;
+    font-size: .875rem;
   }
 
   .pg-visitors-bar-value {
@@ -166,9 +291,9 @@
 
   .pg-visitors-bar-track {
     grid-column: 1 / -1;
-    height: .375rem;
+    height: .3125rem;
     border-radius: var(--pg-radius-pill);
-    background: color-mix(in srgb, var(--pg-primary) 15%, transparent);
+    background: color-mix(in srgb, var(--pg-primary) 12%, transparent);
     overflow: hidden;
   }
 
@@ -179,8 +304,67 @@
     background: var(--pg-primary-ink);
   }
 
+  /* The panel's list screens give every .table 3rem above and 2rem below;
+     a table here sits right under its heading. */
+  .pg-visitors .pg-visitors-table {
+    margin: 0;
+    font-size: .875rem;
+  }
+
+  .pg-visitors .table-responsive {
+    overflow-y: hidden;
+  }
+
+  .pg-visitors-table > thead > tr > th {
+    padding-block: .375rem;
+    font-size: .75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-visitors-table > tbody > tr > td {
+    padding-block: .4375rem;
+  }
+
+  .pg-visitors-table > tbody > tr:last-child > td {
+    border-bottom-width: 0;
+  }
+
   .pg-visitors-table td.text-end {
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* A button in a row keeps the row as low as its text. */
+  .pg-visitors-table .btn {
+    padding-block: 0;
+  }
+
+  /* A second, quieter line under a cell's text. */
+  .pg-visitors-cell-note {
+    display: block;
+    font-size: .75rem;
+    line-height: 1.35;
+    color: var(--pg-fg-2);
+  }
+
+  /* On a phone a wide table scrolls sideways in its box; the name column
+     keeps room enough not to break a name at every hyphen. */
+  @media (max-width: 575.98px) {
+    .pg-visitors-table > tbody > tr > td:first-child {
+      min-width: 8.5rem;
+    }
+  }
+
+  .pg-visitors-table.is-collapsed .pg-visitors-extra {
+    display: none;
+  }
+
+  .pg-visitors-more {
+    margin-top: .25rem;
+    padding-inline: 0;
+    font-size: .8125rem;
   }
 
   .pg-visitors-chart {
@@ -253,8 +437,8 @@
   .pg-visitors-conversions-detail {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    gap: 1.25rem;
-    margin-top: 1.25rem;
+    gap: 1.5rem 2rem;
+    margin-top: 1.5rem;
   }
 
   .pg-visitors-conversions-detail.is-single {
@@ -267,18 +451,11 @@
     }
   }
 
-  .pg-visitors-conversions-subtitle {
-    margin: 0 0 .5rem;
-    font-size: .875rem;
-    font-weight: 600;
-    color: var(--pg-fg-2);
-  }
-
   /* ── Section: sources ───────────────────────────────────────────────── */
 
   .pg-visitors-sources-stack {
     display: flex;
-    height: .75rem;
+    height: .625rem;
     margin-bottom: 1rem;
     border-radius: var(--pg-radius-pill);
     background: color-mix(in srgb, var(--pg-fg-2) 15%, transparent);
@@ -291,13 +468,17 @@
     min-width: 2px;
   }
 
+  .pg-visitors-sources-segment + .pg-visitors-sources-segment {
+    border-inline-start: 2px solid var(--pg-bg-body);
+  }
+
   .pg-visitors-sources-swatch {
     display: inline-block;
-    width: .75rem;
-    height: .75rem;
+    width: .625rem;
+    height: .625rem;
     margin-inline-end: .5rem;
-    border-radius: .1875rem;
-    vertical-align: -.0625rem;
+    border-radius: 50%;
+    vertical-align: .0625rem;
     background: var(--pg-fg-2);
   }
 
@@ -309,61 +490,80 @@
   .pg-visitors-sources .is-referral { background: var(--pg-secondary-ink); }
   .pg-visitors-sources .is-direct { background: color-mix(in srgb, var(--pg-primary-ink) 45%, transparent); }
 
+  /* auto-fit: a list alone, or two, take the width there is. */
   .pg-visitors-sources-lists {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-    gap: 1.25rem 1.5rem;
-    margin-top: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    gap: 1.5rem 2rem;
+    margin-top: 1.75rem;
   }
 
-  .pg-visitors-sources-list {
-    min-width: 0;
+  .pg-visitors-sources-lists:empty {
+    display: none;
   }
 
-  .pg-visitors-sources-list-title {
-    margin: 0 0 .5rem;
+  .pg-visitors-sources-lists > .pg-visitors-group {
+    grid-column: 1 / -1;
+  }
+
+  .pg-visitors-group {
+    padding-top: 1rem;
+    border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
+  }
+
+  .pg-visitors-group > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
     font-size: .875rem;
     font-weight: 600;
     color: var(--pg-fg-emphasis);
+    cursor: pointer;
+    list-style: none;
   }
 
-  .pg-visitors-sources-list .pg-visitors-empty {
-    padding: .75rem 0;
-    text-align: start;
+  .pg-visitors-group > summary::-webkit-details-marker {
+    display: none;
   }
 
-  .pg-visitors-sources-days {
-    margin: 1rem 0 0;
-    font-size: .8125rem;
+  .pg-visitors-group-chevron {
+    font-size: .75rem;
     color: var(--pg-fg-2);
+  }
+
+  .pg-visitors-group[open] .pg-visitors-group-chevron {
+    transform: rotate(90deg);
+  }
+
+  .pg-visitors-group-count {
+    padding: 0 .4375rem;
+    border-radius: var(--pg-radius-pill);
+    font-size: .75rem;
+    font-weight: 500;
+    color: var(--pg-fg-2);
+    background: var(--pg-bg-2);
+  }
+
+  .pg-visitors-group > .pg-visitors-sources-lists {
+    margin-top: 1.25rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pg-visitors-group-chevron {
+      transition: transform .15s ease;
+    }
   }
 
   /* ── Section: content ───────────────────────────────────────────────── */
 
   .pg-visitors-content-lists {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
-    gap: 1.25rem 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    gap: 1.75rem 2rem;
   }
 
-  .pg-visitors-content-list {
-    min-width: 0;
-  }
-
-  .pg-visitors-content-landing {
-    grid-column: 1 / -1;
-  }
-
-  .pg-visitors-content-list-title {
-    margin: 0 0 .5rem;
-    font-size: .875rem;
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
-  }
-
-  .pg-visitors-content-list .pg-visitors-empty {
-    padding: .75rem 0;
-    text-align: start;
+  .pg-visitors-content-lists + .pg-visitors-content-landing {
+    margin-top: 1.75rem;
   }
 
   /* ── Section: site_search ───────────────────────────────────────────── */
@@ -388,19 +588,8 @@
   .pg-visitors-google-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
-    gap: 1.5rem;
-    margin: 1.5rem 0 1rem;
-  }
-
-  .pg-visitors-google-block {
-    min-width: 0;
-  }
-
-  .pg-visitors-google-heading {
-    margin: 0 0 .5rem;
-    font-size: .9375rem;
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
+    gap: 1.75rem 2rem;
+    margin: 1.75rem 0 1rem;
   }
 
   .pg-visitors-google-unlinked {
@@ -413,6 +602,7 @@
 
   .pg-visitors-google-unlinked > p {
     flex: 1 1 18rem;
+    margin: 0;
   }
 
   .pg-visitors-google-unlinked > .bi {
@@ -443,6 +633,7 @@
   }
 
   /* ── Section: speed ─────────────────────────────────────────────────── */
+
   .pg-visitors-speed-filters {
     display: flex;
     flex-wrap: wrap;
@@ -451,31 +642,43 @@
 
   /* ── Section: ai ────────────────────────────────────────────────────── */
 
+  /* A bot's most-read pages on one line each, wrapping as a whole. */
+  .pg-visitors-reads {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .125rem 1rem;
+  }
+
+  .pg-visitors-read {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .pg-visitors-read-count {
+    margin-inline-start: .125rem;
+    font-size: .8125rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--pg-fg-2);
+  }
+
   /* ── Section: places ────────────────────────────────────────────────── */
 
   .pg-visitors-places-lists,
   .pg-visitors-places-splits {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
     gap: 1rem 2rem;
   }
 
-  .pg-visitors-places-heading {
-    margin-bottom: .5rem;
-    font-size: .875rem;
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
-  }
-
   .pg-visitors-places-note {
-    margin: .75rem 0 1.25rem;
-    font-size: .875rem;
+    margin: .75rem 0 1.5rem;
+    font-size: .8125rem;
     color: var(--pg-fg-2);
   }
 
   .pg-visitors-split {
     display: flex;
-    height: .75rem;
+    height: .625rem;
     border-radius: var(--pg-radius-pill);
     background: color-mix(in srgb, var(--pg-secondary) 15%, transparent);
     overflow: hidden;
@@ -495,6 +698,7 @@
     flex-wrap: wrap;
     gap: .375rem 1.25rem;
     margin-top: .625rem;
+    font-size: .875rem;
   }
 
   .pg-visitors-split-legend li {

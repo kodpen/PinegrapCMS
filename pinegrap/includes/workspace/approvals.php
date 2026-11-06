@@ -484,6 +484,10 @@ function ws_approvals_map($message_ids, $viewer)
 
     $people = ws_people($user_ids);
     $refs = empty($tokens) ? array() : ws_refs_resolve($viewer, $tokens);
+    // What Approve asks for, of the open requests a flow's box waits on.
+    $asked = ws_approval_answers_asked(array_map(function ($row) {
+        return ((int) $row['closed_at'] === 0) ? (int) $row['id'] : 0;
+    }, $rows));
     $guest = ((int) ($viewer['guest_id'] ?? 0) > 0);
     $staff = !$guest && !empty($viewer['member']) && ((int) ($viewer['role'] ?? 3) <= 2);
     $rules = ws_approval_rules();
@@ -585,7 +589,150 @@ function ws_approvals_map($message_ids, $viewer)
             'can_close'   => $open && !$guest && ((int) $row['created_by'] !== (int) $viewer['id']) && ((int) ($viewer['role'] ?? 3) < 3)
                 && ($channel !== null) && ws_can_read_channel($viewer, $channel),
             'result_id'   => (int) $row['result_message_id'],
+            'answer'      => (string) ($asked[$approval_id]['answer'] ?? 'none'),
+            'answer_label' => (string) ($asked[$approval_id]['label'] ?? ''),
         );
+    }
+
+    return $out;
+}
+
+/**
+ * The number an answer holds, read as the workspace calculator reads a
+ * figure or a formula (ws_calc_number(), else ws_calc_evaluate(): "27",
+ * "27,5", "25 + 2"); a cell or a word is no number. Pure but for the site's
+ * language.
+ *
+ * @param string $text
+ * @return string the number with up to six decimals, '' when unreadable
+ */
+function ws_approval_answer_number($text)
+{
+    $text = trim((string) $text);
+
+    if (($text === '') || !function_exists('ws_calc_number')) {
+        return '';
+    }
+
+    $number = ws_calc_number($text);
+
+    if ($number === null) {
+        $result = ws_calc_evaluate($text, function () {
+            return 'ref';
+        });
+        $number = (!empty($result['ok']) && is_numeric($result['value'])) ? (float) $result['value'] : null;
+    }
+
+    if (($number === null) || !is_finite((float) $number)) {
+        return '';
+    }
+
+    $out = rtrim(rtrim(sprintf('%.6F', round((float) $number, 6)), '0'), '.');
+
+    return (($out === '-0') || ($out === '')) ? '0' : $out;
+}
+
+/**
+ * Why an answer may not be given as it is, '' when it may: a request that
+ * asks for an answer (an approval box's `answer`, text or number) needs it
+ * with an approval, a number one readable (ws_approval_answer_number()). A
+ * refusal's note stays free. Pure.
+ *
+ * @param string $mode     none | text | number
+ * @param string $decision approve | reject
+ * @param string $note
+ * @return string
+ */
+function ws_approval_answer_problem($mode, $decision, $note)
+{
+    if (($decision !== 'approve') || !in_array($mode, array('text', 'number'), true)) {
+        return '';
+    }
+
+    $note = trim((string) $note);
+
+    if ($note === '') {
+        return lang('Write your answer to approve.');
+    }
+
+    if (($mode === 'number') && (ws_approval_answer_number($note) === '')) {
+        return lang('The answer has to be a number.');
+    }
+
+    return '';
+}
+
+/**
+ * The answer an approval box keeps: the one of whoever answered last
+ * (with rule all, the answer that settled it), as text and as a number,
+ * and who gave it. Pure.
+ *
+ * @param array[] $people ws_approval_people() rows
+ * @return array answer, answer_number, decided_by (null when nobody answered)
+ */
+function ws_approval_answer_values($people)
+{
+    $last = null;
+
+    foreach ((array) $people as $row) {
+        if (((string) ($row['decision'] ?? 'pending') !== 'pending')
+            && (($last === null) || ((int) $row['decided_at'] >= (int) $last['decided_at']))) {
+            $last = $row;
+        }
+    }
+
+    if ($last === null) {
+        return array('answer' => null, 'answer_number' => null, 'decided_by' => null);
+    }
+
+    $number = ws_approval_answer_number($last['note'] ?? '');
+
+    return array(
+        'answer'        => (string) ($last['note'] ?? ''),
+        'answer_number' => ($number === '') ? null : $number,
+        'decided_by'    => ((int) $last['user_id'] > 0) ? (int) $last['user_id'] : null,
+    );
+}
+
+/**
+ * What a request asks with an approval, from the approval box of a flow
+ * waiting on it (its `answer` and `answer_label`); a request asked by a
+ * person, a scheduled action or another box asks for none.
+ *
+ * @param int[] $approval_ids
+ * @return array approval id => array(answer, label), only the ones that ask
+ */
+function ws_approval_answers_asked($approval_ids)
+{
+    $keys = array();
+
+    foreach ((array) $approval_ids as $approval_id) {
+        if ((int) $approval_id > 0) {
+            $keys[] = "'" . e('approval:' . (int) $approval_id) . "'";
+        }
+    }
+
+    if (empty($keys) || !function_exists('ws_flow_run_graph') || !defined('WS_FLOW_APPROVAL_WAIT')) {
+        return array();
+    }
+
+    $rows = db_items("SELECT run_id, node_id, wait_key FROM ws_flow_run_steps
+        WHERE status = 'waiting' AND wait_event = '" . e(WS_FLOW_APPROVAL_WAIT) . "' AND wait_key IN (" . implode(', ', array_unique($keys)) . ")");
+    $out = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $run = ws_flow_run($row['run_id']);
+        $node = $run ? ws_flow_graph_node(ws_flow_run_graph($run), $row['node_id']) : null;
+
+        if (!$node || ((string) $node['kind'] !== 'approval')) {
+            continue;
+        }
+
+        $config = ws_step_config_normalize('approval', (array) ($node['config'] ?? array()));
+
+        if ($config['answer'] !== 'none') {
+            $out[(int) substr((string) $row['wait_key'], 9)] = array('answer' => $config['answer'], 'label' => $config['answer_label']);
+        }
     }
 
     return $out;
@@ -597,13 +744,15 @@ function ws_approvals_map($message_ids, $viewer)
  * API's dry run meets the same refusals. A request whose time ran out is
  * refused with expired set; settling it is the caller's to do.
  *
- * @param array  $viewer
- * @param array  $approval
- * @param string $decision approve | reject
+ * @param array       $viewer
+ * @param array       $approval
+ * @param string      $decision approve | reject
+ * @param string|null $note     the answer or the refusal's note; null skips
+ *                              the answer's check (ws_approval_answer_problem())
  * @return array ok, error, expired, outcome (what the request would be after
  *               the answer: open, approved or rejected)
  */
-function ws_approval_decide_check($viewer, $approval, $decision)
+function ws_approval_decide_check($viewer, $approval, $decision, $note = null)
 {
     if (!in_array($decision, array('approve', 'reject'), true)) {
         return array('ok' => false, 'error' => lang('Invalid request.'), 'expired' => false);
@@ -634,8 +783,24 @@ function ws_approval_decide_check($viewer, $approval, $decision)
         return array('ok' => false, 'error' => lang('That approval request could not be found.'), 'expired' => false);
     }
 
+    // An earlier version of a conversation is kept as it was (eras.php);
+    // checked here so the panel, the external API and its dry run agree.
+    if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
+        return array('ok' => false, 'error' => lang('This message is in an earlier version of the conversation, which is kept as it was.'), 'expired' => false);
+    }
+
     if (!ws_can_post_channel($viewer, ws_channel($approval['channel_id']))) {
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'expired' => false);
+    }
+
+    // An approval box that asks for an answer gets it with the approval.
+    if (($note !== null) && ($decision === 'approve')) {
+        $asked = ws_approval_answers_asked(array((int) $approval['id']));
+        $problem = ws_approval_answer_problem($asked[(int) $approval['id']]['answer'] ?? 'none', $decision, mb_substr((string) $note, 0, 255));
+
+        if ($problem !== '') {
+            return array('ok' => false, 'error' => $problem, 'expired' => false);
+        }
     }
 
     // The answers as they would stand, the way ws_approval_evaluate() reads
@@ -667,7 +832,7 @@ function ws_approval_decide_check($viewer, $approval, $decision)
  */
 function ws_approval_decide($viewer, $approval, $decision, $note = '')
 {
-    $checked = ws_approval_decide_check($viewer, $approval, $decision);
+    $checked = ws_approval_decide_check($viewer, $approval, $decision, (string) $note);
 
     if (!$checked['ok']) {
         // Its time ran out before the answer came: it expires now.
@@ -1171,6 +1336,9 @@ function ws_approvals_js_strings()
         'apv_reject'         => lang('Reject'),
         'apv_reject_note'    => lang('Why? (optional)'),
         'apv_reject_confirm' => lang('Reject this request? It is settled at once.'),
+        'apv_answer'         => lang('Your answer'),
+        'apv_answer_number'  => lang('Your answer (a number)'),
+        'apv_answer_confirm' => lang('Approve with this answer? It is given to the flow that asked.'),
         'apv_withdraw'       => lang('Take back'),
         'apv_withdraw_confirm' => lang('Take back the approval request? Nothing is decided and the channel is told.'),
         'apv_close'          => lang('Close'),

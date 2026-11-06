@@ -43,7 +43,7 @@ if (!$_POST) {
             'cancel'=>array('enable'=>'true','url'=>'view_calendar_event_locations.php'),
         
         
-            'breadcrumb' => array(array('label' => lang('All Event Locations'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Event Location'))))),
+            'breadcrumb' => array(array('label' => lang('Event Locations'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendar_event_locations.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Event Location'))))),
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -54,14 +54,11 @@ if (!$_POST) {
                 
                 <form name="form" action="add_calendar_event_location.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_calendar_event_location_form_card($liveform) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_calendar_event_location_form_layout(
+                        pg_calendar_event_location_form_cards($liveform, pg_calendar_event_location_form_status_row(lang('Events'), h(lang('None yet')))),
+                        '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                    ) . '
                 </form>
             </div>
         </div>
@@ -78,7 +75,8 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
     
     $liveform->validate_required_field('name', lang('Name is required.'));
-    
+    pg_calendar_form_check_lengths($liveform, array('name' => array(lang('Name'), 100)));
+
     // if there is an error, forward user back to add calendar event location screen
     if ($liveform->check_form_errors() == true) {
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_calendar_event_location.php');

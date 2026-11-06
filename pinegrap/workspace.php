@@ -37,6 +37,8 @@ pg_page_shell([
         'heading_description' => $heading['description'],
         'cancel' => false,
         'tour' => function_exists('ws_tour_key') ? ws_tour_key() : '',
+        // Today is drawn in the new dashboard's cards (includes/workspace/home.php).
+        'head' => ws_today_stylesheets(),
     ]) . '
 <main id="content" class="container-fluid p-0">
     <div id="ws-root" class="ws-app">
@@ -47,6 +49,7 @@ pg_page_shell([
 ' . ws_screen_assets($viewer, 'channels', array(
     'open_channel' => (int) ($_GET['channel'] ?? 0),
     'headings'     => $headings,
+    'today_look'   => ws_today_look_for($user),
     // Back from connecting an account to an MCP server, or asked to offer it.
     'mcp'          => function_exists('ws_mcp_screen_config') ? ws_mcp_screen_config($viewer) : null,
 )) .

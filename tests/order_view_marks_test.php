@@ -42,5 +42,5 @@ function test_order_view_marks_fax_label_translated()
 {
 	$source = order_view_marks_source('view_order.php');
 	pg_assert_false(strpos($source, '>Fax:<') !== false, 'view_order.php: literal Fax label');
-	pg_assert_contains("h(lang('Fax')) . ':</span>", $source, 'view_order.php');
+	pg_assert_contains("h(lang('Fax')) . '</span>", $source, 'view_order.php');
 }

@@ -8,9 +8,13 @@
  *
  * With the mode on, every cell of an editable column that carries its
  * data-pg-edit field is a field. A changed field is saved as soon as it is
- * left (or on Enter, which goes on to the same column of the next row);
- * Escape puts the stored value back. The value goes to the screen's
- * pg_list_edit_request() endpoint, one cell per request, and the answer
+ * left (or on Enter, which goes on to the same column of the next row;
+ * in a several-line field Enter starts a new line and Ctrl+Enter goes on;
+ * a several-choice field is a group of check boxes, saved when the focus
+ * leaves the group); Escape puts the stored value back. The value goes to the screen's
+ * pg_list_edit_request() endpoint, one cell per request, with the value
+ * the cell opened with ("was"), so the screen can refuse a value changed
+ * elsewhere since the list was drawn; the answer
  * draws the cell (and the other cells of the row it names) from what was
  * stored. A refused value stays in the field, marked, with the reason
  * under it; nothing is saved.
@@ -20,8 +24,9 @@
  * selected rows"): one request per row; that group is then the last save.
  * With the mode off, a click selects and a double-click opens, as always.
  *
- * QuickEdits, applyTargets(), quickValue() and quickChanged() are pure (no
- * DOM; tests/list_table_quick_edit_js_test.php runs them in Node).
+ * QuickEdits, applyTargets(), quickValue(), quickChanged() and
+ * rowNameText() are pure (no browser; tests/list_table_quick_edit_js_test.php
+ * runs them in Node).
  *
  * Bundled after pg_list_table.js into pg_list_table.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
@@ -69,14 +74,17 @@
         return !!this.last;
     };
 
-    /** What to write back to undo the last save; it can be taken once. */
+    /**
+     * What to write back to undo the last save, each over the value the
+     * save left; it can be taken once.
+     */
     QuickEdits.prototype.takeUndo = function () {
         var last = this.last || [];
 
         this.last = null;
 
         return last.map(function (change) {
-            return { id: String(change.id), field: change.field, value: String(change.before) };
+            return { id: String(change.id), field: change.field, value: String(change.before), was: String(change.after) };
         });
     };
 
@@ -107,14 +115,97 @@
         });
     }
 
-    /** The value a field sends: trimmed, a choice as it is. */
+    /**
+     * The value a field sends: trimmed, a choice as it is; several lines
+     * with their breaks as "\n" (a stored value may carry "\r\n").
+     */
     function quickValue(type, raw) {
-        return (type === 'select') ? String(raw) : String(raw).trim();
+        if (type === 'select') {
+            return String(raw);
+        }
+
+        if (type === 'textarea') {
+            return String(raw).replace(/\r\n?/g, '\n').trim();
+        }
+
+        if (type === 'multiselect') {
+            return quickChoices(raw).join(',');
+        }
+
+        return String(raw).trim();
+    }
+
+    /** A several-choice value ("3, 7,3") as its values, each once ([3, 7]). */
+    function quickChoices(raw) {
+        var seen = {};
+
+        return String(raw).split(',').map(function (part) {
+            return part.trim();
+        }).filter(function (part) {
+            if ((part === '') || seen[part]) {
+                return false;
+            }
+
+            seen[part] = true;
+
+            return true;
+        });
     }
 
     /** Whether a field holds something else than the stored value. */
     function quickChanged(type, raw, stored) {
-        return quickValue(type, raw) !== String(stored);
+        if (type === 'multiselect') {
+            return quickChoices(raw).sort().join(',') !== quickChoices(stored).sort().join(',');
+        }
+
+        return quickValue(type, raw) !== ((type === 'textarea') ? quickValue(type, stored) : String(stored));
+    }
+
+    /**
+     * The text a cell names its row by, as shown: words of a block child
+     * kept apart (textContent fused a gift card's code with the
+     * "Expired" printed under it) and hidden text left out (unseen search
+     * words, icon ligatures). Reads only childNodes, nodeType, nodeValue,
+     * tagName, hidden and getAttribute, so it runs on any node tree.
+     */
+    /**
+     * A select whose options carry classes wears the chosen option's class
+     * (the Pages list's folders, coloured by their access type), dropping
+     * the one it wore before.
+     */
+    function tintSelect(select) {
+        var option = (select.selectedIndex >= 0) ? select.options[select.selectedIndex] : null;
+        var tint = option ? String(option.className || '') : '';
+
+        if (select.pgTint && (select.pgTint !== tint)) {
+            select.classList.remove(select.pgTint);
+        }
+
+        if (tint !== '') {
+            select.classList.add(tint);
+        }
+
+        select.pgTint = tint;
+    }
+
+    function rowNameText(node) {
+        var walk = function (parent) {
+            var text = '';
+
+            Array.prototype.forEach.call(parent.childNodes || [], function (child) {
+                if (child.nodeType === 3) {
+                    text += child.nodeValue;
+                } else if ((child.nodeType === 1) && !child.hidden && (child.getAttribute('aria-hidden') !== 'true')) {
+                    var gap = /^(DIV|P|BR|LI|UL|OL|DL|DT|DD|H[1-6])$/.test(String(child.tagName).toUpperCase()) ? ' ' : '';
+
+                    text += gap + walk(child) + gap;
+                }
+            });
+
+            return text;
+        };
+
+        return node ? walk(node).replace(/\s+/g, ' ').trim() : '';
     }
 
     // ------------------------------------------------------------------
@@ -278,6 +369,64 @@
         });
     };
 
+    /**
+     * A several-choice field: a group of check boxes, one per option, that
+     * reads and writes its value ("3,7", in the options' order) like an
+     * input, and takes the focus on its first box.
+     */
+    function choiceGroup(def, value) {
+        var group = document.createElement('div');
+        var chosen = quickChoices(value);
+        var boxes = [];
+
+        group.className = 'pg-list-table-field pg-list-table-choices';
+        group.setAttribute('role', 'group');
+        // Safari, and Firefox on macOS, do not focus a clicked or tapped
+        // check box: the group itself takes the focus then, so leaving it
+        // still saves the boxes ticked.
+        group.tabIndex = -1;
+
+        (def.options || []).forEach(function (pair) {
+            var label = document.createElement('label');
+            var box = document.createElement('input');
+
+            label.className = 'pg-list-table-choice';
+            box.type = 'checkbox';
+            box.className = 'check me-1';
+            box.value = String(pair[0]);
+            box.checked = (chosen.indexOf(box.value) !== -1);
+            label.appendChild(box);
+            label.appendChild(document.createTextNode(String(pair[1])));
+            group.appendChild(label);
+            boxes.push(box);
+        });
+
+        Object.defineProperty(group, 'value', {
+            get: function () {
+                return boxes.filter(function (box) {
+                    return box.checked;
+                }).map(function (box) {
+                    return box.value;
+                }).join(',');
+            },
+            set: function (next) {
+                var values = quickChoices(next);
+
+                boxes.forEach(function (box) {
+                    box.checked = (values.indexOf(box.value) !== -1);
+                });
+            }
+        });
+
+        group.focus = function () {
+            if (boxes.length) {
+                boxes[0].focus();
+            }
+        };
+
+        return group;
+    }
+
     D.openField = function (cell) {
         var self = this;
         var def = this.editDef(cell);
@@ -301,8 +450,27 @@
                 option.value = String(pair[0]);
                 option.textContent = String(pair[1]);
                 option.selected = (option.value === value);
+
+                if (pair[2]) {
+                    option.className = String(pair[2]);
+                }
+
                 control.appendChild(option);
             });
+
+            tintSelect(control);
+        } else if (def.type === 'multiselect') {
+            control = choiceGroup(def, value);
+        } else if (def.type === 'textarea') {
+            control = document.createElement('textarea');
+            control.className = 'form-control form-control-sm pg-list-table-field pg-list-table-field-lines';
+            control.rows = 2;
+            control.value = quickValue('textarea', value);
+            control.autocomplete = 'off';
+
+            if (def.max) {
+                control.maxLength = def.max;
+            }
         } else {
             control = document.createElement('input');
             control.type = 'text';
@@ -323,7 +491,7 @@
         // The row's name is its first cell's text. That cell may be an open
         // field itself (quick edit opens a row's fields in order), so its text
         // is the one kept when it opened, not the empty text it has now.
-        var nameText = name ? (name.pgQuick ? (name.pgQuickName || '') : name.textContent.trim()) : '';
+        var nameText = name ? (name.pgQuick ? (name.pgQuickName || '') : rowNameText(name)) : '';
 
         // No name: the field never travels with a form the list sits in.
         control.setAttribute('aria-label', String(def.label || '') + ((name && (name !== cell) && (nameText !== '')) ? ': ' + nameText : ''));
@@ -336,15 +504,31 @@
         control.setAttribute('aria-describedby', note.id);
 
         cell.pgQuickHtml = cell.innerHTML;
-        cell.pgQuickName = cell.textContent.trim();
+        cell.pgQuickName = rowNameText(cell);
         cell.pgQuick = { control: control, note: note, def: def };
         cell.textContent = '';
         cell.appendChild(control);
         cell.appendChild(note);
 
         control.addEventListener('change', function () {
-            self.quickSave(cell);
+            if (control.tagName === 'SELECT') {
+                tintSelect(control);
+            }
+
+            // A box ticked is not yet the choice: the group saves once the
+            // focus leaves it.
+            if (def.type !== 'multiselect') {
+                self.quickSave(cell);
+            }
         });
+
+        if (def.type === 'multiselect') {
+            control.addEventListener('focusout', function (event) {
+                if (!event.relatedTarget || !control.contains(event.relatedTarget)) {
+                    self.quickSave(cell);
+                }
+            });
+        }
 
         control.addEventListener('keydown', function (event) {
             self.fieldKey(cell, event);
@@ -368,13 +552,21 @@
 
         event.stopPropagation();
 
-        if (event.key === 'Enter') {
+        if ((event.key === 'Enter') && (quick.control.tagName === 'TEXTAREA') && !event.ctrlKey && !event.metaKey) {
+            // A new line in the field; Ctrl+Enter goes on as Enter elsewhere.
+            return;
+        } else if (event.key === 'Enter') {
             event.preventDefault();
             this.quickSave(cell);
             this.fieldStep(cell, event.shiftKey ? -1 : 1);
         } else if (event.key === 'Escape') {
             event.preventDefault();
-            quick.control.value = cell.getAttribute('data-pg-edit-value') || '';
+            quick.control.value = (quick.control.tagName === 'TEXTAREA') ? quickValue('textarea', cell.getAttribute('data-pg-edit-value') || '') : (cell.getAttribute('data-pg-edit-value') || '');
+
+            if (quick.control.tagName === 'SELECT') {
+                tintSelect(quick.control);
+            }
+
             this.fieldNote(cell, '');
         } else if (event.key === 'F2') {
             event.preventDefault();
@@ -439,8 +631,11 @@
         return field ? field.value : '';
     };
 
-    /** One cell's value to the screen's endpoint; resolves its answer. */
-    D.post = function (field, id, value) {
+    /**
+     * One cell's value to the screen's endpoint, with the value the cell
+     * opened with; resolves its answer.
+     */
+    D.post = function (field, id, value, was) {
         var body = new FormData();
         var self = this;
 
@@ -449,6 +644,7 @@
         body.append('field', field);
         body.append('id', id);
         body.append('value', value);
+        body.append('was', was);
 
         return window.fetch(this.editUrl, {
             method: 'POST',
@@ -491,6 +687,10 @@
 
             if (cell.pgQuick) {
                 cell.pgQuick.control.value = String(view.value);
+
+                if (cell.pgQuick.control.tagName === 'SELECT') {
+                    tintSelect(cell.pgQuick.control);
+                }
             }
         }
 
@@ -502,6 +702,11 @@
             }
         }
 
+        // A date drawn as text sorts by the value the answer gives with it.
+        if ((typeof view.sort === 'string') || (typeof view.sort === 'number')) {
+            cell.setAttribute('data-pg-sort-value', String(view.sort));
+        }
+
         if (typeof view['class'] === 'string') {
             var invalid = cell.classList.contains('is-invalid');
 
@@ -510,19 +715,41 @@
         }
     };
 
-    /** A saved answer drawn on its row: the cell and the cells it names. */
+    /** The cells an answer names, drawn on a row; the edited cell left out. */
+    D.paintRow = function (row, cells, skip) {
+        if (!row || !cells || (typeof cells !== 'object')) {
+            return;
+        }
+
+        for (var name in cells) {
+            if (Object.prototype.hasOwnProperty.call(cells, name)) {
+                var other = row.querySelector('[data-pg-cell="' + quote(name) + '"], td[data-pg-col="' + quote(name) + '"], td[data-pg-edit="' + quote(name) + '"]');
+
+                if (other && (other !== skip)) {
+                    this.paintCell(other, cells[name]);
+                }
+            }
+        }
+    };
+
+    /**
+     * A saved answer drawn on its row: the cell and the cells it names;
+     * 'rows' (id => cells) redraws other rows on screen the save changed
+     * too (a theme activated in place of another one).
+     */
     D.takeSaved = function (cell, data) {
         var row = cell.closest('tr');
 
         this.paintCell(cell, data);
+        this.paintRow(row, data.cells, cell);
 
-        if (row && data.cells && (typeof data.cells === 'object')) {
-            for (var name in data.cells) {
-                if (Object.prototype.hasOwnProperty.call(data.cells, name)) {
-                    var other = row.querySelector('[data-pg-cell="' + quote(name) + '"], td[data-pg-col="' + quote(name) + '"], td[data-pg-edit="' + quote(name) + '"]');
+        if (data.rows && (typeof data.rows === 'object')) {
+            for (var id in data.rows) {
+                if (Object.prototype.hasOwnProperty.call(data.rows, id)) {
+                    var other = this.tbody.querySelector('tr[data-pg-id="' + quote(id) + '"]');
 
-                    if (other && (other !== cell)) {
-                        this.paintCell(other, data.cells[name]);
+                    if (other && (other !== row)) {
+                        this.paintRow(other, data.rows[id], null);
                     }
                 }
             }
@@ -531,6 +758,13 @@
         cell.classList.remove('pg-list-table-saved');
         void cell.offsetWidth;
         cell.classList.add('pg-list-table-saved');
+
+        // The screen hears a save on the root, e.g. to follow what the
+        // answer says about the row outside its cells (filter groups).
+        this.root.dispatchEvent(new CustomEvent('pg-list-table:saved', {
+            bubbles: true,
+            detail: { cell: cell, row: row, data: data }
+        }));
     };
 
     /**
@@ -565,7 +799,7 @@
         cell.pgQuickBusy = true;
         cell.setAttribute('aria-busy', 'true');
 
-        this.post(field, id, value).then(function (data) {
+        this.post(field, id, value, stored).then(function (data) {
             cell.pgQuickBusy = false;
             cell.removeAttribute('aria-busy');
 
@@ -620,8 +854,9 @@
     };
 
     /**
-     * Writes one value per row, one request at a time; resolves the
-     * changes written and the number refused.
+     * Writes one value per row, one request at a time, each over the
+     * value its cell shows (or the write's 'was' for a row not on screen);
+     * resolves the changes written and the number refused.
      */
     D.writeAll = function (writes) {
         var self = this;
@@ -634,7 +869,7 @@
                 var cell = self.fieldCell(write.row, write.field);
                 var before = cell ? (cell.getAttribute('data-pg-edit-value') || '') : null;
 
-                return self.post(write.field, write.id, write.value).then(function (data) {
+                return self.post(write.field, write.id, write.value, (before === null) ? String(write.was || '') : before).then(function (data) {
                     if (!data.ok) {
                         failed++;
 
@@ -715,7 +950,7 @@
             var cell = tbody.querySelector('td[data-pg-edit="' + quote(change.field) + '"][data-pg-edit-id="' + quote(change.id) + '"]');
             var row = cell ? cell.closest('tr').getAttribute('data-pg-id') : '';
 
-            return { row: row, id: change.id, field: change.field, value: change.value, before: '' };
+            return { row: row, id: change.id, field: change.field, value: change.value, was: change.was, before: '' };
         });
 
         this.applying = true;
@@ -759,6 +994,9 @@
     T.applyTargets = applyTargets;
     T.quickValue = quickValue;
     T.quickChanged = quickChanged;
+    T.quickChoices = quickChoices;
+    T.rowNameText = rowNameText;
+    T.tintSelect = tintSelect;
 
     // Lists the driver started before this part loaded.
     if (typeof document !== 'undefined' && document.querySelectorAll) {

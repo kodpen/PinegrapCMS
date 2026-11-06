@@ -195,7 +195,6 @@ function pg_panel_actions()
         // contacts right and the group; the handler checks both.
         'audience_refresh' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_refresh', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
         'audience_count' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_count', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'booking_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_booking_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'list_table_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'list_table_sort' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_sort', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
@@ -354,7 +353,7 @@ function pg_panel_actions()
         'ws_flow_step_mend', 'ws_flow_box_try', 'ws_flow_template_setup',
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_ai_sketch',
-        'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
+        'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove', 'ws_flow_web_address',
         'ws_flow_from_draft', 'ws_flow_draft_graph', 'ws_flow_draft_view', 'ws_flow_embed_config', 'ws_flow_scheduled_new', 'ws_flow_scheduled_copy',
         'ws_flow_scheduled_edit',
         'ws_channel_customer', 'ws_channel_customer_history',

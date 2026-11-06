@@ -1424,10 +1424,10 @@ function pg_contact_quick_save($user_id, $first_name, $last_name, $mobile_phone 
             return array('ok' => false, 'error' => lang('Your name could not be saved.'));
         }
 
-        // The group new accounts are put in, as the profile screen does.
-        if (defined('REGISTRATION_CONTACT_GROUP_ID') && ((int) REGISTRATION_CONTACT_GROUP_ID > 0)
-            && ((int) db_value("SELECT COUNT(*) FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "') AND " . pg_audience_hand_sql()) > 0)) {
-            db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES ('" . $contact_id . "', '" . (int) REGISTRATION_CONTACT_GROUP_ID . "')");
+        // The group new accounts are put in, as the profile screen does; a
+        // group filled by rules (pg_audience_hand_sql()) is skipped.
+        if (defined('REGISTRATION_CONTACT_GROUP_ID')) {
+            pg_audience_door_join($contact_id, (int) REGISTRATION_CONTACT_GROUP_ID);
         }
 
         db("UPDATE user SET user_contact = '" . $contact_id . "' WHERE user_id = '" . $user_id . "'");
@@ -1748,6 +1748,26 @@ function pg_contact_owner_sql($user_id, $column)
 }
 
 /**
+ * The query counting the contacts a person may open: every contact from the
+ * manager role up, only those of the contact groups given to them for the
+ * user role (pg_contact_owner_sql()). Summaries that show a contact total use
+ * it, so a group-limited person never learns the size of the contact base.
+ *
+ * @param array $user the signed-in user row (id, role)
+ * @return string
+ */
+function pg_contact_count_sql($user)
+{
+    $sql = 'SELECT COUNT(*) FROM contacts';
+
+    if ((int) ($user['role'] ?? 3) >= 3) {
+        $sql .= ' WHERE ' . pg_contact_owner_sql((int) ($user['id'] ?? 0), 'contacts.id');
+    }
+
+    return $sql;
+}
+
+/**
  * The referral sources a contact's lead source is chosen from, in the order
  * the checkout and the forms show them: rows of name and code. The code is
  * what is stored, as the billing information already writes it into
@@ -1845,6 +1865,22 @@ function pg_affiliate_approval_code($existing, $generate = 'generate_affiliate_c
     $existing = trim((string) $existing);
 
     return ($existing !== '') ? $existing : (string) call_user_func($generate);
+}
+
+/**
+ * An affiliate's link: the site's configured address with the code as the
+ * ?a= parameter, as the My Account page shows it. Pure. A mail built from
+ * the request's Host header would point wherever the sender's request said.
+ *
+ * @param string $scheme   URL_SCHEME
+ * @param string $hostname HOSTNAME_SETTING
+ * @param string $path     PATH
+ * @param string $code     contacts.affiliate_code
+ * @return string
+ */
+function pg_affiliate_link($scheme, $hostname, $path, $code)
+{
+    return (string) $scheme . (string) $hostname . (string) $path . '?a=' . urlencode((string) $code);
 }
 
 /**

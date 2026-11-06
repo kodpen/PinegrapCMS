@@ -84,9 +84,10 @@ if ($_POST) {
         ), (int) $user['id']);
 
         if (!$result['success']) {
-            // Keep the chosen till and method for the next try.
+            // Keep the chosen till, method and date for the next try, and mark
+            // the field the refusal is about.
             $liveform->add_fields_to_session();
-            $liveform->mark_error('_error', h($result['error']));
+            $liveform->mark_error(((string) ($result['field'] ?? '') !== '') ? (string) $result['field'] : '_error', h($result['error']));
             go($self);
         }
 
@@ -228,7 +229,7 @@ $date = function ($value) {
 $method_words = array(
     'cash' => lang('Cash'),
     'transfer' => lang('Bank transfer'),
-    'card' => lang('Credit card'),
+    'card' => lang('Card'),
     'cheque' => lang('Cheque'),
     'other' => lang('Other'),
 );
@@ -293,6 +294,12 @@ $sent_form = function ($form) use ($liveform) {
     return !$liveform->prefill() && ((string) $liveform->get_field_value('erp_action') === $form);
 };
 
+// A date of the sent form that the refusal names is marked. These inputs are
+// written by hand, not through the liveform, so nothing else marks them.
+$date_invalid = function ($form, $field) use ($liveform, $sent_form) {
+    return $sent_form($form) && $liveform->check_field_error($field);
+};
+
 $method_options = function ($selected = '') use ($method_words) {
     $options = '';
 
@@ -333,7 +340,7 @@ if ($status === 'paid') {
             </div>
             <div class="col-6 md:col-2">
                 <label class="form-label small mb-1" for="paid_date">' . lang('Paid on') . '</label>
-                <input type="text" class="form-control form-control-sm" id="paid_date" name="paid_date" data-pg-date value="' . h(prepare_form_data_for_output(date('Y-m-d'), 'date')) . '" maxlength="10" autocomplete="off" />
+                <input type="text" class="form-control form-control-sm' . ($date_invalid('pay', 'paid_date') ? ' is-invalid' : '') . '" id="paid_date" name="paid_date" data-pg-date value="' . h($sent_form('pay') ? (string) $liveform->get_field_value('paid_date') : prepare_form_data_for_output(date('Y-m-d'), 'date')) . '" maxlength="10" autocomplete="off" />
             </div>
             <div class="col-12 md:col-2">
                 <button type="submit" class="btn btn-sm btn-solid theme-success w-100"><i class="bi bi-cash-coin me-1" aria-hidden="true"></i>' . lang('Pay') . '</button>
@@ -537,7 +544,7 @@ if (erp_expense_recurring_ready()) {
                 </div>
                 <div class="col-6 md:col-3">
                     <label class="form-label small mb-1" for="repeat_end">' . lang('Until (optional)') . '</label>
-                    <input type="text" class="form-control form-control-sm" id="repeat_end" name="repeat_end" data-pg-date maxlength="10" autocomplete="off" />
+                    <input type="text" class="form-control form-control-sm' . ($date_invalid('repeat', 'repeat_end') ? ' is-invalid' : '') . '" id="repeat_end" name="repeat_end" data-pg-date value="' . h($sent_form('repeat') ? (string) $liveform->get_field_value('repeat_end') : '') . '" maxlength="10" autocomplete="off" />
                 </div>
                 <div class="col-12 md:col-2">
                     <button type="submit" class="btn btn-sm btn-outline theme-primary w-100"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Make it repeat') . '</button>
@@ -557,10 +564,10 @@ $output_cancel = '';
 
 if ($can_change && ($status === 'paid') && !$can_cash) {
     $output_cancel = '
-        <p class="small fg-secondary my-7">' . lang('Cancelling a paid expense needs the right to the tills.') . '</p>';
+        <p class="small fg-secondary mb-7">' . lang('Cancelling a paid expense needs the right to the tills.') . '</p>';
 } elseif ($can_change) {
     $output_cancel = '
-        <div class="card my-7 border-subtle-danger">
+        <div class="card mb-7 border-subtle-danger">
             <div class="card-header bg-reset border-0 text-uppercase h6 fg-danger fw-bold">' . lang('Cancel the expense') . '</div>
             <div class="card-body">
                 <p class="small fg-secondary">' . (($status === 'paid')
@@ -587,6 +594,10 @@ if ($status === 'cancelled') {
         ))) . '</div>';
 }
 
+// Wide edit layout: the details and every form (pay, receipt, repeat,
+// cancel) in the form column, the status and the amounts in a sticky status
+// column written after it. No sticky save bar: each card carries its own
+// form and button, and the screen has no single primary save.
 $heading = ((string) $expense['supplier'] !== '') ? (string) $expense['supplier'] : lang(array('string' => 'Expense #{var:1}', 'vars' => $id));
 
 echo
@@ -612,7 +623,6 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . ($can_change ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_expense.php?id=' . $id . h($send_to_query) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
                 ' . (!$readonly ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
-                <span class="ms-3">' . $output_badge . '</span>
             </nav>
 
             ' . (($locked && $open) ? '<div class="alert theme-warning my-5"><i class="bi bi-lock me-1" aria-hidden="true"></i>' . h(($status === 'unpaid')
@@ -621,43 +631,41 @@ pg_page_shell([
             ' . $output_cancelled . '
 
             <div class="row g-7 my-1">
-                <div class="col-12 xl:col-7">
-                    <div class="card h-100">
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                    <div class="card mb-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The expense') . '</div>
                         <div class="card-body">' . $output_details . '</div>
                     </div>
-                </div>
-                <div class="col-12 xl:col-5">
-                    <div class="card h-100">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Amount and tax') . '</div>
-                        <div class="card-body">' . $output_figures . '</div>
-                    </div>
-                </div>
-                <div class="col-12 xl:col-7">
-                    <div class="card h-100">
+                    <div class="card mb-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Payment') . '</div>
                         <div class="card-body">' . $output_payment . '</div>
                     </div>
-                </div>
-                <div class="col-12 xl:col-5">
-                    <div class="card h-100">
+                    <div class="card mb-7">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('The receipt') . '</div>
                         <div class="card-body">' . $output_receipt . '</div>
                     </div>
+                    ' . (($output_repeat !== '') ? '<div class="card mb-7">
+                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat') . '</div>
+                        <div class="card-body">' . $output_repeat . '</div>
+                    </div>' : '') . '
+                    ' . $output_cancel . '
+                </div>
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <div class="position-sticky" style="top:3.3rem;">
+                        <div class="card mb-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Amount and tax') . '</div>
+                            <div class="card-body">
+                                <div class="mb-3">' . $output_badge . '</div>
+                                ' . $output_figures . '
+                            </div>
+                            <div class="card-footer bg-reset border-0 small fg-secondary">' . h(lang(array(
+                                'string' => 'Recorded by {var:1} on {var:2}.',
+                                'vars' => array(((string) $expense['created_by_name'] !== '') ? (string) $expense['created_by_name'] : '-', prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $expense['created_at']), 'date and time')),
+                            ))) . '</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            ' . (($output_repeat !== '') ? '<div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Repeat') . '</div>
-                <div class="card-body">' . $output_repeat . '</div>
-            </div>' : '') . '
-
-            ' . $output_cancel . '
-
-            <p class="small fg-secondary">' . h(lang(array(
-                'string' => 'Recorded by {var:1} on {var:2}.',
-                'vars' => array(((string) $expense['created_by_name'] !== '') ? (string) $expense['created_by_name'] : '-', prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $expense['created_at']), 'date and time')),
-            ))) . '</p>
         </div>
     </div>
 </main>

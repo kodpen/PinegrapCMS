@@ -124,10 +124,16 @@
         var self = this, key = JSON.stringify(items.map(function (it) { return find(self.doc, it.id); }));
 
         if (!this.builder || (this.builder.key !== key)) {
-            this.builder = { key: key, regions: (items.length > 1) ? M.builderRegions(items) : [] };
+            this.builder = { key: key, items: items, regions: (items.length > 1) ? M.builderRegions(items) : [] };
         }
 
         return this.builder.regions;
+    };
+
+    // Every visible, unlocked closed shape or path selected, so the
+    // combine buttons work without Shift.
+    Editor.prototype.selectShapes = function () {
+        this.select(this.doc.layers.filter(function (l) { return !!areaOf(l); }).map(function (l) { return l.id; }));
     };
 
     // The regions a drag from a to b passes, every 2 screen px.
@@ -171,7 +177,9 @@
         }
     };
 
-    // The touched regions merged, or removed with Alt.
+    // The touched regions merged, or removed with Alt. A click (one region
+    // touched, merging) unites the shapes stacked there instead of cutting
+    // them into that region and the rest.
     Editor.prototype.builderUp = function () {
         var d = this.drag;
 
@@ -181,7 +189,8 @@
             return;
         }
 
-        var out = M.builderMerge(this.builderRegions(), d.touched, d.remove);
+        var regions = this.builderRegions();
+        var out = ((d.touched.length === 1) && !d.remove) ? M.builderStack(this.builder.items, regions[d.touched[0]]) : M.builderMerge(regions, d.touched, d.remove);
 
         if (out.ids.length) {
             this.replaceWithPieces(out.ids, out.pieces);
@@ -228,6 +237,13 @@
         });
 
         body.appendChild(section(t('pathfinder'), tiles));
+
+        // Fewer than two selected: select every shape from here.
+        if ((count < 2) && (this.doc.layers.filter(function (l) { return !!areaOf(l); }).length > 1)) {
+            body.appendChild(el('div', { class: 'pgie-btnrow' }, [
+                button('pgie-btn', t('selectShapes'), 'select', function () { self.selectShapes(); }, true)
+            ]));
+        }
 
         // A drag merges or removes; Alt removes too, the switch is for touch.
         var seg = el('div', { class: 'pgie-seg' });

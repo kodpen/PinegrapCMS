@@ -101,9 +101,9 @@
     };
 
     // Expand: the selected layer's drawn outline becomes its path, the
-    // warp gone; one undo step.
+    // warp and the free deformation's pins gone; one undo step.
     Editor.prototype.expandWarp = function (l) {
-        if (!M.warpOn(l)) {
+        if (!M.warpOn(l) && !M.puppetOn(l)) {
             return;
         }
 
@@ -116,6 +116,7 @@
 
             SHAPE_FIELDS.forEach(function (key) { delete o[key]; });
             delete o.warp;
+            delete o.puppet;
             delete o.subs;
 
             if (!fit.closed) {

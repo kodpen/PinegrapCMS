@@ -235,13 +235,14 @@ if (!$_POST) {
     $output_cancellation_rows = '';
     if (($status == 'cancelled') && (($order_cancellation_reason !== '') || ($order_cancelled_at > 0))) {
         $output_cancellation_rows =
-            '<div class="row" >
-                <span class="translateable col fg-secondary">' . lang('Cancellation reason') . ':</span>
-                <span class="col text-end">' . (($order_cancellation_reason !== '') ? h($order_cancellation_reason) : '-')
+            '<div class="d-flex justify-content-between gap-3">
+                <span class="translateable fg-secondary">' . lang('Cancellation reason') . '</span>
+                <span class="text-end text-break">' . (($order_cancellation_reason !== '') ? h($order_cancellation_reason) : '-')
                 . (($order_cancelled_at > 0) ? '<br><small class="fg-secondary">' . get_absolute_time(array('timestamp' => $order_cancelled_at)) . '</small>' : '') . '</span>
             </div>';
     }
     $order_refund_reference = isset($row['refund_reference']) ? (string) $row['refund_reference'] : '';
+    $order_customer_id = (int) $row['user_id'];
     $commission = $row['commission'] / 100;
     $transaction_id = $row['transaction_id'];
     $authorization_code = $row['authorization_code'];
@@ -340,9 +341,9 @@ if (!$_POST) {
 
         if ($tracking_code) {
             $source .=
-                '<div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Tracking Code') . ':</span>
-                    <span class="col text-end">' . h($tracking_code) . '</span>
+                '<div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Tracking Code') . '</span>
+                    <span class="text-end text-break">' . h($tracking_code) . '</span>
                 </div>';
         }
 
@@ -356,17 +357,17 @@ if (!$_POST) {
             }
 
             $source .=
-                '<div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Referring URL') . ':</span>
-                    <span class="col text-end"><a href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a></span>
+                '<div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Referring URL') . '</span>
+                    <span class="text-end text-break"><a href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a></span>
                 </div>';
         }
 
         if ($referral_source_code) {
             $source .=
-                '<div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Referral Source') . ':</span>
-                    <span class="col text-end">' . h($referral_source_code) . '</span>
+                '<div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Referral Source') . '</span>
+                    <span class="text-end text-break">' . h($referral_source_code) . '</span>
                 </div>';
         }
 
@@ -376,40 +377,40 @@ if (!$_POST) {
                 <div class="row" >
                     <span class="col-12"><h6 class="fg-secondary">' . lang('UTM') . '</h6></span>
                 </div>
-                <div class="row">
-                    <span class="translateable col fg-secondary">' . lang('Source') . ':</span>
-                    <span class="col text-end">' . h($utm_source) . '</span>
+                <div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Source') . '</span>
+                    <span class="text-end text-break">' . h($utm_source) . '</span>
                 </div>';
 
             if ($utm_medium) {
                 $source .=
-                    '<div class="row" >
-                        <span class="translateable col fg-secondary">' . lang('Campaign Medium') . ':</span>
-                        <span class="col text-end">' . h($utm_medium) . '</span>
+                    '<div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Campaign Medium') . '</span>
+                        <span class="text-end text-break">' . h($utm_medium) . '</span>
                     </div>';
             }
 
             if ($utm_campaign) {
                 $source .=
-                    '<div class="row" >
-                        <span class="translateable col fg-secondary">' . lang('Campaign') . ':</span>
-                        <span class="col text-end">' . h($utm_campaign) . '</span>
+                    '<div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Campaign') . '</span>
+                        <span class="text-end text-break">' . h($utm_campaign) . '</span>
                     </div>';
             }
 
             if ($utm_term) {
                 $source .=
-                    '<div class="row" >
-                        <span class="translateable col fg-secondary">' . lang('Term') . ':</span>
-                        <span class="col text-end">' . h($utm_term) . '</span>
+                    '<div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Term') . '</span>
+                        <span class="text-end text-break">' . h($utm_term) . '</span>
                     </div>';
             }
 
             if ($utm_content) {
                 $source .=
-                    '<div class="row" >
-                        <span class="translateable col fg-secondary">' . lang('Content') . ':</span>
-                        <span class="col text-end">' . h($utm_content) . '</span>
+                    '<div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Content') . '</span>
+                        <span class="text-end text-break">' . h($utm_content) . '</span>
                     </div>';
             }
         
@@ -423,9 +424,9 @@ if (!$_POST) {
 
     if ($billing_fax_number) {
         $fax =
-            '<div class="row" >
-                <span class="translateable col fg-secondary">' . h(lang('Fax')) . ':</span>
-                <span class="col text-end">' . h($billing_fax_number) . '</span>
+            '<div class="d-flex justify-content-between gap-3">
+                <span class="translateable fg-secondary">' . h(lang('Fax')) . '</span>
+                <span class="text-end text-break">' . h($billing_fax_number) . '</span>
             </div>';
     }
 
@@ -532,9 +533,9 @@ if (!$_POST) {
             $output_gift_card_label_plural_suffix = 's';
         }
         $output_gift_card_discount_row =
-        '<div class="row" >
-            <span class="translateable col fg-secondary">' . lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))) . ':</span>
-            <span class="col text-end">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</span>
+        '<div class="d-flex justify-content-between gap-3">
+            <span class="translateable fg-secondary">' . lang(array('string'=>'Gift Card{suffix:1}','vars'=>array(),'suffix'=>array($output_gift_card_label_plural_suffix))) . '</span>
+            <span class="text-end text-break">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</span>
         </div>';
     }
     $output_surcharge_row = '';
@@ -542,22 +543,22 @@ if (!$_POST) {
     // If there is a credit card surcharge, then output row for it.
     if ($surcharge > 0) {
         $output_surcharge_row =
-            '<div class="row" >
-                <span class="translateable col fg-secondary">' . lang('Surcharge') . ':</span>
-                <span class="col text-end">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</span>
+            '<div class="d-flex justify-content-between gap-3">
+                <span class="translateable fg-secondary">' . lang('Surcharge') . '</span>
+                <span class="text-end text-break">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</span>
             </div>';
     }
     //if there is installment charge and payment installment((1) is no installment)
     $output_number_of_installment_row = '';
     if(($installment_charges != 0)&&($payment_installment >= 2)){  
         $output_number_of_installment_row =
-            '<div class="row" >
-                <span class="translateable col fg-secondary">' . lang('Number of Installments') . ':</span>
-                <span class="col text-end">' . $payment_installment . '</span>
+            '<div class="d-flex justify-content-between gap-3">
+                <span class="translateable fg-secondary">' . lang('Number of Installments') . '</span>
+                <span class="text-end text-break">' . $payment_installment . '</span>
             </div>
-            <div class="row" >
-                <span class="translateable col fg-secondary">' . lang('Installment Charge') . ':</span>
-                <span class="col text-end">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</span>
+            <div class="d-flex justify-content-between gap-3">
+                <span class="translateable fg-secondary">' . lang('Installment Charge') . '</span>
+                <span class="text-end text-break">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</span>
             </div>';
     }
     $output_payment_information = '';
@@ -573,9 +574,9 @@ if (!$_POST) {
 
             if ($cardholder) {
                 $cardholder_row =
-                    '<div class="row" >
-                        <span class="translateable col fg-secondary">' . lang('Cardholder') . ':</span>
-                        <span class="col text-end">' . h($cardholder) . '</span>
+                    '<div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Cardholder') . '</span>
+                        <span class="text-end text-break">' . h($cardholder) . '</span>
                     </div>';
             }
 
@@ -583,9 +584,9 @@ if (!$_POST) {
 
             if ($expiration_month and $expiration_year) {
                 $expiration_row =
-                    '<div class="row" >
-                        <span class="translateable col fg-secondary">' . lang('Expiration') . ':</span>
-                        <span class="col text-end">' . h($expiration_month . '/' . $expiration_year) . '</span>
+                    '<div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Expiration') . '</span>
+                        <span class="text-end text-break">' . h($expiration_month . '/' . $expiration_year) . '</span>
                     </div>';
             }
 
@@ -593,21 +594,21 @@ if (!$_POST) {
 
             if ($card_verification_number) {
                 $card_verification_number_row =
-                    '<div class="row" >
-                        <span class="translateable col fg-secondary">' . lang('Verification Number') . ':</span>
-                        <span class="col text-end">' . h($card_verification_number) . '</span>
+                    '<div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Verification Number') . '</span>
+                        <span class="text-end text-break">' . h($card_verification_number) . '</span>
                     </div>';
             }
             
             $output_credit_debit_card_information =
-                '<div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Card Type') . ':</span>
-                    <span class="col text-end">' . h($card_type) . '</span>
+                '<div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Card Type') . '</span>
+                    <span class="text-end text-break">' . h($card_type) . '</span>
                 </div>
                 ' . $cardholder_row . '
-                <div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Card Number') . ':</span>
-                    <span class="col text-end">' . $card_number . '</span>
+                <div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Card Number') . '</span>
+                    <span class="text-end text-break">' . $card_number . '</span>
                 </div>
                 ' . $expiration_row . '
                 ' . $card_verification_number_row;
@@ -618,9 +619,9 @@ if (!$_POST) {
 
         if ($transaction_id) {
             $transaction_id_row .=
-                '<div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Transaction ID') . ':</span>
-                    <span class="col text-end">' . h($transaction_id) . '</span>
+                '<div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Transaction ID') . '</span>
+                    <span class="text-end text-break">' . h($transaction_id) . '</span>
                 </div>';
         }
 
@@ -628,9 +629,9 @@ if (!$_POST) {
 
         if ($authorization_code) {
             $authorization_code_row .=
-                '<div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Authorization Code') . ':</span>
-                    <span class="col text-end">' . h($authorization_code) . '</span>
+                '<div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Authorization Code') . '</span>
+                    <span class="text-end text-break">' . h($authorization_code) . '</span>
                 </div>';
         }
         $output_payment_information =
@@ -640,23 +641,23 @@ if (!$_POST) {
                            ' . lang('Payment Information') . '
                        </div>
                        <div class="card-body">
-                           <div class="row" >
-                               <span class="translateable col fg-secondary">' . lang('Payment Method') . ':</span>
-                               <span class="col translateable text-end">' . ($order_on_account ? lang('Put on account') : lang($payment_method)) . '</span>
+                           <div class="d-flex justify-content-between gap-3">
+                               <span class="translateable fg-secondary">' . lang('Payment Method') . '</span>
+                               <span class="translateable text-end text-break">' . ($order_on_account ? lang('Put on account') : lang($payment_method)) . '</span>
                            </div>
                            ' . (($order_paid_at !== null) && ($order_paid_at > 0) ?
-                               '<div class="row">
-                                   <span class="translateable col fg-secondary">' . lang('Paid on') . ':</span>
-                                   <span class="col text-end">' . get_absolute_time(array('timestamp' => $order_paid_at)) . '</span>
+                               '<div class="d-flex justify-content-between gap-3">
+                                   <span class="translateable fg-secondary">' . lang('Paid on') . '</span>
+                                   <span class="text-end text-break">' . get_absolute_time(array('timestamp' => $order_paid_at)) . '</span>
                                </div>'
                            : '') . '
                            ' . $output_credit_debit_card_information . '
                            ' . $transaction_id_row . '
                            ' . $authorization_code_row . '
                            ' . ($refunded_amount_cents > 0 ?
-                               '<div class="row fg-danger mt-3">
-                                   <span class="translateable col fg-secondary">' . lang('Total Refunded') . ':</span>
-                                   <span class="col text-end fw-semibold">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
+                               '<div class="d-flex justify-content-between gap-3 fg-danger mt-3">
+                                   <span class="translateable fg-secondary">' . lang('Total Refunded') . '</span>
+                                   <span class="text-end text-break fw-semibold">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
                                </div>'
                            : '') . '
                            <br/>
@@ -669,9 +670,9 @@ if (!$_POST) {
     // If this order has a user, then show user info.
     if ($username != '') {
         $output_user_row =
-            '<div class="row" >
-                <span class="translateable col fg-secondary">' . lang('User') . ':</span>
-                <span class="col text-end">' . (pg_can_open_user($user, $username_role) ? '<a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a>' : h($username)) . '</span>
+            '<div class="d-flex justify-content-between gap-3">
+                <span class="translateable fg-secondary">' . lang('User') . '</span>
+                <span class="text-end text-break">' . (pg_can_open_user($user, $username_role) ? '<a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a>' : h($username)) . '</span>
             </div>';
     }
 
@@ -684,9 +685,9 @@ if (!$_POST) {
         $output_contact = pg_order_view_contact_text($contact_id, $contact_first_name, $contact_last_name, $contact_company, $contact_email_address);
 
         $output_contact_row =
-            '<div class="row" >
-                <span class="translateable col fg-secondary">' . lang('Contact') . ':</span>
-                <span class="col text-end">' . (pg_can_open_contact($user, $contact_id) ? '<a class="pg-link-secondary" href="edit_contact.php?id=' . (int) $contact_id . '">' . $output_contact . '</a>' : $output_contact) . '</span>
+            '<div class="d-flex justify-content-between gap-3">
+                <span class="translateable fg-secondary">' . lang('Contact') . '</span>
+                <span class="text-end text-break">' . (pg_can_open_contact($user, $contact_id) ? '<a class="pg-link-secondary" href="edit_contact.php?id=' . (int) $contact_id . '">' . $output_contact . '</a>' : $output_contact) . '</span>
             </div>';
 
     }
@@ -695,9 +696,9 @@ if (!$_POST) {
 
     if ($member_id != '') {
         $output_member_id_row =
-            '<div class="row" >
-                <span class="col fg-secondary">' . h(MEMBER_ID_LABEL) . ':</span>
-                <span class="col text-end">' . h($member_id) . '</span>
+            '<div class="d-flex justify-content-between gap-3">
+                <span class="fg-secondary">' . h(MEMBER_ID_LABEL) . '</span>
+                <span class="text-end text-break">' . h($member_id) . '</span>
             </div>';
     }
 
@@ -711,9 +712,9 @@ if (!$_POST) {
     // If this order has an ip, then show ip.
     if ($ip_address != '') {
         $output_ip_address_row =
-            '<div class="row" >
-                <span class="translateable col fg-secondary">' . lang('IP Address') . ':</span>
-                <span class="col text-end">' . h($ip_address) . '</span>
+            '<div class="d-flex justify-content-between gap-3">
+                <span class="translateable fg-secondary">' . lang('IP Address') . '</span>
+                <span class="text-end text-break">' . h($ip_address) . '</span>
             </div>';
     }
 
@@ -750,13 +751,13 @@ if (!$_POST) {
                 </div>
                 <div class="card-body">
                     ' . pg_order_view_row(lang('Affiliate Name'), $output_affiliate_name) . '
-                    <div class="row">
-                        <span class="translateable col fg-secondary">' . lang('Affiliate Code') . ':</span>
-                        <span class="col text-end">' . h($affiliate_code) . '</span>
+                    <div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Affiliate Code') . '</span>
+                        <span class="text-end text-break">' . h($affiliate_code) . '</span>
                     </div>
-                    <div class="row">
-                        <span class="translateable col fg-secondary">' . lang('Commission') . ':</span>
-                        <span class="col text-end">' . pg_format_money($commission, BASE_CURRENCY_SYMBOL) . '</span>
+                    <div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Commission') . '</span>
+                        <span class="text-end text-break">' . pg_format_money($commission, BASE_CURRENCY_SYMBOL) . '</span>
                     </div>
                 </div>
             </div>';
@@ -983,7 +984,7 @@ if (!$_POST) {
                 // An incomplete order takes no shipment, so its card shows no
                 // empty ship date, delivery date or tracking number labels.
                 $output_tracking_numbers_caption = ($status != 'incomplete')
-                    ? '<span class="col fg-secondary mt-5">' . lang('Tracking Numbers') . ':</span>'
+                    ? '<span class="form-label d-block">' . lang('Tracking Numbers') . '</span>'
                     : '';
                 
                 // If the order is complete, then output ship date and shipping tracking numbers.
@@ -1167,9 +1168,9 @@ if (!$_POST) {
 
                     if ($output_shipment_labels !== '') {
                         $output_shipment_labels =
-                            '<div class="row mb-3">
-                                <span class="col-12 fg-secondary mt-3">' . lang('Shipping Labels') . ':</span>
-                                <div class="col-12 mt-2">' . $output_shipment_labels . '</div>
+                            '<div class="form-field mb-5">
+                                <span class="form-label d-block">' . lang('Shipping Labels') . '</span>
+                                ' . $output_shipment_labels . '
                             </div>';
                     }
 
@@ -1196,7 +1197,7 @@ if (!$_POST) {
 
                 // A label, not an aria-label: the chips box takes its name
                 // from the hidden input's <label>.
-                $output_tracking_numbers_caption = '<label class="col fg-secondary mt-5" for="' . h($shipment_numbers_field) . '">' . lang('Tracking Numbers') . ':</label>';
+                $output_tracking_numbers_caption = '<label class="form-label" for="' . h($shipment_numbers_field) . '">' . lang('Tracking Numbers') . '</label>';
                   }
                     
                 }
@@ -1225,9 +1226,9 @@ if (!$_POST) {
 
                 if ($ship_tos[$key]['packages']) {
                     $packages =
-                        '<div class="row my-3">
-                            <span class="col fg-secondary">' . lang('Packages') . ':</span>
-                            <span class="col text-end">' . h($ship_tos[$key]['packages']) . '</span>
+                        '<div class="d-flex justify-content-between gap-3 my-3">
+                            <span class="fg-secondary">' . lang('Packages') . '</span>
+                            <span class="text-end text-break">' . h($ship_tos[$key]['packages']) . '</span>
                         </div>';
                     }
                 
@@ -1257,17 +1258,25 @@ if (!$_POST) {
                 
                 $output_ship_dates_row = '';
 
+                // Labelled boxes side by side; a cancelled order shows its
+                // dates as text, so their captions name no field.
                 if ($status != 'incomplete') {
-                    $output_ship_dates_row =
-                        '<div class="row pt-1 mb-5 justify-content-center">
-                            <div class="col-auto">
-                                <label class="form-label">' . lang('Ship Date') . ':</label>
-                                ' . $output_ship_date_field . '
-                            </div>
-                            <div class="col-auto ">
-                                <label class="form-label">' . lang('Delivery Date') . ':</label>
-                                ' . $output_delivery_date_field . '
-                            </div>
+                    $ship_dates_field_id = 'ship_to_id_' . (int) $ship_tos[$key]['ship_to_id'];
+                    $output_ship_dates_row = '<div class="row g-5 mt-0 mb-5">';
+
+                    foreach (array('ship_date' => array(lang('Ship Date'), $output_ship_date_field), 'delivery_date' => array(lang('Delivery Date'), $output_delivery_date_field)) as $date_column => $date_box) {
+                        $output_ship_dates_row .= '
+                            <div class="col-12 sm:col-6">
+                                <div class="form-field">
+                                    ' . (($status == 'cancelled')
+                                        ? '<span class="form-label d-block">' . $date_box[0] . '</span>'
+                                        : '<label class="form-label" for="' . $ship_dates_field_id . '_' . $date_column . '">' . $date_box[0] . '</label>') . '
+                                    ' . (($date_box[1] !== '') ? $date_box[1] : '<span class="form-control-plaintext p-0">&mdash;</span>') . '
+                                </div>
+                            </div>';
+                    }
+
+                    $output_ship_dates_row .= '
                         </div>';
                 }
 
@@ -1281,8 +1290,7 @@ if (!$_POST) {
                 // addresses shows both, and saving it keeps the first one's
                 // tracking numbers.
                 $output_shipping_details .=
-                    '<div class="col-12 md:col-12 lg:col-4">
-                        <div class="card">
+                    '<div class="card mt-5">
                             <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Shipping Information') . '
                                 <div class="print_packing_slip float-end pg-print-none">
@@ -1292,51 +1300,51 @@ if (!$_POST) {
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-12">
-                                        <div class="row">
-                                            <span class="translateable col fg-secondary">' . lang('Ship to Name') . ':</span>
-                                            <span class="col text-end">' . h($ship_tos[$key]['ship_to_name']) . '</span>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Ship to Name') . '</span>
+                                            <span class="text-end text-break">' . h($ship_tos[$key]['ship_to_name']) . '</span>
                                         </div>
-                                        <div class="row">
-                                            <span class="translateable col fg-secondary">' . lang('Full Name') . ':</span>
-                                            <span class="col text-end">' . h($name) . '</span>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Full Name') . '</span>
+                                            <span class="text-end text-break">' . h($name) . '</span>
                                         </div>
                                         ' . pg_order_view_row(lang('Company'), h($ship_tos[$key]['company'])) . '
                                         <div class="row">
-                                            <span class="translateable col-auto fg-secondary">' . lang('Address') . ':</span>
+                                            <span class="translateable col-auto fg-secondary">' . lang('Address') . '</span>
                                             <span class="col offset-1 " style="font-size:110%;font-weight:500">' . h($address) . '</span>
                                             ' . $output_postcode_province . '
                                         </div>
                                         ' . pg_order_view_row(lang('Address Type'), pg_order_view_address_type($ship_tos[$key]['address_type'])) . '
                                         ' . pg_order_view_row(lang('Address Verified'), $output_address_verified_check_mark) . '
-                                        <div class="row">
-                                            <span class="translateable col fg-secondary">' . lang('Phone') . ':</span>
-                                            <span class="col text-end ">' . h($ship_tos[$key]['phone_number']) . '</span>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Phone') . '</span>
+                                            <span class="text-end text-break">' . h($ship_tos[$key]['phone_number']) . '</span>
                                         </div>
                                     </div>
 
                                     <div class="col-12">
-                                        <div class="row mb-3">
-                                            <span class="translateable col fg-secondary">' . lang('Req. Arrival Date') . ':</span>
-                                            <span class="col text-end ">' . $output_arrival_date . '</span>
+                                        <div class="d-flex justify-content-between gap-3 mb-3">
+                                            <span class="translateable fg-secondary">' . lang('Req. Arrival Date') . '</span>
+                                            <span class="text-end text-break">' . $output_arrival_date . '</span>
                                         </div>
                                         ' . $output_ship_dates_row . '
 
                                     </div>
 
                                     <div class="col-12 pt-7" id="' . $tracking_anchor_id . '">
-                                        <div class="row">
-                                            <span class="col fg-secondary">' . lang('Shipping Method') . ':</span>
-                                            <span class="col text-end">' . $shipping_method . '</span>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="fg-secondary">' . lang('Shipping Method') . '</span>
+                                            <span class="text-end text-break">' . $shipping_method . '</span>
                                         </div>
-                                        <div class="row">
+                                        ' . (($output_tracking_numbers_caption !== '') ? '<div class="form-field my-5">
                                             ' . $output_tracking_numbers_caption . '
-                                            <span class="col-12 mt-3">' . $output_shipping_tracking_numbers . '
-                                            ' . $output_shipping_tracking_numbers_field . '</span>
-                                        </div>
+                                            ' . $output_shipping_tracking_numbers . '
+                                            ' . $output_shipping_tracking_numbers_field . '
+                                        </div>' : '') . '
                                         ' . $output_shipment_labels . '
-                                        <div class="row my-3">
-                                            <span class="col fg-secondary">' . lang('Shipping Cost') . ':</span>
-                                            <span class="col text-end">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
+                                        <div class="d-flex justify-content-between gap-3 my-3">
+                                            <span class="fg-secondary">' . lang('Shipping Cost') . '</span>
+                                            <span class="text-end text-break">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                                         </div>
                                         ' . $packages . '
                                         <div class="row">
@@ -1346,8 +1354,7 @@ if (!$_POST) {
                                     </div> 
                                 </div>
                             </div>
-                        </div>
-                    </div>';
+                        </div>';
             }
             
             $output_custom_field_1_heading = '';
@@ -1436,7 +1443,7 @@ if (!$_POST) {
                     $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="fg-primary text-decoration-none">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</a>';
                     // if a product image_name found, output
                     if ($image_name) {
-                        $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block pg-print-none" style="top:52px;position:sticky;" tabindex="-1" aria-hidden="true"><img class="rounded-9 card-img" src="' .  PATH . h($image_name) . '" alt=""/></a>';
+                        $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block" tabindex="-1" aria-hidden="true"><img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/></a>';
                     } 
                 
                 // else a product was not found, so do not include a link to product   
@@ -1444,7 +1451,7 @@ if (!$_POST) {
                     $output_product_name = lang('Product ID / SKU') . ': ' .h($product_name);
                     // if a product image_name found, output
                     if ($image_name) {
-                        $output_image = '<img class="rounded-9 card-img pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" alt=""/>';
+                        $output_image = '<img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/>';
                     } 
                 }
                 
@@ -1460,6 +1467,7 @@ if (!$_POST) {
                 }
                 
                 $output_shipped_quantity_field = '';
+                $shipped_quantity_field_id = '';
                 
                 // A cancelled order shows the quantity it had, read only.
                 if ($status == 'cancelled') {
@@ -1479,6 +1487,7 @@ if (!$_POST) {
                     // A whole number from 0 to the ordered quantity (update_order()
                     // refuses anything else); max stops the + button there.
                     // Inputmask's right alignment would override text-center.
+                    $shipped_quantity_field_id = 'order_item_id_' . $order_item_id . '_shipped_quantity';
                     $output_shipped_quantity_field = $liveform->output_field(array('class'=>'form-control text-center border-start-0 border-end-0','type'=>'text', 'id'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'name'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'size'=>'2', 'maxlength'=>'9', 'min'=>'0', 'max'=>(string) (int) $quantity, 'inputmode'=>'numeric', 'aria-label'=>lang('Shipped Qty'), 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false', 'data-inputmask-rightalign'=>'false', 'data-inputmask-placeholder'=>'0'));
                     
                     
@@ -1501,13 +1510,7 @@ if (!$_POST) {
                 
                 // if order item is a recurring order item, then prepare 
                 if ($recurring_payment_period != '') {
-                    $output_recurring_payment_period = '
-                        <div class="col-12 sm:col-4 md:col-auto">
-                            <div class="p-3  border h-100 rounded-4">
-                                <div class="h-50 text-center fg-secondary">' . lang('Payment Period') . '</div>
-                                <div class="h-50 text-center">' . lang($recurring_payment_period) . '</div>
-                            </div>
-                        </div>';
+                    $output_recurring_payment_period = pg_order_view_line_fact(lang('Payment Period'), lang($recurring_payment_period));
                     
                     // if the number of payments is set to 0, then change value to "No limit"
                     if ($recurring_number_of_payments == 0) {
@@ -1517,73 +1520,37 @@ if (!$_POST) {
                     } else {
                         $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                     }
-                    $output_recurring_number_of_payments = '
-                        <div class="col-12 sm:col-4 md:col-auto">
-                            <div class="p-3  border h-100 rounded-4">
-                                <div class="h-50 text-center fg-secondary">' . lang('Number of Payments') . '</div>
-                                <div class="h-50 text-center">' . $output_recurring_number_of_payments . '</div>
-                            </div>
-                        </div>';
+                    $output_recurring_number_of_payments = pg_order_view_line_fact(lang('Number of Payments'), $output_recurring_number_of_payments);
                         
-                    $output_recurring_start_date = '
-                        <div class="col-12 sm:col-4 md:col-auto">
-                            <div class="p-3  border h-100 rounded-4">
-                                <div class="h-50 text-center fg-secondary">' . lang('Start Date') . '</div>
-                                <div class="h-50 text-center">' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')) . '</div>
-                            </div>
-                        </div>';
+                    $output_recurring_start_date = pg_order_view_line_fact(lang('Start Date'), get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')));
                 }
 
                 $output_custom_field_1 = '';
                 // If the first custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
 
-                    $output_custom_field_1 ='
-                        <div class="col-12 sm:col-6 md:col-auto">
-                            <div class="p-3  border h-100 rounded-4">
-                                <div class="h-50 text-center fg-secondary">' . $output_custom_field_1_heading . '</div>
-                                <div class="h-50 text-center">' . h($order_item['custom_field_1']) .'</div>
-                            </div>
-                        </div>';
+                    $output_custom_field_1 = pg_order_view_line_fact($output_custom_field_1_heading, h($order_item['custom_field_1']));
                 }
 
                 $output_custom_field_2= '';
 
                 // If the second custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                    $output_custom_field_2 ='
-                    <div class="col-12 sm:col-6 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . $output_custom_field_2_heading . '</div>
-                            <div class="h-50 text-center">' . h($order_item['custom_field_2']) .'</div>
-                        </div>
-                    </div>';
+                    $output_custom_field_2 = pg_order_view_line_fact($output_custom_field_2_heading, h($order_item['custom_field_2']));
                 }
 
                 $output_custom_field_3 = '';
 
                 // If the third custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                    $output_custom_field_3 ='
-                    <div class="col-12 sm:col-6 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . $output_custom_field_3_heading . '</div>
-                            <div class="h-50 text-center">' . h($order_item['custom_field_3']) .'</div>
-                        </div>
-                    </div>';
+                    $output_custom_field_3 = pg_order_view_line_fact($output_custom_field_3_heading, h($order_item['custom_field_3']));
                 }
 
                 $output_custom_field_4 = '';
 
                 // If the fourth custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                    $output_custom_field_4 ='
-                    <div class="col-12 sm:col-6 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . $output_custom_field_4_heading . '</div>
-                            <div class="h-50 text-center">' . h($order_item['custom_field_4']) .'</div>
-                        </div>
-                    </div>';
+                    $output_custom_field_4 = pg_order_view_line_fact($output_custom_field_4_heading, h($order_item['custom_field_4']));
                 }
 
                 $output_gift_cards = '';
@@ -1604,13 +1571,6 @@ if (!$_POST) {
                         // if number of gift cards is greater than 1, then add quantity number to legend
                         if ($number_of_gift_cards > 1) {
                             $output_legend_content .= ' (' . lang(array( 'string'=>'{var:1} of {var:2}','vars'=>array($quantity_number,$number_of_gift_cards) )) . ')'; 
-                        }
-                        
-                        $output_legend = '';
-                        
-                        // if the legend content is not blank, then output a legend
-                        if ($output_legend_content != '') {
-                            $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
                         }
 
                         // Get gift card data from database.
@@ -1644,49 +1604,17 @@ if (!$_POST) {
                         }
                         
                         $output_gift_cards .=
-                            '<div class="card my-3">
-                                ' . $output_legend . '
-                                <div class="card-body">
-                                    <div class="row g-1">
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('Code') . '</div>
-                                                <div class="h-50">' . $output_code . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Amount') . '</div>
-                                                <div class="h-50 text-center">' . prepare_amount($product_price) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('Recipient Email') . '</div>
-                                                <div class="h-50">' . h($order_item_gift_card['recipient_email_address']) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('From Name') . '</div>
-                                                <div class="h-50">' . h($order_item_gift_card['from_name']) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('Message') . '</div>
-                                                <div class="h-50">' . nl2br(h($order_item_gift_card['message'])) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Delivery Date') . '</div>
-                                                <div class="h-50 text-center">' . $output_delivery_date . '</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>';
+                            pg_order_view_line_part(
+                                $output_legend_content,
+                                '<div class="order-line-facts">
+                                        ' . pg_order_view_line_fact(lang('Code'), $output_code) . '
+                                        ' . pg_order_view_line_fact(lang('Amount'), prepare_amount($product_price)) . '
+                                        ' . pg_order_view_line_fact(lang('Recipient Email'), h($order_item_gift_card['recipient_email_address'])) . '
+                                        ' . pg_order_view_line_fact(lang('From Name'), h($order_item_gift_card['from_name'])) . '
+                                        ' . pg_order_view_line_fact(lang('Message'), nl2br(h($order_item_gift_card['message']))) . '
+                                        ' . pg_order_view_line_fact(lang('Delivery Date'), $output_delivery_date) . '
+                                    </div>'
+                            );
                     }
                 }
 
@@ -1711,115 +1639,31 @@ if (!$_POST) {
                             $output_legend_content .= ' (' . lang(array( 'string'=>'{var:1} of {var:2}','vars'=>array($quantity_number,$number_of_forms) )) . ')';  
                         }
                         
-                        $output_legend = '';
-                        
-                        // if the legend content is not blank, then output a legend
-                        if ($output_legend_content != '') {
-                            $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
-                        }
-                        
                         $output_forms .=
-                            '<div class="card my-3">
-                                ' . $output_legend . '
-                                <div class="card-body">
-                                    <div class="row g-1">
-                                        <span class="col-12"><table>' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '</table></span>
-                                    </div>
-                                </div>
-                            </div>';
+                            pg_order_view_line_part($output_legend_content, '<table>' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '</table>');
                     }
                 }
                 
-                $output_form_row = '';
-                
-                // if there is a form to output, then prepare form row
-                if (($output_forms != '') || ($output_gift_cards != '')) {
-                    $colspan = 8;
-
-                    // If there is an extra column for the first custom product field, the add one to the colspan.
-                    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                        $colspan++;
-                    }
-
-                    // If there is an extra column for the second custom product field, the add one to the colspan.
-                    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                        $colspan++;
-                    }
-
-                    // If there is an extra column for the third custom product field, the add one to the colspan.
-                    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                        $colspan++;
-                    }
-
-                    // If there is an extra column for the fourth custom product field, the add one to the colspan.
-                    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                        $colspan++;
-                    }
-
-                    $output_form_row =
-                        '<div class="row g-0">
-                            ' . $output_gift_cards . '
-                            ' . $output_forms . '
-                        </div>';
-                }
-                //shipable
+                // A line that ships: the shipped quantity sits beside the
+                // ordered one; its caption names the field when it is one.
                 $output_order_details .=
-                    '<div class="list-group-item">
-                            <div class="card-header bg-reset  text-end border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . $output_product_name . '
-                            </div>
-                            <div class="row g-0">
-                                <div class="col-4 offset-1 md:offset-0 md:col-2 lg:col-1 px-3">
-                                ' .  $output_image . '
-                                </div>
-                                <div class="col-12 md:col-10 lg:col-11">
-                                    <div class="card-body ">
-                                        <div class="row g-1">
-                                            <div class="col-12 sm:col-12 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 fg-secondary">' . lang('Short Description') . '</div>
-                                                    <div class="h-50">' . $short_description . '</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 sm:col-4 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 text-center fg-secondary">' . lang('Qty') . '</div>
-                                                    <div class="h-50 text-center h4">' . $quantity . '</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 sm:col-8 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 fg-secondary">' . lang('Shipped Qty') . '</div>
-                                                    <div class="h-50 pb-3">
-                                                        ' . $output_shipped_quantity_field . '
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="col-12 sm:col-6 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 text-center fg-secondary">' . lang('Price') . '</div>
-                                                    <div class="h-50 text-center">' . prepare_amount($product_price) . '</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 sm:col-6 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 text-center fg-secondary">' . lang('Total') . '</div>
-                                                    <div class="h-50 text-center">' . prepare_amount($product_total) . '</div>
-                                                </div>
-                                            </div>
-                                            ' . $output_recurring_payment_period . '
-                                            ' . $output_recurring_number_of_payments . '
-                                            ' . $output_recurring_start_date . '
-                                            ' . $output_custom_field_1 . '
-                                            ' . $output_custom_field_2 . '
-                                            ' . $output_custom_field_3 . '
-                                            ' . $output_custom_field_4 . '
-                                        </div>
-                                        ' . $output_form_row . '
-                                    </div>
-                                </div>
-                            </div>
-                        </div>';
+                    pg_order_view_line(
+                        $output_product_name,
+                        $output_image,
+                        $short_description,
+                        pg_order_view_line_fact(lang('Qty'), $quantity)
+                            . pg_order_view_line_fact(lang('Shipped Qty'), $output_shipped_quantity_field, $shipped_quantity_field_id)
+                            . pg_order_view_line_fact(lang('Price'), prepare_amount($product_price))
+                            . pg_order_view_line_fact(lang('Total'), prepare_amount($product_total), '', true)
+                            . $output_recurring_payment_period
+                            . $output_recurring_number_of_payments
+                            . $output_recurring_start_date
+                            . $output_custom_field_1
+                            . $output_custom_field_2
+                            . $output_custom_field_3
+                            . $output_custom_field_4,
+                            $output_gift_cards . $output_forms
+                        );
             }
             
 
@@ -1922,7 +1766,7 @@ if (!$_POST) {
                 $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="fg-primary text-decoration-none">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</a>';
                 // if a product image_name found, output
                 if ($image_name) {
-                    $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block pg-print-none" style="top:52px;position:sticky;" tabindex="-1" aria-hidden="true"><img class="rounded-9 card-img" src="' .  PATH . h($image_name) . '" alt=""/></a>';
+                    $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block" tabindex="-1" aria-hidden="true"><img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/></a>';
                 } 
             
             // else a product was not found, so do not include a link to product   
@@ -1930,7 +1774,7 @@ if (!$_POST) {
                 $output_product_name = lang('Product ID / SKU') . ': ' .h($product_name);
                 // if a product image_name found, output
                 if ($image_name) {
-                    $output_image = '<img class="rounded-9 card-img pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" alt=""/>';
+                    $output_image = '<img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/>';
                 } 
             }
             
@@ -1951,13 +1795,7 @@ if (!$_POST) {
             
             // if order item is a recurring order item, then prepare 
             if ($recurring_payment_period != '') {
-                $output_recurring_payment_period = '
-                    <div class="col-12 sm:col-4 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . lang('Payment Period') . '</div>
-                            <div class="h-50 text-center">' . lang($recurring_payment_period) . '</div>
-                        </div>
-                    </div>';
+                $output_recurring_payment_period = pg_order_view_line_fact(lang('Payment Period'), lang($recurring_payment_period));
                 
                 // if the number of payments is set to 0, then change value to "No limit"
                 if ($recurring_number_of_payments == 0) {
@@ -1967,73 +1805,37 @@ if (!$_POST) {
                 } else {
                     $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                 }
-                $output_recurring_number_of_payments = '
-                    <div class="col-12 sm:col-4 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . lang('Number of Payments') . '</div>
-                            <div class="h-50 text-center">' . $output_recurring_number_of_payments . '</div>
-                        </div>
-                    </div>';
+                $output_recurring_number_of_payments = pg_order_view_line_fact(lang('Number of Payments'), $output_recurring_number_of_payments);
                         
-                $output_recurring_start_date = '
-                    <div class="col-12 sm:col-4 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . lang('Start Date') . '</div>
-                            <div class="h-50 text-center">' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')) . '</div>
-                        </div>
-                    </div>';
+                $output_recurring_start_date = pg_order_view_line_fact(lang('Start Date'), get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')));
             }
 
             $output_custom_field_1 = '';
 
             // If the first custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                $output_custom_field_1 ='
-                <div class="col-12 sm:col-6 md:col-auto">
-                    <div class="p-3  border h-100 rounded-4">
-                        <div class="h-50 text-center fg-secondary">' . $output_custom_field_1_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_1']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_1 = pg_order_view_line_fact($output_custom_field_1_heading, h($order_item['custom_field_1']));
             }
 
             $output_custom_field_2 = '';
 
             // If the second custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                $output_custom_field_2 ='
-                <div class="col-12 sm:col-6 md:col-auto">
-                    <div class="p-3  border h-100 rounded-4">
-                        <div class="h-50 text-center fg-secondary">' . $output_custom_field_2_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_2']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_2 = pg_order_view_line_fact($output_custom_field_2_heading, h($order_item['custom_field_2']));
             }
 
             $output_custom_field_3 = '';
 
             // If the third custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                $output_custom_field_3 ='
-                <div class="col-12 sm:col-6 md:col-auto">
-                    <div class="p-3  border h-100 rounded-4">
-                        <div class="h-50 text-center fg-secondary">' . $output_custom_field_3_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_3']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_3 = pg_order_view_line_fact($output_custom_field_3_heading, h($order_item['custom_field_3']));
             }
 
             $output_custom_field_4 = '';
 
             // If the fourth custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                $output_custom_field_4 ='
-                <div class="col-12 sm:col-6 md:col-auto">
-                    <div class="p-3  border h-100 rounded-4">
-                        <div class="h-50 text-center fg-secondary">' . $output_custom_field_4_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_4']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_4 = pg_order_view_line_fact($output_custom_field_4_heading, h($order_item['custom_field_4']));
             }
 
             $output_gift_cards = '';
@@ -2054,13 +1856,6 @@ if (!$_POST) {
                     // if number of gift cards is greater than 1, then add quantity number to legend
                     if ($number_of_gift_cards > 1) {
                         $output_legend_content .= ' (' . lang(array( 'string'=>'{var:1} of {var:2}','vars'=>array($quantity_number,$number_of_gift_cards) )) . ')';
-                    }
-                    
-                    $output_legend = '';
-                    
-                    // if the legend content is not blank, then output a legend
-                    if ($output_legend_content != '') {
-                        $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
                     }
 
                     // Get gift card data from database.
@@ -2094,49 +1889,17 @@ if (!$_POST) {
                     }
                     
                     $output_gift_cards .=
-                        '<div class="card my-3">
-                            ' . $output_legend . '
-                            <div class="card-body">
-                                <div class="row g-1">
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 fg-secondary">' . lang('Code') . '</div>
-                                            <div class="h-50">' . $output_code . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 text-center fg-secondary">' . lang('Amount') . '</div>
-                                            <div class="h-50 text-center">' . prepare_amount($product_price) . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 fg-secondary">' . lang('Recipient Email') . '</div>
-                                            <div class="h-50">' . h($order_item_gift_card['recipient_email_address']) . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 fg-secondary">' . lang('From Name') . '</div>
-                                            <div class="h-50">' . h($order_item_gift_card['from_name']) . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 fg-secondary">' . lang('Message') . '</div>
-                                            <div class="h-50">' . nl2br(h($order_item_gift_card['message'])) . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 text-center fg-secondary">' . lang('Delivery Date') . '</div>
-                                            <div class="h-50 text-center">' . $output_delivery_date . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>';
+                        pg_order_view_line_part(
+                                $output_legend_content,
+                                '<div class="order-line-facts">
+                                    ' . pg_order_view_line_fact(lang('Code'), $output_code) . '
+                                    ' . pg_order_view_line_fact(lang('Amount'), prepare_amount($product_price)) . '
+                                    ' . pg_order_view_line_fact(lang('Recipient Email'), h($order_item_gift_card['recipient_email_address'])) . '
+                                    ' . pg_order_view_line_fact(lang('From Name'), h($order_item_gift_card['from_name'])) . '
+                                    ' . pg_order_view_line_fact(lang('Message'), nl2br(h($order_item_gift_card['message']))) . '
+                                    ' . pg_order_view_line_fact(lang('Delivery Date'), $output_delivery_date) . '
+                                </div>'
+                            );
                         
                 }
             }
@@ -2162,108 +1925,29 @@ if (!$_POST) {
                         $output_legend_content .= ' (' . lang(array( 'string'=>'{var:1} of {var:2}','vars'=>array($quantity_number,$number_of_forms) )) . ')';
                     }
                     
-                    $output_legend = '';
-                    
-                    // if the legend content is not blank, then output a legend
-                    if ($output_legend_content != '') {
-                        $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
-                    }
-                    
                     $output_forms .=
-                        '<div class="card my-3">
-                            ' . $output_legend . '
-                            <div class="card-body">
-                                <div class="row g-1">
-                                    <span class="col-12"><table>' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '</table></span>
-                                </div>
-                            </div>
-                        </div>';
+                        pg_order_view_line_part($output_legend_content, '<table>' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '</table>');
                 }
             }
             
-            $output_form_row = '';
-            
-            // if there is a form to output, then prepare form row
-            if (($output_forms != '') || ($output_gift_cards != '')) {
-                $colspan = 7;
-
-                // If there is an extra column for the first custom product field, the add one to the colspan.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                    $colspan++;
-                }
-
-                // If there is an extra column for the second custom product field, the add one to the colspan.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                    $colspan++;
-                }
-
-                // If there is an extra column for the third custom product field, the add one to the colspan.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                    $colspan++;
-                }
-
-                // If there is an extra column for the fourth custom product field, the add one to the colspan.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                    $colspan++;
-                }
-
-                $output_form_row =
-                    '<div class="row g-0">
-                        ' . $output_gift_cards . '
-                        ' . $output_forms . '
-                    </div>';
-            }
-            //not shipable
+            // A line that does not ship (a download, a membership, a gift card).
             $output_order_details .=
-                '<div class="list-group-item">
-                        <div class="card-header bg-reset  text-end border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . $output_product_name . '
-                        </div>
-                        <div class="row g-0">
-                            <div class="col-4 offset-1 md:offset-0 md:col-2 lg:col-1 px-3">
-                            ' .  $output_image . '
-                            </div>
-                            <div class="col-12 md:col-10 lg:col-11">
-                                <div class="card-body ">
-                                    <div class="row g-1">
-                                        <div class="col-12 sm:col-12 md:col-auto">
-                                            <div class="p-3  border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('Short Description') . '</div>
-                                                <div class="h-50">' . $short_description . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-4 md:col-auto">
-                                            <div class="p-3  border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Qty') . '</div>
-                                                <div class="h-50 text-center h4">' . $quantity . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-4 md:col-auto">
-                                            <div class="p-3  border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Price') . '</div>
-                                                <div class="h-50 text-center">' . prepare_amount($product_price) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-4 md:col-auto">
-                                            <div class="p-3  border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Total') . '</div>
-                                                <div class="h-50 text-center">' . prepare_amount($product_total) . '</div>
-                                            </div>
-                                        </div>
-                                        ' . $output_recurring_payment_period . '
-                                        ' . $output_recurring_number_of_payments . '
-                                        ' . $output_recurring_start_date . '
-                                        ' . $output_custom_field_1 . '
-                                        ' . $output_custom_field_2 . '
-                                        ' . $output_custom_field_3 . '
-                                        ' . $output_custom_field_4 . '   
-                                    </div>
-                                    ' . $output_form_row . '
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>';
+                pg_order_view_line(
+                    $output_product_name,
+                    $output_image,
+                    $short_description,
+                    pg_order_view_line_fact(lang('Qty'), $quantity)
+                        . pg_order_view_line_fact(lang('Price'), prepare_amount($product_price))
+                        . pg_order_view_line_fact(lang('Total'), prepare_amount($product_total), '', true)
+                        . $output_recurring_payment_period
+                        . $output_recurring_number_of_payments
+                        . $output_recurring_start_date
+                        . $output_custom_field_1
+                        . $output_custom_field_2
+                        . $output_custom_field_3
+                        . $output_custom_field_4,
+                        $output_gift_cards . $output_forms
+                    );
         }
     }
 
@@ -2276,9 +1960,9 @@ if (!$_POST) {
             $currency_name_and_code = get_currency_name_from_code($currency_code) . ' (' . $currency_code . ')';
         }
         $output_currency_code_row =
-        '<div class="row" >
-            <span class=" col fg-secondary">' . lang('Currency') . ':</span>
-            <span class="col text-end">' . h($currency_name_and_code) . '</span>
+        '<div class="d-flex justify-content-between gap-3">
+            <span class="fg-secondary">' . lang('Currency') . '</span>
+            <span class="text-end text-break">' . h($currency_name_and_code) . '</span>
         </div>';
         
     } else {
@@ -2300,29 +1984,29 @@ if (!$_POST) {
             }
 
             $output_applied_gift_card_rows .=
-                '<div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Code') . ':</span>
-                    <span class="col text-end">' . $output_gift_card_code . '</span>
+                '<div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Code') . '</span>
+                    <span class="text-end text-break">' . $output_gift_card_code . '</span>
                 </div>
-                <div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Amount') . ':</span>
-                    <span class="col text-end">' . pg_format_money($applied_gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
+                <div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Amount') . '</span>
+                    <span class="text-end text-break">' . pg_format_money($applied_gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                 </div>';
 
             // Only a Givex redemption writes an authorization number; the
             // shop's own cards have none.
             if ($applied_gift_card['givex'] != 0) {
                 $output_applied_gift_card_rows .=
-                    '<div class="row" >
-                        <span class="translateable col fg-secondary">' . lang('Givex Auth') . ' #:</span>
-                        <span class="col text-end">' . h($applied_gift_card['authorization_number']) . '</span>
+                    '<div class="d-flex justify-content-between gap-3">
+                        <span class="translateable fg-secondary">' . lang('Givex Auth') . ' #</span>
+                        <span class="text-end text-break">' . h($applied_gift_card['authorization_number']) . '</span>
                     </div>';
             }
 
             $output_applied_gift_card_rows .=
-                '<div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Remaining Balance') . ':</span>
-                    <span class="col text-end">' . pg_format_money($applied_gift_card['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
+                '<div class="d-flex justify-content-between gap-3">
+                    <span class="translateable fg-secondary">' . lang('Remaining Balance') . '</span>
+                    <span class="text-end text-break">' . pg_format_money($applied_gift_card['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                 </div>';
         }
         
@@ -2338,8 +2022,10 @@ if (!$_POST) {
     }
 
 
-	// Get Payment Gateway for button bar output
-	$output_gateway_buttons = '';
+	// The payment provider's panel is a row of the toolbar's three-dots menu;
+	// the refund stays on the bar.
+	$output_gateway_menu_item = '';
+	$output_refund_button = '';
     $output_payment_mode = '';
 	if(ECOMMERCE_PAYMENT_GATEWAY == 'Iyzipay'){
         // if test or live mode for iyzipay gateway. 
@@ -2351,7 +2037,7 @@ if (!$_POST) {
         // The payment provider's own merchant panel, at this order's
         // transaction when one is known, in a tab of its own.
         $gateway_url = 'https://' . $output_payment_mode . '.iyzipay.com/' . ($transaction_id ? 'transactions/' . rawurlencode($transaction_id) : 'dashboard');
-        $output_gateway_buttons = '<a class="btn btn-sm btn-text theme-secondary" href="' . h($gateway_url) . '" target="_blank" rel="noopener noreferrer" title="' . h(ECOMMERCE_PAYMENT_GATEWAY) . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
+        $output_gateway_menu_item = '<a class="menu-item pg-link-body-emphasis" href="' . h($gateway_url) . '" target="_blank" rel="noopener noreferrer" title="' . h(ECOMMERCE_PAYMENT_GATEWAY) . '"><i class="bi bi-box-arrow-up-right me-3" aria-hidden="true"></i>' . h(lang(array('string' => '{var:1} panel', 'vars' => ECOMMERCE_PAYMENT_GATEWAY))) . '</a>';
 
 	}
 
@@ -2370,7 +2056,7 @@ if (!$_POST) {
         && ($refund_remaining_cents > 0);
 
     if ($refund_offered) {
-        $output_gateway_buttons .= '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#payment-refund-modal"><i class="bi bi-arrow-return-left me-1"></i>' . lang('Refund') . '</button>';
+        $output_refund_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#payment-refund-modal"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Refund') . '</button>';
     }
 
     // With the ERP on, a card refund is chosen by line and quantity instead of
@@ -2533,6 +2219,25 @@ if (!$_POST) {
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
 
+        // A customer's order may get what it owes as store credit instead
+        // (pg_credit_refund_cancelled_order()), the site's bonus on top of
+        // the payment part.
+        $output_refund_credit_choice = '';
+        if (($status == 'cancelled') && ($refund_owed['total'] > 0) && pg_credit_refund_possible($order_customer_id)) {
+            $refund_credit_cents = pg_credit_refund_cancel_card_amount($refund_owed, pg_credit_refund_bonus());
+            $output_refund_credit_choice = '
+                                <div class="mb-3">
+                                    <div class="form-field">
+                                        <input class="radio" type="radio" name="refund_as" id="refund_as_recorded" value="recorded" checked>
+                                        <label class="" for="refund_as_recorded">' . lang('I refunded it another way') . '</label>
+                                    </div>
+                                    <div class="form-field">
+                                        <input class="radio" type="radio" name="refund_as" id="refund_as_credit" value="credit">
+                                        <label class="" for="refund_as_credit">' . h(lang(array('string' => 'Give it as store credit: the customer\'s account gets {var:1}', 'vars' => array(pg_order_log_money($refund_credit_cents))))) . '</label>
+                                    </div>
+                                </div>';
+        }
+
         $output_refund_banner =
             '<div class="alert theme-warning d-flex flex-wrap align-items-center gap-3 pg-print-none" role="alert">
                 <i class="bi bi-cash-coin"></i>
@@ -2558,6 +2263,7 @@ if (!$_POST) {
                             <div class="dialog-body">
                                 <p>' . lang('This only records that you processed the refund; it does not move any money.') . '</p>
                                 <p class="fw-semibold mb-3">' . $refund_amount_text . '</p>
+                                ' . $output_refund_credit_choice . '
                                 <label class="form-label fw-semibold mt-3" for="refund_reference">' . lang('Refund reference') . ' <span class="fg-secondary fw-normal">(' . lang('optional') . ')</span></label>
                                 <input type="text" class="form-control" id="refund_reference" name="refund_reference" maxlength="255">
                             </div>
@@ -2576,9 +2282,10 @@ if (!$_POST) {
             ? ' · ' . get_relative_time(array('timestamp' => $order_refunded_at))
             : '';
 
-        $refund_done_reference = ($order_refund_reference !== '')
-            ? ' · ' . h($order_refund_reference)
-            : '';
+        $refund_done_card = pg_credit_refund_card_id($order_refund_reference);
+        $refund_done_reference = ($refund_done_card > 0)
+            ? ' · <a href="edit_gift_card.php?id=' . $refund_done_card . '">' . lang('Store credit') . ' #' . $refund_done_card . '</a>'
+            : (($order_refund_reference !== '') ? ' · ' . h($order_refund_reference) : '');
 
         $output_refund_banner =
             '<div class="alert theme-success d-flex align-items-center gap-3 pg-print-none" role="alert">
@@ -2655,7 +2362,9 @@ if (!$_POST) {
 
 
     // Build Parasut action buttons if API integration is enabled and credentials are set.
-    $output_parasut_buttons      = '';
+    // Paraşüt's buttons are rows of the toolbar's three-dots menu: menu rows
+    // carry no colour, so the badges tell the document's state.
+    $output_parasut_menu_items   = array();
     $output_parasut_forms        = '';
     $output_parasut_status_rows  = '';
     if (parasut_order_buttons_on()) {
@@ -2768,7 +2477,6 @@ if (!$_POST) {
         // Paraşüt holds the first, and creates one only if it was deleted there.
         $output_parasut_shipment_button = '';
         if ($has_shippable) {
-            $shipment_btn_class = $parasut_shipment_id ? 'theme-success' : ($is_mixed ? 'theme-warning' : 'theme-secondary');
             $shipment_btn_title = ($parasut_shipment_id !== '')
                 ? h(lang('This order already has a shipment document in Paraşüt.'))
                 : ($is_mixed ? h(lang('E-Shipment (only shippable items will be included)')) : 'Paraşüt ' . h(lang('E-Shipment')));
@@ -2777,8 +2485,8 @@ if (!$_POST) {
                 title="' . $shipment_btn_title . '"';
             $output_parasut_shipment_button = '
             <button type="button"
-                class="btn btn-sm btn-text ' . $shipment_btn_class . '"' . $shipment_btn_action . '>
-                <i class="bi bi-truck me-1"></i>' . lang('E-Shipment') . $shipment_mixed_icon . $output_parasut_shipment_badge . '
+                class="menu-item pg-link-body-emphasis"' . $shipment_btn_action . '>
+                <i class="bi bi-truck me-3" aria-hidden="true"></i>Paraşüt ' . lang('E-Shipment') . $shipment_mixed_icon . $output_parasut_shipment_badge . '
             </button>';
         }
 
@@ -2799,18 +2507,15 @@ if (!$_POST) {
         $output_parasut_invoice_button = ($parasut_erp_invoice['state'] === 'none')
             ? '
             <button type="button"
-                class="btn btn-sm btn-text ' . ($parasut_invoice_sent ? ($parasut_exported ? 'theme-success' : 'theme-warning') : ($parasut_invoice_unsure ? 'theme-warning' : 'theme-secondary')) . '"' . $output_parasut_invoice_action . '>
-                <i class="bi bi-receipt me-1"></i>' . lang('Create Invoice') . $output_parasut_invoice_badge . '
+                class="menu-item pg-link-body-emphasis"' . $output_parasut_invoice_action . '>
+                <i class="bi bi-receipt me-3" aria-hidden="true"></i>Paraşüt ' . lang('Create Invoice') . $output_parasut_invoice_badge . '
             </button>'
             : '';
 
-        $output_parasut_buttons = '
-        <div class="btn-group btn-group-sm flex-wrap">' . $output_parasut_invoice_button . '
-            ' . $output_parasut_shipment_button . '
-        </div>';
+        $output_parasut_menu_items = array_values(array_filter(array($output_parasut_invoice_button, $output_parasut_shipment_button)));
 
         if ($parasut_in_erp || !$parasut_billable) {
-            $output_parasut_buttons = '';
+            $output_parasut_menu_items = array();
             $output_parasut_forms = '';
         }
     }
@@ -2819,7 +2524,8 @@ if (!$_POST) {
     // document when one exists, a button to issue it otherwise. A counter sale
     // with no customer is billed to the account named on the settings card, so
     // it qualifies through erp_account_id rather than a contact.
-    $output_erp_buttons = '';
+    // Rows of the toolbar's three-dots menu.
+    $output_erp_menu_items = array();
     if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp'])) && waf_table_has_column('orders', 'erp_invoice_id')) {
         $erp_order = db_item("SELECT status, contact_id, erp_invoice_id, erp_account_id FROM orders WHERE id = '" . (int) $_GET['id'] . "' LIMIT 1");
         // The ERP's read-only right (the accountant's) sees the documents but
@@ -2835,31 +2541,25 @@ if (!$_POST) {
         if ($erp_order && in_array((string) $erp_order['status'], array('complete', 'exported'), true) && waf_table_has_column('erp_waybills', 'order_id')) {
             $erp_waybill = db_item("SELECT id, full_number FROM erp_waybills WHERE order_id = '" . (int) $_GET['id'] . "' AND status <> 'cancelled' ORDER BY id ASC LIMIT 1");
             if ($erp_waybill) {
-                $output_erp_waybill = '
-                <a class="btn btn-sm btn-text theme-success" href="edit_erp_waybill.php?id=' . (int) $erp_waybill['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . h($erp_waybill['full_number']) . '</a>';
+                $output_erp_waybill = '<a class="menu-item pg-link-body-emphasis" href="edit_erp_waybill.php?id=' . (int) $erp_waybill['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . h($erp_waybill['full_number']) . '</a>';
             } elseif ($erp_writes && (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0))) {
-                $output_erp_waybill = '
-                <a class="btn btn-sm btn-text theme-secondary" href="add_erp_waybill.php?order_id=' . (int) $_GET['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-1"></i>' . lang('Issue the Delivery Note') . '</a>';
+                $output_erp_waybill = '<a class="menu-item pg-link-body-emphasis" href="add_erp_waybill.php?order_id=' . (int) $_GET['id'] . '" title="' . lang('Delivery Note') . '"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Issue the Delivery Note') . '</a>';
             }
         }
 
         if ($erp_invoice) {
-            $output_erp_buttons = '
-            <div class="btn-group btn-group-sm flex-wrap">
-                <a class="btn btn-sm btn-text theme-success" href="edit_erp_invoice.php?id=' . (int) $erp_invoice['id'] . '" title="' . lang('Invoice') . '"><i class="bi bi-receipt me-1"></i>' . h($erp_invoice['full_number']) . '</a>' . $output_erp_waybill . '
-            </div>';
+            $output_erp_menu_items = array('<a class="menu-item pg-link-body-emphasis" href="edit_erp_invoice.php?id=' . (int) $erp_invoice['id'] . '" title="' . lang('Invoice') . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . h($erp_invoice['full_number']) . '</a>', $output_erp_waybill);
         } elseif ($erp_writes && $erp_order && in_array((string) $erp_order['status'], array('complete', 'exported'), true)) {
             if (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0)) {
-                $output_erp_buttons = '
-            <form method="post" action="add_erp_invoice.php" class="d-inline disable_shortcut">
+                $output_erp_menu_items = array('
+            <form method="post" action="add_erp_invoice.php" class="d-contents disable_shortcut">
                 ' . get_token_field() . '
                 <input type="hidden" name="order_id" value="' . (int) $_GET['id'] . '" />
                 <input type="hidden" name="from_order_screen" value="1" />
-                <button type="submit" name="submit_create" value="Create" class="btn btn-sm btn-text theme-secondary" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</button>
-            </form>' . $output_erp_waybill;
+                <button type="submit" name="submit_create" value="Create" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang('An invoice is issued for this order from the ERP, with a number from the sales series. Continue?')) . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</button>
+            </form>', $output_erp_waybill);
             } else {
-                $output_erp_buttons = '
-            <span class="btn btn-sm btn-text theme-secondary disabled" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-1"></i>' . lang('Issue the Invoice') . '</span>';
+                $output_erp_menu_items = array('<span class="menu-item disabled" aria-disabled="true" title="' . h(lang('No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.')) . '"><i class="bi bi-receipt me-3" aria-hidden="true"></i>' . lang('Issue the Invoice') . '</span>');
             }
         }
     }
@@ -2874,7 +2574,7 @@ if (!$_POST) {
         require_once(PG_FUNCTIONS_DIR . '/includes/erp/order_flow.php');
         $output_erp_documents = erp_order_flow_card((int) $_GET['id']);
         if ($output_erp_documents !== '') {
-            $output_erp_buttons = '';
+            $output_erp_menu_items = array();
         }
     }
 
@@ -2882,12 +2582,28 @@ if (!$_POST) {
     $output_workspace_button = '';
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $workspace_button = ws_record_button($user, 'order', (int) $_GET['id'], lang('Order') . ' ' . $order_number, 'btn btn-sm btn-text theme-secondary');
-        if ($workspace_button !== '') {
-            $output_workspace_button = '
-            <div class="btn-group btn-group-sm flex-wrap">' . $workspace_button . '</div>';
-        }
+        $output_workspace_button = ws_record_button($user, 'order', (int) $_GET['id'], lang('Order') . ' ' . $order_number, 'menu-item pg-link-body-emphasis');
     }
+
+    // The bar keeps the everyday work (Mark as paid, Refund, Print, Cancel
+    // Order); the payment provider's panel, the integrations and the
+    // workspace go into the three-dots menu, so the bar never holds more
+    // than four buttons beside the primary one.
+    $toolbar_more = array_values(array_filter(array_merge(
+        array($output_gateway_menu_item),
+        $output_parasut_menu_items,
+        $output_erp_menu_items,
+        array($output_workspace_button)
+    ), 'strlen'));
+    $output_toolbar_more = $toolbar_more
+        ? '<div class="pg-menu-wrap">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-display="static" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('More')) . '" aria-label="' . h(lang('More')) . '"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
+                <ul class="menu pg-menu-end">
+                    <li>' . implode('</li>
+                    <li>', $toolbar_more) . '</li>
+                </ul>
+            </div>'
+        : '';
 
     echo
 
@@ -2915,13 +2631,11 @@ if (!$_POST) {
                 ' . pg_screen_toolbar(array(
                     'primary' => $output_mark_paid_button,
                     'secondary' => array(
-                        $output_gateway_buttons,
-                        $output_cancel_button,
-                        $output_parasut_buttons,
-                        $output_erp_buttons,
-                        $output_workspace_button,
+                        $output_refund_button,
                         '<button type="button" class="btn btn-sm btn-text theme-secondary" title="' . h(lang('Print Order')) . '" aria-label="' . h(lang('Print Order')) . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print') . '</button>',
+                        $output_cancel_button,
                     ),
+                    'overflow' => $output_toolbar_more,
                 ), array('class' => 'pg-print-none')) . '
                 ' . $output_erp_documents . '
                 <form method="post">
@@ -2929,193 +2643,214 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
 
-                    <div class="row g-7 ">
-                        <div class="col-12 md:col-6 lg:col-4">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Order Information') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Type') . ':</span>
-                                        <span class="translateable col text-end">' . lang(h(ucwords($order_type))) . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Status') . ':</span>
-                                        <span class="translateable col text-end">' . lang(h(ucwords($status))) . $output_awaiting_badge . '</span>
-                                    </div>
-                                    ' . $output_cancellation_rows . '
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Order Number') . ':</span>
-                                        <span class="col text-end" style="font-size: 120%;font-weight:500">' . $order_number . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Order Date') . ':</span>
-                                        <span class="col text-end">' . $order_date . '</span>
-                                    </div>
-                                    <hr/>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Subtotal') . ':</span>
-                                        <span class="col text-end" style="font-size: 110%">' . prepare_amount($subtotal) . '</span>
-                                    </div>
-                                    ' . ($discount > 0 ? '<div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Discount') . ':</span>
-                                        <span class="col text-end">-' . pg_format_money($discount, BASE_CURRENCY_SYMBOL) . '</span>
-                                    </div>' : '') . '
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Tax') . ':</span>
-                                        <span class="col text-end">' . pg_format_money($tax, BASE_CURRENCY_SYMBOL) . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Shipping') . ':</span>
-                                        <span class="col text-end">' . pg_format_money($shipping, BASE_CURRENCY_SYMBOL) . '</span>
-                                    </div>
-                                    ' . $output_gift_card_discount_row . '
-                                    ' . $output_surcharge_row . '
-                                    ' . $output_number_of_installment_row . '
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Total') . ':</span>
-                                        <span class="col text-end"><strong style="font-size: 120%">' . prepare_amount($total) . '</strong></span>
-                                    </div>
-                                    ' . ($refunded_amount_cents > 0 ?
-                                        '<div class="row fg-danger">
-                                            <span class="translateable col fg-secondary">' . lang('Total Refunded') . ':</span>
-                                            <span class="col text-end">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
+                    <div class="row g-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <!-- Two columns of cards only from xl: in the 8/12 form
+                                 column of a 1024px screen half a column is too narrow
+                                 for a label and its value side by side. Who ordered
+                                 and how they paid on the left; the parcels and what
+                                 followed the order on the right. -->
+                            <div class="row g-7">
+                                <div class="col-12 md:col-6 lg:col-12 xl:col-6">
+                                    <div class="card">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                            ' . lang('Billing Information') . '
                                         </div>
-                                        <div class="row">
-                                            <span class="translateable col fg-secondary fw-semibold">' . lang('Net Total') . ':</span>
-                                            <span class="col text-end"><strong style="font-size: 120%">' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></span>
-                                        </div>'
-                                    : '') . '
-                                    <hr/>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Special Offer Code') . ':</span>
-                                        <span class="col text-end">' . h($special_offer_code) . '</span>
+                                        <div class="card-body">
+                                            ' . pg_order_view_row(lang('Custom Field') . ' #1', h($custom_field_1)) . '
+                                            ' . pg_order_view_row(lang('Custom Field') . ' #2', h($custom_field_2)) . '
+                                            ' . pg_order_view_row(lang('Salutation'), h($billing_salutation)) . '
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('First Name') . '</span>
+                                                <span class="text-end text-break">' . h($billing_first_name) . '</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Last Name') . '</span>
+                                                <span class="text-end text-break">' . h($billing_last_name) . '</span>
+                                            </div>
+                                            ' . pg_order_view_row(lang('Company'), h($billing_company)) . '
+                                            <div class="row" >
+                                                <span class="translateable col-auto fg-secondary">' . lang('Address') . ' 1</span>
+                                                <span class="col offset-1" style="font-size:110%;font-weight:500">' . h($billing_address_1) . '</span>
+                                            </div>
+                                            ' . pg_order_view_row(lang('Address') . ' 2', h($billing_address_2), true) . '
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . h(lang($billing_place_labels['city'])) . '</span>
+                                                <span class="text-end text-break">' . h($billing_city) . '</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . h(lang($billing_place_labels['state'])) . '</span>
+                                                <span class="text-end text-break">' . h($billing_state) . '</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Country') . '</span>
+                                                <span class="text-end text-break">' . h(pg_order_view_country($billing_country)) . '</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Zip Code') . '</span>
+                                                <span class="text-end text-break">' . h($billing_zip_code) . '</span>
+                                            </div>
+                                            ' . (($billing_postcode_province !== '')
+                                                ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipping_postcode_province_text($billing_postcode_province)) . '</span>'
+                                                : '') . '
+                                            ' . (($billing_district_note !== '')
+                                                ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h($billing_district_note) . '</span>'
+                                                : '') . '
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Address Verified') . '</span>
+                                                <span class="text-end text-break">' . $billing_address_verified . '</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Phone') . '</span>
+                                                <span class="text-end text-break">' . h($billing_phone_number) . '</span>
+                                            </div>
+                                            ' . $fax . '
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Email') . '</span>
+                                                <span class="text-end text-break">' . h($billing_email_address) . '</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Opt-In') . '</span>
+                                                <span class="text-end text-break">' . $opt_in . '</span>
+                                            </div>
+                                            ' . pg_order_view_row(lang('PO Number'), h($po_number)) . '
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Tax-Exempt') . '</span>
+                                                <span class="text-end text-break">' . $tax_exempt . '</span>
+                                            </div>
+                                            ' . pg_order_view_row(lang('EU VAT ID'), (($order_vat_note !== '') ? h((string) $row['vat_id']) . '<span class="d-block small fg-secondary">' . h($order_vat_note) . '</span>' : '')) . '
+                                            ' . ($contact_tax_number !== '' || $contact_tax_office !== '' ? '
+                                            <hr/>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . h((pg_erp_store_country() === 'TR') ? lang('VKN / TCKN') : lang('Tax number')) . '</span>
+                                                <span class="text-end text-break">' . h($contact_tax_number) . '</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary">' . lang('Tax Office') . '</span>
+                                                <span class="text-end text-break">' . h($contact_tax_office) . '</span>
+                                            </div>' : '') . '
+                                        </div>
                                     </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Reference Code') . ':</span>
-                                        <span class="col text-end">' . h($reference_code) . '</span>
+                                    ' . $output_custom_billing_information . '
+                                    <div class="card mt-5">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex">
+                                            ' . lang('Customer Information') . ' <span class="ms-auto">' . $output_contact_image . '</span>
+                                        </div>
+                                        <div class="card-body">
+                                            ' . $output_user_row . '
+                                            ' . $output_contact_row . '
+                                            ' . $output_member_id_row . '
+                                            ' . $output_ip_address_row . '
+                                        </div>
                                     </div>
-                                    ' . $output_currency_code_row . '
-                                    ' . $output_parasut_status_rows . '
+                                    ' . $output_payment_information . '
+                                </div>
+                                <div class="col-12 md:col-6 lg:col-12 xl:col-6">
+                                    ' . pg_order_view_card_column(array(
+                                        $output_shipping_details,
+                                        $source,
+                                        $output_applied_gift_cards,
+                                        $output_affiliate,
+                                        pg_legal_documents_panel_card((int) $_GET['id']),
+                                        pg_returns_panel_card((int) $_GET['id']),
+                                    )) . '
                                 </div>
                             </div>
-                            ' . $output_payment_information . '
-                            ' . $source . '
-                            ' . $output_applied_gift_cards . '
-                            ' . $output_affiliate . '
-                            ' . pg_legal_documents_panel_card((int) $_GET['id']) . '
-                            ' . pg_returns_panel_card((int) $_GET['id']) . '
+                            <div class="list-group order-list-group mt-7">
+                                ' . $output_order_details . '
+                            </div>
                         </div>
-                        <div class="col-12 md:col-6 lg:col-4">
-                            <div class="card">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Billing Information') . '
-                                </div>
-                                <div class="card-body">
-                                    ' . pg_order_view_row(lang('Custom Field') . ' #1', h($custom_field_1)) . '
-                                    ' . pg_order_view_row(lang('Custom Field') . ' #2', h($custom_field_2)) . '
-                                    ' . pg_order_view_row(lang('Salutation'), h($billing_salutation)) . '
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('First Name') . ':</span>
-                                        <span class="col text-end">' . h($billing_first_name) . '</span>
+                        <!-- Read, not filled: the status, the number and the money stay
+                             in view while the addresses, the parcels and the lines
+                             scroll. Written after the form column, so on a narrow
+                             screen it does not push the first card off screen. -->
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card">
+                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Order Information') . '
                                     </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Last Name') . ':</span>
-                                        <span class="col text-end">' . h($billing_last_name) . '</span>
-                                    </div>
-                                    ' . pg_order_view_row(lang('Company'), h($billing_company)) . '
-                                    <div class="row" >
-                                        <span class="translateable col-auto fg-secondary">' . lang('Address') . ' 1:</span>
-                                        <span class="col offset-1" style="font-size:110%;font-weight:500">' . h($billing_address_1) . '</span>
-                                    </div>
-                                    ' . pg_order_view_row(lang('Address') . ' 2', h($billing_address_2), true) . '
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . h(lang($billing_place_labels['city'])) . ':</span>
-                                        <span class="col text-end">' . h($billing_city) . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . h(lang($billing_place_labels['state'])) . ':</span>
-                                        <span class="col text-end">' . h($billing_state) . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Country') . ':</span>
-                                        <span class="col text-end">' . h(pg_order_view_country($billing_country)) . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Zip Code') . ':</span>
-                                        <span class="col text-end">' . h($billing_zip_code) . '</span>
-                                    </div>
-                                    ' . (($billing_postcode_province !== '')
-                                        ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipping_postcode_province_text($billing_postcode_province)) . '</span>'
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Type') . '</span>
+                                            <span class="translateable text-end text-break">' . lang(h(ucwords($order_type))) . '</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Status') . '</span>
+                                            <span class="translateable text-end text-break">' . lang(h(ucwords($status))) . $output_awaiting_badge . '</span>
+                                        </div>
+                                        ' . $output_cancellation_rows . '
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Order Number') . '</span>
+                                            <span class="text-end text-break" style="font-size: 120%;font-weight:500">' . $order_number . '</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Order Date') . '</span>
+                                            <span class="text-end text-break">' . $order_date . '</span>
+                                        </div>
+                                        <hr/>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Subtotal') . '</span>
+                                            <span class="text-end text-break" style="font-size: 110%">' . prepare_amount($subtotal) . '</span>
+                                        </div>
+                                        ' . ($discount > 0 ? '<div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Discount') . '</span>
+                                            <span class="text-end text-break">-' . pg_format_money($discount, BASE_CURRENCY_SYMBOL) . '</span>
+                                        </div>' : '') . '
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Tax') . '</span>
+                                            <span class="text-end text-break">' . pg_format_money($tax, BASE_CURRENCY_SYMBOL) . '</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Shipping') . '</span>
+                                            <span class="text-end text-break">' . pg_format_money($shipping, BASE_CURRENCY_SYMBOL) . '</span>
+                                        </div>
+                                        ' . $output_gift_card_discount_row . '
+                                        ' . $output_surcharge_row . '
+                                        ' . $output_number_of_installment_row . '
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Total') . '</span>
+                                            <span class="text-end text-break"><strong style="font-size: 120%">' . prepare_amount($total) . '</strong></span>
+                                        </div>
+                                        ' . ($refunded_amount_cents > 0 ?
+                                            '<div class="d-flex justify-content-between gap-3 fg-danger">
+                                                <span class="translateable fg-secondary">' . lang('Total Refunded') . '</span>
+                                                <span class="text-end text-break">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between gap-3">
+                                                <span class="translateable fg-secondary fw-semibold">' . lang('Net Total') . '</span>
+                                                <span class="text-end text-break"><strong style="font-size: 120%">' . prepare_amount(($total_cents - $refunded_amount_cents) / 100) . '</strong></span>
+                                            </div>'
                                         : '') . '
-                                    ' . (($billing_district_note !== '')
-                                        ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h($billing_district_note) . '</span>'
-                                        : '') . '
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Address Verified') . ':</span>
-                                        <span class="col text-end">' . $billing_address_verified . '</span>
+                                        <hr/>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Special Offer Code') . '</span>
+                                            <span class="text-end text-break">' . h($special_offer_code) . '</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between gap-3">
+                                            <span class="translateable fg-secondary">' . lang('Reference Code') . '</span>
+                                            <span class="text-end text-break">' . h($reference_code) . '</span>
+                                        </div>
+                                        ' . $output_currency_code_row . '
+                                        ' . $output_parasut_status_rows . '
                                     </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Phone') . ':</span>
-                                        <span class="col text-end">' . h($billing_phone_number) . '</span>
-                                    </div>
-                                    ' . $fax . '
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Email') . ':</span>
-                                        <span class="col text-end">' . h($billing_email_address) . '</span>
-                                    </div>
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Opt-In') . ':</span>
-                                        <span class="col text-end">' . $opt_in . '</span>
-                                    </div>
-                                    ' . pg_order_view_row(lang('PO Number'), h($po_number)) . '
-                                    <div class="row" >
-                                        <span class="translateable col fg-secondary">' . lang('Tax-Exempt') . ':</span>
-                                        <span class="col text-end">' . $tax_exempt . '</span>
-                                    </div>
-                                    ' . pg_order_view_row(lang('EU VAT ID'), (($order_vat_note !== '') ? h((string) $row['vat_id']) . '<span class="d-block small fg-secondary">' . h($order_vat_note) . '</span>' : '')) . '
-                                    ' . ($contact_tax_number !== '' || $contact_tax_office !== '' ? '
-                                    <hr/>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . h((pg_erp_store_country() === 'TR') ? lang('VKN / TCKN') : lang('Tax number')) . ':</span>
-                                        <span class="col text-end">' . h($contact_tax_number) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Tax Office') . ':</span>
-                                        <span class="col text-end">' . h($contact_tax_office) . '</span>
-                                    </div>' : '') . '
                                 </div>
                             </div>
-
-                            <div class="card mt-5">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex">
-                                    ' . lang('Customer Information') . ' <span class="ms-auto">' . $output_contact_image . '</span>
-                                </div>
-                                <div class="card-body">
-                                    ' . $output_user_row . '
-                                    ' . $output_contact_row . '
-                                    ' . $output_member_id_row . '
-                                    ' . $output_ip_address_row . '
-                                </div>
-                            </div> 
-                            ' . $output_custom_billing_information . '
-                        
                         </div>
-                        ' . $output_shipping_details . '
-                    </div>
-                    <div class=" list-group order-list-group my-7">
-                        ' . $output_order_details . ' 
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center pg-print-none">
-                                ' . $output_save_button . '
-                                ' . $output_restore_button . '
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
+                        <!-- Sticky on the column: the row is as tall as the whole form,
+                             so the bar has the length of the form to travel in. -->
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class=" btn-group flex-wrap justify-content-center pg-print-none">
+                                        ' . $output_save_button . '
+                                        ' . $output_restore_button . '
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
-                    </nav>
+                    </div>
                 </form>
             </div>
         </div>
@@ -3301,18 +3036,24 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
-        // Record the refund.
-        $new_refunded_total = (int)($order_row['refunded_amount'] ?? 0) + $refund_cents;
-        db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "', " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
+        // Record the refund. Added to the column, then read back: a return or
+        // store credit refund recorded during the payment service call has
+        // added its own amount, which the total read above does not hold.
+        db("UPDATE orders SET refunded_amount = " . pg_order_refunded_add_expr($refund_cents) . ", " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
+        $new_refunded_total = (int) db_value("SELECT COALESCE(refunded_amount, 0) FROM orders WHERE id = '" . e($order_id) . "'");
 
         // A refund by lines takes those lines' reward points back. The points
         // taken are noted on the refund row, which a later cancellation (a
         // full refund) reads so it does not take them a second time; without
         // the notes column nothing could be noted, so nothing is taken here.
+        // On an order without an invoice the lines given back are noted too
+        // (erp_order_refund_lines_note()), so the next refund by lines does
+        // not give the same line back again.
         $refund_points_marker = '';
         if (is_array($refund_by_lines) && pg_schema_has('order_refunds', 'notes')) {
             $refund_points = pg_credit_points_lines_refunded($order_id, pg_credit_points_erp_quantities($order_id, $refund_source, (array) $refund_by_lines['quantities']));
-            $refund_points_marker = pg_credit_points_marker($refund_points['total']);
+            $refund_points_marker = trim(pg_credit_points_marker($refund_points['total'])
+                . ((($refund_source['source'] ?? '') === 'order') ? ' ' . erp_order_refund_lines_note((array) $refund_by_lines['quantities']) : ''));
         }
 
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id" . (($refund_points_marker !== '') ? ', notes' : '') . ", created_at)
@@ -3404,6 +3145,24 @@ if (!$_POST) {
 
         if (!$refund_row) {
             output_error(lang('Order not found.'));
+        }
+
+        // What the order owes given as store credit: the card, the refund
+        // record and the customer's mail (pg_credit_refund_cancelled_order()).
+        if ($liveform->get_field_value('refund_as') == 'credit') {
+            $refund_credit = pg_credit_refund_cancelled_order($order_id, (int) (isset($user['id']) ? $user['id'] : 0));
+
+            if (!$refund_credit['ok']) {
+                $liveform->mark_error('_error', h($refund_credit['error']));
+                go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+            }
+
+            pg_audit_record('refund', 'orders', $order_id, $audit_before);
+
+            $liveform->add_notice(h($refund_credit['mailed']
+                ? lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}. The customer was told by e-mail.', 'vars' => array(pg_return_money_text($refund_credit['amount']), pg_return_money_text($refund_credit['credit']))))
+                : lang(array('string' => 'The refund of {var:1} was given as store credit of {var:2}, but the e-mail to the customer could not be sent.', 'vars' => array(pg_return_money_text($refund_credit['amount']), pg_return_money_text($refund_credit['credit']))))));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
         // Only from a state that actually owes money. Refuses to overwrite an

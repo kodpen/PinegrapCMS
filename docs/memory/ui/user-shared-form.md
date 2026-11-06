@@ -9,6 +9,10 @@ description: The user create and edit screens share includes/forms/user_form.php
 - `pg_user_form_folder_rights($post, $folder_id)` returns `rights` (2 edit, 1 view, 0 none) and `expiration_date` (an invalid date gives 0).
 - `pg_user_form_save_access($user_id, $role, $post, $replace)` writes `aclfolder` for every folder and, for role 3, the common region, shared component, menu, contact group (with manage contacts or e-mails), calendar (with manage calendars) and ad region (when `ADS`) grants.
 
+## How are the screens laid out?
+- `pg_user_form_layout($form, $status, $buttons, $sticky_status = true)` (`ui/edit-screen-wide-layout.md`, #6754). Form column: Role, Account, the rights cards. Create's status column (pinned): a Password card with Notify User. Edit's: Status (Account enabled, once `user_disabled_at` exists), contact, sign-in and Recent Activity cards, not pinned: together taller than the window. The permission panels follow the layout inside the form; the sessions and credit panels stay after it (own forms). Test: `tests/user_form_test.php`.
+- `import_users.php` uses the same layout and rights cards (#6784): form column Import CSV, Role, Account, the rights cards and the contact groups to import into (left out when no static group exists); status column (pinned) a Password card with Notify User.
+
 ## What does `$replace` change?
 - Edit (`true`) deletes the old rows first. Common regions made shared components are left out of both the delete and the list, so their grant stays for when the component is deleted. Create (`false`) lists every common region.
 - Edit keeps the old item grants when the role changes away from 3, as before: they are only rewritten for role 3.

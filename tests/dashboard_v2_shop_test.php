@@ -185,6 +185,77 @@ function test_dashboard_v2_shop_salesmap_data_empty()
 	pg_assert_same(lang('There are no sales in this period.'), $data['empty']);
 }
 
+function pg_test_dashboard_v2_salesmap_collect()
+{
+	$region = function ($code, $name, $state, $country, $country_name, $total, $count, $cities) {
+		return array('code' => $code, 'name' => $name, 'state' => $state, 'country' => $country, 'country_name' => $country_name,
+			'total' => $total, 'count' => $count, 'cities' => $cities);
+	};
+
+	return array(
+		'status' => 'ok', 'home' => 'TR', 'home_name' => 'Turkey', 'home_map' => 'tr-regions.svg', 'first' => 1700000000,
+		'periods' => array('d30' => array(
+			'from' => 1790000000, 'total' => 90000, 'count' => 9,
+			'countries' => array(
+				'TR' => array('code' => 'TR', 'name' => 'Turkey', 'total' => 80000, 'count' => 8),
+				'DE' => array('code' => 'DE', 'name' => 'Germany', 'total' => 10000, 'count' => 1),
+			),
+			'regions' => array(
+				'TR|TR-34' => $region('TR-34', 'İstanbul', 'Istanbul', 'TR', 'Turkey', 60000, 6,
+					array(array('name' => 'Kadıköy', 'total' => 30000), array('name' => '', 'total' => 20000), array('name' => 'Beşiktaş', 'total' => 10000))),
+				'TR|TR-06' => $region('TR-06', 'Ankara', 'Ankara', 'TR', 'Turkey', 20000, 1, array()),
+				'DE|berlin' => $region('', 'Berlin', 'Berlin', 'DE', 'Germany', 10000, 1, array()),
+			),
+		)),
+	);
+}
+
+// Every province of the map names itself under the pointer and the
+// keyboard: the ones that sold first, in sales order, with their figures
+// and best cities; the rest, in the map's own order, with "No sales".
+function test_dashboard_v2_shop_salesmap_data_names_every_place()
+{
+	$data = pg_dashboard_v2_salesmap_data(pg_test_dashboard_v2_salesmap_collect(), '/m/');
+	$places = $data['places'];
+
+	pg_assert_same(count(pg_sales_map_tr_regions()), count($places), 'every province of the map');
+	pg_assert_same(array('TR-34', 'TR-06', 'TR-01'), array_slice(array_column($places, 'id'), 0, 3), 'sold first, by sales');
+	pg_assert_same("İstanbul\n" . pg_dashboard_v2_money(60000) . ' · ' . lang(array('string' => '{var:1} order{suffix:1}', 'vars' => '6', 'suffix' => 's')) . "\nKadıköy, Beşiktaş", $places[0]['text']);
+	pg_assert_same("Ankara\n" . pg_dashboard_v2_money(20000) . ' · ' . lang(array('string' => '{var:1} order{suffix:1}', 'vars' => '1', 'suffix' => '')), $places[1]['text'], 'no city line without cities');
+	pg_assert_same("Adana\n" . lang('No sales'), $places[2]['text']);
+	pg_assert_same(array(), array_filter(array_column($places, 'url')), 'nothing opens without the orders screen');
+	pg_assert_same(array(), array_filter(array_column($data['rows'], 'url')), 'nor do the rows');
+	pg_assert_same(lang(array('string' => 'Sales by region in {var:1}, last 30 days', 'vars' => pg_geo_country_name('TR'))), $data['map_label'], 'the country in the reader\'s language');
+}
+
+// For a person who may work the orders, a province that sold and its row
+// open the orders it counted: its country and the spelling that sold most,
+// over the card's 30 days.
+function test_dashboard_v2_shop_salesmap_data_links_the_orders()
+{
+	$data = pg_dashboard_v2_salesmap_data(pg_test_dashboard_v2_salesmap_collect(), '/m/', 6, true);
+	$url = $data['places'][0]['url'];
+	parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+
+	pg_assert_same('view_orders.php', (string) parse_url($url, PHP_URL_PATH));
+	pg_assert_same('Turkey', $query['billing_country']);
+	pg_assert_same('Istanbul', $query['billing_state']);
+	pg_assert_same(date('Y', 1790000000), $query['start_year']);
+	pg_assert_same('any', $query['type']);
+	pg_assert_same($url, $data['rows'][0]['url'], 'the row opens the same orders');
+	pg_assert_same('', $data['places'][2]['url'], 'a province that sold nothing opens nothing');
+
+	$collect = pg_test_dashboard_v2_salesmap_collect();
+	$collect['home_map'] = '';
+	$data = pg_dashboard_v2_salesmap_data($collect, '/m/', 6, true);
+	parse_str((string) parse_url($data['rows'][1]['url'], PHP_URL_QUERY), $query);
+
+	pg_assert_same(array(), $data['places'], 'no map, no places');
+	pg_assert_same(pg_geo_country_label('Germany', 'DE'), $data['rows'][1]['text'], 'a country row in the panel language');
+	pg_assert_same('Germany', $query['billing_country'], 'a country row opens its country by the stored name');
+	pg_assert_false(isset($query['billing_state']));
+}
+
 // The cards read the widgets' own queries: one definition of an order, an
 // offer list and a currency list.
 function test_dashboard_v2_shop_cards_share_the_widget_queries()
@@ -224,4 +295,14 @@ function test_dashboard_v2_cards_send_no_html_money()
 	foreach ($files as $file) {
 		pg_assert_false(strpos((string) file_get_contents($file), 'prepare_amount(') !== false, basename($file) . ' sends plain-text money');
 	}
+}
+
+function test_dashboard_v2_shop_url_opens_a_screen_the_person_may_open()
+{
+	// The orders list for whoever may open it.
+	pg_assert_same('view_orders.php', pg_dashboard_v2_shop_url(true, true));
+	pg_assert_same('view_orders.php', pg_dashboard_v2_shop_url(true, false));
+	// A user with commerce reports only: the reports, not a refused list.
+	pg_assert_same('view_order_reports.php', pg_dashboard_v2_shop_url(false, true));
+	pg_assert_same('', pg_dashboard_v2_shop_url(false, false));
 }

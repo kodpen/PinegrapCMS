@@ -414,6 +414,13 @@ function api_return_action_check($row, $params, $context = array()) {
 
 			}
 
+			// A cancelled order's money went back with the cancellation.
+			if (isset($plan['order']['status']) && !pg_return_refund_order_open($plan['order']['status'])) {
+
+				return $refuse(409, 'refund_order_cancelled', lang('The order was cancelled: its money goes back with the cancellation, not with the return.'));
+
+			}
+
 			if (!isset($params['amount'])) {
 
 				return $refuse(422, 'validation_failed', lang('Enter the amount to refund.'), 'amount');
@@ -422,7 +429,9 @@ function api_return_action_check($row, $params, $context = array()) {
 
 			$method = isset($params['method']) ? (string)$params['method'] : '';
 
-			if ($method === '') {
+			// Store credit is given on the panel only: the API keeps driver
+			// and manual.
+			if (!in_array($method, array('driver', 'manual'), true)) {
 
 				return $refuse(422, 'validation_failed', lang('Choose how the money goes back: driver or manual.'), 'method');
 
@@ -486,6 +495,9 @@ function api_return_write_refuse($code, $message) {
 
 		case 'no_driver':
 			api_fail(409, 'refund_driver_unavailable', $message, 'method');
+
+		case 'order_cancelled':
+			api_fail(409, 'refund_order_cancelled', $message);
 
 		case 'amount':
 		case 'amount_exceeds':

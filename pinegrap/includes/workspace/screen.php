@@ -864,6 +864,10 @@ function ws_screen_config($viewer, $mode, $extra = array())
             // ERP documents: the accountant's read-only right saves none.
             'erp_quote_copy' => (!empty($viewer['erp']) && empty($viewer['erp_readonly'])) ? $base . 'add_erp_quote.php' : '',
         ),
+        // The flow canvas's scripts in their order, which a flow draft's card
+        // fetches once when it is first opened (workspace.js flowEmbedKit());
+        // the Flows screen prints them (ws_screen_scripts()).
+        'flow_scripts' => array_merge(pg_js_bundle_urls('assets/js/pg_graph_canvas.min.js'), pg_js_bundle_urls('assets/js/workspace_flow.min.js')),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
         // What one import of notes may send (workspace_notes_import.php): its
         // size, how many files the server takes in one request and the kinds
@@ -1230,4 +1234,144 @@ function ws_settings_refused_fields($post, $prefix = '')
     }
 
     return $out;
+}
+
+/**
+ * The operation messages a Workspace screen shows as corner toasts instead
+ * of the panel's "Notice:" / "Warning:" / "Error:" boxes. The liveform keeps
+ * each message as escaped markup; a toast takes plain text, so the markup is
+ * read back to text. One link (a notice's "Open ..." link) is handed over
+ * apart when it points at the site or at http(s), so the toast still offers
+ * it; any other link stays as its words. A repeated message is given once.
+ *
+ * Pure: no query, no session.
+ *
+ * @param array $errors   messages of output_errors()
+ * @param array $warnings messages of get_warnings()
+ * @param array $notices  messages of output_notices()
+ * @return array list of array('variant' => danger|warning|success, 'message' => text[, 'link' => array('url', 'label')])
+ */
+function ws_screen_toasts($errors, $warnings, $notices)
+{
+    $toasts = array();
+    $seen = array();
+
+    foreach (array('danger' => $errors, 'warning' => $warnings, 'success' => $notices) as $variant => $list) {
+        foreach ((array) $list as $markup) {
+            if (!is_string($markup)) {
+                continue;
+            }
+
+            $link = null;
+
+            if (preg_match('~<a\s[^>]*href\s*=\s*"([^"]*)"[^>]*>(.*?)</a>~is', $markup, $match)) {
+                $url = trim(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8'));
+                $label = ws_screen_toast_text($match[2]);
+
+                if ($label !== '' && preg_match('~^(https?://|/(?!/))~i', $url)) {
+                    $link = array('url' => $url, 'label' => $label);
+                    $markup = str_replace($match[0], ' ', $markup);
+                }
+            }
+
+            $text = ws_screen_toast_text($markup);
+
+            if ($text === '' && $link === null) {
+                continue;
+            }
+
+            $key = $variant . "\n" . $text . "\n" . ($link ? $link['url'] : '');
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $toast = array('variant' => $variant, 'message' => $text);
+
+            if ($link) {
+                $toast['link'] = $link;
+            }
+
+            $toasts[] = $toast;
+        }
+    }
+
+    return $toasts;
+}
+
+/**
+ * Escaped message markup as one line of plain text.
+ *
+ * @param string $markup
+ * @return string
+ */
+function ws_screen_toast_text($markup)
+{
+    $markup = preg_replace('~<br\s*/?>|</p>|</li>~i', ' ', (string) $markup);
+    $text = html_entity_decode(strip_tags($markup), ENT_QUOTES, 'UTF-8');
+
+    return trim((string) preg_replace('/\s+/u', ' ', $text));
+}
+
+/**
+ * The inline script that shows the toasts once the panel's script and
+ * Bootstrap are ready (pgUI.ready(), as pgToast() needs pgUI.toast).
+ *
+ * @param array $toasts list of ws_screen_toasts()
+ * @return string '' when there is nothing to show
+ */
+function ws_screen_toasts_script($toasts)
+{
+    if (empty($toasts)) {
+        return '';
+    }
+
+    $json = json_encode(array_values($toasts), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+
+    if ($json === false) {
+        return '';
+    }
+
+    return '<script>
+(function () {
+    var toasts = ' . $json . ';
+    function show() {
+        if (typeof window.pgToast !== "function") {
+            return;
+        }
+        toasts.forEach(function (toast) {
+            // A toast with a link stays long enough to reach the link.
+            if (toast.link) {
+                toast.delay = 10000;
+            }
+            window.pgToast(toast);
+        });
+    }
+    if (window.pgUI && typeof pgUI.ready === "function") {
+        pgUI.ready(show);
+    } else {
+        document.addEventListener("DOMContentLoaded", show);
+    }
+})();
+</script>';
+}
+
+/**
+ * A Workspace screen's pending liveform messages as toasts: the errors,
+ * warnings and notices are read and turned into the script; the screen
+ * still calls remove_form() once it is drawn.
+ *
+ * @param liveform $liveform
+ * @return string
+ */
+function ws_screen_messages($liveform)
+{
+    $warnings = array();
+
+    if (isset($_SESSION['software']['liveforms'][$liveform->form][$liveform->index]['warnings'])) {
+        $warnings = (array) $_SESSION['software']['liveforms'][$liveform->form][$liveform->index]['warnings'];
+    }
+
+    return ws_screen_toasts_script(ws_screen_toasts($liveform->get_errors(), $warnings, $liveform->get_notices()));
 }

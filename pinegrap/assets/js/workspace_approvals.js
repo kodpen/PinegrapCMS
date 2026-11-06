@@ -157,13 +157,41 @@
             var approve = h.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('apv_approve'), 'bi-check2');
             var reject = h.button('btn btn-sm btn-outline theme-warning', t('apv_reject'), 'bi-x-lg');
 
-            approve.addEventListener('click', function () {
+            var decide = function (note) {
                 approve.disabled = true;
-                h.api('ws_approval_decide', { approval_id: approval.id, decision: 'approve' }).then(function (data) {
+                h.api('ws_approval_decide', { approval_id: approval.id, decision: 'approve', note: note }).then(function (data) {
                     refreshed(view, data);
                 }).catch(function (error) {
                     approve.disabled = false;
                     h.fail(error);
+                });
+            };
+
+            approve.addEventListener('click', function () {
+                // A flow's approval box may ask for an answer with the
+                // approval: required, a number when it asks for one (the
+                // server checks it again).
+                if (approval.answer !== 'text' && approval.answer !== 'number') {
+                    decide('');
+                    return;
+                }
+
+                var answer = el('input', 'form-control form-control-sm');
+
+                answer.type = 'text';
+                answer.maxLength = 255;
+                answer.required = true;
+                answer.placeholder = t(approval.answer === 'number' ? 'apv_answer_number' : 'apv_answer');
+                answer.setAttribute('aria-label', approval.answer_label || answer.placeholder);
+
+                if (approval.answer === 'number') {
+                    answer.inputMode = 'decimal';
+                }
+
+                h.ask(approval.answer_label || t('apv_answer_confirm'), t('apv_approve'), false, answer).then(function (yes) {
+                    if (yes) {
+                        decide(answer.value);
+                    }
                 });
             });
 
@@ -435,24 +463,26 @@
     }
 
     // The requests waiting for the reader's answer, as rows of the
-    // overview's Waiting for you card; answers how many it put there.
+    // Today page's Waiting for you card; answers how many it put there.
     function homeRows(data, view, h, into) {
         var items = (data && data.approvals) || [];
         var t = h.t;
         var el = h.el;
 
         items.forEach(function (item) {
-            var row = h.button('ws-home-row ws-home-unread');
-            var text = el('span', 'ws-home-row-text');
-            var meta = el('small', 'ws-home-row-meta');
+            var row = h.button('ws-today-row ws-today-unread');
+            var text = el('span', 'ws-today-row-text');
+            var meta = el('small', 'ws-today-row-meta');
 
-            row.appendChild(h.icon('bi-patch-question', 'fg-secondary'));
+            var sign = el('span', 'ws-today-sign');
+            sign.appendChild(h.icon('bi-patch-question'));
+            row.appendChild(sign);
             meta.appendChild(el('b', '', item.asker));
             meta.appendChild(document.createTextNode(' ' + t('apv_home_asks') + ' · '));
             meta.appendChild(h.icon(item.channel['private'] ? 'bi-lock' : 'bi-hash'));
             meta.appendChild(document.createTextNode(item.channel.name + ' · ' + item.time + (item.closes ? ' · ' + t('apv_home_until', item.closes) : '')));
             text.appendChild(meta);
-            text.appendChild(el('span', 'ws-home-row-quote', item.title));
+            text.appendChild(el('span', 'ws-today-row-quote', item.title));
             row.appendChild(text);
             row.title = t('apv_home');
             row.addEventListener('click', function () { view.open(item.channel.id, item.message_id); });

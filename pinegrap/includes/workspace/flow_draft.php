@@ -984,9 +984,15 @@ function ws_flow_draft_card_source($viewer, $change_id)
             return $fail(lang('The flow this draft was opened as is gone, or you may no longer see it.'));
         }
 
+        $graph = ws_flow_card_opened_graph($flow, ws_flow_version($flow['version_id']));
+
+        if ($graph === null) {
+            return $fail(lang('The flow this draft was opened as is gone, or you may no longer see it.'));
+        }
+
         $can_try = ws_flow_share_manager($viewer, $flow);
 
-        return array('ok' => true, 'error' => '', 'graph' => ws_flow_graph_of($flow), 'patch' => $patch,
+        return array('ok' => true, 'error' => '', 'graph' => $graph, 'patch' => $patch,
             'tries' => ws_flow_card_try_flow($viewer, 'opened', null, $flow, $can_try), 'flow_id' => (int) $flow['id'], 'can_try' => $can_try);
     }
 
@@ -1024,6 +1030,39 @@ function ws_flow_draft_card_source($viewer, $change_id)
     // a new flow's boxes are tried in memory for their third line.
     return array('ok' => true, 'error' => '', 'graph' => $graph, 'patch' => $patch,
         'tries' => ws_flow_card_try_flow($viewer, ($patch === null) ? 'new' : 'patch', $graph, null, false, $name), 'flow_id' => 0, 'can_try' => false);
+}
+
+/**
+ * The graph the card of a draft opened as a flow draws, as the Flows screen
+ * gives it to the person now (ws_flow_detail()): the draft to whoever may
+ * change the flow (and of a flow never published), else its live version,
+ * with the box settings whoever may not change it does not read masked
+ * (ws_flow_graph_present()). The settings stay arrays, as the card reads
+ * them. Pure.
+ *
+ * @param array      $flow ws_flow_for()
+ * @param array|null $version ws_flow_version() of its version_id
+ * @return array|null the graph, none when the live version cannot be read
+ */
+function ws_flow_card_opened_graph($flow, $version)
+{
+    $access = (string) ($flow['access'] ?? '');
+    $graph = ws_flow_draft_readable($access, (int) ($flow['version_id'] ?? 0))
+        ? ws_flow_graph_of($flow)
+        : (is_array($version) ? ws_flow_graph_of($version) : null);
+
+    if ($graph === null) {
+        return null;
+    }
+
+    $shown = ws_flow_graph_present($graph, $access === 'edit');
+    $shown['nodes'] = array_map(function ($node) {
+        $node['config'] = (array) $node['config'];
+
+        return $node;
+    }, $shown['nodes']);
+
+    return $shown;
 }
 
 /**
@@ -1095,6 +1134,9 @@ function ws_flow_draft_js_strings()
         'fd_box_try'       => lang('Try this box'),
         'fd_box_pick'      => lang('Pick a box to see it here.'),
         'fd_try_refusal'   => ws_js_template('It would not run: {var:1}', 1),
+        'fd_open'          => lang('Open the flow'),
+        'fd_larger'        => lang('Larger'),
+        'fd_smaller'       => lang('Smaller'),
     );
 }
 
@@ -1192,7 +1234,18 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         ),
         'condition.rule' => array('hint' => ws_flow_ai_rule_shape()),
         'approval.approvers' => array('hint' => 'user ids from the list of people, the ones who answer; the person who asked when the request says I or me'),
-        'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b'),
+        'approval.answer' => array('hint' => 'none, text or number: what the people asked type when they approve (required then); the box then gives answer, answer_number (empty when unreadable) and decided_by; answer_label is the question they see, as in "How many kg arrived?"'),
+        'value.a' => array('hint' => 'the value it works from; {{date}} (Y-m-d), {{time}} (H:i) and {{weekday}} are the moment the box is worked out, as in "{{date}} {{time}}" for date_format or add_days; with rule calculate one formula of numbers, values, + - * / ^, a percent (18%) and functions such as ROUND, MIN, MAX, IF (arguments split by ;), as in "{{node.ID.qty}} * {{node.ID.price}} * (1 + 18%)", rounded to places'),
+        'row_set.cells' => array('hint' => 'a JSON object of column ids and values, as row_add\'s; a number or money cell written as "+3" or "+{{node.ID.answer_number}}" adds that amount (below zero takes away) to what the row holds when the box writes it, so runs at the same time never lose an addition'),
+        'email.recipient' => array('hint' => 'typed writes to the addresses in to; record_person to the person of the record the run is about (the order\'s customer, the form\'s sender, the booking\'s guest, the e-mail\'s sender, the contact), read when the box runs: never write that address in to'),
+        'email.purpose' => array('hint' => 'with recipient record_person: info for an answer or a reminder; marketing only goes to a person who agreed to marketing e-mail, with an unsubscribe link'),
+        'delay.mode' => array('hint' => 'for waits amount unit; until waits until the date in at, less amount unit when set; at most 90 days'),
+        'delay.at' => array('hint' => 'with mode until, the date and time it waits until: one value such as {{trigger.FIELD}} or a date written as YYYY-MM-DD HH:MM; a date that has passed goes on at once'),
+        'for_each.count' => array('hint' => 'with mode count, how many times the body repeats: a whole number from 1 to ' . WS_FLOW_LOOP_ITEMS_MAX . ' or one value; index and item are then 1 to the count, and list, path and fields are not read'),
+        'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b; replace finds b as written, cut keeps the first b characters, split splits at b (spaces when empty)'),
+        'ai.mode' => array('hint' => 'write writes what prompt asks for; summarize sums up text; extract finds in text the value prompt names and gives answer, number and found (1 or 0); classify leaves on the outcome of classes text belongs to, else on other'),
+        'ai.classes' => array('hint' => 'with mode classify, up to ' . WS_STEP_AI_CLASSES_MAX . ' outcome names; an arrow leaves on class_1 for the first, class_2 for the second, and on other when none fits'),
+        'value.c' => array('hint' => 'the third value; with rule replace what goes in place of b (empty takes it out), with rule split the part to take: 1 the first (when empty), -1 the last'),
     );
     // The same two settings on every step box.
     $any = array(
@@ -1202,6 +1255,11 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
     $kinds = array(
         'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
         'post'     => 'only says something in a channel; it never waits for an answer',
+        'mention'  => 'starts the flow when a person writes @ and the flow\'s name in the channel channel_id (never a flow\'s, an application\'s or an assistant\'s message; one start per person a minute); it gives message_id, text, author_id, author_name, channel_id and channel_name',
+        'row_get'  => 'reads one row of a workflow table, named by its id or one value such as {{trigger.row_id}}; it gives found (1, or 0 when the row is not there) and cell_COLUMN_ID for each column',
+        'ai'       => 'asks Pinegrap AI on the site\'s quota and waits for its answer (answer); only prompt and text, with their values, are sent; closes_in is the hours it waits before leaving on failed',
+        'web'      => 'starts the flow when another system (a form service, a shop, an automation tool) posts to the flow\'s own web address; fields lists the body fields it reads, each {"key":"order_no","type":"text"} or type number, then read as {{trigger.KEY}}',
+        'record_get' => 'reads one record (record: order, product, contact, booking, task or form, a submitted form) named by its id or one value such as {{trigger.record_id}}, with the owner\'s rights; it gives found (1, or 0 when the record is not there or out of reach) and the record\'s fields, such as email, status or total',
     );
 
     foreach ($catalogue as $at => $kind) {
@@ -2030,6 +2088,33 @@ function ws_flow_ai_problem_texts($graph)
 }
 
 /**
+ * Why Claude's answer in a channel is refused for the flow it drafts
+ * (ws_changes_input()): what stops the flow from being published, with the
+ * hints Pinegrap AI gets when its draft fails the same check
+ * (ws_flow_ai_problem_hints()), so Claude fixes the draft and sends the answer
+ * again, or leaves the flow out and says why. A flow no one can publish never
+ * reaches the channel as a draft. '' when it can be published.
+ *
+ * @param array         $graph     the draft, as ws_flow_draft_proposal_row() keeps it
+ * @param array[]|null  $catalogue ws_flow_ai_catalogue_hints(); null reads the site's
+ * @param string[]|null $problems  ws_flow_ai_problem_texts(); null checks the graph
+ * @return string
+ */
+function ws_flow_draft_answer_refusal($graph, $catalogue = null, $problems = null)
+{
+    $graph = ws_flow_graph_normalize($graph);
+    $problems = ($problems !== null) ? array_values((array) $problems) : ws_flow_ai_problem_texts($graph);
+
+    if (empty($problems)) {
+        return '';
+    }
+
+    $hints = ws_flow_ai_problem_hints($graph, ($catalogue !== null) ? $catalogue : ws_flow_ai_catalogue());
+
+    return lang(array('string' => 'This flow could not be published like this: {var:1} Fix it and send the answer again with all of it, or leave the flow out and say why.', 'vars' => implode(' ', array_merge($problems, $hints))));
+}
+
+/**
  * Pinegrap AI drafts a flow (propose_flow): a new one from boxes and arrows,
  * or changes to a flow the person who asked may change. It is checked as
  * POST /workspace/flows (or a draft save) would check it for them, and kept
@@ -2174,7 +2259,8 @@ function ws_flow_ai_read($asker, $args)
             return array('error' => 'There is no such flow, or the person who asked may not read it.');
         }
 
-        $graph = ws_flow_graph_of($flow);
+        $version = ((int) $flow['version_id'] > 0) ? ws_flow_version((int) $flow['version_id']) : null;
+        $graph = ws_flow_ai_read_graph($flow, is_array($version) ? ws_flow_graph_of($version) : null);
         $boxes = array();
 
         foreach ($graph['nodes'] as $node) {
@@ -2208,6 +2294,32 @@ function ws_flow_ai_read($asker, $args)
     }
 
     return array('results' => $found, 'note' => empty($found) ? 'No flow matched. Try one shorter word.' : 'Read one with read_flow and its id before you change it.');
+}
+
+/**
+ * The graph read_flow tells the model of one flow, as the Flows screen
+ * gives it to the same person (ws_flow_detail()): whoever may change the
+ * flow reads its draft whole; anybody else reads its live version, or the
+ * draft of a flow never published, with a webhook's address, a change or
+ * table box's record and values and a condition's value kept back
+ * (ws_flow_graph_present()). The answer may be posted where others read it.
+ * Box settings stay arrays. Pure.
+ *
+ * @param array      $flow ws_flow_for() row (access, draft)
+ * @param array|null $live the live version's graph, null when never published
+ * @return array v, nodes, edges, notes
+ */
+function ws_flow_ai_read_graph($flow, $live)
+{
+    $edit = ((string) ($flow['access'] ?? '') === 'edit');
+    $graph = ($edit || !is_array($live)) ? ws_flow_graph_of($flow) : $live;
+    $shown = ws_flow_graph_present($graph, $edit);
+
+    foreach ($shown['nodes'] as $index => $node) {
+        $shown['nodes'][$index]['config'] = (array) $node['config'];
+    }
+
+    return $shown;
 }
 
 /**

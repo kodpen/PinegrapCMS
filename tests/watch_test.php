@@ -32,9 +32,12 @@ function test_watch_recorded_events_leave_out_workspace_and_erp()
 		pg_assert_true(in_array($event, $events, true), $event . ' kept');
 	}
 
+	// Of the ERP's only the ones a flow may start on.
+	$erp = array('erp.invoice.created', 'erp.invoice.paid', 'erp.invoice.overdue', 'erp.invoice.edoc_changed', 'erp.receipt.created', 'erp.edoc.received', 'erp.quote.accepted', 'erp.quote.rejected');
+
 	foreach ($events as $event) {
 		pg_assert_false(strpos($event, 'workspace.') === 0, $event . ' is not the workspace\'s own');
-		pg_assert_false(strpos($event, 'erp.') === 0, $event . ' is not the ERP\'s');
+		pg_assert_false((strpos($event, 'erp.') === 0) && !in_array($event, $erp, true), $event . ' is not an ERP event a flow starts on');
 	}
 }
 
@@ -101,7 +104,7 @@ function test_watch_own_events_are_kept_apart()
 		pg_assert_false(in_array($event, $recorded, true), $event . ' not kept by pg_event_record()');
 	}
 
-	pg_assert_same(9, count(ws_events_own()), 'six events, and the three of a workflow table\'s rows');
+	pg_assert_same(11, count(ws_events_own()), 'seven events, the three of a workflow table\'s rows and a mention of a flow');
 	pg_assert_false(ws_events_is_own('workspace.message.created'), 'a message in a public channel is the webhooks\' only');
 	pg_assert_false(ws_events_is_own('order.created'), 'a site event');
 	pg_assert_false(ws_event('workspace.task.completed', array('id' => 1)), 'nothing kept without the workspace\'s tables');
@@ -152,4 +155,24 @@ function test_watch_event_depth_follows_the_run()
 	pg_assert_same(4, ws_event_depth(3), 'a run three steps down');
 	pg_assert_same(0, ws_event_depth(-1), 'the run ended');
 	pg_assert_same(0, ws_event_depth(), 'outside again');
+}
+
+// The staff agenda's four events are kept for the workspace, name the
+// booking under its id, and are checked against what the creator of a
+// scheduled action may read, as the workspace's own are.
+function test_watch_booking_events()
+{
+	$recorded = pg_event_workspace_events();
+
+	foreach (array('created', 'confirmed', 'rescheduled', 'cancelled') as $name) {
+		$event = 'booking.' . $name;
+		pg_assert_true(in_array($event, $recorded, true), $event . ' kept');
+		pg_assert_same(array('booking', 31), ws_events_record_of($event, array('id' => 31, 'staff_id' => 4)), $event . ': the booking');
+		pg_assert_true(ws_events_checks_creator($event), $event . ': checked against the creator');
+		pg_assert_false(ws_events_is_own($event), $event . ' is not the workspace\'s own');
+	}
+
+	pg_assert_true(ws_events_checks_creator('workspace.task.completed'), 'the workspace\'s own are checked too');
+	pg_assert_false(ws_events_checks_creator('order.created'), 'a shop event asks only its right');
+	pg_assert_same(array('booking', 0), ws_events_record_of('booking.created', array()), 'no id');
 }

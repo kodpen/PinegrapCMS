@@ -100,18 +100,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $output_image_info = '';
 
     if (!$on_disk) {
-        $output_thumbnail = '<div class="col-12"><div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div></div>';
+        $output_thumbnail = '<div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div>';
 
     } elseif (in_array($file_extension, $preview_types, true)) {
         // Get the dimensions of the image.
         $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file_name);
 
         // Output thumnail.
-        $output_thumbnail = '<div class="col-12 md:col-auto"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank" tabindex="-1" aria-hidden="true"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($file_name) . '" /></a></div>';
+        $output_thumbnail = '<div class="text-center mb-3"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank" tabindex="-1" aria-hidden="true"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($file_name) . '" /></a></div>';
 
         // A file that is not a readable image has no size to show.
         if ($image_size !== false) {
-            $output_image_info = ' | ' . h(pg_image_dimensions_label($image_size[0], $image_size[1]));
+            $output_image_info = h(pg_image_dimensions_label($image_size[0], $image_size[1]));
         }
 
     }
@@ -190,6 +190,16 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-solid theme-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-3">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
     }
 
+    // Summary rows of the status column: the size, an image's dimensions and
+    // who may open the file (the folder's access control).
+    $summary_rows = array(lang('File Size') => h($output_file_size));
+
+    if ($output_image_info !== '') {
+        $summary_rows[lang('Dimensions')] = $output_image_info;
+    }
+
+    $summary_rows[lang('Access')] = '<span class="' . h(get_access_control_type($file_folder)) . '">' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</span>';
+
     // A CSS file shows the Theme switch; a system theme cannot change it.
     $theme_row = null;
 
@@ -219,13 +229,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3 text-center md:text-start">
-                    ' . $output_thumbnail . '
-                    <div class="col-12 md:col">
-                        <p class="p-0 m-0">' . lang('File Size') . ': '. $output_file_size . $output_image_info . '</p>
-                        <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
-                    </div>
-                </div>
                 ' . pg_screen_toolbar(array(
                     'secondary' => array($image_buttons, $output_file_links),
                 )) . '
@@ -233,36 +236,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($id) . '"><input type="hidden" name="from" value="' . h($from) . '">
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    <div class="row">
-                        <div class="col-12">
+                    ' . pg_design_file_form_layout(
+                        '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 sm:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('File Name') . '</label>
-                                            <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control " maxlength="100"/>
+                                            <input value="' . h($file_name) . '" type="text" name="name" id="name" class="form-control" maxlength="100"/>
                                         </div>
                                     </div>
                                 </div>
-                            </div> 
-                        </div>
-                        <div class="col-12 md:col-6">' . pg_design_file_form_access_card(select_folder($file_folder), array('design' => true, 'theme' => $theme_row)) . '
-                        </div>
-                        <div class="col-12 md:col-6">' . pg_design_file_form_description_card($file_description) . '
-                        </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                ' . $output_edit_file_button . '
-                                <button type="submit" name="delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            </div>' . pg_design_file_form_description_card($file_description),
+                        pg_design_file_form_summary_card($output_thumbnail, $summary_rows)
+                        . pg_design_file_form_access_card(select_folder($file_folder), array('design' => true, 'theme' => $theme_row)),
+                        '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        ' . $output_edit_file_button . '
+                                        <button type="submit" name="delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('design file')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+                    ) . '
                 </form>
             </div>
         </div>
@@ -314,75 +309,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     }
     else
     {
-        // A blank name would become 'file' in prepare_file_name() and break
-        // every link to the stored file.
-        if ($name_posted === '') {
-            output_error(lang('Please enter a name.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        // The name is required, not one the server would run, not
+        // ".htaccess" and free (pg_design_file_form_refusal()); the file is
+        // renamed on the disk before the record takes the new name.
+        $refusal = pg_design_file_form_refusal($name_posted, $stored_name, $id);
+
+        if ($refusal === '') {
+            $refusal = pg_design_file_form_save($id, $stored_name, $name, $_POST, (int) $user['id']);
         }
 
-        // A new name the server would run (.php, .htaccess, ...) is refused
-        // as an upload of it is, before prepare_file_name() quietly turns
-        // its dot into an underscore and breaks every link to the file.
-        if (($name_posted !== $stored_name) && pg_upload_name_blocked($name_posted)) {
-            output_error(h(pg_upload_blocked_message($name_posted)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        if ($refusal !== '') {
+            output_error(h($refusal) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-
-        // if file name is invalid, output error
-        if ($name == '.htaccess') {
-            output_error(lang('File name is invalid') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        if (check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file')) == false) {
-            output_error( lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)) )) . '  <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        // A name without a dot has no extension, so no type.
-        $file_extension = pg_file_name_extension($name);
-
-        $sql_theme = "";
-
-        // If this is a CSS file and this is not a system theme,
-        // then update theme property.
-        if (
-            (mb_strtolower($file_extension) == 'css')
-            && (db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . escape($_POST['id'] ?? '') . "'") == 0)
-        ) {
-            $sql_theme = "theme = '" . escape($_POST['theme'] ?? '') . "',";
-        }
-        
-        // Rename the file first when its name changed and it is on the disk
-        // (a file recorded here but missing from the disk has nothing to
-        // rename). A failed rename stops the save, so the record never takes
-        // a name the disk does not have.
-        if (
-            ($name !== $stored_name)
-            && is_file(FILE_DIRECTORY_PATH . '/' . $stored_name)
-            && !@rename(FILE_DIRECTORY_PATH . '/' . $stored_name, FILE_DIRECTORY_PATH . '/' . $name)
-        ) {
-            output_error(lang('The file could not be renamed on the file system. Check write permission for the file directory.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        // update file
-        $audit_before = pg_audit_fetch('files', (int) $id);
-        $query =
-            "UPDATE files 
-            SET 
-                name = '" . escape($name) . "',
-                folder = '" . escape($_POST['folder'] ?? '') . "', 
-                description = '" . escape($_POST['description'] ?? '') . "',
-                type = '" . escape($file_extension) . "',
-                design = '" . escape($_POST['design'] ?? '') . "',
-                $sql_theme
-                timestamp = UNIX_TIMESTAMP(), 
-                user = '" . $user['id'] . "' 
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        
-        $result=mysqli_query(db::$con, $query) or output_error('Query failed');
-        pg_audit_record('update', 'files', (int) $id, $audit_before);
-        
-
-
-        log_activity(lang(array('string'=>'design file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
 
         $notice = lang('The design file was edited successfully.');
 

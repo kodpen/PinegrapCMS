@@ -39,7 +39,7 @@ function pg_dashboard_v2_row($user_id)
         return null;
     }
 
-    $result = @mysqli_query(db::$con, "SELECT * FROM dashboard_layout WHERE user_id = '" . $user_id . "' AND role = 0");
+    $result = db_q("SELECT * FROM dashboard_layout WHERE user_id = ? AND role = 0", array((string) $user_id));
 
     if (!$result) {
         return null;
@@ -82,10 +82,11 @@ function pg_dashboard_v2_set_enabled($user_id, $on)
     $enabled = $on ? 1 : 0;
     $now = time();
 
-    return (bool) @mysqli_query(db::$con,
+    return (bool) db_q(
         "INSERT INTO dashboard_layout (user_id, role, enabled, updated_at, updated_by)
-        VALUES ('" . $user_id . "', 0, '" . $enabled . "', '" . $now . "', '" . $user_id . "')
-        ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)");
+        VALUES (?, 0, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE enabled = VALUES(enabled), updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)",
+        array((string) $user_id, (string) $enabled, (string) $now, (string) $user_id));
 }
 
 /**
@@ -311,7 +312,7 @@ function pg_dashboard_v2_look_clean($look)
  */
 function pg_dashboard_v2_role_locked($role)
 {
-    $result = @mysqli_query(db::$con, "SELECT locked FROM dashboard_layout WHERE user_id = 0 AND role IN ('" . (int) $role . "', 9) AND locked = 1 LIMIT 1");
+    $result = db_q("SELECT locked FROM dashboard_layout WHERE user_id = 0 AND role IN (?, 9) AND locked = 1 LIMIT 1", array((string) (int) $role));
 
     return $result && (mysqli_num_rows($result) > 0);
 }
@@ -335,10 +336,11 @@ function pg_dashboard_v2_layout_write($user_id, $layout, $look = null)
 
     $look_sql = ($look === null) ? '' : ", look = VALUES(look)";
 
-    return (bool) @mysqli_query(db::$con,
+    return (bool) db_q(
         "INSERT INTO dashboard_layout (user_id, role, layout, look, updated_at, updated_by)
-        VALUES ('" . $user_id . "', 0, '" . escape($layout) . "', '" . escape((string) $look) . "', '" . $now . "', '" . $user_id . "')
-        ON DUPLICATE KEY UPDATE layout = VALUES(layout)" . $look_sql . ", updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)");
+        VALUES (?, 0, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE layout = VALUES(layout)" . $look_sql . ", updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)",
+        array((string) $user_id, (string) $layout, (string) $look, (string) $now, (string) $user_id));
 }
 
 /**
@@ -396,10 +398,11 @@ function pg_dashboard_v2_can_share($role)
  */
 function pg_dashboard_v2_role_default($role)
 {
-    $result = @mysqli_query(db::$con,
+    $result = db_q(
         "SELECT layout, look, locked FROM dashboard_layout
-        WHERE user_id = 0 AND role IN ('" . (int) $role . "', 9)
-        ORDER BY locked DESC, (role = 9) ASC LIMIT 1");
+        WHERE user_id = 0 AND role IN (?, 9)
+        ORDER BY locked DESC, (role = 9) ASC LIMIT 1",
+        array((string) (int) $role));
 
     if (!$result) {
         return null;
@@ -488,10 +491,11 @@ function pg_dashboard_v2_role_default_write($role, $layout, $look, $locked, $use
         return false;
     }
 
-    return (bool) @mysqli_query(db::$con,
+    return (bool) db_q(
         "INSERT INTO dashboard_layout (user_id, role, layout, look, locked, updated_at, updated_by)
-        VALUES (0, '" . (int) $role . "', '" . escape($layout) . "', '" . escape($look) . "', '" . ($locked ? 1 : 0) . "', '" . time() . "', '" . (int) $user_id . "')
-        ON DUPLICATE KEY UPDATE layout = VALUES(layout), look = VALUES(look), locked = VALUES(locked), updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)");
+        VALUES (0, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE layout = VALUES(layout), look = VALUES(look), locked = VALUES(locked), updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)",
+        array((string) (int) $role, (string) $layout, (string) $look, $locked ? '1' : '0', (string) time(), (string) (int) $user_id));
 }
 
 /**
@@ -507,8 +511,7 @@ function pg_dashboard_v2_role_default_remove($role)
         return false;
     }
 
-    return (bool) @mysqli_query(db::$con,
-        "DELETE FROM dashboard_layout WHERE user_id = 0 AND role = '" . (int) $role . "'");
+    return (bool) db_q("DELETE FROM dashboard_layout WHERE user_id = 0 AND role = ?", array((string) (int) $role));
 }
 
 /**

@@ -120,6 +120,16 @@ $already_complete = ($status == 'complete');
 // the flow it had.
 $retry_ready = pg_email_retry_ready();
 
+// The campaign job sends the same recipients: with the retry columns this
+// window claims each batch as the job does and skips what a job run holds,
+// so an overlapping run and this window never both deliver to one recipient.
+// A claim left by a closed or crashed window is freed after fifteen minutes.
+$claim_token = null;
+
+if ($retry_ready && !$already_complete) {
+    db(pg_email_campaign_stale_claim_query($id));
+}
+
 // get next 10 e-mail recipients to send e-mail campaign to
 $query =
     "SELECT
@@ -131,6 +141,7 @@ $query =
      WHERE
         (email_campaign_id = ?)
         AND (complete = '0')" . ($retry_ready ? "
+        AND (claimed_at = 0)
         AND (next_attempt_at <= UNIX_TIMESTAMP())" : "") . "
      ORDER BY id
      LIMIT 10";
@@ -143,6 +154,24 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
     // loop through e-mail recipients
     while ($row = mysqli_fetch_assoc($result)) {
         $email_recipients[] = $row;
+    }
+
+    if ($retry_ready) {
+        $claim_token = pg_email_campaign_claim_token();
+        $claim_ids = array_map('intval', array_column($email_recipients, 'id'));
+
+        db(pg_email_campaign_claim_query($claim_ids, $claim_token));
+
+        // Keep only the rows this window won.
+        $won = array_flip(array_map('intval', db_values(
+            "SELECT id FROM email_recipients
+            WHERE
+                (id IN (" . implode(',', $claim_ids) . "))
+                AND (claim_token = '" . e($claim_token) . "')")));
+
+        $email_recipients = array_values(array_filter($email_recipients, function ($email_recipient) use ($won) {
+            return isset($won[(int) $email_recipient['id']]);
+        }));
     }
     
     foreach ($email_recipients as $email_recipient) {
@@ -184,7 +213,7 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
 
         // An address that bounced or complained gets nothing, whatever the
         // purpose (includes/fn/mail_bounces.php); the finish counts it.
-        if (pg_email_campaign_skip_suppressed($email_recipient['id'], $email_recipient['email_address'], $retry_ready)) {
+        if (pg_email_campaign_skip_suppressed($email_recipient['id'], $email_recipient['email_address'], $retry_ready, $claim_token)) {
             continue;
         }
 
@@ -426,7 +455,7 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
             $properties['notify_sender'] = (((int) $email_recipient['attempts'] + 1) >= pg_mail_max_attempts());
 
             if (!email($properties)) {
-                pg_email_campaign_record_failure($email_recipient['id'], $email_recipient['email_address'], $email_recipient['attempts'], null, $_SESSION['sessionusername']);
+                pg_email_campaign_record_failure($email_recipient['id'], $email_recipient['email_address'], $email_recipient['attempts'], $claim_token, $_SESSION['sessionusername']);
                 continue;
             }
 
@@ -434,14 +463,22 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
             email($properties);
         }
 
-        // mark e-mail recipient as complete and set reference code
+        // mark e-mail recipient as complete and set reference code, and
+        // release the claim
         $query = 
             "UPDATE email_recipients
             SET
                 complete = '1',
-                reference_code = ?
+                reference_code = ?" . ($retry_ready ? ",
+                claimed_at = 0,
+                claim_token = ''" : "") . "
             WHERE id = ?";
         $result = db_q($query, array((string) $email_recipient['reference_code'], (string) $email_recipient['id'])) or output_error('Query failed.');
+    }
+
+    // Whatever this batch claimed and did not finish goes straight back.
+    if ($claim_token !== null) {
+        db("UPDATE email_recipients SET claimed_at = 0, claim_token = '' WHERE (email_campaign_id = '" . $id . "') AND (claim_token = '" . e($claim_token) . "')");
     }
     
     // get total number of recipients
@@ -488,50 +525,48 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
 
 
     <main id="content" class="container-fluid">
+        <!-- Edit screen layout of product_builder.php: the progress in the form column, the campaign in the sticky status column, the buttons in the sticky save bar. -->
         <div class="row">
-            <div class="col-12">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card mb-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('Information') . '
-                    </div>
-                    <div class="card-body">
-                        <h1>' . h($subject_template) . '</h1>
-                        <p>' . lang('From Name') . ': ' . h($from_name) . '</p>
-                        <p>' . lang('From E-mail Address') . ': ' . h($from_email_address) . '</p>
-                        <p>' . lang('Reply to E-mail Address') . ': ' . h($reply_email_address) . '</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-12" id="campaign_sending">
-                <h3 id="campaign_send_heading">' . lang('Sending Campaign Now') . '...</h3>
-                <p>' . lang('Sending the e-mail message to each subscriber now.') . '</p>
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Progress') . '</h2>
+                    <div class="card-body pt-0">
+                        <div id="campaign_sending">
+                            <h3 id="campaign_send_heading" class="h5">' . lang('Sending Campaign Now') . '...</h3>
+                            <p>' . lang('Sending the e-mail message to each subscriber now.') . '</p>
 
-                <div class="d-flex align-items-center gap-3">
-                    <div class="progress flex-grow-1">
-                        <div id="campaign_send_bar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-labelledby="campaign_send_heading" aria-valuenow="' . $percent_complete . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $percent_complete . '%"></div>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="progress flex-grow-1">
+                                    <div id="campaign_send_bar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-labelledby="campaign_send_heading" aria-valuenow="' . $percent_complete . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $percent_complete . '%"></div>
+                                </div>
+                                <span id="campaign_send_percent" class="fw-bold" aria-hidden="true">' . lang(array('string' => '{var:1}%', 'vars' => array($percent_complete))) . '</span>
+                            </div>
+                            <p id="campaign_send_count" class="h5 my-5">(' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ')</p>
+                            <div class="alert theme-danger mb-0"><p>' . lang('If you close this window before sending ends, sending stops; Send Campaign resumes it where it stopped.') . '</p></div>
+                        </div>
+                        <div id="campaign_sent" hidden>
+                            <h3 id="campaign_sent_heading" class="h5">' . lang('Campaign Sent') . '.</h3>
+                            <div id="campaign_sent_alert" class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p><p id="campaign_sent_problem" class="mb-0" hidden></p><p id="campaign_sent_smtp" class="mb-0" hidden><a href="#" target="_blank" rel="noopener">' . lang('SMTP Settings') . '</a></p></div>
+                        </div>
+                        <div>
+                            <p id="campaign_send_status" role="status" class="visually-hidden"></p>
+                            <div id="campaign_send_error" class="alert theme-danger" role="alert" hidden><p></p></div>
+                        </div>
                     </div>
-                    <span id="campaign_send_percent" class="fw-bold" aria-hidden="true">' . lang(array('string' => '{var:1}%', 'vars' => array($percent_complete))) . '</span>
                 </div>
-                <h3 id="campaign_send_count">(' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ')</h3>
-                <div class="alert theme-danger"><p>' . lang('If you close this window before sending ends, sending stops; Send Campaign resumes it where it stopped.') . '</p></div>
             </div>
-            <div class="col-12" id="campaign_sent" hidden>
-                <h3 id="campaign_sent_heading">' . lang('Campaign Sent') . '.</h3>
-                <div id="campaign_sent_alert" class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p><p id="campaign_sent_problem" class="mb-0" hidden></p><p id="campaign_sent_smtp" class="mb-0" hidden><a href="#" target="_blank" rel="noopener">' . lang('SMTP Settings') . '</a></p></div>
-            </div>
-            <div class="col-12">
-                <p id="campaign_send_status" role="status" class="visually-hidden"></p>
-                <div id="campaign_send_error" class="alert theme-danger" role="alert" hidden><p></p></div>
+            ' . send_email_campaign_information_html($subject_template, $from_name, $from_email_address, $reply_email_address) . '
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
+                            <button id="campaign_send_stop" type="button" name="submit_save" onclick="pgSendClose(false)" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Stop & Close') ) . '</button>
+                            <button id="campaign_send_close" type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" hidden><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
+                        </div>
+                    </div>
+                </nav>
             </div>
         </div>
-        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-            <div class="container">
-                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button id="campaign_send_stop" type="button" name="submit_save" onclick="pgSendClose(false)" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Stop & Close') ) . '</button>
-                    <button id="campaign_send_close" type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" hidden><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
-                </div>
-            </div>
-        </nav>
     </main>
     ' . send_email_campaign_close_script($id) . '
     <script>
@@ -661,12 +696,15 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
 
     // Recipients waiting for another attempt keep the campaign open: the
     // job, or the next Send now, tries them again.
+    $became_complete = false;
+
     if ($summary['complete']) {
         $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
         $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+        $became_complete = (mysqli_affected_rows(db::$con) === 1);
 
         // Announced once, by the run that finished it.
-        if (mysqli_affected_rows(db::$con) === 1) {
+        if ($became_complete) {
             pg_announce('campaign.sent', pg_campaign_sent_event('email', $id, (string) db_value("SELECT type FROM email_campaigns WHERE id = '" . (int) $id . "'")));
         }
     }
@@ -687,8 +725,10 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
         log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was delivered to {var:2} of {var:3} recipients; {var:4} could not be delivered','vars'=>array($subject_template . $log_page, pg_format_number($number_of_delivered_email_recipients, 0), pg_format_number($number_of_email_recipients, 0), pg_format_number($number_of_failed_email_recipients + $number_of_waiting_email_recipients, 0)))), $_SESSION['sessionusername']);
     }
 
-    // If this is an automatic campaign, then check if auto campaigns need to be created.
-    if (($type == 'automatic') && $summary['complete']) {
+    // If this is an automatic campaign, then check if auto campaigns need to
+    // be created: only by the run that finished it, so a job run that
+    // finished it at the same time does not see the follow-ups queued twice.
+    if (($type == 'automatic') && $became_complete) {
         // Get contact id from the campaign that was just sent so it can be used for new auto campaigns if necessary.
         $contact_id = db_value("SELECT contact_id FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'");
 
@@ -731,32 +771,27 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
     </nav>
 
     <main id="content" class="container-fluid">
+        <!-- Edit screen layout of product_builder.php: the result in the form column, the campaign in the sticky status column, Close in the sticky save bar. -->
         <div class="row">
-            <div class="col-12">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
                 <div class="card mb-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('Information') . '
-                    </div>
-                    <div class="card-body">
-                        <h1>' . h($subject_template) . '</h1>
-                        <p>' . lang('From Name') . ': ' . h($from_name) . '</p>
-                        <p>' . lang('From E-mail Address') . ': ' . h($from_email_address) . '</p>
-                        <p>' . lang('Reply to E-mail Address') . ': ' . h($reply_email_address) . '</p>
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($summary['heading']) . '</h2>
+                    <div class="card-body pt-0">
+                        <div class="alert ' . ($summary['all_sent'] ? 'theme-success' : 'theme-warning') . ' mb-0"><p>' . h($summary['message']) . '</p>' . send_email_campaign_problem_html($problem_line, $smtp_link) . '</div>
                     </div>
                 </div>
             </div>
-            <div class="col-12">
-                <h3>' . h($summary['heading']) . '.</h3>
-                <div class="alert ' . ($summary['all_sent'] ? 'theme-success' : 'theme-warning') . '"><p>' . h($summary['message']) . '</p>' . send_email_campaign_problem_html($problem_line, $smtp_link) . '</div>
+            ' . send_email_campaign_information_html($subject_template, $from_name, $from_email_address, $reply_email_address) . '
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
+                            <button type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
+                        </div>
+                    </div>
+                </nav>
             </div>
         </div>
-        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-            <div class="container">
-                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" value="Close" onclick="pgSendClose(true)" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="bi bi-x-lg me-3" aria-hidden="true"></span>' . lang(array('string'=>'Close') ) . '</button>
-                </div>
-            </div>
-        </nav>
     </main>' . send_email_campaign_close_script($id) . output_footer_secure();
 }
 
@@ -788,6 +823,39 @@ function output_error_in_popup($error_message)
         </nav>
     </main>' . send_email_campaign_close_script(0) . output_footer_secure();
     exit();
+}
+
+// The campaign the window sends, in the status column: subject, sender and
+// reply address, read-only.
+function send_email_campaign_information_html($subject, $from_name, $from_email_address, $reply_email_address)
+{
+    $rows = array(
+        array(lang('Subject'), $subject),
+        array(lang('From Name'), $from_name),
+        array(lang('From E-mail Address'), $from_email_address),
+        array(lang('Reply to E-mail Address'), $reply_email_address),
+    );
+    $html = '';
+    foreach ($rows as $i => $row) {
+        $html .= '
+                            <div class="d-flex justify-content-between gap-3 py-2' . ($i < count($rows) - 1 ? ' border-bottom' : '') . '">
+                                <dt class="fw-normal">' . h($row[0]) . '</dt>
+                                <dd class="mb-0 fw-bold text-end text-break">' . h((string) $row[1]) . '</dd>
+                            </div>';
+    }
+
+    return '<div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed header of the window covers its top. -->
+                <div class="position-sticky" style="top:3.3rem;">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Information') . '</h2>
+                        <div class="card-body pt-0">
+                            <dl class="mb-0">' . $html . '
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>';
 }
 
 // The window's Close and Stop & Close. Opened as a pop-up it reloads the

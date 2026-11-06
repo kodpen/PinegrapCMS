@@ -13,6 +13,7 @@ module: image_editor
 
 ## What does the drag do?
 - The panel shows the regions as dashed outlines: those of the selection when two or more are selected, else of every visible area (the top 12). A drag fills the regions it passes; on release they merge into one path in the style of the first, or with Alt or the panel's Remove switch (for touch) they are removed. Every layer covering a touched region is replaced by its untouched regions, as separate paths.
+- A click (one region touched, merging) unites the shapes stacked over that region whole, in the top one's style (`M.builderStack()`); on a region of one shape it does nothing; Alt-click removes the region. Before #6613 a click merged just that region and cut the shapes into it and the rest, which read as the merge tool cutting them. With fewer than two selected the panel offers Select all shapes.
 
 ## How are the booleans built?
 - `layerRings()`: the outline (`shapeKnots()`, or the path's knots and `subs`) mapped into the rotated space and flattened, 0.25 px from the curve, points on a 1/1024 px grid.

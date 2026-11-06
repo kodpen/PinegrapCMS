@@ -10,7 +10,7 @@ module: commerce_list
 - The first column is the record's link (`pg_commerce_list_open_link()`, `data-pg-open`): the order number (billing name, else `#id`, for a cart), the gift card code, the key code, the method's name. The old Edit buttons are gone. Money, date and flag cells carry `data-pg-sort-value` (minor units, Unix time, 0/1).
 
 ## How does quick edit work on them?
-- Each passes `edit` => its screen and its `pg_*_edit_columns()`; cells get `pg_list_edit_cell_attributes()` under the same rules as before (a gift card's notes on several lines, a variable base rate and an order status outside complete/exported stay text).
+- Each passes `edit` => its screen and its `pg_*_edit_columns()`; cells get `pg_list_edit_cell_attributes()` under the same rules as before (a gift card's notes on several lines or store credit, a variable base rate and an order status outside complete/exported stay text).
 - The answers are unchanged; their `cells` (`last_modified`, a key code's `code`) find the cells by `data-pg-col`. The key code answer's `code` replaces the whole cell, so `view_key_codes.php` wraps it in the row's link again before replying.
 
 ## How do the orders bulk actions get the selection?

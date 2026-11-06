@@ -18,7 +18,7 @@ module: product_questions
 - It claims `pg_comments_widget_claim($page_id, 'questions')`, apart from the comments claim, so a reviews widget and a questions widget sit on one product page; only the comments claim stands the classic block down.
 
 ## Where does staff answer?
-- `edit_comment.php` on a question: an Answer box (`pg_product_question_answer_save()`: adds a published answer, changes it, or removes it when emptied); no store reply field on a question; deleting a question deletes its answers.
+- `edit_comment.php` on a question: an Answer box (`pg_product_question_answer_save()`: adds a published answer, changes it, or removes it when emptied); no store reply field on a question; deleting a question deletes its answers and their notifications (`pg_product_question_delete_answers()`), on the screen and through the API's `DELETE /comments/{id}` (#7054; before it the API left the answer, which then showed alone in the recent comments list and the panel).
 - `view_comments.php`: filter "Product questions" / "Unanswered questions (n)" (`pg_product_question_filter_sql()`, count `pg_product_questions_unanswered_count()` over the reader's folders), a badge per row (`pg_product_question_badge()`).
 - The bell's `new_comment` row of a question reads "A product question is waiting for an answer." and opens the comment's screen.
 

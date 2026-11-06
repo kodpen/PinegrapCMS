@@ -342,30 +342,63 @@ function waf_client_ip_resolve()
         }
     }
 
-    // X-Forwarded-For is a chain: client, proxy1, proxy2. Walk it from the
-    // right and stop at the first address that is NOT one of our own
-    // trusted proxies. Anything further left was supplied by the client and
-    // cannot be believed.
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $chain = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+        $candidate = waf_forwarded_for_client((string) $_SERVER['HTTP_X_FORWARDED_FOR'], $trusted);
 
-        for ($i = count($chain) - 1; $i >= 0; $i--) {
-            $candidate = $chain[$i];
-
-            if (!waf_is_ip($candidate)) {
-                continue;
-            }
-
-            if (waf_ip_in_any($candidate, $trusted)) {
-                continue;
-            }
-
+        if ($candidate !== '') {
             $ip = $candidate;
-            return $ip;
         }
     }
 
     return $ip;
+}
+
+/**
+ * The visitor an X-Forwarded-For chain names, or '' when it names none that
+ * can be believed.
+ *
+ * The chain is client, proxy1, proxy2. It is walked from the right, past our
+ * own trusted proxies, to the first entry that is not one: that entry was
+ * appended by a proxy we trust, anything further left was supplied by the
+ * client. An entry written with a port (1.2.3.4:5678, [2001:db8::1]:443, as
+ * Azure Application Gateway and IIS ARR append it) is read without the port.
+ * An entry that is still no address ("unknown", a malformed one) ends the
+ * walk: skipping it took the next entry to the left, the client's own, so a
+ * proxy that appends the visitor with a port let any visitor name any
+ * address, past a ban or into the allow list.
+ *
+ * @param string $header the X-Forwarded-For value
+ * @param array $trusted the trusted proxy ranges (waf_proxy_ranges())
+ * @return string
+ */
+function waf_forwarded_for_client($header, $trusted)
+{
+    $chain = explode(',', (string) $header);
+
+    for ($i = count($chain) - 1; $i >= 0; $i--) {
+        $candidate = trim($chain[$i]);
+
+        if (!waf_is_ip($candidate)) {
+            if ((preg_match('/^\[([0-9A-Fa-f:.]+)\](?::(\d{1,5}))?$/', $candidate, $m)
+                    || preg_match('/^(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$/', $candidate, $m))
+                && (!isset($m[2]) || ((int) $m[2] <= 65535))
+            ) {
+                $candidate = $m[1];
+            }
+
+            if (!waf_is_ip($candidate)) {
+                return '';
+            }
+        }
+
+        if ($trusted && waf_ip_in_any($candidate, $trusted)) {
+            continue;
+        }
+
+        return $candidate;
+    }
+
+    return '';
 }
 
 /**
@@ -1512,7 +1545,8 @@ function waf_ai_ranges_row($provider)
 }
 
 /**
- * Verify a range-published bot claim against the stored prefix list.
+ * Verify a range-published bot claim against the stored prefix list and
+ * the token's fixed ranges (waf_ai_fixed_ranges()).
  *
  * Differs from the rDNS path in what absence of proof means. A missing PTR
  * record proves nothing, so rDNS fails open on it. A published range list is
@@ -1528,15 +1562,37 @@ function waf_ai_ranges_row($provider)
  * and skipping the cache means a refresh takes effect on the very next
  * request instead of up to seven days later.
  */
-function waf_verify_bot_ranges($ip, $provider)
+function waf_verify_bot_ranges($ip, $provider, $token = '')
+{
+    return waf_ranges_verdict($ip, waf_ai_ranges_row($provider), waf_ai_fixed_ranges($token), time());
+}
+
+/**
+ * The verdict of waf_verify_bot_ranges() from its inputs.
+ *
+ * The fixed prefixes are documented by the operator rather than fetched, so
+ * a match there proves the address with or without a stored list, and they
+ * never age; a miss is judged by the stored list alone.
+ *
+ * @param string     $ip    visitor address
+ * @param array|bool $data  waf_ai_ranges_row() answer: fetched_at, prefixes; false when none
+ * @param array      $fixed waf_ai_fixed_ranges() prefixes
+ * @param int        $now   current Unix time
+ * @return string 'verified', 'spoofed' or 'unknown'
+ */
+function waf_ranges_verdict($ip, $data, $fixed, $now)
 {
     if (!waf_is_ip($ip)) {
         return 'unknown';
     }
 
-    $data = waf_ai_ranges_row($provider);
+    foreach ($fixed as $cidr) {
+        if (waf_ip_in_cidr($ip, (string) $cidr)) {
+            return 'verified';
+        }
+    }
 
-    if ($data === false) {
+    if (!is_array($data) || empty($data['prefixes'])) {
         return 'unknown';
     }
 
@@ -1546,11 +1602,33 @@ function waf_verify_bot_ranges($ip, $provider)
         }
     }
 
-    if ($data['fetched_at'] < time() - 2592000) {
+    if ((int) $data['fetched_at'] < $now - 2592000) {
         return 'unknown';
     }
 
     return 'spoofed';
+}
+
+/**
+ * Egress ranges an AI operator documents but does not publish as JSON,
+ * checked in addition to the token's waf_bot_ranges list.
+ *
+ * Claude-User is also sent by the fetch tool of claude.ai, of Claude Code in
+ * the cloud and of the API, which leave from Anthropic's API egress
+ * (https://platform.claude.com/docs/en/api/ip-addresses), not from the
+ * crawler addresses of claude.com/crawling/bots.json. The crawlers
+ * (Claude-SearchBot) never use these ranges, so only Claude-User gets them.
+ *
+ * @param string $token waf_ai_bots() token
+ * @return array CIDR prefixes
+ */
+function waf_ai_fixed_ranges($token)
+{
+    if ($token === 'claude-user') {
+        return array('160.79.104.0/21', '153.61.208.0/20');
+    }
+
+    return array();
 }
 
 /**
@@ -1729,7 +1807,7 @@ function waf_verify_bot($ip, $token)
     $ai = waf_ai_bots();
 
     if (isset($ai[$token])) {
-        return waf_verify_bot_ranges($ip, $ai[$token]['ranges']);
+        return waf_verify_bot_ranges($ip, $ai[$token]['ranges'], $token);
     }
 
     $bots = waf_good_bots();
@@ -2898,12 +2976,12 @@ function waf_csp_policy()
         $policy = trim(preg_replace('/[\r\n]+/', ' ', $custom));
     } else {
         $policy = "default-src 'self' blob:; "
-                . "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://code.jquery.com https://cdn.datatables.net https://codemirror.net https://static.cloudflareinsights.com https://*.search.ai.cloudflare.com; "
-                . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com https://fonts.googleapis.com https://cdn.datatables.net https://codemirror.net; "
+                . "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://code.jquery.com https://codemirror.net https://static.cloudflareinsights.com https://*.search.ai.cloudflare.com; "
+                . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com https://fonts.googleapis.com https://codemirror.net; "
                 . "img-src 'self' data: blob: https:; "
                 . "font-src 'self' data: https:; "
                 . "media-src 'self' data: blob: https:; "
-                . "connect-src 'self' https://cdn.jsdelivr.net https://cdn.datatables.net https://cloudflareinsights.com; "
+                . "connect-src 'self' https://cdn.jsdelivr.net https://cloudflareinsights.com; "
                 . "object-src 'none'; "
                 . "base-uri 'self'";
 
@@ -3627,7 +3705,7 @@ function waf_shield_drain()
                  'iplist',
                  10,
                  '',
-                 '" . waf_escape(substr($group['path'], 0, 500)) . "',
+                 '" . waf_escape(waf_log_text($group['path'], 500)) . "',
                  'REMOTE_ADDR',
                  '" . waf_escape($group['ip']) . "',
                  '',
@@ -3757,6 +3835,61 @@ function waf_escape($value)
 }
 
 /**
+ * A request value as the firewall log stores it: at most $bytes bytes, cut on
+ * a character boundary, every byte that is not part of a valid UTF-8
+ * character written as '?'.
+ *
+ * waf_log is utf8mb4, and under a strict sql_mode (the MySQL and MariaDB
+ * default) one invalid byte refuses the whole INSERT, so the event was lost:
+ * a parameter PHP had already decoded (%bf%27, a classic SQL injection
+ * probe), a raw high byte in the path, or a non-ASCII user agent cut in the
+ * middle of a character by substr().
+ *
+ * @param mixed $value
+ * @param int   $bytes
+ * @return string
+ */
+function waf_log_text($value, $bytes)
+{
+    $value = substr((string) $value, 0, max(0, (int) $bytes));
+
+    if (($value === '') || ($value === false) || preg_match('//u', $value)) {
+        return (string) $value;
+    }
+
+    // A character the cut split at the end is dropped, not replaced: the
+    // last lead byte among the final three goes with its tail when the
+    // character it starts is longer than what is left of it.
+    $length = strlen($value);
+
+    for ($back = 1; ($back <= 3) && ($back <= $length); $back++) {
+        $byte = ord($value[$length - $back]);
+
+        if (($byte & 0xC0) === 0x80) {
+            continue;
+        }
+
+        $need = ($byte >= 0xF0) ? 4 : (($byte >= 0xE0) ? 3 : (($byte >= 0xC0) ? 2 : 1));
+
+        if ($need > $back) {
+            $value = substr($value, 0, $length - $back);
+        }
+
+        break;
+    }
+
+    $clean = preg_replace_callback(
+        '/((?:[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2})+)|./s',
+        function ($match) {
+            return (isset($match[1]) && ($match[1] !== '')) ? $match[1] : '?';
+        },
+        (string) $value
+    );
+
+    return is_string($clean) ? $clean : '';
+}
+
+/**
  * Record an event.
  *
  * 'action' says what the firewall DID, which is not the same as what it
@@ -3825,11 +3958,11 @@ function waf_log_event($action, $rule_id, $category, $score, $target, $matched)
              '" . waf_escape(substr($rule_id, 0, 40)) . "',
              '" . waf_escape(substr($category, 0, 32)) . "',
              " . (int) $score . ",
-             '" . waf_escape(substr($method, 0, 8)) . "',
-             '" . waf_escape(substr($url, 0, 500)) . "',
-             '" . waf_escape(substr($target, 0, 64)) . "',
-             '" . waf_escape(substr($matched, 0, 250)) . "',
-             '" . waf_escape(substr($agent, 0, 250)) . "',
+             '" . waf_escape(waf_log_text($method, 8)) . "',
+             '" . waf_escape(waf_log_text($url, 500)) . "',
+             '" . waf_escape(waf_log_text($target, 64)) . "',
+             '" . waf_escape(waf_log_text($matched, 250)) . "',
+             '" . waf_escape(waf_log_text($agent, 250)) . "',
              " . $user_id . ",
              '" . waf_escape(waf_reference()) . "',
              " . $now . ",
@@ -4413,7 +4546,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php');
+        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php');
 
         // ShipWorks is spared the counters sized for a sign-in screen only
         // while the sign-in throttle counts its password; with the throttle
@@ -4947,46 +5080,73 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
             return;
         }
 
-        $verdict = waf_verify_bot($ip, $bot['token']);
+        // Claude Code on a person's own computer names itself Claude-User
+        // but fetches from that person's address, which no published range
+        // holds: testing it against the ranges would call every developer
+        // reading the site a forger and ban them. The claim is neither
+        // verified nor forged. With the AI assistants allowed it passes as
+        // a visitor would, without the verified crawler's rate and country
+        // exemptions; otherwise (the name hand-typed into Allowed Bots) it
+        // falls to the unknown-bot policy, which registers no offence.
+        if (waf_bot_claim_unverifiable($bot['token'], $agent)) {
+            waf_ai_fetch_state('bot', waf_ai_fetch_bot($bot['class'], $bot['token'], ''));
 
-        // Counted when the request ends; waf_deny() cancels it for a refused
-        // request, the forged claim below included.
-        waf_ai_fetch_state('bot', waf_ai_fetch_bot($bot['class'], $bot['token'], $verdict));
+            $good = waf_good_bots();
 
-        // Only a proven crawler is let past the country restriction: an
-        // unverifiable name is a claim anyone can type.
-        if ($verdict === 'verified') {
-            waf_bot_verified(true);
-        }
-
-        // Only a positive rDNS mismatch is acted on. No PTR record, a DNS
-        // timeout or an unverifiable operator all fail open, so a resolver
-        // outage cannot start returning 403 to Googlebot.
-        if ($verdict === 'spoofed') {
-            waf_log_event($blocking ? 'block' : 'would-block', 'bot-spoof', 'bot', 10, 'USER_AGENT', $bot['name'] . ' (forged)');
-            waf_register_offence($ip, 10, $blocking);
-
-            if ($blocking) {
-                waf_deny(403, waf_reference());
+            if (isset($good[$bot['token']])) {
+                return;
             }
 
-            return;
-        }
-
-        // Range-verified operators are trusted only on a positive match.
-        // For every other good bot 'unknown' fails open, because an absent
-        // PTR record proves nothing. For these five the published list is
-        // the sole basis for trusting the name at all - so while no list is
-        // stored yet (fresh upgrade, fetch failing) the entry must not hand
-        // out crawler privileges on UA text alone. The request falls through
-        // to the unknown-bot policy below, which is exactly where this user
-        // agent landed before 2026.4.4.
-        $ai = waf_ai_bots();
-
-        if ($verdict !== 'verified' && isset($ai[$bot['token']])) {
             $bot['class'] = 'unverified';
         } else {
-            return;
+            $verdict = waf_verify_bot($ip, $bot['token']);
+
+            // Counted when the request ends; waf_deny() cancels it for a refused
+            // request, the forged claim below included.
+            waf_ai_fetch_state('bot', waf_ai_fetch_bot($bot['class'], $bot['token'], $verdict));
+
+            // Only a proven crawler is let past the country restriction: an
+            // unverifiable name is a claim anyone can type.
+            if ($verdict === 'verified') {
+                waf_bot_verified(true);
+            }
+
+            // Only a positive rDNS mismatch is acted on. No PTR record, a DNS
+            // timeout or an unverifiable operator all fail open, so a resolver
+            // outage cannot start returning 403 to Googlebot.
+            // robots.txt, ACME challenges, health.php and the OAuth client
+            // metadata skip the bot policy (see below), a forged name
+            // included: refusing robots.txt to a crawler achieves nothing.
+            if ($verdict === 'spoofed' && waf_request_skips_bot_policy()) {
+                return;
+            }
+
+            if ($verdict === 'spoofed') {
+                waf_log_event($blocking ? 'block' : 'would-block', 'bot-spoof', 'bot', 10, 'USER_AGENT', $bot['name'] . ' (forged)');
+                waf_register_offence($ip, 10, $blocking);
+
+                if ($blocking) {
+                    waf_deny(403, waf_reference());
+                }
+
+                return;
+            }
+
+            // Range-verified operators are trusted only on a positive match.
+            // For every other good bot 'unknown' fails open, because an absent
+            // PTR record proves nothing. For these five the published list is
+            // the sole basis for trusting the name at all - so while no list is
+            // stored yet (fresh upgrade, fetch failing) the entry must not hand
+            // out crawler privileges on UA text alone. The request falls through
+            // to the unknown-bot policy below, which is exactly where this user
+            // agent landed before 2026.4.4.
+            $ai = waf_ai_bots();
+
+            if ($verdict !== 'verified' && isset($ai[$bot['token']])) {
+                $bot['class'] = 'unverified';
+            } else {
+                return;
+            }
         }
     }
 
@@ -4997,7 +5157,7 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     // (waf_is_health_request()). The site's OAuth client metadata too: a
     // sign-in server refused here cannot register the site
     // (waf_is_client_metadata_request()).
-    if (waf_path_is_always_served() || waf_is_health_request() || waf_is_client_metadata_request()) {
+    if (waf_request_skips_bot_policy()) {
         return;
     }
 
@@ -5032,6 +5192,36 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
     if ($blocking) {
         waf_deny(403, waf_reference());
     }
+}
+
+/**
+ * Whether the request is one the bot policy never refuses: robots.txt and
+ * .well-known/ (waf_path_is_always_served()), health.php and the site's
+ * OAuth client metadata.
+ *
+ * @return bool
+ */
+function waf_request_skips_bot_policy()
+{
+    return waf_path_is_always_served() || waf_is_health_request() || waf_is_client_metadata_request();
+}
+
+/**
+ * Whether a good-bot claim cannot be tested against its operator's addresses
+ * and so is never verified nor read as forged.
+ *
+ * Claude Code running on a person's own computer sends
+ * "Claude-User (claude-code/<version>; ...)" from that person's address;
+ * Anthropic's published ranges cannot hold it.
+ *
+ * @param string $token waf_classify_bot() token
+ * @param string $agent the request's user agent
+ * @return bool
+ */
+function waf_bot_claim_unverifiable($token, $agent)
+{
+    return $token === 'claude-user'
+        && strpos(strtolower((string) $agent), 'claude-code/') !== false;
 }
 
 /**
@@ -5387,7 +5577,7 @@ function waf_country_staff_signed_in()
  */
 function waf_country_api_scripts()
 {
-    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php');
+    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php');
 }
 
 function waf_country_request_exempt()

@@ -14,11 +14,11 @@ module: image_editor
 - Designer: `designer/image-editor-tool.md`. Workspace: below.
 
 ## How does the live site's edit button work?
-- In edit mode `get_page_content.php` prints the loader (signed-in editors only: owner answer 4 of `plans/image-editor.md`). The buttons of `add_edit_button_for_images()` (`includes/fn/content.php`) and of the inline editor (`frontend.src.js`, hand-edited `frontend.min.js` twin) carry `data-pg-image-edit`, `data-pg-image-object`, `-object-id`, `-column`.
+- In edit mode `get_page_content.php` prints the loader (signed-in editors only: owner answer 4 of `plans/image-editor.md`). The buttons of `add_edit_button_for_images()` (`includes/fn/content.php`) and of the inline editor (`frontend.src.js`, hand-edited `frontend.min.js` twin) show the still mascot (`ui/brand-logo.md`) and carry `data-pg-image-edit`, `data-pg-image-object`, `-object-id`, `-column`.
 - A replace changes every page using the file. A copy (the user may not write over it) is put into the content by API action `content` `{ object_type, object_id, column, from: name, to: id }`: `pg_image_editor_content_places()` names table, id and column, `pg_image_editor_content_allowed()` keeps the old screen's per-type checks for the user role (3), `update_image_in_content()` rewrites the `<img>`. A converted common region is left alone.
 
 ## How does Workspace save?
 - `save.url` mode posts the save body (doc, overlay, redact, colour) to `workspace_file_save.php?message=<id>&as=replace|send`; `pg_image_editor_render()` draws it from the message's file (first frame, the file's own format) and the result goes to `ws_message_file_replace()` / `ws_message_file_send()` as before. The workspace screen prints the loader; `loadImageEditor()` is `pgImageEditor.load()`. A canvas drawn there (New canvas) sends its PNG instead and opens again with its layers: `image-editor-workspace.md`.
 
 ## What happened to the old editor?
-- Removed in #4609: `assets/lib/image_editor/` (Pintura, 2.3 MB), `assets/js/image_editor_modal.js`, `image_editor_save.php`, `get_image_editor_includes()`; `clean_up.php` lists the three paths. `image_editor_edit.php` only redirects to the file's folder in the File Manager with `#pg-image-edit=<name>`, which the loader opens.
+- Removed in #4609: `assets/lib/image_editor/` (Pintura, 2.3 MB), `assets/js/image_editor_modal.js`, `image_editor_save.php`, `get_image_editor_includes()`; `clean_up.php` lists the three paths, and its button image `icon_image_editor.png` since 2026-11-04. `image_editor_edit.php` only redirects to the file's folder in the File Manager with `#pg-image-edit=<name>`, which the loader opens.

@@ -89,6 +89,50 @@ function test_site_migration_design_entry()
 	pg_assert_same('Old', pg_migration_design_entry($noname)['name'], 'the template name when the entry has none');
 }
 
+// The install writes every css/js/json asset of the template's lists to
+// FILE_DIRECTORY_PATH under its own name (pg_designer_sync_asset_files()), so
+// a name the source site sends with a folder in it, a leading dot or a
+// refused extension inside it is dropped from the lists before anything is
+// stored.
+function test_site_migration_design_entry_asset_names()
+{
+	$tree = array('type' => 'root', 'children' => array());
+	$css = array(
+		array('id' => 'a', 'type' => 'css', 'name' => 'User Styles', 'content' => 'a{}'),
+		array('id' => 'b', 'type' => 'css', 'name' => 'site.css', 'content' => 'b{}'),
+		array('id' => 'c', 'type' => 'css', 'name' => '../../index.css', 'content' => 'c{}'),
+		array('id' => 'd', 'type' => 'css', 'name' => 'sub\\x.css', 'content' => 'd{}'),
+		array('id' => 'e', 'type' => 'external-css', 'name' => '../cdn.css', 'content' => 'https://cdn.example.com/x.css'),
+	);
+	$js = array(
+		array('id' => 'f', 'type' => 'js', 'name' => 'app.js', 'content' => 'f()'),
+		array('id' => 'g', 'type' => 'js', 'name' => '../../../pinegrap/assets/js/backend.min.js', 'content' => 'g()'),
+		array('id' => 'h', 'type' => 'js', 'name' => 'shell.php.js', 'content' => 'h()'),
+		array('id' => 'i', 'type' => 'json', 'name' => '.hidden.json', 'content' => '{}'),
+		array('id' => 'j', 'type' => 'json', 'name' => 'data.JSON', 'content' => '{}'),
+	);
+	$entry = pg_migration_design_entry(array('template' => array(
+		'name' => 'Shop',
+		'pages' => array(array('key' => 'home', 'tree' => $tree)),
+		'assets' => array('css' => json_encode($css), 'js' => json_encode($js), 'head' => '<meta>'),
+	)));
+	$ids = function ($json) {
+		return array_map(function ($a) { return $a['id']; }, json_decode($json, true));
+	};
+
+	pg_assert_same(array('a', 'b', 'e'), $ids($entry['template']['assets']['css']), 'a css asset named with a path is dropped; an inline one without a file name and an external one stay');
+	pg_assert_same(array('f', 'j'), $ids($entry['template']['assets']['js']), 'a path, a refused extension and a hidden name are dropped');
+	pg_assert_same('<meta>', $entry['template']['assets']['head'], 'the other assets are left as they are');
+
+	// A list that is not JSON is not a list the install writes from.
+	$odd = pg_migration_design_entry(array('template' => array(
+		'pages' => array(array('key' => 'home', 'tree' => $tree)),
+		'assets' => array('css' => 'not json', 'js' => array('x')),
+	)));
+	pg_assert_same('', $odd['template']['assets']['css']);
+	pg_assert_same('', $odd['template']['assets']['js']);
+}
+
 function test_site_migration_rows_carried_by_design()
 {
 	pg_assert_true(pg_migration_page_carried_by_design(array('visual_design' => 1)), 'a design page never comes as an empty classic page');

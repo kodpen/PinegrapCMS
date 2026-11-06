@@ -23,6 +23,7 @@ description: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() opt
 ## What does the screen show?
 - `mail_queue.php?tab=sms`; the tabs show while SMS is set up or rows remain (`pg_sms_queue_shown()`). Tiles queued, sending, sent in 24 h, failed, outcome unknown; every row, paged on the server (`ui/mail-queue-paging.md`), with provider and job id; Retry for queued, failed and uncertain rows not past expiry (uncertain asks first: it may arrive twice); Delete.
 - A queued row past `expires_at` reads Expired in the When column, not On the next run: the run fails it without an attempt (`pg_sms_queue_outcome()` with null). Tiles and badge still count it as queued. Pinned by `test_sms_queue_list_row` (`tests/mail_queue_list_test.php`).
+- Kind labels cover every `pg_sms_kinds()` key (`otp` One-time code, `stock` Back in stock), else the raw key shows; `test_sms_queue_list_kinds_cover_the_layer`.
 - Queue state and the SMS card's warning come from `pg_sms_job_alive()`: the general job alone, finished in the last 15 minutes. The card links the tab.
 
 ## How was it verified?

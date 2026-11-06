@@ -9,7 +9,7 @@ description: Designer and widget images with srcset/sizes, AVIF/WebP <picture> o
 - Sets from `pg_img_responsive($src)`; each renderer writes its own tag.
 - No `<picture>` when the parent styles its direct children (`.row`, `.ratio`: `_pg_parent_styles_children()`, parent stack `_pg_parent_stack()`). In the Image element's own ratio box the `<picture>` is the box child (no display:contents) and the img gets `w-100 h-100`.
 - Not touched: external addresses, SVG/GIF/BMP/TIFF, an animated PNG/WebP, attachments, `erp-` files, an image with its own `srcset` (and its own `sizes` wins).
-- `onerror` also removes `<source>`s and `srcset` before swapping to no-image.svg (both outrank `src`).
+- `onerror` also drops `<source>`s and `srcset` before the no-image swap (`no-image-placeholder.md`).
 
 ## What about widget, carousel and bound images?
 - `pg_img_responsive_html()` adds `srcset`/`sizes` (own format, never a `<picture>`) to every `<img>` of a site file without one: on each system widget's output (`_expand_system_widgets()`, not for e-mail: catalog cards, product photos, cart lines with `^^token^^` src filled in), on each shared component at request time, and on the page body at publish (carousel slides, images in texts and custom HTML). One file query per pass (`pg_img_prefetch()`).

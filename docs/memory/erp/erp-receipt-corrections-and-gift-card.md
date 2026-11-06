@@ -14,10 +14,11 @@ description: ERP receipt cancel, settlement removal/late allocation, FX reversal
 - Cancel = cash + account counter entries (`doc_type='cancel'`, `doc_id` = the cash movement, original `amount_base`, dated today; `erp_receipt_cancel()`).
 - Its allocations go first through `erp_txn_unsettle_all()` (`includes/erp/cash.php`), which the cheque bounce shares; each invoice is worked out again. The stored description says "payment" for money out ("Cancellation of payment #N dated …"), "receipt" for money in; before #4438 (PR #4517) every cancel read "receipt", kept on old rows.
 - Cancelled state is derived from the counter-entry row (`erp_receipt_is_cancelled()`; a subquery in lists).
+- A double cancel (two presses, two tabs, two API calls) is refused under a lock: inside its transaction `erp_receipt_cancel()` locks the receipt's till row and asks for the reversal again with a locking read, before any write. Before this, both requests passed the check made outside the transaction and each posted a reversal pair, moving the till and the account back twice. Test: `tests/erp_receipt_cancel_once_test.php`.
 - Remove a settlement: `erp_settlement_remove()` → `erp_unsettle()`.
 - Late settlement: `erp_settlement_allocate()` (same checks as at receipt time, `amount_base` at the receipt's rate).
 - FIFO is only a suggestion (`erp_settlement_suggest()`); the write happens on the user's save.
 - A foreign-currency invoice leaving `paid` calls `erp_fx_reverse_difference()`; `erp_fx_post_difference()` does not count a reversed original.
-- An invoice left with no settlement gets its `payment_date` reset (except internet sales).
+- An invoice that is no longer `paid` (or a cancelled/draft one left with no settlement) gets its `payment_date` reset, except internet sales, so the next closing receipt dates it again: a cancelled closing receipt left its date on the document, the API and the e-document (bug #6805, `erp_invoice_payment_date_next()`).
 
 Related: docs/memory/erp/erp-invoice-settlement.md

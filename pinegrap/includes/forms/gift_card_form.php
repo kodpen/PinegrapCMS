@@ -92,6 +92,11 @@ function pg_gift_card_form_card($liveform, $mode, $options)
     $output_quantity = '';
 
     if ($add) {
+        // Four digits under the 1,000 limit; without it (limit=false) as
+        // many as pg_gift_card_form_quantity() reads, or the box cuts the
+        // typed number short and fewer cards are made without a word.
+        $quantity_max = (string) ($options['quantity_max'] ?? '');
+
         $output_quantity = '
                                         <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="quantity" class="form-label">' . lang('Quantity') . '</label>
@@ -103,9 +108,9 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                                     'id' => 'quantity',
                                                     'value' => '1',
                                                     'min' => '1',
-                                                    'max' => (string) ($options['quantity_max'] ?? ''),
+                                                    'max' => $quantity_max,
                                                     'class' => 'form-control text-center border-start-0 border-end-0',
-                                                    'maxlength' => '4',
+                                                    'maxlength' => ($quantity_max !== '') ? '4' : '9',
                                                     'inputmode'=>'numeric',
                                                     'data-inputmask-alias'=>'integer',
                                                     'data-inputmask-allowminus'=>'false',
@@ -117,6 +122,8 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                         </div>';
     }
 
+    // The money mask counts its grouping and decimals against maxlength:
+    // 13 holds 42.949.672,95, the column top (PG_GIFT_CARD_AMOUNT_MAX).
     return '
                             <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
@@ -128,7 +135,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                             <label for="' . $field . '" class="form-label">' . $output_label . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . ($options['symbol'] ?? '') . '</span>
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => $field, 'name' => $field, 'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'decimal', 'required'=>'required') + pg_money_mask_attributes()) . '
+                                                ' . $liveform->output_field(array('type' => 'text', 'id' => $field, 'name' => $field, 'class' => 'form-ghost text-end', 'maxlength'=>'13', 'inputmode'=>'decimal', 'required'=>'required') + pg_money_mask_attributes()) . '
                                             </label>
                                             ' . $output_help . '
                                         </div>
@@ -256,4 +263,121 @@ function pg_gift_card_form_quantity($value)
 function pg_gift_card_form_amount_fits($amount)
 {
     return round((float) $amount * 100) <= PG_GIFT_CARD_AMOUNT_MAX;
+}
+
+/**
+ * Why a card cannot be deleted from the gift card screen, or ''. Store credit
+ * (a card bound to a customer, gift_cards.user_id > 0) is voided on the
+ * customer's screen (pg_credit_void()), which keeps the row, its redemption
+ * history and its audit trail; deleting it would lose the credit unrecorded.
+ *
+ * @param array $gift_card  the edit screen's row (credit_user_id)
+ * @return string
+ */
+function pg_gift_card_form_delete_refusal($gift_card)
+{
+    if ((int) ($gift_card['credit_user_id'] ?? 0) > 0) {
+        return lang('Store credit is not deleted: void it on the customer\'s Store credit card.');
+    }
+
+    return '';
+}
+
+/**
+ * Writes a gift card's balance, expiration date and notes: the one save of
+ * the gift card screen (edit_gift_card.php) and of the list's quick edit
+ * (pg_gift_card_quick_update()), stamped with who made it.
+ *
+ * The balance is written only when it differs from balance_was, and then
+ * only over that balance: an order takes its amount off with
+ * balance - amount, so a save must not put a spent amount back. A null
+ * balance_was (a form opened before the field existed) writes it as typed.
+ * With notes_was, the save only lands on those notes: cancelling the order
+ * that bought a card adds a line to them.
+ *
+ * Nothing is written when a guard does not hold; the row read afterwards
+ * tells which.
+ *
+ * @param int   $id
+ * @param array $save    'balance' (minor units), 'balance_was' (minor units
+ *                       or null), 'expiration_date' (as
+ *                       pg_gift_card_form_expiration() returns it), 'notes',
+ *                       and optionally 'notes_was'
+ * @param int   $user_id
+ * @return array 'ok' => bool; 'field' => 'balance' (it changed meanwhile),
+ *               'notes' (they changed meanwhile) or '' (the write failed);
+ *               'balance' => the balance stored now, in minor units
+ */
+function pg_gift_card_form_write($id, array $save, $user_id)
+{
+    $id = (int) $id;
+    $balance = (int) $save['balance'];
+    $balance_was = $save['balance_was'];
+    $guard_balance = ($balance_was !== null);
+    $write_balance = !$guard_balance || ((int) $balance_was !== $balance);
+    $guard_notes = array_key_exists('notes_was', $save);
+
+    $params = $write_balance ? array((string) $balance) : array();
+    $params = array_merge($params, array((string) $save['expiration_date'], (string) $save['notes'], (string) (int) $user_id, (string) $id));
+
+    if ($write_balance && $guard_balance) {
+        $params[] = (string) (int) $balance_was;
+    }
+
+    if ($guard_notes) {
+        $params[] = (string) $save['notes_was'];
+    }
+
+    $done = db_q(
+        "UPDATE gift_cards
+        SET
+            " . ($write_balance ? "balance = ?," : '') . "
+            expiration_date = ?,
+            notes = ?,
+            last_modified_user_id = ?,
+            last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE id = ?"
+        . (($write_balance && $guard_balance) ? " AND balance = ?" : '')
+        . ($guard_notes ? " AND notes = ?" : ''),
+        $params);
+
+    $affected = $done ? (int) mysqli_affected_rows(db::$con) : -1;
+    $stored = db_item("SELECT balance, notes FROM gift_cards WHERE id = '" . $id . "'");
+
+    return pg_gift_card_form_write_result($affected, $stored, $save, $write_balance);
+}
+
+/**
+ * Whether a gift card's save landed (pg_gift_card_form_write()). A row the
+ * UPDATE changed landed. One it left alone either already held these values
+ * (saved twice within a second) or failed a guard, which the row read
+ * afterwards tells. Pure.
+ *
+ * @param int        $affected      rows the UPDATE changed, -1 when it failed
+ * @param array|null $stored        balance and notes read after it
+ * @param array      $save          the values written
+ * @param bool       $write_balance whether the balance was part of the write
+ * @return array 'ok', 'field', 'balance' as pg_gift_card_form_write() returns them
+ */
+function pg_gift_card_form_write_result($affected, $stored, array $save, $write_balance)
+{
+    if (($affected < 0) || !is_array($stored)) {
+        return array('ok' => false, 'field' => '', 'balance' => is_array($stored) ? (int) $stored['balance'] : 0);
+    }
+
+    $result = array('ok' => true, 'field' => '', 'balance' => (int) $stored['balance']);
+
+    if ($affected > 0) {
+        return $result;
+    }
+
+    if ($write_balance && ((int) $stored['balance'] !== (int) $save['balance'])) {
+        return array('ok' => false, 'field' => 'balance') + $result;
+    }
+
+    if (array_key_exists('notes_was', $save) && ((string) $stored['notes'] !== (string) $save['notes'])) {
+        return array('ok' => false, 'field' => 'notes') + $result;
+    }
+
+    return $result;
 }

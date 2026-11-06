@@ -239,7 +239,7 @@ function test_parasut_order_gates_link_reads_the_erps_record()
 // read, before anything is asked of Paraşüt or written.
 function test_parasut_order_gates_create_invoice_refuses_before_any_request()
 {
-	$body = parasut_order_gates_test_source('parasut_create_invoice');
+	$body = parasut_order_gates_test_source('_parasut_create_invoice_claimed');
 	$read = parasut_order_gates_test_at('$order = mysqli_fetch_assoc($result);', $body);
 	$gate = parasut_order_gates_test_at("\$refusal = parasut_order_press_refusal(\$order, 'invoice', parasut_order_erp_invoice((int) \$order['id']));", $body);
 	$returned = parasut_order_gates_test_at("if (\$refusal !== '') {\n        return ['success' => false, 'parasut_invoice_id' => null, 'error' => \$refusal];", $body);
@@ -259,7 +259,7 @@ function test_parasut_order_gates_create_invoice_refuses_before_any_request()
 // Paraşüt no longer holds it.
 function test_parasut_order_gates_create_shipment_refuses_before_any_request()
 {
-	$body = parasut_order_gates_test_source('parasut_create_shipment');
+	$body = parasut_order_gates_test_source('_parasut_create_shipment_claimed');
 	$read = parasut_order_gates_test_at('$order = mysqli_fetch_assoc($result);', $body);
 	$erp = parasut_order_gates_test_at("\$erp_invoice = parasut_order_erp_invoice((int) \$order['id']);", $body);
 	$gate = parasut_order_gates_test_at("\$refusal = parasut_order_press_refusal(\$order, 'shipment', \$erp_invoice);", $body);
@@ -409,7 +409,7 @@ function test_parasut_order_gates_order_screen()
 	pg_assert_true(($contact !== false) && ($identity !== false) && ($status < $contact) && ($status < $identity), 'and refused first');
 
 	pg_assert_true(parasut_order_gates_test_at("\$parasut_billable = (parasut_order_status_refusal(\$status, 'invoice') === '');", $source) !== false, 'the screen asks the status');
-	pg_assert_true(parasut_order_gates_test_at("if (\$parasut_in_erp || !\$parasut_billable) {\n            \$output_parasut_buttons = '';\n            \$output_parasut_forms = '';", $source) !== false, 'no buttons or forms for another status');
+	pg_assert_true(parasut_order_gates_test_at("if (\$parasut_in_erp || !\$parasut_billable) {\n            \$output_parasut_menu_items = array();\n            \$output_parasut_forms = '';", $source) !== false, 'no buttons or forms for another status');
 
 	pg_assert_true(parasut_order_gates_test_at("\$parasut_erp_invoice = parasut_order_erp_invoice((int) \$_GET['id']);", $source) !== false, 'the ERP invoice is read');
 	pg_assert_true(parasut_order_gates_test_at("\$output_parasut_invoice_button = (\$parasut_erp_invoice['state'] === 'none')", $source) !== false, 'Create Invoice only without one');

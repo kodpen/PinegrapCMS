@@ -285,9 +285,17 @@ function pg_ltd_run($budget)
     }
 
     $stop = microtime(true) + max(1, (int)$budget);
+    $stepped = false;
     while (!pg_ltd_state_done($state) && microtime(true) < $stop) {
         $state = pg_ltd_run_step($state, $user);
         pg_ltd_state_write($state);
+        $stepped = true;
+    }
+
+    // A moved style draws its pages anew; the general job works the pass
+    // outside a signed-in request, so the file cache is told here.
+    if ($stepped && function_exists('pg_page_cache_mark_dirty')) {
+        pg_page_cache_mark_dirty();
     }
 
     if (pg_ltd_state_done($state)) {

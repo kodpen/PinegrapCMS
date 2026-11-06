@@ -16,10 +16,14 @@ description: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Cod
 
 ## What about scopes the site does not have?
 - `openid`, `offline_access` or a client's own word are passed over on the consent screen (`pg_oauth_scope_requested()`); a request naming no known scope lists everything available and the person chooses.
-- On refresh unknown names are ignored the same way; asking for more than was granted is 400 `invalid_scope`.
+- On refresh unknown names are ignored the same way; asking for more than was granted is 400 `invalid_scope`. Asking for less gives an access token holding only that, and the answer's `scope` names it; the next refresh may ask for the whole consent again (`api-device-refresh-rotation.md`).
 
 ## Where do clients find the server?
 - `router.php` answers `.well-known/oauth-authorization-server`, `.well-known/openid-configuration` (the only name reachable for a site installed in a folder; it claims nothing OpenID Connect adds) and `.well-known/oauth-protected-resource/<path>`, each through `oauth.php`. Beside them it answers `.well-known/pinegrap.json`, Pinegrap's own discovery document for team device clients, not an OAuth name (`api-discovery-document.md`).
 
 ## Where is a new client documented?
 - The panel guide `api_settings_oauth_guide()` (`api_settings.php`) gives each client's steps and the text to paste, with this site's address in it; a new client gets an entry there. The MCP file address in the software folder comes first, since it works on every server.
+
+## What if a form field or registration value is not text?
+- The token and revocation endpoints read every form field through `pg_oauth_form_value()` (`includes/oauth/endpoints.php`): a field sent as a list (`code[]=x`) counts as not given. The consent screen reads its action through the same request reader and keeps only text entries of `grant[]`; a registration whose `token_endpoint_auth_method` is not text is `invalid_client_metadata`.
+- Why: a `(string)` cast logged "Array to string conversion" on these public endpoints for any crafted request.

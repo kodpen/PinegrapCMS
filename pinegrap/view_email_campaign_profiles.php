@@ -1,10 +1,10 @@
 <?php
 /**
- * PineGrap - Enterprise Website Platform
+ * Pinegrap - Enterprise Website Platform
  *
  * Originally developed as LiveSite by Camelback Web Architects.
- * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
- * The final LiveSite update (2019) has been integrated into PineGrap.
+ * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name Pinegrap.
+ * The final LiveSite update (2019) has been integrated into Pinegrap.
  * LiveSite remains available as a separate downloadable legacy version.
  *
  * @author      Camelback Web Architects
@@ -64,6 +64,9 @@ $action_names = array(
     'booking_reminder' => lang('Booking Reminder'),
     'booking_rescheduled' => lang('Booking Rescheduled'),
     'booking_cancelled' => lang('Booking Cancelled'),
+    'contact_group_joined' => lang('Joined a Contact Group'),
+    'credit_issued' => lang('Store Credit Issued'),
+    'credit_expiring' => lang('Store Credit Expiring'),
 );
 
 // What each sort code orders by. Only codes pg_list_state() let through
@@ -256,88 +259,74 @@ if (isset($_GET['export'])) {
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $email_campaign_profiles = mysqli_fetch_items($result);
 
-    $output_rows = '';
+    // Every profile is printed: the list table driver sorts and searches
+    // them in the browser (browser mode) and keeps a heading's sort. The
+    // name opens the profile.
+    $list_rows = array();
 
-    // if there is at least one result to display
-    if ($email_campaign_profiles) {
+    foreach ($email_campaign_profiles as $email_campaign_profile) {
+        $output_action = isset($action_names[$email_campaign_profile['action']]) ? $action_names[$email_campaign_profile['action']] : '';
 
-        foreach ($email_campaign_profiles as $email_campaign_profile) {
-            // If this profile is enabled, then use green color for name.
-            if ($email_campaign_profile['enabled'] == 1) {
-                $output_name_color_class = 'fg-success';
-            
-            // Otherwise this profile is disabled, so use red color for name.
-            } else {
-                $output_name_color_class = 'fg-danger';
-            }
+        // The label of the trigger item, "(deleted)" when its row is gone.
+        $output_action_item = h(pg_email_campaign_profile_action_item_label(
+            $email_campaign_profile['action'],
+            $email_campaign_profile['action_item_id'],
+            pg_email_campaign_profile_action_item_row($email_campaign_profile['action'], $email_campaign_profile['action_item_id'])
+        ));
 
-            $output_enabled_check_mark = '';
+        $output_page_name = '';
 
-            // If this profile is enabled, then output check mark.
-            if ($email_campaign_profile['enabled'] == 1) {
-                $output_enabled_check_mark = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . lang('Yes') . '</span>';
-            }
-
-            $output_action = isset($action_names[$email_campaign_profile['action']]) ? $action_names[$email_campaign_profile['action']] : '';
-
-            // The label of the trigger item, "(deleted)" when its row is gone.
-            $output_action_item = h(pg_email_campaign_profile_action_item_label(
-                $email_campaign_profile['action'],
-                $email_campaign_profile['action_item_id'],
-                pg_email_campaign_profile_action_item_row($email_campaign_profile['action'], $email_campaign_profile['action_item_id'])
-            ));
-
-            $output_page_name = '';
-
-            // If the format is "html", then prepare page name: a binned page
-            // under its former name, a gone one as "(deleted)".
-            if ($email_campaign_profile['format'] == 'html') {
-                $output_page_name = h(pg_page_record_name($email_campaign_profile['page_id']));
-            }
-
-            $output_schedule_time = '';
-
-            if ($email_campaign_profile['schedule_time'] != '00:00:00') {
-                $output_schedule_time = date(pg_time_format_code(), strtotime($email_campaign_profile['schedule_time']));
-            }
-
-            $output_schedule = h(pg_email_campaign_profile_schedule_label($email_campaign_profile['schedule_length'], $email_campaign_profile['schedule_unit'], $email_campaign_profile['schedule_period'], $email_campaign_profile['schedule_base'], $output_schedule_time));
-            
-
-
-
-            $created_username = '';
-            
-            if ($email_campaign_profile['created_username']) {
-                $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($email_campaign_profile['created_username']) ) ) );
-            }
-            
-            $last_modified_username = '';
-            
-            if ($email_campaign_profile['last_modified_username']) {
-                $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($email_campaign_profile['last_modified_username']) ) ) );
-            }
-
-            $output_rows .=
-            '<tr class="unselectable">
-                <td class="select-all align-middle text-start"><input class="check disabled" disabled="" type="checkbox" name="fake_checkbox[]" value="1" aria-label="' . h(lang(array('string'=>'Select {var:1}','vars'=>array($email_campaign_profile['name'])))) . '"></td>
-			    <td class="align-middle text-start">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_email_campaign_profile.php?id=' . $email_campaign_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                </td>
-                <td class="chart_label ' . $output_name_color_class . '">' . h($email_campaign_profile['name']) . '</td>
-                <td class="align-middle text-center ' . $output_name_color_class . '">' . $output_enabled_check_mark . '</td>
-                <td class="align-middle"><span class="badge theme-primary fw-light">' . $output_action . '</span></td>
-                <td class="align-middle">' . $output_action_item . '</td>
-                <td class="align-middle">' . h($email_campaign_profile['subject']) . '</td>
-                <td class="align-middle">' . $output_page_name . '</td>
-                <td class="align-middle"><span class="badge border border-1 border-inverse fw-light bg-subtle-secondary fg-emphasis-secondary">' . $output_schedule . '</span></td>
-                <td class="align-middle">' . lang(h(ucwords($email_campaign_profile['purpose']))) . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign_profile['created_timestamp'])) . ' ' . $created_username . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign_profile['last_modified_timestamp'])) . ' ' . $last_modified_username . '</td>
-            </tr>';
+        // An HTML profile sends a page: a binned page under its former name,
+        // a gone one as "(deleted)".
+        if ($email_campaign_profile['format'] == 'html') {
+            $output_page_name = h(pg_page_record_name($email_campaign_profile['page_id']));
         }
+
+        $output_schedule_time = '';
+
+        if ($email_campaign_profile['schedule_time'] != '00:00:00') {
+            $output_schedule_time = date(pg_time_format_code(), strtotime($email_campaign_profile['schedule_time']));
+        }
+
+        $output_schedule = h(pg_email_campaign_profile_schedule_label($email_campaign_profile['schedule_length'], $email_campaign_profile['schedule_unit'], $email_campaign_profile['schedule_period'], $email_campaign_profile['schedule_base'], $output_schedule_time));
+
+        // A disabled profile's name is shown in the danger colour.
+        $name_class = ($email_campaign_profile['enabled'] == 1) ? '' : ' class="fg-danger"';
+
+        $list_rows[] = array(
+            'id' => (int) $email_campaign_profile['id'],
+            'cells' => array(
+                'name' => pg_list_cell('<a href="edit_email_campaign_profile.php?id=' . (int) $email_campaign_profile['id'] . '"' . $name_class . ' data-pg-open>' . h($email_campaign_profile['name']) . '</a>'),
+                'enabled' => pg_list_table_check_cell($email_campaign_profile['enabled'] == 1),
+                'action' => pg_list_cell($output_action !== '' ? '<span class="badge theme-primary fw-light">' . h($output_action) . '</span>' : '', 'align-middle', array('data-pg-sort-value' => $output_action)),
+                'action_item' => pg_list_cell($output_action_item),
+                'subject' => pg_list_cell(h($email_campaign_profile['subject'])),
+                'page_to_send' => pg_list_cell($output_page_name),
+                'schedule' => pg_list_cell('<span class="badge border border-1 border-inverse fw-light bg-subtle-secondary fg-emphasis-secondary">' . $output_schedule . '</span>'),
+                'purpose' => pg_list_cell(lang(h(ucwords((string) $email_campaign_profile['purpose'])))),
+                'created' => pg_list_table_when_cell($email_campaign_profile['created_timestamp'], (string) $email_campaign_profile['created_username']),
+                'last_modified' => pg_list_table_when_cell($email_campaign_profile['last_modified_timestamp'], (string) $email_campaign_profile['last_modified_username']),
+            ),
+        );
     }
+
+    $list = pg_list_table_printed(array(
+        'list' => 'view_email_campaign_profiles',
+        'columns' => array(
+            'name' => array('heading' => lang('Name')),
+            'enabled' => array('heading' => lang('Enabled')),
+            'action' => array('heading' => lang('Action'), 'kind' => 'badge'),
+            'action_item' => array('heading' => lang('Action Item'), 'sortable' => false),
+            'subject' => array('heading' => lang('Subject')),
+            'page_to_send' => array('heading' => lang('Page to Send')),
+            'schedule' => array('heading' => lang('Schedule'), 'sortable' => false),
+            'purpose' => array('heading' => lang('Purpose')),
+            'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+            'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+        ),
+        'levels' => $sort_levels,
+        'rows' => $list_rows,
+    ));
 
     print
     pg_page_shell(
@@ -363,43 +352,14 @@ if (isset($_GET['export'])) {
                         array('label' => lang('Import'), 'url' => 'import_email_campaign_profiles.php', 'icon' => 'bi-box-arrow-in-right'),
                         '<form class="disable_shortcut" method="get"><button type="submit" name="export" value="Export" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button></form>',
                     ),
-                    'search'    => pg_list_sort_menu('view_email_campaign_profiles.php', $sort_columns, $sort_levels, $sort_default),
+                    'search'    => array(pg_list_table_search_box('view_email_campaign_profiles'), pg_list_sort_menu('view_email_campaign_profiles.php', $sort_columns, $sort_levels, $sort_default)),
                 )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <form name="form"  action="delete_email_campaigns.php" method="post" class="disable_shortcut"> 
-                            ' . get_token_field() . '
-                            <input type="hidden" name="send_to" value="' . h(REQUEST_URL) . '" />
-                            <table class="chart table-hover table " style="width:100%;display:none">
-                                <thead>
-                                    <tr>
-                                        <th class="noVis">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="disabled" disabled title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                            </div>
-                                        </th>
-                                        <th class="noVis">' . lang('Row Actions') . '</th> 
-                                        <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                        <th class="text-center">' . get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled') . '</th>
-                                        <th>' . get_column_heading(lang('Action'), $sort_levels, '', '', 'action') . '</th>
-                                        <th>' . lang('Action Item') . '</th>
-                                        <th>' . get_column_heading(lang('Subject'), $sort_levels, '', '', 'subject') . '</th>
-                                        <th>' . get_column_heading(lang('Page to Send'), $sort_levels, '', '', 'page_to_send') . '</th>
-                                        <th>' . lang('Schedule') . '</th>
-                                        <th>' . get_column_heading(lang('Purpose'), $sort_levels, '', '', 'purpose') . '</th>
-                                        <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                        <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                    </tr>
-                                </thead>
-                                <tbody>' . $output_rows . '</tbody>
-                            </table>
-                        </form>
-                    </div>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('My Campaign Profiles')) . '
             </div>
         </div>
     
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
     output_footer();
     $liveform->remove_form();
 }

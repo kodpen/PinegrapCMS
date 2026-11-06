@@ -69,7 +69,7 @@ function test_dashboard_v2_visitmap_countries_without_cities()
 	pg_assert_same('', $data['map_url']);
 	pg_assert_same(array(), $data['bubbles']);
 	pg_assert_same('Countries', $data['rows_title']);
-	pg_assert_same(array('Turkey', 'Germany', 'United States'), array_column($data['rows'], 'text'));
+	pg_assert_same(array(pg_geo_country_name('TR'), pg_geo_country_name('DE'), pg_geo_country_name('US')), array_column($data['rows'], 'text'), 'countries named in the panel language, as the rest of the panel names them');
 	pg_assert_same('Today · 100 visits · abroad 40%', $data['sub']);
 }
 

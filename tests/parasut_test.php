@@ -215,7 +215,7 @@ function test_parasut_view_order_shipment_check_passes_the_order_and_the_contact
 function test_parasut_create_shipment_refuses_an_order_already_sent()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
-	$start = strpos($source, 'function parasut_create_shipment(');
+	$start = strpos($source, 'function _parasut_create_shipment_claimed(');
 	pg_assert_true($start !== false, 'parasut_create_shipment() is found');
 
 	$end = strpos($source, "\nfunction ", (int) $start + 1);

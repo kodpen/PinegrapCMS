@@ -189,7 +189,7 @@ function test_ws_flow_ai_catalogue_hints()
 	pg_assert_false(strpos(ws_flow_ai_catalogue_text($plain), 'one of order') !== false, 'the plain catalogue says nothing of it');
 
 	$description = ws_flow_ai_tool($catalogue)['function']['description'];
-	pg_assert_contains('A box that starts the flow (manual, schedule, event, join, row, no_order) asks nothing and no arrow leads into it.', $description, 'a start box is no step');
+	pg_assert_contains('A box that starts the flow (manual, schedule, event, join, row, mention, no_order, web) asks nothing and no arrow leads into it.', $description, 'a start box is no step');
 	pg_assert_contains('is an approval box, whose arrows leave on approved and rejected', $description, 'a yes-or-no question is an approval');
 	pg_assert_contains('a condition box only compares', $description, 'a condition is no question');
 	pg_assert_contains('a post box only says something and waits for no answer', $description, 'a message is no question');
@@ -199,8 +199,8 @@ function test_ws_flow_ai_catalogue_hints()
 	pg_assert_contains('approvers (list of integer: user ids from the list of people, the ones who answer; the person who asked when the request says I or me)', $text, 'who answers the question');
 	pg_assert_contains('retry (integer: how many times a failed box tries again; left out for none)', $text, 'what retry is');
 	pg_assert_contains('retry_after (text: the minutes it waits before it tries again; needed with retry)', $text, 'and its minutes');
-	pg_assert_contains('rule (join|compare|add|subtract|round|date_format|add_days)', $text, 'a value box\'s rules');
-	pg_assert_contains('b (text: the second value; compare, join, add, subtract, add_days need it (join writes a, a space, then b)', $text, 'and when it needs b');
+	pg_assert_contains('rule (join|compare|add|subtract|round|date_format|add_days|calculate|replace|extract_number|extract_email|upper|lower|trim|cut|split)', $text, 'a value box\'s rules');
+	pg_assert_contains('b (text: the second value; compare, join, add, subtract, add_days, replace, cut, split need it (join writes a, a space, then b)', $text, 'and when it needs b');
 }
 
 // A box sent with a retry but no minutes to wait drops both, as a box added
@@ -701,6 +701,43 @@ function test_ws_flow_card_try_flow()
 	pg_assert_contains("ws_flow_card_try_flow(\$viewer,'opened'", str_replace(' ', '', $read), 'opened');
 	pg_assert_contains("'new':'patch'", str_replace(' ', '', $read), 'waiting');
 	pg_assert_contains('ws_flow_box_try(', workspace_flow_draft_code('ws_flow_card_tries'), 'the F4e try');
+}
+
+// An opened card reads the flow as the Flows screen gives it to the person
+// now: the draft only to whoever may change it (or of a flow never
+// published), else the live version, and the box settings masked for
+// whoever may not change it (#7478).
+function test_ws_flow_card_opened_graph()
+{
+	$box = function ($url) {
+		return ws_flow_graph_normalize(array('nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'x' => 0, 'y' => 0),
+			array('id' => 'hook', 'kind' => 'webhook', 'x' => 288, 'y' => 0, 'config' => array('url' => $url)),
+		), 'edges' => array(array('from' => 'start', 'to' => 'hook', 'on' => 'next'))));
+	};
+	$urls = function ($graph) {
+		return array_map(function ($node) {
+			pg_assert_true(is_array($node['config']), 'settings stay an array for the card');
+
+			return (string) ($node['config']['url'] ?? '');
+		}, $graph['nodes']);
+	};
+	$draft = $box('https://hooks.example.com/services/T0/B0/draft-secret');
+	$live = $box('https://hooks.example.com/services/T0/B0/live-secret');
+	$version = array('id' => 9, 'graph' => json_encode($live));
+	$flow = function ($access, $version_id) use ($draft) {
+		return array('id' => 4, 'access' => $access, 'version_id' => $version_id, 'draft' => json_encode($draft));
+	};
+
+	pg_assert_same(array('', 'https://hooks.example.com/services/T0/B0/draft-secret'), $urls(ws_flow_card_opened_graph($flow('edit', 9), $version)), 'who may change it reads the draft whole');
+	pg_assert_same(array('', 'https://hooks.example.com/…'), $urls(ws_flow_card_opened_graph($flow('view', 9), $version)), 'a viewer reads the live version, its URL masked');
+	pg_assert_same(array('', 'https://hooks.example.com/…'), $urls(ws_flow_card_opened_graph($flow('run', 9), $version)), 'as one who may only run it');
+	pg_assert_same(array('', 'https://hooks.example.com/…'), $urls(ws_flow_card_opened_graph($flow('view', 0), null)), 'a flow never published: its draft, masked');
+	pg_assert_same(null, ws_flow_card_opened_graph($flow('view', 9), null), 'a live version that cannot be read: no picture');
+
+	$read = str_replace(' ', '', workspace_flow_draft_code('ws_flow_draft_card_source'));
+	pg_assert_contains('ws_flow_card_opened_graph($flow,', $read, 'the opened card reads through it');
+	pg_assert_false(strpos($read, "'graph'=>ws_flow_graph_of(\$flow)") !== false, 'never the raw draft');
 }
 
 function test_ws_flow_card_graph_patch()

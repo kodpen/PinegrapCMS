@@ -201,3 +201,51 @@ function pg_calendar_location_delete($location_id)
 
     return true;
 }
+
+/**
+ * Whether a visitor may reserve the posted occurrence of an event. The number
+ * is empty (the first occurrence) or digits. A recurring event that keeps
+ * separate spots per occurrence takes only an occurrence it has (0 to its
+ * repeat count) that was not removed from the calendar: any other number has
+ * no remaining spots row, so it would offer the initial spots for a date that
+ * does not take place. Shared spots and single events book the event itself.
+ *
+ * @param mixed $recurrence_number the posted occurrence
+ * @param mixed $recurrence        the event's recurrence flag
+ * @param mixed $total             the event's stored repeat count
+ * @param mixed $separate          the event's separate_reservations flag
+ * @param array $exceptions        the event's removed occurrence numbers
+ * @return bool
+ */
+function pg_calendar_reserve_occurrence_ok($recurrence_number, $recurrence, $total, $separate, array $exceptions)
+{
+    if (!is_string($recurrence_number) && !is_int($recurrence_number)) {
+        return false;
+    }
+
+    $recurrence_number = (string) $recurrence_number;
+
+    if ($recurrence_number === '') {
+        $recurrence_number = '0';
+    }
+
+    if (!ctype_digit($recurrence_number) || (strlen($recurrence_number) > 10)) {
+        return false;
+    }
+
+    if (((string) $recurrence !== '1') || ((int) $total <= 0) || ((string) $separate !== '1')) {
+        return true;
+    }
+
+    if ((int) $recurrence_number > (int) $total) {
+        return false;
+    }
+
+    foreach ($exceptions as $exception) {
+        if ((int) $exception === (int) $recurrence_number) {
+            return false;
+        }
+    }
+
+    return true;
+}

@@ -95,6 +95,27 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // The other gateway keys are drawn masked: a blank or masked box keeps
+    // the stored one. The Givex password is kept only for the hostnames it
+    // was saved for, since every Givex request carries it.
+    $gateway_masked_stored = db_item("SELECT " . implode(', ', pg_gateway_masked_fields()) . ", ecommerce_givex_primary_hostname, ecommerce_givex_secondary_hostname FROM config LIMIT 1");
+    $gateway_masked_values = array();
+
+    foreach (pg_gateway_masked_fields() as $gateway_masked_column) {
+        $gateway_masked_values[$gateway_masked_column] = pg_gateway_masked_for_save(post_value($gateway_masked_column), (string) ($gateway_masked_stored[$gateway_masked_column] ?? ''));
+    }
+
+    $givex_password = pg_givex_password_for_save(
+        post_value('ecommerce_givex_password'),
+        (string) ($gateway_masked_stored['ecommerce_givex_password'] ?? ''),
+        array((string) ($gateway_masked_stored['ecommerce_givex_primary_hostname'] ?? ''), (string) ($gateway_masked_stored['ecommerce_givex_secondary_hostname'] ?? '')),
+        array((string) post_value('ecommerce_givex_primary_hostname'), (string) post_value('ecommerce_givex_secondary_hostname')));
+    $gateway_masked_values['ecommerce_givex_password'] = $givex_password['value'];
+
+    if ($givex_password['refused']) {
+        $liveform->mark_error('ecommerce_givex_password', lang('The Givex hostname changed. Enter the password again.'));
+    }
+
     // The order e-mail (also printed on ERP documents), the reward BCC and
     // the affiliate e-mail are one address each.
     foreach (pg_email_field_errors(array(
@@ -216,7 +237,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_givex_primary_hostname = '" . escape(post_value('ecommerce_givex_primary_hostname')) . "',
             ecommerce_givex_secondary_hostname = '" . escape(post_value('ecommerce_givex_secondary_hostname')) . "',
             ecommerce_givex_user_id = '" . escape(trim(post_value('ecommerce_givex_user_id'))) . "',
-            ecommerce_givex_password = '" . escape(trim(post_value('ecommerce_givex_password'))) . "',
+            ecommerce_givex_password = '" . escape($gateway_masked_values['ecommerce_givex_password']) . "',
             ecommerce_reward_program = '" . escape(post_value('ecommerce_reward_program')) . "',
             ecommerce_reward_program_points = '" . pg_parse_reward_goal(post_value('ecommerce_reward_program_points')) . "',
             ecommerce_reward_program_membership = '" . escape(post_value('ecommerce_reward_program_membership')) . "',
@@ -241,7 +262,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_authorizenet_transaction_key = '" . escape($gateway_secret_values['ecommerce_authorizenet_transaction_key']) . "',
             ecommerce_clearcommerce_client_id = '" . escape(trim(post_value('ecommerce_clearcommerce_client_id'))) . "',
             ecommerce_clearcommerce_user_id = '" . escape(trim(post_value('ecommerce_clearcommerce_user_id'))) . "',
-            ecommerce_clearcommerce_password = '" . escape(trim(post_value('ecommerce_clearcommerce_password'))) . "',
+            ecommerce_clearcommerce_password = '" . escape($gateway_masked_values['ecommerce_clearcommerce_password']) . "',
             ecommerce_first_data_global_gateway_store_number = '" . escape(trim(post_value('ecommerce_first_data_global_gateway_store_number'))) . "',
             ecommerce_first_data_global_gateway_pem_file_name = '" . escape(trim(post_value('ecommerce_first_data_global_gateway_pem_file_name'))) . "',
             ecommerce_paypal_payflow_pro_partner = '" . escape(trim(post_value('ecommerce_paypal_payflow_pro_partner'))) . "',
@@ -250,10 +271,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_paypal_payflow_pro_password = '" . escape($gateway_secret_values['ecommerce_paypal_payflow_pro_password']) . "',
             ecommerce_paypal_payments_pro_api_username = '" . escape(trim(post_value('ecommerce_paypal_payments_pro_api_username'))) . "',
             ecommerce_paypal_payments_pro_api_password = '" . escape($gateway_secret_values['ecommerce_paypal_payments_pro_api_password']) . "',
-            ecommerce_paypal_payments_pro_api_signature = '" . escape(trim(post_value('ecommerce_paypal_payments_pro_api_signature'))) ."',
+            ecommerce_paypal_payments_pro_api_signature = '" . escape($gateway_masked_values['ecommerce_paypal_payments_pro_api_signature']) . "',
             ecommerce_sage_merchant_id = '" . escape(trim(post_value('ecommerce_sage_merchant_id'))) . "',
-            ecommerce_sage_merchant_key = '" . escape(trim(post_value('ecommerce_sage_merchant_key'))) . "',
-            ecommerce_stripe_api_key = '" . escape(trim(post_value('ecommerce_stripe_api_key'))) . "',
+            ecommerce_sage_merchant_key = '" . escape($gateway_masked_values['ecommerce_sage_merchant_key']) . "',
+            ecommerce_stripe_api_key = '" . escape($gateway_masked_values['ecommerce_stripe_api_key']) . "',
             ecommerce_iyzipay_api_key = '" . escape(trim(post_value('ecommerce_iyzipay_api_key'))) . "',
             ecommerce_iyzipay_secret_key = '" . escape($gateway_secret_values['ecommerce_iyzipay_secret_key']) . "',
             ecommerce_iyzipay_installment = '" . escape(post_value('ecommerce_iyzipay_installment')) . "',
@@ -265,7 +286,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_paypal_express_checkout_mode = '" . escape(post_value('ecommerce_paypal_express_checkout_mode')) . "',
             ecommerce_paypal_express_checkout_api_username = '" . escape(trim(post_value('ecommerce_paypal_express_checkout_api_username'))) . "',
             ecommerce_paypal_express_checkout_api_password = '" . escape($gateway_secret_values['ecommerce_paypal_express_checkout_api_password']) . "',
-            ecommerce_paypal_express_checkout_api_signature = '" . escape(trim(post_value('ecommerce_paypal_express_checkout_api_signature'))) . "',
+            ecommerce_paypal_express_checkout_api_signature = '" . escape($gateway_masked_values['ecommerce_paypal_express_checkout_api_signature']) . "',
             ecommerce_offline_payment = '" . escape(post_value('ecommerce_offline_payment')) . "',
             ecommerce_offline_payment_only_specific_orders = '" . escape(post_value('ecommerce_offline_payment_only_specific_orders')) . "',
             ecommerce_offline_payment_cancel_days = '" . min(255, max(0, (int) preg_replace('/\D/', '', (string) post_value('ecommerce_offline_payment_cancel_days')))) . "',
@@ -307,15 +328,29 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $query = "LOCK TABLES next_order_number WRITE";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-        if ((int) db_value("SELECT COUNT(*) FROM next_order_number") > 0) {
-            db_q("UPDATE next_order_number SET next_order_number = ?", array($ecommerce_next_order_number)) or output_error('Query failed.');
-        } else {
-            db_q("INSERT INTO next_order_number VALUES (?)", array($ecommerce_next_order_number)) or output_error('Query failed.');
+        // Read again under the lock: an order may have taken a number since
+        // the check above, and its number must not be given out twice.
+        $next_order_number_row = db_item("SELECT next_order_number FROM next_order_number LIMIT 1");
+        $next_order_number_current = is_array($next_order_number_row) ? (int) $next_order_number_row['next_order_number'] : null;
+        $next_order_number_moved = pg_next_order_number_set_back($ecommerce_next_order_number, $next_order_number_was, $next_order_number_current);
+
+        // Set back, it writes nothing; the warning waits for the unlock, as
+        // no other table may be touched under it.
+        if (!$next_order_number_moved) {
+            if ($next_order_number_current !== null) {
+                db_q("UPDATE next_order_number SET next_order_number = ?", array($ecommerce_next_order_number)) or output_error('Query failed.');
+            } else {
+                db_q("INSERT INTO next_order_number VALUES (?)", array($ecommerce_next_order_number)) or output_error('Query failed.');
+            }
         }
 
         // release lock on table
         $query = "UNLOCK TABLES";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        if ($next_order_number_moved) {
+            $liveform->add_warning(lang(array('string' => 'Orders took numbers while this screen was open, so the Next Order Number was not changed; it is {var:1} now.', 'vars' => array($next_order_number_current))));
+        }
     }
 
     // Points to store credit: two config_text rows, only when the reward
@@ -324,6 +359,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         pg_config_text_save('credit_points_per_unit', pg_credit_points_parse_rate(post_value('credit_points_per_unit')));
         $credit_points_smallest_minor = pg_credit_points_parse_smallest(post_value('credit_points_smallest'));
         pg_config_text_save('credit_points_smallest', ($credit_points_smallest_minor > 0) ? (string) $credit_points_smallest_minor : '');
+    }
+
+    // The bonus on refunds given as store credit: a config_text row, '' is
+    // none.
+    if (array_key_exists('credit_refund_bonus', $_POST)) {
+        pg_config_text_save('credit_refund_bonus', pg_credit_refund_parse_bonus(post_value('credit_refund_bonus')));
     }
 
     // Product feeds: their own JSON column, written after the screen's

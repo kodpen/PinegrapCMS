@@ -17,13 +17,32 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/country_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/country_list_edit.php');
 
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+// Every value the country's screen changes is a field.
+$quick_edit = pg_country_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen, with the country screen's rights (validate_ecommerce_access())
+// and checks (pg_country_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_country_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
+// Every country is printed: the list table driver sorts and searches them
+// in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 $user = validate_user();
 validate_ecommerce_access($user);
-
-$number_of_results = 0;
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -53,31 +72,17 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified'      => 'countries.timestamp',
 ));
 
-$query = "SELECT
-            countries.id,
-            countries.name,
-            countries.code,
-            countries.zip_code_required,
-            countries.transit_adjustment_days,
-            countries.default_selected,
-            user.user_username as user,
-            countries.timestamp
-        FROM countries
-        LEFT JOIN user ON countries.user = user.user_id
-        ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, pg_country_list_sql() . " ORDER BY $order_by") or output_error('Query failed.');
 
 $country_rows = array();
 
-while ($row = mysqli_fetch_array($result)) {
-    // The name in the panel's language.
-    $row['label'] = pg_geo_country_label($row['name'], $row['code']);
+while ($row = mysqli_fetch_assoc($result)) {
     $country_rows[] = $row;
 }
 
-// Two rows with the same name on screen carry their code.
-$country_rows = pg_geo_label_disambiguate($country_rows);
+// The name in the panel's language; two rows with the same name on screen
+// carry their code.
+$country_rows = pg_country_list_labelled($country_rows);
 
 // Sorted by name first: by the name on screen in the panel language's
 // order, not by the stored English name the query orders by ("Türkiye"
@@ -91,43 +96,16 @@ if ((($sort_levels[0]['sort'] ?? '') === 'name') && $country_rows) {
 }
 
 foreach ($country_rows as $row) {
-    $id = $row['id'];
-    $name = h($row['label']);
-    $code = h($row['code']);
-    $zip_code_required = $row['zip_code_required'];
-    $transit_adjustment_days = $row['transit_adjustment_days'];
-    $default_selected = $row['default_selected'];
-    $username = $row['user'];
-    $timestamp = $row['timestamp'];
-
-    $zip_code_required_check_mark = '';
-
-    if ($zip_code_required) {
-        $zip_code_required_check_mark = '<span class="material-icons">task_alt</span>';
-    }
-
-    if ($row['default_selected']) {
-        $default_selected = '<span class="material-icons">task_alt</span>';
-    } else {
-        $default_selected = '';
-    }
-    $output_link_url = 'edit_country.php?id=' . $id;
-    
-    $number_of_results++;
-    
-    $output_rows .= '
-        <tr>
-            <td class="align-middle text-start action-buttons">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-            </td>
-            <td class="align-middle chart_label">' . $name . '</td>
-            <td class="align-middle">' . $code . '</td>
-            <td style="text-align: center">' . $zip_code_required_check_mark . '</td>
-            <td style="text-align: right;">' . $transit_adjustment_days . '</td>
-            <td style="text-align: center">' . $default_selected . '</td>
-            <td class="align-middle">' . pg_list_when($timestamp, $username) . '</td>
-        </tr>';
+    $list_rows[] = array('id' => (int) $row['id'], 'cells' => pg_country_list_cells($row, $quick_edit));
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_countries',
+    'columns' => pg_country_list_columns(true),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'edit' => array('url' => 'view_countries.php', 'columns' => $quick_edit),
+));
 
 echo
     pg_page_shell([
@@ -139,31 +117,14 @@ echo
     ]) . '
 <main id="content" class="container-fluid">
     <div class="row">
-            <div class="col-12">
-                ' . pg_screen_toolbar(array(
-                    'primary' => array('label' => lang('Create'), 'url' => 'add_country.php', 'icon' => 'bi-plus-circle'),
-                    'search'  => pg_list_sort_menu('view_countries.php', $sort_columns, $sort_levels, $sort_default),
-                )) . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
-                                    <th style="text-align: center">' . get_column_heading(lang('Zip Code Required'), $sort_levels, '', '', 'zip_code_required') . '</th>
-                                    <th style="text-align: right;">' . get_column_heading(lang('Extra Delivery Days'), $sort_levels, '', '', 'transit_adjustment') . '</th>
-                                    <th style="text-align: center">' . get_column_heading(lang('Default'), $sort_levels, '', '', 'default') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+        <div class="col-12">
+            ' . pg_screen_toolbar(array(
+                'primary' => array('label' => lang('Create'), 'url' => 'add_country.php', 'icon' => 'bi-plus-circle'),
+                'search'  => array(pg_list_table_search_box('view_countries'), pg_list_sort_menu('view_countries.php', $sort_columns, $sort_levels, $sort_default)),
+            )) . '
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All Countries')) . '
         </div>
-    
-</main>' .
+    </div>
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();

@@ -117,7 +117,7 @@ function pg_list_table_kinds()
  */
 function pg_list_table_edit_kinds()
 {
-    return array('text', 'number', 'money', 'select', 'check', 'date');
+    return array('text', 'textarea', 'number', 'money', 'select', 'multiselect', 'check', 'date');
 }
 
 /**
@@ -1068,6 +1068,16 @@ function pg_list_table_printed_lists()
         'view_regions_all_ad_regions', 'view_regions_all_login_regions', 'view_regions_all_dynamic_regions',
         'view_regions_all_designer_regions', 'view_regions_all_common_regions', 'view_ads', 'view_fields',
         'view_product_attributes', 'view_cart_quotes', 'view_returns', 'view_subscriptions', 'view_orders_for_contact',
+        'view_arrival_dates', 'view_ship_date_adjustments', 'view_verified_shipping_addresses', 'view_order_reports', 'duplicate_products',
+        'view_countries', 'view_states', 'view_zones', 'view_tax_zones', 'view_currencies', 'view_referral_sources',
+        'view_contact_groups', 'view_calendars', 'view_calendar_event_locations', 'view_auto_dialogs',
+        'view_email_campaigns', 'view_email_campaign_history', 'view_email_campaign_profiles', 'view_sms_campaigns', 'view_visitor_reports', 'view_not_found_log',
+        'backups', 'cloudflare_dns', 'database_engine',
+        'erp_accounts', 'erp_invoices', 'erp_waybills', 'erp_cash', 'erp_inbox',
+        'erp_account_sync_differ', 'erp_account_sync_provider_only', 'erp_account_sync_erp_only',
+        'erp_account_sync_same', 'erp_account_sync_ignored',
+        'view_offers', 'editor_select_page_or_file_page', 'editor_select_page_or_file_file', 'editor_select_page_or_file_short_link',
+        'view_bookings',
     );
 }
 
@@ -1122,6 +1132,31 @@ function pg_list_table_printed(array $spec)
         'source' => $source,
         'page' => array('rows' => $rows, 'next' => null, 'total' => count($rows), 'restarted' => false),
     );
+}
+
+/**
+ * The sort codes of a printed list for pg_list_state() and
+ * pg_list_sort_menu(): every column that sorts in the browser, keyed by
+ * itself, with its heading.
+ *
+ * @param array $columns key => spec, as pg_list_table_printed() takes them
+ * @return array key => heading
+ */
+function pg_list_table_printed_sort_columns(array $columns)
+{
+    $sort_columns = array();
+
+    foreach ($columns as $key => $spec) {
+        $kind = (string) ($spec['kind'] ?? 'text');
+
+        if (in_array($kind, array('actions', 'image'), true) || (array_key_exists('sortable', $spec) && empty($spec['sortable']))) {
+            continue;
+        }
+
+        $sort_columns[$key] = (string) ($spec['heading'] ?? '');
+    }
+
+    return $sort_columns;
 }
 
 /**

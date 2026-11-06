@@ -104,7 +104,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // to the site's own hostname because that is the name the store is created
     // with and the screen has always offered it as the default.
     $mailchimp = $row['mailchimp'];
-    $mailchimp_key = $row['mailchimp_key'];
+    // Only whether a key is stored: the key itself is never printed.
+    $mailchimp_key_stored = ((string) $row['mailchimp_key'] !== '');
     $mailchimp_list_id = $row['mailchimp_list_id'];
     $mailchimp_store_id = ($row['mailchimp_store_id'] !== '') ? $row['mailchimp_store_id'] : HOSTNAME_SETTING;
     $mailchimp_sync_days = $row['mailchimp_sync_days'];
@@ -373,6 +374,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $credit_points_per_unit = pg_credit_points_rate_for_input(pg_config_text('credit_points_per_unit'));
     $credit_points_smallest_minor = (int) pg_config_text('credit_points_smallest');
     $credit_points_smallest = ($credit_points_smallest_minor > 0) ? pg_format_number($credit_points_smallest_minor / 100, 2) : '';
+    $credit_refund_bonus = pg_credit_points_rate_for_input(pg_config_text('credit_refund_bonus'));
     $ecommerce_custom_product_field_1_label = $row['ecommerce_custom_product_field_1_label'];
     $ecommerce_custom_product_field_2_label = $row['ecommerce_custom_product_field_2_label'];
     $ecommerce_custom_product_field_3_label = $row['ecommerce_custom_product_field_3_label'];

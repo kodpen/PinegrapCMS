@@ -2215,6 +2215,21 @@ function pg_record_list_page($record_page_id)
 }
 
 /**
+ * JSON-LD as printed inside <script type="application/ld+json">: < > & are
+ * written as \u escapes, so no value (a visitor's product question, a record
+ * title, a product name) can close the element or open "<!--<script", which
+ * keeps the tokenizer inside the script past its </script> and swallows the
+ * page up to the next one. Slashes and non-ASCII text stay as they are.
+ *
+ * @param mixed $data
+ * @return string
+ */
+function pg_jsonld_script_json($data)
+{
+    return (string) json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP);
+}
+
+/**
  * Wrap operator-authored JSON-LD for output.
  *
  * The stored text is decoded and RE-ENCODED rather than echoed: json_encode
@@ -2239,7 +2254,7 @@ function pg_custom_jsonld_block($raw)
     }
 
     return "\n<!-- Start Custom Structured Data -->\n<script type=\"application/ld+json\">"
-        . json_encode($decoded, JSON_UNESCAPED_UNICODE)
+        . pg_jsonld_script_json($decoded)
         . "</script>\n<!-- End Custom Structured Data -->";
 }
 
@@ -5694,6 +5709,39 @@ function pg_sitemap_page_types()
 }
 
 /**
+ * Whether the filters of a legacy form list view (form_list_view_filters
+ * rows) compare a field with the viewer: no fixed value and the dynamic value
+ * 'viewer' or 'viewers email address'. Such a list shows each visitor other
+ * records (with nobody signed in, every record sent while signed out), so the
+ * sitemap, kept for every visitor and drawn by whoever asks first, lists none
+ * of them. The designed lists' twin is pg_sw_filters_compare_viewer(). Pure.
+ *
+ * @param array $filters form_list_view_filters rows
+ * @return bool
+ */
+function pg_sitemap_legacy_filters_compare_viewer($filters)
+{
+    if (!is_array($filters)) {
+        return false;
+    }
+
+    foreach ($filters as $filter) {
+        if (!is_array($filter)) {
+            continue;
+        }
+
+        $value = isset($filter['value']) ? (string) $filter['value'] : '';
+        $dynamic = isset($filter['dynamic_value']) ? (string) $filter['dynamic_value'] : '';
+
+        if (($value === '') && (($dynamic === 'viewer') || ($dynamic === 'viewers email address'))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * The address sitemap.xml lists for an item under a legacy catalog page: a
  * browse product group under the catalog page, a select product group or a
  * product under its catalog detail page. An item with no address name has no
@@ -5727,12 +5775,14 @@ function pg_sitemap_catalog_item_path($item, $path, $catalog_page_name, $detail_
  * show a record or a product only through the address (the records and
  * products themselves are listed under their own addresses).
  *
- * @param array $page_type_widgets legacy page type => widget type
+ * @param array         $page_type_widgets legacy page type => widget type
+ * @param string[]|null $listed            the page types the list keeps;
+ *                                         null for pg_sitemap_page_types()
  * @return string[]
  */
-function pg_sitemap_unlisted_widget_types($page_type_widgets)
+function pg_sitemap_unlisted_widget_types($page_type_widgets, $listed = null)
 {
-    $listed = pg_sitemap_page_types();
+    $listed = ($listed === null) ? pg_sitemap_page_types() : array_map('strval', (array) $listed);
     $types = array('error_page', 'form_item_view', 'catalog_item_view');
 
     foreach ((array) $page_type_widgets as $page_type => $widget_type) {
@@ -5965,4 +6015,21 @@ function pg_seo_link_name($row)
     }
 
     return lang('SEO Score') . ': ' . (int) $row['seo_score'] . '/100';
+}
+
+/**
+ * The first day (Y-m-d, site time zone) of the SEO screens' recent-views
+ * window: that many calendar days before today. Stepped in days, not in
+ * 86400-second blocks, so a clock change inside the window does not move
+ * the first day by one. Pure.
+ *
+ * @param int $days
+ * @param int $now  unix time; 0 for now
+ * @return string
+ */
+function pg_seo_impact_since($days, $now = 0)
+{
+    $now = ((int) $now > 0) ? (int) $now : time();
+
+    return date('Y-m-d', strtotime('-' . max(1, (int) $days) . ' days', $now));
 }

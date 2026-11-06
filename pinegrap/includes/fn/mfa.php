@@ -819,7 +819,7 @@ function pg_mfa_revoke_other_sessions($user_id)
 {
     $keep = '';
 
-    if (isset($_COOKIE['software']['auth'])) {
+    if (isset($_COOKIE['software']['auth']) && is_string($_COOKIE['software']['auth'])) {
         $parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
 
         if (preg_match('/^[a-f0-9]{24}$/', (string) $parts[0])

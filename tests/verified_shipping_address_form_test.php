@@ -84,12 +84,32 @@ function test_verified_shipping_address_form_screens_use_shared_form()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('includes/forms/verified_shipping_address_form.php', $source, $file . ' loads the form');
-		pg_assert_contains('pg_verified_shipping_address_form_card($liveform)', $source, $file . ' prints the shared card');
+		pg_assert_contains('pg_verified_shipping_address_form_card($liveform', $source, $file . ' prints the shared card');
 		pg_assert_contains('pg_verified_shipping_address_form_validate($liveform)', $source, $file . ' checks the required fields the shared way');
 		pg_assert_contains('pg_verified_shipping_address_form_values($liveform)', $source, $file . ' saves the shared values');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('get_token_field()', $source, $file . ' prints the token');
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' checks commerce access');
 		pg_assert_false(strpos($source, 'get_state_options()') !== false, $file . ' keeps no copy of the card');
+	}
+}
+
+// The Summary prints the address as it reads: a line each for the company
+// and the address lines, then "city, state zip", empty parts left out.
+function test_verified_shipping_address_form_preview()
+{
+	pg_assert_same(
+		'<div>Acme &lt;b&gt;</div><div>Main St 1</div><div>Kadıköy, İstanbul 34710</div>',
+		pg_verified_shipping_address_form_preview(array('company' => 'Acme <b>', 'address_1' => 'Main St 1', 'address_2' => ' ', 'city' => 'Kadıköy', 'zip_code' => '34710'), 'İstanbul'),
+		'the full address, escaped, the blank line left out');
+	pg_assert_same('<div>34710</div>', pg_verified_shipping_address_form_preview(array('zip_code' => '34710'), ''), 'a zip code alone');
+	pg_assert_same('', pg_verified_shipping_address_form_preview(array(), ''), 'nothing typed yet');
+
+	$layout = pg_verified_shipping_address_form_layout('CARDS', '<button>X</button>');
+	pg_assert_contains('<div class="row">CARDS', $layout, 'the columns go into the row');
+	pg_assert_contains('position-sticky" style="bottom:0; z-index:3;"', $layout, 'the save bar sticks to the bottom');
+
+	foreach (array('add_verified_shipping_address.php', 'edit_verified_shipping_address.php') as $file) {
+		pg_assert_contains('pg_verified_shipping_address_form_layout(', file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' uses the shared layout');
 	}
 }

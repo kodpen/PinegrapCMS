@@ -13,3 +13,4 @@ description: Menu Sequence widget (menu_sequence_region, #1817): the classic <me
 ## What does it draw?
 - `pg_mw_sequence_values()`: `__previous_name` / `__previous_url` (none on the first page), `__next_name` / `__next_url` (on the last page the first page again, as the classic `>` link), `__sequence_position`, `__sequence_count`, `__menu_name`. Flags `in_sequence`, `not_in_sequence`, `has_previous`, `next_wraps`. A page the menu does not link to gets no links.
 - Starter: a `nav` row with a previous and a next button (`rel` prev / next), the previous one shown only with `has_previous`. Edit chip as the Menu widget.
+- The previous and next addresses encode the page name as a path (`encode_url_path()`), as the classic region now does too ([[menu-widget]]).

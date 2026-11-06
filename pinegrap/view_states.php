@@ -17,13 +17,33 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/state_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/state_list_edit.php');
 
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+// Every value the state's screen changes is a field; Country offers the
+// countries of the screen's picker.
+$quick_edit = pg_state_edit_columns(pg_state_quick_countries());
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen, with the state screen's rights (validate_ecommerce_access()) and
+// checks (pg_state_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_state_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id'], $quick_edit);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
+// Every state is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 $user = validate_user();
 validate_ecommerce_access($user);
-
-$number_of_results = 0;
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -49,26 +69,12 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_modified' => 'states.timestamp',
 ));
 
-$query = "SELECT
-            states.id,
-            states.name,
-            states.code,
-            countries.name as country_name,
-            countries.code as country_code,
-            user.user_username as user,
-            states.timestamp
-        FROM states
-        LEFT JOIN countries ON states.country_id = countries.id
-        LEFT JOIN user ON states.user = user.user_id
-        ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = mysqli_query(db::$con, pg_state_list_sql() . " ORDER BY $order_by") or output_error('Query failed.');
 $state_rows = array();
 
 while ($row = mysqli_fetch_assoc($result)) {
     // The country in the panel's language.
-    $row['country_label'] = ($row['country_name'] !== null) ? pg_geo_country_label($row['country_name'], $row['country_code']) : '';
-    $state_rows[] = $row;
+    $state_rows[] = pg_state_list_labelled($row);
 }
 
 // Sorted by country first: by the country name on screen in the panel
@@ -91,38 +97,16 @@ if (isset($label_keys[$first_sort]) && $state_rows) {
 }
 
 foreach ($state_rows as $row) {
-
-    // reset for every row, otherwise a row without a user repeats the previous row's user
-    $last_modified_username = '';
-
-    $id = $row['id'];
-    $name = h($row['name']);
-    $code = h($row['code']);
-    $country_name = $row['country_label'];
-    $username = $row['user'];
-    $timestamp = $row['timestamp'];
-
-    $output_link_url = 'edit_state.php?id=' . $id;
-    
-    $number_of_results++;
-
-     // if the last modified username was found, then prepare to output it
-     if ($username) {
-        $last_modified_username = $username;
-    } 
-
-    $output_rows .= '
-        <tr>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-            </td>
-            <td class="align-middle chart_label">' . $name . '</td>
-            <td class="align-middle">' . $code . '</td>
-            <td class="align-middle">' . h($country_name) . '</td>
-            <td class="align-middle">' . pg_list_when($timestamp, $last_modified_username) . '</td>
-        </tr>';
+    $list_rows[] = array('id' => (int) $row['id'], 'cells' => pg_state_list_cells($row, $quick_edit));
 }
+
+$list = pg_list_table_printed(array(
+    'list' => 'view_states',
+    'columns' => pg_state_list_columns(true),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+    'edit' => array('url' => 'view_states.php', 'columns' => $quick_edit),
+));
 
 print
 pg_page_shell([
@@ -137,27 +121,11 @@ pg_page_shell([
         <div class="col-12">
             ' . pg_screen_toolbar(array(
                 'primary' => array('label' => lang('Create'), 'url' => 'add_state.php', 'icon' => 'bi-plus-circle'),
-                'search'  => pg_list_sort_menu('view_states.php', $sort_columns, $sort_levels, $sort_default),
+                'search'  => array(pg_list_table_search_box('view_states'), pg_list_sort_menu('view_states.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table " style="width:100%;display:none">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                    <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                    <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
-                                    <th>' . get_column_heading(lang('Country'), $sort_levels, '', '', 'country') . '</th>
-                                    <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody>' . $output_rows . '</tbody>
-                        </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('All States')) . '
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
-?>

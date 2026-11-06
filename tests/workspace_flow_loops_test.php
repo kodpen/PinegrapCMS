@@ -80,6 +80,22 @@ function ws_flow_loops_test_codes($graph)
 	return $codes;
 }
 
+// The codes of the loop check alone (ws_flow_loop_problems()), without its
+// warnings: a Read a row box's cells are known only from the table's store,
+// which a unit test has none of.
+function ws_flow_loops_test_loop_codes($graph)
+{
+	$codes = array();
+
+	foreach (ws_flow_loop_problems($graph, array_column($graph['nodes'], null, 'id')) as $problem) {
+		if (empty($problem['warning'])) {
+			$codes[] = $problem['code'];
+		}
+	}
+
+	return $codes;
+}
+
 // A step row as the walk reads it.
 function ws_flow_loops_test_row($node, $pass, $status, $outcome = '', $data = null)
 {
@@ -117,12 +133,12 @@ function test_workspace_flow_loops_kinds()
 	pg_assert_same(array('done', 'always'), ws_flow_arrow_outcomes($kinds['for_each_end']));
 	pg_assert_same(array('count', 'done', 'failed', 'list'), array_column($kinds['for_each_end']['outputs'], 'key'));
 	pg_assert_same(array('count', 'index', 'item', 'name'), array_column(ws_flow_loop_outputs(array('fields' => array('name'))), 'key'));
-	pg_assert_same(array('list' => '{{node.a.body}}', 'path' => 'data.items', 'fields' => array('name', 'e_mail')),
+	pg_assert_same(array('list' => '{{node.a.body}}', 'path' => 'data.items', 'fields' => array('name', 'e_mail'), 'mode' => 'list', 'count' => ''),
 		ws_flow_config_normalize('for_each', array('list' => '{{node.a.body}}', 'path' => 'data.items', 'fields' => array('Name', 'name', 'e_mail'), 'x' => 1)));
 	pg_assert_same(array('for_each' => 'for_each_1', 'collect' => ''), ws_flow_config_normalize('for_each_end', array('for_each' => 'for_each_1')));
 
 	$catalogue = array_column(ws_flow_kind_catalogue(), null, 'kind');
-	pg_assert_same(array('list'), $catalogue['for_each']['texts']);
+	pg_assert_same(array('list', 'count'), $catalogue['for_each']['texts']);
 	pg_assert_same(array('collect'), $catalogue['for_each_end']['texts']);
 }
 
@@ -258,6 +274,30 @@ function test_workspace_flow_loops_size_warning()
 	$graph['nodes'][] = ws_flow_loops_test_node('value_1', 'value', array('text' => '{{node.for_each_1.name}}'));
 	$graph = ws_flow_graph_normalize($graph);
 	pg_assert_same(154, ws_flow_loop_box_runs(array_column($graph['nodes'], null, 'id'), ws_flow_loops($graph))['total']);
+
+	// Repeat N times with a typed count runs that many times, not 50: five
+	// rounds of 9 boxes warned "50 items × 9 boxes" on dev. A count read
+	// from a value may still be 50.
+	$repeat = function ($count) use ($body) {
+		$graph = $body(9);
+
+		foreach ($graph['nodes'] as $index => $node) {
+			if ($node['id'] === 'for_each_1') {
+				$graph['nodes'][$index]['config'] = array('mode' => 'count', 'count' => $count);
+			}
+		}
+
+		return ws_flow_graph_normalize($graph);
+	};
+	pg_assert_same(5, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '5')));
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '{{node.webhook_1.body}}')), 'a value: the cap');
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'count', 'count' => '80')), 'never past the cap');
+	pg_assert_same(50, ws_flow_loop_items_most(array('mode' => 'list', 'count' => '5')), 'a list: the cap');
+	pg_assert_same(array(), $warnings($repeat('5')), 'five rounds of 9 boxes');
+	$found = $warnings($repeat('40'));
+	pg_assert_same(1, count($found), 'forty rounds of 9 boxes');
+	pg_assert_contains('(40 items × 9 boxes in it)', $found[0]['text'], 'its own count');
+	pg_assert_same(1, count($warnings($repeat('{{node.webhook_1.body}}'))), 'a count from a value');
 }
 
 // A box outside a loop reads what its items gave through the End box, never
@@ -578,4 +618,280 @@ function test_workspace_flow_loops_box_try_run_values()
 
 	pg_assert_contains('ws_flow_loop_try_values(', ws_flow_loops_test_source('ws_flow_box_try'));
 	pg_assert_contains('ws_flow_loop_pass_values(', ws_flow_loops_test_source('ws_step_run_values'));
+}
+
+// Repeat N times: a For each box in count mode reads count, a whole number
+// from 1 to 50 or one value; its items are 1 to the count, so index and
+// item are alike; it gives no fields.
+function test_workspace_flow_loops_count_mode()
+{
+	$config = ws_flow_config_normalize('for_each', array('mode' => 'count', 'count' => 5, 'fields' => array('name'), 'list' => '{{node.webhook_1.body}}'));
+
+	pg_assert_same('count', $config['mode']);
+	pg_assert_same('5', $config['count'], 'a number given as a number is kept as its text');
+	pg_assert_same(array(), $config['fields'], 'an item of a count has no fields');
+	pg_assert_same('list', ws_flow_config_normalize('for_each', array('mode' => 'odd'))['mode']);
+	pg_assert_same('count', ws_flow_loop_source_key($config));
+	pg_assert_same(array('{{node.get.cell_4}}'), ws_flow_node_texts(array('kind' => 'for_each', 'config' => array('mode' => 'count', 'count' => '{{node.get.cell_4}}', 'list' => '{{node.x.body}}'))), 'only the count is read');
+
+	$catalogue = array_column(ws_flow_kind_catalogue(), null, 'kind');
+	$settings = array_column($catalogue['for_each']['settings'], null, 'key');
+
+	pg_assert_same(array('list', 'count'), $settings['mode']['values']);
+	pg_assert_same('text', $settings['count']['type']);
+
+	$items = ws_flow_loop_count_items(' 3 ');
+
+	pg_assert_true($items['ok']);
+	pg_assert_same(array(1, 2, 3), $items['items']);
+	pg_assert_same('[1,2,3]', $items['json']);
+	pg_assert_same(array('index' => '2', 'item' => '2'), ws_flow_loop_item_values($config, $items['json'], 2), 'index = item');
+	pg_assert_same(50, count(ws_flow_loop_count_items('50')['items']));
+
+	foreach (array('0', '51', 'abc', '2.5', '', '-1') as $bad) {
+		pg_assert_false(ws_flow_loop_count_items($bad)['ok'], 'count ' . $bad);
+	}
+
+	pg_assert_contains('from 1 to 50', ws_flow_loop_count_items('51')['error']);
+	pg_assert_true(strpos(ws_flow_loop_count_items('{"token":"s3cret"}')['error'], 's3cret') === false, 'the value read stays out of the reason');
+
+	pg_assert_same('', ws_flow_loop_count_problem('5', 'Repeat'));
+	pg_assert_same('', ws_flow_loop_count_problem('{{node.get.cell_4}}', 'Repeat'), 'one value');
+	pg_assert_contains('needs the number of times', ws_flow_loop_count_problem('', 'Repeat'));
+	pg_assert_contains('from 1 to 50', ws_flow_loop_count_problem('51', 'Repeat'));
+	pg_assert_contains('from 1 to 50', ws_flow_loop_count_problem('five', 'Repeat'));
+	pg_assert_contains('“When empty, write”', ws_flow_loop_count_problem('{{node.get.cell_4|3}}', 'Repeat'));
+}
+
+// A count out of range or not a number is bad_config at publish; a count
+// box needs no list.
+function test_workspace_flow_loops_count_graph_check()
+{
+	$count = function ($value) {
+		return ws_flow_loops_test_graph(array(), array(), array('collect' => ''), array('mode' => 'count', 'count' => $value, 'list' => ''));
+	};
+
+	pg_assert_same(array('bad_reference'), ws_flow_loops_test_codes($count('5')), 'a count box gives no field: reading one is refused');
+
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			ws_flow_loops_test_node('start', 'manual'),
+			ws_flow_loops_test_node('for_each_1', 'for_each', array('mode' => 'count', 'count' => '3')),
+			ws_flow_loops_test_node('notify_1', 'notify', array('user_ids' => array(1), 'text' => 'Round {{node.for_each_1.index}} of {{node.for_each_1.count}}')),
+			ws_flow_loops_test_node('for_each_end_1', 'for_each_end', array('for_each' => 'for_each_1')),
+		),
+		'edges' => array(
+			array('from' => 'start', 'to' => 'for_each_1', 'on' => 'next'),
+			array('from' => 'for_each_1', 'to' => 'notify_1', 'on' => 'each'),
+			array('from' => 'notify_1', 'to' => 'for_each_end_1', 'on' => 'done'),
+		),
+	));
+
+	pg_assert_same(array(), ws_flow_loops_test_codes($graph), 'Repeat 3 times');
+
+	foreach (array('0', '51', 'many', '') as $bad) {
+		$graph['nodes'][1]['config']['count'] = $bad;
+		pg_assert_same(array('bad_config'), ws_flow_loops_test_codes($graph), 'count ' . $bad);
+	}
+
+	$graph['nodes'][1]['config']['count'] = '{{node.start.status}}';
+	pg_assert_same(array(), ws_flow_loops_test_codes($graph), 'one value');
+}
+
+// The box tried and the box run read the count, a literal or one value.
+function test_workspace_flow_loops_count_try_and_run()
+{
+	$graph = ws_flow_loops_test_graph();
+	$node = ws_flow_loops_test_node('for_each_1', 'for_each', ws_flow_loop_normalize('for_each', array('mode' => 'count', 'count' => '4')));
+
+	pg_assert_same(array('said' => 'Repeats 4 times.', 'outcome' => 'each'), ws_flow_loop_try($graph, $node, array(), false));
+
+	$node['config']['count'] = '{{node.get.cell_4}}';
+	pg_assert_same('each', ws_flow_loop_try($graph, $node, array('get' => array('cell_4' => '2')), true)['outcome']);
+	pg_assert_same('failed', ws_flow_loop_try($graph, $node, array('get' => array('cell_4' => '80')), true)['outcome']);
+	pg_assert_same('', ws_flow_loop_try($graph, $node, array(), false)['outcome'], 'no run chosen: nothing to read');
+
+	$run = ws_flow_loops_test_source('ws_flow_loop_start_run');
+
+	pg_assert_contains('ws_flow_loop_count_items($text)', $run);
+	pg_assert_contains("ws_flow_loop_source_key(\$node['config']) === 'count'", $run);
+	pg_assert_contains("'items' => \$list['json']", $run, 'the items kept as a list\'s are');
+}
+
+// A value box reads a body box when every box reading it is in that body:
+// it is worked out at the reader's pass. Read inside and outside, it is
+// refused as today.
+function test_workspace_flow_loops_pure_box_in_a_body()
+{
+	$build = function ($outside) {
+		$nodes = array(
+			ws_flow_loops_test_node('start', 'manual'),
+			ws_flow_loops_test_node('for_each_1', 'for_each', array('mode' => 'count', 'count' => '5')),
+			ws_flow_loops_test_node('get', 'row_get', array('table_id' => 4, 'row' => '7')),
+			ws_flow_loops_test_node('plus', 'value', array('rule' => 'add', 'a' => '{{node.get.cell_9}}', 'b' => '1')),
+			ws_flow_loops_test_node('twice', 'value', array('rule' => 'add', 'a' => '{{node.plus.value}}', 'b' => '{{node.plus.value}}')),
+			ws_flow_loops_test_node('notify_1', 'notify', array('user_ids' => array(1), 'text' => 'Now {{node.twice.value}}')),
+			ws_flow_loops_test_node('for_each_end_1', 'for_each_end', array('for_each' => 'for_each_1')),
+			ws_flow_loops_test_node('notify_2', 'notify', array('user_ids' => array(1), 'text' => $outside ? 'After {{node.twice.value}}' : 'After')),
+		);
+		$edges = array(
+			array('start', 'for_each_1', 'next'), array('for_each_1', 'get', 'each'), array('get', 'notify_1', 'done'),
+			array('notify_1', 'for_each_end_1', 'done'), array('for_each_end_1', 'notify_2', 'done'),
+		);
+
+		return ws_flow_graph_normalize(array('nodes' => $nodes, 'edges' => array_map(function ($edge) {
+			return array('from' => $edge[0], 'to' => $edge[1], 'on' => $edge[2]);
+		}, $edges)));
+	};
+
+	$inside = $build(false);
+	$nodes = array_column($inside['nodes'], null, 'id');
+	$loops = ws_flow_loops($inside);
+
+	pg_assert_same(array('plus' => 'for_each_1', 'twice' => 'for_each_1'), ws_flow_loop_pure_of($nodes, $loops), 'a chain of value boxes takes the loop of its reader');
+	pg_assert_same(array(), ws_flow_loops_test_loop_codes($inside));
+
+	$both = $build(true);
+
+	pg_assert_same(array('plus' => '', 'twice' => ''), ws_flow_loop_pure_of(array_column($both['nodes'], null, 'id'), ws_flow_loops($both)), 'read inside and outside: in no loop');
+	pg_assert_same(array('bad_reference'), ws_flow_loops_test_loop_codes($both), 'a body box read from outside through a value box');
+
+	// Worked out at the reader's pass: the runner gives the pure boxes the
+	// values of that pass (ws_step_run_values()).
+	$rows = array(
+		ws_flow_loops_test_row('start', 0, 'done', 'next'),
+		ws_flow_loops_test_row('for_each_1', 0, 'done', 'each', array('count' => 2, 'items' => '[1,2]')),
+		ws_flow_loops_test_row('get', 1, 'done', 'done', array('row_id' => 7, 'found' => 1, 'cell_9' => '4')),
+		ws_flow_loops_test_row('notify_1', 1, 'done', 'done'),
+		ws_flow_loops_test_row('get', 2, 'done', 'done', array('row_id' => 7, 'found' => 1, 'cell_9' => '5')),
+	);
+	$pass = function ($n) use ($inside, $rows) {
+		$values = ws_flow_loop_pass_values($inside, 'notify_1', array_values(array_filter($rows, function ($row) use ($n) {
+			return in_array((int) $row['pass'], array(0, $n), true);
+		})), $n);
+
+		return ws_flow_pure_values($inside, $values)['twice']['value'];
+	};
+
+	pg_assert_same('10', $pass(1), 'pass 1 reads 4: (4 + 1) * 2');
+	pg_assert_same('12', $pass(2), 'pass 2 reads 5');
+	pg_assert_contains('return ws_flow_pure_values($graph, $values) + $values;', ws_flow_loops_test_source('ws_step_run_values'));
+}
+
+// A Wait box inside the body waits at its item's pass and is woken by its
+// own row: the look for waiting boxes asks no pass, and the next item waits
+// for it.
+function test_workspace_flow_loops_wait_in_the_body()
+{
+	$recheck = ws_flow_loops_test_source('ws_flow_steps_recheck');
+
+	pg_assert_contains("WHERE status = 'waiting' AND wake_at > 0 AND wake_at <= '\" . \$now . \"'\" . \$only . \"", $recheck);
+	pg_assert_false(strpos($recheck, 'pass') !== false, 'any pass is looked at');
+	pg_assert_contains("WHERE id = '\" . (int) \$step['id'] . \"' AND status = 'waiting'", ws_flow_loops_test_source('ws_flow_delay_recheck'), 'it settles its own row');
+	pg_assert_same('done', ws_flow_delay_settlement(ws_flow_delay_key(100), 160)['status'], 'its moment come');
+
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			ws_flow_loops_test_node('start', 'manual'),
+			ws_flow_loops_test_node('for_each_1', 'for_each', array('mode' => 'count', 'count' => '2')),
+			ws_flow_loops_test_node('delay_1', 'delay', array('amount' => 1, 'unit' => 'minutes')),
+			ws_flow_loops_test_node('for_each_end_1', 'for_each_end', array('for_each' => 'for_each_1')),
+		),
+		'edges' => array(
+			array('from' => 'start', 'to' => 'for_each_1', 'on' => 'next'),
+			array('from' => 'for_each_1', 'to' => 'delay_1', 'on' => 'each'),
+			array('from' => 'delay_1', 'to' => 'for_each_end_1', 'on' => 'done'),
+		),
+	));
+	$rows = array(
+		ws_flow_loops_test_row('start', 0, 'done', 'next'),
+		ws_flow_loops_test_row('for_each_1', 0, 'done', 'each', array('count' => 2, 'items' => '[1,2]')),
+		ws_flow_loops_test_row('delay_1', 1, 'done', 'done'),
+		ws_flow_loops_test_row('delay_1', 2, 'waiting'),
+	);
+
+	pg_assert_same(array('ready' => array(), 'skipped' => array()), ws_flow_loop_walk($graph, $rows), 'pass 2 waits: the End box too');
+
+	$rows[3] = ws_flow_loops_test_row('delay_1', 2, 'done', 'done');
+	pg_assert_same(array('ready' => array(array('for_each_end_1', 0)), 'skipped' => array()), ws_flow_loop_walk($graph, $rows), 'woken, the loop ends');
+}
+
+// The counter line of the decision as one flow: every 5 minutes, repeat 5
+// times: read the row, raise its count, write it back when it was found,
+// wait a minute; then the End box.
+function test_workspace_flow_loops_counter_line_as_one_flow()
+{
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			ws_flow_loops_test_node('start', 'schedule', array('date' => '2026-11-05', 'time' => '09:00', 'repeat' => 'minutes', 'every' => 5)),
+			ws_flow_loops_test_node('repeat', 'for_each', array('mode' => 'count', 'count' => '5')),
+			ws_flow_loops_test_node('get', 'row_get', array('table_id' => 4, 'row' => '7')),
+			ws_flow_loops_test_node('raised', 'value', array('rule' => 'add', 'a' => '{{node.get.cell_9}}', 'b' => '1')),
+			ws_flow_loops_test_node('found', 'condition', array('rule' => array('type' => 'value', 'ref' => '{{node.get.found}}', 'op' => 'eq', 'value' => '1'))),
+			ws_flow_loops_test_node('set', 'row_set', array('table_id' => 4, 'row' => '{{node.get.row_id}}', 'cells' => '{"9": "{{node.raised.value}}"}')),
+			ws_flow_loops_test_node('wait', 'delay', array('amount' => 1, 'unit' => 'minutes')),
+			ws_flow_loops_test_node('done', 'for_each_end', array('for_each' => 'repeat')),
+		),
+		'edges' => array(
+			array('from' => 'start', 'to' => 'repeat', 'on' => 'next'),
+			array('from' => 'repeat', 'to' => 'get', 'on' => 'each'),
+			array('from' => 'get', 'to' => 'found', 'on' => 'done'),
+			array('from' => 'found', 'to' => 'set', 'on' => 'yes'),
+			array('from' => 'found', 'to' => 'wait', 'on' => 'no'),
+			array('from' => 'set', 'to' => 'wait', 'on' => 'done'),
+			array('from' => 'wait', 'to' => 'done', 'on' => 'done'),
+		),
+	));
+
+	pg_assert_same(array(), ws_flow_loops_test_loop_codes($graph), 'one flow, no loop problem');
+
+	// The whole check, but for the cell only the table's store names.
+	$codes = array();
+
+	foreach (ws_flow_graph_check($graph) as $problem) {
+		if (empty($problem['warning']) && (strpos((string) $problem['text'], 'cell_9') === false)) {
+			$codes[] = $problem['code'];
+		}
+	}
+
+	pg_assert_same(array(), $codes, 'one flow, no other problem');
+	pg_assert_same('repeat', ws_flow_loop_pure_of(array_column($graph['nodes'], null, 'id'), ws_flow_loops($graph))['raised'], 'the raised value is worked out per round');
+	pg_assert_same(array('get', 'found', 'set', 'wait'), array_values(array_intersect(array('get', 'found', 'set', 'wait'), ws_flow_loops($graph)['repeat']['body'])));
+}
+
+// A box tried again or skipped by hand at pass 0 takes back the boxes the
+// walk skipped behind it through a loop too: the For each box leads to its
+// End box (the outer walk's arrow on each), and on to what follows it, so a
+// failed For each box, or a failed box before it, tried again runs the End
+// box and the boxes after it. Inside a body the item's boxes are taken back.
+function test_workspace_flow_loops_skipped_behind()
+{
+	$graph = ws_flow_loops_test_graph();
+
+	$rows = ws_flow_loops_test_started(0);
+	$rows[2] = ws_flow_loops_test_row('for_each_1', 0, 'failed');
+	$rows[] = ws_flow_loops_test_row('for_each_end_1', 0, 'skipped');
+	$rows[] = ws_flow_loops_test_row('notify_2', 0, 'skipped');
+	pg_assert_same(array('for_each_end_1', 'notify_2'), ws_flow_loop_skipped_behind($graph, $rows, 'for_each_1', 0), 'the failed For each box');
+
+	$rows = array(
+		ws_flow_loops_test_row('start', 0, 'done', 'next'),
+		ws_flow_loops_test_row('webhook_1', 0, 'failed'),
+		ws_flow_loops_test_row('for_each_1', 0, 'skipped'),
+		ws_flow_loops_test_row('for_each_end_1', 0, 'skipped'),
+		ws_flow_loops_test_row('notify_2', 0, 'skipped'),
+	);
+	pg_assert_same(array('for_each_1', 'for_each_end_1', 'notify_2'), ws_flow_loop_skipped_behind($graph, $rows, 'webhook_1', 0), 'a failed box before the loop');
+
+	$graph = ws_flow_loops_test_graph(
+		array(ws_flow_loops_test_node('notify_3', 'notify', array('user_ids' => array(1), 'text' => 'x'))),
+		array(array('notify_1', 'notify_3', 'done'), array('notify_3', 'for_each_end_1', 'always'))
+	);
+	$rows = ws_flow_loops_test_started(2);
+	$rows[] = ws_flow_loops_test_row('notify_1', 1, 'done', 'done');
+	$rows[] = ws_flow_loops_test_row('notify_3', 1, 'done', 'done');
+	$rows[] = ws_flow_loops_test_row('notify_1', 2, 'failed');
+	$rows[] = ws_flow_loops_test_row('notify_3', 2, 'skipped');
+	pg_assert_same(array('notify_3'), ws_flow_loop_skipped_behind($graph, $rows, 'notify_1', 2), 'the item\'s boxes only');
+	pg_assert_contains('ws_flow_loop_skipped_behind(', ws_flow_loops_test_source('ws_flow_step_mend_check'));
 }

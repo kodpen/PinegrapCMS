@@ -64,6 +64,11 @@ function subscriptions_operator_test_io(array &$store, array &$calls, $shared = 
 		'log' => function ($message) use (&$calls) {
 			$calls[] = array('log');
 		},
+		'lock' => function ($id, $wait = 0) {
+			return true;
+		},
+		'unlock' => function ($id) {
+		},
 	);
 }
 
@@ -146,6 +151,15 @@ function test_subscription_operator_refused_moves_say_why()
 		pg_assert_same($case[0], $store['status'], 'the row stays');
 		pg_assert_same(array(), $calls, 'nothing written, no service called');
 	}
+
+	// A row held for a renewal's outcome is not paused, and says so.
+	$store = subscriptions_operator_test_row(array('next_charge_at' => '0'));
+	$calls = array();
+	$result = pg_subscription_operator_action($user, 7, 'pause', subscriptions_operator_test_io($store, $calls));
+	pg_assert_same('refused', $result['result']);
+	pg_assert_same('A subscription whose renewal payment is still being settled cannot be paused.', $result['reason']);
+	pg_assert_same('active', $store['status']);
+	pg_assert_same(array(), $calls);
 
 	$store = subscriptions_operator_test_row();
 	$calls = array();

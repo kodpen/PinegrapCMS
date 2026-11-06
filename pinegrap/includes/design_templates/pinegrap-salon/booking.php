@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Beauty Salon", its booking: the booking form, the
- * booking's own page with its messages, My Appointments, the privacy page
- * the consent box links, the booking e-mails, and the widgets that draw
- * them (the form, the booking, the client's and the staff's lists, the two
+ * online booking page (the booking widget), the booking's own page with
+ * its messages, My Appointments, the privacy page the consent box links,
+ * the booking e-mails, and the widgets that draw them (the form, the
+ * booking widget, the booking, the client's and the staff's lists, the two
  * e-mail views). Included after parts.php and mail.php in the same scope;
  * returns array('pages' => ..., 'widgets' => ...).
  *
@@ -15,7 +16,9 @@
  * office-use-only field the staff change in the control panel (Requested,
  * Confirmed, Completed, Cancelled); the messages under it are the page's
  * comments, mailed to the client and to the salon. The form asks for a time
- * of day, not an exact time: the staff confirm the hour.
+ * of day, not an exact time: the staff confirm the hour. The online
+ * booking page beside it books a free time at once from the services and
+ * staff hours set up in Settings › Bookings.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -65,6 +68,11 @@ $booking_pages[] = array(
                         )),
                     ), '', '8'),
                     $col(array(
+                        $el('div', 'p-4 rounded-4 border border-primary-subtle mb-4', lang('Book a Free Time'), array(
+                            $heading('h2', lang('Pick a free time now'), 'h5 fw-semibold mb-2'),
+                            $para(lang('Choose the service, the stylist and one of the free times; the time is yours at once.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Book Online'), '{{page:book_online}}', 'btn btn-sm btn-outline-primary rounded-pill px-3'),
+                        )),
                         $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('How It Works'), array(
                             $heading('h2', lang('What happens next'), 'h5 fw-semibold mb-3'),
                             $el('ol', 'small text-body-secondary ps-3 mb-0', lang('List'), array(
@@ -80,6 +88,43 @@ $booking_pages[] = array(
                                 lang('Come with clean, dry hair for colour, unless we say otherwise.'),
                                 lang('Please let us know 24 hours ahead if you cannot come.'),
                             ), 'list-unstyled small mb-0'),
+                        )),
+                        $el('div', 'p-4 rounded-4 border', lang('Opening hours'), array(
+                            $heading('h2', lang('Opening hours'), 'h5 fw-semibold mb-3'),
+                            $hours(),
+                        )),
+                    ), '', '4'),
+                ), '4', '', 'g-lg-5'),
+            )),
+        )),
+    ), false),
+);
+
+// Online booking: the booking widget shows the services set up in
+// Settings › Bookings, the free days and times of the staff, and holds the
+// chosen time while the visitor writes their details. The request form
+// stays beside it for a visit that needs a word first.
+$booking_pages[] = array(
+    'key'              => 'book_online',
+    'name'             => lang('book-online'),
+    'folder'           => 'public',
+    'title'            => lang('Book Online'),
+    'meta_description' => lang('Choose a service, a stylist and a free time, and book your visit in a minute.'),
+    'tree'             => $page(array(
+        $page_header(lang('Book Online'), lang('Choose a service, a stylist and one of the free times. The time is yours as soon as you confirm.')),
+        $el('section', 'py-5', lang('Content'), array(
+            $container(array(
+                $row(array(
+                    $col(array(
+                        $el('div', 'card border-0 shadow-sm rounded-4', lang('Booking Card'), array(
+                            $el('div', 'card-body p-4 p-lg-5', lang('Card Body'), array($widget('booking_slots'))),
+                        )),
+                    ), '', '8'),
+                    $col(array(
+                        $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('Ask First'), array(
+                            $heading('h2', lang('Rather ask first?'), 'h5 fw-semibold mb-2'),
+                            $para(lang('For a first colour, a bridal look or a package, send us a request and we will find the right time together.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Request Booking'), '{{page:appointment}}', 'btn btn-sm btn-outline-primary rounded-pill px-3'),
                         )),
                         $el('div', 'p-4 rounded-4 border', lang('Opening hours'), array(
                             $heading('h2', lang('Opening hours'), 'h5 fw-semibold mb-3'),
@@ -296,6 +341,16 @@ $booking_widgets = array(
             )),
             $loop(array()),
         )),
+    ),
+
+    // Online booking: the widget's starter layout (service, stylist, day
+    // and time, details, confirmation); the services and hours come from
+    // Settings › Bookings.
+    'booking_slots' => array(
+        'page'   => 'book_online',
+        'slug'   => lang('booking'),
+        'config' => array('regionType' => 'booking'),
+        'tree'   => 'starter',
     ),
 
     // One booking: the request, its status and what the client wrote; the

@@ -20,8 +20,8 @@ description: Keeping a coordinator's context small (2026-11-04): what its first 
 - **When a slot is free:** `php tools/free_work.php` only (about 6 KB). It prints:
   - the queue count;
   - the plan steps not done and held by no open PR, each with its "After";
-  - the open issues that no open PR names (`Fixes #n`);
-  - the bug-hunt plan files and the open `architect` issues.
+  - the open `architect` issues (no `bug` issue: they are not given out, `coordinator-no-plans.md`).
+  - Steps are read in every format the plans use: `- AP3 …`, `- **AP3** …`, `- E20 (S) …`, and under a steps heading the design templates' numbered ones (`- 4 Topic: …`, `- 4: …`, `- 4 (done, #n): …`, `- 4 Done (#n). …`); before 2026-11-06 the numbered ones were missed, so free design-template steps were not listed. A new step format needs a case in `tests/free_work_test.php`.
   
   Then it opens only the plan file of the step it gives out, sliced to that step.
 - **Each check-in:** one open-PR listing with `--jq` (CLAUDE.md, Claim work), and `get_session` only for a worker it checks.

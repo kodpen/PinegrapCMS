@@ -1281,41 +1281,13 @@ function get_form_list_view($properties) {
 
             $selected_browse_field_date_format = '';
 
-            $browse_filter_query_string = '';
+            // The query string parameters that are not fields of this form, for the filter links.
+            $browse_filter_query_string = pg_form_list_carry_query($query_string_parameters, function ($name) use ($field_prefix, $field_prefix_length) {
+                return mb_substr($name, 0, $field_prefix_length) == $field_prefix;
+            });
 
-            // Loop through the query string parameters in order to build query string for filters.
-            foreach ($query_string_parameters as $name => $value) {
-                // If this parameter is not a field that appears on this form then add it to query string.
-                if (mb_substr($name, 0, $field_prefix_length) != $field_prefix) {
-                    // If this field can have multiple values (e.g. check box group), then loop through value array in order to add a name/value pair to the query string for every value.
-                    if (is_array($value) == TRUE) {
-                        foreach ($value as $subvalue) {
-                            // if this is the first item that is being added to the query string, then add question mark
-                            if ($browse_filter_query_string == '') {
-                                $browse_filter_query_string = '?';
-                                
-                            // else this is not the first item that is being added to the query string, so add ampersand
-                            } else {
-                                $browse_filter_query_string .= '&';
-                            }
-                            
-                            $browse_filter_query_string .= urlencode($name . '[]') . '=' . urlencode($subvalue);
-                        }
-
-                    // Otherwise this field has just one value, so output name/value pair for it.
-                    } else {
-                        // if this is the first item that is being added to the query string, then add question mark
-                        if ($browse_filter_query_string == '') {
-                            $browse_filter_query_string = '?';
-                            
-                        // else this is not the first item that is being added to the query string, so add ampersand
-                        } else {
-                            $browse_filter_query_string .= '&';
-                        }
-                        
-                        $browse_filter_query_string .= urlencode($name) . '=' . urlencode($value);
-                    }
-                }
+            if ($browse_filter_query_string != '') {
+                $browse_filter_query_string = '?' . $browse_filter_query_string;
             }
 
             // Loop through browse fields in order to prepare browse pick list and filters.
@@ -2930,6 +2902,10 @@ function get_form_list_view($properties) {
             $number_of_results_for_this_page = $number_of_results - (($page_number - 1) * $maximum_number_of_results_per_page);
         }
         
+        // The record id breaks ties between records sharing a sort value, so
+        // each one keeps its place from one page to the next.
+        $sql_order_by = pg_form_list_view_order_sql($sql_order_by);
+
         // prepare the limit clause
         $sql_limit = "LIMIT " . $start . ", " . $number_of_results_for_this_page;
         
@@ -3365,40 +3341,20 @@ function get_form_list_view($properties) {
                     // get current URL parts in order to deal with query string parameters
                     $url_parts = parse_url(REQUEST_URL);
                     
-                    // put query string parameters into an array
-                    parse_str($url_parts['query'], $query_string_parameters);
+                    // put query string parameters into an array (an address without a query has none)
+                    $query_string_parameters = array();
+
+                    if (isset($url_parts['query'])) {
+                        parse_str($url_parts['query'], $query_string_parameters);
+                    }
                 }
                 
                 $pagination_url = $url_parts['path'] . '?';
                 
-                $query_string = '';
-
-                // loop through the query string parameters in order to build query string
-                foreach ($query_string_parameters as $name => $value) {
-                    // if this is not the specific page number parameter, then add it to the query string
-                    if ($name != $pk_page_number) {
-                        // If this field can have multiple values (e.g. check box group), then loop through value array in order to add a name/value pair to the query string for every value.
-                        if (is_array($value) == TRUE) {
-                            foreach ($value as $subvalue) {
-                                // if this is not the first item, then add an ampersand
-                                if ($query_string != '') {
-                                    $query_string .= '&';
-                                }
-                                
-                                $query_string .= urlencode($name . '[]') . '=' . urlencode($subvalue);
-                            }
-
-                        // Otherwise this field has just one value, so output name/value pair for it.
-                        } else {
-                            // if this is not the first item, then add an ampersand
-                            if ($query_string != '') {
-                                $query_string .= '&';
-                            }
-                            
-                            $query_string .= urlencode($name) . '=' . urlencode($value);
-                        }
-                    }
-                }
+                // Every query string parameter but the page number.
+                $query_string = pg_form_list_carry_query($query_string_parameters, function ($name) use ($pk_page_number) {
+                    return $name == $pk_page_number;
+                });
                 
                 $pagination_url .= $query_string;
                 

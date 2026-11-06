@@ -219,8 +219,8 @@ function pg_oauth_authenticate_client() {
 
 	if (!$basic) {
 
-		$client_id = isset($_POST['client_id']) ? (string)$_POST['client_id'] : '';
-		$secret    = isset($_POST['client_secret']) ? (string)$_POST['client_secret'] : '';
+		$client_id = pg_oauth_form_value('client_id');
+		$secret    = pg_oauth_form_value('client_secret');
 
 	}
 
@@ -248,6 +248,15 @@ function pg_oauth_authenticate_client() {
 
 }
 
+// One field of a form-encoded request body. A field sent as a list
+// (code[]=x) counts as not given: a cast logged "Array to string conversion"
+// on a public endpoint and went on with the word "Array".
+function pg_oauth_form_value($name) {
+
+	return (isset($_POST[$name]) && is_string($_POST[$name])) ? $_POST[$name] : '';
+
+}
+
 /* ---------------------------------------------------------------------------
    Token endpoint
    --------------------------------------------------------------------------- */
@@ -264,7 +273,7 @@ function pg_oauth_token() {
 
 	$client = pg_oauth_authenticate_client();
 
-	$grant = isset($_POST['grant_type']) ? (string)$_POST['grant_type'] : '';
+	$grant = pg_oauth_form_value('grant_type');
 
 	if ($grant === 'authorization_code') {
 
@@ -309,13 +318,13 @@ function pg_oauth_owner_or_fail($user_id, $device_id = 0) {
 // connection was issued for (RFC 8707 2.2).
 function pg_oauth_check_resource($stored) {
 
-	if (!isset($_POST['resource']) || ((string)$_POST['resource'] === '')) {
+	if (pg_oauth_form_value('resource') === '') {
 
 		return;
 
 	}
 
-	$asked = pg_oauth_resource_normalise((string)$_POST['resource']);
+	$asked = pg_oauth_resource_normalise(pg_oauth_form_value('resource'));
 
 	// Compared by resource rather than by spelling: the MCP server answers on
 	// two addresses, and a token for one is a token for the other.
@@ -342,9 +351,9 @@ function pg_oauth_token_answer($issued, $scopes) {
 
 function pg_oauth_token_from_code($client) {
 
-	$code     = isset($_POST['code']) ? trim((string)$_POST['code']) : '';
-	$verifier = isset($_POST['code_verifier']) ? (string)$_POST['code_verifier'] : '';
-	$redirect = isset($_POST['redirect_uri']) ? (string)$_POST['redirect_uri'] : '';
+	$code     = trim(pg_oauth_form_value('code'));
+	$verifier = pg_oauth_form_value('code_verifier');
+	$redirect = pg_oauth_form_value('redirect_uri');
 
 	if (($code === '') || ($verifier === '')) {
 
@@ -451,7 +460,7 @@ function pg_oauth_token_from_code($client) {
 
 function pg_oauth_token_from_refresh($client) {
 
-	$token = isset($_POST['refresh_token']) ? trim((string)$_POST['refresh_token']) : '';
+	$token = trim(pg_oauth_form_value('refresh_token'));
 
 	if ($token === '') {
 
@@ -476,24 +485,20 @@ function pg_oauth_token_from_refresh($client) {
 	$consented = is_array($consented) ? $consented : array();
 
 	// A refresh may ask for less than was granted, never more (RFC 6749 6).
-	// The connection keeps what the person agreed to; the narrower set is not
-	// stored, because the next refresh may ask for all of it again. Values the
-	// site has no scope of are passed over, as on the consent screen: a
-	// client sending its first request's scope string again, offline_access
-	// and all, asks for nothing new.
-	if (isset($_POST['scope']) && ((string)$_POST['scope'] !== '')) {
+	// The narrower set goes on the row for the new access token only; the
+	// consent stays as it was, so the next refresh may ask for all of it
+	// again. Values the site has no scope of are passed over, as on the
+	// consent screen: a client sending its first request's scope string
+	// again, offline_access and all, asks for nothing new.
+	$narrowed = pg_oauth_refresh_scopes(pg_oauth_form_value('scope'), api_scopes_all(), api_scopes_expand($consented));
 
-		$asked = array_intersect(pg_oauth_scope_parse((string)$_POST['scope']), api_scopes_all());
+	if ($narrowed === false) {
 
-		if (count(array_diff($asked, api_scopes_expand($consented))) > 0) {
-
-			pg_oauth_fail(400, 'invalid_scope', 'A refresh cannot ask for more than was granted.');
-
-		}
+		pg_oauth_fail(400, 'invalid_scope', 'A refresh cannot ask for more than was granted.');
 
 	}
 
-	$rotated = api_device_rotate_pair($token);
+	$rotated = api_device_rotate_pair($token, $narrowed);
 
 	if ($rotated['error'] !== '') {
 
@@ -519,7 +524,8 @@ function pg_oauth_token_from_refresh($client) {
 
 	pg_oauth_client_touch((int)$client['id']);
 
-	pg_oauth_token_answer($rotated, pg_oauth_effective_scopes($app, $owner, $consented));
+	pg_oauth_token_answer($rotated, pg_oauth_access_scopes(pg_oauth_effective_scopes($app, $owner, $consented),
+		is_array($narrowed) ? api_scopes_expand($narrowed) : null));
 
 }
 
@@ -543,7 +549,7 @@ function pg_oauth_revoke() {
 
 	$client = pg_oauth_authenticate_client();
 
-	$token = isset($_POST['token']) ? trim((string)$_POST['token']) : '';
+	$token = trim(pg_oauth_form_value('token'));
 
 	if ($token === '') {
 
@@ -587,8 +593,10 @@ function pg_oauth_register() {
 
 	}
 
-	if (function_exists('waf_rate_exceeded')
-		&& waf_rate_exceeded(api_client_ip(), 'oauth_reg', pg_oauth_registration_limit(), 3600)) {
+	// Per subject (the /64 for IPv6), so the addresses of one sender share
+	// one allowance.
+	if (function_exists('waf_rate_exceeded') && function_exists('waf_ip_subject')
+		&& waf_rate_exceeded(waf_ip_subject(api_client_ip()), 'oauth_reg', pg_oauth_registration_limit(), 3600)) {
 
 		pg_oauth_fail(429, 'temporarily_unavailable', 'Too many registrations from this address. Try again later.',
 			array('Retry-After' => '3600'));
@@ -713,7 +721,10 @@ function pg_oauth_registration_validate($body) {
 
 	}
 
-	$method = isset($body['token_endpoint_auth_method']) ? (string)$body['token_endpoint_auth_method'] : 'client_secret_basic';
+	// A value that is not text is no method this server knows.
+	$method = isset($body['token_endpoint_auth_method'])
+		? (is_string($body['token_endpoint_auth_method']) ? $body['token_endpoint_auth_method'] : '')
+		: 'client_secret_basic';
 
 	if (!in_array($method, array('none', 'client_secret_basic', 'client_secret_post'), true)) {
 

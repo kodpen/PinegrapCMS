@@ -139,7 +139,7 @@ function db_q_commerce_tail_test_files()
 		'add_currency.php' => 0,
 		'includes/forms/currency_form.php' => 1,
 		'add_country.php' => 0,
-		'edit_country.php' => 1,
+		'edit_country.php' => 2,
 		'add_state.php' => 0,
 		'includes/fn/store_regions.php' => 10,
 		'includes/fn/store_currencies.php' => 6,

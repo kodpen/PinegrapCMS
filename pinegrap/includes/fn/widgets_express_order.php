@@ -18,6 +18,38 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+/**
+ * The api.php address the express order page's scripts post to (installment
+ * plans, live tax, shipping methods). On a page drawn in another site
+ * language it carries pg_lang, as the jQuery requests of a translated page do
+ * (frontend.src.js): those scripts use fetch(), which adds nothing, and
+ * without it api.php answers shipping method names and messages in the
+ * source language.
+ *
+ * @param string|null $base_path      the site path; null reads OUTPUT_PATH
+ * @param string|null $software_dir   null reads OUTPUT_SOFTWARE_DIRECTORY
+ * @param string|null $language       the page's language code, '' in the
+ *                                    source language; null reads the page's
+ * @return string
+ */
+function pg_express_order_api_url($base_path = null, $software_dir = null, $language = null)
+{
+    if ($base_path === null) {
+        $base_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    }
+    if ($software_dir === null) {
+        $software_dir = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software';
+    }
+    if ($language === null) {
+        $language = (function_exists('pg_tr_active') && pg_tr_active()) ? (string) pg_tr_language() : '';
+    }
+
+    $url = $base_path . $software_dir . '/api.php';
+    $language = (string) $language;
+
+    return ($language !== '') ? $url . '?pg_lang=' . rawurlencode($language) : $url;
+}
+
 // ── Designer bindings: walk tree for express-order section markers ──────────
 // Uses the SAME convention as the catalog widget: `props._bindings.section`
 // (not a top-level `_bindings`). Values are prefixed `eo_` so they don't
@@ -3081,9 +3113,7 @@ function _eo_render_installment_box($lf)
     // The fetcher JS lives in the monolithic _eo_render_payment_methods so it
     // ALSO needs to be emitted here for the bindings render path. Idempotent
     // — multiple installment containers on a page register only once.
-    $api_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-    if (defined('OUTPUT_SOFTWARE_DIRECTORY')) $api_path .= OUTPUT_SOFTWARE_DIRECTORY . '/';
-    $api_url = $api_path . 'api.php';
+    $api_url = pg_express_order_api_url();
     $html .= '<script>(function(){'
           . 'if(window.__pgEoInstInit)return;window.__pgEoInstInit=1;'
           . 'var apiUrl=' . json_encode($api_url) . ';'
@@ -3304,11 +3334,7 @@ function _eo_render_payment_methods($lf, $cfg, $hosted_card_html = '')
         if ($is_iyzipay_gateway && $max_installments >= 2) {
             // Installment fetcher — debounced, scoped per-form so multiple
             // EO widgets on the same page don't clobber each other.
-            $api_base_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
-            if (defined('OUTPUT_SOFTWARE_DIRECTORY')) {
-                $api_base_path .= OUTPUT_SOFTWARE_DIRECTORY . '/';
-            }
-            $api_url = $api_base_path . 'api.php';
+            $api_url = pg_express_order_api_url();
             $html .= '<script>(function(){'
                   .   'if(window.__pgEoInstInit)return;window.__pgEoInstInit=1;'
                   .   'var apiUrl=' . json_encode($api_url) . ';'
@@ -4131,7 +4157,7 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
                     $cd_name = 'shipping_' . $rid . '_custom_arrival_date_' . $aid;
                     $cd_val  = _eo_custom_arrival_value($get('custom_arrival_date_' . $aid), $r, $aid);
                     $cd_max  = isset($ad['custom_maximum_arrival_date']) ? $ad['custom_maximum_arrival_date'] : '';
-                    $out .= '<div class="ms-4 mt-1 mb-2 pg-eo-custom-arrival" data-pg-eo-arrival-id="' . $aid . '"'
+                    $out .= '<div class="ms-4 mt-1 mb-2 pg-eo-custom-arrival" data-pg-eo-rid="' . $rid . '" data-pg-eo-arrival-id="' . $aid . '"'
                           .   ($is_sel ? '' : ' style="display:none"') . '>'
                           . _eo_custom_arrival_input($cd_name, $cd_val, $cd_max, date('Y-m-d'), $is_sel, (string)$ad['name'])
                           . '</div>';
@@ -4243,9 +4269,7 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
     // and `validate_date()` rejects HTML5 ISO dates so the visitor would
     // hit "Delivery Date must contain a valid date" without the conversion.
     // Shipping-related JS is conditional on $needs_shipping below.
-    $api_url = $base_path
-             . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
-             . '/api.php';
+    $api_url = pg_express_order_api_url($base_path);
     $rids = array();
     if ($needs_shipping && is_array($recipients)) {
         foreach ($recipients as $r) $rids[] = (int)$r['id'];
@@ -4861,10 +4885,15 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
                 fetchMethods(rid);
             });
         }
-        // Address fields → debounced refetch on change
-        ['address_1', 'city', 'state', 'zip_code'].forEach(function (f) {
-            var el = form.querySelector('[name="shipping_' + rid + '_' + f + '"]:not([disabled])');
-            if (el) el.addEventListener('change', function () { fetchMethods(rid); });
+        // Address fields → refetch on change. Listened on the form: the
+        // state's name moves between its text box and its pick list when the
+        // country changes (pg_sa_state_script()), so a listener bound to the
+        // control named at load would miss the other one.
+        var addrNames = ['address_1', 'city', 'state', 'zip_code'].map(function (f) {
+            return 'shipping_' + rid + '_' + f;
+        });
+        form.addEventListener('change', function (e) {
+            if (e.target && e.target.name && addrNames.indexOf(e.target.name) !== -1) fetchMethods(rid);
         });
         // Arrival date radios — refetch + show/hide custom date input
         form.querySelectorAll('input.pg-eo-arrival-radio[data-pg-eo-rid="' + rid + '"]').forEach(function (r) {
@@ -4872,11 +4901,13 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
                 // Toggle custom date input visibility; a hidden date is not
                 // posted, and a date out of its bounds there would block the
                 // submit with no visible message.
-                form.querySelectorAll('.pg-eo-custom-arrival').forEach(function (cd) {
+                // Only this recipient's boxes: every recipient has the same
+                // arrival choice ids.
+                form.querySelectorAll('.pg-eo-custom-arrival[data-pg-eo-rid="' + rid + '"]').forEach(function (cd) {
                     cd.style.display = 'none';
                     cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; refreshField(inp); });
                 });
-                var custWrap = form.querySelector('.pg-eo-custom-arrival[data-pg-eo-arrival-id="' + r.value + '"]');
+                var custWrap = form.querySelector('.pg-eo-custom-arrival[data-pg-eo-rid="' + rid + '"][data-pg-eo-arrival-id="' + r.value + '"]');
                 if (custWrap) {
                     custWrap.style.display = '';
                     custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; refreshField(inp); });
@@ -4887,7 +4918,7 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         // Custom arrival DATE input change → refetch (the picked date affects
         // which methods can deliver by then; without this listener the rate
         // list goes stale once the visitor changes the date).
-        form.querySelectorAll('.pg-eo-custom-arrival input[type="date"]').forEach(function (inp) {
+        form.querySelectorAll('.pg-eo-custom-arrival[data-pg-eo-rid="' + rid + '"] input[type="date"]').forEach(function (inp) {
             inp.addEventListener('change', function () { fetchMethods(rid); });
         });
         // Method picker → update hidden input + sidebar

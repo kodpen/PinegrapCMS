@@ -1,6 +1,6 @@
 ---
 name: kiosk-mode
-description: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required), and why the text parameters must be strings
+description: kiosk.php: what its query string sets in the session, how logout restarts it (token and kiosk mode required, visitor cookies cleared), and why the text parameters must be strings
 ---
 
 ## What does kiosk.php do?
@@ -16,3 +16,7 @@ description: kiosk.php: what its query string sets in the session, how logout re
 - Now `action=logout` restarts only a kiosk session, and a signed-in one only with `token` (the kiosk script sends `software_token`); anything else goes to `logout.php`, which asks first. `logout.php` sends a kiosk session on only after its token check, with the token.
 - Turning kiosk mode on from a signed-in session without the token shows a confirm form (GET, the link's settings and the token). A kiosk normally starts signed out, and its logout comes back with a fresh session, so the kiosk loop asks nothing.
 - `tests/kiosk_text_parameters_test.php` (source pins).
+
+## Which cookies does the kiosk logout clear?
+- The session alone held nothing of the guest wishlist (`pg_wishlist` cookie, a year) or the `software[affiliate_code]` / `software[tracking_code]` cookies: the next customer saw the last one's saved products, a sign-in at the kiosk merged them into that account (`pg_wishlist_merge()`), and the next order was credited to the last visitor's partner.
+- Since this fix `action=logout` calls `pg_wishlist_cookie_clear()` and expires both codes before the session ends. The consent answer is kept. `tests/kiosk_text_parameters_test.php` (source pin).

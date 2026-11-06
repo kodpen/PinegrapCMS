@@ -349,7 +349,7 @@
                 ]));
             }
 
-            var card = el('button', { type: 'button', class: 'pgie-scard' + (open ? ' on' : '') + (s.open ? ' pgie-sopen' : ''), title: name, 'aria-label': name + ', ' + seconds(s.duration), onclick: function () {
+            var card = el('button', { type: 'button', class: 'pgie-scard' + (open ? ' on' : '') + (s.open ? ' pgie-sopen' : ''), 'data-scene': s.id, title: name, 'aria-label': name + ', ' + seconds(s.duration), onclick: function () {
                 if (!self.sceneDragged) {
                     self.openScene(s.id);
                 }
@@ -572,6 +572,21 @@
             motionPanel.call(this, body);
         }
     };
+
+    // Delete or Backspace while the open scene's panel shows (after a click
+    // on its card, no layer selected) deletes that scene as the panel's
+    // Delete does; the last one stays.
+    Editor.keys.push(function (e, mod, k) {
+        var id = this.doc.scene;
+
+        if (mod || ((k !== 'Delete') && (k !== 'Backspace')) || !this.scenesOffered() || !this.sceneFocus || this.selected().length || (M.sceneCount(this.doc) < 2)) {
+            return false;
+        }
+
+        this.sceneChange(function (doc) { M.sceneDelete(doc, id); });
+
+        return true;
+    });
 
     // A press on the stage goes back to the layers' motion.
     var motionDown = Editor.pointers.motion.down;

@@ -295,6 +295,22 @@ function erp_cash_till_refusal($cash_account_id, $allow_inactive = false)
 }
 
 /**
+ * Why a receipt or payment cannot be written against this account, or ''.
+ * The wording is the external API's (erp_api_receipts_create()).
+ *
+ * @param array|null|false $account  erp_accounts row, as read
+ * @return string
+ */
+function erp_receipt_account_row_refusal($account)
+{
+    if (!is_array($account)) {
+        return lang('That account could not be found.');
+    }
+
+    return '';
+}
+
+/**
  * Take money in against a customer, or pay money out to a supplier.
  *
  * The one door for both, because they are the same two rows with the arrows
@@ -347,6 +363,11 @@ function erp_post_receipt_check($data)
     }
     if ($cash_account_id <= 0) {
         return lang('Choose a till or bank account.');
+    }
+    // The screen and a bank statement line send the posted id as it came:
+    // a missing account got a ledger row nobody owned while the till moved.
+    if (($refusal = erp_receipt_account_row_refusal(db_item("SELECT id FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1"))) !== '') {
+        return $refusal;
     }
     if (($refusal = erp_cash_till_refusal($cash_account_id, !empty($data['allow_inactive_till']))) !== '') {
         return $refusal;
@@ -926,6 +947,21 @@ function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
 
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
+    }
+
+    // Asked again under the receipt's row lock: the check above ran before
+    // the transaction, so two presses (two tabs, a resent form, two API
+    // calls) both passed it and each posted a reversal pair, moving the till
+    // and the account back twice. The second waits here for the first to
+    // commit, and the locking read sees the reversal it wrote.
+    db_item("SELECT id FROM erp_cash_transactions WHERE id = '" . $cash_id . "' LIMIT 1 FOR UPDATE");
+
+    if (is_array(db_item("SELECT id FROM erp_cash_transactions
+        WHERE doc_type = 'cancel' AND doc_id = '" . $cash_id . "' LIMIT 1 FOR UPDATE"))) {
+        erp_tx_rollback();
+        return $fail(((string) $receipt['direction'] === 'out')
+            ? lang('That payment has already been cancelled.')
+            : lang('That receipt has already been cancelled.'));
     }
 
     // The allocations first: the invoices they closed have to ask for their

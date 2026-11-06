@@ -181,6 +181,36 @@ function test_oauth_registration_refusals()
 	pg_assert_same('invalid_redirect_uri', $script['error'], 'script address');
 }
 
+// A JSON value that is not text, where one word is expected, is refused
+// like an unknown method, with no "Array to string conversion" warning.
+function test_oauth_registration_refuses_a_method_that_is_not_text()
+{
+	$list = pg_oauth_registration_validate(array('redirect_uris' => array('https://a.example/cb'), 'token_endpoint_auth_method' => array('none')));
+
+	pg_assert_same('invalid_client_metadata', $list['error'], 'a list as the method');
+
+	$object = pg_oauth_registration_validate(array('redirect_uris' => array('https://a.example/cb'), 'token_endpoint_auth_method' => array('a' => 'b')));
+
+	pg_assert_same('invalid_client_metadata', $object['error'], 'an object as the method');
+}
+
+// A form field of the token and revocation endpoints sent as a list
+// (code[]=x) counts as not given, with no "Array to string conversion"
+// warning; text is read as sent.
+function test_oauth_form_value_reads_only_text()
+{
+	$saved = $_POST;
+
+	$_POST = array('code' => array('x'), 'grant_type' => 'authorization_code', 'scope' => array('a' => 'b'));
+
+	pg_assert_same('', pg_oauth_form_value('code'), 'a list');
+	pg_assert_same('', pg_oauth_form_value('scope'), 'an object');
+	pg_assert_same('', pg_oauth_form_value('token'), 'missing');
+	pg_assert_same('authorization_code', pg_oauth_form_value('grant_type'), 'text');
+
+	$_POST = $saved;
+}
+
 // RFC 7636 appendix B.
 function test_oauth_pkce_matches_the_rfc_example()
 {
@@ -215,6 +245,47 @@ function test_oauth_scope_requested()
 	pg_assert_same(array('products:read'), pg_oauth_scope_requested('openid products:read offline_access', $known, $available), 'the real ones kept');
 	pg_assert_same(array('orders:read', 'products:write'), pg_oauth_scope_requested('products:write orders:read', $known, $available), 'in the order offered');
 	pg_assert_same(array(), pg_oauth_scope_requested('orders:write webhooks:manage', $known, $available), 'real scopes this person cannot hand over');
+}
+
+// A refresh's scope (RFC 6749 6): less than the consent narrows the new
+// access token, all of it or nothing known means the whole consent (null),
+// more is refused (false).
+function test_oauth_refresh_scopes()
+{
+	$known = array('orders:read', 'orders:write', 'products:read', 'products:write', 'webhooks:manage');
+	$granted = array('orders:read', 'products:read', 'products:write');
+
+	pg_assert_same(null, pg_oauth_refresh_scopes('', $known, $granted), 'no scope sent');
+	pg_assert_same(null, pg_oauth_refresh_scopes('openid offline_access', $known, $granted), 'only scopes the site does not have');
+	pg_assert_same(null, pg_oauth_refresh_scopes('products:write orders:read products:read offline_access', $known, $granted), 'the whole consent asked for again');
+	pg_assert_same(array('orders:read', 'products:read'), pg_oauth_refresh_scopes('products:read Orders:Read openid', $known, $granted), 'narrower, sorted, unknown passed over');
+	pg_assert_same(false, pg_oauth_refresh_scopes('products:read orders:write', $known, $granted), 'more than granted');
+	pg_assert_same(false, pg_oauth_refresh_scopes('webhooks:manage', $known, $granted), 'a scope never granted');
+	pg_assert_same(false, pg_oauth_refresh_scopes('orders:read', $known, array()), 'nothing granted');
+	pg_assert_same(null, pg_oauth_refresh_scopes(null, $known, $granted), 'not a string');
+}
+
+// What a request may do: today's effective scopes, within the refresh's
+// narrower set when there is one.
+function test_oauth_access_scopes()
+{
+	$effective = array('orders:read', 'products:read', 'products:write');
+
+	pg_assert_same($effective, pg_oauth_access_scopes($effective, null), 'no narrower set: the consent');
+	pg_assert_same(array('products:read', 'products:write'), pg_oauth_access_scopes($effective, array('products:write', 'products:read')), 'narrowed');
+	pg_assert_same(array('orders:read'), pg_oauth_access_scopes(array('orders:read', 'products:read'), array('orders:read', 'products:write')), 'a scope lost since the refresh stays lost');
+	pg_assert_same(array(), pg_oauth_access_scopes($effective, array()), 'an empty stored list holds nothing');
+	pg_assert_same(array(), pg_oauth_access_scopes(null, array('orders:read')), 'nothing effective');
+}
+
+function test_oauth_stored_access_scopes()
+{
+	pg_assert_same(null, pg_oauth_stored_access_scopes(null), 'NULL column');
+	pg_assert_same(null, pg_oauth_stored_access_scopes(''), 'empty');
+	pg_assert_same(null, pg_oauth_stored_access_scopes('not json'), 'not a list');
+	pg_assert_same(array('orders:read', 'products:read'), pg_oauth_stored_access_scopes('["orders:read","products:read"]'));
+	pg_assert_same(array('orders:read'), pg_oauth_stored_access_scopes('["orders:read",5]'), 'only strings kept');
+	pg_assert_same(array(), pg_oauth_stored_access_scopes('[]'), 'an empty list');
 }
 
 // The answer is added to the query string the address was registered with.

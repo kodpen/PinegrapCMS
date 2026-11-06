@@ -37,7 +37,15 @@ $pg_sc_row = (($pg_sc_id > 0) && pg_subscriptions_ready())
 $pg_sc_state = pg_subscription_card_link_state($pg_sc_source, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', $pg_sc_row ?: null, time());
 
 if ($pg_sc_post && ($pg_sc_state === 'open')) {
-    $pg_sc_answer = pg_payment_call((string) $pg_sc_row['driver'], 'update_card', array(pg_subscription_driver_row($pg_sc_row)));
+    // The first order: iyzico's card page names the buyer by its e-mail.
+    $pg_sc_driver_row = pg_subscription_driver_row($pg_sc_row);
+    $pg_sc_first = pg_subscription_renewal_first_order($pg_sc_row);
+
+    if (is_array($pg_sc_first)) {
+        $pg_sc_driver_row['order'] = $pg_sc_first['order'];
+    }
+
+    $pg_sc_answer = pg_payment_call((string) $pg_sc_row['driver'], 'update_card', array($pg_sc_driver_row));
     $pg_sc_url = (string) ($pg_sc_answer['redirect_url'] ?? '');
 
     if (!empty($pg_sc_answer['success']) && (preg_match('~^https://~i', $pg_sc_url) === 1)) {

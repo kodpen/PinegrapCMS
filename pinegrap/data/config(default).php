@@ -311,7 +311,7 @@ define('ECOMMERCE_GOOGLE_TAXONOMY_LOCALE', '');
 //   aras      Aras Kargo           usps    USPS
 //   mng       MNG Kargo
 //   ptt       PTT Kargo            dhl            DHL
-//                                  deutschepost   Deutsche Post
+//   kolaygelsin  Kolay Gelsin      deutschepost   Deutsche Post
 //                                  dpd            DPD
 //                                  royalmail      Royal Mail
 //

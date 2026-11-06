@@ -68,6 +68,53 @@ function erp_expense_recurring_periods()
 }
 
 /**
+ * Whether a typed first or end date of a repeat is a calendar day. The
+ * Y-m-d pattern alone let 30 February or month 13 through; the server then
+ * refused the row or stored 0000-00-00, which reads as "never due" for a
+ * first date and "no end" for an end date.
+ *
+ * @param mixed $date
+ * @return bool
+ */
+function erp_recurring_date_ok($date)
+{
+    if (!is_string($date) || (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $parts) !== 1)) {
+        return false;
+    }
+
+    return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
+}
+
+/**
+ * Serialise the start of a repeat or a fee draft for one document. The
+ * "already repeats" or "draft waiting" look and the insert are two
+ * statements: a form sent twice (a double click, two tabs) passed the look
+ * twice and left two active repeats, each writing every period. GET_LOCK
+ * names belong to the whole server, hence the database in the name. A
+ * server that refuses named locks (NULL) goes on unlocked, as before.
+ *
+ * @param string $kind  invoice_recurrence | expense_recurrence | late_fee
+ * @param int    $id
+ * @return bool  false when another request holds it past the wait
+ */
+function erp_start_lock($kind, $id)
+{
+    $locked = db_value("SELECT GET_LOCK(CONCAT('pg_erp_', '" . escape((string) $kind) . "', '.', MD5(CONCAT(DATABASE(), '.', '" . (int) $id . "'))), 10)");
+
+    return ($locked === null) || ((int) $locked === 1);
+}
+
+/**
+ * @param string $kind
+ * @param int    $id
+ * @return void
+ */
+function erp_start_unlock($kind, $id)
+{
+    db_value("SELECT RELEASE_LOCK(CONCAT('pg_erp_', '" . escape((string) $kind) . "', '.', MD5(CONCAT(DATABASE(), '.', '" . (int) $id . "'))))");
+}
+
+/**
  * The date a number of months after another, on the day of the month the
  * recurrence keeps - the last day of a shorter month when it has no such day
  * (rent on the 31st is due on 30 April and 28 February).
@@ -234,6 +281,27 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
         return $fail(lang('Repeating expenses come with the software update; run the update to use them.'));
     }
 
+    if (!erp_start_lock('expense_recurrence', (int) $expense_id)) {
+        return $fail(lang('This expense repeats already.'));
+    }
+
+    $made = erp_expense_recurrence_create_locked((int) $expense_id, $options, $user_id, $fail);
+    erp_start_unlock('expense_recurrence', (int) $expense_id);
+
+    return $made;
+}
+
+/**
+ * erp_expense_recurrence_create() under its lock.
+ *
+ * @param int      $expense_id
+ * @param array    $options
+ * @param int      $user_id
+ * @param callable $fail
+ * @return array
+ */
+function erp_expense_recurrence_create_locked($expense_id, $options, $user_id, $fail)
+{
     $expense = erp_expense($expense_id);
 
     if ($expense === null) {
@@ -273,8 +341,13 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
         }
     }
 
-    $end_date = (string) ($options['end_date'] ?? '');
-    $end_date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date) ? $end_date : '0000-00-00';
+    $end_date = trim((string) ($options['end_date'] ?? ''));
+
+    if (($end_date !== '') && !erp_recurring_date_ok($end_date)) {
+        return $fail(lang('Please enter a valid date.'), 'repeat_end');
+    }
+
+    $end_date = ($end_date !== '') ? $end_date : '0000-00-00';
 
     $day = (int) substr((string) $expense['expense_date'], 8, 2);
     $resume = '';
@@ -329,6 +402,90 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
     db("UPDATE erp_expenses SET recurrence_id = '" . $id . "' WHERE id = '" . (int) $expense['id'] . "'");
 
     return array('success' => true, 'id' => $id, 'error' => '', 'field' => '');
+}
+
+/**
+ * What a changed expense hands to the active repeat of its family: the
+ * columns of erp_expense_recurrences whose value differs from the expense
+ * (category, supplier, tax number, description, tax_deductible, and the
+ * amount as the receipt printed it with its tax rate). How often it repeats,
+ * the day, the end and the till stay. In another currency the amount and the
+ * rate stay too: that is not a corrected amount, and a repeat written as paid
+ * pays from a till in its own currency.
+ *
+ * @param array      $expense     erp_expenses row as saved
+ * @param array|null $recurrence  erp_expense_recurrences row, or null
+ * @return array column => value; empty when there is nothing to write
+ */
+function erp_expense_recurrence_changes($expense, $recurrence)
+{
+    if (!is_array($recurrence) || ((string) ($recurrence['status'] ?? '') !== 'active')) {
+        return array();
+    }
+
+    $wanted = array(
+        'category_id' => (int) ($expense['category_id'] ?? 0),
+        'supplier' => (string) ($expense['supplier'] ?? ''),
+        'supplier_tax_number' => (string) ($expense['supplier_tax_number'] ?? ''),
+        'description' => (string) ($expense['description'] ?? ''),
+        'tax_deductible' => ((int) ($expense['tax_deductible'] ?? 0) === 1) ? 1 : 0,
+    );
+
+    if (strtoupper((string) ($expense['currency'] ?? '')) === strtoupper((string) ($recurrence['currency'] ?? ''))) {
+        $wanted['amount'] = (int) ($expense['total_amount'] ?? 0);
+        $wanted['tax_rate'] = (string) ($expense['tax_rate'] ?? '0');
+    }
+
+    $changes = array();
+
+    foreach ($wanted as $column => $value) {
+        $same = ($column === 'tax_rate')
+            ? ((float) ($recurrence[$column] ?? 0) === (float) $value)
+            : ((string) ($recurrence[$column] ?? '') === (string) $value);
+
+        if (!$same) {
+            $changes[$column] = $value;
+        }
+    }
+
+    return $changes;
+}
+
+/**
+ * Hand a changed expense's figures to the active repeat of its family
+ * (erp_expense_recurrence_of()), so the next ones it writes carry the
+ * correction; the expenses it wrote already stay. Called inside the
+ * expense's transaction.
+ *
+ * @param int $expense_id
+ * @return bool false when the update failed
+ */
+function erp_expense_recurrence_follow($expense_id)
+{
+    if (!erp_expense_recurring_ready()) {
+        return true;
+    }
+
+    $expense = erp_expense((int) $expense_id);
+
+    if ($expense === null) {
+        return true;
+    }
+
+    $recurrence = erp_expense_recurrence_of($expense);
+    $changes = erp_expense_recurrence_changes($expense, $recurrence);
+
+    if (empty($changes)) {
+        return true;
+    }
+
+    $sets = array();
+    foreach ($changes as $column => $value) {
+        $sets[] = $column . " = '" . escape((string) $value) . "'";
+    }
+    $sets[] = "updated_at = '" . time() . "'";
+
+    return erp_query("UPDATE erp_expense_recurrences SET " . implode(', ', $sets) . " WHERE id = '" . (int) $recurrence['id'] . "' AND status = 'active'") !== false;
 }
 
 /**
@@ -540,9 +697,17 @@ function erp_expense_recurring_run($today = null, $limit = 50)
                     // Given back its date, so the next run tries again once
                     // whatever stood in the way (a till, a rate) is put right.
                     $result['errors'][] = '#' . (int) $recurrence['id'] . ' ' . $date . ': ' . $saved['error'];
+                    // Only while the date is still the one this run moved
+                    // it to: a run beside it that has written that later
+                    // date since would otherwise be wound back under it and
+                    // the later date written twice.
                     db("UPDATE erp_expense_recurrences SET next_date = '" . escape($date) . "', last_error = '" . escape(mb_substr($saved['error'], 0, 255)) . "'"
                         . ($ended ? ", status = 'active', stopped_at = 0" : '') . "
-                        WHERE id = '" . (int) $recurrence['id'] . "'");
+                        WHERE id = '" . (int) $recurrence['id'] . "' AND next_date = '" . escape($following) . "'");
+
+                    if (mysqli_affected_rows(db::$con) !== 1) {
+                        db("UPDATE erp_expense_recurrences SET last_error = '" . escape(mb_substr($saved['error'], 0, 255)) . "' WHERE id = '" . (int) $recurrence['id'] . "'");
+                    }
                     break;
                 }
             }

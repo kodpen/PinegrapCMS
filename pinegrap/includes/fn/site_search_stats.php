@@ -587,7 +587,8 @@ function pg_site_search_figures($from, $to)
  * The site search report: the period's tiles (searches, terms, no results,
  * result clicks, clicks per search), the top terms and the terms that found
  * nothing, each of these with a button that opens the Search Tuning card
- * with a line for it when $may_tune. Pure.
+ * with a line for it when $may_tune. Each list shows its first
+ * PG_VISITORS_LIST_ROWS terms, the rest behind "Show all". Pure.
  *
  * @param array $figures  pg_site_search_figures()
  * @param bool  $may_tune the viewer may change site settings (role < 3)
@@ -613,67 +614,61 @@ function pg_site_search_report(array $figures, $may_tune)
         array(lang('Result clicks'), pg_format_number(isset($summary['clicks']) ? (int) $summary['clicks'] : 0, 0)),
         array(lang('Clicks per search'), $rate_text(isset($summary['clicks']) ? $summary['clicks'] : 0, $searches_total)),
     ) as $tile) {
-        $tiles .= '<div class="col-6 md:col">
-            <div class="card h-100"><div class="card-body">
-                <div class="small fg-secondary">' . h($tile[0]) . '</div>
-                <div class="h3 mb-0">' . h($tile[1]) . '</div>
-            </div></div>
-        </div>';
+        $tiles .= '
+            <div class="pg-visitors-tile">
+                <div class="pg-visitors-tile-label">' . h($tile[0]) . '</div>
+                <div class="pg-visitors-tile-value">' . h($tile[1]) . '</div>
+            </div>';
     }
 
-    $top_rows = '';
+    $count = function ($value) {
+        return array('html' => pg_format_number((int) $value, 0), 'sort' => (int) $value);
+    };
+
+    $top_rows = array();
 
     foreach (isset($figures['top']) ? $figures['top'] : array() as $row) {
-        $searches = (int) $row['searches'];
-        $top_rows .= '<tr>
-            <td class="align-middle text-break">' . h($row['term']) . '</td>
-            <td class="align-middle" data-order="' . $searches . '">' . pg_format_number($searches, 0) . '</td>
-            <td class="align-middle" data-order="' . (int) $row['zero_results'] . '">' . pg_format_number((int) $row['zero_results'], 0) . '</td>
-            <td class="align-middle" data-order="' . (int) $row['clicks'] . '">' . pg_format_number((int) $row['clicks'], 0) . '</td>
-            <td class="align-middle text-nowrap">' . h($rate_text($row['clicks'], $searches)) . '</td>
-        </tr>';
+        $top_rows[] = array(
+            (string) $row['term'],
+            $count($row['searches']),
+            $count($row['zero_results']),
+            $count($row['clicks']),
+            $rate_text($row['clicks'], (int) $row['searches']),
+        );
     }
 
-    $zero_rows = '';
+    $zero_rows = array();
 
     foreach (isset($figures['zero']) ? $figures['zero'] : array() as $row) {
-        $action = '';
+        $cells = array((string) $row['term'], $count($row['zero_results']), $count($row['searches']));
 
         if ($may_tune) {
             $url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_features.php?search_promote=' . rawurlencode((string) $row['term']) . '#pgset-search-tuning';
-            $action = '<td class="align-middle text-end"><a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="' . h($url) . '" title="' . h(lang('Promote a result')) . '" aria-label="' . h(lang('Promote a result')) . '"><i class="bi bi-pin-angle" aria-hidden="true"></i></a></td>';
+            $cells[] = array('html' => '<a class="btn btn-sm btn-text theme-primary" href="' . h($url) . '" title="' . h(lang('Promote a result')) . '" aria-label="' . h(lang('Promote a result')) . '"><i class="bi bi-pin-angle" aria-hidden="true"></i></a>');
         }
 
-        $zero_rows .= '<tr>
-            <td class="align-middle text-break">' . h($row['term']) . '</td>
-            <td class="align-middle" data-order="' . (int) $row['zero_results'] . '">' . pg_format_number((int) $row['zero_results'], 0) . '</td>
-            <td class="align-middle" data-order="' . (int) $row['searches'] . '">' . pg_format_number((int) $row['searches'], 0) . '</td>
-            ' . $action . '
-        </tr>';
+        $zero_rows[] = $cells;
     }
 
-    $card = function ($title, $head, $rows, $empty) {
-        return '<div class="card my-7">
-            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($title) . '</div>
-            <div class="card-body p-0">'
-            . (($rows === '')
-                ? '<p class="fg-secondary m-7">' . h($empty) . '</p>'
-                : '<div class="table-responsive"><table class="table table-hover mb-0"><thead><tr>' . $head . '</tr></thead><tbody>' . $rows . '</tbody></table></div>')
-            . '</div>
-        </div>';
+    // Drawn as the Visitors overview's blocks and tables
+    // (includes/visitors/shell.php), each list cut to its first rows.
+    $block = function ($title, array $headings, array $rows, $empty) {
+        return pg_visitors_block($title, $rows
+            ? pg_visitors_table($headings, $rows, array('caption' => $title, 'limit' => PG_VISITORS_LIST_ROWS))
+            : pg_visitors_empty($empty), 'is-half');
     };
 
-    return '<div class="row g-7">' . $tiles . '</div>
-    <div class="row">
-        <div class="col-12 xl:col-7">
-            ' . $card(lang('Top Searches'),
-                '<th>' . h(lang('Term')) . '</th><th>' . h(lang('Searches')) . '</th><th>' . h(lang('No results')) . '</th><th>' . h(lang('Result clicks')) . '</th><th>' . h(lang('Clicks per search')) . '</th>',
+    $zero_headings = array(lang('Term'), array('label' => lang('No results'), 'end' => true), array('label' => lang('Searches'), 'end' => true));
+
+    if ($may_tune) {
+        $zero_headings[] = array('label' => lang('Action'), 'end' => true);
+    }
+
+    return '<div class="pg-visitors-tiles">' . $tiles . '</div>
+    <div class="pg-visitors-grid is-split">
+            ' . $block(lang('Most searched terms'),
+                array(lang('Term'), array('label' => lang('Searches'), 'end' => true), array('label' => lang('No results'), 'end' => true), array('label' => lang('Result clicks'), 'end' => true), array('label' => lang('Clicks per search'), 'end' => true)),
                 $top_rows, lang('Nothing was searched for in this period.')) . '
-        </div>
-        <div class="col-12 xl:col-5">
-            ' . $card(lang('Searches Without Results'),
-                '<th>' . h(lang('Term')) . '</th><th>' . h(lang('No results')) . '</th><th>' . h(lang('Searches')) . '</th>' . ($may_tune ? '<th class="text-end">' . h(lang('Action')) . '</th>' : ''),
-                $zero_rows, lang('Every search in this period found something.')) . '
-        </div>
+            ' . $block(lang('Searches without results'), $zero_headings, $zero_rows, lang('Every search in this period found something.')) . '
     </div>';
 }

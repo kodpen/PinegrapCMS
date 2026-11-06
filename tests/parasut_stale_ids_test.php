@@ -265,9 +265,9 @@ function test_parasut_stale_ids_shipment_invoice_link_still_refuses_without_an_a
 // never sent.
 function test_parasut_stale_ids_create_invoice_reads_its_stored_invoice_first()
 {
-	$body = parasut_stale_ids_test_source('parasut_create_invoice');
+	$body = parasut_stale_ids_test_source('_parasut_create_invoice_claimed');
 
-	pg_assert_contains('function parasut_create_invoice($order_id, &$notices = array())', $body);
+	pg_assert_contains('function _parasut_create_invoice_claimed($order_id, &$notices)', $body);
 
 	$stored = strpos($body, "\$existing_invoice_id = trim((string) (\$order['parasut_invoice_id'] ?? ''));");
 	$read = strpos($body, "\$stored = _parasut_stored_record_check('sales_invoices', \$existing_invoice_id);");
@@ -296,7 +296,7 @@ function test_parasut_stale_ids_create_invoice_reads_its_stored_invoice_first()
 // and the id is cleared; no answer refuses before the buyer card.
 function test_parasut_stale_ids_create_invoice_reads_the_shipment_before_naming_it()
 {
-	$body = parasut_stale_ids_test_source('parasut_create_invoice');
+	$body = parasut_stale_ids_test_source('_parasut_create_invoice_claimed');
 	$token = strpos($body, "\$token = \$token_result['token'];");
 	$read = strpos($body, "\$shipment_check = parasut_stored_record_check('shipment_documents', (string) (\$order['parasut_shipment_id'] ?? ''), function (\$path) use (\$token) {");
 	$gone = strpos($body, "if (\$shipment_check['state'] === 'gone') {");
@@ -327,9 +327,9 @@ function test_parasut_stale_ids_create_invoice_reads_the_shipment_before_naming_
 // shipped.
 function test_parasut_stale_ids_create_shipment_reads_its_stored_document_first()
 {
-	$body = parasut_stale_ids_test_source('parasut_create_shipment');
+	$body = parasut_stale_ids_test_source('_parasut_create_shipment_claimed');
 
-	pg_assert_contains('function parasut_create_shipment($order_id, &$notices = array())', $body);
+	pg_assert_contains('function _parasut_create_shipment_claimed($order_id, &$notices)', $body);
 
 	$stored = strpos($body, "\$existing_shipment_id = trim((string) (\$order['parasut_shipment_id'] ?? ''));");
 	$read = strpos($body, "\$stored = _parasut_stored_record_check('shipment_documents', \$existing_shipment_id);");
@@ -357,7 +357,7 @@ function test_parasut_stale_ids_create_shipment_reads_its_stored_document_first(
 // invoice id and says so before anything is written at Paraşüt.
 function test_parasut_stale_ids_create_shipment_forgets_a_deleted_invoice()
 {
-	$body = parasut_stale_ids_test_source('parasut_create_shipment');
+	$body = parasut_stale_ids_test_source('_parasut_create_shipment_claimed');
 	$refused = strpos($body, "if (\$invoice_link['error'] !== '') {");
 	$gone = strpos($body, "if ((string) (\$invoice_link['gone'] ?? '') !== '') {");
 	$cleared = strpos($body, "_parasut_order_forget_record(\$order_id, 'parasut_invoice_id', \$invoice_link['gone']);");
@@ -401,7 +401,7 @@ function test_parasut_stale_ids_order_screen_offers_the_buttons_and_shows_the_no
 	parasut_stale_ids_test_has("lang('This order already has a shipment document in Paraşüt. Pressing again first asks Paraşüt for it and creates a new one only if it was deleted there. Continue?')", $source, 'the shipment confirm');
 
 	$start = strpos($source, "\$output_parasut_shipment_button = '';");
-	$end = ($start === false) ? false : strpos($source, '$output_parasut_buttons =', $start);
+	$end = ($start === false) ? false : strpos($source, '$output_parasut_menu_items = array_values(', $start);
 	pg_assert_true(($start !== false) && ($end !== false), 'the two buttons are found');
 	$block = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
 

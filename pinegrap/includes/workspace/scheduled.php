@@ -1232,6 +1232,18 @@ function ws_scheduled_rule_input($viewer, $rule)
                 $out['page_id'] = $page_id;
             }
 
+            // The contact group a contact joins, its id kept as the status;
+            // empty for any.
+            if ($info['filter'] === 'group') {
+                $group = (string) ($rule['status'] ?? '');
+
+                if (($group !== '') && (!ctype_digit($group) || !db_value("SELECT id FROM contact_groups WHERE id = '" . (int) $group . "'"))) {
+                    return $fail(lang('That contact group could not be found.'));
+                }
+
+                $out['status'] = ($group === '') ? '' : (string) (int) $group;
+            }
+
             // The status an order or a task moves to, or how an approval
             // request ended; empty for any.
             $filter_values = array(
@@ -2278,6 +2290,11 @@ function ws_scheduled_rule_text($viewer, $rule)
 
                     case 'outcome':
                         $text = lang(array('string' => 'When an approval request ends: {var:1}', 'vars' => ws_events_approval_outcomes()[$status] ?? $status));
+                        break;
+
+                    case 'group':
+                        $group = db_value("SELECT name FROM contact_groups WHERE id = '" . (int) $status . "'");
+                        $text = lang(array('string' => 'When a contact joins the contact group {var:1}', 'vars' => ($group !== null) ? (string) $group : lang('a contact group that is gone')));
                         break;
                 }
             }
@@ -4046,7 +4063,7 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
                 }
             }
 
-            $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format);
+            $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format, !empty($action['marketing']));
 
             if ($sent === 0) {
                 return $fail(lang(array('string' => 'The e-mail to {var:1} could not be sent.', 'vars' => implode(', ', (array) $action['to'])))) + array('data' => array('sent' => 0));
@@ -4134,21 +4151,31 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
  * @param string   $subject
  * @param string   $body
  * @param string   $format plain_text | html
+ * @param bool     $marketing commercial mail: each with its preferences and
+ *                            unsubscribe link and List-Unsubscribe headers
  * @return int how many went out
  */
-function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text')
+function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text', $marketing = false)
 {
     $sent = 0;
 
     foreach ((array) $to as $address) {
-        $ok = email(array(
+        $properties = array(
             'to'                 => $address,
             'from_name'          => defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '',
             'from_email_address' => defined('EMAIL_ADDRESS') ? EMAIL_ADDRESS : '',
             'subject'            => $subject,
             'format'             => $format,
             'body'               => $body,
-        ));
+        );
+
+        if ($marketing) {
+            $properties['type'] = 'campaign';
+            $properties['purpose'] = 'commercial';
+            $properties['body'] = ws_flow_mail_unsubscribe_footer($body, $format, pg_email_preferences_url($address));
+        }
+
+        $ok = email($properties);
 
         if ($ok !== false) {
             $sent++;

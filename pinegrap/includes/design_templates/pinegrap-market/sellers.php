@@ -41,9 +41,11 @@ $seller_featured_answers = array('yes' => lang('Yes'), 'no' => lang('No'));
 
 // The address of a maker's product group on the shop page (the group
 // under "Shops" whose key is the maker's key in $sellers): the sample of
-// the record's shop address.
-$seller_shop_url = function ($key) {
-    return '{{page:shop}}/{{product_group_path:' . $key . '}}';
+// the record's shop address. Without the shop there is no shop page, so
+// the address is empty and the maker page's shop button leaves.
+$seller_shop_on  = defined('ECOMMERCE') && ECOMMERCE;
+$seller_shop_url = function ($key, $shop_on) {
+    return $shop_on ? '{{page:shop}}/{{product_group_path:' . $key . '}}' : '';
 };
 
 // A filter row of a list's settings: the field, how it compares and the
@@ -167,7 +169,7 @@ foreach ($sellers as $key => $s) {
         'story'     => $s['story'],
         'logo'      => $photo('logo-' . $key, 400, 400),
         'cover'     => $photo('shop-' . $key, 1200, 675),
-        'shop_url'  => $seller_shop_url($key),
+        'shop_url'  => $seller_shop_url($key, $seller_shop_on),
         'featured'  => $s['featured'] ? $seller_featured_answers['yes'] : $seller_featured_answers['no'],
     );
 }

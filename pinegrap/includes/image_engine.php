@@ -255,9 +255,11 @@ function pg_image_format_writer($format)
  * a still, so an animation optimized in place stops moving and nothing says
  * why. Cheaper to leave those files alone.
  *
- * Counts Graphic Control Extension blocks (00 21 F9 04); a still GIF has at
- * most one. Read in chunks with an overlap so a marker straddling a chunk
- * boundary is still seen.
+ * Walks the file's blocks and counts image descriptors: a still GIF has one.
+ * Extensions and the image data are skipped sub-block by sub-block, so bytes
+ * inside them that look like a block are never counted, and a frame counts
+ * whether or not a Graphic Control Extension comes before it. A file cut
+ * short or broken ends the walk with the frames counted so far.
  *
  * @param string $file_path
  * @return bool
@@ -270,33 +272,60 @@ function pg_image_is_animated_gif($file_path)
         return false;
     }
 
-    $count     = 0;
-    $carry     = '';
-    $marker    = "\x00\x21\xF9\x04";
+    $frames = 0;
+    $head = @fread($handle, 13);
 
-    while (!feof($handle)) {
+    if (is_string($head) && (strlen($head) === 13) && (substr($head, 0, 3) === 'GIF')) {
 
-        $chunk = @fread($handle, 262144);
+        // The global colour table follows the logical screen descriptor.
+        $flags = ord($head[10]);
+        $walking = !($flags & 0x80) || (@fseek($handle, 3 << (($flags & 0x07) + 1), SEEK_CUR) === 0);
 
-        if ($chunk === false || $chunk === '') {
-            break;
+        while ($walking && ($frames < 2)) {
+
+            $introducer = @fread($handle, 1);
+
+            if ($introducer === "\x21") {
+                // Extension: its label, then data sub-blocks.
+                $walking = (strlen((string) @fread($handle, 1)) === 1);
+
+            } elseif ($introducer === "\x2C") {
+                $descriptor = @fread($handle, 9);
+
+                if (!is_string($descriptor) || (strlen($descriptor) !== 9)) {
+                    break;
+                }
+
+                $frames++;
+                $flags = ord($descriptor[8]);
+
+                // The local colour table, then the LZW minimum code size,
+                // then the image data's sub-blocks.
+                $walking = (!($flags & 0x80) || (@fseek($handle, 3 << (($flags & 0x07) + 1), SEEK_CUR) === 0))
+                    && (strlen((string) @fread($handle, 1)) === 1);
+
+            } else {
+                // Trailer, end of file or a byte no block starts with.
+                break;
+            }
+
+            while ($walking) {
+                $size = @fread($handle, 1);
+
+                if (!is_string($size) || ($size === '')) {
+                    $walking = false;
+                } elseif ($size === "\x00") {
+                    break;
+                } elseif (@fseek($handle, ord($size), SEEK_CUR) !== 0) {
+                    $walking = false;
+                }
+            }
         }
-
-        $buffer = $carry . $chunk;
-        $count += substr_count($buffer, $marker);
-
-        if ($count > 1) {
-            fclose($handle);
-            return true;
-        }
-
-        // Keep the last three bytes: a four byte marker can start there.
-        $carry = substr($buffer, -3);
     }
 
     fclose($handle);
 
-    return ($count > 1);
+    return ($frames > 1);
 }
 
 
@@ -623,7 +652,11 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *                         gamma; Imagick only, reason no_color under GD),
  *                         sharpen, vignette, redact (areas burned in:
  *                         mode pixel, blur or solid, block, sigma, the box
- *                         x, y, w, h and its mask PNG's path), extend (the
+ *                         x, y, w, h and its mask PNG's path), masks (the
+ *                         selection's areas before the redaction: op erase
+ *                         or color, the box x, y, w, h, its mask PNG's path,
+ *                         fill array(r, g, b) or null, color of
+ *                         pg_image_edit_color()), extend (the
  *                         canvas: w, h, the picture's x, y on it, fill
  *                         array(r, g, b) or null for transparent), overlay
  *                         (a PNG's path, the canvas's size),
@@ -1694,6 +1727,11 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         $vignette->destroy();
     }
 
+    // The selection's areas, before the redaction burns in over them.
+    if (!empty($edit['masks'])) {
+        pg_image_edit_masks_imagick($image, $edit['masks'], $alpha);
+    }
+
     if (!empty($edit['redact'])) {
         pg_image_edit_redact_imagick($image, $edit['redact']);
     }
@@ -1900,6 +1938,11 @@ function pg_image_edit_gd($image, $edit, $alpha)
     }
 
     if (!empty($edit['vignette']) && !pg_image_edit_vignette_gd($out, $edit['vignette'])) {
+        pg_image_destroy($out);
+        return false;
+    }
+
+    if (!empty($edit['masks']) && !pg_image_edit_masks_gd($out, $edit['masks'], $alpha)) {
         pg_image_destroy($out);
         return false;
     }
@@ -2212,6 +2255,291 @@ function pg_image_edit_redact_gd($image, $regions)
     }
 
     return true;
+}
+
+/**
+ * The gamma of a colour step as a table of the 256 values it maps, so a
+ * pixel loop looks it up instead of calling pow(). Pure.
+ *
+ * @param float $gamma the exponent of pg_image_edit_color()
+ * @return int[] 0-255 => 0-255
+ */
+function pg_image_edit_gamma_table($gamma)
+{
+    $table = array();
+
+    for ($i = 0; $i < 256; $i++) {
+        $table[$i] = (int) round(255 * pow($i / 255, $gamma));
+    }
+
+    return $table;
+}
+
+/**
+ * One pixel through a colour step of pg_image_edit_color(): the matrix on
+ * 0-255 values, rounded and kept in range, then the gamma, as applyColor()
+ * of assets/js/pg_image_editor_model.js does it. Pure.
+ *
+ * @param array      $color matrix (20 numbers) and gamma
+ * @param int[]|null $table pg_image_edit_gamma_table() of the gamma, made
+ *                          here when not given
+ * @return array r, g, b
+ */
+function pg_image_edit_color_pixel($color, $r, $g, $b, $table = null)
+{
+    $m = $color['matrix'];
+    $table = $table ? $table : pg_image_edit_gamma_table($color['gamma']);
+    $out = array();
+
+    foreach (array(0, 5, 10) as $row) {
+        $v = $m[$row] * $r + $m[$row + 1] * $g + $m[$row + 2] * $b + $m[$row + 4] * 255;
+        $out[] = $table[($v < 0) ? 0 : (($v > 255) ? 255 : (int) round($v))];
+    }
+
+    return $out;
+}
+
+/**
+ * The mask step under Imagick, in place, after the colour step and before
+ * the redaction: each selection area of the editor (an Erase or an Adjust
+ * inside layer) at its box x, y, w, h, where its mask PNG is opaque. Erase
+ * makes the pixels see-through, or the fill colour (white for a format
+ * without alpha), the picture under it blurred (blur, a radius in pixels)
+ * or a picture the browser drew at the box's size (picture, a path); a
+ * colour area takes its own colour step there.
+ *
+ * @param Imagick $image
+ * @param array   $masks op erase or color, x, y, w, h, mask, fill, blur,
+ *                       picture, color
+ * @param bool    $alpha the written format keeps transparency
+ * @return void
+ */
+function pg_image_edit_masks_imagick($image, $masks, $alpha)
+{
+    foreach ($masks as $area) {
+        $mask = new Imagick($area['mask']);
+        $backdrop = pg_image_edit_mask_backdrop($area);
+        $fill = (($area['op'] === 'erase') && !$backdrop) ? ($area['fill'] ? $area['fill'] : ($alpha ? null : array(255, 255, 255))) : null;
+
+        if (($area['op'] === 'erase') && !$fill && !$backdrop) {
+            $image->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+            $image->compositeImage($mask, Imagick::COMPOSITE_DSTOUT, $area['x'], $area['y']);
+            $mask->clear();
+            $mask->destroy();
+            continue;
+        }
+
+        if ($backdrop === 'picture') {
+            $fx = new Imagick($area['picture']);
+            $fx->setImagePage(0, 0, 0, 0);
+        } elseif ($backdrop === 'blur') {
+            // The blur reads the picture round the box too, so its edges
+            // carry no seam. A wide one runs on a copy scaled down to a
+            // radius of 4 pixels and scaled back, as the GD path does: at a
+            // photo's size a full-size Gaussian of that radius takes minutes.
+            $halo = (int) ceil(3 * $area['blur']);
+            $x0 = max(0, $area['x'] - $halo);
+            $y0 = max(0, $area['y'] - $halo);
+            $bw = min($image->getImageWidth(), $area['x'] + $area['w'] + $halo) - $x0;
+            $bh = min($image->getImageHeight(), $area['y'] + $area['h'] + $halo) - $y0;
+            $k = max(1, $area['blur'] / 4);
+            $fx = clone $image;
+            $fx->cropImage($bw, $bh, $x0, $y0);
+            $fx->setImagePage(0, 0, 0, 0);
+
+            if ($k > 1) {
+                $fx->resizeImage(max(1, (int) round($bw / $k)), max(1, (int) round($bh / $k)), Imagick::FILTER_TRIANGLE, 1);
+            }
+
+            $fx->blurImage(0, $area['blur'] / $k);
+
+            if ($k > 1) {
+                $fx->resizeImage($bw, $bh, Imagick::FILTER_TRIANGLE, 1);
+            }
+
+            $fx->cropImage($area['w'], $area['h'], $area['x'] - $x0, $area['y'] - $y0);
+            $fx->setImagePage(0, 0, 0, 0);
+        } elseif ($fill) {
+            $fx = new Imagick();
+            $fx->newImage($area['w'], $area['h'], new ImagickPixel(sprintf('rgb(%d,%d,%d)', $fill[0], $fill[1], $fill[2])), 'png');
+        } else {
+            $m = $area['color']['matrix'];
+            $fx = clone $image;
+            $fx->cropImage($area['w'], $area['h'], $area['x'], $area['y']);
+            $fx->setImagePage(0, 0, 0, 0);
+            $fx->colorMatrixImage(array(
+                $m[0], $m[1], $m[2], 0, 0, $m[4],
+                $m[5], $m[6], $m[7], 0, 0, $m[9],
+                $m[10], $m[11], $m[12], 0, 0, $m[14],
+                0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 1, 0,
+                0, 0, 0, 0, 0, 1));
+
+            if (method_exists($fx, 'clampImage')) {
+                $fx->clampImage();
+            }
+
+            if ((float) $area['color']['gamma'] != 1.0) {
+                $fx->gammaImage(1 / $area['color']['gamma']);
+            }
+        }
+
+        $fx->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+        $fx->compositeImage($mask, Imagick::COMPOSITE_DSTIN, 0, 0);
+        $image->compositeImage($fx, Imagick::COMPOSITE_OVER, $area['x'], $area['y']);
+        $fx->clear();
+        $fx->destroy();
+        $mask->clear();
+        $mask->destroy();
+    }
+}
+
+/**
+ * The mask step under GD, in place, as pg_image_edit_masks_imagick(): each
+ * pixel of an area changes by its mask's opacity. GD has no colour matrix,
+ * so a colour area is worked out per pixel (pg_image_edit_color_pixel()).
+ *
+ * @param resource|GdImage $image truecolor, alpha kept
+ * @return bool false when a mask could not be read
+ */
+function pg_image_edit_masks_gd($image, $masks, $alpha)
+{
+    foreach ($masks as $area) {
+        $mask = @imagecreatefrompng($area['mask']);
+
+        if (!$mask) {
+            return false;
+        }
+
+        $backdrop = pg_image_edit_mask_backdrop($area);
+        $fill = (($area['op'] === 'erase') && !$backdrop) ? ($area['fill'] ? $area['fill'] : ($alpha ? null : array(255, 255, 255))) : null;
+        $table = ($area['op'] === 'color') ? pg_image_edit_gamma_table($area['color']['gamma']) : null;
+        $w = min($area['w'], imagesx($image) - $area['x'], imagesx($mask));
+        $h = min($area['h'], imagesy($image) - $area['y'], imagesy($mask));
+        $under = null;
+
+        if ($backdrop === 'picture') {
+            $under = @imagecreatefromstring((string) @file_get_contents($area['picture']));
+
+            if ($under && !imageistruecolor($under)) {
+                imagepalettetotruecolor($under);
+            }
+        } elseif ($backdrop === 'blur') {
+            $under = pg_image_edit_blur_box_gd($image, $area['x'], $area['y'], $w, $h, $area['blur']);
+        }
+
+        if ($backdrop && !$under) {
+            pg_image_destroy($mask);
+            return false;
+        }
+
+        for ($y = 0; $y < $h; $y++) {
+            for ($x = 0; $x < $w; $x++) {
+                $a = 1 - ((imagecolorat($mask, $x, $y) >> 24) & 0x7f) / 127;
+
+                if ($a <= 0) {
+                    continue;
+                }
+
+                $d = imagecolorat($image, $area['x'] + $x, $area['y'] + $y);
+                $opacity = (127 - (($d >> 24) & 0x7f)) / 127;
+                $rgb = array(($d >> 16) & 0xff, ($d >> 8) & 0xff, $d & 0xff);
+
+                if ($under) {
+                    $u = imagecolorat($under, $x, $y);
+                    $to = array(($u >> 16) & 0xff, ($u >> 8) & 0xff, $u & 0xff);
+                    // A picture from Files covers the see-through part; a
+                    // blur keeps the see-through it blurred.
+                    $opacity += ((($backdrop === 'picture') ? 1 : (127 - (($u >> 24) & 0x7f)) / 127) - $opacity) * $a;
+                } elseif (($area['op'] === 'erase') && !$fill) {
+                    $to = $rgb;
+                    $opacity *= 1 - $a;
+                } else {
+                    $to = $fill ? $fill : pg_image_edit_color_pixel($area['color'], $rgb[0], $rgb[1], $rgb[2], $table);
+
+                    // A fill covers the see-through part as well.
+                    if ($fill) {
+                        $opacity += (1 - $opacity) * $a;
+                    }
+                }
+
+                for ($c = 0; $c < 3; $c++) {
+                    $rgb[$c] = (int) round($to[$c] * $a + $rgb[$c] * (1 - $a));
+                }
+
+                imagesetpixel($image, $area['x'] + $x, $area['y'] + $y, ((127 - (int) round($opacity * 127)) << 24) | ($rgb[0] << 16) | ($rgb[1] << 8) | $rgb[2]);
+            }
+        }
+
+        pg_image_destroy($mask);
+
+        if ($under) {
+            pg_image_destroy($under);
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Which picture an Erase area fills with: 'picture' (one the browser drew),
+ * 'blur' (the picture under it blurred) or null (see-through or a colour).
+ *
+ * @return string|null
+ */
+function pg_image_edit_mask_backdrop($area)
+{
+    if ($area['op'] !== 'erase') {
+        return null;
+    }
+
+    if (!empty($area['picture'])) {
+        return 'picture';
+    }
+
+    return empty($area['blur']) ? null : 'blur';
+}
+
+/**
+ * The w x h box at x, y of a GD picture blurred by about radius r pixels,
+ * read with a margin round it so its edges carry no seam: scaled down so a
+ * few passes of GD's 3 x 3 Gaussian reach r, blurred there, scaled back.
+ *
+ * @param resource|GdImage $image
+ * @return resource|GdImage|false truecolor, w x h
+ */
+function pg_image_edit_blur_box_gd($image, $x, $y, $w, $h, $r)
+{
+    $halo = (int) ceil(2 * $r);
+    $x0 = max(0, $x - $halo);
+    $y0 = max(0, $y - $halo);
+    $bw = min(imagesx($image), $x + $w + $halo) - $x0;
+    $bh = min(imagesy($image), $y + $h + $halo) - $y0;
+    $k = max(1, $r / 2);
+    $sw = max(1, (int) round($bw / $k));
+    $sh = max(1, (int) round($bh / $k));
+    $small = imagecreatetruecolor($sw, $sh);
+    $out = imagecreatetruecolor($w, $h);
+
+    if (!$small || !$out) {
+        return false;
+    }
+
+    foreach (array($small, $out) as $canvas) {
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+    }
+
+    imagecopyresampled($small, $image, 0, 0, $x0, $y0, $sw, $sh, $bw, $bh);
+
+    for ($pass = 0, $passes = ($k > 1) ? 4 : max(1, (int) round($r * 2)); $pass < $passes; $pass++) {
+        imagefilter($small, IMG_FILTER_GAUSSIAN_BLUR);
+    }
+
+    imagecopyresampled($out, $small, 0, 0, (int) round(($x - $x0) / $k), (int) round(($y - $y0) / $k), $w, $h, max(1, (int) round($w / $k)), max(1, (int) round($h / $k)));
+    pg_image_destroy($small);
+
+    return $out;
 }
 
 /**

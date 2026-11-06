@@ -56,8 +56,8 @@ Work from `development`, PRs to `development`, never to `main`.
 ## Claim work before starting it
 
 Work is claimed on GitHub with a draft PR, never an issue; the only issues
-between sessions are decision questions (Working mode 10) and the test
-coordinator's `bug` reports (Working mode 9). Use REST (`gh api repos/kodpen/pinegrapcms/…`):
+between sessions are decision questions (Working mode 10) and `bug`
+reports of the test coordinator (Working mode 9). Use REST (`gh api repos/kodpen/pinegrapcms/…`):
 `gh issue`, `gh pr` (GraphQL) and the search API are blocked in cloud
 sessions.
 
@@ -123,19 +123,23 @@ decision questions.
    `php tools/tr_add.php` (`core/lang-files.md`). Generated indexes and
    `.min.js` bundles: append only. A new `includes/fn/` module is named in
    the `module:` field of its memory file (`core/fn-modules.md` is generated).
-8. **Queue limit.** While more than 20 PRs are open, drafts and
+8. **Queue limit.** While more than 25 PRs are open, drafts and
    `merge-train/*` not counted, nobody starts a new task (checked before the
    claim); finished work is still marked ready. A PR waiting on a decision
    (Working mode 10) goes back to draft until it comes, so only work the
    merging session can take holds a place; each coordinator's workers hold
-   at most 6 of the 20.
+   at most 8 of the 25.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 9. **Coordinators.** One coordinator per account starts its cloud workers within
-   the account's quota, 4 to 10 workers each (`coordinator-limits.md`); it writes
-   no code and merges nothing. It tells the owner when the merging session
-   seems stopped (`coordinator.md`). The test coordinator on the owner's
-   local account starts no workers: it tests and opens `bug` issues, which
-   the other coordinators give to workers as free work (`test-coordinator.md`).
+   the account's quota, 4 to 10 workers each (`coordinator-limits.md`);
+   it writes no code and merges nothing. It tells the owner when the merging session
+   seems stopped (`coordinator.md`). Workers only build the project: plan
+   steps, else a new design template (`coordinator-no-plans.md`); no bug
+   hunt, and no `bug` issue is given out as work. The test coordinator on
+   the owner's local account starts no workers: it tests and opens `bug`
+   issues, which wait for the owner (`test-coordinator.md`). No session
+   reopens closed PRs or marks drafts ready in bulk: a draft goes ready
+   only from the session that finished its work.
 10. **Decisions go to the architect.** A question only the owner can
    decide (product behaviour, a schema change, an entry of the decisions
    list), an architecture question, a large migration or a logic clash

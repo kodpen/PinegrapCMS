@@ -34,7 +34,7 @@ function test_mass_edit_refuses_a_truncated_save()
 {
 	$source = _test_mass_edit_live_pages_source();
 
-	pg_assert_contains('<input type="hidden" name="max_input_vars_test" value="true">' . "\n" . '                        </form>', $source, 'the marker is the last field of the edit form');
+	pg_assert_true((bool) preg_match('#<input type="hidden" name="max_input_vars_test" value="true">\s*</form>#', $source), 'the marker is the last field of the edit form');
 	$check = strpos($source, "if (!isset(\$_POST['max_input_vars_test']))");
 	$save  = strpos($source, '$count_change = 0;');
 	pg_assert_true($check !== false && $save !== false && $check < $save, 'a cut-short post is refused before the save loop');

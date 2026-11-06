@@ -275,8 +275,29 @@ function pg_form_payment_order_write($record_id, $fee, $contact)
 
     $product_name = (string) db_value("SELECT name FROM products WHERE id = '" . (int) ($fee['product_id'] ?? 0) . "' LIMIT 1");
     $columns = pg_form_payment_order_columns($fee, $contact, $product_name, BASE_CURRENCY_CODE, ECOMMERCE_OFFLINE_PAYMENT == true);
+    $order_id = pg_form_payment_order_insert($columns);
 
-    if ($columns === null) {
+    if ($order_id <= 0) {
+        return 0;
+    }
+
+    // Only a record that still points at no order takes this one.
+    db_q("UPDATE forms SET order_id = ? WHERE id = ? AND order_id = 0", array($order_id, $record_id)) or output_error('Query failed.');
+
+    return $order_id;
+}
+
+/**
+ * Writes a one-line fee order from pg_form_payment_order_columns(): the
+ * incomplete order with a new reference code and its order_items line. A
+ * booking's deposit order is written the same way.
+ *
+ * @param  array|null $columns order, item
+ * @return int the order's id, 0 when none was written
+ */
+function pg_form_payment_order_insert($columns)
+{
+    if (!is_array($columns) || empty($columns['order']) || empty($columns['item'])) {
         return 0;
     }
 
@@ -298,9 +319,6 @@ function pg_form_payment_order_write($record_id, $fee, $contact)
 
     db_q("INSERT INTO order_items (" . implode(', ', array_keys($item)) . ")
         VALUES (" . implode(', ', array_fill(0, count($item), '?')) . ")", array_values($item)) or output_error('Query failed.');
-
-    // Only a record that still points at no order takes this one.
-    db_q("UPDATE forms SET order_id = ? WHERE id = ? AND order_id = 0", array($order_id, $record_id)) or output_error('Query failed.');
 
     return $order_id;
 }

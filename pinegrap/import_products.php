@@ -46,6 +46,16 @@ validate_ecommerce_access($user);
 
 // If the form has not been submitted, output import products screen.
 if (!$_POST) {
+    // One Summary row of the status column: a label (plain text), its value
+    // (HTML) and, unless it is the last row, the line under it.
+    $status_row = function ($label, $value, $last) {
+        return '
+                                        <div class="d-flex justify-content-between gap-3 py-2' . ($last ? '' : ' border-bottom') . '">
+                                            <dt class="fw-normal">' . h($label) . '</dt>
+                                            <dd class="mb-0 fw-bold text-end text-break">' . $value . '</dd>
+                                        </div>';
+    };
+
     print
     pg_page_shell([
         'title'=> lang('Import Products'),
@@ -53,58 +63,94 @@ if (!$_POST) {
         'icon'=>'store',
         'heading'=>lang('Import Products'),
         'heading_description' => lang('Import new or existing products.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_products.php')
-    ,
-            'breadcrumb' => array(array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'), array('label' => lang('Import Products'))),
+        'cancel'=>array('enable'=>'true','url'=>'view_products.php'),
+        'breadcrumb' => array(array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'), array('label' => lang('Import Products'))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
+    <div class="row">
+        <div class="col-12">
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-                
-                <form name="form" action="import_products.php" method="post" class="product_form" enctype="multipart/form-data">
-                    ' . get_token_field() . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Import CSV or Excel') . '
+            <form name="form" action="import_products.php" method="post" class="product_form" enctype="multipart/form-data">
+                ' . get_token_field() . '
+                <!-- Edit screen layout of product_builder.php: the form column, the sticky status column (Summary), the sticky save bar. -->
+                <div class="row">
+                    <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Import CSV or Excel') . '
+                            </h2>
+                            <div class="card-body pt-0">
+                                <div class="my-3">
+                                    <label for="file" class="form-label">' . lang('Select the file to upload') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'class'=>'form-control', 'accept'=>'.csv,.xlsx,.ods', 'required'=>'required')) . '
+                                    <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
+                                    ' . pg_upload_limit_hint() . '
                                 </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12  my-3">
-                                            <label for="file" class="form-label">' . lang('Select the file to upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'class'=>'form-control w-auto max-w-100', 'accept'=>'.csv,.xlsx,.ods', 'required'=>'required')) . '
-                                            <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
-                                            ' . pg_upload_limit_hint() . '
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'update_existing_products', 'id'=>'update_existing_products', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                <label class="" for="update_existing_products">' . lang('Update Existing Products') . '</label>
-                                            </div>
-                                        </div>
+                                <div class="my-3">
+                                    <div class="form-field">
+                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'update_existing_products', 'id'=>'update_existing_products', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                        <label for="update_existing_products">' . lang('Update Existing Products') . '</label>
                                     </div>
-                                </div>       
-                            </div> 
-                        </div> 
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); if(!this.form.reportValidity()){return false;} var b=this; pgConfirm({title:' . h(json_encode(lang('Warning'))) . ', message:' . h(json_encode(lang('If an existing product has the same name as a product in the import file, then the existing product data will be replaced.'))) . ', confirmText:' . h(json_encode(lang('Import Products'))) . ', cancelText:' . h(json_encode(lang('Cancel'))) . ', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
+                                </div>
                             </div>
                         </div>
-                    </nav>
-                </form>
-            </div>
+                    </div>
+                    <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                        <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                        <div class="position-sticky" style="top:3.3rem;">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Summary') . '
+                                </h2>
+                                <div class="card-body pt-0">
+                                    <dl class="mb-0">'
+        . $status_row(lang('Products'), h(number_format((int) db_value("SELECT COUNT(*) FROM products"))), false)
+        . $status_row(lang('Product Groups'), h(number_format((int) db_value("SELECT COUNT(*) FROM product_groups"))), false)
+        . $status_row(lang('Update Existing Products'), '<span id="product_import_summary_update" data-yes="' . h(lang('Yes')) . '">' . h(lang('No')) . '</span>', false)
+        . $status_row(lang('File'), '<span id="product_import_summary_file">' . h(lang('None')) . '</span>', true) . '
+                                    </dl>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                        <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                            <div class="container">
+                                <div class="btn-group flex-wrap justify-content-center">
+                                    <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1 btn-solid theme-success" onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); if(!this.form.reportValidity()){return false;} var b=this; pgConfirm({title:' . h(json_encode(lang('Warning'))) . ', message:' . h(json_encode(lang('If an existing product has the same name as a product in the import file, then the existing product data will be replaced.'))) . ', confirmText:' . h(json_encode(lang('Import Products'))) . ', cancelText:' . h(json_encode(lang('Cancel'))) . ', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3" aria-hidden="true">file_upload</span><span class="pg-btn-label">' . lang('Import Products') . '</span></button>
+                                </div>
+                            </div>
+                        </nav>
+                    </div>
+                </div>
+            </form>
+            <script>
+                // The Summary follows the chosen file and the update switch,
+                // which the browser may also restore on a back navigation.
+                (function () {
+                    var box = document.getElementById("file");
+                    var file = document.getElementById("product_import_summary_file");
+                    var update = document.getElementById("update_existing_products");
+                    var mode = document.getElementById("product_import_summary_update");
+                    var none = file.textContent;
+                    var no = mode.textContent;
+                    function refresh() {
+                        file.textContent = (box.files && box.files.length) ? box.files[0].name : none;
+                        mode.textContent = update.checked ? mode.getAttribute("data-yes") : no;
+                    }
+                    box.addEventListener("change", refresh);
+                    update.addEventListener("change", refresh);
+                    window.addEventListener("pageshow", refresh);
+                    refresh();
+                })();
+            </script>
         </div>
-    
+    </div>
 </main>' .
     output_footer();
-    
+
     $liveform->remove_form('import_products');
 
 // Else, the form has been submitted, so process submitted data.
@@ -730,7 +776,7 @@ if (!$_POST) {
                     // If an enabled column exists and the product is disabled, then delete tag cloud keywords.
                     if (
                         ($enabled_column_exists == true)
-                        && ($enabled == 0)
+                        && pg_products_import_disables($enabled)
                     ) {
                         db("DELETE FROM tag_cloud_keywords WHERE (item_id = '" . escape($product_id) . "') AND (item_type = 'product')");
                     }

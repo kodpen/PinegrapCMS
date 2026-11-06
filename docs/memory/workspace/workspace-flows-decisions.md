@@ -32,3 +32,5 @@ description: Lasting decisions behind Workspace Flows ("Akışlar"): the three u
 
 ## Where were the steps?
 - F1-F8, R1-R3 and D1-D9 are built, each named in its topic file above (F1 #1503, F2 #1529, F3 #1551, last D9 #3422). The plan files were deleted after the close-out.
+- A loop in one flow (owner 2026-11-04, #6845 #6846 #6847; built in #6874, #6897, #6873): `workflow/decisions-made-product-30.md`. Read a row: `workspace-flows-row-get-box.md`; Repeat N times and value boxes in a body: `workspace-flows-for-each-count.md`; date words: `workspace-flows-derived-box.md`. Still binding: no flow variables, no 1-minute schedule, no back arrows, no fill in table cells, no schema; D9's loop limits and the data-passing rules (a filled value is never read again as a placeholder) hold.
+- The Calculate rule (#7016), the approval box's answer (#7015) and the flows-next questions (#7110), 2026-11-05: `workflow/decisions-made-product-32.md`, `-33.md`; steps A2, A1 and B2-C4 of `plans/flows-next-steps.md`.

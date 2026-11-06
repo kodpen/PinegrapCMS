@@ -17,9 +17,7 @@
  */
 
 include('init.php');
-
-// only ever appended to further below, so it has to start out empty
-$output_rows = '';
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
 // These are only ever appended to, or are set only for some of the filters below, so they have
 // to start out empty.
@@ -421,16 +419,9 @@ if (!$_POST) {
         $filter_specific_columns .= '';
         $filter_specific_join .= '';
 
-        /* Build filter specific table headers, sql joins and columns */
-        if ((ECOMMERCE_TAX == true) && ($filter != 'all_product_actions')) {
-            $output_tax_header =
-                '<th>' . get_column_heading(lang('Taxable'), $sort_levels, '', '', 'taxable') . '</th>';
-        }
-
+        /* Build filter specific sql joins and columns */
         if (($filter == 'all_products') || ($filter == 'out_of_stock_products')) {
-
-            // Set filter specific sql columns
-            $filter_specific_columns .= 
+            $filter_specific_columns .=
                 "products.shippable,
                 products.selection_type as selection_type,
                 products.default_quantity as default_quantity,
@@ -438,98 +429,33 @@ if (!$_POST) {
                 products.custom_field_2,
                 products.custom_field_3,
                 products.custom_field_4,";
-
-            $output_custom_field_1_heading = '';
-
-            // If the first custom product field is active, then output heading for it.
-            if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                $output_custom_field_1_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL, $sort_levels, '', '', 'custom_field_1') . '</th>';
-            }
-
-            $output_custom_field_2_heading = '';
-
-            // If the second custom product field is active, then output heading for it.
-            if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                $output_custom_field_2_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL, $sort_levels, '', '', 'custom_field_2') . '</th>';
-            }
-
-            $output_custom_field_3_heading = '';
-
-            // If the third custom product field is active, then output heading for it.
-            if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                $output_custom_field_3_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL, $sort_levels, '', '', 'custom_field_3') . '</th>';
-            }
-
-            $output_custom_field_4_heading = '';
-
-            // If the fourth custom product field is active, then output heading for it.
-            if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                $output_custom_field_4_heading .= '<th>' . get_column_heading(ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL, $sort_levels, '', '', 'custom_field_4') . '</th>';
-            }
-
-            $output_all_products_headers = 
-                '<th>' . get_column_heading(lang('Selection Type'), $sort_levels, '', '', 'selection_type') . '</th>
-                <th>' . get_column_heading(lang('Default Quantity'), $sort_levels, '', '', 'default_quantity') . '</th>
-                <th>' . get_column_heading(lang('Shippable'), $sort_levels, '', '', 'shippable') . '</th>
-                ' . $output_custom_field_1_heading . '
-                ' . $output_custom_field_2_heading . '
-                ' . $output_custom_field_3_heading . '
-                ' . $output_custom_field_4_heading;
         }
 
-        if (
-            ($filter == 'grant_access_products')
-            || ($filter == 'membership_products')
-            || ($filter == 'all_product_actions')
-        ) {
-            // Set filter specific sql columns
+        if (($filter == 'grant_access_products') || ($filter == 'membership_products') || ($filter == 'all_product_actions')) {
             $filter_specific_columns .= "products.grant_private_access as grant_private_access,";
         }
 
         if (($filter == 'membership_products') || ($filter == 'all_product_actions')) {
-            // Set filter specific sql columns
             $filter_specific_columns .= "products.membership_renewal as membership_renewal,";
         }
 
-        if (($filter == 'all_products') ||
-            ($filter == 'donation_products') ||
-            ($filter == 'membership_products')) {
-            
-            // Set filter specific sql columns
-            $filter_specific_columns .= 
-            "products.recurring as recurring,";
-            
-            $output_recurring_header = '<th>' . get_column_heading(lang('Recurring Payment'), $sort_levels, '', '', 'recurring_payment') . '</th>';
+        if (($filter == 'all_products') || ($filter == 'donation_products') || ($filter == 'membership_products')) {
+            $filter_specific_columns .= "products.recurring as recurring,";
         }
 
         if ($filter == 'all_product_actions') {
-
-            // Set filter specific sql columns
-            $filter_specific_columns .= 
+            $filter_specific_columns .=
                 "email_page.page_name as email_page,
                 contact_groups.name as contact_group_name,
                 products.order_receipt_message as order_receipt_message,
                 products.order_receipt_bcc_email_address as order_receipt_bcc_email_address,
                 products.email_bcc as email_bcc,";
 
-            // Set filter specific sql joins
             $filter_specific_join .= "LEFT JOIN page AS email_page ON email_page.page_id = products.email_page ";
-
-            $output_all_product_actions_headers = 
-                '<th>' . get_column_heading(lang('Order Receipt Message'), $sort_levels, '', '', 'order_receipt_message') . '</th>
-                <th>' . get_column_heading(lang('Order Receipt BCC'), $sort_levels, '', '', 'order_receipt_bcc') . '</th>
-                <th>' . get_column_heading(lang('E-mail Page'), $sort_levels, '', '', 'email_page') . '</th>
-                <th>' . get_column_heading(lang('E-mail Page BCC'), $sort_levels, '', '', 'email_page_bcc') . '</th>
-                <th>' . get_column_heading(lang('Contact Group'), $sort_levels, '', '', 'contact_group') . '</th>';
-
-        // else output product form header
-        } else {
-            $output_product_form_header = '<th>' . get_column_heading(lang('Product Form'), $sort_levels, '', '', 'product_form') . '</th>';
         }
 
         if ($filter == 'shippable_products') {
-            // Set filter specific sql columns
-            $filter_specific_columns .= 
+            $filter_specific_columns .=
                 "products.shippable,
                 products.weight,
                 products.primary_weight_points,
@@ -541,79 +467,120 @@ if (!$_POST) {
                 products.preparation_time,
                 products.free_shipping,
                 products.extra_shipping_cost,";
-
-            $output_shipping_headers =
-                '<th>' . get_column_heading(lang('Weight'), $sort_levels, '', '', 'weight') . '</th>
-                <th>' . get_column_heading(lang('PWP'), $sort_levels, '', '', 'pwp') . '</th>
-                <th>' . get_column_heading(lang('SWP'), $sort_levels, '', '', 'swp') . '</th>
-                <th>' . get_column_heading(lang('Dim'), $sort_levels, '', '', 'dim') . '</th>
-                <th>' . get_column_heading(lang('Cont Req'), $sort_levels, '', '', 'cont_req') . '</th>
-                <th>' . get_column_heading(lang('Prep'), $sort_levels, '', '', 'prep') . '</th>
-                <th>' . get_column_heading(lang('Free Ship'), $sort_levels, '', '', 'free_ship') . '</th>
-                <th>' . get_column_heading(lang('Extra Ship'), $sort_levels, '', '', 'extra_ship') . '</th>
-                <th>' . lang(array('string'=>'Allowed Zones') ) . '</th>
-                <th>' . lang(array('string'=>'Disallowed Zones') ) . '</th>';
         }
 
         if (($filter == 'recurring_products') || ($filter == 'donation_products')) {
-
-            // Set filter specific sql columns
-            $filter_specific_columns .= 
+            $filter_specific_columns .=
                 "products.start as recurring_start,
                 products.number_of_payments as number_of_payments,
                 products.payment_period as payment_period,
                 products.recurring_schedule_editable_by_customer as recurring_schedule_editable_by_customer,";
-
-            $output_recurring_option_headers = 
-                '<th>' . get_column_heading(lang('Start'), $sort_levels, '', '', 'start') . '</th>
-                <th>' . get_column_heading(lang('Number of Payments'), $sort_levels, '', '', 'number_of_payments') . '</th>
-                <th>' . get_column_heading(lang('Payment Period'), $sort_levels, '', '', 'payment_period') . '</th>';
         }
 
-        if ($filter == 'donation_products') {
-
-            // Output dontaine price header
-            $output_price_header = '<th>' . get_column_heading(lang('Default Amount (Price)'), $sort_levels, '', '', 'price') . '</th>';
-
-            $output_recurring_set_schedule_header = '<th>' . get_column_heading(lang('Allow to Schedule'), $sort_levels, '', '', 'allow_to_schedule') . '</th>';
-
-        // else output the default price header
-        } else {
-            $output_price_header = '<th>' . get_column_heading(lang('Price'), $sort_levels, '', '', 'price') . '</th>';
-        }
-
-        if (($filter == 'grant_access_products') || 
-            ($filter == 'membership_products') ||
-            ($filter == 'all_product_actions')) {
-
-            // Set filter specific sql columns
+        if (($filter == 'grant_access_products') || ($filter == 'membership_products') || ($filter == 'all_product_actions')) {
             $filter_specific_columns .= "page.page_name as start_page,";
-            
-            // Set filter specific sql joins
             $filter_specific_join .= "LEFT JOIN page ON page.page_id = products.send_to_page ";
-
-            $output_start_page_header = '<th>' . get_column_heading(lang('Set Start Page'), $sort_levels, '', '', 'set_start_page') . '</th>';
         }
 
         if (($filter == 'grant_access_products') || ($filter == 'all_product_actions')) {
-
-            // Set filter specific sql columns
             $filter_specific_columns .= "folder.folder_name as private_folder,";
-
-            // Set filter specific sql joins
             $filter_specific_join .= "LEFT JOIN folder ON folder.folder_id = products.private_folder ";
+        }
 
-            $output_private_folder_access_headers = '<th>' . get_column_heading(lang('Grant Private Access'), $sort_levels, '', '', 'grant_private_access') . '</th>';
+        // The columns this filter shows, in the order they are shown. A key
+        // is the column's sort code: one $sort_columns lacks (the zones, a
+        // custom field without a label) is not sortable.
+        $columns = array(
+            'image' => array('heading' => lang('Image'), 'kind' => 'image'),
+            'id' => array('heading' => lang('ID')),
+            'short_description' => array('heading' => lang('Short Description')),
+            'enabled' => array('heading' => lang('Enabled'), 'kind' => 'check'),
+            'price' => array('heading' => $sort_labels['price'], 'kind' => 'money'),
+        );
+
+        if ($filter != 'out_of_stock_products') {
+            $columns['inventory_quantity'] = array('heading' => lang('Inventory Quantity'), 'kind' => 'number');
+        }
+
+        if ((ECOMMERCE_TAX == true) && ($filter != 'all_product_actions')) {
+            $columns['taxable'] = array('heading' => lang('Taxable'), 'kind' => 'check');
+        }
+
+        if ($filter != 'all_product_actions') {
+            $columns['product_form'] = array('heading' => lang('Product Form'));
+        }
+
+        if (($filter == 'all_products') || ($filter == 'out_of_stock_products')) {
+            $columns['selection_type'] = array('heading' => lang('Selection Type'));
+            $columns['default_quantity'] = array('heading' => lang('Default Quantity'), 'kind' => 'number');
+            $columns['shippable'] = array('heading' => lang('Shippable'), 'kind' => 'check');
+
+            foreach (array(1, 2, 3, 4) as $number) {
+                if ($sort_labels['custom_field_' . $number] != '') {
+                    $columns['custom_field_' . $number] = array('heading' => $sort_labels['custom_field_' . $number]);
+                }
+            }
+        }
+
+        if ($filter == 'shippable_products') {
+            $columns['weight'] = array('heading' => lang('Weight'), 'kind' => 'number');
+            $columns['pwp'] = array('heading' => lang('PWP'), 'kind' => 'number');
+            $columns['swp'] = array('heading' => lang('SWP'), 'kind' => 'number');
+            $columns['dim'] = array('heading' => lang('Dim'));
+            $columns['cont_req'] = array('heading' => lang('Cont Req'), 'kind' => 'check');
+            $columns['prep'] = array('heading' => lang('Prep'), 'kind' => 'number');
+            $columns['free_ship'] = array('heading' => lang('Free Ship'), 'kind' => 'check');
+            $columns['extra_ship'] = array('heading' => lang('Extra Ship'), 'kind' => 'money');
+            $columns['allowed_zones'] = array('heading' => lang('Allowed Zones'));
+            $columns['disallowed_zones'] = array('heading' => lang('Disallowed Zones'));
+        }
+
+        if (($filter == 'all_products') || ($filter == 'donation_products') || ($filter == 'membership_products')) {
+            $columns['recurring_payment'] = array('heading' => lang('Recurring Payment'), 'kind' => 'check');
+        }
+
+        if (($filter == 'recurring_products') || ($filter == 'donation_products')) {
+            $columns['start'] = array('heading' => lang('Start'));
+            $columns['number_of_payments'] = array('heading' => lang('Number of Payments'));
+            $columns['payment_period'] = array('heading' => lang('Payment Period'));
+        }
+
+        if ($filter == 'donation_products') {
+            $columns['allow_to_schedule'] = array('heading' => lang('Allow to Schedule'), 'kind' => 'check');
+        }
+
+        if (($filter == 'grant_access_products') || ($filter == 'membership_products') || ($filter == 'all_product_actions')) {
+            $columns['set_start_page'] = array('heading' => lang('Set Start Page'));
+        }
+
+        if (($filter == 'grant_access_products') || ($filter == 'all_product_actions')) {
+            $columns['grant_private_access'] = array('heading' => lang('Grant Private Access'));
         }
 
         if (($filter == 'membership_products') || ($filter == 'all_product_actions')) {
-
-            $output_add_membership_header = '<th>' . get_column_heading(lang('Membership Renewal'), $sort_levels, '', '', 'membership_renewal') . '</th>';
+            $columns['membership_renewal'] = array('heading' => lang('Membership Renewal'));
         }
+
+        if ($filter == 'all_product_actions') {
+            $columns['order_receipt_message'] = array('heading' => lang('Order Receipt Message'), 'kind' => 'check');
+            $columns['order_receipt_bcc'] = array('heading' => lang('Order Receipt BCC'));
+            $columns['email_page'] = array('heading' => lang('E-mail Page'));
+            $columns['email_page_bcc'] = array('heading' => lang('E-mail Page BCC'));
+            $columns['contact_group'] = array('heading' => lang('Contact Group'));
+        }
+
+        $columns['last_modified'] = array('heading' => lang('Last Modified'), 'kind' => 'date');
+
         if ($filter == 'out_of_stock_products') {
-
-            $output_out_of_stock_timestamp_header = '<th>' . get_column_heading(lang('Out of Stock Date'), $sort_levels, '', '', 'out_of_stock_date') . '</th>';
+            $columns['out_of_stock_date'] = array('heading' => lang('Out of Stock Date'), 'kind' => 'date');
         }
+
+        foreach ($columns as $key => $spec) {
+            if (!isset($sort_columns[$key])) {
+                $columns[$key]['sortable'] = false;
+            }
+        }
+
         /* get results for just this screen*/
         $query = "SELECT
                     products.id as id,
@@ -639,228 +606,92 @@ if (!$_POST) {
                  $where
                  ORDER BY $order_by";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        // Every product of the filter is printed: the list table driver sorts
+        // and searches them in the browser (browser mode), keeps a heading's
+        // sort, and posts the selection as products[].
+        $list_rows = array();
+        $selection_types = array(
+            'checkbox' => lang('Checkbox'),
+            'quantity' => lang('Quantity'),
+            'donation' => lang('Donation'),
+            'autoselect' => lang('Auto-Select'),
+        );
+
         while ($row = mysqli_fetch_assoc($result)) {
             $product_id = $row['id'];
-            $name = h($row['name']);
-            $enabled = $row['enabled'];
-            $short_description = $row['short_description'];
-            $price = $row['price'] / 100;
-            $form_name = $row['form_name'];
-            $seo_score = $row['seo_score'];
-            // Only the filters that show these columns select them.
-            $selection_type = $row['selection_type'] ?? '';
-            $default_quantity = $row['default_quantity'] ?? '';
-            $shippable = $row['shippable'] ?? '';
-            $recurring = $row['recurring'] ?? '';
-            $recurring_start = $row['recurring_start'] ?? '';
-            $number_of_payments = $row['number_of_payments'] ?? '';
-            $payment_period = $row['payment_period'] ?? '';
-            $recurring_schedule_editable_by_customer = $row['recurring_schedule_editable_by_customer'] ?? '';
-            $start_page = $row['start_page'] ?? '';
-            $grant_private_access = $row['grant_private_access'] ?? '';
-            $private_folder = $row['private_folder'] ?? '';
-            $membership_renewal = $row['membership_renewal'] ?? '';
-            $order_receipt_message = $row['order_receipt_message'] ?? '';
-            $order_receipt_bcc_email_address = $row['order_receipt_bcc_email_address'] ?? '';
-            $email_page = $row['email_page'] ?? '';
-            $email_bcc = $row['email_bcc'] ?? '';
-            $contact_group_name = $row['contact_group_name'] ?? '';
-            $custom_field_1 = $row['custom_field_1'] ?? '';
-            $custom_field_2 = $row['custom_field_2'] ?? '';
-            $custom_field_3 = $row['custom_field_3'] ?? '';
-            $custom_field_4 = $row['custom_field_4'] ?? '';
-            $inventory = $row['inventory'];
-    		$inventory_quantity = $row['inventory_quantity'];
-    		$image_name = $row['image_name'];
-            // set checkmark image for columns to use
-            $output_checkmark = '<span class="material-icons">task_alt</span>';
 
-            // set link url
-            $output_link_url = 'edit_product.php?id=' . $row['id'];
+            // An enabled product's name and short description are green, a
+            // disabled one's red.
+            $color_class = ($row['enabled'] == 1) ? 'fg-success' : 'fg-danger';
 
-            $output_name_and_short_description_color_class = '';
-            $output_enabled_check_mark = '';
-
-            // If this product is enabled, then use green color class for name and short description,
-            // and output check mark for enabled column.
-            if ($enabled == 1) {
-                $output_name_and_short_description_color_class = 'fg-success';
-                $output_enabled_check_mark = $output_checkmark;
-            
-            // Otherwise this product is disabled, so use red color class for name and short description,
-            // and do not output check mark for enabled column.
+            // Untracked inventory shows a dash; a tracked one is green from
+            // 10 up, amber below and red at 0.
+            if ($row['inventory'] == 1) {
+                $quantity = (int) $row['inventory_quantity'];
+                $inventory_class = ($quantity == 0) ? 'fg-danger' : (($quantity >= 10) ? 'fg-success' : 'fg-warning');
+                $inventory_cell = pg_list_cell((string) $quantity, 'align-middle h5 fw-bolder ' . $inventory_class, array('data-pg-sort-value' => $quantity));
             } else {
-                $output_name_and_short_description_color_class = 'fg-danger';
+                $inventory_cell = pg_list_cell('<span title="' . h(lang('Inventory tracking is not active for this product/service')) . '">-</span>', 'align-middle h5 fw-bolder fg-success', array('data-pg-sort-value' => -1));
             }
 
-            // if tax is on, prepare tax data
-            if ((ECOMMERCE_TAX == true) && ($filter != 'all_product_actions')) {
-                $taxable = $row['taxable'];
+            $cells = array(
+                'image' => pg_list_cell(pg_product_image_cell_content('product-' . (int) $product_id, $row['image_name'], $row['name'], $row['short_description']), 'align-middle text-start'),
+                'id' => pg_list_cell(h($row['name']), 'align-middle ' . $color_class),
+                'short_description' => pg_list_cell(h($row['short_description']), 'align-middle ' . $color_class),
+                'enabled' => pg_list_table_check_cell($row['enabled'] == 1),
+                'price' => pg_list_cell(prepare_amount($row['price'] / 100), 'align-middle text-end', array('data-pg-sort-value' => (int) $row['price'])),
+                'inventory_quantity' => $inventory_cell,
+                'taxable' => pg_list_table_check_cell($row['taxable'] == 1),
+                'product_form' => pg_list_cell(h($row['form_name'])),
+                'selection_type' => pg_list_cell($selection_types[$row['selection_type'] ?? ''] ?? ''),
+                'default_quantity' => pg_list_cell(h($row['default_quantity'] ?? '')),
+                'shippable' => pg_list_table_check_cell(($row['shippable'] ?? '') == 1),
+                'custom_field_1' => pg_list_cell(h($row['custom_field_1'] ?? '')),
+                'custom_field_2' => pg_list_cell(h($row['custom_field_2'] ?? '')),
+                'custom_field_3' => pg_list_cell(h($row['custom_field_3'] ?? '')),
+                'custom_field_4' => pg_list_cell(h($row['custom_field_4'] ?? '')),
+                'recurring_payment' => pg_list_table_check_cell(($row['recurring'] ?? '') == 1),
+                'allow_to_schedule' => pg_list_table_check_cell(($row['recurring_schedule_editable_by_customer'] ?? '') == 1),
+                // A start page and a private folder count only while the
+                // product grants private access.
+                'set_start_page' => pg_list_cell((($row['grant_private_access'] ?? '') == '1') ? h($row['start_page'] ?? '') : ''),
+                'grant_private_access' => pg_list_cell((($row['grant_private_access'] ?? '') == '1') ? h($row['private_folder'] ?? '') : ''),
+                'order_receipt_message' => pg_list_table_check_cell(($row['order_receipt_message'] ?? '') != ''),
+                'order_receipt_bcc' => pg_list_cell(h($row['order_receipt_bcc_email_address'] ?? '')),
+                'email_page' => pg_list_cell(h($row['email_page'] ?? '')),
+                'email_page_bcc' => pg_list_cell(h($row['email_bcc'] ?? '')),
+                'contact_group' => pg_list_cell(h($row['contact_group_name'] ?? '')),
+                'last_modified' => pg_list_table_when_cell($row['timestamp'], (string) ($row['user'] ?? '')),
+                'out_of_stock_date' => pg_list_cell(get_relative_time(array('timestamp' => $row['out_of_stock_timestamp'])), 'align-middle', array('data-pg-sort-value' => (int) $row['out_of_stock_timestamp'])),
+            );
 
-                if ($taxable == 1) {
-                    $taxable = $output_checkmark;
-                } else {
-                    $taxable = '';
-                }
+            if (($filter == 'recurring_products') || ($filter == 'donation_products')) {
+                $recurring_start = (int) ($row['recurring_start'] ?? 0);
+                $number_of_payments = (int) ($row['number_of_payments'] ?? 0);
 
-                // output column
-                $output_tax_column = '<td class="align-middle text-center">' . $taxable . '</td>';
-            }
-        
-    		$output_image_header ='';
-            $output_image_column ='';
-    		//default show image
-    		$show_image = true;
-    		if($show_image == true){
-    			$output_image_header ='<th>' . lang(array('string'=>'Image') ) . '</th>';
-    			$output_image_column = pg_product_image_cell('product-' . (int) $row['id'], $image_name, $row['name'], $short_description);
-    		}
-
-            // output filter specific table cells
-            if (($filter == 'all_products') || ($filter == 'out_of_stock_products')) {
-                $output_selection_type = '';
-
-                switch ($selection_type) {
-                    case 'checkbox':
-                        $output_selection_type = lang(array('string'=>'Checkbox') );
-                        break;
-
-                    case 'quantity':
-                        $output_selection_type = lang(array('string'=>'Quantity') );
-                        break;
-
-                    case 'donation':
-                        $output_selection_type = lang(array('string'=>'Donation') );
-                        break;
-
-                    case 'autoselect':
-                        $output_selection_type = lang(array('string'=>'Auto-Select') );
-                        break;
-                }
-
-                // if shippable is on then output checkmark
-                if ($shippable == 1) {
-                    $output_shippable = $output_checkmark;
-                } else {
-                    $output_shippable = '';
-                }
-
-                $output_custom_field_1_cell = '';
-
-                // If the first custom product field is active, then output cell for it.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                    $output_custom_field_1_cell .= '<td class="align-middle">' . h($custom_field_1) . '</td>';
-                }
-
-                $output_custom_field_2_cell = '';
-
-                // If the second custom product field is active, then output cell for it.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                    $output_custom_field_2_cell .= '<td class="align-middle">' . h($custom_field_2) . '</td>';
-                }
-
-                $output_custom_field_3_cell = '';
-
-                // If the third custom product field is active, then output cell for it.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                    $output_custom_field_3_cell .= '<td class="align-middle">' . h($custom_field_3) . '</td>';
-                }
-
-                $output_custom_field_4_cell = '';
-
-                // If the fourth custom product field is active, then output cell for it.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                    $output_custom_field_4_cell .= '<td class="align-middle">' . h($custom_field_4) . '</td>';
-                }
-
-                // output columns
-                $output_all_products_columns = 
-                    '<td class="align-middle">' . $output_selection_type . '</td>
-                    <td class="align-middle text-center">' . $default_quantity . '</td>
-                    <td class="align-middle text-center">' . $output_shippable . '</td>
-                    ' . $output_custom_field_1_cell . '
-                    ' . $output_custom_field_2_cell . '
-                    ' . $output_custom_field_3_cell . '
-                    ' . $output_custom_field_4_cell;
+                $cells['start'] = pg_list_cell(h(($recurring_start != 0) ? $recurring_start . (($recurring_start == 1) ? ' Day' : ' Days') : 'Immediately'), 'align-middle', array('data-pg-sort-value' => $recurring_start));
+                $cells['number_of_payments'] = pg_list_cell(h(($number_of_payments != 0) ? (string) $number_of_payments : 'Unlimited'), 'align-middle text-center', array('data-pg-sort-value' => $number_of_payments));
+                $cells['payment_period'] = pg_list_cell(h($row['payment_period'] ?? ''));
             }
 
-            // output filter specific table cells
-            if (($filter == 'all_products') ||
-                ($filter == 'donation_products') ||
-                ($filter == 'membership_products')) {
-                
-                // if recurring is on then output checkmark
-                if ($recurring == 1) {
-                    $output_recurring = $output_checkmark;
-                } else {
-                    $output_recurring = '';
-                }
+            if (($filter == 'membership_products') || ($filter == 'all_product_actions')) {
+                $membership_renewal = (int) ($row['membership_renewal'] ?? 0);
 
-                // output column
-                $output_recurring_column = '<td class="align-middle text-center">' . $output_recurring . '</td>';
+                $cells['membership_renewal'] = pg_list_cell(h(($membership_renewal != 0) ? $membership_renewal . (($membership_renewal == 1) ? ' Day' : ' Days') : ''), 'align-middle', array('data-pg-sort-value' => $membership_renewal));
             }
 
-            // output filter specific table cells
-            if ($filter == 'all_product_actions') {
-                // if there is an order receipt message then output checkmark
-                if ($order_receipt_message != '') {
-                    $output_order_receipt_message = $output_checkmark;
-                } else {
-                    $output_order_receipt_message = '';
-                }
-
-                // output columns
-                $output_all_product_actions_columns = 
-                    '<td class="align-middle text-center">' . $output_order_receipt_message . '</td>
-                    <td class="align-middle">' . h($order_receipt_bcc_email_address) . '</td>
-                    <td class="align-middle">' . h($email_page) . '</td>
-                    <td class="align-middle">' . h($email_bcc) . '</td>
-                    <td class="align-middle">' . h($contact_group_name) . '</td>';
-            
-            // else output product form column
-            } else {
-                $output_product_form_column = '<td class="align-middle">' . h($form_name) . '</td>';
-            }
-
-            // output filter specific table cells
             if ($filter == 'shippable_products') {
-
-                $weight = '';
-
-                if ($row['weight'] > 0) {
-                    $weight = ($row['weight']+0) . ' lb';
-                }
-
-                $primary_weight_points = $row['primary_weight_points'];
-                $secondary_weight_points = $row['secondary_weight_points'];
-
                 $dimensions = '';
 
                 if (($row['length'] > 0) or ($row['width'] > 0) or ($row['height'] > 0)) {
                     $dimensions = ($row['length']+0) . '&Prime; x ' . ($row['width']+0) . '&Prime; x ' . ($row['height']+0) . '&Prime;';
                 }
 
-                $container_required = '';
-
-                if ($row['container_required']) {
-                    $container_required = '<span class="material-icons">task_alt</span>';
-                }
-
-                $preparation_time = $row['preparation_time'];
-                $free_shipping = $row['free_shipping'];
-
-                if ($free_shipping == 1) {
-                    $free_shipping = '<span class="material-icons">task_alt</span>';
-                } else {
-                    $free_shipping = '';
-                }
-
-                $extra_shipping_cost = pg_format_money($row['extra_shipping_cost'] / 100, BASE_CURRENCY_SYMBOL);
-
-
                 $output_allowed_zones = '';
                 $output_disallowed_zones = '';
                 $disallowed_zones_sql_where = '';
+                $disallowed_zones_values = array();
 
                 // Get allowed zones
                 $query2 = "SELECT 
@@ -893,14 +724,15 @@ if (!$_POST) {
                     }
 
                     // add zone id to where statement to exclude this zone from disallowed zones
-                    $disallowed_zones_sql_where .= "id != '" . escape($row2['id']) . "'";
+                    $disallowed_zones_sql_where .= "id != ?";
+                    $disallowed_zones_values[] = (string) $row2['id'];
                 }
 
                 // Get disallowed zones
                 $query2 = "SELECT name FROM zones
                           $disallowed_zones_sql_where
                           ORDER BY zones.name ASC";
-                $result2 = mysqli_query(db::$con, $query2) or output_error('Query failed.');
+                $result2 = db_q($query2, $disallowed_zones_values) or output_error('Query failed.');
 
                 // loop through and prepare disallowed zones
                 while($row2 = mysqli_fetch_assoc($result2)){
@@ -913,168 +745,28 @@ if (!$_POST) {
                     $output_disallowed_zones .= h($row2['name']);
                 }
 
-                // output columns
-                $output_shipping_columns =
-                    '<td class="align-middle text-center">' . $weight . '</td>
-                    <td class="align-middle text-center">' . $primary_weight_points . '</td>
-                    <td class="align-middle text-center">' . $secondary_weight_points . '</td>
-                    <td class="align-middle">' . $dimensions . '</td>
-                    <td class="align-middle text-center">' . $container_required . '</td>
-                    <td class="align-middle text-center">' . $preparation_time . '</td>
-                    <td class="align-middle text-center">' . $free_shipping . '</td>
-                    <td class="align-middle text-end">' . $extra_shipping_cost . '</td>
-                    <td class="align-middle">' . $output_allowed_zones . '</td>
-                    <td class="align-middle">' . $output_disallowed_zones . '</td>';
+                $cells['weight'] = pg_list_cell(($row['weight'] > 0) ? ($row['weight']+0) . ' lb' : '', 'align-middle text-center', array('data-pg-sort-value' => $row['weight']+0));
+                $cells['pwp'] = pg_list_cell(h($row['primary_weight_points']), 'align-middle text-center');
+                $cells['swp'] = pg_list_cell(h($row['secondary_weight_points']), 'align-middle text-center');
+                $cells['dim'] = pg_list_cell($dimensions, 'align-middle', array('data-pg-sort-value' => $row['length']+0));
+                $cells['cont_req'] = pg_list_table_check_cell((bool) $row['container_required']);
+                $cells['prep'] = pg_list_cell(h($row['preparation_time']), 'align-middle text-center');
+                $cells['free_ship'] = pg_list_table_check_cell($row['free_shipping'] == 1);
+                $cells['extra_ship'] = pg_list_cell(pg_format_money($row['extra_shipping_cost'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end', array('data-pg-sort-value' => (int) $row['extra_shipping_cost']));
+                $cells['allowed_zones'] = pg_list_cell($output_allowed_zones);
+                $cells['disallowed_zones'] = pg_list_cell($output_disallowed_zones);
             }
 
-            // output filter specific table cells
-            if (($filter == 'recurring_products') || ($filter == 'donation_products')) {
-                // If there is a start date
-                if ($recurring_start != '0') {
-                    // output amount of days
-                    $output_recurring_start = $recurring_start;
-
-                    // If the start is set to one day then output day, else output days.
-                    if ($recurring_start == '1') {
-                        $output_recurring_start .= ' Day';
-                    } else {
-                        $output_recurring_start .= ' Days';
-                    }
-
-                // else output default
-                } else {
-                    $output_recurring_start = 'Immediately';
-                }
-
-                // if number of payments is not 0 then output the number of payments
-                if ($number_of_payments != '0') {
-                    $output_number_of_payments = $number_of_payments;
-
-                // else output default
-                } else {
-                    $output_number_of_payments = 'Unlimited';
-                }
-
-                // output columns
-                $output_recurring_option_columns = 
-                    '<td class="align-middle">' . h($output_recurring_start) . '</td>
-                    <td class="align-middle text-center">' . h($output_number_of_payments) . '</td>
-                    <td class="align-middle">' . h($payment_period) . '</td>';
-            }
-
-            // output filter specific table cells
-            if ($filter == 'donation_products') {
-                // if customer is able to set the schedule is on then output checkmark
-                if ($recurring_schedule_editable_by_customer == 1) {
-                    $output_recurring_schedule_editable_by_customer = $output_checkmark;
-                } else {
-                    $output_recurring_schedule_editable_by_customer = '';
-                }
-
-                $output_recurring_set_schedule_column = '<td class="align-middle text-center">' . $output_recurring_schedule_editable_by_customer . '</td>';
-            }
-
-            // output filter specific table cells
-            if (($filter == 'grant_access_products') || 
-                ($filter == 'membership_products') ||
-                ($filter == 'all_product_actions')) {
-                
-                // if grant private access is on then output start page
-                if ($grant_private_access == '1') {
-                    $output_start_page = $start_page;
-
-                // else output nothing
-                } else {
-                    $output_start_page = '';
-                }
-
-                // output column
-                $output_start_page_column = '<td class="align-middle">' . h($output_start_page) . '</td>';
-            }
-
-            // output filter specific table cells
-            if (($filter == 'grant_access_products') || ($filter == 'all_product_actions')) {
-                // if grant private access is on then output private folder
-                if ($grant_private_access == '1') {
-                    $output_grant_private_folder_access = $private_folder;
-
-                // else output nothing
-                } else {
-                    $output_grant_private_folder_access = '';
-                }
-
-                // output columns
-                $output_private_folder_access_columns = '<td class="align-middle ">' . h($output_grant_private_folder_access) . '</td>';
-            }
-
-            // output filter specific table cells
-            if (($filter == 'membership_products') || ($filter == 'all_product_actions')) {
-                // if there is a membership renewal value then output it
-                if ($membership_renewal != '0') {
-                    $output_membership_renewal = $membership_renewal;
-
-                    // If the membership renewal field is set to one day then output day, else output days.
-                    if ($membership_renewal == '1') {
-                        $output_membership_renewal .= ' Day';
-                    } else {
-                        $output_membership_renewal .= ' Days';
-                    }
-
-                // else do not output anything
-                } else {
-                    $output_membership_renewal = '';
-                }
-
-                // output column
-                $output_add_membership_column = '<td class="align-middle">' . h($output_membership_renewal) . '</td>';
-            }     
-
-            // output filter specific table cells
-            if ($filter == 'out_of_stock_products') {
-            
-                $output_out_of_stock_timestamp_column = '<td class="align-middle">' . get_relative_time(array('timestamp' => $row['out_of_stock_timestamp'])) . '</td>';
-            }else{
-
-                $output_inventory_headers ='<th>' . get_column_heading(lang('Inventory Quantity'), $sort_levels, '', '', 'inventory_quantity') . '</th>';
-                $output_inventory_columns ='<td class="align-middle text-center fg-success h5 fw-bolder" title="' . lang('Inventory tracking is not active for this product/service') . '">-</td>';
-                if ($inventory == 1){
-                    if ($inventory_quantity >= 10){
-                        $output_inventory_columns ='<td class="align-middle text-center fg-success h5 fw-bolder">'.$inventory_quantity.'</td>';
-                    }else{
-                        $output_inventory_columns ='<td class="align-middle text-center fg-warning h5 fw-bolder">'.$inventory_quantity.'</td>';
-                    }
-                    if ($inventory_quantity == 0){
-                        $output_inventory_columns ='<td class="align-middle text-center fg-danger h5 fw-bolder">'.$inventory_quantity.'</td>';
-                    }
-                }
-
-            }
-
-            $output_rows .=
-            '<tr>
-                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $row['id'] . '" class="checkbox" /></td>
-        
-                ' . $output_image_column . '
-                <td class="align-middle chart_label ' . $output_name_and_short_description_color_class . '">' . $name . '</td>
-                <td class=" align-middle ' . $output_name_and_short_description_color_class . '">' . $short_description . '</td>
-                <td class="align-middle text-center">' . $output_enabled_check_mark . '</td>
-                <td class="align-middle text-end">' . prepare_amount($price) . '</td>
-                ' . ($output_inventory_columns ?? '') . '
-                ' . ($output_tax_column ?? '') . '
-                ' . ($output_product_form_column ?? '') . '
-                ' . ($output_all_products_columns ?? '') . ' 
-                ' . ($output_shipping_columns ?? '') . '
-                ' . ($output_recurring_column ?? '') . '
-                ' . ($output_recurring_option_columns ?? '') . '
-                ' . ($output_recurring_set_schedule_column ?? '') . '
-                ' . ($output_start_page_column ?? '') . '
-                ' . ($output_private_folder_access_columns ?? '') . '
-                ' . ($output_add_membership_column ?? '') . '
-                ' . ($output_all_product_actions_columns ?? '') . '
-                <td class="align-middle">' . pg_list_when($row['timestamp'], $row['user'] ?? '') . '</td>
-                ' . ($output_out_of_stock_timestamp_column ?? '') . '
-            </tr>';
+            $list_rows[] = array('id' => (int) $product_id, 'cells' => array_intersect_key($cells, $columns));
         }
+
+        $list = pg_list_table_printed(array(
+            'list' => 'duplicate_products',
+            'columns' => $columns,
+            'levels' => $sort_levels,
+            'rows' => $list_rows,
+            'ids_field' => 'products[]',
+        ));
 
         // The site's own attribute options, one group per attribute: the
         // chosen option replaces the copied product's option of that
@@ -1106,13 +798,15 @@ if (!$_POST) {
             }
 
             $output_option_field = '
-                                    <div class="col">
-                                        <label for="option_id">' . h(lang('Product Attribute')) . '</label>
-                                        <select class="form-control" id="option_id" name="option_id">
-                                            <option value="">' . h(lang('Do not change')) . '</option>
-                                            ' . $output_option_groups . '</optgroup>
-                                        </select>
-                                    </div>';
+                                        <div class="col-12 md:col-4">
+                                            <div class="form-field">
+                                                <label class="form-label" for="option_id">' . h(lang('Product Attribute')) . '</label>
+                                                <select class="form-control" id="option_id" name="option_id">
+                                                    <option value="">' . h(lang('Do not change')) . '</option>
+                                                    ' . $output_option_groups . '</optgroup>
+                                                </select>
+                                            </div>
+                                        </div>';
         }
 
         $output = '
@@ -1122,77 +816,45 @@ if (!$_POST) {
                     ' . $liveform->get_warnings() . '
                     ' . $liveform->output_notices() . '
                     ' . pg_screen_toolbar(array(
-                        'search' => pg_list_sort_menu('duplicate_products.php', $sort_columns, $sort_levels, $sort_default),
+                        'search' => array(pg_list_table_search_box('duplicate_products'), pg_list_sort_menu('duplicate_products.php', $sort_columns, $sort_levels, $sort_default)),
                     )) . '
-                    <div class="card my-7">
-                        <div class="card-body p-0 position-relative">
-                            <form name="form"  action="duplicate_products.php" method="post"> 
-                                ' . get_token_field() . '
-                                <input type="hidden" name="action">
-                                <input type="hidden" name="edit_enabled">
-                                <input type="hidden" name="edit_allowed_zones">
-                                <input type="hidden" name="edit_disallowed_zones">
-                                <input type="hidden" name="edit_change_price_method">
-                                <input type="hidden" name="edit_price_value">
-                                <input type="hidden" name="edit_inventory">
-                                <input type="hidden" name="edit_inventory_quantity_process">
-                                <input type="hidden" name="edit_tax_rate_method">
-                                <input type="hidden" name="edit_tax_rate_value">
-                                <input type="hidden" name="edit_inventory_quantity">
-                                <table class="chart table-hover table" style="width:100%;display:none">
-                                    <thead>
-                                        <tr>
-                                            <th class="noVis">
-                                                <div class="form-field">
-                                                    <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                                </div>
-                                            </th>
-
-                                            ' . $output_image_header . ' 
-                                            <th>' . get_column_heading(lang('ID'), $sort_levels, '', '', 'id') . '</th>
-                                            <th>' . get_column_heading(lang('Short Description'), $sort_levels, '', '', 'short_description') . '</th>
-                                            <th>' . get_column_heading(lang('Enabled'), $sort_levels, '', '', 'enabled') . '</th>
-                                            ' . ($output_price_header ?? '') . ' 
-                                            ' . ($output_inventory_headers ?? '') . '
-                                            ' . ($output_tax_header ?? '') . '  
-                                            ' . ($output_product_form_header ?? '') . ' 
-                                            ' . ($output_all_products_headers ?? '') . ' 
-                                            ' . ($output_shipping_headers ?? '') . ' 
-                                            ' . ($output_recurring_header ?? '') . ' 
-                                            ' . ($output_recurring_option_headers ?? '') . ' 
-                                            ' . ($output_recurring_set_schedule_header ?? '') . ' 
-                                            ' . ($output_start_page_header ?? '') . ' 
-                                            ' . ($output_private_folder_access_headers ?? '') . ' 
-                                            ' . ($output_add_membership_header ?? '') . ' 
-                                            ' . ($output_all_product_actions_headers ?? '') . ' 
-                                            <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                                            ' . ($output_out_of_stock_timestamp_header ?? '') . ' 
-                                        </tr>
-                                    </thead>
-                                    <tbody>' . $output_rows . '</tbody>
-                                </table>
-                                
-                              
-                                <div class="row g-3 p-5 mb-7">
-                                    <div class="col-12">
-                                    <p>' . h(lang('The new letter replaces the 1 character removed from the ID and Short Description fields.')) . '</p>
+                    <form name="form" action="duplicate_products.php" method="post">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="action">
+                        <input type="hidden" name="edit_enabled">
+                        <input type="hidden" name="edit_allowed_zones">
+                        <input type="hidden" name="edit_disallowed_zones">
+                        <input type="hidden" name="edit_change_price_method">
+                        <input type="hidden" name="edit_price_value">
+                        <input type="hidden" name="edit_inventory">
+                        <input type="hidden" name="edit_inventory_quantity_process">
+                        <input type="hidden" name="edit_tax_rate_method">
+                        <input type="hidden" name="edit_tax_rate_value">
+                        <input type="hidden" name="edit_inventory_quantity">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Duplicate Options')) . '</div>
+                            <div class="card-body">
+                                <p class="mb-5">' . h(lang('The new letter replaces the 1 character removed from the ID and Short Description fields.')) . '</p>
+                                <div class="row g-5">
+                                    <div class="col-12 md:col-4">
+                                        <div class="form-field">
+                                            <label class="form-label" for="lettertodelete">' . h(lang('Number of Letters to Remove')) . '</label>
+                                            <input type="number" class="form-control" id="lettertodelete" name="lettertodelete" value="1" min="1" aria-describedby="lettertodelete_help" />
+                                            <div class="form-text" id="lettertodelete_help">' . h(lang('Add +1 for each space as well')) . '</div>
+                                        </div>
                                     </div>
-                                    <div class="col-auto">
-                                        <label for="lettertodelete">' . h(lang('Number of Letters to Remove')) . '</label>
-                                        <input type="number" class="form-control" id="lettertodelete" name="lettertodelete" value="1" min="1" />
-                                        <span class="small">' . h(lang('Add +1 for each space as well')) . '</span>
-                                    </div>
-                                    <div class="col">
-                                        <label for="newletter">' . h(lang('Word or Letter to Add')) . '</label>
-                                        <input type="text" class="form-control" id="newletter" name="newletter" />
+                                    <div class="col-12 md:col-4">
+                                        <div class="form-field">
+                                            <label class="form-label" for="newletter">' . h(lang('Word or Letter to Add')) . '</label>
+                                            <input type="text" class="form-control" id="newletter" name="newletter" />
+                                        </div>
                                     </div>
                                     ' . $output_option_field . '
-                                    <div class="col"><button type="submit" value="Duplicate Selected" class=" mt-7 btn btn-solid theme-secondary"><span class="material-icons me-3">edit</span>' . h(lang('Duplicate Selected')) . '</button></div>
                                 </div>
-                                
-                            </form>
+                            </div>
                         </div>
-                    </div>
+                        ' . pg_list_table_html($list['source'], $list['page'], $heading, '<button type="submit" value="Duplicate Selected" class="btn btn-sm btn-solid theme-secondary"><i class="bi bi-copy me-1" aria-hidden="true"></i>' . h(lang('Duplicate Selected')) . '</button>') . '
+                    </form>
                 </div>
             </div>
         ';
@@ -1203,7 +865,7 @@ if (!$_POST) {
         'icon'=>'store',
         'heading'=>$heading,
         'heading_description' => ($subheading ?? '')
-    ]) . '<main id="content" class="container-fluid">' . $output . _pg_lightbox_assets_once() . '</main>' . output_footer();
+    ]) . '<main id="content" class="container-fluid">' . $output . _pg_lightbox_assets_once() . '</main>' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();
         $liveform->remove_form('view_products');
     }
 }else{

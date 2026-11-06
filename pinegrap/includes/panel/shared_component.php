@@ -777,11 +777,15 @@ function pg_panel_shared_component($request, $action)
             // Pages in the Recycle Bin come flagged (binned) rather than
             // left out: the pickers drop them, except the one a setting
             // still names, which they show as deleted instead of "none".
+            // The widgets are read from the tree the page is drawn from:
+            // its own, else its design's, as the site draws it.
+            $sc_ap_tree = pg_page_tree_sql_expr();
             $sc_ap_rows = _sc_flag_binned_pages(db_items(
-                "SELECT page_id, page_name, page_title, page_type, page_folder,
-                            IF(page_tree_json LIKE '%sharedId%', page_tree_json, '') AS page_tree_json
+                "SELECT page.page_id, page.page_name, page.page_title, page.page_type, page.page_folder,
+                            IF($sc_ap_tree LIKE '%sharedId%', $sc_ap_tree, '') AS page_tree_json
                      FROM page
-                     ORDER BY page_title ASC, page_name ASC"
+                     LEFT JOIN style ON style.style_id = page.page_style
+                     ORDER BY page.page_title ASC, page.page_name ASC"
             ));
             foreach ($sc_ap_rows as &$sc_ap_row) {
                 $sc_ap_found = array();

@@ -57,24 +57,7 @@ if (!$_POST) {
         go($_SERVER['PHP_SELF']);
     }
 
-    $query =
-        "INSERT INTO auto_dialogs (
-            name,
-            enabled,
-            url,
-            width,
-            height,
-            delay,
-            frequency,
-            page,
-            created_user_id,
-            created_timestamp,
-            last_modified_user_id,
-            last_modified_timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), ?, UNIX_TIMESTAMP())";
-    db_q($query, array_merge(pg_auto_dialog_form_values($liveform), array((string) USER_ID, (string) USER_ID))) or output_error('Query failed.');
-
-    $auto_dialog_id = mysqli_insert_id(db::$con);
+    $auto_dialog_id = pg_auto_dialog_save(0, pg_auto_dialog_form_values($liveform), USER_ID) or output_error('Query failed.');
     
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('auto dialog'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
 

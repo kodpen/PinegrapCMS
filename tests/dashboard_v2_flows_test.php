@@ -100,3 +100,13 @@ function test_dashboard_v2_flow_run_rows_offer_one_button()
 	pg_assert_same(null, pg_dashboard_v2_flow_run_row(array('id' => 9, 'flow_id' => 3, 'status' => 'waiting'), 'X', 0, array(), true, '')['action'], 'waiting on someone else');
 	pg_assert_same('good', pg_dashboard_v2_flow_run_row(array('id' => 10, 'flow_id' => 3, 'status' => 'done'), 'X', 0, array(), true, '')['tone'], 'done');
 }
+
+function test_dashboard_v2_flow_approve_sends_a_decision_the_workspace_accepts()
+{
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash_cards_work.js');
+	$check = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/approvals.php');
+
+	pg_assert_true(preg_match('/request\.decision\s*=\s*"([a-z]+)"/', $script, $sent) === 1, 'the Approve button names its decision');
+	pg_assert_true(preg_match("/function ws_approval_decide_check\\(.*?in_array\\(\\\$decision, array\\(([^)]*)\\)/s", $check, $accepted) === 1, 'the Workspace lists the decisions it takes');
+	pg_assert_true(strpos($accepted[1], "'" . $sent[1] . "'") !== false, 'the dashboard sends "' . $sent[1] . '", which ws_approval_decide_check() accepts');
+}

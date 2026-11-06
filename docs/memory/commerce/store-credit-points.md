@@ -8,7 +8,7 @@ module: store_credit_points
 - Settings › Ecommerce › reward program card: "Points per unit of store credit" and "Smallest conversion" (an amount). Stored as `config_text` rows, not `config` columns (the row's room, `data/config-table-no-varchar.md`): `credit_points_per_unit` as a plain number with a dot (`pg_credit_points_parse_rate()`, read like `pg_parse_amount()`, at most 4 decimals, capped at 1,000,000; '' = off) and `credit_points_smallest` in minor units (`pg_credit_points_parse_smallest()`, `round()`). No rate, or the reward program off, means nothing changes on the site.
 
 ## How does a customer convert?
-- My Account (built-in `includes/templates/my_account.php` and `my_account_system.php`, from `get_my_account.php`'s `reward_points_credit`): a number box (all their points by default, at least `pg_credit_points_minimum()`), "Convert to store credit" and what all their points are worth. Drawn only when the points reach the minimum. The designer my_account widget shows no points yet, so it has no form either.
+- My Account's store credit section (built-in templates and the designer my_account widget, `store-credit-screens.md`): a number box (all their points by default, at least `pg_credit_points_minimum()`), "Convert to store credit" and what all their points are worth. Drawn only when the points reach the minimum (`pg_credit_account_convert()`).
 - The form posts to `convert_reward_points.php` (POST, token, `send_to` through `pg_safe_redirect_path()`); the customer is `pg_credit_checkout_user()`, so a guest and a ghost session are refused. The answer is a notice or an error on the `my_account` liveform.
 
 ## What does a conversion write?
@@ -19,6 +19,7 @@ module: store_credit_points
 - Untouched: `pg_order_complete_rewards()` still fires on the order whose points cross `ECOMMERCE_REWARD_PROGRAM_POINTS`. A customer who converts and then crosses the goal again gets its membership or mail again.
 - `pg_order_complete_rewards()` now adds the order's points in place (`user_reward_points + ?`): it used to write the balance it had read, so a conversion at the same moment could be overwritten and the points spent twice.
 - The user screen (`edit_user.php`) posts the balance it was opened with (`reward_points_original`); `pg_credit_points_staff_sql()` writes the field only when staff changed it, so saving a record opened before a conversion or an order no longer puts the moved points back.
+- The external API's `POST /users/{id}` does the same: `api_user_fields_from_row()` sets `reward_points_original` to the balance it read, so an update that does not send `reward_points` (or sends the stored figure) leaves the column alone; before, every update wrote the read balance back and an order or conversion landing in between was lost.
 
 ## Are an order's points taken back when it is cancelled or refunded?
 - Yes: `store-credit-points-take-back.md`.

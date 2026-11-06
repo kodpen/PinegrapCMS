@@ -19,17 +19,21 @@
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/commerce_list.php');
+include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/gift_card_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/gift_card_list_edit.php');
 
-// A gift card's notes changed in place on the list (pg_list_edit_request() in
-// includes/fn/output.php). Answered in JSON, before anything below draws the
-// screen; the write is the one the gift card's screen makes
-// (pg_gift_card_quick_update()).
+// A gift card's balance, expiration date or notes changed in place on the
+// list (pg_list_edit_request() in includes/fn/output.php). Answered in JSON,
+// before anything below draws the screen; the check and the write are the
+// gift card screen's own (pg_gift_card_quick_update()).
 if (pg_list_edit_requested()) {
-    $edit = pg_list_edit_request(pg_gift_card_edit_columns(), function ($user) {
+    $quick_edit = pg_gift_card_edit_columns();
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
         return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
     });
 
-    $saved = pg_gift_card_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id']);
+    $saved = pg_gift_card_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id'], $quick_edit, $edit['was']);
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }
@@ -37,7 +41,6 @@ if (pg_list_edit_requested()) {
 $user = validate_user();
 validate_ecommerce_access($user);
 
-include_once('liveform.class.php');
 $liveform = new liveform('view_gift_cards');
 
 // What an operator can change on the list without opening the gift card.
@@ -187,85 +190,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
     $row = mysqli_fetch_row($result);
     $all_gift_cards = $row[0];
 
-    // Get all gift cards.
-    $query =
-        "SELECT
-            gift_cards.id,
-            gift_cards.code,
-            gift_cards.amount,
-            gift_cards.expiration_date,
-            gift_cards.balance,
-            gift_cards.notes,
-            gift_cards.from_name,
-            gift_cards.recipient_email_address,
-            gift_cards.delivery_date,
-            created_user.user_username AS created_username,
-            gift_cards.created_timestamp,
-            last_modified_user.user_username AS last_modified_username,
-            gift_cards.last_modified_timestamp
-        FROM gift_cards
-        LEFT JOIN orders ON gift_cards.order_id = orders.id
-        LEFT JOIN user AS created_user ON gift_cards.created_user_id = created_user.user_id
-        LEFT JOIN user AS last_modified_user ON gift_cards.last_modified_user_id = last_modified_user.user_id
-        $where
-        ORDER BY $order_by";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    $gift_cards = mysqli_fetch_items($result);
-
     // Every gift card is printed: the list table driver sorts and searches
     // them in the browser (browser mode).
+    $gift_cards = db_items(pg_gift_card_list_sql() . "
+        $where
+        ORDER BY $order_by");
+
     $list_rows = array();
 
     foreach ($gift_cards as $gift_card) {
-        $id = (int) $gift_card['id'];
-        $expired = ($gift_card['expiration_date'] != '0000-00-00') && ($gift_card['expiration_date'] < $current_date);
-
-        // Green while it has a balance and has not expired; red otherwise,
-        // with the reason under the code.
-        if ($gift_card['balance'] && !$expired) {
-            $output_status_class = 'status_enabled fg-success';
-            $output_state = '';
-        } else {
-            $output_status_class = 'status_disabled fg-danger';
-            $output_state = $expired ? pg_list_status_word(lang('Expired')) : pg_list_status_word(lang('No balance'));
-        }
-
-        $expires = ($gift_card['expiration_date'] != '0000-00-00') ? strtotime($gift_card['expiration_date']) : 0;
-        $output_from_name = '';
-        $output_delivery_date = '';
-        $delivery = 0;
-
-        // A card with a recipient says who sent it and when it goes out.
-        if ($gift_card['recipient_email_address'] != '') {
-            $output_from_name = ($gift_card['from_name'] != '') ? h($gift_card['from_name']) : h(lang('Anonymous'));
-
-            if ($gift_card['delivery_date'] == '0000-00-00') {
-                $output_delivery_date = h(lang('Immediate'));
-            } else {
-                $delivery = strtotime($gift_card['delivery_date']);
-                $output_delivery_date = get_absolute_time(array('timestamp' => $delivery, 'type' => 'date'));
-            }
-        }
-
-        // The cells a quick edit can change, drawn by the same function that
-        // draws them again in the answer to an edit. Notes on more than one
-        // line change only on the gift card's screen.
-        $list_cells = pg_gift_card_list_cells($gift_card);
-
         $list_rows[] = array(
-            'id' => $id,
-            'cells' => array(
-                'code' => pg_list_cell(pg_commerce_list_open_link('edit_gift_card.php?id=' . $id, '<span class="badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span>') . $output_state, 'align-middle', array('data-pg-sort-value' => (string) $gift_card['code'])),
-                'balance' => pg_list_cell('<span class="badge theme-secondary fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) (int) $gift_card['balance'])),
-                'original_amount' => pg_list_cell('<span class="badge theme-primary fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>', 'align-middle', array('data-pg-sort-value' => (string) (int) $gift_card['amount'])),
-                'expiration_date' => pg_list_cell($expires ? get_absolute_time(array('timestamp' => $expires, 'type' => 'date')) : '', 'align-middle', array('data-pg-sort-value' => (string) (int) $expires)),
-                'notes' => pg_list_cell($list_cells['notes']['html'], $list_cells['notes']['class'], pg_gift_card_notes_fit_list($gift_card['notes']) ? pg_list_edit_cell_attributes($quick_edit, 'notes', $id, $gift_card['notes']) : array()),
-                'from' => pg_list_cell($output_from_name),
-                'recipient' => pg_list_cell(h($gift_card['recipient_email_address'])),
-                'delivery_date' => pg_list_cell($output_delivery_date, 'align-middle', array('data-pg-sort-value' => (string) (int) $delivery)),
-                'created' => pg_list_cell(pg_list_when($gift_card['created_timestamp'], (string) $gift_card['created_username']), 'align-middle', array('data-pg-sort-value' => (string) (int) $gift_card['created_timestamp'])),
-                'last_modified' => pg_list_cell($list_cells['last_modified']['html'], $list_cells['last_modified']['class'], array('data-pg-sort-value' => (string) (int) $gift_card['last_modified_timestamp'])),
-            ),
+            'id' => (int) $gift_card['id'],
+            'cells' => pg_gift_card_list_row_cells($gift_card, $current_date, $quick_edit),
         );
     }
 

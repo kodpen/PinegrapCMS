@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'access', 'fonts', 'glyph', 'warp', 'outline', 'builder');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'area', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'keyframes', 'render', 'scenes', 'present', 'access', 'record', 'fonts', 'glyph', 'warp', 'puppet', 'outline', 'builder', 'actions', 'menu');
 }
 
 /**
@@ -113,8 +113,14 @@ function pg_image_editor_strings_core()
         'tool_vector'    => lang('Vector'),
         'tool_scissors'  => lang('Scissors'),
         'tool_warp'      => lang('Warp'),
+        'tool_puppet'    => lang('Free deformation'),
         'tool_builder'   => lang('Shape builder'),
+        'tool_area'      => lang('Select area'),
         'tool_artboard'  => lang('Canvas'),
+        'tool_photo'     => lang('Photo'),
+        'tool_vectors'   => lang('Vector'),
+        'mode_vector'    => lang('Pen'),
+        'railMode'       => lang('Mode'),
         'tool_image'     => lang('Image'),
         'tool_export'    => lang('Export'),
         'tool_arrow'     => lang('Arrow'),
@@ -179,6 +185,8 @@ function pg_image_editor_config()
         'icons'   => pg_image_editor_icon_urls(),
         // The animation encoder's script, started as a worker.
         'encoder' => pg_js_bundle_urls('assets/js/pg_image_editor_encode.min.js'),
+        // Select subject's cut, started as a worker.
+        'subject' => pg_js_bundle_urls('assets/js/pg_image_editor_subject.min.js'),
         // The largest animation Save to Files takes (0: no limit known).
         'animationLimit' => pg_image_editor_animation_limit(pg_upload_limits()),
     );
@@ -997,6 +1005,19 @@ function pg_image_editor_save($request, $user)
         $edit['redact'] = $redactions;
     }
 
+    // The selection's areas (Erase, Adjust inside), before the redaction.
+    $masks = pg_image_editor_take_masks(isset($request['masks']) ? $request['masks'] : null, $edit, FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.m');
+
+    if ($masks === false) {
+        @unlink($overlay);
+        pg_image_editor_drop_redactions($redactions);
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if ($masks) {
+        $edit['masks'] = $masks;
+    }
+
     $source = $file['path'];
     $layer = '';
     $base = null;
@@ -1011,7 +1032,7 @@ function pg_image_editor_save($request, $user)
 
             if (!$base) {
                 @unlink($overlay);
-                pg_image_editor_drop_redactions($redactions);
+                pg_image_editor_drop_redactions(array_merge($redactions, $masks));
                 return pg_image_editor_refusal(($base_id > 0) ? lang('Invalid request.') : lang('Sorry, the file could not be saved.'));
             }
         } elseif ($base_id > 0) {
@@ -1019,7 +1040,7 @@ function pg_image_editor_save($request, $user)
 
             if (!$base || ((string) $base['doc_json'] !== '')) {
                 @unlink($overlay);
-                pg_image_editor_drop_redactions($redactions);
+                pg_image_editor_drop_redactions(array_merge($redactions, $masks));
                 return pg_image_editor_refusal(lang('Invalid request.'));
             }
         }
@@ -1029,7 +1050,7 @@ function pg_image_editor_save($request, $user)
         }
     } elseif ($base_id > 0) {
         @unlink($overlay);
-        pg_image_editor_drop_redactions($redactions);
+        pg_image_editor_drop_redactions(array_merge($redactions, $masks));
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
@@ -1048,7 +1069,7 @@ function pg_image_editor_save($request, $user)
         if (!$size || ($size[0] > $width + 0.5) || ($size[1] > $height + 0.5) || (abs($size[0] - $size[1] * $width / $height) > 1.5)) {
             @unlink($layer);
             @unlink($overlay);
-            pg_image_editor_drop_redactions($redactions);
+            pg_image_editor_drop_redactions(array_merge($redactions, $masks));
             return pg_image_editor_refusal(lang('Invalid request.'));
         }
 
@@ -1058,7 +1079,7 @@ function pg_image_editor_save($request, $user)
 
     } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
         @unlink($overlay);
-        pg_image_editor_drop_redactions($redactions);
+        pg_image_editor_drop_redactions(array_merge($redactions, $masks));
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
@@ -1077,7 +1098,7 @@ function pg_image_editor_save($request, $user)
         @unlink($layer);
     }
 
-    pg_image_editor_drop_redactions($redactions);
+    pg_image_editor_drop_redactions(array_merge($redactions, $masks));
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
         return pg_image_editor_refusal(pg_image_editor_report_message($report, $name));
@@ -1303,7 +1324,8 @@ function pg_image_editor_strings_layers()
 {
     return array(
         'noLayers'       => lang('No layers yet.'),
-        'hintSelect'     => lang('Click a layer to select it, with Shift to add more. Drag to move it; the handles resize and turn it. Ctrl+V pastes a picture.'),
+        'hintSelect'     => lang('Click a layer to select it, with Shift to add more, or drag a box over layers. Drag a layer to move it; the handles resize and turn it. Ctrl+V pastes a picture.'),
+        'selectAll'      => lang('Select all'),
         'layer_image'    => lang('Picture'),
         'rotate'         => lang('Rotate'),
         'show'           => lang('Show'),
@@ -1341,7 +1363,7 @@ function pg_image_editor_strings_draw()
 {
     return array(
         'hintDraw'       => lang('Drag to draw. Shift: straight angles and squares.'),
-        'hintEraser'     => lang('Drag over pen strokes to erase them.'),
+        'hintEraser'     => lang('Drag over pen strokes, shapes and paths to erase them. Locked layers stay.'),
         'drawKinds'      => lang('Shapes'),
         'layer_arrow'    => lang('Arrow'),
         'layer_line'     => lang('Line'),
@@ -1354,7 +1376,7 @@ function pg_image_editor_strings_draw()
         'layer_pen'      => lang('Pen'),
         'eraser'         => lang('Eraser'),
         'eraserSize'     => lang('Eraser size'),
-        'eraserNote'     => lang('The eraser cuts pen strokes. Delete a shape with Select or the Delete key.'),
+        'eraserNote'     => lang('The eraser takes away what it passes over from pen strokes, shapes and paths. Locked layers stay as they are.'),
         'drawColor'      => lang('Color'),
         'strokeWidth'    => lang('Line width'),
         'strokeThin'     => lang('Thin'),
@@ -1535,15 +1557,22 @@ function pg_image_editor_strings_sticker()
  *
  * @param array      $rows    files rows (id, name, type, folder, image_width, image_height)
  * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
- * @return array [{ id, name, url, width, height }]
+ * @param bool       $svg     SVG files too (Import in the top bar), marked svg
+ * @return array [{ id, name, url, width, height, svg? }]
  */
-function pg_image_editor_sticker_rows($rows, $folders)
+function pg_image_editor_sticker_rows($rows, $folders, $svg = false)
 {
     $types = array('jpg', 'jpeg', 'png', 'gif', 'webp');
     $list = array();
 
+    if ($svg) {
+        $types[] = 'svg';
+    }
+
     foreach ($rows as $row) {
-        if (!in_array(strtolower((string) $row['type']), $types, true)) {
+        $type = strtolower((string) $row['type']);
+
+        if (!in_array($type, $types, true)) {
             continue;
         }
 
@@ -1557,6 +1586,10 @@ function pg_image_editor_sticker_rows($rows, $folders)
             'url'    => PATH . encode_url_path((string) $row['name']),
             'width'  => (int) $row['image_width'],
             'height' => (int) $row['image_height']);
+
+        if ($svg) {
+            $list[count($list) - 1]['svg'] = ($type === 'svg');
+        }
     }
 
     return $list;
@@ -1575,15 +1608,16 @@ function pg_image_editor_sticker_rows($rows, $folders)
  * @param array|null $folders   the folder ids a role-3 user may reach; null for every folder
  * @param array      $bin       the Recycle Bin's folder ids
  * @param bool|null  $erp_ready whether files.erp_doc_type exists; null asks the schema
+ * @param bool       $svg       SVG files too (Import in the top bar)
  * @return string|null the clause, or null when the user may reach no folder
  */
-function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = null)
+function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = null, $svg = false)
 {
     if ($erp_ready === null) {
         $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
     }
 
-    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp'" . ($svg ? ", 'svg'" : '') . ")) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
     $ids = function ($list) {
         return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
     };
@@ -1609,11 +1643,11 @@ function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = nul
 
 /**
  * Action sticker_files: the newest pictures in Files, or those whose name
- * holds the search, for the sticker panel's "Picture from Files". Read only;
- * a role-3 user sees the folders they may edit, as the File Manager shows
- * them.
+ * holds the search, for the sticker panel's "Picture from Files" and, with
+ * svg, SVG files too for Import in the top bar. Read only; a role-3 user
+ * sees the folders they may edit, as the File Manager shows them.
  *
- *   { search?: string } -> { status, files: [{ id, name, url, width, height }] }
+ *   { search?: string, svg?: bool } -> { status, files: [{ id, name, url, width, height, svg? }] }
  *
  * @return array array(payload, HTTP status)
  */
@@ -1621,7 +1655,8 @@ function pg_image_editor_action_sticker_files($request, $user)
 {
     $search = (isset($request['search']) && is_string($request['search'])) ? trim(mb_substr($request['search'], 0, 100)) : '';
     $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
-    $where = pg_image_editor_sticker_where($search, $folders, pg_recycle_bin_folder_ids());
+    $svg = !empty($request['svg']);
+    $where = pg_image_editor_sticker_where($search, $folders, pg_recycle_bin_folder_ids(), null, $svg);
     $rows = ($where === null) ? array() : db_items(
         "SELECT id, name, type, folder, image_width, image_height
         FROM files
@@ -1631,7 +1666,7 @@ function pg_image_editor_action_sticker_files($request, $user)
 
     return array(array(
         'status' => 'success',
-        'files'  => pg_image_editor_sticker_rows(is_array($rows) ? $rows : array(), $folders)), 200);
+        'files'  => pg_image_editor_sticker_rows(is_array($rows) ? $rows : array(), $folders, $svg)), 200);
 }
 
 // -- Redact (pg_image_editor_redact.js) --
@@ -1739,11 +1774,144 @@ function pg_image_editor_take_redactions($regions, $edit, $prefix)
     return $list;
 }
 
-// The mask files of pg_image_editor_take_redactions(), removed.
+/**
+ * The colour step of an Adjust inside area: its adjustments and filter
+ * checked as the document's are, summed and kept in range. Pure.
+ *
+ * @return array|null|false pg_image_edit_color()'s answer (null for no
+ *                          change); false when a value is refused
+ */
+function pg_image_editor_mask_color($adjust, $filter)
+{
+    $ranges = pg_image_edit_adjust_ranges();
+    $filters = pg_image_edit_filters();
+
+    if (!is_array($adjust) || !is_string($filter) || !isset($filters[$filter])) {
+        return false;
+    }
+
+    foreach ($adjust as $key => $value) {
+        if (!isset($ranges[$key]) || (pg_image_edit_number($value, $ranges[$key][0], $ranges[$key][1]) === null)) {
+            return false;
+        }
+    }
+
+    $values = array();
+
+    foreach ($ranges as $key => $range) {
+        $sum = (isset($adjust[$key]) ? $adjust[$key] : 0) + (isset($filters[$filter][$key]) ? $filters[$filter][$key] : 0);
+        $values[$key] = max($range[0], min($range[1], (int) round($sum)));
+    }
+
+    return pg_image_edit_color($values);
+}
+
+/**
+ * The selection's areas of a save (Erase and Adjust inside layers, E27b),
+ * checked and their masks written next to $prefix: each { op, x, y, mask }
+ * with the mask a PNG data: URL whose opaque pixels are the area, its box
+ * at x, y inside the output; an erase takes at most one of fill
+ * ('#rrggbb'), blur (the picture under it blurred, a radius of 0.5-250
+ * output pixels) or picture (a PNG or JPEG data: URL the browser drew at
+ * the mask's size, Remove background's picture from Files); a colour area
+ * adjust and filter as the document's.
+ *
+ * @param mixed  $areas  the request's masks list
+ * @param array  $edit   the recipe of pg_image_edit_validate()
+ * @param string $prefix path the mask files start with
+ * @return array|false the engine's masks list (op, x, y, w, h, mask, fill,
+ *                     blur, picture, color), an empty one for none; false
+ *                     when refused
+ *                     (masks already written are removed)
+ */
+function pg_image_editor_take_masks($areas, $edit, $prefix)
+{
+    if (($areas === null) || ($areas === array())) {
+        return array();
+    }
+
+    if (!is_array($areas) || (count($areas) > 50)) {
+        return false;
+    }
+
+    $list = array();
+
+    foreach (array_values($areas) as $i => $area) {
+        $op = (is_array($area) && isset($area['op'])) ? $area['op'] : null;
+        $x = isset($area['x']) ? pg_image_edit_number($area['x'], 0, $edit['out_w'] - 1) : null;
+        $y = isset($area['y']) ? pg_image_edit_number($area['y'], 0, $edit['out_h'] - 1) : null;
+        $fill = null;
+        $blur = null;
+        $picture = null;
+        $color = null;
+        $ok = (($op === 'erase') || ($op === 'color')) && ($x !== null) && ($y !== null) && ($x == floor($x)) && ($y == floor($y))
+            && is_string(isset($area['mask']) ? $area['mask'] : null) && (strncmp($area['mask'], 'data:image/png;', 15) === 0);
+
+        if ($ok && ($op === 'erase') && isset($area['fill'])) {
+            $ok = is_string($area['fill']) && preg_match('/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i', $area['fill'], $m);
+            $fill = $ok ? array(hexdec($m[1]), hexdec($m[2]), hexdec($m[3])) : null;
+        }
+
+        if ($ok && ($op === 'erase') && isset($area['blur'])) {
+            $blur = pg_image_edit_number($area['blur'], 0.5, 250);
+            $ok = ($blur !== null) && !$fill;
+        }
+
+        // The picture is taken once the mask's size is known.
+        if ($ok && ($op === 'erase') && isset($area['picture'])) {
+            $ok = is_string($area['picture']) && !$fill && ($blur === null);
+        }
+
+        if ($ok && ($op === 'color')) {
+            $color = pg_image_editor_mask_color(isset($area['adjust']) ? $area['adjust'] : array(), isset($area['filter']) ? $area['filter'] : 'none');
+            $ok = ($color !== false);
+
+            // An area without a change has nothing to draw.
+            if ($ok && !$color) {
+                continue;
+            }
+        }
+
+        $path = $prefix . '.' . $i . '.mask.tmp';
+        $size = $ok ? pg_image_editor_take_picture($area['mask'], $path) : false;
+        $ok = $size && ($x + $size[0] <= $edit['out_w']) && ($y + $size[1] <= $edit['out_h']);
+
+        if ($ok && isset($area['picture'])) {
+            $picture = $prefix . '.' . $i . '.fill.tmp';
+            $fill_size = pg_image_editor_take_picture($area['picture'], $picture);
+            $ok = $fill_size && ((int) $fill_size[0] === (int) $size[0]) && ((int) $fill_size[1] === (int) $size[1]);
+
+            if ($fill_size && !$ok) {
+                @unlink($picture);
+            }
+        }
+
+        if (!$ok) {
+            if ($size) {
+                @unlink($path);
+            }
+
+            pg_image_editor_drop_redactions($list);
+            return false;
+        }
+
+        $list[] = array('op' => $op, 'x' => (int) $x, 'y' => (int) $y, 'w' => (int) $size[0], 'h' => (int) $size[1], 'mask' => $path, 'fill' => $fill,
+            'blur' => $blur, 'picture' => $picture, 'color' => $color);
+    }
+
+    return $list;
+}
+
+// The mask files of pg_image_editor_take_redactions() and
+// pg_image_editor_take_masks(), removed.
 function pg_image_editor_drop_redactions($list)
 {
     foreach ((array) $list as $region) {
         @unlink($region['mask']);
+
+        if (!empty($region['picture'])) {
+            @unlink($region['picture']);
+        }
     }
 }
 
@@ -2214,6 +2382,24 @@ function pg_file_versions_before_save($file_id, $path, $base_id, $user_id)
 }
 
 /**
+ * Before a file is written over: its current pixels kept as a save row
+ * unless the newest version already holds them (the first one becomes the
+ * original).
+ *
+ * @return bool false when they could not be kept
+ */
+function pg_file_versions_keep_current($file_id, $path, $user_id)
+{
+    $newest = pg_file_versions_newest($file_id);
+
+    if ($newest && pg_file_versions_matches_file($newest, $path)) {
+        return true;
+    }
+
+    return (bool) pg_file_versions_add($file_id, $path, '', 'save', $user_id);
+}
+
+/**
  * After a replace save: the result as a save row with its document, unless
  * the newest version already holds the same document; then the retention.
  */
@@ -2449,6 +2635,10 @@ function pg_image_editor_strings_artboard()
         'pictureFree'       => lang('Move and resize the picture on the canvas'),
         'pictureDelete'     => lang('Delete the picture'),
         'pictureTitle'      => lang('Picture'),
+        'import'            => lang('Import'),
+        'importComputer'    => lang('From this computer'),
+        'importSite'        => lang('From the site'),
+        'importError'       => lang('This file cannot be imported.'),
     );
 }
 
@@ -2679,6 +2869,14 @@ function pg_image_editor_save_canvas($request, $board, $mode, $user)
 
     // The browser's PNG is recompressed when that makes it smaller.
     pg_process_image_file($temporary);
+
+    // A replace keeps the pixels it writes over as a version first, as a
+    // picture's replace does: a PNG photo drawn on as a canvas, or a canvas
+    // changed outside the editor, can then be restored.
+    if (($mode === 'replace') && pg_file_versions_ready() && !pg_file_versions_keep_current((int) $row['id'], $file['path'], $user['id'])) {
+        @unlink($temporary);
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
 
     if (!@rename($temporary, $path)) {
         @unlink($temporary);
@@ -3151,6 +3349,7 @@ function pg_image_editor_strings_svg()
         'svgKind_g'         => lang('Group'),
         'svgKind_image'     => lang('Picture'),
         'svgKind_kept'      => lang('Kept element'),
+        'svgBreakApart'     => lang('Break apart'),
     );
 }
 
@@ -3227,6 +3426,46 @@ function pg_image_editor_svg_open($file_id, $user)
         'versions' => 0,
         'doc'      => null,
         'base'     => 0), 200);
+}
+
+/**
+ * Action svg_import: an SVG for Import in the top bar, through
+ * pg_svg_sanitize(), from the user's computer (svg, its text) or from Files
+ * (file_id, with the gates of pg_image_editor_svg_file()). Writes nothing.
+ *
+ *   { svg?: string, file_id?: int } -> { status, svg, name }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_svg_import($request, $user)
+{
+    $name = '';
+
+    if (!empty($request['file_id'])) {
+        $file = pg_image_editor_svg_file((int) $request['file_id'], $user);
+
+        if ($file === null) {
+            return pg_image_editor_refusal(lang('Sorry, we could not find the file.'));
+        }
+
+        if ($file['refusal']) {
+            return $file['refusal'];
+        }
+
+        $bytes = is_file($file['path']) ? (int) @filesize($file['path']) : 0;
+        $text = (($bytes > 0) && ($bytes <= pg_svg_sanitize_max_bytes())) ? (string) @file_get_contents($file['path']) : '';
+        $name = (string) $file['row']['name'];
+    } else {
+        $text = (isset($request['svg']) && is_string($request['svg'])) ? $request['svg'] : '';
+    }
+
+    $svg = ($text === '') ? '' : pg_svg_sanitize($text);
+
+    if ($svg === '') {
+        return pg_image_editor_refusal(lang('This SVG file cannot be imported.'));
+    }
+
+    return array(array('status' => 'success', 'svg' => $svg, 'name' => $name), 200);
 }
 
 /**
@@ -3463,6 +3702,7 @@ function pg_image_editor_strings_motion()
         'motionRemove'         => lang('Remove'),
         'motionWhole'          => lang('Whole animation'),
         'motionLength'         => lang('Length'),
+        'motionLongNote'       => lang('This moves for longer than 5 seconds. On a web page beside other content, visitors must be able to pause it (WCAG 2.2.2), and a GIF, APNG or WebP cannot be paused: shorten it, repeat it fewer times, or save it as a video.'),
         'motionRepeatCount'    => lang('Repeat'),
         'motionForever'        => lang('Forever'),
         'motionTimes'          => lang('{n} times'),
@@ -4134,6 +4374,30 @@ function pg_image_editor_strings_scenes()
     );
 }
 
+// -- Present and PDF (pg_image_editor_present.js) --
+
+/**
+ * The present part's labels: the Present button and its full screen, PDF in
+ * Save animation.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_present()
+{
+    return array(
+        'present'        => lang('Present'),
+        'presentTitle'   => lang('Present the scenes full screen'),
+        'presentDialog'  => lang('Presentation'),
+        'presentPrev'    => lang('Previous scene'),
+        'presentNext'    => lang('Next scene'),
+        'presentCount'   => lang('Scene {n} of {count}'),
+        'presentLeave'   => lang('Press Esc to leave'),
+        'presentClose'   => lang('Leave the presentation'),
+        'animFormat_pdf' => lang('PDF'),
+        'animPages'      => lang('{n} pages, one a scene'),
+    );
+}
+
 // -- Access (pg_image_editor_access.js) --
 
 /**
@@ -4170,6 +4434,12 @@ function pg_image_editor_strings_access()
         'touchPan'      => lang('Two fingers: move and zoom the view'),
         'touchFit'      => lang('Double tap: actual size or fit to screen'),
         'touchTwist'    => lang('Hold a layer and twist with a second finger: turn it'),
+        'keysTimeline'  => lang('Timeline'),
+        'keyPlay'       => lang('Play or pause'),
+        'keyFrame'      => lang('One frame back or forward'),
+        'keySecond'     => lang('One second back or forward'),
+        'keyStart'      => lang('Go to the start'),
+        'keyEnd'        => lang('Go to the end'),
     );
 }
 
@@ -4286,6 +4556,28 @@ function pg_image_editor_strings_warp()
         'warpReset'      => lang('Reset mesh'),
         'warpExpand'     => lang('Expand'),
         'warpExpandNote' => lang('Expand turns the warp into the path for good.'),
+    );
+}
+
+// -- Free deformation (pg_image_editor_puppet.js) --
+
+/**
+ * The free deformation's labels.
+ *
+ * @return array
+ */
+function pg_image_editor_strings_puppet()
+{
+    return array(
+        'hintPuppet'       => lang('Click the shape to pin it, then drag a pin to bend it. Alt and a click remove a pin.'),
+        'puppetNote'       => lang('Select one path, shape or outlined text to pin it.'),
+        'puppetTextNote'   => lang('A text takes pins once its letters are outlines.'),
+        'puppetHowTo'      => lang('Click the shape to add a pin. Drag a pin to bend the shape around the others.'),
+        'puppetCount'      => lang('Pins: {n}'),
+        'puppetPin'        => lang('Deformation pin'),
+        'puppetRemove'     => lang('Remove pin'),
+        'puppetClear'      => lang('Remove all pins'),
+        'puppetExpandNote' => lang('Expand turns the bent shape into the path for good.'),
     );
 }
 
@@ -4494,6 +4786,19 @@ function pg_image_editor_render($path, $request)
         $edit['redact'] = $redactions;
     }
 
+    // The selection's areas, as for a save; dropped with the redactions.
+    $masks = pg_image_editor_take_masks(isset($request['masks']) ? $request['masks'] : null, $edit, $stem . '.m');
+
+    if ($masks === false) {
+        @unlink($overlay);
+        pg_image_editor_drop_redactions($redactions);
+        return $refused;
+    }
+
+    if ($masks) {
+        $edit['masks'] = $masks;
+    }
+
     // Without Imagick the browser sends the colour step done, as for a save.
     if (!empty($request['colour']) && !empty($edit['color'])) {
         $layer = $stem . '.colour.tmp';
@@ -4504,7 +4809,7 @@ function pg_image_editor_render($path, $request)
         if (!$taken || ($taken[0] > $width + 0.5) || ($taken[1] > $height + 0.5) || (abs($taken[0] - $taken[1] * $width / $height) > 1.5)) {
             @unlink($layer);
             @unlink($overlay);
-            pg_image_editor_drop_redactions($redactions);
+            pg_image_editor_drop_redactions(array_merge($redactions, $masks));
             return $refused;
         }
 
@@ -4514,7 +4819,7 @@ function pg_image_editor_render($path, $request)
 
     } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
         @unlink($overlay);
-        pg_image_editor_drop_redactions($redactions);
+        pg_image_editor_drop_redactions(array_merge($redactions, $masks));
         return $refused;
     }
 
@@ -4522,7 +4827,7 @@ function pg_image_editor_render($path, $request)
 
     @unlink($overlay);
     @unlink($layer);
-    pg_image_editor_drop_redactions($redactions);
+    pg_image_editor_drop_redactions(array_merge($redactions, $masks));
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
         return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '', 'redacted' => false);
@@ -4671,11 +4976,139 @@ function pg_image_editor_strings_builder()
         'pfIntersect'    => lang('Intersect'),
         'pfExclude'      => lang('Exclude'),
         'pfDivide'       => lang('Divide'),
-        'pathfinderNote' => lang('Select two or more closed shapes or paths to combine them. Or drag across the regions where shapes overlap to merge or remove them.'),
-        'builderNote'    => lang('Drag across the regions of the selected shapes to merge or remove them; Alt while dragging removes them too.'),
-        'hintBuilder'    => lang('Drag across overlapping regions: merge them. Alt-drag: remove them.'),
+        'pathfinderNote' => lang('Select two or more closed shapes or paths to combine them, or click where shapes overlap to unite them. A drag across regions merges or removes only those regions.'),
+        'builderNote'    => lang('Click where the selected shapes overlap to unite them; drag across their regions to merge or remove only those. Alt while dragging removes them too.'),
+        'hintBuilder'    => lang('Click where shapes overlap: unite them. Drag across regions: merge only those. Alt-drag: remove them.'),
+        'selectShapes'   => lang('Select all shapes'),
         'builderDrag'    => lang('Dragging across regions'),
         'builderMerge'   => lang('Merge'),
         'builderRemove'  => lang('Remove'),
+    );
+}
+
+// -- Selection bar (pg_image_editor_actions.js) --
+
+/**
+ * The selection bar's own labels; its commands use the labels of the parts
+ * that own them (Duplicate, Delete, Invert…).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_actions()
+{
+    return array(
+        'actBar'     => lang('Selection actions'),
+        'actOptions' => lang('Options'),
+    );
+}
+
+// -- Context menu (pg_image_editor_menu.js) --
+
+/**
+ * The context menu's own labels; its other items use the labels of the
+ * parts that own them (Duplicate, Bring to front, Combine shapes…).
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_menu()
+{
+    return array(
+        'ctxMenu'       => lang('Commands'),
+        'ctxCut'        => lang('Cut'),
+        'ctxCopy'       => lang('Copy'),
+        'ctxPaste'      => lang('Paste'),
+        'ctxExpandWarp' => lang('Expand warp'),
+        'ctxImportFile' => lang('Import from this computer'),
+    );
+}
+
+// -- Area selection (pg_image_editor_area.js) --
+
+/**
+ * The Select area part's labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_area()
+{
+    return array(
+        'hintArea'        => lang('Drag on the picture to select an area. Shift adds to the selection, Alt takes away from it.'),
+        'areaIntro'       => lang('Draw a shape on the picture, or click it with the magic wand, to select an area.'),
+        'areaShape'       => lang('Shape'),
+        'areaRect'        => lang('Rectangle'),
+        'areaEllipse'     => lang('Ellipse'),
+        'areaLasso'       => lang('Lasso'),
+        'areaPolygon'     => lang('Polygon'),
+        'areaWand'        => lang('Magic wand'),
+        'areaMode'        => lang('Selection'),
+        'areaNew'         => lang('New'),
+        'areaAdd'         => lang('Add'),
+        'areaSub'         => lang('Subtract'),
+        'areaTolerance'   => lang('Tolerance'),
+        'areaContiguous'  => lang('Contiguous'),
+        'areaFeather'     => lang('Feather'),
+        'areaInvert'      => lang('Invert'),
+        'areaClear'       => lang('Deselect'),
+        'areaRedact'      => lang('Redact the selection'),
+        'areaPolygonNote' => lang('Click to add corners; double-click, or click the first corner, to close the shape.'),
+        'areaWandNote'    => lang('The magic wand cannot read this picture.'),
+        'subjectSelect'   => lang('Select subject'),
+        'subjectBusy'     => lang('Finding the subject…'),
+        'subjectNote'     => lang('Finds the subject of the picture; draw a rectangle round it first to help.'),
+        'subjectNone'     => lang('No subject was found; draw a rectangle round it and try again.'),
+        'subjectRead'     => lang('Select subject cannot read this picture.'),
+        'subjectError'    => lang('The subject could not be found.'),
+        'subjectRefine'   => lang('Refine the subject'),
+        'subjectKeep'     => lang('Add to subject'),
+        'subjectRemove'   => lang('Remove from subject'),
+        'subjectBrush'    => lang('Brush size'),
+        'subjectBrushNote' => lang('Paint over what to keep or take away; the subject is found again.'),
+        'subjectRefining' => lang('Finding the subject again…'),
+        'subjectEdge'     => lang('Soft edge'),
+        'areaLimit'       => lang('The selection has as many shapes as it can hold; invert or deselect it to go on.'),
+        'areaWith'        => lang('With the selection'),
+        'areaErase'       => lang('Erase inside'),
+        'areaKeep'        => lang('Keep only'),
+        'areaCopy'        => lang('Copy to a layer'),
+        'areaCut'         => lang('Cut to a layer'),
+        'areaAdjust'      => lang('Adjust inside'),
+        'areaCopyNote'    => lang('This picture cannot be read back, so the selection cannot be copied.'),
+        'areaCutName'     => lang('Cut-out'),
+        'layer_erase'     => lang('Erased area'),
+        'layer_adjust'    => lang('Adjusted area'),
+        'eraseFill'       => lang('Fill with a colour'),
+        'eraseColour'     => lang('Fill colour'),
+        'eraseWith'       => lang('Fill the erased part'),
+        'eraseNone'       => lang('See-through'),
+        'eraseColourKind' => lang('Colour'),
+        'eraseBlur'       => lang('Blur'),
+        'erasePicture'    => lang('Picture'),
+        'eraseBlurAmount' => lang('Blur amount'),
+        'erasePick'       => lang('Choose another picture'),
+        'removeBg'        => lang('Remove background'),
+        'eraseJpegNote'   => lang('A JPEG cannot be see-through: saving makes a PNG copy beside it. Choose a fill colour to keep the JPEG.'),
+    );
+}
+
+// -- A recorded move (pg_image_editor_record.js) --
+
+/**
+ * The recording part's labels: Record beside Play, the Path tab's
+ * recording section, the phone's pill and the hint.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_record()
+{
+    return array(
+        'recRecord'    => lang('Record a move'),
+        'recStop'      => lang('Stop recording'),
+        'recBadge'     => lang('REC'),
+        'recTitle'     => lang('Recording a move'),
+        'recRate'      => lang('Recording speed'),
+        'recNote'      => lang('While you drag the layer the time runs; letting go stops the recording and its path becomes keyframes with its speed. The keyframes inside the recorded span are replaced.'),
+        'recPick'      => lang('Select one layer to record its move.'),
+        'recHint'      => lang('Recording: drag the layer, letting go stops it · Esc cancels the recording'),
+        'recHintPhone' => lang('Drag the layer; letting go stops the recording.'),
     );
 }

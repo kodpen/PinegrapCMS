@@ -5,6 +5,7 @@ description: The new dashboard's shop cards (shop, salesmap, ops, orders, offers
 
 ## Where does each shop card read from? (#4881)
 - `shop` (Ecommerce summary): one query sums the period, the window it is compared with (the period before or the same days a year ago) and the last seven days (`pg_dashboard_v2_shop_windows()`), over orders `complete` or `exported` as widget 3 counts; best sellers are widget 3's `pg_dashboard_best_sellers()` since the period start.
+- `shop`'s "See all" link (`pg_dashboard_v2_shop_url()`): the orders list for the `shop` gate, the order reports for a user with commerce reports only, none otherwise. The card's gate (`shop_summary`) lets a reports-only user in, and `view_orders.php` refused them with Access denied before (bug hunt fix).
 - `salesmap`: `pg_sales_map_collect()` (widget 1's one query), the `d30` period only, so the card has no period pill. The home country's regions shaded in the quantile steps of `pg_sales_map_steps()` when a map of it ships (`assets/maps/`), its countries otherwise (`dashboard-sales-map-data.md`).
 - `orders`: `pg_dashboard_recent_orders(3)`, moved out of widget 8 (which calls it with 50). Cancelled, shipped, not shipped are written out beside their tone.
 - `offers`: `pg_dashboard_offer_lists()`, moved out of widget 15: running offers, the ones ending within a week first.
@@ -14,7 +15,8 @@ description: The new dashboard's shop cards (shop, salesmap, ops, orders, offers
 - `BASE_CURRENCY_SYMBOL` is an HTML entity (`&#8378;`); card texts are written with `textContent`, so `pg_dashboard_v2_money()` (`run.php`) decodes it. The first browser run printed `&#8378;14.112,97`. `prepare_amount()` returns that HTML: the pipeline's orders note read "Ortalama &#8378;4.180,80" on dev until it called `pg_dashboard_v2_money()`; `tests/dashboard_v2_shop_test.php` keeps `prepare_amount(` out of every card file (#6359).
 
 ## How is the map drawn?
-- `pg_dash_cards_shop.js` fetches the map file once a page and copies only path ids and shapes into a fresh SVG (`role="img"`, labelled); a region with sales gets `data-step` 1-4, coloured from the card colour; the legend repeats the steps. Region figures are also in the rows, so the colours never carry them alone.
+- `pg_dash_cards_shop.js` fetches the map file once a page and copies only path ids and shapes into a fresh SVG (`role="img"`, labelled; the label and country rows name countries in the panel language through `pg_geo_country_name()` / `pg_geo_country_label()`, links keep the stored name); a region with sales gets `data-step` 1-4, coloured from the card colour; the legend repeats the steps. Region figures are also in the rows, so the colours never carry them alone.
+- Every region names itself in the figure box (`pgDash.chartTips`: one tab stop, arrows step, Enter opens, a ring path outlines it). `places` holds the regions that sold, by sales (name, money · orders, best cities; lines split by `\n`, the box is `pre-line`), then the rest of the map's names table with "No sales". With the `shop` gate a region that sold is an SVG link (`tabindex=-1`) and its row a link, both `pg_sales_map_orders_url()` as on widget 1. Before, the card's map named and opened nothing (#6661).
 
 ## How does the Operations Desk card read widget 9? (#5031)
 - `ops` draws three lanes, To ship, To refund, Out of stock, each its count, a line under it and at most three rows (`PG_DASHBOARD_V2_OPS_ROWS`), with a "more" link to the filtered list when the count is larger.

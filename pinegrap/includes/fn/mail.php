@@ -843,7 +843,7 @@ function get_email_campaign_profile_options($exclude_ids = array(), $keep_id = 0
  *                       subscription_confirm_url (subscription payment failed)
  * @return string
  */
-function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url', 'booking_manage_url'))
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url', 'booking_manage_url', 'credit_account_url'))
 {
     $body = (string) $body;
     $names = array();
@@ -867,10 +867,70 @@ function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'track
     return ($result === null) ? $body : $result;
 }
 
+// The create_auto_email_campaigns() calls a contact_group.members_changed
+// event makes: one per contact it put into the group, each once, with the
+// group as the profiles' action_item_id. Every other event, and a change that
+// only took contacts out, makes none.
+function pg_contact_group_joined_campaign_calls($event, $data)
+{
+    $calls = array();
+
+    if (((string) $event !== 'contact_group.members_changed') || !is_array($data) || ((int) ($data['id'] ?? 0) <= 0)) {
+        return $calls;
+    }
+
+    $seen = array();
+
+    foreach ((array) ($data['added'] ?? array()) as $contact_id) {
+        $contact_id = (int) $contact_id;
+
+        if (($contact_id <= 0) || isset($seen[$contact_id])) {
+            continue;
+        }
+
+        $seen[$contact_id] = true;
+
+        $calls[] = array(
+            'action' => 'contact_group_joined',
+            'action_item_id' => (int) $data['id'],
+            'contact_id' => $contact_id,
+        );
+    }
+
+    return $calls;
+}
+
+// Heard from pg_announce(): every door that puts contacts into a group (the
+// contact screens, a form, an order, the API, the rule recompute) announces
+// contact_group.members_changed there, so a profile with the "joined a
+// group" action sends each contact who joined one mail under the purpose
+// rules of every profile mail (create_auto_email_campaigns()). One count
+// first: a recompute pass of thousands reads no contact while no enabled
+// profile follows the group.
+function pg_contact_group_joined_heard($event, $data)
+{
+    $calls = pg_contact_group_joined_campaign_calls($event, $data);
+
+    if (!$calls) {
+        return;
+    }
+
+    if ((int) db_value(
+        "SELECT COUNT(*) FROM email_campaign_profiles
+        WHERE (enabled = '1') AND (action = 'contact_group_joined') AND (action_item_id = '" . (int) $calls[0]['action_item_id'] . "')"
+    ) < 1) {
+        return;
+    }
+
+    foreach ($calls as $call) {
+        create_auto_email_campaigns($call);
+    }
+}
+
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed", "booking_confirmed", "booking_reminder", "booking_rescheduled", "booking_cancelled"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled", "subscription_price_changed", "booking_confirmed", "booking_reminder", "booking_rescheduled", "booking_cancelled", "contact_group_joined", "credit_issued", "credit_expiring"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // campaign_item_id: The id stored on the campaign when it differs from the profiles'
 // action_item_id: a booking's mail is made from the profiles of item 0 and keeps the
@@ -1362,6 +1422,15 @@ function create_auto_email_campaigns($properties)
                 case 'booking_cancelled':
                     $log_action = lang('booking cancelled');
                     break;
+                case 'contact_group_joined':
+                    $log_action = lang('joined a contact group');
+                    break;
+                case 'credit_issued':
+                    $log_action = lang('store credit issued');
+                    break;
+                case 'credit_expiring':
+                    $log_action = lang('store credit expiring');
+                    break;
                 default:
                     $log_action = $action;
                     break;
@@ -1428,11 +1497,11 @@ function replace_variables($properties)
                 }
             }
         }
-        // Get all variables so they can be replaced with data.
-        preg_match_all('/\^\^(.*?)\^\^(%%(.*?)%%)?/i', $content, $variables, PREG_SET_ORDER);
-        // Loop through the variables in order to replace them with data
-        foreach ($variables as $variable) {
-            $whole_string = $variable[0];
+        // Replace every variable in one pass over the content, so a value
+        // already filled in (e.g. a customer-typed name holding ^^code^^) is
+        // never read again as a variable: it would take that field's data and
+        // leave the field's own place raw.
+        $content = preg_replace_callback('/\^\^(.*?)\^\^(%%(.*?)%%)?/i', function ($variable) use ($fields, $format, $prepare_for_html) {
             $field_name = $variable[1];
             $date_format = '';
             // If a date format was passed along with the variable, then store that.
@@ -1445,30 +1514,15 @@ function replace_variables($properties)
                     $date_format = unhtmlspecialchars($date_format);
                 }
             }
-            // Assume that the field name is not valid, until we find out otherwise.
-            $field_name_valid = false;
-            // Loop through the fields in order to determine if the field name is valid
-            // and store field data in $field variable for use below.
             foreach ($fields as $field) {
-                // If this field name matches the field name from the variable, then the field name from the variable is valid,
-                // so remember that and break out of the loop.
                 if ($field['name'] == $field_name) {
-                    $field_name_valid = true;
-                    break;
+                    // Update the data so that it is ready for output (e.g. convert dates to fiendly formats).
+                    return (string) prepare_form_data_for_output($field['data'], $field['type'] ?? '', $prepare_for_html, $date_format);
                 }
             }
-            // If the field name is valid, then continue to replace variable with data.
-            if ($field_name_valid == true) {
-                // Start data off with the field data.
-                $data = $field['data'];
-                // Update the data so that it is ready for output (e.g. convert dates to fiendly formats).
-                $data = prepare_form_data_for_output($data, $field['type'] ?? '', $prepare_for_html, $date_format);
-                // Replace the variable with the data.
-                // We can't use str_replace() for this because we need to limit the number of replacements to 1
-                // in order to prevent bugs where it will replace variables further below that might have date formats.
-                $content = preg_replace('/' . preg_quote($whole_string, '/') . '/', addcslashes($data, '\\$'), $content, 1);
-            }
-        }
+            // Not a field of this message: left as written.
+            return $variable[0];
+        }, $content);
     }
     return $content;
 }

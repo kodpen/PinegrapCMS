@@ -17,7 +17,8 @@ description: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), 
 
 ## How is a pulled change applied?
 - `pg_iys_sms_changes_parse()` reads the MESAJ items (ONAY/RET, Turkish mobile) of the page `pg_iys_changes_parse()` reads; the e-mail reader is unchanged.
-- `pg_iys_apply_sms_changes()`: one query per page finds the contacts whose `mobile_phone`, without spaces, dashes, brackets, dots and slashes, is one of `pg_iys_number_variants()`; each is confirmed with `pg_sms_number()`. A number stored with other separators (a no-break space) is missed.
+- `pg_iys_apply_sms_changes()`: per page, the contacts whose `mobile_phone`, without spaces, dashes, brackets, dots and slashes, is one of `pg_iys_number_variants()`, plus the contacts whose latest order's billing phone is and who answered at a checkout: the same contacts `pg_sms_marketing_permission()` reads before sending. `pg_iys_sms_contacts_by_number()` (pure) confirms each with `pg_sms_number()` and keeps a contact once per number. A number stored with other separators (a no-break space) is missed.
+- Why the checkout path (PR #7241): a RET for a number held only as a checkout contact's billing phone matched no contact, so the contact's `granted` checkout row kept marketing SMS going to that number after İYS's refusal.
 - RET: a contact whose last `sms:marketing` row is `granted` gets a refused row (source `iys`, never pushed back), so sending stops (`pg_iys_sms_refusal_needed()`); then `iys_sms_status` for all of them. ONAY only sets the status.
 
 ## What is not verified?

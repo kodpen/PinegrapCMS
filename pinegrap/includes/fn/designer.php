@@ -3391,6 +3391,34 @@ function pg_designer_page_insert_defaults($c_extra)
  * a refused page never leaves its siblings half-written (MyISAM — no
  * transactions to fall back on).
  */
+/**
+ * What a content-level save (manager, user) keeps of a page as stored: its
+ * name (its address), its folder (its permission), its home flag (the
+ * site's front door) and its design (how it looks, which only a designer
+ * moves). The save writes page_style from the design it is called with, so
+ * a page sent with another design's id would otherwise move there.
+ *
+ * Pure: no query.
+ *
+ * @param array      $page     the page as sent
+ * @param int        $style_id the design the save was called with
+ * @param array|null $stored   the stored row (page_name, page_folder, page_home, page_style)
+ * @return array page, style_id
+ */
+function pg_designer_restricted_identity($page, $style_id, $stored)
+{
+    $style_id = (int)$style_id;
+    if (!is_array($stored)) return array('page' => $page, 'style_id' => $style_id);
+
+    $page['page_name']   = (string)$stored['page_name'];
+    $page['page_folder'] = (int)$stored['page_folder'];
+    $page['page_home']   = ((string)$stored['page_home'] === 'yes') ? 1 : 0;
+    $stored_style = isset($stored['page_style']) ? (int)$stored['page_style'] : 0;
+    if ($stored_style > 0) $style_id = $stored_style;
+
+    return array('page' => $page, 'style_id' => $style_id);
+}
+
 function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
 {
     $style_id = (int)$style_id;
@@ -3408,12 +3436,10 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // chose. Title, description and keywords are content and stay editable.
     $restricted = !pg_designer_is_full($user);
     if ($restricted && $page_id > 0) {
-        $stored_row = db_item("SELECT page_name, page_folder, page_home FROM page WHERE page_id = '$page_id' LIMIT 1");
-        if (is_array($stored_row)) {
-            $page['page_name']   = (string)$stored_row['page_name'];
-            $page['page_folder'] = (int)$stored_row['page_folder'];
-            $page['page_home']   = ((string)$stored_row['page_home'] === 'yes') ? 1 : 0;
-        }
+        $stored_row = db_item("SELECT page_name, page_folder, page_home, page_style FROM page WHERE page_id = '$page_id' LIMIT 1");
+        $kept = pg_designer_restricted_identity($page, $style_id, $stored_row);
+        $page     = $kept['page'];
+        $style_id = $kept['style_id'];
     }
 
     $name = trim((string)(isset($page['page_name']) ? $page['page_name'] : ''));
@@ -4034,7 +4060,9 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
             if (!in_array($asset['type'], array('css', 'js', 'json'))) continue;
             $ext = strtolower(pathinfo($asset['name'], PATHINFO_EXTENSION));
             if (!in_array($ext, array('css', 'js', 'json'))) continue;
-            @file_put_contents(FILE_DIRECTORY_PATH . '/' . $asset['name'], $asset['content']);
+            // Written as a whole: a failed write keeps the asset file that
+            // pages already load, and records nothing for a missing one.
+            if (!pg_file_write_whole(FILE_DIRECTORY_PATH . '/' . $asset['name'], (string) $asset['content'])) continue;
             $size = (int)strlen($asset['content']);
             $nm   = (string) $asset['name'];
             $uid  = (int)$user_id;
@@ -6263,15 +6291,17 @@ function _render_content_html($props, $pad, $kids = '')
             }
 
             // onerror handler: when the bound src 404s, swap to the
-            // placeholder. The `this.onerror=null` guard prevents an
-            // infinite loop if even the placeholder ever fails to load.
-            // A srcset or a <source> outranks src, so they go first. A bound
-            // image gets its srcset after the token is filled in
-            // (pg_img_responsive_html() on the widget's output), so it is
-            // given the same handler.
-            $onerror_attr = ($_sets || strpos($raw_src, '^^') !== false)
-                ? ' onerror="' . h("this.onerror=null;var p=this.parentNode;if(p&&p.nodeName==='PICTURE'){var s;while((s=p.querySelector('source')))p.removeChild(s);}this.removeAttribute('srcset');this.src='" . $_pg_no_img . "'") . '"'
-                : ' onerror="this.onerror=null;this.src=\'' . h($_pg_no_img) . '\'"';
+            // placeholder. The address stays out of the handler code, in
+            // data-pg-fallback: crawlers read a path inside an inline
+            // handler as a link and request the handler code as a URL, and
+            // "onerror=" in that URL is an XSS signature for the firewall.
+            // For the same reason the handler never assigns this.onerror;
+            // it removes the attribute it reads instead, so a placeholder
+            // that fails too is not retried. A srcset or a <source>
+            // outranks src, so they go first. A bound image gets its srcset
+            // after the token is filled in (pg_img_responsive_html() on the
+            // widget's output), so it is given the same handler.
+            $onerror_attr = ' data-pg-fallback="' . h($_pg_no_img) . '" onerror="' . h(pg_img_fallback_handler($_sets || strpos($raw_src, '^^') !== false)) . '"';
             $img_tag = '<img src="' . $src . '"' . $_resp . ' alt="' . $alt . '"' . pg_img_attr_string($_loading) . $w_attr . $h_attr
                 . ($cls ? ' class="' . $cls . '"' : '') . $obj_pos . $img_extra . $onerror_attr . '>';
 
@@ -8235,10 +8265,12 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id, $folders = array())
                 $label  = isset($p['title']) ? (string)$p['title'] : $sku;
                 $text   = isset($p['description']) ? (string)$p['description'] : '';
                 // A product nobody ships (a ticket, a download) says
-                // 'shippable' => false: no shipping step, no zones.
-                $ships  = !(array_key_exists('shippable', $p) && !$p['shippable']);
+                // 'shippable' => false: no shipping step, no zones. A gift
+                // says 'donation' => true (_pg_tpl_product_kind()).
+                $kind   = _pg_tpl_product_kind($p);
+                $ships  = $kind['shippable'] === '1';
                 $product = array(
-                    'name' => $sku, 'enabled' => '1', 'price' => (int)round((float)$price * 100), 'taxable' => '1', 'shippable' => $ships ? '1' : '0',
+                    'name' => $sku, 'enabled' => '1', 'price' => (int)round((float)$price * 100), 'taxable' => $kind['taxable'], 'shippable' => $kind['shippable'],
                     'free_shipping' => '0', 'title' => '', 'short_description' => mb_substr($label, 0, 255), 'meta_description' => mb_substr($text, 0, 255),
                     'brand' => '', 'gtin' => '', 'mpn' => '', 'keywords' => isset($p['keywords']) ? (string)$p['keywords'] : '',
                     'weight' => 0, 'length' => 0, 'width' => 0, 'height' => 0, 'inventory' => '0', 'inventory_quantity' => 0,
@@ -8247,6 +8279,7 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id, $folders = array())
                     'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
                     'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
                 );
+                if ($kind['selection_type'] !== '') $product['selection_type'] = $kind['selection_type'];
                 $product = array_merge($product, _pg_tpl_product_access($p, $folders));
                 $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
                 $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $ships ? $zone_ids : array(), 'attributes' => array(), 'submit_form' => array()));
@@ -8296,6 +8329,21 @@ function _pg_tpl_fee_product($p, $currency, $user_id)
         'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
         'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
     );
+}
+
+// What kind of product a template product is, as products columns.
+// 'donation' => true: a gift whose amount the visitor types in the cart
+// (selection type donation, the product's price the suggested amount); it
+// is neither taxed nor shipped. 'shippable' => false: a product nobody
+// ships (a ticket, a download). Otherwise a plain taxed product that ships.
+// selection_type '' leaves the column's own default.
+function _pg_tpl_product_kind($p)
+{
+    if (is_array($p) && !empty($p['donation'])) {
+        return array('selection_type' => 'donation', 'taxable' => '0', 'shippable' => '0');
+    }
+    $ships = !(is_array($p) && array_key_exists('shippable', $p) && !$p['shippable']);
+    return array('selection_type' => '', 'taxable' => '1', 'shippable' => $ships ? '1' : '0');
 }
 
 // The access a template product gives once its order is paid, as products

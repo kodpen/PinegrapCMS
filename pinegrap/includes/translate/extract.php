@@ -488,6 +488,12 @@ function pg_tr_extract_page($page_id, &$memo = null)
             }
         }
 
+        // The menus it draws (a Menu widget, a header's menu region): their
+        // item names are read with the page's own menu regions below.
+        foreach (isset($extracted['menus']) ? $extracted['menus'] : array() as $menu_name) {
+            $refs['menu'][$menu_name] = true;
+        }
+
         foreach ($extracted['shared'] as $nested_id) {
             if (!isset($done[$nested_id])) {
                 $queue[] = $nested_id;
@@ -534,9 +540,10 @@ function pg_tr_extract_page($page_id, &$memo = null)
  * Extracts a shared component (or a system widget) from its stored tree.
  *
  * @param int $shared_id
- * @return array('ok' => bool, 'segments' => int, 'records' => int, 'shared' => int[])
+ * @return array('ok' => bool, 'segments' => int, 'records' => int, 'shared' => int[], 'menus' => string[])
  *               records: the custom form whose records the widget includes, 0 for
- *               none; shared: the shared components this one places
+ *               none; shared: the shared components this one places; menus:
+ *               the menus it draws (pg_tr_shared_menu_names())
  */
 function pg_tr_extract_shared($shared_id)
 {
@@ -569,8 +576,50 @@ function pg_tr_extract_shared($shared_id)
     $result['ok'] = true;
     $result['segments'] = count($segments);
     $result['shared'] = array_map('intval', array_keys($refs['shared']));
+    $result['menus'] = pg_tr_shared_menu_names($tree, $row['system_region_config']);
 
     return $result;
+}
+
+/**
+ * The menus a shared component or a system widget draws: the classic menu
+ * regions its tree holds (a header's <menu>) and the menu a Menu or Menu
+ * Sequence widget names in its settings. A page reaches these menus only
+ * through the component, so the page's extraction reads them from here.
+ *
+ * @param array       $tree         the component's layout tree
+ * @param string|null $config_json  system_region_config (null: a plain component)
+ * @return string[] menu names, each once, in the order met
+ */
+function pg_tr_shared_menu_names($tree, $config_json)
+{
+    $segments = array();
+    $refs = array('shared' => array(), 'menu' => array());
+    $position = 0;
+
+    pg_tr_walk_tree($tree, $segments, $refs, $position);
+
+    $names = array();
+
+    foreach (array_keys($refs['menu']) as $name) {
+        $names[(string) $name] = true;
+    }
+
+    $config = ($config_json !== null && $config_json !== '') ? json_decode((string) $config_json, true) : null;
+
+    if (is_array($config)) {
+        // A widget's settings sit under "config" in some widgets and at the
+        // top in others (pg_tr_widget_config_segments()).
+        $settings = (isset($config['config']) && is_array($config['config'])) ? array_merge($config, $config['config']) : $config;
+        $kind = isset($settings['regionType']) ? $settings['regionType'] : '';
+        $name = (isset($settings['menu_name']) && is_string($settings['menu_name'])) ? trim($settings['menu_name']) : '';
+
+        if (in_array($kind, array('menu_region', 'menu_sequence_region'), true) && ($name !== '')) {
+            $names[$name] = true;
+        }
+    }
+
+    return array_map('strval', array_keys($names));
 }
 
 /**

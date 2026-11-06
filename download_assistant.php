@@ -341,12 +341,44 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             // an update can leave files missing while reporting success.
             $expected_entries = array();
 
+            // An entry that is not a plain relative path ('..' or '.'
+            // segment, absolute, drive letter, empty segment, NUL) would
+            // reach outside this folder: the archive is refused whole, as
+            // pg_extract_archive() does in the software.
+            $unsafe_entries = array();
+
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $stat = $zip->statIndex($i);
 
-                if ($stat && isset($stat['name']) && substr($stat['name'], -1) !== '/') {
+                if (!$stat || !isset($stat['name'])) {
+                    continue;
+                }
+
+                $entry_name = str_replace('\\', '/', rtrim($stat['name'], '/'));
+                $entry_safe = ($entry_name !== '') && ($entry_name[0] !== '/')
+                    && (preg_match('#^[a-zA-Z]:#', $entry_name) !== 1) && (strpos($entry_name, "\0") === false);
+
+                foreach (explode('/', $entry_name) as $entry_part) {
+                    if (($entry_part === '') || ($entry_part === '.') || ($entry_part === '..')) {
+                        $entry_safe = false;
+                    }
+                }
+
+                if (!$entry_safe) {
+                    $unsafe_entries[] = $stat['name'];
+                } elseif (substr($stat['name'], -1) !== '/') {
                     $expected_entries[] = $stat['name'];
                 }
+            }
+
+            if ($unsafe_entries) {
+                $zip->close();
+
+                $_SESSION['software']['download_assistant']['message'] = 'The archive names files outside this folder, so nothing was unpacked (for example: '
+                    . implode(', ', array_slice($unsafe_entries, 0, 3)) . ').';
+
+                header('Location: ' . $_SERVER['REQUEST_URI']);
+                exit;
             }
 
             $extracted = $zip->extractTo($path);

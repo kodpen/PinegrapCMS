@@ -39,12 +39,14 @@ Visitor statistics, page and article views, search engine index flags.
 - robots-large-image-preview.md: The site switch that adds max-image-preview:large to every indexed page's robots meta (config.max_image_preview_large, 11.0.51, #2175): default, new installs, where it is written
 - robots-txt-disallow-rules.md: How noindex pages are written into robots.txt: anchored lines, which User-agent group, private folders, and the no-noindex byte-identical guarantee.
 - search-console-screen-messages.md: Google Search Console screen: when the tiles compare with the period before, and the messages its link, download and sitemap buttons leave
+- seo-impact-window-days.md: The SEO screens' recent-views column starts its window with pg_seo_impact_since(): calendar days, not 86400-second blocks, so a clock change does not move the first day.
 - seo-link-graph-self-links.md: SEO link graph: a page's link to itself is neither an incoming link nor a click-path step, so a page only its own menu item links to is an orphan
 - seo-structure-non-html-output.md: Pages may output JSON/XML/CSV, so SEO/structure rules must not assume an HTML document; what the structure check does with such output and the robots splice risk.
 - site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts, once per visit, the signed result click through page_view.php, the 400-day sweep.
 - site-search-terms-on-visit.md: Who writes visitors.site_search_terms, and why the search widget writes it only on the first results page
 - sitemap-cache.md: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): what redraws it, what waits for the lifetime, the lock, the wait with no copy, the purge
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records
+- translation-head-alternates.md: When a drawn page names its language versions (hreflang links) in its head: own address, none named yet, and not noindex under any language policy
 - translation-index-verdict.md: One rule for a translated page's robots meta, hreflang alternates and sitemap.xml under the "reviewed" policy; no kept answer means not offered; what drops or keeps the answer
 - visitor-channel-rule.md: The channel of a visit (paid, email, ai, organic, social, referral, direct), the search-engine table of init_tracking() and the ENUM step that appended today's engines
 - visitor-counter-dedup-key.md: Why http_referer is not part of the visitor dedup key in init_tracking(), how the visitor IP is resolved, and the defensive user_agent column probe (2026.2.5).

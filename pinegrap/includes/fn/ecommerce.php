@@ -37,6 +37,46 @@ function pg_featured_sort_order_value($value)
     return (int) $value;
 }
 
+// The Summary of Edit Featured & New Items, from the rows the screen lists
+// (get_items_that_can_be_featured_and_new()): the product groups and the
+// distinct products under them, the rows featured and the rows with a New on
+// Date as stored, and the disabled ones. The root product group has no boxes
+// and is not counted; a product in two groups is one product but two rows.
+function pg_featured_new_summary_counts($items)
+{
+    $counts = array('product_groups' => 0, 'products' => 0, 'featured' => 0, 'new' => 0, 'disabled' => 0);
+    $products = array();
+
+    foreach ((array) $items as $item) {
+        if (!is_array($item) || (int) ($item['parent_product_group_id'] ?? 0) === 0) {
+            continue;
+        }
+
+        if (($item['type'] ?? '') === 'product group') {
+            $counts['product_groups']++;
+        } else {
+            $products[(int) ($item['id'] ?? 0)] = true;
+        }
+
+        if ((int) ($item['featured'] ?? 0) === 1) {
+            $counts['featured']++;
+        }
+
+        $new_date = (string) ($item['new_date'] ?? '');
+        if ($new_date !== '' && $new_date !== '0000-00-00') {
+            $counts['new']++;
+        }
+
+        if ((int) ($item['enabled'] ?? 0) !== 1) {
+            $counts['disabled']++;
+        }
+    }
+
+    $counts['products'] = count($products);
+
+    return $counts;
+}
+
 // The quantity a product enters the cart with when the visitor gives none
 // (a checked or auto-selected product, a quick add, a donation without a
 // quantity box): products.default_quantity, at least 1. The column is NULL on
@@ -45,6 +85,17 @@ function pg_product_default_quantity($default_quantity)
 {
     $quantity = is_numeric($default_quantity) ? (int) $default_quantity : 0;
     return max(1, $quantity);
+}
+
+// The quantity the order form's drop-down layout posts (commas already
+// removed): a whole number of at least one, else 0 for refused. Zero passes a
+// plain digit check but would write a cart line of quantity 0.
+function pg_order_form_posted_quantity($raw)
+{
+    if (!is_string($raw) || preg_match('/^\d+$/', $raw) !== 1) {
+        return 0;
+    }
+    return max(0, (int) $raw);
 }
 function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add_name, $calendar_event_id = 0, $recurrence_number = 0)
 {
@@ -56,7 +107,8 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             shippable,
             selection_type,
             submit_form,
-            form
+            form,
+            gift_card
         FROM products
         WHERE
             (id = ?)
@@ -67,12 +119,14 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     if (!$product or ($product['id'] == '')) {
         return false;
     }
-    // if shipping is on and product is shippable, create ship to record or get existing ship to id
-    if ((ECOMMERCE_SHIPPING == true) && ($product['shippable'] == 1)) {
-        $ship_to_id = create_or_get_ship_to($ship_to, $add_name);
-        // else shipping is not on and/or product is not shippable
-    } else {
-        $ship_to_id = 0;
+    // If shipping is on and the product is shippable, the line goes to a
+    // recipient. Only an existing recipient is looked up here: a new one is
+    // created after the add is accepted, so a refused add leaves no empty
+    // recipient in the order.
+    $needs_ship_to = ((ECOMMERCE_SHIPPING == true) && ($product['shippable'] == 1));
+    $ship_to_id = 0;
+    if ($needs_ship_to) {
+        $ship_to_id = pg_ship_to_find_id(pg_ship_to_name_for_add($ship_to, $add_name));
     }
     // Don't allow a negative donation amount.
     if ($donation_amount < 0) {
@@ -80,7 +134,7 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     }
     // find out if product has already been added to order
     // ignore order items that have been added by offers because they might be discounted and we don't want to mess with that
-    $query = "SELECT id
+    $query = "SELECT id, quantity
         FROM order_items
         WHERE
             (order_id = ?)
@@ -89,13 +143,30 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             AND (calendar_event_id = ?)
             AND (recurrence_number = ?)
             AND (added_by_offer = '0')" . pg_order_item_active_sql();
-    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+    // A recipient that does not exist yet has no lines.
+    $row = null;
+    if (!$needs_ship_to || $ship_to_id) {
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+        $row = mysqli_fetch_assoc($result);
+    }
+    // A gift card line issues one card per unit up to a limit; a line over it
+    // would be charged for cards it never issues, so the add is refused and
+    // the caller shows pg_gift_card_line_quantity_error().
+    if (($product['gift_card'] == 1) && ($product['selection_type'] != 'donation')
+        && !pg_gift_card_line_quantity_allowed((int) ($row['quantity'] ?? 0) + (int) $quantity)) {
+        pg_gift_card_quantity_refusal(true);
+        return false;
+    }
+    // The add is accepted: create the recipient (or get it again) and put
+    // its name in the session's pick lists.
+    if ($needs_ship_to) {
+        $ship_to_id = create_or_get_ship_to($ship_to, $add_name);
+    }
     // if product has already been added to order, update order item
-    if (mysqli_num_rows($result) > 0) {
+    if ($row) {
         // The shopper's own line found above; the update goes to it by id, so
         // a gift line an offer put in the same recipient for the same product
         // (added_by_offer = 1) keeps its quantity and price.
-        $row = mysqli_fetch_assoc($result);
         $order_item_id = $row['id'];
         // if this product is a donation product, update price
         if ($product['selection_type'] == 'donation') {
@@ -709,40 +780,62 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
     }
     return true;
 }
-function create_or_get_ship_to($ship_to, $add_name)
+/**
+ * The recipient name a cart add goes to: the typed name, else the name picked
+ * from the recipient list, else the buyer ("myself").
+ *
+ * The recipient pick lists carry "myself" as the option value while they show
+ * the translated label, so a selection arrives as the English word on a
+ * translated site. It means the buyer - the same recipient the cart creates by
+ * itself - so it is folded into that name instead of opening a second
+ * recipient the buyer never asked for. A gift landing in a recipient of its
+ * own is what made the cart refuse the order: a free item has to travel with
+ * a paid one.
+ *
+ * @param string $ship_to The name picked from the recipient list.
+ * @param string $add_name The name typed in the add name field.
+ * @return string
+ */
+function pg_ship_to_name_for_add($ship_to, $add_name)
 {
-    // get ship to name
-    // if add name text field was used, use that name for ship to name
     if ($add_name) {
         $ship_to_name = $add_name;
-        // else if a name was selected from the ship_to selection drop-down, then use that value
     } elseif (($ship_to != '') && ($ship_to != lang('- add name below -'))) {
         $ship_to_name = $ship_to;
-        // else use 'myself'
     } else {
         $ship_to_name = lang('myself');
     }
 
-    // The recipient pick lists carry "myself" as the option value while they
-    // show the translated label, so a selection arrives as the English word on
-    // a translated site. It means the buyer - the same recipient the cart
-    // creates by itself - so it is folded into that name instead of opening a
-    // second recipient the buyer never asked for. A gift landing in a
-    // recipient of its own is what made the cart refuse the order: a free item
-    // has to travel with a paid one.
     if (mb_strtolower($ship_to_name) == 'myself') {
         $ship_to_name = lang('myself');
     }
 
-    // figure out if ship_to record has already been created for ship to name
+    return $ship_to_name;
+}
+
+/**
+ * The id of the current order's recipient with this name, or 0 when the order
+ * has none; nothing is created.
+ *
+ * @param string $ship_to_name
+ * @return int
+ */
+function pg_ship_to_find_id($ship_to_name)
+{
     $query = "SELECT id FROM ship_tos WHERE ship_to_name = ? AND order_id = ?";
     $result = db_q($query, array((string) $ship_to_name, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
-    // if ship_to record has already been created, get ship to id
-    if (mysqli_num_rows($result)) {
-        $row = mysqli_fetch_assoc($result);
-        $ship_to_id = $row['id'];
-        // else ship_to record has not been created, so create record
-    } else {
+    $row = mysqli_fetch_assoc($result);
+
+    return $row ? (int) $row['id'] : 0;
+}
+
+function create_or_get_ship_to($ship_to, $add_name)
+{
+    $ship_to_name = pg_ship_to_name_for_add($ship_to, $add_name);
+
+    // Create the recipient when the order has none of this name yet.
+    $ship_to_id = pg_ship_to_find_id($ship_to_name);
+    if (!$ship_to_id) {
         $query = "INSERT INTO ship_tos (order_id, ship_to_name) VALUES (?, ?)";
         $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_name)) or output_error(lang('Query failed.'));
         $ship_to_id = mysqli_insert_id(db::$con);
@@ -1066,8 +1159,10 @@ function pg_order_mark_paid(int $order_id, int $user_id = 0): bool
 
     pg_erp_auto_invoice($order_id, 'order_paid');
 
-    // A designed form's record whose fee this order charged is now paid.
+    // A designed form's record whose fee this order charged, or a booking
+    // whose deposit it charged, is now paid.
     pg_form_payment_mark_paid($order_id);
+    pg_booking_deposit_mark_paid($order_id);
 
     return true;
 }
@@ -3590,6 +3685,41 @@ function pg_import_contact_value($column_name, $value, $max_length = 0, $heading
 }
 
 /**
+ * An imported affiliate code, left empty when another contact already holds
+ * it: checkout and the commission screens find the affiliate by the code, so
+ * a second contact with it would take the first one's orders. The contact
+ * form refuses such a code the same way (pg_contact_form_affiliate_code()).
+ *
+ * @param string   $code    The cell as pg_import_contact_value() read it
+ * @param string   $heading The file's heading, named in the problem
+ * @param callable $taken   Whether a stored contact holds the code (tests stub it)
+ * @return array array('value' => string, 'problem' => string)
+ */
+function pg_import_affiliate_code($code, $heading, $taken = 'pg_import_affiliate_code_taken')
+{
+    $code = (string) $code;
+
+    if (($code === '') || !$taken($code)) {
+        return array('value' => $code, 'problem' => '');
+    }
+
+    return array('value' => '', 'problem' => lang(array('string' => 'Column {var:1}: the affiliate code "{var:2}" belongs to another contact, so it was left empty.', 'vars' => array($heading, $code))));
+}
+
+/**
+ * Whether a stored contact holds the affiliate code, compared as checkout
+ * compares it (the column's collation). Rows an import wrote earlier count,
+ * so a file that repeats a code keeps it on its first row only.
+ *
+ * @param string $code
+ * @return bool
+ */
+function pg_import_affiliate_code_taken($code)
+{
+    return (bool) db_value("SELECT id FROM contacts WHERE affiliate_code = '" . escape((string) $code) . "' LIMIT 1");
+}
+
+/**
  * The character lengths of a table's text columns from SHOW COLUMNS rows:
  * varchar(n) and char(n) give n; other types are left out.
  *
@@ -5283,6 +5413,20 @@ function pg_offer_best_order_discount($candidates, $subtotal)
     return $best;
 }
 
+// The statement that stores an order's order discount offer: the winner
+// apply_offers_to_cart() found, or 0 when none applies. Clearing touches only
+// an order that still names an offer, so a cart without one is not written
+// on every view.
+function pg_order_discount_offer_update_sql($order_id, $offer_id)
+{
+    $order_id = ctype_digit((string) $order_id) ? (int) $order_id : 0;
+    $offer_id = ctype_digit((string) $offer_id) ? (int) $offer_id : 0;
+    if ($offer_id > 0) {
+        return "UPDATE orders SET discount_offer_id = '" . $offer_id . "' WHERE id = '" . $order_id . "'";
+    }
+    return "UPDATE orders SET discount_offer_id = '0' WHERE (id = '" . $order_id . "') AND (discount_offer_id != '0')";
+}
+
 // Conditions about the cart that do not fit the offer_rules row. The answer
 // depends on what is in the basket right now, and apply_offers_to_cart() moves
 // the basket while it runs, so nothing here is cached.
@@ -6379,16 +6523,15 @@ function apply_offers_to_cart()
         }
         list($best_order_discount_offer_id, $best_order_discount) = pg_offer_best_order_discount($qualified_candidates, $final_subtotal);
     }
-    // if there is an order discount, then add order discount to order
+    // The order keeps the winning offer, or none. A stored offer is cleared
+    // also when the session holds no amount for it: a cart retrieved in a new
+    // session (a saved cart link, the order history) still names the offer
+    // its earlier session won, which the cart would list as applied and the
+    // usage limit would count once the order is placed without the discount.
+    db(pg_order_discount_offer_update_sql($_SESSION['ecommerce']['order_id'] ?? 0, $best_order_discount_offer_id));
     if ($best_order_discount_offer_id != 0) {
-        $query = "UPDATE orders SET discount_offer_id = ? WHERE id = ?";
-        $result = db_q($query, array((string) $best_order_discount_offer_id, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
         $_SESSION['ecommerce']['order_discount'] = $best_order_discount;
-        // else there is not an order discount, so if there was before, then remove it
-    } else if (isset($_SESSION['ecommerce']['order_discount']) == true) {
-        // remove order discount until we find out below if there is an order discount
-        $query = "UPDATE orders SET discount_offer_id = '0' WHERE id = ?";
-        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
+    } else {
         unset($_SESSION['ecommerce']['order_discount']);
     }
     // if shipping is on, then loop through discounted ship tos in order to discount them
@@ -9384,6 +9527,14 @@ function pg_shipping_carriers()
             'url'      => 'https://gonderitakip.ptt.gov.tr/Track/summary?id={code}',
             'patterns' => array()),
 
+        // The tracking page fills its search box from ?q=; the lookup itself
+        // runs behind a captcha, so the customer presses the button once.
+        'kolaygelsin' => array(
+            'name'     => 'Kolay Gelsin',
+            'aliases'  => array('kolay gelsin', 'kolaygelsin kargo', 'kolay gelsin kargo', 'tr-kolaygelsin'),
+            'url'      => 'https://www.kolaygelsin.com/tracking?q={code}',
+            'patterns' => array()),
+
         'ups' => array(
             'name'     => 'UPS',
             'aliases'  => array('ups kargo', 'upskargo'),
@@ -9816,12 +9967,31 @@ function pg_generate_unique_barcode($type = '', $product_id = 0)
             $barcode = str_pad($product_id, 5, '0', STR_PAD_LEFT) . str_pad(rand(0, 9999999), 7, '0', STR_PAD_LEFT);
         }
 
-        $exists = db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'");
+        $exists = pg_barcode_taken($barcode, $product_id);
         $attempts++;
 
     } while ($exists && ($attempts < 30));
 
     return $exists ? '' : $barcode;
+}
+/**
+ * Whether a barcode may not be given to a product: another barcode row has
+ * it, or it is another product's code. A scan resolves a barcode before a
+ * product code, so such a barcode would move this product's stock when the
+ * other product's label is scanned. The product's own code stays a valid
+ * barcode for it.
+ *
+ * @param string $barcode
+ * @param int    $product_id the product the barcode is for, 0 for none yet
+ * @return bool
+ */
+function pg_barcode_taken($barcode, $product_id = 0)
+{
+    if (db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'")) {
+        return true;
+    }
+
+    return (bool) pg_product_name_holder($barcode, $product_id, false);
 }
 /**
  * Attach a barcode to a product.
@@ -9858,7 +10028,7 @@ function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
         // A code the operator typed is refused rather than replaced if it is
         // taken: silently generating a different one would leave them holding a
         // label that scans as another product.
-        if (db_value("SELECT COUNT(*) FROM product_barcodes WHERE barcode = '" . e($barcode) . "'")) {
+        if (pg_barcode_taken($barcode, $product_id)) {
             return '';
         }
     } else {
@@ -10720,166 +10890,6 @@ function get_shipping_service_name($service)
 }
 
 /**
- * The shipping method list's columns that change in place
- * (pg_list_edit_table()): the base rate and the item rate, the two that move
- * with the carrier's prices. An empty box is no charge, the way the method's
- * own screen saves it.
- *
- * @return array field => definition
- */
-function pg_shipping_method_edit_columns()
-{
-    return array(
-        'base_rate' => array('type' => 'money', 'label' => lang('Base Rate'), 'empty' => true),
-        'item_rate' => array('type' => 'money', 'label' => lang('Item Rate'), 'empty' => true),
-    );
-}
-
-/**
- * The shipping method list's cells a quick edit changes, drawn the one way
- * the list and the answer to an edit both use. A variable base rate shows
- * every step with the subtotal it starts at.
- *
- * @param array $method a shipping_methods row with base_rate,
- *                      variable_base_rate, base_rate_2..4 and their
- *                      _subtotal, item_rate, timestamp and user (the
- *                      username of the last change, or empty)
- * @return array 'base_rate', 'item_rate' and 'last_modified' => array('html', 'class')
- */
-function pg_shipping_method_list_cells($method)
-{
-    $money = function ($cents) {
-        return pg_format_money(((int) $cents) / 100, BASE_CURRENCY_SYMBOL);
-    };
-
-    if (!empty($method['variable_base_rate'])) {
-        $base_rate = $money($method['base_rate']) . ' (@' . $money(0) . ')';
-
-        for ($number = 2; $number <= 4; $number++) {
-            if (!empty($method['base_rate_' . $number . '_subtotal'])) {
-                $base_rate .= '<br>' . $money($method['base_rate_' . $number]) . ' (@' . $money($method['base_rate_' . $number . '_subtotal']) . ')';
-            }
-        }
-    } else {
-        $base_rate = $money($method['base_rate']);
-    }
-
-    return array(
-        'base_rate'     => array('html' => $base_rate, 'class' => 'align-middle text-end'),
-        'item_rate'     => array('html' => $money($method['item_rate']), 'class' => 'align-middle text-end'),
-        'last_modified' => array(
-            'html'  => get_relative_time(array('timestamp' => $method['timestamp']))
-                . (((string) ($method['user'] ?? '') !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h((string) $method['user'])))) : ''),
-            'class' => 'align-middle',
-        ),
-    );
-}
-
-/**
- * Write one quick edit from the shipping method list the way the method's
- * screen (edit_shipping_method.php) writes the same box: the amount read by
- * pg_normalize_amount() and kept in cents, the last change stamped with who
- * made it, a line in the Site Log.
- *
- * A variable base rate has a step for each order subtotal; the list does not
- * offer it, and a request for it is refused, since one box cannot say which
- * step it means.
- *
- * @param int    $method_id
- * @param string $field   a key of pg_shipping_method_edit_columns()
- * @param string $value   as pg_list_edit_parse() read it, '' for no charge
- * @param int    $user_id
- * @return array the answer for pg_list_edit_reply()
- */
-function pg_shipping_method_quick_update($method_id, $field, $value, $user_id)
-{
-    $method_id = (int) $method_id;
-    $columns = pg_shipping_method_edit_columns();
-
-    if (!isset($columns[$field])) {
-        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
-    }
-
-    $read = function () use ($method_id) {
-        return db_item(
-            "SELECT
-                shipping_methods.id,
-                shipping_methods.name,
-                shipping_methods.base_rate,
-                shipping_methods.variable_base_rate,
-                shipping_methods.base_rate_2,
-                shipping_methods.base_rate_2_subtotal,
-                shipping_methods.base_rate_3,
-                shipping_methods.base_rate_3_subtotal,
-                shipping_methods.base_rate_4,
-                shipping_methods.base_rate_4_subtotal,
-                shipping_methods.item_rate,
-                shipping_methods.timestamp,
-                user.user_username AS user
-            FROM shipping_methods
-            LEFT JOIN user ON shipping_methods.user = user.user_id
-            WHERE shipping_methods.id = '" . $method_id . "'");
-    };
-
-    $current = $read();
-
-    if (!$current) {
-        return array('ok' => false, 'code' => 'not_found', 'message' => lang('The shipping method could not be found.'));
-    }
-
-    if (($field === 'base_rate') && !empty($current['variable_base_rate'])) {
-        return array('ok' => false, 'code' => 'variable', 'message' => lang('This shipping method has a base rate for each order subtotal. Change it in the shipping method.'));
-    }
-
-    $cents = (trim((string) $value) === '') ? 0 : round(((float) pg_normalize_amount($value)) * 100);
-
-    // The rate columns are INT UNSIGNED.
-    if ($cents > 4294967295) {
-        return array('ok' => false, 'code' => 'invalid', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array($columns[$field]['label']))));
-    }
-
-    $cents = (int) $cents;
-
-    // The same amount again writes nothing and logs nothing; the list is
-    // still redrawn from what is stored.
-    if ((int) $current[$field] !== $cents) {
-        db("UPDATE shipping_methods
-            SET " . (($field === 'item_rate') ? 'item_rate' : 'base_rate') . " = '" . $cents . "',
-                user = '" . (int) $user_id . "',
-                timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . $method_id . "'");
-
-        log_activity(
-            lang(array(
-                'string' => 'shipping method ({var:1}) was changed on the shipping method list: {var:2} from "{var:3}" to "{var:4}"',
-                'vars'   => array((string) $current['name'], $columns[$field]['label'], pg_format_number(((int) $current[$field]) / 100, 2), pg_format_number($cents / 100, 2)),
-            )),
-            $_SESSION['sessionusername'] ?? '');
-    }
-
-    $method = $read();
-    $cells = pg_shipping_method_list_cells($method);
-
-    return array('ok' => true, 'value' => pg_format_input_amount(((int) $method[$field]) / 100))
-        + $cells[$field]
-        + array('cells' => array('last_modified' => $cells['last_modified']));
-}
-
-/**
- * The key code list's columns that change in place (pg_list_edit_table()):
- * whether the code is enabled, the switch an operator turns most often
- * without the rest of the key code's screen.
- *
- * @return array field => definition
- */
-function pg_key_code_edit_columns()
-{
-    return array(
-        'enabled' => array('type' => 'select', 'label' => lang('Enabled'), 'options' => array('1' => lang('Enabled'), '0' => lang('Disabled'))),
-    );
-}
-
-/**
  * Whether a key code works at checkout on the given day: enabled, not
  * expired, and the offer it names enabled and running. The list colours the
  * code by it.
@@ -10948,86 +10958,6 @@ function pg_key_code_list_cells($key_code, $today)
             'class' => 'align-middle',
         ),
     );
-}
-
-/**
- * Write one quick edit from the key code list the way the key code's screen
- * (edit_key_code.php) writes the same field: the flag, the last change
- * stamped with who made it, a line in the Site Log.
- *
- * @param int    $key_code_id
- * @param string $field       a key of pg_key_code_edit_columns()
- * @param string $value       as pg_list_edit_parse() read it
- * @param int    $user_id
- * @return array the answer for pg_list_edit_reply()
- */
-function pg_key_code_quick_update($key_code_id, $field, $value, $user_id)
-{
-    $key_code_id = (int) $key_code_id;
-    $columns = pg_key_code_edit_columns();
-
-    if (!isset($columns[$field]['options'][(string) $value])) {
-        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
-    }
-
-    // Two offers can share a code; the list joins them the same way and
-    // colours the row by the first.
-    $read = function () use ($key_code_id) {
-        return db_item(
-            "SELECT
-                key_codes.id,
-                key_codes.code,
-                key_codes.enabled,
-                key_codes.expiration_date,
-                key_codes.timestamp AS last_modified_timestamp,
-                last_modified_user.user_username AS last_modified_username,
-                offers.status AS offer_status,
-                offers.start_date AS offer_start_date,
-                offers.end_date AS offer_end_date
-            FROM key_codes
-            LEFT JOIN offers ON key_codes.offer_code = offers.code
-            LEFT JOIN user AS last_modified_user ON key_codes.user = last_modified_user.user_id
-            WHERE key_codes.id = '" . $key_code_id . "'
-            LIMIT 1");
-    };
-
-    $current = $read();
-
-    if (!$current) {
-        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
-    }
-
-    $previous = !empty($current['enabled']) ? '1' : '0';
-    $enabled = ((string) $value === '1') ? '1' : '0';
-
-    // The same value again writes nothing and logs nothing; the row is still
-    // redrawn from what is stored.
-    if ($previous !== $enabled) {
-        db("UPDATE key_codes
-            SET enabled = '" . $enabled . "',
-                user = '" . (int) $user_id . "',
-                timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . $key_code_id . "'");
-
-        log_activity(
-            lang(array(
-                'string' => 'Key code ({var:1}) was changed on the key code list: {var:2} from "{var:3}" to "{var:4}".',
-                'vars'   => array((string) $current['code'], $columns[$field]['label'], $columns[$field]['options'][$previous], $columns[$field]['options'][$enabled]),
-            )),
-            $_SESSION['sessionusername'] ?? '');
-    }
-
-    $key_code = $read();
-
-    if (!$key_code) {
-        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
-    }
-
-    $cells = pg_key_code_list_cells($key_code, date('Y-m-d'));
-
-    return array('ok' => true, 'value' => !empty($key_code['enabled']) ? '1' : '0')
-        + $cells['enabled']
-        + array('cells' => array('code' => $cells['code'], 'last_modified' => $cells['last_modified']));
 }
 
 /**
@@ -11282,142 +11212,6 @@ function pg_key_code_export_line($key_code)
         '"' . csv_cell($key_code['last_modified_username']) . '"' . "\n";
 }
 
-/**
- * The gift card list's columns that change in place (pg_list_edit_table()):
- * the notes, which an operator keeps about a card without touching its
- * money. The balance and the expiration date stay on the gift card's screen.
- *
- * @return array field => definition
- */
-function pg_gift_card_edit_columns()
-{
-    return array(
-        'notes' => array('type' => 'text', 'label' => lang('Notes')),
-    );
-}
-
-/**
- * Whether a gift card's notes can change on the list. The list's box holds
- * one line and reads a line break as a space, so notes written on more lines
- * (on the gift card's screen, or the line a cancelled order adds) change only
- * on the gift card's screen, where the lines are kept.
- *
- * @param string $notes
- * @return bool
- */
-function pg_gift_card_notes_fit_list($notes)
-{
-    return strpbrk((string) $notes, "\r\n") === false;
-}
-
-/**
- * The gift card list's cells a quick edit changes, drawn the one way the list
- * and the answer to an edit both use.
- *
- * @param array $gift_card a gift_cards row with notes,
- *                         last_modified_timestamp and last_modified_username
- *                         (empty when nobody is recorded)
- * @return array 'notes' and 'last_modified' => array('html', 'class')
- */
-function pg_gift_card_list_cells($gift_card)
-{
-    $username = (string) ($gift_card['last_modified_username'] ?? '');
-
-    return array(
-        // Wrapped in a box of its own width: the list's cells do not wrap,
-        // so a long note pushed the other columns off the screen.
-        'notes'         => array('html' => '<div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h((string) $gift_card['notes'])) . '</div>', 'class' => 'align-middle text-wrap'),
-        'last_modified' => array(
-            'html'  => get_relative_time(array('timestamp' => $gift_card['last_modified_timestamp']))
-                . (($username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : ''),
-            'class' => 'align-middle',
-        ),
-    );
-}
-
-/**
- * Write one quick edit from the gift card list the way the gift card's
- * screen (edit_gift_card.php) writes the notes: the last change stamped with
- * who made it, a line in the Site Log.
- *
- * Notes on more than one line are refused (pg_gift_card_notes_fit_list()),
- * and the write only lands on the notes that were read: cancelling the order
- * that bought a card adds a line to its notes, and a change typed over the
- * old notes must not wipe that line out.
- *
- * @param int    $gift_card_id
- * @param string $field        a key of pg_gift_card_edit_columns()
- * @param string $value        as pg_list_edit_parse() read it, '' for no notes
- * @param int    $user_id
- * @return array the answer for pg_list_edit_reply()
- */
-function pg_gift_card_quick_update($gift_card_id, $field, $value, $user_id)
-{
-    $gift_card_id = (int) $gift_card_id;
-    $columns = pg_gift_card_edit_columns();
-
-    if (!isset($columns[$field])) {
-        return array('ok' => false, 'code' => 'invalid', 'message' => lang('This column cannot be changed here.'));
-    }
-
-    $read = function () use ($gift_card_id) {
-        return db_item(
-            "SELECT
-                gift_cards.id,
-                gift_cards.code,
-                gift_cards.notes,
-                gift_cards.last_modified_timestamp,
-                last_modified_user.user_username AS last_modified_username
-            FROM gift_cards
-            LEFT JOIN user AS last_modified_user ON gift_cards.last_modified_user_id = last_modified_user.user_id
-            WHERE gift_cards.id = '" . $gift_card_id . "'");
-    };
-
-    $current = $read();
-
-    if (!$current) {
-        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
-    }
-
-    if (!pg_gift_card_notes_fit_list($current['notes'])) {
-        return array('ok' => false, 'code' => 'lines', 'message' => lang('These notes take more than one line. Change them in the gift card.'));
-    }
-
-    $notes = (string) $value;
-
-    // The same notes again write nothing and log nothing; the cell is still
-    // redrawn from what is stored.
-    if ((string) $current['notes'] !== $notes) {
-        db("UPDATE gift_cards
-            SET notes = '" . e($notes) . "',
-                last_modified_user_id = '" . (int) $user_id . "',
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . $gift_card_id . "' AND notes = '" . e((string) $current['notes']) . "'");
-
-        if (mysqli_affected_rows(db::$con) < 1) {
-            return array('ok' => false, 'code' => 'changed', 'message' => lang('The gift card changed in the meantime. Reload the list and try again.'));
-        }
-
-        log_activity(
-            lang(array(
-                'string' => 'gift card ({var:1}) was changed on the gift card list: {var:2} from "{var:3}" to "{var:4}"',
-                'vars'   => array(output_gift_card_code($current['code']), $columns[$field]['label'], (string) $current['notes'], $notes),
-            )),
-            $_SESSION['sessionusername'] ?? '');
-    }
-
-    $gift_card = $read();
-
-    if (!$gift_card) {
-        return array('ok' => false, 'code' => 'not_found', 'message' => lang('Record not found.'));
-    }
-
-    $cells = pg_gift_card_list_cells($gift_card);
-
-    return array('ok' => true, 'value' => (string) $gift_card['notes'])
-        + $cells['notes']
-        + array('cells' => array('last_modified' => $cells['last_modified']));
-}
 // Gets flat array of product groups for menu on catalog and catalog detail pages.
 function get_product_groups($properties)
 {
@@ -11583,6 +11377,16 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
         return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
     }
 
+    // A basket (incomplete) is not an order: it has no number, payment or
+    // stock move, and only the checkout ends it. The customer's own
+    // cancel_order.php post and the order screen's cancel handler have no
+    // status check of their own; a cancelled basket was mailed to the
+    // customer as a cancelled order, announced as order.cancelled and listed
+    // among the cancelled orders.
+    if (pg_order_status_move($order['status'], 'cancelled') === 'refuse') {
+        return array('status' => 'error', 'message' => pg_order_status_move_refusal($order['status'], 'cancelled'), 'refund_status' => '', 'order_id' => $order_id);
+    }
+
     // ── Pre-shipment guard (CUSTOMERS ONLY) ─────────────────────────────
     // Admins are never blocked. An operator cancelling from the panel has
     // context the code does not — a customer phoned, the courier returned the
@@ -11620,7 +11424,7 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
             cancellation_reason = '" . escape($reason_clean) . "',
             " . pg_order_touch_sql() . "
          WHERE id = '" . e($order_id) . "'
-           AND status <> 'cancelled'"
+           AND status NOT IN ('cancelled', 'incomplete')"
     );
     if (mysqli_affected_rows(db::$con) < 1) {
         return array('status' => 'already', 'message' => lang('Order was already cancelled.'), 'refund_status' => '', 'order_id' => $order_id);
@@ -11632,6 +11436,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // tell the customer the order was not bought. Only the request that
     // cancelled the order (the guarded write above) gets here.
     pg_review_request_cancel($order_id);
+
+    // Its reviews no longer count: a cancelled order is no purchase
+    // (pg_review_purchase_stands_sql()).
+    pg_review_refresh_order($order_id);
 
     // ── Expire gift cards issued by this order ──────────────────────────
     // Folded in from the removed legacy cancel_order(). A cancelled order
@@ -11694,6 +11502,10 @@ function process_order_cancellation($order_id, $reason = '', $is_admin = false, 
     // cards, so an order cannot be placed, its points converted and the
     // order cancelled with the credit kept. Once, like the steps above.
     pg_credit_points_order_cancelled($order);
+
+    // ── Take back the folder access the order's lines granted ──────────
+    // Once, like the steps above; a restore grants it again.
+    pg_order_folder_access_cancelled($order);
 
     // ── Automatic refund (opt-in) ───────────────────────────────────────
     // Default OFF. When ECOMMERCE_ORDER_CANCEL_AUTO_REFUND === true and the
@@ -12047,7 +11859,7 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
     // order number and the time of the cancellation.
     $has_cancel_columns = pg_schema_has('orders', 'cancelled_at');
     $cancelled_order = db_item(
-        "SELECT id, order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
+        "SELECT id, user_id, order_number" . ($has_cancel_columns ? ', cancelled_at' : '') . "
          FROM orders
          WHERE id = '" . $order_id . "' AND status = 'cancelled'
          LIMIT 1");
@@ -12078,6 +11890,12 @@ function pg_order_restore_cancelled($order_id, $status = 'complete')
     if ($commission_line !== '') {
         log_activity($commission_line);
     }
+
+    // Its reviews count again.
+    pg_review_refresh_order($order_id);
+
+    // The folder access the cancellation took back.
+    pg_order_folder_access_restored($cancelled_order);
 
     log_activity(pg_log_lang(array('string' => 'Restored cancelled order #{var:1} to {var:2}.', 'vars' => array(pg_order_log_number($cancelled_order), pg_order_log_status($status)))));
 
@@ -12167,6 +11985,23 @@ function pg_order_restore_commissions($order_id)
     }
 
     return $result;
+}
+
+// The affiliate code an order is submitted with: the visitor's own code
+// (session or cookie, get_affiliate_code()), else the one the cart stored on
+// the order when an affiliate code was typed as an offer code. Without visitor
+// tracking that code lives on the order only, and the off-site payment
+// completion credits it from there; the on-site submit must not overwrite it
+// with an empty value. Pure.
+function pg_order_submit_affiliate_code($visitor_code, $order_code)
+{
+    $visitor_code = trim((string) $visitor_code);
+
+    if ($visitor_code !== '') {
+        return $visitor_code;
+    }
+
+    return trim((string) $order_code);
 }
 
 // The site log line of a cancellation's commissions, '' when it changed none.
@@ -13635,6 +13470,27 @@ function pg_products_import_headings($headings, $convert)
         'column_names' => $column_names,
         'submit_form_fields' => $submit_form_fields,
         'unknown_headings' => $unknown_headings);
+}
+
+/**
+ * Whether an update row's enabled cell disables the product (the import then
+ * drops its tag cloud keywords). An empty cell leaves the product as it is;
+ * any other cell is read as the TINYINT column stores it in a non-strict
+ * session: a number rounded, a word as 0. Compared loosely, '' == 0 held on
+ * PHP 7 and an enabled product lost its keywords. Pure.
+ *
+ * @param mixed $cell the enabled cell, '' when empty
+ * @return bool
+ */
+function pg_products_import_disables($cell)
+{
+    $cell = trim((string) $cell);
+
+    if ($cell === '') {
+        return false;
+    }
+
+    return ((int) round((float) $cell)) === 0;
 }
 
 // The text of one column of a CSV row: '' when the file has no such column

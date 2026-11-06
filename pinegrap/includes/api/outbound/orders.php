@@ -539,15 +539,31 @@ function mp_order_cancel($account, $package, $map) {
 
 	}
 
-	mp_order_return_stock($order_id);
+	// Only a cancellation this call made puts the stock back and is announced:
+	// 'already' means somebody else cancelled the order between the status
+	// read above and the call, and a shipped one returned above.
+	if (!mp_order_cancel_returns_stock($outcome['status'])) {
 
-	// Only a cancellation this call made: 'already' means somebody else
-	// cancelled the order first, and a shipped one returned above.
-	if ($outcome['status'] === 'success') {
-
-		mp_order_announce('marketplace.order.cancelled', $account, (int)$map['id'], (string)$package['remote_status']);
+		return;
 
 	}
+
+	mp_order_return_stock($order_id);
+
+	mp_order_announce('marketplace.order.cancelled', $account, (int)$map['id'], (string)$package['remote_status']);
+
+}
+
+// Whether a marketplace cancellation answered $status by
+// process_order_cancellation() gives the order's stock back. Only 'success',
+// the call that changed the row. 'already' is a cancel that landed in between:
+// a webhook delivery and the job's pull applying the same cancelled package
+// at once (the other pass gave the stock back), or the shop's own cancel,
+// which puts nothing back (parasut_order_took_stock()). Returning it again
+// counted the goods twice and pushed that number to every marketplace.
+function mp_order_cancel_returns_stock($status) {
+
+	return $status === 'success';
 
 }
 

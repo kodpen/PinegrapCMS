@@ -59,6 +59,7 @@ function pg_privacy_export_sections()
         'watchers'           => lang('Watched items'),
         'wishlist'           => lang('Favourites'),
         'stock_notify'       => lang('Back-in-stock requests'),
+        'bookings'           => lang('Appointment bookings'),
         'campaigns'          => lang('E-mail campaigns'),
         'consents'           => lang('Consents'),
         'mail'               => lang('E-mail messages'),
@@ -85,20 +86,47 @@ function pg_privacy_export_row_limit()
 /**
  * The person as asked for: the address in its one form and the ids, each
  * list without duplicates. Anything that is not an address or an id is
- * dropped.
+ * dropped. A Fediverse account address (fediverse) finds the comments that
+ * account sent from Mastodon and the like (comments.remote_actor); it is
+ * tied to no user or contact, so it finds nothing else.
  *
- * @param array $input  any of email, user_id, contact_id
- * @return array  emails, user_ids, contact_ids
+ * @param array $input  any of email, user_id, contact_id, fediverse
+ * @return array  emails, user_ids, contact_ids, actors
  */
 function pg_privacy_export_seed(array $input)
 {
     $email = pg_privacy_normalize_email(isset($input['email']) ? $input['email'] : '');
+    $actor = pg_privacy_normalize_actor(isset($input['fediverse']) ? $input['fediverse'] : '');
 
     return array(
         'emails'      => ($email !== '') ? array($email) : array(),
         'user_ids'    => _pg_privacy_export_ids(array(isset($input['user_id']) ? $input['user_id'] : 0)),
         'contact_ids' => _pg_privacy_export_ids(array(isset($input['contact_id']) ? $input['contact_id'] : 0)),
+        'actors'      => ($actor !== '') ? array($actor) : array(),
     );
+}
+
+/**
+ * A Fediverse account address as comments.remote_actor holds it: an http or
+ * https address without its fragment, at most 255 characters. Pure.
+ *
+ * @param mixed $value
+ * @return string '' when it is not one
+ */
+function pg_privacy_normalize_actor($value)
+{
+    $value = is_string($value) ? trim($value) : '';
+    $value = preg_replace('/#.*$/s', '', $value);
+
+    if (
+        ($value === '')
+        || (strlen($value) > 255)
+        || !preg_match('~^https?://[^/\s?#@]+(?:[/?][^\s]*)?$~i', $value)
+    ) {
+        return '';
+    }
+
+    return $value;
 }
 
 /**
@@ -150,6 +178,7 @@ function pg_privacy_export_merge(array $person, array $users, array $contacts)
         'emails'      => $unique,
         'user_ids'    => _pg_privacy_export_ids($user_ids),
         'contact_ids' => _pg_privacy_export_ids($contact_ids),
+        'actors'      => isset($person['actors']) ? array_values(array_unique((array) $person['actors'])) : array(),
     );
 }
 
@@ -161,7 +190,7 @@ function pg_privacy_export_merge(array $person, array $users, array $contacts)
  */
 function pg_privacy_export_is_empty(array $person)
 {
-    return empty($person['emails']) && empty($person['user_ids']) && empty($person['contact_ids']);
+    return empty($person['emails']) && empty($person['user_ids']) && empty($person['contact_ids']) && empty($person['actors']);
 }
 
 /**
@@ -301,6 +330,7 @@ function pg_privacy_export_document(array $person, array $collected, array $meta
             'emails'      => array_values(isset($person['emails']) ? (array) $person['emails'] : array()),
             'user_ids'    => _pg_privacy_export_ids(isset($person['user_ids']) ? (array) $person['user_ids'] : array()),
             'contact_ids' => _pg_privacy_export_ids(isset($person['contact_ids']) ? (array) $person['contact_ids'] : array()),
+            'actors'      => array_values(isset($person['actors']) ? (array) $person['actors'] : array()),
         ),
         'sections'     => $sections,
     );
@@ -362,6 +392,8 @@ function pg_privacy_export_filename(array $person, $extension, $time = null)
         $who = 'user-' . (int) reset($person['user_ids']);
     } elseif (!empty($person['contact_ids'])) {
         $who = 'contact-' . (int) reset($person['contact_ids']);
+    } elseif (!empty($person['actors'])) {
+        $who = 'fediverse';
     }
 
     $who = strtolower(pg_transliterate_to_ascii($who));
@@ -558,7 +590,7 @@ function pg_privacy_export_summary_html(array $document)
             $html .= '<tr><td>' . h(($number !== '' && $number !== '0') ? $number : '#' . (int) ($row['id'] ?? 0)) . '</td>'
                 . '<td>' . h(_pg_privacy_export_time((int) ($row['order_date'] ?? 0))) . '</td>'
                 . '<td>' . h(isset($statuses[$status]) ? $statuses[$status] : $status) . '</td>'
-                . '<td class="num">' . h(_pg_privacy_export_money($row['total'] ?? 0, (string) ($row['currency_code'] ?? ''))) . '</td></tr>';
+                . '<td class="num">' . h(_pg_privacy_export_money($row['total'] ?? 0, _pg_privacy_export_order_currency($row, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : ''))) . '</td></tr>';
         }
 
         $html .= '</table>';
@@ -930,7 +962,15 @@ function pg_privacy_export_collect(array $found)
         $sections['signatures'] = _pg_privacy_export_select("SELECT * FROM form_signatures WHERE " . $signature_where . " ORDER BY id", ($signature_where !== '') ? array(1) : array(), array(), array('strokes', 'stamp_token'));
     }
 
-    $sections['comments'] = _pg_privacy_export_select("SELECT * FROM comments WHERE " . _pg_privacy_export_in('created_user_id', $user_ids) . " ORDER BY id", $user_ids);
+    // The account's own comments, and those an account on the Fediverse sent
+    // (once comments has remote_actor, 2026.11.0).
+    $actors = (isset($person['actors']) && pg_schema_has('comments', 'remote_actor')) ? (array) $person['actors'] : array();
+    $comment_where = _pg_privacy_export_any(array(
+        _pg_privacy_export_in('created_user_id', $user_ids),
+        _pg_privacy_export_in('remote_actor', $actors),
+    ));
+
+    $sections['comments'] = _pg_privacy_export_select("SELECT * FROM comments WHERE " . $comment_where . " ORDER BY id", ($comment_where !== '') ? array(1) : array());
 
     $watch_where = _pg_privacy_export_any(array(
         _pg_privacy_export_in('user_id', $user_ids),
@@ -968,6 +1008,26 @@ function pg_privacy_export_collect(array $found)
             WHERE " . $notify_where . "
             ORDER BY stock_notify.id",
             ($notify_where !== '') ? array(1) : array()
+        );
+    }
+
+    // Appointment bookings, by the account or the address given when
+    // booking, with the service's name. The manage link's hash is left out.
+    if (pg_booking_ready()) {
+        $booking_where = _pg_privacy_export_any(array(
+            _pg_privacy_export_in('bookings.user_id', $user_ids),
+            _pg_privacy_export_in('bookings.email', $emails),
+        ));
+
+        $sections['bookings'] = _pg_privacy_export_select(
+            "SELECT bookings.*, booking_services.name AS service_name
+            FROM bookings
+            LEFT JOIN booking_services ON booking_services.id = bookings.service_id
+            WHERE " . $booking_where . "
+            ORDER BY bookings.id",
+            ($booking_where !== '') ? array(1) : array(),
+            array(),
+            array('manage_token', 'slot_at', 'hold_until')
         );
     }
 
@@ -1400,6 +1460,27 @@ function _pg_privacy_export_consent_answer($status)
     }
 
     return ($status === 'pending') ? lang('Waiting for confirmation') : lang('Refused');
+}
+
+/**
+ * The currency an order's stored total is in: the store's base currency, the
+ * one every payment driver charges. orders.currency_code is only the currency
+ * the visitor was shown prices in, except on a marketplace order, where it is
+ * the marketplace's own currency and the unit of the stored amounts.
+ *
+ * @param array  $row  orders row
+ * @param string $base base currency code
+ * @return string
+ */
+function _pg_privacy_export_order_currency($row, $base)
+{
+    $code = (string) ($row['currency_code'] ?? '');
+
+    if ((($row['type'] ?? '') === 'marketplace') && ($code !== '')) {
+        return $code;
+    }
+
+    return (string) $base;
 }
 
 /**

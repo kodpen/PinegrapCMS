@@ -32,44 +32,39 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             'breadcrumb' => array(array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'), array('label' => lang('Product Inventory Quantity Increase'))),
         )
     )  . '
-    <style></style>
-        <main class="container mb-12" style="min-height:calc(100vh - 175px)" id="content">
+        <main class="container-fluid" id="content">
             <div class="row">
-                <div class="col-12">
-                    
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-12 my-3 md:col-auto">
-                    <div class="card border-4 border-success">
-                        <div class="card-body">
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('Scan') . '
+                        </h2>
+                        <div class="card-body pt-0">
                             <div class="row">
-                                <div class="col-12 md:col-auto">
+                                <div class="col-12 md:col-6 my-3">
                                     <label for="scanner_input" class="form-label">' . lang('Last Scan & Manual Read') . '</label>
-                                    <label class="form-control form-adorn my-3">
+                                    <label class="form-control form-adorn">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('Barcode') . ':</span>
-                                        <input type="text" value=""  placeholder="' . lang('Barcode') . '" class="form-ghost text-center md:text-start" id="scanner_input" aria-label="' . h(lang('Barcode')) . '" aria-describedby="scanner_input_hint" ></input>
+                                        <input type="text" value=""  placeholder="' . lang('Barcode') . '" class="form-ghost" id="scanner_input" aria-label="' . h(lang('Barcode')) . '" aria-describedby="scanner_input_hint" ></input>
                                     </label>
                                     <div class="form-text" id="scanner_input_hint">' . lang('Last Scan shows the last barcode the scanner read; nothing else needs doing.') . '<br>' . lang('Manual Read: if the scanner reads a barcode wrong or not at all, type it and press Read.') . '</div>
-                                    <label class="form-control form-adorn my-3">
-                                        <span class="form-adorn-text" aria-hidden="true">' . lang('Quantity') . ':</span>
-                                        <input type="number" min="1" value="1"  placeholder="' . lang('Quantity') . '" class="form-ghost text-center md:text-start" id="scanner_quantity_input" aria-label="' . h(lang('Quantity')) . '" ></input>
-                                    </label>
+                                </div>
+                                <div class="col-12 md:col-6 my-3">
+                                    <label for="scanner_quantity_input" class="form-label">' . lang('Quantity') . '</label>
+                                    <input type="number" min="1" value="1" class="form-control" id="scanner_quantity_input">
                                     ' . pg_stock_scan_location_field() . '
-                                    <div class="text-center">
-                                        <button type="button" id="barcode_read_button" class="btn btn-sm btn-white border my-1">' . lang('Read') . '</button>
-                                        <div id="barcode_status" class="visually-hidden" role="status" aria-live="polite"></div>
-                                        <div id="barcode_untracked" class="alert theme-warning d-none" role="alert"></div>
-                                    </div>
                                 </div>
                             </div>
+                            <div id="barcode_status" class="visually-hidden" role="status" aria-live="polite"></div>
+                            <div id="barcode_untracked" class="alert theme-warning d-none mb-0" role="alert"></div>
                         </div>
                     </div>
-                </div>
-                <div class="col-12 my-3 md:col">
-                    <div class="card border-4 border-success">
-                        <div id="action_logs" class="card-body overflow-auto" style="max-height:500px;">
-                            <table class="table-hover table">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('Last Scans') . '
+                        </h2>
+                        <div id="action_logs" class="card-body pt-0 overflow-auto" style="max-height:500px;">
+                            <table class="table-hover table mb-0">
                                 <thead>
                                     <tr>
                                         <th class="align-middle">' . lang('Product Code') . '</th>
@@ -85,8 +80,47 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                         </div>
                     </div>
                 </div>
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                    <div class="position-sticky" style="top:3.3rem;">
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Summary') . '
+                            </h2>
+                            <div class="card-body pt-0">
+                                <dl class="mb-0">
+                                    <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                                        <dt class="fw-normal">' . lang('Transaction') . '</dt>
+                                        <dd class="mb-0 text-end"><span class="badge theme-success">' . lang('Increase') . '</span></dd>
+                                    </div>
+                                    <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                                        <dt class="fw-normal">' . lang('Scans') . '</dt>
+                                        <dd class="mb-0 fw-bold text-end" id="barcode_scan_count">0</dd>
+                                    </div>
+                                    <div class="d-flex justify-content-between gap-3 py-2 border-bottom">
+                                        <dt class="fw-normal">' . lang('Added Quantity') . '</dt>
+                                        <dd class="mb-0 fw-bold text-end" id="barcode_scan_units">0</dd>
+                                    </div>
+                                    <div class="d-flex justify-content-between gap-3 py-2">
+                                        <dt class="fw-normal">' . lang('Last Product') . '</dt>
+                                        <dd class="mb-0 fw-bold text-end text-break" id="barcode_last_product">&mdash;</dd>
+                                    </div>
+                                </dl>
+                                <p class="small fg-secondary mt-3 mb-0">' . lang('Scans made on this screen since it was opened.') . '</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                    <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                        <div class="container">
+                            <div class="btn-group flex-wrap justify-content-center">
+                                <button type="button" id="barcode_read_button" class="btn my-1 btn-solid theme-primary"><span class="material-icons me-3" aria-hidden="true">qr_code_scanner</span><span class="pg-btn-label">' . lang('Read') . '</span></button>
+                            </div>
+                        </div>
+                    </nav>
+                </div>
             </div>
-
             <script>
                 $(window).focus(function(){
                     $("body").focus();
@@ -179,6 +213,12 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                     $("<td class=\'align-middle text-center h5 fw-bolder\'>").text(response.data.new_inventory_quantity).appendTo(row);
                                     $("<td class=\'align-middle\'>").html(response.data.scanned_at).appendTo(row);
                                     $("#action_logs tbody").prepend(row);
+                                    // The Summary counts the scans and units of this visit.
+                                    var scan_count = document.getElementById("barcode_scan_count");
+                                    var scan_units = document.getElementById("barcode_scan_units");
+                                    scan_count.textContent = String((parseInt(scan_count.textContent, 10) || 0) + 1);
+                                    scan_units.textContent = String((parseInt(scan_units.textContent, 10) || 0) + Math.abs(parseInt(response.data.quantity, 10) || 0));
+                                    document.getElementById("barcode_last_product").textContent = String(response.data.name) + " \u2192 " + String(response.data.new_inventory_quantity);
                                     // Said to screen readers too: the table row is not announced.
                                     document.getElementById("barcode_status").textContent = "' . escape_javascript(lang('{var:1}: the inventory quantity is now {var:2}.')) . '".replace("{var:1}", function(){ return String(response.data.name); }).replace("{var:2}", function(){ return String(response.data.new_inventory_quantity); });
                                     // A product with stock tracking off keeps the count for when
@@ -412,22 +452,40 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 $sql_out_of_stock = "out_of_stock = '0',";
             }
 
-
             // update the product
             $audit_before = pg_audit_fetch('products', (int) $id);
-            $query =
-                "UPDATE products
-                SET
-                    " . (($scan === null) ? "inventory_quantity = ?," : "") . "
-                    $sql_out_of_stock
-                    user = ?,
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = ?";
-            $values = array((string) $new_inventory_quantity, (string) $user['id'], (string) (int) $id);
-            if ($scan !== null) {
-                array_shift($values);
+
+            if ($scan === null) {
+                // The units are added in the statement, not written back as
+                // the figure read above: a sale or another scan between that
+                // read and this write would otherwise be overwritten (a sold
+                // unit back on the shelf, or the other scan lost). The top is
+                // checked in the statement for the same reason.
+                $query =
+                    "UPDATE products
+                    SET
+                        inventory_quantity = inventory_quantity + ?,
+                        $sql_out_of_stock
+                        user = ?,
+                        timestamp = UNIX_TIMESTAMP()
+                    WHERE (id = ?) AND (inventory_quantity <= ?)";
+                db_q($query, array((string) $quantity, (string) $user['id'], (string) (int) $id,
+                    (string) (PG_INVENTORY_QUANTITY_MAX - $quantity))) or output_error('Query failed');
+
+                if (mysqli_affected_rows(db::$con) < 1) {
+                    echo encode_json(array(
+                        'status' => 'error',
+                        'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('New Inventory Quantity'))))));
+                    exit();
+                }
+
+                $new_inventory_quantity = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $id . "'");
+                $inventory_quantity = $new_inventory_quantity - $quantity;
+            } else {
+                db_q("UPDATE products SET $sql_out_of_stock user = ?, timestamp = UNIX_TIMESTAMP() WHERE id = ?",
+                    array((string) $user['id'], (string) (int) $id)) or output_error('Query failed');
             }
-            $result = db_q($query, $values) or output_error('Query failed');
+
             pg_audit_record('update', 'products', (int) $id, $audit_before);
 
             // A scan is a stock write like any other: inventory.changed is

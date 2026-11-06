@@ -83,14 +83,17 @@ function test_geo_country_label_used_by_the_country_lists()
 		'includes/forms/zone_form.php',
 		'includes/forms/tax_zone_form.php',
 		'includes/fn/forms.php',
-		'view_states.php',
 	) as $file) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_true(strpos($source, 'pg_geo_country_label(') !== false, $file . ' names the country');
 		pg_assert_true(strpos($source, 'pg_geo_sort_by_label(') !== false, $file . ' orders by the label');
 	}
 
-	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_countries.php');
+	// The states list labels its rows in its module and orders them on the screen.
+	pg_assert_true(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/state_list_edit.php'), 'pg_geo_country_label(') !== false, 'the states list names the country');
+	pg_assert_true(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/view_states.php'), 'pg_geo_sort_by_label(') !== false, 'the states list orders by the label');
+
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/country_list_edit.php');
 	pg_assert_true(strpos($list, "pg_geo_country_label(\$row['name'], \$row['code'])") !== false, 'the countries list names the country');
 }
 

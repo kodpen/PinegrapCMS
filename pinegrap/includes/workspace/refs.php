@@ -70,6 +70,9 @@ function ws_viewer($user)
     // The user list is the managers' screen (edit_user.php asks for 'manager').
     $viewer['users'] = $staff;
 
+    // E-mail and SMS campaigns (validate_email_access()).
+    $viewer['emails'] = $staff || $yes($user['manage_emails'] ?? false);
+
     return $viewer;
 }
 
@@ -86,7 +89,7 @@ function ws_record_type_keys()
         'order', 'product', 'product_group', 'offer', 'cart_quote',
         'contact', 'user_account',
         'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote',
-        'form', 'calendar_event',
+        'form', 'calendar_event', 'booking',
         'file', 'page',
     );
 }
@@ -264,6 +267,20 @@ function ws_record_kinds()
             'quick_edit' => true,
             'customer'   => false,
         ),
+        // An appointment of the staff agenda (bookings). Every member may tag
+        // one; below the managers only the staff member's own bookings
+        // resolve (pg_booking_agenda_scope()). Changed on the agenda, never
+        // from the Workspace: a status move mails the customer and frees or
+        // takes a slot (pg_booking_changed()).
+        'booking' => array(
+            'prefixes'   => array('randevu', 'rezervasyon', 'booking', 'appointment'),
+            'right'      => '',
+            'scope'      => 'bookings:read',
+            'change'     => '',
+            'audit'      => '',
+            'quick_edit' => false,
+            'customer'   => false,
+        ),
         'file' => array(
             'prefixes'   => array('dosya', 'file', 'd'),
             'right'      => '',
@@ -366,6 +383,9 @@ function ws_ref_types($viewer)
         $add('calendar_event', lang('Calendar Event'), 'bi-calendar-event', array('etkinlik', 'takvim', 'event', 't'));
     }
 
+    // Every member may tag a booking; which ones resolve is the agenda's
+    // rule (ws_refs_resolve()).
+    $add('booking', lang('Booking'), 'bi-calendar-check', array('randevu', 'rezervasyon', 'booking', 'appointment'));
     $add('file', lang('File'), 'bi-file-earmark', array('dosya', 'file', 'd'));
     $add('page', lang('Page'), 'bi-window', array('sayfa', 'page', 's'));
     $add('task', lang('Task'), 'bi-check2-square', array('gorev', 'görev', 'task', 'g'), false);
@@ -1465,6 +1485,33 @@ function ws_refs_resolve($viewer, $tokens)
         }
     }
 
+    // A booking resolves for roles 0-2, and for a role-3 staff member only
+    // when it is on their own agenda, as edit_booking.php opens it.
+    if (!empty($ids['booking'])) {
+        $rows = array();
+        $scope = false;
+
+        if (function_exists('pg_booking_ready') && pg_booking_ready()) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+            $scope = pg_booking_agenda_user_scope(array('id' => (int) $viewer['id'], 'role' => (int) $viewer['role']));
+            $rows = (array) db_items("SELECT b.id, b.staff_id, b.name, b.start_at, b.status, s.name AS service_name
+                FROM bookings b
+                LEFT JOIN booking_services s ON s.id = b.service_id
+                WHERE b.id IN (" . $in('booking') . ")");
+        }
+
+        $statuses = $rows ? pg_booking_agenda_status_badges() : array();
+
+        foreach ($rows as $row) {
+            if (pg_booking_agenda_scope_allows($scope, (int) $row['staff_id'])) {
+                $put('booking', $row['id'], implode(' · ', array_filter(array((string) $row['service_name'], (string) $row['name']), 'strlen')), $base . 'edit_booking.php?id=' . (int) $row['id'],
+                    pg_booking_agenda_time((int) $row['start_at'], true), (string) ($statuses[$row['status']][0] ?? $row['status']), true, 'bi-calendar-check');
+            } else {
+                $put('booking', $row['id'], lang('Booking'), '', '', '', false, 'bi-calendar-check');
+            }
+        }
+    }
+
     if (!empty($ids['plan'])) {
         $rows = (array) db_items("SELECT * FROM ws_events WHERE id IN (" . $in('plan') . ")");
         $people = array();
@@ -1771,6 +1818,18 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             $found = db_values("SELECT id FROM calendar_events
                 WHERE (name LIKE '%" . $like . "%' OR location LIKE '%" . $like . "%')
                 ORDER BY start_time DESC LIMIT " . ($limit * 3));
+            break;
+
+        case 'booking':
+            // The customer's name, e-mail, phone or the service; what the
+            // reader may not open is dropped by ws_refs_resolve().
+            if (function_exists('pg_booking_ready') && pg_booking_ready()) {
+                $found = db_values("SELECT b.id FROM bookings b LEFT JOIN booking_services s ON s.id = b.service_id
+                    WHERE b.status <> 'held' AND (b.name LIKE '%" . $like . "%' OR b.email LIKE '%" . $like . "%' OR b.phone LIKE '%" . $like . "%' OR s.name LIKE '%" . $like . "%'"
+                    . (($number !== '') ? " OR b.id = '" . (int) $number . "'" : '') . ")
+                    ORDER BY b.start_at DESC LIMIT " . ($limit * 3));
+            }
+
             break;
 
         case 'plan':

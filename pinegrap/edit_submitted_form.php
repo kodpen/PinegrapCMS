@@ -209,11 +209,7 @@ if (!$_POST) {
 
     // if this is for a quiz custom form, prepare to output quiz score row
     if ($quiz == 1) {
-        $output_quiz_score_row =
-            '<div class="col-12 md:col-6 lg:col-4 my-3">
-                <div class="form-text">' . lang('Quiz Score') . '</div>
-                <div class="h5">' . $quiz_score . '</div>
-            </div>';
+        $output_quiz_score_row = pg_submitted_form_status_row(lang('Quiz Score'), h($quiz_score), false);
     }
 
     if ($complete) {
@@ -232,11 +228,7 @@ if (!$_POST) {
     $output_affiliate_code = '';
 
     if (AFFILIATE_PROGRAM == true) {
-        $output_affiliate_code =
-            '<div class="col-12 md:col-6 lg:col-4 my-3">
-                <div class="form-text">' . lang('Affiliate Code') . '</div>
-                <div class="h5">' . h($affiliate_code ? $affiliate_code : '-') . '</div>
-            </div>';
+        $output_affiliate_code = pg_submitted_form_status_row(lang('Affiliate Code'), h($affiliate_code ? $affiliate_code : '-'), false);
     }
     
     // if http referer is greater than 25 characters, then shorten text version
@@ -374,34 +366,40 @@ if (!$_POST) {
     // orders, and, for an offline payment the order still waits on, the
     // order screen's own Payment Received path from here.
     $output_payment = '';
+    $output_payment_form = '';
     $form_payment = $submitted_forms_manager ? pg_form_payment_record($id) : null;
 
     if ($form_payment) {
         $payment_order = $form_payment['order'];
         $may_open_orders = (($user['role'] < 3) || $user['manage_ecommerce']);
 
-        $output_payment = '<p class="p-0 m-0">' . lang('Payment') . ': '
-            . (($form_payment['state'] === 'paid')
-                ? '<span class="badge theme-success">' . lang('Paid') . '</span>'
-                : '<span class="badge theme-warning fg-black">' . lang('Unpaid') . '</span>');
+        $payment_value = (($form_payment['state'] === 'paid')
+            ? '<span class="badge theme-success">' . lang('Paid') . '</span>'
+            : '<span class="badge theme-warning fg-black">' . lang('Unpaid') . '</span>');
 
         if ($payment_order && $may_open_orders) {
-            $output_payment .= ' <a href="view_order.php?id=' . $payment_order['id'] . '">'
+            $payment_value .= ' <a href="view_order.php?id=' . $payment_order['id'] . '">'
                 . ((($payment_order['order_number'] !== '') && ($payment_order['order_number'] !== '0'))
                     ? h(lang(array('string' => 'Order #{var:1}', 'vars' => array($payment_order['order_number']))))
                     : lang('Incomplete order'))
                 . '</a>';
         }
 
-        $output_payment .= '</p>';
+        $output_payment = pg_submitted_form_status_row(lang('Payment'), $payment_value, false);
 
+        // The button sits in the status column, inside the screen's form, so
+        // it posts this separate form through its form attribute: a form
+        // inside a form is dropped by the browser.
         if ($payment_order && $may_open_orders && ($form_payment['state'] === 'unpaid') && pg_order_awaiting_payment($payment_order)) {
             $output_payment .= '
-                                <form action="edit_submitted_form.php?id=' . $id . '" method="post" class="mt-2">
-                                    ' . get_token_field() . '
-                                    <input type="hidden" name="id" value="' . $id . '" />
-                                    <button type="submit" name="record_offline_payment" value="1" class="btn btn-outline theme-primary btn-sm" data-confirm-content="' . h(lang('Record that the payment for this order has arrived?')) . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Record an offline payment') . '</button>
-                                </form>';
+                                            <div class="py-2 border-bottom">
+                                                <button type="submit" form="pg_record_offline_payment" name="record_offline_payment" value="1" class="btn btn-outline theme-primary btn-sm" data-confirm-content="' . h(lang('Record that the payment for this order has arrived?')) . '"><i class="bi bi-cash-coin me-1"></i>' . lang('Record an offline payment') . '</button>
+                                            </div>';
+            $output_payment_form = '
+                    <form id="pg_record_offline_payment" action="edit_submitted_form.php?id=' . $id . '" method="post">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="id" value="' . $id . '" />
+                    </form>';
         }
     }
 
@@ -433,114 +431,45 @@ if (!$_POST) {
     ) . '
 <main id="content" class="container-fluid">
             ' . $form_markup['wysiwyg_javascript'] . '
-        <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->get_warnings() . '
-                ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-                        <div class="row mb-3">
-                            <div class="col-12 md:col">
-                                
-                                <p class="p-0 m-0">' . lang('Reference Code') . ': ' . $reference_code . '</p>
-                                <p class="p-0 m-0">' . lang('Submitted') . ': ' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</p>
-                                ' . $output_payment . '
-                            </div>
-                            <div class="col-12 md:col-auto">' . $output_workspace_button . '</div>
-                        </div>
-                    </div>
+        ' . $liveform->output_errors() . '
+        ' . $liveform->get_warnings() . '
+        ' . $liveform->output_notices() . '
                     <form' . $form_markup['enctype'] . ' name="form" action="edit_submitted_form.php?id=' . $id . (($send_to !== '') ? '&amp;send_to=' . h(urlencode($send_to)) : '') . '" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '" />
                         ' . (($send_to !== '') ? '<input type="hidden" name="send_to" value="' . h($send_to) . '" />' : '') . '
                         ' . ($history_revision ? '<input type="hidden" name="restore_revision" value="' . (int) $history_revision['revision_no'] . '" />' : '') . '
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card my-7 ">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Form Properties') . '
-                                    </div>
-                                    <div class="card-body text-center md:text-start">
-                                        <div class="row">
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('Custom Form') . '</div>
-                                                <div class="h5">' . h($form_name) . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('Reference Code') . '</div>
-                                                <div class="h5">' . $reference_code . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('Status') . '</div>
-                                                ' . $status . '
-                                            </div>
-                                            ' . $output_quiz_score_row . '
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('Address Name') . '</div>
-                                                <div class="h6">' . ($output_address_name ? $output_address_name : '-') . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('Tracking Code') . '</div>
-                                                <div class="h5">' . h($tracking_code ? $tracking_code : '-') . '</div>
-                                            </div>
-                                            ' . $output_affiliate_code . '
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('Referring URL') . '</div>
-                                                ' . ($http_referer_text ? '<a class="pg-link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a>' : '-') . '
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . h(MEMBER_ID_LABEL) . '</div>
-                                                <div class="h5">' . h($member_id ? $member_id : '-') . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('IP Address') . '</div>
-                                                <div class="h5">' . $output_ip_address . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('Submitted Date') . '</div>
-                                                <div class="h6">' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <div class="form-text">' . lang('Last Modified Date') . '</div>
-                                                <div class="h6">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $last_modified_username . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label for="form_editor_username" class="form-text">' . lang('Form Editor') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'form_editor_username', 'id'=>'form_editor_username', 'value'=>$form_editor_username, 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                                <div class="form-text text-end">' . lang('enter username') . '</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-12">
-                                <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Form Data') . '
-                                    </div>
-                                    <div class="card-body">
-                                        ' . ($history_revision ? pg_record_revision_loaded_notice($history_revision, $history_notes) : '') . '
-                                        <div class="row">
-                                            ' . $form_markup['fields'] . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class=" btn-group flex-wrap justify-content-center">
-                                    ' . $output_buttons . '
-                                    <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
-                    </form>
-                    ' . ($history_enabled ? '<div class="col-12">' . pg_record_revision_history_markup($id, $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) . '</div>' : '') . '
-                </div>
-            </div>
-        </div>
+                        ' . pg_submitted_form_layout(
+                            pg_submitted_form_data_card($form_markup['fields'], ($history_revision ? pg_record_revision_loaded_notice($history_revision, $history_notes) : '')),
+                            pg_submitted_form_status_card(lang('Summary'), '
+                                        <dl class="mb-0">'
+                                . pg_submitted_form_status_row(lang('Status'), $status, false)
+                                . pg_submitted_form_status_row(lang('Reference Code'), $reference_code, false)
+                                . pg_submitted_form_status_row(lang('Custom Form'), h($form_name), false)
+                                . $output_quiz_score_row
+                                . $output_payment
+                                . pg_submitted_form_status_row(lang('Submitted Date'), get_relative_time(array('timestamp' => $submitted_timestamp)) . $submitted_username, false)
+                                . pg_submitted_form_status_row(lang('Last Modified Date'), get_relative_time(array('timestamp' => $last_modified_timestamp)) . $last_modified_username) . '
+                                        </dl>'
+                                . (($output_workspace_button !== '') ? '
+                                        <div class="mt-3">' . $output_workspace_button . '</div>' : ''))
+                            . pg_submitted_form_status_card(lang('Form Editor'), '
+                                        <label for="form_editor_username" class="form-label">' . lang('Username') . '</label>
+                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'form_editor_username', 'id'=>'form_editor_username', 'value'=>$form_editor_username, 'class'=>'form-control', 'maxlength'=>'100')))
+                            . pg_submitted_form_status_card(lang('Details'), '
+                                        <dl class="mb-0">'
+                                . pg_submitted_form_status_row(lang('Address Name'), ($output_address_name ? $output_address_name : '-'), false)
+                                . pg_submitted_form_status_row(lang('Tracking Code'), h($tracking_code ? $tracking_code : '-'), false)
+                                . $output_affiliate_code
+                                . pg_submitted_form_status_row(lang('Referring URL'), ($http_referer_text ? '<a class="pg-link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($http_referer_text) . '</a>' : '-'), false)
+                                . pg_submitted_form_status_row(MEMBER_ID_LABEL, h($member_id ? $member_id : '-'), false)
+                                . pg_submitted_form_status_row(lang('IP Address'), h($output_ip_address)) . '
+                                        </dl>'),
+                            $output_buttons . '
+                                        <button type="submit" name="delete_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('submitted form')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                        ) . '
+                    </form>' . $output_payment_form . '
+                    ' . ($history_enabled ? pg_record_revision_history_markup($id, $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) : '') . '
     
     ' . pg_ai_write_assets() . '
 </main>' . output_footer();
@@ -827,6 +756,11 @@ if (!$_POST) {
 
             // Loop through all fields in order to save data for each one.
             foreach ($fields as $field) {
+                // A signature keeps the row written when the form was created.
+                if (!pg_submitted_form_edit_writes_field($field)) {
+                    continue;
+                }
+
                 // if this is not an office use only field or the user has access to edit office use only fields, then update field
                 if (
                     ($field['office_use_only'] == 0)

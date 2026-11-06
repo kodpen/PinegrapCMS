@@ -940,6 +940,38 @@ function erp_edoc_accounts_tabs($label)
 }
 
 /**
+ * The rows a bulk action of the account sync screen was posted for. A card
+ * comes as card_ids[], an account as account_ids[]; the "put aside" view
+ * lists both in one list, whose ids say which they are (sync_rows[] as
+ * "card-12" or "account-5"), since a card and an account can share a
+ * number. Each id once; anything that is not a whole number above 0 (an
+ * array, a word) is no row, rather than card or account 1.
+ *
+ * @param array $post the request, as $_POST
+ * @return array array('card' => list of ints, 'account' => list of ints)
+ */
+function erp_edoc_accounts_bulk_ids(array $post)
+{
+    $ids = array('card' => array(), 'account' => array());
+
+    foreach (array('card' => 'card_ids', 'account' => 'account_ids') as $kind => $name) {
+        foreach ((array) ($post[$name] ?? array()) as $value) {
+            if (is_scalar($value) && preg_match('/^\d+$/', trim((string) $value)) && ((int) $value > 0)) {
+                $ids[$kind][(int) $value] = true;
+            }
+        }
+    }
+
+    foreach ((array) ($post['sync_rows'] ?? array()) as $value) {
+        if (is_scalar($value) && preg_match('/^(card|account)-(\d+)$/', (string) $value, $match) && ((int) $match[2] > 0)) {
+            $ids[$match[1]][(int) $match[2]] = true;
+        }
+    }
+
+    return array('card' => array_keys($ids['card']), 'account' => array_keys($ids['account']));
+}
+
+/**
  * Every card of a provider and every account that could have one, sorted
  * into the tabs. A linked card carries its account (a_* columns) and its
  * differences ('diff'); a card that is not linked carries what speaks for

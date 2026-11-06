@@ -276,14 +276,14 @@ function pg_oauth_authorize() {
 
 		validate_token_field();
 
-		if ((isset($_POST['pg_oauth_action']) ? (string)$_POST['pg_oauth_action'] : '') !== 'allow') {
+		if ($param('pg_oauth_action') !== 'allow') {
 
 			$fail('access_denied', 'The person declined the connection.');
 
 		}
 
 		$chosen = (isset($_POST['grant']) && is_array($_POST['grant']))
-			? array_values(array_intersect($asked, array_map('strval', $_POST['grant'])))
+			? array_values(array_intersect($asked, array_filter($_POST['grant'], 'is_string')))
 			: array();
 
 		if (empty($chosen)) {

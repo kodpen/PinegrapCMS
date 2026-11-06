@@ -81,3 +81,21 @@ function test_clean_up_count_text_more_values()
 		'names'
 	);
 }
+
+// The status column's Summary: folders, files and, with e-commerce on, the
+// expired payment records, each counted once; a null record count drops
+// that row instead of showing 0 for a feature that is off.
+function test_clean_up_summary_counts()
+{
+	$with = pg_clean_up_summary(2, 1234, 5);
+	pg_assert_true(strpos($with, lang('Folders')) !== false, 'folders row');
+	pg_assert_true(strpos($with, lang('Expired payment records')) !== false, 'records row');
+	pg_assert_true(strpos($with, '>' . pg_format_number(1234, 0) . '</dd>') !== false, 'file count');
+	pg_assert_same(3, substr_count($with, '<dt '), 'three rows');
+	pg_assert_same(2, substr_count($with, 'border-bottom'), 'no rule under the last row');
+
+	$without = pg_clean_up_summary(0, 3, null);
+	pg_assert_false(strpos($without, lang('Expired payment records')) !== false, 'no records row');
+	pg_assert_same(2, substr_count($without, '<dt '), 'two rows');
+	pg_assert_true(strpos($without, lang('Everything listed here is deleted permanently.')) !== false, 'warning');
+}

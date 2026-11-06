@@ -9,14 +9,20 @@
  * whether it at least honours Cache-Control: private (then pictures stay
  * negotiated and private; otherwise the original goes until the next test).
  *
+ * The confirmation needs proof: both copies must come back out of the edge's
+ * cache in their own format. The right format alone proves nothing, because
+ * the server's requests to its own address may skip the edge's cache while a
+ * visitor's do not; then the confirmation is not given, or is taken back.
+ *
  * It needs no CDN account: one public picture is fetched through the site's
  * own address (HOSTNAME_SETTING) at fresh one-off ?pg_vary_check= addresses,
  * which get_file.php negotiates whatever the last test left
  * (pg_image_vary_check_asked()). The general job runs it once after the
- * switch is turned on or the confirmation taken back, then daily while the
- * site is unconfirmed; Cloudflare Tools' check button runs the same test.
- * What it found is kept in same_address.json beside the derivatives, which
- * get_file.php reads (pg_image_same_address_mode()).
+ * switch or the confirmation changes, then daily while the switch is on,
+ * confirmed or not, so a confirmation ticked by hand or outlived by the
+ * CDN's setup is taken back; Cloudflare Tools' check button runs the same
+ * test. What it found is kept in same_address.json beside the derivatives,
+ * which get_file.php reads (pg_image_same_address_mode()).
  *
  * Loaded by job.php, cloudflare.php and the System Status report.
  *
@@ -67,6 +73,48 @@ function pg_image_vary_answer_proxied($headers)
 }
 
 /**
+ * Whether an answer came out of a cache rather than from the server, read
+ * from the last header block: Cloudflare's CF-Cache-Status HIT, STALE,
+ * UPDATING or REVALIDATED, an X-Cache naming a hit (Varnish, Fastly,
+ * CloudFront's "Hit from cloudfront"), or an Age header, which only a cache
+ * adds (get_file.php sends none).
+ *
+ * @param string $headers the raw header block(s)
+ * @return bool
+ */
+function pg_image_vary_answer_hit($headers)
+{
+    $hit = false;
+
+    foreach (preg_split('/\r?\n/', (string) $headers) as $line) {
+
+        if (stripos($line, 'HTTP/') === 0) {
+            $hit = false;
+            continue;
+        }
+
+        $colon = strpos($line, ':');
+
+        if ($colon === false) {
+            continue;
+        }
+
+        $name = strtolower(trim(substr($line, 0, $colon)));
+        $value = trim(substr($line, $colon + 1));
+
+        if (
+            (($name === 'cf-cache-status') && in_array(strtoupper($value), array('HIT', 'STALE', 'UPDATING', 'REVALIDATED'), true))
+            || (($name === 'x-cache') && (stripos($value, 'hit') !== false))
+            || (($name === 'age') && (preg_match('/^\d+$/', $value) === 1))
+        ) {
+            $hit = true;
+        }
+    }
+
+    return $hit;
+}
+
+/**
  * The type of one answer, without parameters, lower case.
  *
  * @param array $answer status, type, proxied
@@ -78,23 +126,28 @@ function pg_image_vary_answer_type($answer)
 }
 
 /**
- * The verdict of the public test: three fetches of one picture at a fresh
- * address answered public, Accept naming WebP, then not, then naming it
- * again. Each answer is array(status, type (Content-Type), proxied (a CDN
- * header came back)).
+ * The verdict of the public test: four fetches of one picture at a fresh
+ * address answered public, Accept naming WebP, then not, then naming it,
+ * then not. Each answer is array(status, type (Content-Type), proxied (a CDN
+ * header came back), hit (it came out of a cache)).
  *
- * ok when the first and third got WebP and the second the original;
- * unreachable when one was not answered with 200 and a picture; not_proxied
- * when no answer came through a CDN or proxy; no_webp when the first got no
- * WebP (the switch is off or the server made none); shared when one reader
- * got the other's copy: the edge keeps one copy for every browser.
+ * ok when the first and third got WebP, the second and fourth the original,
+ * and the third and fourth came out of the cache: the edge was seen keeping
+ * both copies. not_cached when every reader got its own format but the last
+ * two did not come out of a cache: nothing shows the edge keeps a copy per
+ * format, since requests that skip its cache (the server asking its own
+ * address) are answered right whatever it gives a visitor. unreachable when
+ * one was not answered with 200 and a picture; not_proxied when no answer
+ * came through a CDN or proxy; no_webp when the first got no WebP (the
+ * switch is off or the server made none); shared when one reader got the
+ * other's copy: the edge keeps one copy for every browser.
  *
  * @param array $answers
  * @return string
  */
 function pg_image_vary_verdict($answers)
 {
-    if (!is_array($answers) || (count($answers) !== 3)) {
+    if (!is_array($answers) || (count($answers) !== 4)) {
         return 'unreachable';
     }
 
@@ -121,8 +174,16 @@ function pg_image_vary_verdict($answers)
         return 'no_webp';
     }
 
-    if ((pg_image_vary_answer_type($answers[1]) === 'image/webp') || (pg_image_vary_answer_type($answers[2]) !== 'image/webp')) {
+    if (
+        (pg_image_vary_answer_type($answers[1]) === 'image/webp')
+        || (pg_image_vary_answer_type($answers[2]) !== 'image/webp')
+        || (pg_image_vary_answer_type($answers[3]) === 'image/webp')
+    ) {
         return 'shared';
+    }
+
+    if (empty($answers[2]['hit']) || empty($answers[3]['hit'])) {
+        return 'not_cached';
     }
 
     return 'ok';
@@ -160,11 +221,13 @@ function pg_image_vary_private_verdict($answers)
 }
 
 /**
- * What a test changes. cdn: set (the edge keeps a copy per format), clear
- * (it was confirmed and keeps one copy), '' (unchanged). mode: public
- * (confirmed), private (pictures negotiated, kept by no shared cache),
- * original (the edge keeps private answers too), '' (keep the last mode: the
- * test could not tell).
+ * What a test changes. cdn: set (the edge was seen keeping a copy per
+ * format), clear (it was confirmed, but keeps one copy, or was not seen
+ * keeping either), '' (unchanged). mode: public (confirmed), private
+ * (pictures negotiated, kept by no shared cache), original (the edge keeps
+ * private answers too), '' (keep the last mode: the test could not tell).
+ * A confirmation the test cannot see through (not_proxied: the server's
+ * requests reach no CDN) stays as the operator left it.
  *
  * @param string $verdict         pg_image_vary_verdict(), or no_sample
  * @param string $private_verdict pg_image_vary_private_verdict() ('' when not run)
@@ -193,14 +256,20 @@ function pg_image_vary_outcome($verdict, $private_verdict, $cdn)
         return array('cdn' => $cdn ? 'clear' : '', 'mode' => $mode);
     }
 
+    if ($verdict === 'not_cached') {
+        return array('cdn' => $cdn ? 'clear' : '', 'mode' => '');
+    }
+
     return array('cdn' => '', 'mode' => '');
 }
 
 /**
  * Whether the general job runs the test now: the switch is on (bits 1 and
- * 4), nobody confirmed the CDN (bit 8), and the last test is older than a
- * day (a week when nothing was in between), or was made under other bits
- * (the switch was just turned on, or the confirmation taken back).
+ * 4), and the last test is older than a day (a week when nothing was in
+ * between), or was made under other bits (the switch was just turned on, the
+ * confirmation ticked or taken back). A confirmed site is tested too: a
+ * confirmation ticked by hand, or one the CDN's setup no longer keeps, would
+ * otherwise send one copy to every reader for good.
  *
  * @param array|null $state pg_image_vary_state()
  * @param int        $bits  config.image_derivative_formats
@@ -211,7 +280,7 @@ function pg_image_vary_test_due($state, $bits, $now)
 {
     $bits = (int) $bits;
 
-    if ((($bits & 5) !== 5) || (($bits & 8) === 8)) {
+    if (($bits & 5) !== 5) {
         return false;
     }
 
@@ -258,7 +327,8 @@ function pg_image_vary_state()
 }
 
 /**
- * One fetch of the sample: status, type, proxied, and why it failed.
+ * One fetch of the sample: status, type, proxied, hit (it came out of a
+ * cache), and why it failed.
  *
  * @param string $url
  * @param string $accept
@@ -280,17 +350,20 @@ function pg_image_vary_fetch($url, $accept)
             : (string) $answer['error'];
     }
 
+    $headers = isset($answer['headers']) ? $answer['headers'] : '';
+
     return array(
         'status'  => (int) $answer['status'],
         'type'    => (string) $answer['content_type'],
-        'proxied' => pg_image_vary_answer_proxied(isset($answer['headers']) ? $answer['headers'] : ''),
+        'proxied' => pg_image_vary_answer_proxied($headers),
+        'hit'     => pg_image_vary_answer_hit($headers),
         'reason'  => $reason);
 }
 
 /**
  * The test itself: the newest public JPEG or PNG with a lighter WebP copy
  * (made here first, so the test does not wait for an encode slot) fetched
- * three times at a fresh public test address (pg_image_vary_verdict()); when
+ * four times at a fresh public test address (pg_image_vary_verdict()); when
  * the edge keeps one copy, twice more at a fresh private one
  * (pg_image_vary_private_verdict()). Nothing is stored.
  *
@@ -359,7 +432,7 @@ function pg_image_vary_check()
         return $answers;
     };
 
-    $result['verdict'] = pg_image_vary_verdict($collect($base . bin2hex(random_bytes(8)), array($webp, $other, $webp)));
+    $result['verdict'] = pg_image_vary_verdict($collect($base . bin2hex(random_bytes(8)), array($webp, $other, $webp, $other)));
 
     if ($result['verdict'] === 'shared') {
         $result['private'] = pg_image_vary_private_verdict($collect($base . bin2hex(random_bytes(8)) . '&pg_vary_cache=private', array($webp, $other)));

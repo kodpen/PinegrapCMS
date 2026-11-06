@@ -105,27 +105,26 @@ if (!$_POST) {
         ),
     ]) . '
 <main id="content" class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->get_warnings() . '
-            ' . $liveform->output_notices() . '
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
 
-            <form name="form" action="add_erp_manual_invoice.php" method="post" autocomplete="off">
-                ' . get_token_field() . '
-                ' . erp_invoice_form_cards($liveform, $card_options) . '
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                    <div class="container">
-                        <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" data-pg-save-shortcut class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
-                            <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
-                        </div>
+    <form name="form" action="add_erp_manual_invoice.php" method="post" autocomplete="off">
+        ' . get_token_field() . '
+        ' . erp_invoice_form_cards($liveform, array_merge($card_options, array(
+            'columns' => true,
+            'save_bar' => '
+            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="container">
+                    <div class="btn-group flex-wrap justify-content-center">
+                        <button type="submit" name="erp_action" value="draft" data-pg-save-shortcut class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
+                        <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
                     </div>
-                </nav>
-            </form>
-            ' . erp_account_quick_modal() . '
-        </div>
-    </div>
+                </div>
+            </nav>',
+        ))) . '
+    </form>
+    ' . erp_account_quick_modal() . '
 </main>' .
     output_footer();
 

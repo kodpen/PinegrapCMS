@@ -62,3 +62,50 @@ function test_erp_expense_recurrence_till_refusal()
 	pg_assert_same(lang('Choose a payment method.'), erp_expense_recurrence_till_refusal($paid, $till, 'barter'), 'an unknown method');
 	pg_assert_same(lang('Choose a payment method.'), erp_expense_recurrence_till_refusal($paid, $till, ''), 'no method');
 }
+
+// A changed expense hands its new figures to the active repeat of its family:
+// what it is, what it costs and its tax; how often, the day and the end stay.
+function test_erp_expense_recurrence_changes()
+{
+	$recurrence = array('id' => 7, 'status' => 'active', 'currency' => 'TRY', 'category_id' => 2, 'supplier' => 'Kira A',
+		'supplier_tax_number' => '', 'description' => 'Rent', 'amount' => 100000, 'tax_rate' => '20.000', 'tax_deductible' => 1);
+	$expense = array('category_id' => 5, 'supplier' => 'Kira B', 'supplier_tax_number' => '1234567890', 'description' => 'Rent',
+		'currency' => 'TRY', 'total_amount' => 150000, 'tax_rate' => '10.000', 'tax_deductible' => 0);
+
+	pg_assert_same(array(
+		'category_id' => 5,
+		'supplier' => 'Kira B',
+		'supplier_tax_number' => '1234567890',
+		'tax_deductible' => 0,
+		'amount' => 150000,
+		'tax_rate' => '10.000',
+	), erp_expense_recurrence_changes($expense, $recurrence), 'the corrected supplier, amount, category and tax reach the repeat');
+
+	$same = array('category_id' => 2, 'supplier' => 'Kira A', 'supplier_tax_number' => '', 'description' => 'Rent',
+		'currency' => 'TRY', 'total_amount' => 100000, 'tax_rate' => '20.000', 'tax_deductible' => 1);
+	pg_assert_same(array(), erp_expense_recurrence_changes($same, $recurrence), 'unchanged values: nothing to write');
+	pg_assert_same(array(), erp_expense_recurrence_changes($expense, array('status' => 'stopped') + $recurrence), 'a stopped repeat is left alone');
+	pg_assert_same(array(), erp_expense_recurrence_changes($expense, null), 'no repeat');
+
+	// Another currency is not a corrected amount, and a repeat written as
+	// paid takes it from a till in its own currency: the figures stay.
+	$changes = erp_expense_recurrence_changes(array('currency' => 'EUR') + $expense, $recurrence);
+	pg_assert_same(false, array_key_exists('amount', $changes), 'another currency keeps the amount');
+	pg_assert_same(false, array_key_exists('tax_rate', $changes), 'another currency keeps the tax rate');
+	pg_assert_same('Kira B', $changes['supplier'] ?? null, 'another currency still corrects the supplier');
+}
+
+// A repeat's first and end dates are calendar days: a typed 30 February or
+// month 13 passed the pattern and was stored as 0000-00-00 or refused by the
+// server, so the repeat never ran or the end was silently dropped.
+function test_erp_recurring_date_ok()
+{
+	pg_assert_same(true, erp_recurring_date_ok('2026-01-31'), 'a real day');
+	pg_assert_same(true, erp_recurring_date_ok('2028-02-29'), '29 February of a leap year');
+	pg_assert_same(false, erp_recurring_date_ok('2027-02-29'), '29 February of a common year');
+	pg_assert_same(false, erp_recurring_date_ok('2026-02-30'), '30 February');
+	pg_assert_same(false, erp_recurring_date_ok('2026-13-01'), 'month 13');
+	pg_assert_same(false, erp_recurring_date_ok('0000-00-00'), 'the empty date');
+	pg_assert_same(false, erp_recurring_date_ok('2026-1-5'), 'not Y-m-d');
+	pg_assert_same(false, erp_recurring_date_ok(array('2026-01-31')), 'an array');
+}

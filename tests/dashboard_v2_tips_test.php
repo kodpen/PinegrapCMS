@@ -52,3 +52,30 @@ function test_dashboard_v2_slot_labels_hourly()
 	pg_assert_same(array('13:00', '14:00', '15:00'), pg_dashboard_v2_slot_labels($from, 3600, 3), 'hours');
 	pg_assert_same(7, count(pg_dashboard_v2_slot_labels($from, 86400, 7)), 'one label per day');
 }
+
+function test_dashboard_v2_plural_suffix()
+{
+	pg_assert_same('', pg_dashboard_v2_plural_suffix(1), 'one: no suffix');
+	pg_assert_same('s', pg_dashboard_v2_plural_suffix(0), 'zero: plural');
+	pg_assert_same('s', pg_dashboard_v2_plural_suffix(12), 'many: plural');
+	pg_assert_same('', pg_dashboard_v2_plural_suffix('1'), 'a numeric string counts as its number');
+	pg_assert_same('s', pg_dashboard_v2_plural_suffix(1000), 'compared with the raw count, not its formatted text');
+}
+
+function test_dashboard_v2_cards_give_the_plural_suffix()
+{
+	// Every lang() string with {suffix:1} in a new dashboard card passes
+	// 'suffix', or lang() prints the placeholder itself.
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/*.php') as $file) {
+		$lines = file($file);
+
+		foreach ($lines as $i => $line) {
+			if (!preg_match("/'string'\s*=>\s*'[^']*\{suffix:1\}/", $line)) {
+				continue;
+			}
+
+			$window = implode('', array_slice($lines, $i, 4));
+			pg_assert_true(strpos($window, "'suffix'") !== false, basename($file) . ':' . ($i + 1) . ' passes the suffix');
+		}
+	}
+}

@@ -78,10 +78,10 @@ function ws_flow_template_setting_types()
  * @param array $fill me (the person's id), channel (the channel open, 0 for
  *                    none), site (the site's address), email (the person's),
  *                    today (YYYY-MM-DD), metrics (keys of the counts the
- *                    person may read), recap_ai (Pinegrap AI may sum up what
- *                    was missed), join (a flow may start when somebody
- *                    joins a channel), events (keys of the events the
- *                    person may wait for)
+ *                    person may read), recap_ai (Pinegrap AI is set up:
+ *                    it may sum up what was missed and sort forms), join
+ *                    (a flow may start when somebody joins a channel),
+ *                    events (keys of the events the person may wait for)
  * @return array[] see the file's docblock
  */
 function ws_flow_templates($fill)
@@ -374,6 +374,222 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'task', 'next')));
     }
 
+    // A week after delivery the customer has used what came: a task to ask
+    // how it went and for a review (the delay box waits at most 90 days).
+    if (in_array('order.delivered', $events, true)) {
+        $out[] = array('key' => 'review_request', 'category' => 'sales', 'icon' => 'bi-star',
+            'title' => lang('Ask for a review after delivery'),
+            'help' => lang('A week after an order is delivered, a task to ask the customer how it went and for a review.'),
+            'boxes' => array(
+                'start' => $on('order.delivered'),
+                'wait'  => array('kind' => 'delay', 'config' => array('amount' => 7, 'unit' => 'days')),
+                'ask'   => $task(lang('Ask the customer for a review of {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'wait', 'next'), array('wait', 'ask', 'done')));
+    }
+
+    // Restocking asked first: an order to the supplier spends money, so
+    // somebody approves it before the task to place it opens.
+    if (in_array('stock.low', $events, true)) {
+        $out[] = array('key' => 'restock_approval', 'category' => 'sales', 'icon' => 'bi-cart-check',
+            'title' => lang('Restock after approval'),
+            'help' => lang('When a product runs low, asks in a channel whether to order more; approved, a task to order it opens.'),
+            'boxes' => array(
+                'start' => $on('stock.low'),
+                'ask'   => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Order more of {{record_title}}?'),
+                    'text' => lang('{{record_title}} is running low. Approve to order more, or reject to leave it as it is.'),
+                    'approvers' => array($me), 'rule' => 'any', 'closes_in' => 48),
+                    'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+                'order' => $task(lang('Order more of {{record_title}}'), 'high'),
+                'left'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Not ordering more of {{record_title}} for now.')), 'setting' => array('person', 'user_ids')),
+                'late'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Nobody decided in time whether to order more of {{record_title}}.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'ask', 'next'), array('ask', 'order', 'approved'), array('ask', 'left', 'rejected'),
+                array('ask', 'late', 'expired')));
+    }
+
+    // A return to handle within two days, said in the channel; the person
+    // is told when the task is still open by then.
+    if (in_array('order.return.requested', $events, true)) {
+        $out[] = array('key' => 'return_task', 'category' => 'sales', 'icon' => 'bi-arrow-return-left',
+            'title' => lang('Handle a return'),
+            'help' => lang('A requested return becomes a task due in two days and a line in the channel; you are told if it is still open then.'),
+            'boxes' => array(
+                'start'  => $on('order.return.requested'),
+                'handle' => array('kind' => 'task', 'config' => array('title' => lang('Handle the return of {{record_title}}'),
+                    'description' => '{{record}}' . "\n" . '{{record_link}}', 'assignees' => array($me), 'due_in' => 2, 'priority' => 'high', 'timeout' => 48),
+                    'setting' => array('person', 'assignees')),
+                'tell'   => $tell(lang('A return was requested: {{record}}')),
+                'late'   => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('The return of {{record_title}} is still not handled after two days.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'handle', 'next'), array('start', 'tell', 'next'), array('handle', 'late', 'timeout')));
+    }
+
+    // A cancelled booking leaves a free slot and a guest who may still
+    // come: a line in the channel and a task to offer another time.
+    if (in_array('booking.cancelled', $events, true)) {
+        $out[] = array('key' => 'booking_cancelled', 'category' => 'sales', 'icon' => 'bi-calendar-x',
+            'title' => lang('Rebook a cancelled booking'),
+            'help' => lang('When a booking is cancelled, a line in the channel and a task to offer the guest another time.'),
+            'boxes' => array(
+                'start' => $on('booking.cancelled'),
+                'tell'  => $tell(lang('A booking was cancelled: {{record}}')),
+                'offer' => $task(lang('Offer another time for {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'tell', 'next'), array('start', 'offer', 'next')));
+    }
+
+    // A cancelled order, by the customer or the shop: a line in the
+    // channel and a task to find out why and win the customer back.
+    if (in_array('order.cancelled', $events, true)) {
+        $out[] = array('key' => 'order_cancelled', 'category' => 'sales', 'icon' => 'bi-bag-x',
+            'title' => lang('Follow up a cancelled order'),
+            'help' => lang('When an order is cancelled, a line in the channel and a task to find out why and help the customer.'),
+            'boxes' => array(
+                'start' => $on('order.cancelled'),
+                'tell'  => $tell(lang('An order was cancelled: {{record}}')),
+                'ask'   => $task(lang('Follow up the cancellation of {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'tell', 'next'), array('start', 'ask', 'next')));
+    }
+
+    // A day before a confirmed booking the host is told and the guest gets
+    // a reminder. The booking is read again after the wait: one cancelled
+    // or no longer confirmed meanwhile is not reminded, and the texts give
+    // the start it has then.
+    if (in_array('booking.confirmed', $events, true)) {
+        $read = function () {
+            return array('kind' => 'record_get', 'config' => array('record' => 'booking', 'id' => '{{trigger.record_id}}'));
+        };
+        $out[] = array('key' => 'booking_reminder', 'category' => 'sales', 'icon' => 'bi-calendar-check',
+            'title' => lang('Booking reminder'),
+            'help' => lang('A day before a confirmed booking, the person who hosts it is told and the guest gets a reminder e-mail.'),
+            'boxes' => array(
+                'start' => $on('booking.confirmed'),
+                'read'  => $read(),
+                'wait'  => array('kind' => 'delay', 'config' => array('mode' => 'until', 'at' => '{{node.read.start}}', 'amount' => 1, 'unit' => 'days')),
+                'again' => $read(),
+                'still' => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.again.status}}', 'op' => 'eq', 'value' => 'confirmed'))),
+                'host'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Tomorrow at {{node.again.start}}: {{record}}')), 'setting' => array('person', 'user_ids')),
+                'guest' => array('kind' => 'email', 'config' => array('to' => '', 'recipient' => 'record_person', 'purpose' => 'info', 'page_id' => 0,
+                    'subject' => lang('A reminder of your booking tomorrow'),
+                    'body' => lang('Hello {{node.again.name}},') . "\n\n" . lang('This is a reminder of your booking for {{node.again.service}} on {{node.again.start}}. We look forward to seeing you.'))),
+            ),
+            'edges' => array(array('start', 'read', 'next'), array('read', 'wait', 'done'), array('wait', 'again', 'done'), array('again', 'still', 'done'),
+                array('still', 'host', 'yes'), array('still', 'guest', 'yes')));
+    }
+
+    // A failed run of a flow of the team's channel, said in that channel
+    // with the flow, the box and what went wrong. The start is narrowed to
+    // the channel the line goes to, so a private channel's run is never
+    // told in another.
+    if (in_array('workspace.flow.run.failed', $events, true)) {
+        $out[] = array('key' => 'failed_runs', 'category' => 'team', 'icon' => 'bi-exclamation-octagon',
+            'title' => lang('Failed runs to the team'),
+            'help' => lang('When a run of one of the channel\'s flows fails, a line in the channel names the flow, the box and what went wrong.'),
+            'boxes' => array(
+                'start' => $on('workspace.flow.run.failed', array('channel_id' => $channel)) + array('setting' => array('channel', 'channel_id')),
+                'tell'  => array('kind' => 'post', 'config' => array('channel_id' => $channel,
+                    'body' => lang('A run of the flow {{record_title}} failed (run {{trigger.run_id}}). {{message}}')), 'setting' => array('channel', 'channel_id')),
+            ),
+            'edges' => array(array('start', 'tell', 'next')));
+    }
+
+    // An invoice past its due date: a task to collect it that waits seven
+    // days; still open by then, the person is told. No box reads an
+    // invoice, so the task is the payment's mark: done once it is paid.
+    if (in_array('erp.invoice.overdue', $events, true)) {
+        $out[] = array('key' => 'invoice_overdue_follow_up', 'category' => 'sales', 'icon' => 'bi-receipt',
+            'title' => lang('Follow up an overdue invoice'),
+            'help' => lang('When an invoice becomes overdue, a task to collect it; you are told if it is still not collected seven days later.'),
+            'boxes' => array(
+                'start'   => $on('erp.invoice.overdue'),
+                'collect' => array('kind' => 'task', 'config' => array('title' => lang('Collect the overdue invoice {{record_title}}'),
+                    'description' => '{{record}}' . "\n" . lang('Due on {{trigger.due_date}}, {{trigger.days_overdue}} days overdue.') . "\n" . '{{record_link}}',
+                    'assignees' => array($me), 'due_in' => 7, 'priority' => 'high', 'timeout' => 168), 'setting' => array('person', 'assignees')),
+                'late'    => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('The overdue invoice {{record_title}} is still not collected after seven days.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'collect', 'next'), array('collect', 'late', 'timeout')));
+    }
+
+    // A review of two stars or fewer: a task to answer it and a line in the
+    // channel. A review without stars has no rating, which is never "2 or
+    // less" (ws_flow_condition_value_holds()).
+    if (in_array('product.review.created', $events, true)) {
+        $out[] = array('key' => 'low_review', 'category' => 'sales', 'icon' => 'bi-star-half',
+            'title' => lang('Answer a low review'),
+            'help' => lang('When a product gets a review of two stars or fewer, a task to answer it and a line in the channel.'),
+            'boxes' => array(
+                'start'  => $on('product.review.created'),
+                'low'    => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{trigger.rating}}', 'op' => 'lte', 'value' => '2'))),
+                'answer' => $task(lang('Answer the low review of {{record_title}}'), 'high'),
+                'tell'   => $tell(lang('A review of {{trigger.rating}} stars was written: {{record}}')),
+            ),
+            'edges' => array(array('start', 'low', 'next'), array('low', 'answer', 'yes'), array('low', 'tell', 'yes')));
+    }
+
+    // A subscription whose renewal payment failed: the person is told and a
+    // task to contact the customer opens (the record is the contact).
+    if (in_array('subscription.failed', $events, true)) {
+        $out[] = array('key' => 'subscription_failed', 'category' => 'sales', 'icon' => 'bi-credit-card-2-back',
+            'title' => lang('Failed subscription payment'),
+            'help' => lang('When a subscription renewal payment fails, you are told and a task to contact the customer opens.'),
+            'boxes' => array(
+                'start'   => $on('subscription.failed'),
+                'told'    => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('A subscription renewal payment failed: {{record}}')), 'setting' => array('person', 'user_ids')),
+                'contact' => $task(lang('Contact {{record_title}} about the failed subscription payment'), 'high'),
+            ),
+            'edges' => array(array('start', 'told', 'next'), array('start', 'contact', 'next')));
+    }
+
+    // A cart quote not ordered two days after it was made: a task to call
+    // the customer. The quote is read after the wait, so one ordered,
+    // cancelled or past its last day meanwhile opens no task.
+    if (in_array('cart_quote.created', $events, true)) {
+        $out[] = array('key' => 'cart_quote_follow_up', 'category' => 'sales', 'icon' => 'bi-cart3',
+            'title' => lang('Follow up a cart quote'),
+            'help' => lang('Two days after a cart quote is made, a task to call the customer when it is still open and not ordered.'),
+            'boxes' => array(
+                'start' => $on('cart_quote.created'),
+                'wait'  => array('kind' => 'delay', 'config' => array('amount' => 2, 'unit' => 'days')),
+                'read'  => array('kind' => 'record_get', 'config' => array('record' => 'cart_quote', 'id' => '{{trigger.record_id}}')),
+                'open'  => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.read.status}}', 'op' => 'eq', 'value' => 'open'))),
+                'call'  => $task(lang('Call the customer about {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'wait', 'next'), array('wait', 'read', 'done'), array('read', 'open', 'done'), array('open', 'call', 'yes')));
+    }
+
+    // Incoming forms sorted by Pinegrap AI from their answers: a task for a
+    // sales question, another for a support request, spam ends, and a form
+    // it cannot place is told to the person so none is lost. The AI box
+    // refuses to publish while Pinegrap AI is not set up, so the template
+    // is offered only when it is.
+    if (in_array('form.submitted', $events, true) && !empty($fill['recap_ai'])) {
+        $out[] = array('key' => 'form_sort', 'category' => 'site', 'icon' => 'bi-funnel',
+            'title' => lang('Sort incoming forms'),
+            'help' => lang('Pinegrap AI reads each submitted form and opens a task for sales or for support; spam ends there.'),
+            'boxes' => array(
+                'start'   => $on('form.submitted'),
+                'read'    => array('kind' => 'record_get', 'config' => array('record' => 'form', 'id' => '{{trigger.record_id}}')),
+                'sort'    => array('kind' => 'ai', 'config' => array('mode' => 'classify',
+                    'prompt' => lang('Sort this submitted web form. Sales: a question about buying, prices or an offer. Support: help with something already bought or in use. Spam: advertising, nonsense or anything not meant for us.'),
+                    'text' => '{{node.read.answers}}', 'classes' => array(lang('Sales'), lang('Support'), lang('Spam')), 'closes_in' => 24)),
+                'sales'   => $task(lang('Answer the sales question {{record_title}}'), 'high'),
+                'support' => $task(lang('Answer the support request {{record_title}}'), 'normal'),
+                'spam'    => array('kind' => 'end', 'config' => array()),
+                'unsure'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Pinegrap AI could not sort a submitted form: {{record}}')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'read', 'next'), array('read', 'sort', 'done'), array('sort', 'sales', 'class_1'),
+                array('sort', 'support', 'class_2'), array('sort', 'spam', 'class_3'), array('sort', 'unsure', 'other')));
+    }
+
     // The templates a scheduled action has no form for: tasks that wait for
     // each other, a wait between them, approvals and their outcomes.
 
@@ -437,6 +653,52 @@ function ws_flow_templates($fill)
         ),
         'edges' => array(array('start', 'write', 'next'), array('write', 'review', 'done'), array('review', 'publish', 'approved'),
             array('review', 'told', 'rejected')));
+
+    // Goods received, started by hand when a delivery is due: the people
+    // asked approve with how many arrived (the approval box's number
+    // answer), and the count is told; a delivery not there is told too.
+    // The number can then go into a stock table with a row box, whose table
+    // and column only the person knows.
+    $out[] = array('key' => 'goods_received', 'category' => 'sales', 'icon' => 'bi-truck',
+        'title' => lang('Goods received'),
+        'help' => lang('Asks whether a delivery arrived and how many came; the count is told, and so is a delivery that has not arrived.'),
+        'boxes' => array(
+            'start' => array('kind' => 'manual', 'config' => array('subject' => '')),
+            'ask'   => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Did the delivery arrive?'),
+                'text' => lang('Approve with how many arrived, or reject when the delivery has not arrived.'),
+                'approvers' => array($me), 'rule' => 'any', 'closes_in' => 24, 'answer' => 'number', 'answer_label' => lang('How many arrived?')),
+                'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+            'got'   => $tell(lang('The delivery arrived: {{node.ask.answer_number}} received.')),
+            'none'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me), 'text' => lang('The delivery has not arrived.')),
+                'setting' => array('person', 'user_ids')),
+        ),
+        'edges' => array(array('start', 'ask', 'next'), array('ask', 'got', 'approved'), array('ask', 'none', 'rejected')));
+
+    // The cash in the till counted each evening: the count comes as the
+    // approval's number answer, Calculate takes the expected amount (a
+    // constants box the person sets) from it, and the manager is told when
+    // the difference is not zero, or when nobody counted.
+    if (function_exists('ws_flow_constants_normalize')) {
+        $out[] = array('key' => 'cash_count', 'category' => 'sales', 'icon' => 'bi-cash-coin',
+            'title' => lang('Daily cash count'),
+            'help' => lang('Each evening asks for the counted cash; you are told when it differs from the expected amount, set in the Constants box.'),
+            'boxes' => array(
+                'start'    => $start($today, '19:00', 'daily') + array('setting' => array('time', 'time')),
+                'ask'      => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Today\'s cash count'),
+                    'text' => lang('Count the cash in the till and approve with the amount.'),
+                    'approvers' => array($me), 'rule' => 'any', 'closes_in' => 4, 'answer' => 'number', 'answer_label' => lang('Counted amount')),
+                    'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+                'expected' => array('kind' => 'constants', 'config' => array('rows' => array(array('key' => 'expected', 'type' => 'number', 'value' => '0')))),
+                'diff'     => array('kind' => 'value', 'config' => array('rule' => 'calculate', 'a' => '{{node.ask.answer_number}} - {{node.expected.expected}}', 'places' => 2)),
+                'check'    => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.diff.value}}', 'op' => 'neq', 'value' => '0'))),
+                'off'      => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('The cash count is off by {{node.diff.value}}: {{node.ask.answer_number}} counted, {{node.expected.expected}} expected.')),
+                    'setting' => array('person', 'user_ids')),
+                'late'     => array('kind' => 'notify', 'config' => array('user_ids' => array($me), 'text' => lang('Nobody counted the cash today.')),
+                    'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'ask', 'next'), array('ask', 'check', 'approved'), array('check', 'off', 'yes'), array('ask', 'late', 'expired')));
+    }
 
     return array_map('ws_flow_template_build', $out);
 }
@@ -716,10 +978,10 @@ function ws_flow_template_apply($template, $graph, $values)
 
 /**
  * A row box's settings without those that belong to its table: the column
- * a row start waits on, the cells a box writes (column ids), a row change's
- * row given by its number. Pure.
+ * a row start waits on, the cells a box writes (column ids), the row a box
+ * changes or reads given by its number. Pure.
  *
- * @param string $kind   row | row_add | row_set
+ * @param string $kind   row | row_add | row_set | row_get
  * @param array  $config the box's settings
  * @return array
  */
@@ -733,7 +995,7 @@ function ws_flow_template_table_cleared($kind, $config)
         $config['cells'] = '';
     }
 
-    if (($kind === 'row_set') && preg_match('/^\s*\d+\s*$/', (string) ($config['row'] ?? ''))) {
+    if (in_array($kind, array('row_set', 'row_get'), true) && preg_match('/^\s*\d+\s*$/', (string) ($config['row'] ?? ''))) {
         $config['row'] = '';
     }
 
@@ -743,7 +1005,8 @@ function ws_flow_template_table_cleared($kind, $config)
 /**
  * How far the person must reach the table a template asks: change (edit)
  * once one of its boxes adds or changes rows (ws_step_row_check()), read
- * (view) for a row start alone (ws_flow_row_check()); '' when it asks no
+ * (view) for a row start or a box that reads a row alone
+ * (ws_flow_row_check(), ws_step_row_get_check()); '' when it asks no
  * table. Pure.
  *
  * @param array $template ws_flow_templates() entry

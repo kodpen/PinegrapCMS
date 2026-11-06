@@ -122,7 +122,7 @@ $output_reference_line = '';
 
 // A record's comment also names the record's reference code.
 if (($item_type === 'submitted_form') && ((string) $row['reference_code'] !== '')) {
-    $output_reference_line = '<p class="p-0 m-0">' . lang('Form Reference Code') . ': ' . h($row['reference_code']) . '</p>';
+    $output_reference_line = h($row['reference_code']);
 }
 
 // The comment's place on the site, as the comment mails link it.
@@ -151,6 +151,7 @@ if (check_edit_access($folder_id) == false) {
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_moderation.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/comment_form.php');
 $liveform = new liveform('edit_comment', $_REQUEST['id']);
 
 // if the form has not been submitted
@@ -253,7 +254,7 @@ if (!$_POST) {
     $output_seller_reply_field = '';
 
     if ($comment_kind !== 'comment') {
-        $output_review_line = '<p class="p-0 m-0">' . h(pg_product_question_badge($comment_kind, $question_answer !== null)) . '</p>';
+        $output_review_line = '<p class="mb-0 pt-3">' . h(pg_product_question_badge($comment_kind, $question_answer !== null)) . '</p>';
     } elseif ($review) {
         if ($verified_order_id > 0) {
             $order = db_item("SELECT id, order_number FROM orders WHERE id = '" . $verified_order_id . "'");
@@ -272,9 +273,9 @@ if (!$_POST) {
                 $output_order = '#' . $verified_order_id . ' ' . h(lang('(deleted)'));
             }
 
-            $output_review_line = '<p class="p-0 m-0">' . lang(array('string' => 'Verified purchase: order {var:1}', 'vars' => array($output_order))) . '</p>';
+            $output_review_line = '<p class="mb-0 pt-3">' . lang(array('string' => 'Verified purchase: order {var:1}', 'vars' => array($output_order))) . '</p>';
         } else {
-            $output_review_line = '<p class="p-0 m-0">' . lang('Not a verified purchase') . '</p>';
+            $output_review_line = '<p class="mb-0 pt-3">' . lang('Not a verified purchase') . '</p>';
         }
     }
 
@@ -354,6 +355,30 @@ if (!$_POST) {
     }
 
 
+    // The Summary in the status column: what is read, not edited. A row is
+    // a label and a value; the last row has no rule under it.
+    $summary_rows = array(
+        array(lang('Added'), get_relative_time(array('timestamp' => $created_timestamp)) . $created_username),
+        array(lang('Page'), h(pg_comment_page_label(get_page_name($page_id), $page_id)) . ($binned ? ' (' . h(lang('In the Recycle Bin')) . ')' : '')));
+
+    if ($output_reference_line !== '') {
+        $summary_rows[] = array(lang('Form Reference Code'), $output_reference_line);
+    }
+
+    if ($remote_actor !== '') {
+        $summary_rows[] = array(lang('From the Fediverse'), h($remote_actor));
+    }
+
+    $output_summary_rows = '';
+
+    foreach ($summary_rows as $index => $summary_row) {
+        $output_summary_rows .= '
+                                            <div class="d-flex justify-content-between gap-3 py-2' . (($index < count($summary_rows) - 1) ? ' border-bottom' : '') . '">
+                                                <dt class="fw-normal">' . h($summary_row[0]) . '</dt>
+                                                <dd class="mb-0 fw-bold text-end text-break">' . $summary_row[1] . '</dd>
+                                            </div>';
+    }
+
     print
     pg_page_shell(
         array(
@@ -374,33 +399,47 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                ' . pg_screen_toolbar(array(
-                    'secondary' => $output_reference_button,
-                    'grow' => '<p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
-                    <p class="p-0 m-0">' . lang('Page') . ': ' . h(pg_comment_page_label(get_page_name($page_id), $page_id)) . ($binned ? ' (' . h(lang('In the Recycle Bin')) . ')' : '') . '</p>
-                    ' . $output_reference_line . $output_review_line . (($remote_actor !== '') ? '<p class="p-0 m-0">' . lang('From the Fediverse') . ': ' . h($remote_actor) . '</p>' : ''),
-                )) . '
+                ' . pg_screen_toolbar(array('secondary' => $output_reference_button)) . '
                 <form name="form" action="edit_comment.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to')) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id')) . '
                     <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Details') . '
-                                </div>
-                                <div class="card-body">
+                                </h2>
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Display Name') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
                                         </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label for="publish" class="form-label">' . lang('Publish') . '</label>
-                                                ' . $liveform->output_field(array( 'type' => 'select', 'class' => 'form-control', 'id' => 'publish', 'name' => 'publish', 'options' => $publish_options)) . '
+                                        <div class="col-12 my-3">
+                                            <label for="message" class="form-label">' . lang('Comment') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'message', 'rows'=>'10', 'class'=>'form-control', 'required'=>'required')) . '
                                         </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3" id="publish_schedule" hidden>
+                                        ' . $output_seller_reply_field . '
+                                        ' . $output_rating_field . '
+                                        ' . $output_file_attachment . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Publish') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <div class="my-3">
+                                            <label for="publish" class="form-label visually-hidden">' . lang('Publish') . '</label>
+                                            ' . $liveform->output_field(array( 'type' => 'select', 'class' => 'form-control', 'id' => 'publish', 'name' => 'publish', 'options' => $publish_options)) . '
+                                        </div>
+                                        <div class="my-3" id="publish_schedule" hidden>
                                             <div class="border-1 border p-3 rounded-4">
                                                 <label for="publish_date_and_time" class="form-label">' . lang('Publish Date') . '</label>
                                                 ' . $liveform->output_field(array(
@@ -422,42 +461,44 @@ if (!$_POST) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-3">
-                                            <label for="message" class="form-label">' . lang('Comment') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'message', 'rows'=>'10', 'class'=>'form-control', 'required'=>'required')) . '
+                                        <div class="form-field mt-5">
+                                            <div class="switch">' . $liveform->output_field(array(
+                                                'type' => 'checkbox',
+                                                'name' => 'featured',
+                                                'id' => 'featured',
+                                                'value' => '1',
+                                                'class' => 'no-bs')) . '</div>
+                                            <label class="" for="featured">' . lang('Featured') . '</label>
+                                            <div class="form-text">' . lang('Highlight Featured Comment') . '</div>
                                         </div>
-                                        ' . $output_seller_reply_field . '
-                                        ' . $output_rating_field . '
-                                        ' . $output_file_attachment . '
                                         ' . get_date_time_picker_format() . pg_fields_script() . '
                                         <script>init_edit_comment_publish()</script>
-                                        <div class="col-12 my-5">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array(
-                                                    'type' => 'checkbox',
-                                                    'name' => 'featured',
-                                                    'id' => 'featured',
-                                                    'value' => '1',
-                                                    'class' => 'no-bs')) . '</div>
-                                                <label class="" for="featured">' . lang('Featured') . '</label>
-                                                <div class="form-text">' . lang('Highlight Featured Comment') . '</div>
-                                            </div>
-                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">' . $output_summary_rows . '
+                                        </dl>' . $output_review_line . '
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('comment')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . ($can_block ? '
-                                <button type="submit" name="submit_block" value="actor" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This account will be blocked: its comments, likes and boosts are deleted and it can no longer follow the site or reply.')) . '"><span class="material-icons me-3">block</span><span class="pg-btn-label">' . lang('Block Account') . '</span></button>
-                                <button type="submit" name="submit_block" value="domain" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang(array('string' => 'Every account on {var:1} will be blocked: their comments, likes and boosts are deleted and they can no longer follow the site or reply.', 'vars' => array(pg_ap_host($remote_actor))))) . '"><span class="material-icons me-3">domain_disabled</span><span class="pg-btn-label">' . lang('Block Server') . '</span></button>' : '') . '
-                            </div>
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('comment')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>' . ($can_block ? '
+                                        <button type="submit" name="submit_block" value="actor" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This account will be blocked: its comments, likes and boosts are deleted and it can no longer follow the site or reply.')) . '"><span class="material-icons me-3">block</span><span class="pg-btn-label">' . lang('Block Account') . '</span></button>
+                                        <button type="submit" name="submit_block" value="domain" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang(array('string' => 'Every account on {var:1} will be blocked: their comments, likes and boosts are deleted and they can no longer follow the site or reply.', 'vars' => array(pg_ap_host($remote_actor))))) . '"><span class="material-icons me-3">domain_disabled</span><span class="pg-btn-label">' . lang('Block Server') . '</span></button>' : '') . '
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
-                    </nav>
+                    </div>
                 </form>
             </div>
         </div>
@@ -531,7 +572,7 @@ if (!$_POST) {
 
         // A question goes with its answer.
         if ($comment_kind === 'question') {
-            db_q("DELETE FROM comments WHERE (answer_of = ?) AND (kind = 'answer')", array((string) (int) $comment_id));
+            pg_product_question_delete_answers($comment_id);
         }
 
         // A form record's comment count and newest comment, read by the form
@@ -542,44 +583,25 @@ if (!$_POST) {
         
     // else the comment was edited, so update the comment
     } else {
-        // validate fields that need to be validated
-        $liveform->validate_required_field('message', lang('A comment is required.'));
+        // The message and the schedule (includes/forms/comment_form.php).
+        pg_comment_form_validate($liveform);
 
-        // If the user selected the publish schedule option, then validate those fields.
-        if ($liveform->get_field_value('publish') == 'schedule') {
-            $liveform->validate_required_field('publish_date_and_time', lang('Please select the date & time when you want the comment to be published.'));
-
-            // If there is not already an error for the date & time field,
-            // and the value is not valid, then add error.
-            if (
-                ($liveform->check_field_error('publish_date_and_time') == false)
-                && (validate_date_and_time($liveform->get_field_value('publish_date_and_time')) == false)
-            ) {
-                $liveform->mark_error('publish_date_and_time', lang('Please enter a valid date & time when you want the comment to be published.') );
-            }
-
-            // If there is not already an error for the date & time field,
-            // and the date & time is in the past, then add error.
-            if (
-                ($liveform->check_field_error('publish_date_and_time') == false)
-                && (prepare_form_data_for_input($liveform->get_field_value('publish_date_and_time'), 'date and time') < date('Y-m-d H:i'))
-            ) {
-                $liveform->mark_error('publish_date_and_time', lang('Sorry, the date & time you entered is in the past. Please enter a future date & time.') );
-            }
-        }
-        
         // if there is an error, forward user back to edit comment screen
         if ($liveform->check_form_errors() == true) {
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_comment.php?id=' . $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
             exit();
         }
         
-        $sql_file_id = "";
+        $columns = array(
+            'name' => (string) $liveform->get_field_value('name'),
+            'message' => (string) $liveform->get_field_value('message'),
+            'featured' => (string) $liveform->get_field_value('featured'),
+        );
         
         // if the file attachment was selected to be deleted and the file still exists, then check if we should delete it
         if (($liveform->get_field_value('delete_file_attachment') == 1) && ($file_name != '')) {
             // prepare SQL to clear file id for comment
-            $sql_file_id = "file_id = '0',";
+            $columns['file_id'] = '0';
             
             // check if the file attachment is used by another comment (multiple comments can share the same file attachment when pages are duplicated)
             $query = "SELECT id FROM comments WHERE (file_id = ?) AND (id != ?)";
@@ -599,60 +621,25 @@ if (!$_POST) {
             }
         }
 
-        $new_published = '';
-        $new_publish_date_and_time = '';
-        $new_publish_cancel = '';
+        $columns += pg_comment_form_publish_columns($liveform);
+        $new_published = $columns['published'];
 
-        switch ($liveform->get_field_value('publish')) {
-            case 'published':
-                $new_published = '1';
-                break;
-            
-            case 'schedule':
-                $new_publish_date_and_time = prepare_form_data_for_input($liveform->get_field_value('publish_date_and_time'), 'date and time');
-
-                if ($liveform->get_field_value('publish_cancel')) {
-                    $new_publish_cancel = '1';
-                }
-
-                break;
-        }
-        
         // The store's reply to a product review, dated when it is first
         // written or changed (includes/fn/reviews.php).
-        $sql_seller_reply = '';
-
         if ($reply_allowed) {
             $new_seller_reply = pg_review_reply_text($liveform->get_field_value('seller_reply'));
-            $sql_seller_reply = "seller_reply = '" . e($new_seller_reply) . "',
-                seller_reply_at = '" . pg_review_reply_time($seller_reply, $new_seller_reply, $seller_reply_at, time()) . "',";
+            $columns['seller_reply'] = $new_seller_reply;
+            $columns['seller_reply_at'] = (string) pg_review_reply_time($seller_reply, $new_seller_reply, $seller_reply_at, time());
         }
 
         // The stars are drawn only while the page has its rating on; with it
         // off the stored rating stays, since the missing radios would write 0.
         // The value is one to five, or none (0), as the comment form stores it.
-        $sql_rating = '';
         if ($comments_rating != false) {
-            $sql_rating = "rating = '" . pg_comment_rating_value($liveform->get_field_value('rating')) . "',";
+            $columns['rating'] = (string) pg_comment_rating_value($liveform->get_field_value('rating'));
         }
 
-        // update comment
-        $query =
-            "UPDATE comments
-            SET
-                name = '" . escape($liveform->get_field_value('name')) . "',
-                message = '" . escape($liveform->get_field_value('message')) . "',
-                $sql_rating
-                $sql_file_id
-                $sql_seller_reply
-                published = '" . $new_published . "',
-                publish_date_and_time = '" . e($new_publish_date_and_time) . "',
-                publish_cancel = '" . $new_publish_cancel . "',
-                featured = '" . escape($liveform->get_field_value('featured')) . "',
-                last_modified_user_id = '" . escape($user['id']) . "',
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        pg_comment_form_save($comment_id, $columns, (int) $user['id']) or output_error('Query failed.');
 
         log_activity( lang(array('string'=>'comment on page ({var:1}) was modified','vars'=>get_page_name($page_id))), $_SESSION['sessionusername']);
 
@@ -671,34 +658,10 @@ if (!$_POST) {
             }
         }
 
-        // A form record's comment count and newest comment, read by the form
-        // lists (includes/fn/comments.php). Rebuilt before the e-mails below,
-        // whose subject reads the count and the newest comment from that row.
-        pg_comment_refresh_record_info($page_id, $item_type, $item_id);
-        
-        // if the comment was just published,
-        // and if it was not published before,
-        // and if it is about a form record (on a form item view page or on a
-        // page built in the visual designer that shows the record),
-        // and if there is a page selected to send,
-        // and if someone other than the record's submitter wrote it,
-        // then send e-mail to custom form submitter letting him/her know a comment has been added
-        if (
-            ($new_published == 1)
-            && ($published == 0)
-            && pg_comment_submitter_mail_due($item_type, $item_id, $comments_submitter_email_page_id, $created_user_id, $submitter_user_id)
-        ) {
-            send_comment_email_to_custom_form_submitter($liveform->get_field_value('id'));
-        }
-        
-        // if the comment was just published,
-        // and if it was not published before,
-        // and if there is a page selected to send
-        // then send e-mail to watchers letting them know a comment has been added
-        if (($new_published == 1) && ($published == 0) && ($comments_watcher_email_page_id != 0)) {
-            send_comment_email_to_watchers($liveform->get_field_value('id'));
-        }
-        
+        // The record's comment info, and the submitter's and watchers' e-mails
+        // for a comment just published.
+        pg_comment_form_after_save($row, $new_published);
+
         // create bookmark for header
         $bookmark = '#c-' . $liveform->get_field_value('id');
     }

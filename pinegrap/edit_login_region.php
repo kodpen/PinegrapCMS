@@ -36,15 +36,18 @@ $liveform = new liveform('edit_login_region', $_REQUEST['id']);
 if (!$_POST) {
     // get login name, header and footer information to use for later
     $query =
-        "SELECT 
-            name,
-            not_logged_in_header,
-            login_form,
-            not_logged_in_footer,
-            logged_in_header,
-            logged_in_footer
+        "SELECT
+            login_regions.name,
+            login_regions.not_logged_in_header,
+            login_regions.login_form,
+            login_regions.not_logged_in_footer,
+            login_regions.logged_in_header,
+            login_regions.logged_in_footer,
+            login_regions.last_modified_timestamp,
+            user.user_username
         FROM login_regions
-        WHERE id = ?";
+        LEFT JOIN user ON login_regions.last_modified_user_id = user.user_id
+        WHERE login_regions.id = ?";
     $result = db_q($query, array((string) $_REQUEST['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
@@ -63,22 +66,24 @@ if (!$_POST) {
         $liveform->assign_field_value('logged_in_header', $row['logged_in_header']);
         $liveform->assign_field_value('logged_in_footer', $row['logged_in_footer']);
     }
-    
+
+    // A region stored before the column was written has no time: show a dash.
+    $last_modified = ((int) $row['last_modified_timestamp'] > 0)
+        ? get_relative_time(array('timestamp' => (int) $row['last_modified_timestamp'])) . ((string) $row['user_username'] !== '' ? ' ' . h($row['user_username']) : '')
+        : '&mdash;';
+
     print 
     pg_page_shell([
-        'title'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Login Region'))),
+        'title'=> lang('Edit Login Region'),
         'extra classes'=>'page',
         'icon'=>'page',
-        'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Login Region'))),
+        'heading'=>lang('Edit Login Region'),
         'heading_description' => lang('Update the messages displayed in the login region before and after users log in.'),
         'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_login_regions')
     ,
-            'breadcrumb' => array(array('label' => lang('All Login Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Login Region'))))),
+            'breadcrumb' => array(array('label' => lang('All Login Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions'), array('label' => lang('Edit Login Region'))),
         ]) . '
 <main id="content" class="container-fluid">
-    ' . pg_screen_toolbar(array(
-        'grow' => '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<login>' . $row['name'] . '</login>') . '</code></span>',
-    )) . '
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -86,15 +91,13 @@ if (!$_POST) {
                 <form name="form" action="edit_login_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . pg_login_region_form_card($liveform) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('login region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                    ' . pg_login_region_form_layout(
+                        pg_login_region_form_card($liveform)
+                        . pg_login_region_form_status($liveform, false, pg_login_region_form_status_row(lang('Last Modified'), $last_modified)),
+                        '
+                                        <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('login region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>'
+                    ) . '
                 </form>
             </div>
         </div>

@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 $user = validate_user();
 validate_calendars_access($user);
 
@@ -74,42 +75,33 @@ while ($row = mysqli_fetch_assoc($result)) {
     $locations[] = $row;
 }
 
-$output_rows = '';
+// Every location is printed: the list table driver sorts and searches them
+// in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
-// if there is at least one result to display
-if ($locations) {
-
-    foreach ($locations as $location) {
-        if ($location['created_username']) {
-            $created_username = lang(array('string'=>'by {var:1}','vars'=>array( h($location['created_username']) ) ) );
-        } else {
-            $created_username = '[' . lang('Unknown') . ']';
-        }
-
-        if ($location['last_modified_username']) {
-            $last_modified_username = lang(array('string'=>'by {var:1}','vars'=>array( h($location['last_modified_username']) ) ) );
-        } else {
-            $last_modified_username = '[' . lang('Unknown') . ']';
-        }
-
-        $output_link_url = 'edit_calendar_event_location.php?id=' . $location['id'];
-
-        $output_rows .=
-            '<tr class="unselectable ">
-                <td class="align-middle text-start action-buttons">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
-                </td>
-                <td class="chart_label">' . h($location['name']) . '</td>
-                <td>' . get_relative_time(array('timestamp' => $location['created_timestamp'])) . ' ' . $created_username . '</td>
-                <td>' . get_relative_time(array('timestamp' => $location['last_modified_timestamp'])) . ' ' . $last_modified_username . '</td>
-            </tr>';
-    }
+foreach ($locations as $location) {
+    $list_rows[] = array(
+        'id' => (int) $location['id'],
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_calendar_event_location.php?id=' . (int) $location['id'] . '" data-pg-open>' . h($location['name']) . '</a>'),
+            'created' => pg_list_table_when_cell($location['created_timestamp'], (string) $location['created_username']),
+            'last_modified' => pg_list_table_when_cell($location['last_modified_timestamp'], (string) $location['last_modified_username']),
+        ),
+    );
 }
 
+$list = pg_list_table_printed(array(
+    'list' => 'view_calendar_event_locations',
+    'columns' => array(
+        'name' => array('heading' => lang('Name')),
+        'created' => array('heading' => lang('Created'), 'kind' => 'date'),
+        'last_modified' => array('heading' => lang('Last Modified'), 'kind' => 'date'),
+    ),
+    'levels' => $sort_levels,
+    'rows' => $list_rows,
+));
 
 print
- 
 pg_page_shell(
     array(
         'title'=> lang('Event Locations'),
@@ -117,6 +109,10 @@ pg_page_shell(
         'icon'=>'calendar', 
         'heading'=> lang('Event Locations'),
         'heading_description' => lang('All event locations shared by all calendars.'),
+        'breadcrumb' => array(
+            array('label' => lang('Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php'),
+            array('label' => lang('Event Locations')),
+        ),
     )
 ) . '
 <main id="content" class="container-fluid">
@@ -125,33 +121,15 @@ pg_page_shell(
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-           
             ' . pg_screen_toolbar(array(
                 'primary' => array('label' => lang('Create'), 'url' => 'add_calendar_event_location.php', 'icon' => 'bi-plus-circle'),
-                'search'  => pg_list_sort_menu('view_calendar_event_locations.php', $sort_columns, $sort_levels, $sort_default),
+                'search'  => array(pg_list_table_search_box('view_calendar_event_locations'), pg_list_sort_menu('view_calendar_event_locations.php', $sort_columns, $sort_levels, $sort_default)),
             )) . '
-            <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table" style="width:100%;display:none">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
-                                <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
-                                <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ' . $output_rows . '
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            ' . pg_list_table_html($list['source'], $list['page'], lang('Event Locations')) . '
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();
-?>

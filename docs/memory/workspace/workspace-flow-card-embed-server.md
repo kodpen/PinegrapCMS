@@ -4,7 +4,7 @@ description: Server side of the flow card's read-only canvas (K2): ws_flow_draft
 ---
 
 ## Who may read a card's view? (K2)
-- `ws_flow_draft_card_source()` (flow_draft.php) holds the rights of the card, shared by the thumbnail (`ws_flow_draft_card_graph_read()`, action `ws_flow_draft_graph`) and the view (`ws_flow_draft_card_view_read()`, action `ws_flow_draft_view`): the asker only; waiting = `ws_can_schedule()` + `ws_can_post_channel()`, a patch made again on its flow with `edit` access; opened = the flow with `view`, tried where `ws_flow_share_manager()`. Nothing written.
+- `ws_flow_draft_card_source()` (flow_draft.php) holds the rights of the card, shared by the thumbnail (`ws_flow_draft_card_graph_read()`, action `ws_flow_draft_graph`) and the view (`ws_flow_draft_card_view_read()`, action `ws_flow_draft_view`): the asker only; waiting = `ws_can_schedule()` + `ws_can_post_channel()`, a patch made again on its flow with `edit` access; opened = the flow with `view`, its graph read and masked as `ws_flow_detail()` does (`ws_flow_card_opened_graph()`, #7478), tried where `ws_flow_share_manager()`. Nothing written.
 
 ## What does `ws_flow_draft_view` give? (`view`)
 - `graph`: `ws_flow_graph_normalize()` at the real canvas places with each box's config (never `ws_flow_card_graph()`'s scaled ones), for `PGWsFlow.embed()`.

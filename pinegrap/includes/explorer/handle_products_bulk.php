@@ -187,6 +187,28 @@ function pg_explorer_bulk_product_new_quantity($current_quantity, $mode, $value)
     return $new_quantity;
 }
 
+// The SET piece that writes a bulk stock change: a set value as itself, an
+// increase or a decrease against the count the UPDATE finds, so a sale, a
+// scan or another edit between the screen's read and its write is kept. A
+// decrease stops at zero; an increase that would pass the column's top
+// leaves the count as it is (the screen already counted one past the top
+// from its own read). Pure.
+function pg_explorer_bulk_quantity_sql($mode, $value)
+{
+    $value = max(0, (int) $value);
+
+    if ($mode === 'value') {
+        return "inventory_quantity = '" . $value . "'";
+    }
+
+    if ($mode === 'increase') {
+        return 'inventory_quantity = IF(inventory_quantity <= ' . max(0, (int) PG_INVENTORY_QUANTITY_MAX - $value)
+            . ', inventory_quantity + ' . $value . ', inventory_quantity)';
+    }
+
+    return 'inventory_quantity = IF(inventory_quantity > ' . $value . ', inventory_quantity - ' . $value . ', 0)';
+}
+
 // The locations the bulk panels offer for a quantity change, as id and
 // name, default first; empty on a site without stock locations.
 function pg_explorer_bulk_stock_location_options()
@@ -544,9 +566,14 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
                 // Written by location after the row, and the mark with it.
                 $new_quantity = null;
             } else {
-                $sql_parts[] = "inventory_quantity = '" . e($new_quantity) . "'";
+                $sql_parts[] = pg_explorer_bulk_quantity_sql($bulk_quantity_mode, $bulk_quantity_value);
             }
         }
+
+        // An increase or a decrease ends where the UPDATE finds the count,
+        // not where this read put it: its out-of-stock mark is set from the
+        // stored row after the write.
+        $relative_write = ($new_quantity !== null) && ($bulk_quantity_mode !== 'value');
 
         if ($bulk_inventory !== '') {
             $sql_parts[] = "inventory = '" . e($bulk_inventory) . "'";
@@ -556,7 +583,7 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
         // tracked product left with nothing is marked (it shows in the Out
         // of Stock view), tracking switched off or stock back on the shelf
         // takes the mark off.
-        if ($stock_stored) {
+        if ($stock_stored && !$relative_write) {
             $out_of_stock_sql = pg_products_bulk_out_of_stock_sql($stock_stored, $bulk_inventory, $new_quantity);
 
             if ($out_of_stock_sql !== '') {
@@ -643,6 +670,10 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($product_id) . "'");
             pg_audit_record('update', 'products', $product_id, $audit_before);
+
+            if ($relative_write) {
+                pg_stock_refresh_out_of_stock($product_id);
+            }
 
             // The quantity at the chosen location, once tracking is written.
             // A product that does not track stock has no rows and is left

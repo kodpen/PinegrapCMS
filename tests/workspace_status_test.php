@@ -45,3 +45,33 @@ function test_workspace_status_checkin_question_is_one_trimmed_line()
 	pg_assert_same('', ws_checkin_question("  \n "));
 	pg_assert_same(WS_CHECKIN_QUESTION_MAX, mb_strlen(ws_checkin_question(str_repeat('ğ', 400))));
 }
+
+// The AI draft of a status update asks through pg_ai_chat(): a direct
+// gateway call skipped the hold after a failed call (a 429 or a 5xx) and
+// left a licence refusal and the hold unrecorded for every other caller.
+function test_workspace_status_ai_draft_goes_through_pg_ai_chat()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/status.php');
+	$start = strpos($source, 'function ws_status_ai_draft(');
+	pg_assert_true($start !== false, 'the draft function is there');
+
+	$end = strpos($source, "\nfunction ", $start + 10);
+	$body = substr($source, $start, ($end === false) ? strlen($source) - $start : $end - $start);
+
+	pg_assert_contains('pg_ai_chat(ws_status_ai_messages(', $body, 'asked through pg_ai_chat()');
+	pg_assert_false(strpos($body, 'ws_ai_http(') !== false, 'no direct gateway call');
+}
+
+// The conversation: the rules first, then the figures as JSON data.
+function test_workspace_status_ai_messages()
+{
+	$data = array('channel' => 'Proje', 'counts' => array('open' => 3), 'overdue' => 1, 'stale' => 0, 'finished' => 2, 'decisions' => array(), 'check_in' => null);
+	$messages = ws_status_ai_messages($data, 'Turkish');
+
+	pg_assert_same(2, count($messages), 'two messages');
+	pg_assert_same('system', $messages[0]['role'], 'rules first');
+	pg_assert_contains('Write in Turkish.', $messages[0]['content'], 'the language');
+	pg_assert_contains("\nRules:\n", $messages[0]['content'], 'the shared writer rules');
+	pg_assert_same('user', $messages[1]['role'], 'data second');
+	pg_assert_same($data, json_decode($messages[1]['content'], true), 'the figures as JSON');
+}

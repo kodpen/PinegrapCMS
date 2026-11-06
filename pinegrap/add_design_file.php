@@ -282,12 +282,12 @@ if (!$_POST) {
                 <form enctype="multipart/form-data" action="add_design_file.php" method="post" id="dropzone" class="dropzone" style="border: none;background: unset;padding: unset;">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    <div class="row">
-                        <div class="col-12">
+                    ' . pg_design_file_form_layout(
+                        '
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Files To Upload') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="dropzone_previews design">
                                         <div class="dz-message needsclick" data-dz-message>
@@ -304,20 +304,11 @@ if (!$_POST) {
                                     </div>
                                     <button type="button" id="pg_upload_choose" class="btn btn-sm btn-outline theme-primary mt-4" hidden><span class="material-icons me-3" aria-hidden="true">upload_file</span><span class="pg-btn-label">' . lang('Select File(s)') . '</span></button>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="col-12 md:col-6">' . pg_design_file_form_access_card(select_folder(isset($_GET['id']) ? $_GET['id'] : '', 0)) . '
-                        </div>
-                        <div class="col-12 md:col-6">' . pg_design_file_form_description_card('', true) . '
-                        </div>
-                    </div>         
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit" name="submit" value="Upload" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label">' . lang(array('string'=>'Upload') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            </div>' . pg_design_file_form_description_card('', true),
+                        pg_design_file_form_access_card(select_folder(isset($_GET['id']) ? $_GET['id'] : '', 0)),
+                        '
+                                        <button type="submit" id="submit" name="submit" value="Upload" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label">' . lang(array('string'=>'Upload') ) . '</span></button>'
+                    ) . '
                 </form>
             </div>
         </div>

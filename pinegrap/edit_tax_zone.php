@@ -59,6 +59,14 @@ if (!$_POST || $errors) {
         $choices = pg_tax_zone_form_choices($id);
     }
 
+    // The last change, under the Summary.
+    $last_change = db_item(
+        "SELECT tax_zones.timestamp, user.user_username
+        FROM tax_zones
+        LEFT JOIN user ON user.user_id = tax_zones.user
+        WHERE tax_zones.id = '" . $id . "'");
+    $status_rows = pg_tax_zone_form_status_row(lang('Last Modified'), pg_list_when((int) ($last_change['timestamp'] ?? 0), (string) ($last_change['user_username'] ?? '')));
+
     $output =
         pg_page_shell([
             'title'=> lang('Edit Tax Zone'),
@@ -77,15 +85,11 @@ if (!$_POST || $errors) {
                     <form name="form" action="edit_tax_zone.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '">
-                        ' . pg_tax_zone_form_cards($values, $choices['countries'], $choices['states'], $errors) . '
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                            <div class="container">
-                                <div class="btn-group flex-wrap justify-content-center">
-                                    <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
-                                    <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('tax zone')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
-                                </div>
-                            </div>
-                        </nav>
+                        ' . pg_tax_zone_form_layout(
+                            pg_tax_zone_form_cards($values, $choices['countries'], $choices['states'], $errors, $status_rows),
+                            '
+                                        <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><i class="bi bi-floppy me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" formnovalidate data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('tax zone')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete') . '</span></button>') . '
                     </form>
                 </div>
             </div>
@@ -98,19 +102,23 @@ if (!$_POST || $errors) {
 } else {
     // tax_zones.tax_rate is NOT NULL: a blank or unreadable rate is refused
     // before the zone's countries and states are dropped, and "8,25" is read
-    // as 8.25, not 8.
+    // as 8.25, not 8. The form's own reading is used: a rate sent as a list
+    // is blank there, not a warning.
     $tax_rate = NULL;
     if (($_POST['submit_delete'] ?? '') != 'Delete') {
-        $tax_rate = parse_tax_rate($_POST['tax_rate'] ?? '');
+        $tax_rate = parse_tax_rate($values['tax_rate']);
         if ($tax_rate === NULL) {
             output_error(lang('Enter a tax rate between 0 and 100.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
 
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        pg_store_tax_zone_delete($id, (string) ($_POST['name'] ?? '')) or output_error('Query failed.');
+        // The name only labels the log line; a name sent as a list is none.
+        $deleted_name = is_scalar($_POST['name'] ?? null) ? (string) $_POST['name'] : '';
 
-        log_activity(lang(array('string' => 'tax zone ({var:1}) was deleted', 'vars' => (string) ($_POST['name'] ?? ''))), $_SESSION['sessionusername']);
+        pg_store_tax_zone_delete($id, $deleted_name) or output_error('Query failed.');
+
+        log_activity(lang(array('string' => 'tax zone ({var:1}) was deleted', 'vars' => $deleted_name)), $_SESSION['sessionusername']);
 
     } else {
         pg_store_tax_zone_save($id, $values['name'], $tax_rate, $values['allowed_countries'], $values['allowed_states'], (int) $user['id']) or output_error('Query failed.');

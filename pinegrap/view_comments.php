@@ -17,7 +17,28 @@
  */
 
 include('init.php');
+
+include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/comment_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/comment_list_edit.php');
+
+$quick_edit = pg_comment_quick_edit_columns();
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php), answered in JSON before the screen is drawn.
+// The rights are the comment screen's: validate_area_access() 'user' here,
+// the page's folder in pg_comment_quick_update().
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request($quick_edit, function ($user) {
+        return ((int) $user['role'] < 3) || no_acl_check($user['id']);
+    });
+
+    $saved = pg_comment_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user'], $quick_edit);
+
+    pg_list_edit_reply($saved, ($saved['ok'] ?? false) ? 200 : (((($saved['code'] ?? '') === 'denied')) ? 403 : 422));
+}
+
 $user = validate_user();
 validate_area_access($user, 'user');
 $liveform = new liveform('view_comments');
@@ -83,6 +104,7 @@ $sort_columns = array(
     'featured'       => lang('Featured'),
     'scheduled'      => lang('At a Scheduled Time'),
     'publish_cancel' => lang('Cancel if Added First'),
+    'rating'         => lang('Rating'),
     'submitted'      => lang('Submitted'),
 );
 
@@ -99,6 +121,7 @@ $order_by = pg_list_order_by($sort_levels, array(
     'featured'       => 'featured',
     'scheduled'      => 'publish_date_and_time',
     'publish_cancel' => 'publish_cancel',
+    'rating'         => 'rating',
     'submitted'      => 'created_timestamp',
 ));
 
@@ -124,53 +147,7 @@ if ($conditions) {
 
 
 
-$query = 
-    "SELECT
-        comments.id,
-        comments.page_id,
-        comments.item_id,
-        comments.item_type,
-        comments.name,
-        comments.message,
-        comments.rating,
-        files.id as file_id,
-        files.name as file_name,
-        files.size as file_size,
-        comments.published,
-        comments.publish_date_and_time,
-        comments.publish_cancel,
-        comments.featured,
-        page.page_type,
-        page.page_folder,
-        page.comments_submitter_email_page_id,
-        page.comments_watcher_email_page_id,
-        page.comments_rating as comments_rating,
-        user.user_username as created_username,
-        forms.reference_code as reference_code,
-        product_groups.address_name as product_group_address_name,
-        products.address_name as product_address_name,
-        " . ($reviews_ready ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
-        " . ($questions_ready
-            ? "comments.kind, (SELECT COUNT(*) FROM comments AS answers WHERE (answers.answer_of = comments.id) AND (answers.kind = 'answer')) AS answer_count,"
-            : "'comment' AS kind, 0 AS answer_count,") . "
-        comments.created_timestamp
-    FROM comments
-    LEFT JOIN forms ON forms.id = comments.item_id
-    LEFT JOIN product_groups ON product_groups.id = comments.item_id
-    LEFT JOIN products ON products.id = comments.item_id
-    LEFT JOIN files ON comments.file_id = files.id
-    LEFT JOIN page ON page.page_id = comments.page_id
-    LEFT JOIN user ON comments.created_user_id = user.user_id
-    $where
-    ORDER BY $order_by";
-
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-$comments = array();
-// Loop through the results
-while ($row = mysqli_fetch_assoc($result)) {
-    $comments[] = $row;
-}
+$comments = (array) db_items(pg_comment_list_sql($where, 0, $reviews_ready, $questions_ready) . " ORDER BY " . $order_by);
 
 // Folders of the Recycle Bin: a comment on a page there gets no link to the
 // site (the page is not on it) and a badge saying where its page is.
@@ -182,66 +159,20 @@ $bin_folders = array_flip(array_map('intval', (array) pg_recycle_bin_folder_ids(
 $list_rows = array();
 
 foreach ($comments as $comment) {
-    $folder_id = $comment['page_folder'];
-    $binned = isset($bin_folders[(int) $comment['page_folder']]);
-
     // Only comments on pages in folders the user can edit.
-    if (check_edit_access($folder_id) != true) {
+    if (check_edit_access($comment['page_folder']) != true) {
         continue;
     }
 
-    $output_date_and_time = '';
-
-    if ($comment['publish_date_and_time'] > 0 && $comment['publish_date_and_time'] != '0000-00-00 00:00:00') {
-        // In the site's date and time format, as Edit Comment shows it.
-        $output_date_and_time = h(prepare_form_data_for_output($comment['publish_date_and_time'], 'date and time', false));
-    }
-
-    // The comment's place on the site, when it has one.
-    // A page in the Recycle Bin is not on the site: no address to go to.
-    $comment_url = '';
-    $comment_path = $binned ? '' : pg_comment_site_path(get_page_name($comment['page_id']), $comment);
-
-    if ($comment_path !== '') {
-        $comment_url = OUTPUT_PATH . $comment_path;
-    }
-
-    $output_reference_button = ($comment_url === '') ? '' : '<a class="btn btn-sm btn-text theme-secondary" href="' . h($comment_url . '#c-' . $comment['id']) . '" title="' . h(lang('Go To Comment')) . '" aria-label="' . h(lang('Go To Comment')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>';
-
-    $output_name = pg_comment_list_name($comment['name'])
-        . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '')
-        . (($comment['kind'] ?? 'comment') !== 'comment' ? ' <span class="badge ' . ((($comment['kind'] === 'question') && ((int) $comment['answer_count'] === 0)) ? 'theme-warning' : 'theme-secondary') . ' fw-light">' . h(pg_product_question_badge($comment['kind'], (int) $comment['answer_count'] > 0)) . '</span>' : '')
-        . ($binned ? ' <span class="badge theme-secondary fw-light">' . h(lang('In the Recycle Bin')) . '</span>' : '');
-
-    $list_rows[] = array(
-        'id' => $comment['id'],
-        'cells' => array(
-            'name' => pg_list_cell('<a href="edit_comment.php?id=' . (int) $comment['id'] . '" data-pg-open>' . $output_name . '</a>'),
-            'published' => pg_list_table_check_cell($comment['published'] == '1'),
-            'featured' => pg_list_table_check_cell($comment['featured'] == '1'),
-            'scheduled' => pg_list_cell(($output_date_and_time === '') ? '' : '<span class="badge theme-primary fw-light">' . $output_date_and_time . '</span>', 'align-middle', array('data-pg-sort-value' => ($output_date_and_time === '') ? '' : (string) $comment['publish_date_and_time'])),
-            'publish_cancel' => pg_list_table_check_cell($comment['publish_cancel'] == '1'),
-            'message' => pg_list_cell((pg_comment_file_is_image($comment['file_name'] ?? '') ? '<img src="' . h(OUTPUT_PATH . encode_url_path($comment['file_name'])) . '" alt="' . h(lang('Photo')) . '" loading="lazy" class="img-thumbnail float-start me-2" style="width: 50px; height: 50px; object-fit: cover">' : '') . '<p class="mb-0">' . h(truncate($comment['message'], 84, $dots = "...")) . '</p>'),
-            'submitted' => pg_list_table_when_cell($comment['created_timestamp'], $comment['created_username'] ?? ''),
-            'go' => pg_list_cell($output_reference_button),
-        ),
-    );
+    $list_rows[] = array('id' => $comment['id'], 'cells' => pg_comment_list_cells($comment, $quick_edit, $bin_folders));
 }
 
 $list = pg_list_table_printed(array(
     'list' => 'view_comments',
-    'columns' => array(
-        'name' => array('heading' => lang('Name')),
-        'published' => array('heading' => lang('Published'), 'kind' => 'check'),
-        'featured' => array('heading' => lang('Featured'), 'kind' => 'check'),
-        'scheduled' => array('heading' => lang('At a Scheduled Time'), 'kind' => 'date'),
-        'publish_cancel' => array('heading' => lang('Cancel if Added First'), 'kind' => 'check'),
-        'message' => array('heading' => lang('Message'), 'sortable' => false),
-        'submitted' => array('heading' => lang('Submitted'), 'kind' => 'date'),
-        'go' => array('heading' => lang('Go To Comment'), 'kind' => 'actions'),
-    ),
+    'columns' => pg_comment_list_columns(true),
     'levels' => $sort_levels,
     'rows' => $list_rows,
+    'edit' => array('url' => 'view_comments.php', 'columns' => $quick_edit),
 ));
 
 

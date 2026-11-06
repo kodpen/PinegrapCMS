@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests that panel screens fit a 375 px phone: a toolbar filter form and its
- * input-group never grow past the bar, Edit Page, Edit Comment and Edit Theme
- * File draw their facts in the toolbar's grow slot (no line above the bar and
- * no second heading), and the Subscriptions date range wraps.
+ * input-group never grow past the bar, Edit Theme File draws its facts in
+ * the toolbar's grow slot and Edit Page and Edit Comment in their status column
+ * (no line above the bar and no second heading), and the Subscriptions date
+ * range wraps.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,12 +34,17 @@ function test_panel_narrow_layout_toolbar_filter_is_capped_by_the_bar()
 
 function test_panel_narrow_layout_facts_sit_in_the_grow_slot()
 {
+	// Edit Page reads its facts beside the form, in the status column's
+	// summary card (edit-screen-wide-layout), not in the bar.
 	$page = panel_narrow_layout_test_source('edit_page.php');
-	pg_assert_true(preg_match("/pg_screen_toolbar\(array\(\s*'secondary'[^;]*'grow'\s*=>/s", $page) === 1, 'Edit Page passes its facts as the grow slot');
+	pg_assert_true(preg_match("/pg_screen_toolbar\(array\(\s*'secondary'[^;]*'grow'\s*=>/s", $page) === 0, 'Edit Page keeps its facts out of the bar');
+	pg_assert_true(preg_match('/\$output_summary_card =[^;]*lang\(\'Access\'\)[^;]*\$output_subnav_page_type[^;]*\$output_subnav_short_link/s', $page) === 1, 'Edit Page lists its facts in the summary card');
+	pg_assert_true(preg_match('/<div class="col-12 lg:col-4 2xl:col-3 order-2">\s*<!--[^>]*-->\s*<div class="position-sticky mt-7" style="top:3\.3rem;">\s*\' \. \$output_page_type_selector \. \'\s*\' \. \$output_summary_card \. \'/', $page) === 1, 'the summary card sits in the sticky status box');
 	pg_assert_true(strpos($page, '<div class="text-center md:text-start">') === false, 'Edit Page draws no fact block above the bar');
 
 	$comment = panel_narrow_layout_test_source('edit_comment.php');
-	pg_assert_true(preg_match("/pg_screen_toolbar\(array\(\s*'secondary'[^;]*'grow'\s*=>/s", $comment) === 1, 'Edit Comment passes its facts as the grow slot');
+	pg_assert_true(preg_match("/pg_screen_toolbar\(array\(\s*'secondary'[^;]*'grow'\s*=>/s", $comment) === 0, 'Edit Comment keeps its facts out of the bar');
+	pg_assert_true(preg_match('/<div class="col-12 lg:col-4 2xl:col-3 order-2">\s*<!--[^>]*-->\s*<div class="position-sticky" style="top:3\.3rem;">.*\$output_summary_rows/s', $comment) === 1, 'Edit Comment lists its facts in the sticky status column');
 	pg_assert_true(strpos($comment, '<div class="mb-3 text-center md:text-start">') === false, 'Edit Comment draws no fact block above the bar');
 
 	$theme = panel_narrow_layout_test_source('edit_theme_file.php');

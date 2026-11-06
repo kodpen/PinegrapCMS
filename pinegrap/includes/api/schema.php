@@ -289,7 +289,7 @@ function api_schema() {
 			'handler' => 'api_inventory_list',
 			'returns' => array('list' => 'StockLevel'),
 			'summary' => 'Stock levels per location',
-			'description' => 'The products that track stock, by id, cursor paged, with quantity (the total, the figure GET /products shows and marketplaces receive) and locations: the units at each location, 0 where the product holds none. A product that has not been changed since the first location was added holds its whole quantity at the default location. On a site without locations, locations is empty.',
+			'description' => 'The products that track stock, by id, cursor paged, left out while in the Recycle Bin as GET /products leaves them out, with quantity (the total, the figure GET /products shows and marketplaces receive) and locations: the units at each location, 0 where the product holds none. A product that has not been changed since the first location was added holds its whole quantity at the default location. On a site without locations, locations is empty.',
 			'params'  => array(
 				array('name' => 'location',      'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only this location\'s units in locations (0 or left out: every location). An id that is not a location is refused with 422 location.'),
 				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product.'),
@@ -691,7 +691,7 @@ function api_schema() {
 				array('name' => 'payment_method', 'in' => 'body', 'type' => 'enum', 'values' => array('cash', 'card', 'transfer', 'cheque', 'other', 'later', 'split'), 'description' => 'How the customer paid; later (the default) records no money. With the ERP module off it is not recorded anywhere.'),
 				array('name' => 'till_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The ERP till or bank account the payment goes to; without it the invoice stays open with a warning.'),
 				array('name' => 'received',       'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Cash handed over, in minor units: less than the total is refused. Not stored.'),
-				array('name' => 'payment_parts',  'in' => 'body', 'type' => 'list', 'of' => array('method' => 'string', 'till_id' => 'integer', 'amount' => 'integer'), 'max_items' => 2, 'description' => 'With split only: up to two {method (cash, card, transfer, cheque or other), till_id, amount in minor units}; what they leave stays owed on the account. Needs the ERP module and the owner\'s ERP cash right.')
+				array('name' => 'payment_parts',  'in' => 'body', 'type' => 'list', 'of' => array('method' => 'string', 'till_id' => 'integer', 'amount' => 'integer'), 'max_items' => 2, 'description' => 'With split only: up to two {method (cash, card, transfer, cheque or other), till_id, amount in minor units}; what they leave stays owed on the account. A part of 0 is no part; a part that is not such an object, or whose amount is not a whole number from 0 up, is refused with 422 rather than left out. Needs the ERP module and the owner\'s ERP cash right.')
 			)
 		),
 
@@ -759,7 +759,7 @@ function api_schema() {
 			'status'  => 201,
 			'returns' => 'OrderShipmentLabel',
 			'summary' => 'Create a carrier label',
-			'description' => 'Buys a shipment with the carrier label service that ships with the address\'s carrier, as Create Label on the order screen does: the label is kept, and the tracking number is recorded on the address as one of its parcels (POST /orders/{id}/shipment is not needed after it). is_return makes a return label instead, collected from the recipient and sent to the store; its number is not one of the address\'s parcels. Each call is a shipment bought from the service, so repeat it only after reading the order: an address with an active label of the kind is refused. 409 order_not_completed for an incomplete or cancelled order, 409 no_shipping_address for an order without one, 409 label_exists while the address has an active label of the kind (cancel it in the panel first), 409 no_label_service when no switched-on service ships with the address\'s carrier, 409 label_refused when the service refused it (the message gives its reason), 409 label_unclear when the service did not say whether it was created (look at the shipment there before trying again), 503 service_unavailable before the software update that keeps labels. The answer is the label as shipments[].labels of GET /orders/{id} lists it. A dry run makes the same checks and names the service (detail.driver) without calling it.',
+			'description' => 'Buys a shipment with the carrier label service that ships with the address\'s carrier, as Create Label on the order screen does: the label is kept, and the tracking number is recorded on the address as one of its parcels (POST /orders/{id}/shipment is not needed after it). is_return makes a return label instead, collected from the recipient and sent to the store; its number is not one of the address\'s parcels. Each call is a shipment bought from the service, so repeat it only after reading the order: an address with an active label of the kind is refused. 409 order_not_completed for an incomplete or cancelled order, 409 no_shipping_address for an order without one, 409 label_exists while the address has an active label of the kind (cancel it in the panel first), 409 label_busy while another label of the address is being created (read the order again after it), 409 no_label_service when no switched-on service ships with the address\'s carrier, 409 label_refused when the service refused it (the message gives its reason), 409 label_unclear when the service did not say whether it was created (look at the shipment there before trying again), 503 service_unavailable before the software update that keeps labels. The answer is the label as shipments[].labels of GET /orders/{id} lists it. A dry run makes the same checks and names the service (detail.driver) without calling it.',
 			'params'  => array(
 				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'ship_to_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which shipping address, from the shipments block of GET /orders/{id}. Optional while the order ships to one address; required when it ships to several.'),
@@ -805,7 +805,7 @@ function api_schema() {
 			'handler' => 'api_orders_returns',
 			'returns' => array('list' => 'OrderReturn'),
 			'summary' => 'The return requests of an order',
-			'description' => 'Every return request of the order, newest first, each with the order lines it sends back (order_item_id is the id of a line in GET /orders/{id}), its status and when each status was reached. status is requested, approved, rejected, shipped (the goods are on their way back), received, refunded or closed; source says who asked: customer (My Account), panel or api. refund is null until the return is refunded, and on a site not yet updated to the version that keeps it; a closed return keeps it. It holds the amount (minor units, null when unknown), the method (driver: through the payment service; manual: made another way and recorded; null when unknown: an older refund that could not be found again), the reference (null when none) and unclear (the payment service gave no clear answer, and also while it is being asked). order.return.refunded carries the same amount, method (as refund_method) and unclear, but no reference. withdrawal says whether the request came in time, as the panel shows it: the day the delivery arrived (or is taken to have arrived, delivered_estimated), the last day of the withdrawal period and requested_in_time; it is read from the delivery as it is known today, so a delivery date learned later can change it, and it is null when no date is known for the delivery. One page, as an order has few returns; an order with none, or a site not yet updated to the version that keeps returns, has an empty list.',
+			'description' => 'Every return request of the order, newest first, each with the order lines it sends back (order_item_id is the id of a line in GET /orders/{id}), its status and when each status was reached. status is requested, approved, rejected, shipped (the goods are on their way back), received, refunded or closed; source says who asked: customer (My Account), panel or api. refund is null until the return is refunded, and on a site not yet updated to the version that keeps it; a closed return keeps it. It holds the amount (minor units, null when unknown), the method (driver: through the payment service; manual: made another way and recorded; credit: given as store credit, the reference is the id of its card; null when unknown: an older refund that could not be found again), the reference (null when none) and unclear (the payment service gave no clear answer, and also while it is being asked). order.return.refunded carries the same amount, method (as refund_method) and unclear, but no reference. withdrawal says whether the request came in time, as the panel shows it: the day the delivery arrived (or is taken to have arrived, delivered_estimated), the last day of the withdrawal period and requested_in_time; it is read from the delivery as it is known today, so a delivery date learned later can change it, and it is null when no date is known for the delivery. One page, as an order has few returns; an order with none, or a site not yet updated to the version that keeps returns, has an empty list.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -876,7 +876,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'OrderReturn',
 			'summary' => 'Move a return request',
-			'description' => 'One move of the return\'s panel screen, made by the application\'s owner, with what the screen does after it. approve (from requested): the customer is mailed the carrier and code to send the goods with; without carrier and carrier_code the screen\'s suggestion is used (the delivery\'s carrier, else the site\'s default, else the latest approval\'s, and that carrier\'s latest code), a carrier sent without its code takes that carrier\'s latest code. reject (from requested): note is required, the customer is mailed it. ship (from approved): the goods are on their way back, with tracking_number; an empty carrier keeps the approval\'s. receive (from approved or shipped): the goods are back. close (from any status but rejected and closed): the case is settled outside these steps; a request closed before the goods were sent frees its lines to be asked for again. refund (from received): amount in minor units and method: driver gives the money back through the order\'s payment service (more than 0), manual records money given back another way (0 marks it refunded when the order screen already paid it back), with an optional reference; never more than is left to refund on the order; the customer is mailed for an amount over 0; the return invoice of an ERP order is issued on the panel. A field the action does not read is refused. Announced: order.return.approved, order.return.received, order.return.refunded. status_was, the status the caller last saw, refuses the move with 409 return_changed when the return has moved since. 409 return_not_movable: the action does not start from the return\'s status. 409 return_changed: another move came first. 409 return_in_progress: another return of the order is being saved; send the call again in a moment. 409 refund_driver_unavailable: the order\'s payment cannot be refunded through its service; refund it another way and record it with manual. 409 refund_refused: the payment service refused the refund, the return stays received; message has the service\'s words. A driver refund whose answer was unclear (no answer in time, an unreadable one) keeps the return refunded with refund.unclear true and answers 200: the money may have gone back, so check the payment service\'s own screen before anything else.',
+			'description' => 'One move of the return\'s panel screen, made by the application\'s owner, with what the screen does after it. approve (from requested): the customer is mailed the carrier and code to send the goods with; without carrier and carrier_code the screen\'s suggestion is used (the delivery\'s carrier, else the site\'s default, else the latest approval\'s, and that carrier\'s latest code), a carrier sent without its code takes that carrier\'s latest code. reject (from requested): note is required, the customer is mailed it. ship (from approved): the goods are on their way back, with tracking_number; an empty carrier keeps the approval\'s. receive (from approved or shipped): the goods are back. close (from any status but rejected and closed): the case is settled outside these steps; a request closed before the goods were sent frees its lines to be asked for again. refund (from received): amount in minor units and method: driver gives the money back through the order\'s payment service (more than 0), manual records money given back another way (0 marks it refunded when the order screen already paid it back), with an optional reference; never more than is left to refund on the order; the customer is mailed for an amount over 0; the return invoice of an ERP order is issued on the panel. A field the action does not read is refused. Announced: order.return.approved, order.return.received, order.return.refunded. status_was, the status the caller last saw, refuses the move with 409 return_changed when the return has moved since. 409 return_not_movable: the action does not start from the return\'s status. 409 return_changed: another move came first. 409 return_in_progress: another return of the order is being saved; send the call again in a moment. 409 refund_driver_unavailable: the order\'s payment cannot be refunded through its service; refund it another way and record it with manual. 409 refund_order_cancelled: the order is no longer complete or exported; a cancelled order\'s money goes back with the cancellation, not with the return. 409 refund_refused: the payment service refused the refund, the return stays received; message has the service\'s words. A driver refund whose answer was unclear (no answer in time, an unreadable one) keeps the return refunded with refund.unclear true and answers 200: the money may have gone back, so check the payment service\'s own screen before anything else.',
 			'params'  => array(
 				array('name' => 'id',              'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('approve', 'reject', 'ship', 'receive', 'close', 'refund'), 'required' => true, 'description' => 'The move to make.'),
@@ -2259,7 +2259,7 @@ function api_schema() {
 			'summary' => 'Campaign profiles',
 			'description' => 'The profiles that make a campaign by themselves when something happens (a reservation, a form, an order, a booking, another campaign sent), newest first, cursor paged. The campaigns a profile made are listed by GET /campaigns?profile_id=. An account with the e-mail right but the user role sees only the profiles it created, as on the profile screens.',
 			'params'  => array(
-				array('name' => 'action',  'in' => 'query', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled')),
+				array('name' => 'action',  'in' => 'query', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled', 'contact_group_joined', 'credit_issued', 'credit_expiring')),
 				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool'),
 				array('name' => 'q',       'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name.'),
 				array('name' => 'limit',   'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
@@ -2295,8 +2295,8 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'No other profile may have it.'),
 				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether it makes campaigns. A new profile is enabled.'),
-				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled'), 'required' => true, 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update (503 service_unavailable before it).'),
-				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent) or the product (product_ordered). Every other action ignores it.'),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled', 'contact_group_joined', 'credit_issued', 'credit_expiring'), 'required' => true, 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update and contact_group_joined the update that adds it (503 service_unavailable before them).'),
+				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent), the product (product_ordered) or the contact group whose new members each get the mail (contact_group_joined). Every other action ignores it.'),
 				array('name' => 'subject',         'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true),
 				array('name' => 'format',          'in' => 'body', 'type' => 'enum', 'values' => array('plain_text', 'html'), 'description' => 'plain_text (a new profile\'s) sends body; html sends the page page_id.'),
 				array('name' => 'body',            'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'nullable' => true, 'description' => 'The text of a plain-text campaign.'),
@@ -2329,8 +2329,8 @@ function api_schema() {
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'No other profile may have it.'),
 				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool', 'description' => 'Whether it makes campaigns. A new profile is enabled.'),
-				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled'), 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update (503 service_unavailable before it).'),
-				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent) or the product (product_ordered). Every other action ignores it.'),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent', 'order_abandoned', 'order_completed', 'order_review_request', 'order_shipped', 'order_delivered', 'product_ordered', 'subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed', 'booking_confirmed', 'booking_reminder', 'booking_rescheduled', 'booking_cancelled', 'contact_group_joined', 'credit_issued', 'credit_expiring'), 'description' => 'What makes a campaign. The order_*, product_ordered and subscription_* actions need the store and an owner with the e-commerce right; the booking_* actions need the bookings database update and contact_group_joined the update that adds it (503 service_unavailable before them).'),
+				array('name' => 'action_item_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The record the action is tied to: the calendar event (calendar_event_reserved), the custom form page (custom_form_submitted), the profile it follows (email_campaign_sent), the product (product_ordered) or the contact group whose new members each get the mail (contact_group_joined). Every other action ignores it.'),
 				array('name' => 'subject',         'in' => 'body', 'type' => 'string', 'max_length' => 255),
 				array('name' => 'format',          'in' => 'body', 'type' => 'enum', 'values' => array('plain_text', 'html'), 'description' => 'plain_text (a new profile\'s) sends body; html sends the page page_id.'),
 				array('name' => 'body',            'in' => 'body', 'type' => 'string', 'max_length' => 200000, 'nullable' => true, 'description' => 'The text of a plain-text campaign.'),
@@ -2506,12 +2506,12 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'ContactGroup',
 			'summary' => 'Put contacts into a group, or take them out',
-			'description' => 'Both lists in one call, as the contact screen ticks a group. A group filled by rules is refused with 409 contact_group_by_rule: its rules decide who is in it. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed, and the contacts that actually moved are announced as contact_group.members_changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
+			'description' => 'Both lists in one call, as the contact screen ticks a group. A group filled by rules is refused with 409 contact_group_by_rule: its rules decide who is in it. A contact added that is already there, or removed that is not, is not an error; added and removed in the answer count what actually changed, and the contacts that actually moved are announced as contact_group.members_changed. Contacts are never deleted here, only their place in this group. opt_in records the choice for this group\'s e-mail of every contact in add, members already there included, so an unsubscribe from a newsletter tool is add=[id] with opt_in=false; it is ignored for a group that takes no subscriptions and in a call with no add. Without it nothing is written: a new member counts as opted in, and a contact who opted out before and is put back stays opted out. Taking a contact out keeps its choice, as the contact screen does. Find a contact by address with GET /customers?email=, or make one with POST /customers first.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to put into the group. Each has to exist.'),
 				array('name' => 'remove', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to take out of the group.'),
-				array('name' => 'opt_in', 'in' => 'body', 'type' => 'bool', 'description' => 'The choice for this group\'s e-mail, written for every contact in add. Only for a group that takes subscriptions.')
+				array('name' => 'opt_in', 'in' => 'body', 'type' => 'bool', 'description' => 'The choice for this group\'s e-mail, written for every contact in add (ignored when add is empty). Only for a group that takes subscriptions.')
 			)
 		),
 
@@ -2531,6 +2531,39 @@ function api_schema() {
 				array('name' => 'to',     'in' => 'query', 'type' => 'datetime', 'description' => 'Only entries logged at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
 				array('name' => 'user',   'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only what this username did.'),
 				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the description.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		/* ----- Fediverse ---------------------------------------------------- */
+
+		array(
+			'id'      => 'fediverse.followers',
+			'method'  => 'GET',
+			'path'    => '/fediverse/followers',
+			'scope'   => 'fediverse:read',
+			'handler' => 'api_fediverse_followers_list',
+			'returns' => array('list' => 'FediverseFollower'),
+			'summary' => 'Fediverse followers',
+			'description' => 'The accounts on Mastodon and other Fediverse services that follow the site, newest first, cursor paged, as Settings › Fediverse lists them: actor is the account\'s address, server its host, name and avatar as its server last sent them (null when it sent none). Read only. 503 service_unavailable before the 2026.11.0 database update.',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'fediverse.deliveries',
+			'method'  => 'GET',
+			'path'    => '/fediverse/deliveries',
+			'scope'   => 'fediverse:read',
+			'handler' => 'api_fediverse_deliveries_list',
+			'returns' => array('list' => 'FediverseDelivery'),
+			'summary' => 'Fediverse deliveries',
+			'description' => 'What the site sent, or is sending, to its followers\' servers, newest first, cursor paged: one row per activity and inbox (a shared inbox once for all its followers). type is Create, Update, Delete or Accept (null for an activity this list cannot read), object the page or record address it is about. state is queued (next_attempt_at says when), sent or failed: a delivery is tried six times over about a day, and a refusal that will not change (a 4xx other than 408 and 429) fails at once. Sent and failed rows are removed 30 days after they were made. Trying a failed one again is done on the settings screen. Read only. 503 service_unavailable before the 2026.11.0 database update.',
+			'params'  => array(
+				array('name' => 'state',  'in' => 'query', 'type' => 'enum', 'values' => array('queued', 'sent', 'failed'), 'description' => 'Only the deliveries in this state.'),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200)
 			)
@@ -2625,7 +2658,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'GiftCard',
 			'summary' => 'Change a gift card',
-			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'description' => 'Only what is sent is changed: the balance, the expiry and the notes, as on the gift cards screen. The amount it was issued for and its code stay. A balance is written only over the one the request read: an order spending from the card meanwhile answers 409 balance_changed. A changed balance of store credit is recorded in the audit trail. PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
 			'params'  => array(
 				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'balance',    'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 4294967295, 'description' => 'Minor units, zero or more.'),
@@ -2643,7 +2676,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
 			'summary' => 'Delete a gift card',
-			'description' => 'Removes the card, as the gift cards screen does; its code stops working at once and it cannot be undone. The orders it was spent in keep their record of the spend. POST /gift-cards/{id}/delete does the same for servers that refuse DELETE.',
+			'description' => 'Removes the card, as the gift cards screen does; its code stops working at once and it cannot be undone. The orders it was spent in keep their record of the spend. A store credit card (one bound to a customer\'s account) is refused with 409 store_credit_not_deletable: void it with POST /customers/{id}/credit/{card_id}/void instead. POST /gift-cards/{id}/delete does the same for servers that refuse DELETE.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -2658,7 +2691,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
 			'summary' => 'Delete a gift card, addressed as a POST',
-			'description' => 'The same deletion as DELETE /gift-cards/{id}, for clients and servers that cannot send DELETE.',
+			'description' => 'The same deletion as DELETE /gift-cards/{id}, for clients and servers that cannot send DELETE; a store credit card is refused with 409 store_credit_not_deletable.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -3065,7 +3098,7 @@ function api_schema() {
 			'handler' => 'api_calendar_event_reservations',
 			'returns' => array('list' => 'CalendarReservation'),
 			'summary' => 'The reservations of an event',
-			'description' => 'The order lines of placed orders that reserve the event, oldest first, cursor paged; carts not yet ordered are left out. A cancelled order\'s line is listed with its order_status. recurrence_number is the repeat a line reserves (0: the event as a whole, or a repeating event whose repeats share their spots). customer (name, e-mail, contact) is null for an owner who may not open orders. An event on none of the calendars the owner may open is answered 404. The calendar_event.reserved webhook announces each new one.',
+			'description' => 'The order lines of placed orders that reserve the event, oldest first, cursor paged; carts not yet ordered are left out. A cancelled order\'s line is listed with its order_status. recurrence_number is the repeat a line reserves (0: the event as a whole, or a repeating event whose repeats share their spots). customer (name, e-mail, contact) is null for an owner who may not open orders or a key without orders:read. An event on none of the calendars the owner may open is answered 404. The calendar_event.reserved webhook announces each new one.',
 			'params'  => array(
 				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the reservations of this repeat.'),
@@ -3273,11 +3306,62 @@ function api_schema() {
 			'handler' => 'api_customers_subscriptions',
 			'returns' => array('list' => 'Subscription'),
 			'summary' => 'A customer\'s subscriptions',
-			'description' => 'The subscriptions the store charges for the site accounts linked to this customer record, newest first: the product, the amount in minor units and its currency, the period, the status (active, past_due, paused, cancelled, ended), the next charge (for a cancelled one, the day it runs until) and the last four digits of the card. actions lists the moves the customer could make now, the same as the Subscriptions section of My Account offers. Subscriptions of the older card gateways\' recurring profiles are not listed. Cursor paged. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. A site without subscriptions answers an empty list. Changes are announced as subscription.renewed, subscription.failed, subscription.cancelled, subscription.paused and subscription.resumed.',
+			'description' => 'The subscriptions the store charges for the site accounts linked to this customer record, newest first: the product, the amount in minor units and its currency, the period, the status (active, past_due, paused, cancelled, ended), the next charge (for a cancelled one, the day it runs until) and the last four digits of the card (null unless the key holds orders:read as well, as are customer_name and customer_email: they are payment and order data). actions lists the moves the customer could make now, the same as the Subscriptions section of My Account offers. Subscriptions of the older card gateways\' recurring profiles are not listed. Cursor paged. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. A site without subscriptions answers an empty list. Changes are announced as subscription.renewed, subscription.failed, subscription.cancelled, subscription.paused and subscription.resumed.',
 			'params'  => array(
 				array('name' => 'id',     'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
 				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'customers.credit',
+			'method'  => 'GET',
+			'path'    => '/customers/{id}/credit',
+			'scope'   => 'gift_cards:read',
+			'handler' => 'api_customers_credit',
+			'returns' => 'CustomerCredit',
+			'summary' => 'A customer\'s store credit',
+			'description' => 'The store credit of the site accounts linked to this customer record (account_ids): balance is what the customer can spend at checkout now, the sum of the open cards. cards lists the last 50 cards of each account, newest first, open or not: kind (points, refund, manual), the reason shown to the customer, amount and balance in minor units, status (open, used: spent or voided, expired), last_day, the last day it can be spent (null: never) and issued_by, the panel user who gave it (null: the shop itself). A card is a gift card bound to its customer (GET /gift-cards/{id} shows it with its redemptions); its code is not given here, as only the customer signed in can spend it. Under gift_cards:read: the right of the gift cards screen. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. 503 service_unavailable before the software update that adds store credit. Changes are announced as credit.issued, credit.used and credit.expired.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'customers.credit.issue',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/credit',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_customers_credit_issue',
+			'dry_run' => true,
+			'returns' => 'StoreCreditCard',
+			'status'  => 201,
+			'summary' => 'Give a customer store credit',
+			'description' => 'One new card of kind manual for one of the customer\'s site accounts, as Issue on the customer\'s screen gives it, with this application\'s owner as issued_by. The customer gets the store credit e-mail when the shop has a campaign profile for it, and credit.issued is announced. 409 customer_has_no_account when the record has no site account (store credit is spent signed in); 422 on account_id when it has several and none is sent, or the one sent is not its own. The customers row rule applies, 404 outside it. 503 service_unavailable before the software update that adds store credit.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'amount',     'in' => 'body', 'type' => 'money', 'min' => 1, 'max' => 100000000, 'required' => true, 'description' => 'Minor units, greater than zero, at most 100000000.'),
+				array('name' => 'reason',     'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'Why it is given; shown to the customer in My Account and in the e-mail.'),
+				array('name' => 'last_day',   'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'YYYY-MM-DD, the last day it can be spent (in the site\'s time zone), today or later. Left out, it never expires.'),
+				array('name' => 'account_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which of the customer\'s site accounts (account_ids of GET /customers/{id}/credit) gets it; needed only when there are several.')
+			)
+		),
+
+		array(
+			'id'      => 'customers.credit.void',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/credit/{card_id}/void',
+			'scope'   => 'gift_cards:write',
+			'handler' => 'api_customers_credit_void',
+			'dry_run' => true,
+			'returns' => 'StoreCreditCard',
+			'summary' => 'Void a store credit card',
+			'description' => 'What is left on the card goes to zero, as Void on the customer\'s screen does; the reason is written on the card\'s notes and the audit trail. It cannot be undone: give new credit instead. 409 credit_not_open when nothing is left on it, or an order spent from it meanwhile (read it again and retry); 404 for a card that is not this customer\'s store credit. A void is not announced. 503 service_unavailable before the software update that adds store credit.',
+			'params'  => array(
+				array('name' => 'id',      'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'card_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'reason',  'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'Why it is voided; kept on the card for the staff.')
 			)
 		),
 
@@ -3402,7 +3486,7 @@ function api_schema() {
 			'handler' => 'api_subscriptions_list',
 			'returns' => array('list' => 'Subscription'),
 			'summary' => 'Subscriptions',
-			'description' => 'Every subscription the store charges from a stored card, as the subscriptions screen lists them, with the same fields as GET /customers/{id}/subscriptions and the customer on each: customer_id is the account\'s contact record (null for an account that is no contact), the name and e-mail those of the first order. Cursor paged and ordered by when each subscription last changed (a status move, a renewal, a card change), so updated_since picks up the ones that moved since the last sync. The customers row rule applies: an application whose owner has the user role reaches only the subscriptions of the customers in the contact groups given to that account. Subscriptions of the older card gateways\' recurring profiles are not listed; a site without subscriptions answers an empty list. The moves are POST /customers/{id}/subscriptions/{subscription_id}/pause, /resume and /cancel.',
+			'description' => 'Every subscription the store charges from a stored card, as the subscriptions screen lists them, with the same fields as GET /customers/{id}/subscriptions and the customer on each: customer_id is the account\'s contact record (null for an account that is no contact), the name and e-mail those of the first order. customer_name, customer_email and card_last4 are order and payment data: they are null unless the key holds orders:read as well. Cursor paged and ordered by when each subscription last changed (a status move, a renewal, a card change), so updated_since picks up the ones that moved since the last sync. The customers row rule applies: an application whose owner has the user role reaches only the subscriptions of the customers in the contact groups given to that account. Subscriptions of the older card gateways\' recurring profiles are not listed; a site without subscriptions answers an empty list. The moves are POST /customers/{id}/subscriptions/{subscription_id}/pause, /resume and /cancel.',
 			'params'  => array(
 				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'past_due', 'paused', 'cancelled', 'ended')),
 				array('name' => 'customer_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions of this customer record.'),
@@ -3956,7 +4040,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Delete a page',
-			'description' => 'Moves the page to the recycle bin, where an operator can put it back. Send permanent=true to delete it outright with the whole cleanup the pages screen performs - regions, form tables, comments, short links and the stored findings - which cannot be undone. The home page and the pages the storefront and the account area are built from are refused either way. A default IIS install answers DELETE itself before PHP is reached: POST /pages/{id}/delete does the same thing and always arrives.',
+			'description' => 'Moves the page to the recycle bin, where an operator can put it back. Send permanent=true to delete it outright with the whole cleanup the pages screen performs - regions, form tables, comments, short links and the stored findings - which cannot be undone. The home page and the pages the storefront and the account area are built from are refused either way, and so is the variant draft of an experiment that is not ended yet (409 experiment_variant_held). A default IIS install answers DELETE itself before PHP is reached: POST /pages/{id}/delete does the same thing and always arrives.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'query', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
@@ -3972,7 +4056,7 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => array('id' => 'integer', 'deleted' => 'boolean', 'recycled' => 'boolean', 'folder_id' => 'integer?'),
 			'summary' => 'Delete a page, addressed as a POST',
-			'description' => 'The same deletion as DELETE /pages/{id}, for clients that cannot send DELETE. It has an address of its own rather than sharing the one above, because POST /pages/{id} is already the update - a verb alias there would have made the update and the deletion the same request.',
+			'description' => 'The same deletion as DELETE /pages/{id}, for clients that cannot send DELETE. It has an address of its own rather than sharing the one above, because POST /pages/{id} is already the update - a verb alias there would have made the update and the deletion the same request. The same refusals apply, 409 experiment_variant_held among them.',
 			'params'  => array(
 				array('name' => 'id',        'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'permanent', 'in' => 'body', 'type' => 'bool', 'description' => 'Delete outright instead of moving to the recycle bin.')
@@ -5319,6 +5403,209 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Auto dialogs and common regions (includes/api/resources/design_dialogs_regions.php) */
+
+		array(
+			'id'      => 'design.auto_dialogs.list',
+			'method'  => 'GET',
+			'path'    => '/design/auto-dialogs',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_auto_dialogs_list',
+			'returns' => array('list' => 'DesignAutoDialog'),
+			'summary' => 'Auto dialogs',
+			'description' => 'The dialogs that open by themselves for visitors, as the auto dialogs screen lists them, oldest first, cursor paged. A dialog shows url; width and height are pixels (0: sized by the content), delay is seconds after the page opens (0: at once), frequency is hours before it opens again for the same visitor (0: only once), page limits it to one page by name (empty: every page). Only an enabled dialog opens for visitors.',
+			'params'  => array(
+				array('name' => 'enabled', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the enabled, or only the disabled, dialogs.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.get',
+			'method'  => 'GET',
+			'path'    => '/design/auto-dialogs/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_auto_dialogs_get',
+			'returns' => 'DesignAutoDialog',
+			'summary' => 'One auto dialog',
+			'description' => 'The same fields as the list, for one auto dialog.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.create',
+			'method'  => 'POST',
+			'path'    => '/design/auto-dialogs',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_auto_dialogs_create',
+			'dry_run' => true,
+			'returns' => 'DesignAutoDialog',
+			'status'  => 201,
+			'summary' => 'Create an auto dialog',
+			'description' => 'Adds an auto dialog, as the create auto dialog screen does. Like there it starts disabled unless enabled is sent: preview it on the site with ?preview_auto_dialog={id}, then enable it. Name and URL are required; no other auto dialog may have the name (409 name_taken).',
+			'params'  => array(
+				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The dialog\'s name, which no other auto dialog has.'),
+				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'required' => true, 'description' => 'The address the dialog shows.'),
+				array('name' => 'enabled',   'in' => 'body', 'type' => 'bool', 'description' => 'It opens for visitors. false when left out.'),
+				array('name' => 'width',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
+				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
+				array('name' => 'delay',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 2147483, 'nullable' => true, 'description' => 'Seconds after the page opens; 0 or null for at once.'),
+				array('name' => 'frequency', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999, 'nullable' => true, 'description' => 'Hours before it opens again for the same visitor; 0 or null for only once.'),
+				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty for every page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/auto-dialogs/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_auto_dialogs_update',
+			'dry_run' => true,
+			'returns' => 'DesignAutoDialog',
+			'summary' => 'Change an auto dialog',
+			'description' => 'Only the fields sent change, with the screen\'s checks (422). A name another auto dialog has is 409 name_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The dialog\'s name, which no other auto dialog has.'),
+				array('name' => 'url',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The address the dialog shows.'),
+				array('name' => 'enabled',   'in' => 'body', 'type' => 'bool', 'description' => 'It opens for visitors.'),
+				array('name' => 'width',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
+				array('name' => 'height',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 9999, 'nullable' => true, 'description' => 'Pixels; 0 or null to size it by its content.'),
+				array('name' => 'delay',     'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 2147483, 'nullable' => true, 'description' => 'Seconds after the page opens; 0 or null for at once.'),
+				array('name' => 'frequency', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999, 'nullable' => true, 'description' => 'Hours before it opens again for the same visitor; 0 or null for only once.'),
+				array('name' => 'page',      'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'The name of the only page it opens on; empty or null for every page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/auto-dialogs/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_auto_dialogs_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an auto dialog',
+			'description' => 'Deletes the auto dialog outright, as the edit auto dialog screen does. Cannot be undone; to stop it opening and keep it, send enabled false instead.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.auto_dialogs.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/auto-dialogs/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_auto_dialogs_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete an auto dialog, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/auto-dialogs/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.list',
+			'method'  => 'GET',
+			'path'    => '/design/common-regions',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_common_regions_list',
+			'returns' => array('list' => 'DesignCommonRegion'),
+			'summary' => 'Common regions',
+			'description' => 'The common regions: shared content a page style places with its tag and managers edit on any page. Oldest first, cursor paged; designer regions are not listed. content is HTML with the site\'s own links as absolute addresses. A region with a shared_component_id is drawn by that shared component, edited in the visual designer; its content is the one kept from before and comes back if the component is deleted.',
+			'params'  => array(
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor', 'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.get',
+			'method'  => 'GET',
+			'path'    => '/design/common-regions/{id}',
+			'scope'   => 'design:read',
+			'handler' => 'api_design_common_regions_get',
+			'returns' => 'DesignCommonRegion',
+			'summary' => 'One common region',
+			'description' => 'The same fields as the list, for one common region. A designer region is 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.create',
+			'method'  => 'POST',
+			'path'    => '/design/common-regions',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_common_regions_create',
+			'dry_run' => true,
+			'returns' => 'DesignCommonRegion',
+			'status'  => 201,
+			'summary' => 'Create a common region',
+			'description' => 'Adds a common region, as the create common region screen does; place it in a page style with its tag. The name is required, at most 100 characters (422), and no other common or designer region may have it (409 name_taken).',
+			'params'  => array(
+				array('name' => 'name',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The name page styles place the region by (<cregion>name</cregion>), no other region\'s.'),
+				array('name' => 'content', 'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The region as HTML, stored as the screen\'s rich text editor stores it.')
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/design/common-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_common_regions_update',
+			'dry_run' => true,
+			'returns' => 'DesignCommonRegion',
+			'summary' => 'Change a common region',
+			'description' => 'Only the fields sent change. A name another region has is 409 name_taken; a rename leaves the tags already in page styles behind, so change them too. A region drawn by its shared component takes a rename but no content (409 region_is_shared_component): edit the component in the visual designer. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',    'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The name page styles place the region by (<cregion>name</cregion>), no other region\'s. A rename has to be made in the page styles too.'),
+				array('name' => 'content', 'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The region as HTML, stored as the screen\'s rich text editor stores it.')
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.delete',
+			'method'  => 'DELETE',
+			'path'    => '/design/common-regions/{id}',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_common_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a common region',
+			'description' => 'Deletes the common region and the user accounts\' access to it, as the edit common region screen does; its tag then draws nothing. 409 region_is_shared_component while a shared component draws it: delete the component first (its content comes back), then the region. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'design.common_regions.delete_post',
+			'method'  => 'POST',
+			'path'    => '/design/common-regions/{id}/delete',
+			'scope'   => 'design:write',
+			'handler' => 'api_design_common_regions_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a common region, addressed as a POST',
+			'description' => 'The same delete as DELETE /design/common-regions/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Signing in from a device ------------------------------------ */
 
 		array(
@@ -5579,7 +5866,7 @@ function api_schema() {
 			'handler' => 'api_bookings_list',
 			'returns' => array('list' => 'Booking'),
 			'summary' => 'Appointment bookings',
-			'description' => 'The bookings of the staff agenda by start time, earliest first, cursor paged. status: held (a visitor\'s slot kept for ten minutes while the form is filled; hold_until says until when), requested, confirmed, cancelled, no_show or done; without status every one but held is listed. Times are ISO-8601 UTC; the site\'s zone is site.timezone of GET /meta. source says where it was made: site (the booking widget), panel (the agenda) or api. An owner with the user role reaches only their own staff member\'s bookings. 503 service_unavailable until the database update that adds bookings has run.',
+			'description' => 'The bookings of the staff agenda by start time, earliest first, cursor paged. status: held (a visitor\'s slot kept for ten minutes while the form is filled; hold_until says until when), requested, confirmed, cancelled, no_show or done; without status every one but held is listed. Times are ISO-8601 UTC; the site\'s zone is site.timezone of GET /meta. source says where it was made: site (the booking widget), panel (the agenda) or api. A service with a deposit gives the booking order_id and order_number of its deposit order and paid_at once that order is paid; null without one. An owner with the user role reaches only their own staff member\'s bookings. 503 service_unavailable until the database update that adds bookings has run.',
 			'params'  => array(
 				array('name' => 'status',     'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'One status or a comma list of them.'),
 				array('name' => 'staff_id',   'in' => 'query', 'type' => 'int', 'min' => 1),

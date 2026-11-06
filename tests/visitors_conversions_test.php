@@ -78,7 +78,7 @@ function test_visitors_conversions_funnel_shares_of_visits()
 	pg_assert_same(4, count($rows));
 	pg_assert_same(200, $rows[0]['value']);
 	pg_assert_same(pg_format_number(200, 0), $rows[0]['text'], 'the visits row carries no share');
-	pg_assert_same(pg_format_number(10, 0) . ' · ' . pg_format_number(5, 2) . ' %', $rows[2]['text']);
+	pg_assert_same(pg_format_number(10, 0) . ' · ' . pg_visitors_percent(5, 2), $rows[2]['text']);
 	pg_assert_same(array(), pg_visitors_conversions_funnel(visitors_conversions_test_totals(array('visits' => 0))));
 }
 

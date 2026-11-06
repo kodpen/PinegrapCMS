@@ -244,18 +244,17 @@
             var choices = el('div', 'ws-status-choices');
 
             HEALTHS.forEach(function (key) {
-                var radio = el('input', 'btn-check');
-                var caption = el('label', 'btn btn-sm ws-status-choice ws-status-' + key);
+                var radio = el('input');
+                var caption = el('label', 'btn btn-sm btn-subtle btn-check ws-status-choice ws-status-' + key);
 
                 radio.type = 'radio';
                 radio.name = group;
                 radio.id = h.nextId('ws-status-opt-');
                 radio.checked = (key === health);
                 radio.addEventListener('change', function () { health = key; });
-                caption.htmlFor = radio.id;
+                caption.appendChild(radio);
                 caption.appendChild(h.icon(ICONS[key], 'me-1'));
                 caption.appendChild(document.createTextNode(t('st_' + key)));
-                choices.appendChild(radio);
                 choices.appendChild(caption);
             });
 

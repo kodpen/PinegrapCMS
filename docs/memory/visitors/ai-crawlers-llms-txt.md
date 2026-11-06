@@ -20,7 +20,7 @@ description: AI section of robots.txt (Content-Signal, Disallow groups in step w
 
 ## What does llms.txt contain?
 - `# name` (organization, else browser title, else host), `> description` (site meta description), the operator's Markdown, `## Pages` (translated heading), `## Optional` (untranslated: the format's name) with the sitemap link.
-- Pages: sitemap rules (sitemap=1, not noindex, public, not archived, not in the recycle bin), types standard/folder view/photo gallery/custom form/form list view/form view directory/calendar view/catalog; cart, order forms and search results left out. Home first, then views of the last 30 days (`visitor_content_hourly`), then newest change; at most 50. Title = page title, home falls back to the browser title, others to the page name.
+- Pages: sitemap rules (sitemap=1, not noindex, public, not archived, not in the recycle bin), types standard/folder view/photo gallery/custom form/form list view/form view directory/calendar view/catalog; cart, order forms and search results left out (`pg_llms_txt_page_types()`). A designed page whose widget stands in for a left-out type (sign-in, error, cart, checkout, search, bare detail page) is dropped, home kept, as in the sitemap (`pg_llms_txt_drop_pages()`). Home first, then views of the last 30 days (`visitor_content_hourly`), then newest change; at most 50. Title = page title, home falls back to the browser title, others to the page name.
 - `text/plain; charset=utf-8`, `X-Robots-Tag: noindex`. Default language only; `/en/llms.txt` is redirected to the root like robots.txt.
 
 ## How is llms.txt routed?

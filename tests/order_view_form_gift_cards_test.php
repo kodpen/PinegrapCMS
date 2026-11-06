@@ -26,7 +26,8 @@ function test_order_view_form_heading_closes_its_div()
 {
 	$source = order_view_form_gift_cards_source();
 	pg_assert_false(strpos($source, '</legend>') !== false, 'view_order.php: a div heading closed with </legend>');
-	pg_assert_contains("'<div class=\"card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold\">' . \$output_legend_content . '</div>'", $source, 'view_order.php');
+	pg_assert_true(substr_count($source, 'pg_order_view_line_part($output_legend_content,') === 2, 'view_order.php: each form box takes its caption');
+	pg_assert_contains('fw-bold fg-secondary">\' . $legend_html . \'</div>', (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/order_view.php'), 'the box caption closes its div');
 }
 
 function test_order_view_no_limit_is_translated()

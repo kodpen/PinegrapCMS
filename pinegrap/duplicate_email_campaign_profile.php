@@ -33,7 +33,6 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM email_campaign_profiles W
 $email_campaign_profile = db_item(
     "SELECT
         name,
-        enabled,
         action,
         action_item_id,
         subject,
@@ -70,6 +69,9 @@ $email_campaign_profile['name'] = get_unique_name(array(
     'name' => $email_campaign_profile['name'],
     'type' => 'email_campaign_profile'));
 
+// The copy always starts disabled: it shares the original's action, subject
+// and body, so an enabled copy would send every customer the same e-mail twice
+// on each trigger until one of them is disabled.
 db(
     "INSERT INTO email_campaign_profiles (
         name,
@@ -96,7 +98,7 @@ db(
         last_modified_timestamp)
     VALUES (
         '" . e($email_campaign_profile['name']) . "',
-        '" . e($email_campaign_profile['enabled']) . "',
+        '0',
         '" . e($email_campaign_profile['action']) . "',
         '" . e($email_campaign_profile['action_item_id']) . "',
         '" . e($email_campaign_profile['subject']) . "',
@@ -124,6 +126,6 @@ log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>arr
 
 include_once('liveform.class.php');
 $liveform = new liveform('edit_email_campaign_profile');
-$liveform->add_notice(lang(array('string'=>'The {var:1} has been duplicated, and you are now editing the duplicate.','vars'=>lang('campaign profile') )) );
+$liveform->add_notice(lang('The campaign profile has been duplicated, and you are now editing the duplicate.') . ' ' . lang('The copy is disabled and sends nothing until you enable it.'));
 
 go(PATH . SOFTWARE_DIRECTORY . '/edit_email_campaign_profile.php?id=' . $new_id);

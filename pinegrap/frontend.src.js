@@ -1806,21 +1806,25 @@ var software = {
 
         software.comment_actions_ready = true;
 
-        // Point the comment form at the comment it answers ('0' for none).
-        // Returns the form, or null when the page has none (closed, or the
-        // visitor must sign in): a link then goes where it points.
-        var answer = function(id, name) {
-            var form = software_$('form[data-pg-comment-form]').first();
+        // Point the comment form of the control's own widget at the comment
+        // it answers ('0' for none): the nearest box around the control that
+        // holds a comment form, so on a product page a Reply under a question
+        // fills the questions form, not the reviews form above it. Returns
+        // the form, or null when there is none (closed, or the visitor must
+        // sign in): a link then goes where it points.
+        var answer = function(control, id, name) {
+            var scope = control.parents().has('form[data-pg-comment-form]').first();
+            var form = scope.find('form[data-pg-comment-form]').first();
 
             if (!form.length) {
                 return null;
             }
 
             form.find('input[name="parent_id"]').val(id);
-            software_$('[data-pg-comment-reply-to-name]').text(name);
+            scope.find('[data-pg-comment-reply-to-name]').text(name);
             // The hidden attribute and d-none together: a display class such
             // as d-flex beats Bootstrap's [hidden], and d-none comes after it.
-            software_$('[data-pg-comment-replying]').prop('hidden', id === '0').toggleClass('d-none', id === '0');
+            scope.find('[data-pg-comment-replying]').prop('hidden', id === '0').toggleClass('d-none', id === '0');
 
             return form;
         };
@@ -1828,7 +1832,7 @@ var software = {
         software_$(document).on('click', '[data-pg-comment-reply]', function(event) {
             var control = software_$(this);
             var id = String(parseInt(control.attr('data-pg-comment-reply'), 10) || 0);
-            var form = (id !== '0') ? answer(id, control.attr('data-pg-comment-reply-name') || '') : null;
+            var form = (id !== '0') ? answer(control, id, control.attr('data-pg-comment-reply-name') || '') : null;
 
             if (form) {
                 event.preventDefault();
@@ -1838,7 +1842,7 @@ var software = {
         });
 
         software_$(document).on('click', '[data-pg-comment-reply-cancel]', function(event) {
-            if (answer('0', '')) {
+            if (answer(software_$(this), '0', '')) {
                 event.preventDefault();
             }
         });
@@ -5076,7 +5080,7 @@ var software = {
                         // If there is not already an active image editor button for this image,
                         // then create one.
                         if (software_$('#software_image_editor_button_' + image_id).length == 0) {
-                            var image_editor_button = software_$('<a href="#" data-pg-image-edit="' + prepare_content_for_html(image_name) + '" data-pg-image-object="' + image_editor_object_type + '" data-pg-image-object-id="' + prepare_content_for_html(String(id)) + '" id="software_image_editor_button_' + image_id + '" style="border: 0; left: ' + image.offset().left + 'px; margin: 0 0 0 1.5em; padding: .15em; position: absolute; text-decoration: none; top: ' + image.offset().top + 'px; z-index: 9" title="' + lang('Edit Image with Software Image Editor') + ' (' + prepare_content_for_html(image_name) + ')"><img src="' + software_path + software_directory + '/assets/images/icon_image_editor.png" style="max-width:100%;height:auto;" width="86" height="auto" alt="' + lang('Software Image Editor') + '" /></a>').appendTo('body');
+                            var image_editor_button = software_$('<a href="#" data-pg-image-edit="' + prepare_content_for_html(image_name) + '" data-pg-image-object="' + image_editor_object_type + '" data-pg-image-object-id="' + prepare_content_for_html(String(id)) + '" id="software_image_editor_button_' + image_id + '" style="border: 0; left: ' + image.offset().left + 'px; margin: 0 0 0 1.5em; padding: .15em; position: absolute; text-decoration: none; top: ' + image.offset().top + 'px; z-index: 9" title="' + lang('Edit Image with Software Image Editor') + ' (' + prepare_content_for_html(image_name) + ')"><img src="' + software_path + software_directory + '/assets/images/pinegrap-mascot.svg" style="display:block;" width="36" height="36" alt="' + lang('Software Image Editor') + '" /></a>').appendTo('body');
 
                             image_editor_button.on('mouseleave', function () {
                                 setTimeout (function () { 

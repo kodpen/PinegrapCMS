@@ -279,12 +279,43 @@ function erp_expense_category_deductible($category_id)
 }
 
 /**
- * Save the category list: the rows shown, and at most one new one.
+ * The first category row whose name is blank (spaces only count as blank),
+ * or 0 when every row has a name. Rows of ids the list does not know are
+ * skipped, as the save skips them.
+ *
+ * @param array $rows       id => ['name', ...]
+ * @param array $known_ids  The ids of the stored categories
+ * @return int
+ */
+function erp_expense_categories_blank_row($rows, $known_ids)
+{
+    $known = array_flip(array_map('intval', (array) $known_ids));
+
+    foreach ((array) $rows as $id => $row) {
+        $id = (int) $id;
+
+        if (!isset($known[$id])) {
+            continue;
+        }
+
+        if (!is_array($row) || trim((string) ($row['name'] ?? '')) === '') {
+            return $id;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Save the category list: the rows shown, and at most one new one. Every
+ * row is checked first and the writes go in one transaction, so a refusal
+ * leaves the list as it was.
  *
  * @param array $rows  id => ['name', 'code', 'sort_order', 'is_active',
  *                     'tax_deductible']
  * @param array $new   ['name', 'code', 'tax_deductible']
- * @return array ['success' => bool, 'error' => string, 'added' => int]
+ * @return array ['success' => bool, 'error' => string, 'added' => int,
+ *               'id' => the refused row, when one is]
  */
 function erp_expense_categories_save($rows, $new = array())
 {
@@ -299,20 +330,28 @@ function erp_expense_categories_save($rows, $new = array())
 
     $with_deductible = erp_expense_categories_have_deductible();
 
+    // Every row is checked before any is written: a blank name further down
+    // used to leave the rows above it saved behind a "nothing saved" error.
+    $blank = erp_expense_categories_blank_row($rows, array_keys($known));
+
+    if ($blank > 0) {
+        return array('success' => false, 'error' => lang('Every category needs a name.'), 'added' => 0, 'id' => $blank);
+    }
+
+    if (!erp_tx_begin()) {
+        return array('success' => false, 'error' => erp_db_error(), 'added' => 0);
+    }
+
     foreach ((array) $rows as $id => $row) {
         $id = (int) $id;
 
-        if (!isset($known[$id])) {
+        if (!isset($known[$id]) || !is_array($row)) {
             continue;
         }
 
         $name = trim((string) ($row['name'] ?? ''));
 
-        if ($name === '') {
-            return array('success' => false, 'error' => lang('Every category needs a name.'), 'added' => 0);
-        }
-
-        db("UPDATE erp_expense_categories SET
+        $updated = db("UPDATE erp_expense_categories SET
                 name = '" . escape(mb_substr($name, 0, 100)) . "',
                 code = '" . escape(mb_substr(trim((string) ($row['code'] ?? '')), 0, 32)) . "',
                 sort_order = '" . (int) ($row['sort_order'] ?? $known[$id]['sort_order']) . "',
@@ -321,6 +360,13 @@ function erp_expense_categories_save($rows, $new = array())
                 tax_deductible = '" . (!empty($row['tax_deductible']) ? 1 : 0) . "'," : "") . "
                 updated_at = '" . time() . "'
             WHERE id = '" . $id . "'");
+
+        if ($updated === false) {
+            $error = erp_db_error();
+            erp_tx_rollback();
+
+            return array('success' => false, 'error' => $error, 'added' => 0, 'id' => $id);
+        }
     }
 
     $added = 0;
@@ -329,13 +375,27 @@ function erp_expense_categories_save($rows, $new = array())
     if ($new_name !== '') {
         $order = (int) db_value("SELECT COALESCE(MAX(sort_order), 0) FROM erp_expense_categories") + 10;
 
-        if (db("INSERT INTO erp_expense_categories (name, code, sort_order, is_active, " . ($with_deductible ? "tax_deductible, " : "") . "created_at, updated_at)
+        $inserted = db("INSERT INTO erp_expense_categories (name, code, sort_order, is_active, " . ($with_deductible ? "tax_deductible, " : "") . "created_at, updated_at)
             VALUES (
                 '" . escape(mb_substr($new_name, 0, 100)) . "',
                 '" . escape(mb_substr(trim((string) ($new['code'] ?? '')), 0, 32)) . "',
-                '" . $order . "', 1, " . ($with_deductible ? "'" . ((!array_key_exists('tax_deductible', $new) || !empty($new['tax_deductible'])) ? 1 : 0) . "', " : "") . "'" . time() . "', '" . time() . "')") !== false) {
-            $added = (int) mysqli_insert_id(db::$con);
+                '" . $order . "', 1, " . ($with_deductible ? "'" . ((!array_key_exists('tax_deductible', $new) || !empty($new['tax_deductible'])) ? 1 : 0) . "', " : "") . "'" . time() . "', '" . time() . "')");
+
+        if ($inserted === false) {
+            $error = erp_db_error();
+            erp_tx_rollback();
+
+            return array('success' => false, 'error' => $error, 'added' => 0);
         }
+
+        $added = (int) mysqli_insert_id(db::$con);
+    }
+
+    if (!erp_tx_commit()) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+
+        return array('success' => false, 'error' => $error, 'added' => 0);
     }
 
     return array('success' => true, 'error' => '', 'added' => $added);
@@ -484,6 +544,33 @@ function erp_expenses_list($filters = array())
         WHERE " . $where . "
         ORDER BY e.expense_date DESC, e.id DESC
         LIMIT " . $limit);
+}
+
+/**
+ * Every expense of a period, cancelled ones included, oldest first.
+ *
+ * For the reports that add a period up (the VAT report, the accountant's
+ * pack): erp_expenses_list() serves a screen and stops at 5000 rows, newest
+ * first, so a busy period would lose its oldest expenses and their tax.
+ *
+ * @param string $from  Y-m-d
+ * @param string $to    Y-m-d
+ * @return array
+ */
+function erp_expenses_period($from, $to)
+{
+    if (!erp_expenses_ready()) {
+        return array();
+    }
+
+    $where = erp_expenses_where(array('from' => $from, 'to' => $to, 'status' => 'all'));
+
+    return (array) db_items("SELECT e.*, c.name AS category_name, c.code AS category_code, t.name AS till_name
+        FROM erp_expenses e
+        LEFT JOIN erp_expense_categories c ON c.id = e.category_id
+        LEFT JOIN erp_cash_accounts t ON t.id = e.cash_account_id
+        WHERE " . $where . "
+        ORDER BY e.expense_date ASC, e.id ASC");
 }
 
 /**
@@ -1028,6 +1115,14 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
         return $fail(lang('The expense was not saved.') . ' ' . $error);
     }
 
+    // A correction is meant for the coming ones too: the active repeat of
+    // this expense takes the new figures (erp_expense_recurrence_follow()).
+    if (($existing !== null) && !erp_expense_recurrence_follow($id)) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return $fail(lang('The expense was not saved.') . ' ' . $error);
+    }
+
     if ($pay) {
         $expense = db_item("SELECT * FROM erp_expenses WHERE id = '" . $id . "' LIMIT 1 FOR UPDATE");
 
@@ -1063,7 +1158,8 @@ function erp_expense_save($data, $user_id = 0, $id = 0)
  *
  * @param int   $id
  * @param array $payment  cash_account_id, paid_date, payment_method
- * @return array ['error' => string, 'expense' => array|null]
+ * @return array ['error' => string, 'expense' => array|null, 'field' => the
+ *               form field the refusal is about, or '']
  */
 function erp_expense_pay_check($id, $payment)
 {
@@ -1076,9 +1172,10 @@ function erp_expense_pay_check($id, $payment)
         return array('error' => lang('That expense is not waiting to be paid.'), 'expense' => null);
     }
 
-    $refusal = erp_expense_payment_refusal($expense, $payment);
+    $field = '';
+    $refusal = erp_expense_payment_refusal($expense, $payment, $field);
 
-    return array('error' => $refusal, 'expense' => ($refusal === '') ? $expense : null);
+    return array('error' => $refusal, 'expense' => ($refusal === '') ? $expense : null, 'field' => ($refusal !== '') ? (string) $field : '');
 }
 
 /**
@@ -1087,14 +1184,15 @@ function erp_expense_pay_check($id, $payment)
  * @param int   $id
  * @param array $payment  cash_account_id, paid_date, payment_method
  * @param int   $user_id
- * @return array ['success' => bool, 'error' => string]
+ * @return array ['success' => bool, 'error' => string, 'field' => the form
+ *               field a refusal is about, when one is]
  */
 function erp_expense_pay($id, $payment, $user_id = 0)
 {
     $checked = erp_expense_pay_check($id, $payment);
 
     if ($checked['error'] !== '') {
-        return array('success' => false, 'error' => $checked['error']);
+        return array('success' => false, 'error' => $checked['error'], 'field' => (string) ($checked['field'] ?? ''));
     }
 
     if (!erp_tx_begin()) {

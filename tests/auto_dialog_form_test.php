@@ -66,7 +66,7 @@ function test_auto_dialog_form_screens_use_shared_helpers()
 
 		pg_assert_contains('includes/forms/auto_dialog_form.php', $source, $file . ' loads the helpers');
 		pg_assert_contains('pg_auto_dialog_form_validate($liveform, ' . $id . ')', $source, $file . ' checks the shared way');
-		pg_assert_contains('array_merge(pg_auto_dialog_form_values($liveform), ', $source, $file . ' saves the shared values');
+		pg_assert_contains('pg_auto_dialog_save(' . (($id === 'null') ? '0' : '$id') . ', pg_auto_dialog_form_values($liveform), USER_ID)', $source, $file . ' saves the shared values through pg_auto_dialog_save()');
 		pg_assert_contains("validate_area_access(\$user, 'manager')", $source, $file . ' is for managers');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_false(strpos($source, 'already in use') !== false, $file . ' keeps no copy of the name check');
@@ -108,9 +108,36 @@ function test_auto_dialog_form_limits_keep_the_delay_inside_settimeout()
 
 function test_auto_dialog_list_enabled_cell_is_read_as_a_word()
 {
-	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/view_auto_dialogs.php');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_auto_dialogs.php');
 
-	pg_assert_contains('<span class="material-icons" aria-hidden="true">task_alt</span>', $template, 'the icon is hidden from screen readers');
-	pg_assert_contains("<span class=\"visually-hidden\"><?=lang('Yes')?></span>", $template, 'an enabled dialog reads Yes');
-	pg_assert_contains("<span class=\"visually-hidden\"><?=lang('No')?></span>", $template, 'a disabled dialog reads No');
+	// The shared check cell: a mark with role img and the label Yes, sorted by 1/0.
+	pg_assert_contains("'enabled' => pg_list_table_check_cell(!empty(\$auto_dialog['enabled']))", $screen, 'an enabled dialog reads Yes');
+}
+
+function test_auto_dialog_template_lays_out_form_status_and_save_bar()
+{
+	$template = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/templates/edit_auto_dialog.php');
+
+	$form = strpos($template, 'class="col-12 lg:col-8 2xl:col-9 order-1"');
+	$status = strpos($template, 'class="col-12 lg:col-4 2xl:col-3 order-2"');
+	$bar = strpos($template, 'class="col-12 order-3 position-sticky"');
+	pg_assert_true($form !== false && $status !== false && $bar !== false, 'form column, status column and save bar');
+	pg_assert_true($form < $status && $status < $bar, 'the status column follows the form column, the bar comes last');
+	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $template, 'the status box sticks under the top bar');
+	pg_assert_true(strpos($template, "'id' => 'enabled'") > $status, 'the Enabled switch sits in the status column');
+
+	foreach (array('page', 'width', 'height', 'delay', 'frequency') as $field) {
+		pg_assert_contains('auto_dialog_summary_<?=$summary_row[0]?>', $template, 'the Summary cells carry an id');
+		pg_assert_contains("array('" . $field . "', lang(", $template, $field . ' has a Summary row');
+	}
+	pg_assert_contains('<?=h(($summary_value === \'\')', $template, 'the Summary value is escaped');
+}
+
+function test_auto_dialog_edit_loads_the_last_change()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_auto_dialog.php');
+
+	pg_assert_contains('LEFT JOIN user ON auto_dialogs.last_modified_user_id = user.user_id', $source, 'the user of the last change');
+	pg_assert_contains('auto_dialogs.last_modified_timestamp', $source, 'the time of the last change');
+	pg_assert_contains("WHERE auto_dialogs.id = '", $source, 'the id is read from the auto dialog table');
 }

@@ -17,16 +17,45 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+require_once('edit_offer_f.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/offer_list_edit.php');
+
+// A value changed in place on the list (pg_list_edit_request() in
+// includes/fn/output.php). Answered in JSON, before anything below draws the
+// screen; the write is the offer editor's own save (pg_offer_quick_update()).
+if (pg_list_edit_requested()) {
+    $edit = pg_list_edit_request(pg_offer_edit_columns(), function ($user) {
+        return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
+    });
+
+    $saved = pg_offer_quick_update($edit['id'], $edit['field'], $edit['value'], $edit['user']);
+
+    pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
+}
+
 $user = validate_user();
 validate_ecommerce_access($user);
-require_once('edit_offer_f.php');
 // The editor saves through api.php and then sends the operator here, leaving
 // its confirmation in this form - the same hand-off the other list screens use.
 include_once('liveform.class.php');
 $liveform = new liveform('view_offers');
 
-// Sorting and searching are done by the table itself in the browser, so the
-// query only fixes the initial order.
+// Every offer is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort in the session, so
+// the query only fixes the order before the kept sort is applied.
+$sort_columns = array(
+    'code'         => lang('Offer'),
+    'description'  => lang('Message'),
+    'require_code' => lang('How'),
+    'enabled'      => lang('Status'),
+    'start_date'   => lang('Start Date'),
+    'end_date'     => lang('End Date'),
+    'modified'     => lang('Last Modified'),
+);
+$sort_default = array('sort' => 'modified', 'order' => 'desc');
+$list_state = pg_list_state('view_offers', $sort_columns, $sort_default);
+
 $rows = db_items(
     "SELECT
         offers.*,
@@ -37,52 +66,38 @@ $rows = db_items(
 
 $products = _pg_offer_products();
 $shipping_methods = _pg_offer_shipping_methods();
-$today = date('Y-m-d');
 
 $offers = array();
 $counts = array('all' => 0, 'active' => 0, 'scheduled' => 0, 'expired' => 0, 'disabled' => 0, 'code' => 0, 'auto' => 0, 'incomplete' => 0);
 if ($rows) {
     foreach ($rows as $row) {
-        // The editor's view of the offer gives the chips and the "incomplete"
-        // check the same reading the editor itself has.
-        $state = _pg_offer_load($row['id']);
-        $status = _pg_offer_status($row);
-        $incomplete = _pg_offer_is_incomplete($state);
-        $condition_chips = array();
-        foreach ($state['conditions'] as $condition) {
-            $condition_chips[] = _pg_offer_condition_chip($condition, $products);
-        }
-        $action_chips = array();
-        foreach ($state['actions'] as $action) {
-            $action_chips[] = array(
-                'icon' => _pg_offer_action_icon($action['type']),
-                'text' => _pg_offer_action_chip($action, $products));
-        }
-        $open_ended = ($row['end_date'] == PG_OFFER_OPEN_END_DATE) && ($row['start_date'] <= $today);
-        $offers[] = array(
-            'id'                => (int) $row['id'],
-            'code'              => $row['code'],
-            'description'       => $row['description'],
-            'status'            => $status,
-            'status_label'      => _pg_offer_status_label($status),
-            'enabled'           => ($row['status'] == 'enabled'),
-            'require_code'      => (int) $row['require_code'],
-            'incomplete'        => $incomplete,
-            'condition_chips'   => $condition_chips,
-            'action_chips'      => $action_chips,
-            'upsell'            => ((int) $row['upsell'] == 1) && $state['conditions'],
-            'period'            => $open_ended ? lang('Open-ended') : (prepare_form_data_for_output($row['start_date'], 'date') . ' – ' . prepare_form_data_for_output($row['end_date'], 'date')),
-            'sentence'          => _pg_offer_sentence($state, $products, $shipping_methods),
-            'modified'          => get_relative_time(array('timestamp' => $row['timestamp'])),
-            'modified_by'       => $row['last_modified_username']);
+        $offer = pg_offer_list_entry($row, $products, $shipping_methods);
+        $status = $offer['status'];
+        $offers[] = $offer;
         $counts['all']++;
         $counts[$status]++;
         $counts[$row['require_code'] ? 'code' : 'auto']++;
-        if ($incomplete) {
+        if ($offer['incomplete']) {
             $counts['incomplete']++;
         }
     }
 }
+
+// What an operator can change on the list without opening the offer.
+$quick_edit = pg_offer_edit_columns();
+
+$list_rows = array();
+foreach ($offers as $offer) {
+    $list_rows[] = pg_offer_list_row($offer, $quick_edit);
+}
+
+$list = pg_list_table_printed(array(
+    'list'    => 'view_offers',
+    'columns' => pg_offer_list_columns(),
+    'levels'  => $list_state['sorts'],
+    'rows'    => $list_rows,
+    'edit'    => array('url' => 'view_offers.php', 'columns' => $quick_edit),
+));
 
 $orphans = _pg_offer_orphans();
 $orphan_count = count($orphans['rules']) + count($orphans['actions']);
@@ -99,4 +114,4 @@ require('includes/templates/view_offers.php');
 // The notice has been shown; it must not survive into the next visit.
 $liveform->remove_form();
 
-echo output_footer();
+echo pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();

@@ -135,6 +135,20 @@ function test_workspace_scheduled_flow_window_sketch_shape()
 	pg_assert_true($card['width'] > $card['height']);
 }
 
+// The sketch as the window's read-only canvas draws it: the boxes at their
+// real places, each box's dry run as the card graph was tried.
+function test_workspace_scheduled_flow_window_sketch_view()
+{
+	$graph = ws_scheduled_flow_graph(3, '2026-10-31');
+	$card = ws_flow_card_graph($graph);
+	$card['nodes'][1]['said'] = 'It would post here.';
+	$view = ws_scheduled_flow_sketch_view($graph, $card);
+
+	pg_assert_same($graph, $view['graph'], 'the real places, not the card\'s scaled ones');
+	pg_assert_same(array('said' => 'It would post here.', 'failed' => false), ((array) $view['tries'])['post']);
+	pg_assert_contains("'view' => \$result['view']", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php'));
+}
+
 // The window in workspace.js: the Add entry opens it, the drawing is D8b's
 // with the pick handed to the form, Publish and Open on the canvas send the
 // draft the window made before.
@@ -143,7 +157,10 @@ function test_workspace_scheduled_flow_window_js_wiring()
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 
 	pg_assert_contains("label: t('sa_flow_new'), action: function () {\n                        self.scheduledFlowWindow();", $js);
-	pg_assert_contains('self.flowWindowDraw(drawing, graph, function (picked) {', $js);
+	pg_assert_contains('self.flowSketch = window.PGWsFlow.embed(stage, {', $js, 'the sketch is drawn by the Flows canvas, read-only');
+	pg_assert_contains('graph: answer.view.graph,', $js);
+	pg_assert_contains("var target = (picked.id === 'post') ? message : date;", $js, 'a box picked brings its settings forward');
+	pg_assert_contains('self.flowWindowDraw(drawing, answer.graph);', $js, 'the still picture where the canvas cannot load');
 	pg_assert_contains('flow_id: saved.flow_id,', $js);
 	pg_assert_contains('draft_rev: saved.draft_rev,', $js);
 	pg_assert_contains('publish: publish ? 1 : 0', $js);

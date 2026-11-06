@@ -86,6 +86,10 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
             // charge its shipping), and a gift is not put straight back.
             pg_cart_remove_line($iid);
             $applied++;
+        } elseif (!pg_order_item_quantity_allowed($iid, $q)) {
+            // A gift card line over its unit limit keeps its quantity: it
+            // would be charged for cards it never issues.
+            $lf->mark_error('quantities[' . $iid . ']', pg_gift_card_line_quantity_error());
         } else {
             db("UPDATE order_items SET quantity = '$q' WHERE id = '$iid' AND order_id = '$oid'");
             // A recipient that already has an address and a shipping method
@@ -179,7 +183,7 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         if (!$owns) continue;
 
         // Resolve field type for proper storage of date / datetime / time.
-        $f_meta = db_item("SELECT type, multiple FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
+        $f_meta = db_item("SELECT type, label, multiple FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
         $f_type = is_array($f_meta) ? (string)$f_meta['type'] : 'text box';
 
         // Collect raw value(s) from POST. Multi-select / checkbox arrays
@@ -188,6 +192,19 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         // itself a list is dropped (pg_cf_posted_value()).
         $raw = isset($_POST[$key]) ? $_POST[$key] : '';
         $raw = pg_cf_posted_value($raw, array('type' => $f_type, 'multiple' => is_array($f_meta) ? $f_meta['multiple'] : 0));
+
+        // A date, an e-mail address or a time that is not one, or a choice
+        // outside the field's option list, is refused as the classic cart
+        // refuses it: the stored value stays and the error holds checkout.
+        $f_options = pg_cf_type_has_options($f_type)
+            ? (array) db_values("SELECT value FROM form_field_options WHERE form_field_id = '" . (int)$fid . "'")
+            : array();
+        $f_error = pg_product_form_value_error(array('type' => $f_type, 'label' => is_array($f_meta) ? (string)$f_meta['label'] : ''), $raw, $f_options);
+        if ($f_error !== null) {
+            $lf->mark_error($key, $f_error);
+            continue;
+        }
+
         if (is_array($raw)) {
             $raw = implode(', ', $raw);
         }
@@ -538,8 +555,10 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
                     break;
 
                 case 'quantity':
-                    $qa_qty = (int)preg_replace('/[^\d]/', '', (string)(isset($_POST['quick_add_quantity']) ? $_POST['quick_add_quantity'] : ''));
-                    if ($qa_qty > 0) {
+                    // A whole number only, as the cart rows read it: stripping
+                    // every non-digit turned '1.5' into 15 and '-3' into 3.
+                    $qa_qty = pg_cart_posted_quantity(isset($_POST['quick_add_quantity']) ? $_POST['quick_add_quantity'] : '');
+                    if (($qa_qty !== null) && ($qa_qty > 0)) {
                         add_order_item($qa_pid, $qa_qty, 0, $qa_ship_to, $qa_add_name);
                         $qa_added = true;
                     } else {
@@ -564,6 +583,12 @@ if (!empty($_POST['quick_add']) && $oid > 0 && function_exists('add_order_item')
                 default:
                     add_order_item($qa_pid, pg_product_default_quantity($qa_product['default_quantity']), 0, $qa_ship_to, $qa_add_name);
                     $qa_added = true;
+            }
+
+            // A gift card line over its unit limit was refused by add_order_item().
+            if (pg_gift_card_quantity_refusal_take()) {
+                $qa_added = false;
+                $lf->mark_error('quick_add_quantity', pg_gift_card_line_quantity_error());
             }
 
             if ($qa_added) {

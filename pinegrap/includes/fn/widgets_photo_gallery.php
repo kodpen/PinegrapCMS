@@ -47,6 +47,22 @@ function pg_gal_image_types_sql()
 }
 
 /**
+ * The SQL condition on `files` for the photos of a folder: its images,
+ * neither design files nor attachments. A file uploaded with a submitted
+ * form or a comment (signatures too) is an attachment: it lands in the
+ * field's upload folder, which may be a gallery or one of its albums, and
+ * get_file.php opens it only to those who may see its record, so listed as
+ * a photo it showed its name and a broken picture to everyone else.
+ *
+ * @param int $folder_id
+ * @return string
+ */
+function pg_gal_photo_sql($folder_id)
+{
+    return "folder = '" . (int)$folder_id . "' AND type IN (" . pg_gal_image_types_sql() . ") AND design = '0' AND attachment = '0'";
+}
+
+/**
  * The alt text of a gallery thumbnail: the file's description, or when it
  * has none a readable text made from the file name (the stem, with dashes,
  * underscores and runs of spaces turned into single spaces).
@@ -351,17 +367,16 @@ function pg_gal_widget_pages_showing($chain)
 function _pg_gal_read($folder_id)
 {
     $folder_id = (int)$folder_id;
-    $types = pg_gal_image_types_sql();
     $bin_id = (int)pg_recycle_bin_folder_id();
     $albums = array();
     foreach ((array)db_items("SELECT folder_id AS id, folder_name AS name FROM folder WHERE folder_parent = '" . $folder_id . "' ORDER BY folder_order, folder_name") as $f) {
         if ($bin_id > 0 && (int)$f['id'] === $bin_id) continue;
         if (!check_view_access($f['id'])) continue;
-        $f['photos'] = (int)db_value("SELECT COUNT(*) FROM files WHERE folder = '" . (int)$f['id'] . "' AND type IN (" . $types . ") AND design = '0'");
-        $f['photo'] = $f['photos'] ? (string)db_value("SELECT name FROM files WHERE folder = '" . (int)$f['id'] . "' AND type IN (" . $types . ") AND design = '0' ORDER BY name LIMIT 1") : '';
+        $f['photos'] = (int)db_value("SELECT COUNT(*) FROM files WHERE " . pg_gal_photo_sql($f['id']));
+        $f['photo'] = $f['photos'] ? (string)db_value("SELECT name FROM files WHERE " . pg_gal_photo_sql($f['id']) . " ORDER BY name LIMIT 1") : '';
         $albums[] = $f;
     }
-    $photos = (array)db_items("SELECT id, name, description FROM files WHERE folder = '" . $folder_id . "' AND type IN (" . $types . ") AND design = '0' ORDER BY name");
+    $photos = (array)db_items("SELECT id, name, description FROM files WHERE " . pg_gal_photo_sql($folder_id) . " ORDER BY name");
     return array($albums, $photos);
 }
 

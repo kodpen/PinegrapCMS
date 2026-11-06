@@ -35,11 +35,14 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - attrs-panel-undo.md: Undo steps of the designer's Attributes panel text fields (id, prop-bound attributes, custom attribute name and value) and when its style row is written
 - audience-conditions.md: Audience conditions on page elements: the __audience_* tokens, the pg_ret cookie, personal or per country/device copies in the page cache, the editor list
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
+- booking-templates.md: The online booking page of the Salon, Clinic and Law templates (BK10): book_online with the booking widget's starter layout beside the request form, the links between them, new installs only
 - booking-widget-confirm.md: Booking widget details step and confirm (#6596): form fields by name, signed-in prefill, auto_confirm status, expired hold rebooked when free, taken path, privacy page link
 - booking-widget.md: The booking system widget (#6224): parts by binding, data-pg-booking settings, booking_slots.php (month, day, hold), "anyone" picks the freest, one hold per session
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
+- bound-href-scheme.md: A form field bound to a link's address never prints a javascript:, vbscript: or data: address
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
+- catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
 - catalog-listing-system-widget.md: catalog_listing system widget defaults (PHP and designer JS), group card behaviour (browse/select), group scope rules, the subtree helper (no recursive SQL) and group price range rules.
 - catalog-rating-tokens.md: Product rating in the catalog widgets: __rating_avg / __rating_count tokens, has_rating / no_rating flags per card and on the product page, columns before 11.0.14, variant payload and switch
 - catalog-rss-structured-data.md: RSS feeds and JSON-LD for system widget pages: _pg_ bridge functions, integration points in get_page.php/get_page_content.php, channel/entity/review rules.
@@ -90,6 +93,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-widget-recent.md: The Comments widget's recent mode (kind comments_recent): what a list shows, options, record filters, what it never does, tokens and flags, checks
 - comments-widget-replies.md: Replies in the comments widget: order units, quotes, reply/cancel/share on links and buttons, the kept parent_id and ?reply_to=, pg_comment_reply_ok, init_comment_actions
 - comments-widget-save-warnings.md: Save warnings about a page's comments not drawn (block plus widget, two widgets, nested record widget, comments off; an e-mail page only two widgets): census, approximation, codes
+- comments-widget-two-forms.md: A product page's reviews and questions widgets keep apart: form state, Messages, form id and anchor, which comment each form answers, the Reply script's scope
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
@@ -114,7 +118,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
+- design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does
+- design-preview-address.md: design_preview.php, the panel's preview address: a template page, its tour, or a visual design page as a first-time visitor sees it; who may open it, what is left out, caching
 - design-template-appstudio.md: Mobile App Developer template (pinegrap-appstudio): apps and release notes as collections, support and project requests followed from the account, beta sign-up, pma- look, tests.
+- design-template-blog-cover.md: A design template's blog or article Cover Image input takes image/* and carries _cf.kind = image; templates whose $file helper defaults to documents pass it explicitly (#7513)
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
@@ -208,8 +215,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
+- designer-hidden-page-endpoints.md: Editor endpoints asked by page id keep the hidden-page rule of the tab list: page_load, form_fields and notes_fetch refuse a page behind a folder the operator may not know about
 - designer-home-colours.md: Visual Page Editor home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
-- designer-home-screen.md: Visual Page Editor home (view_system_styles.php): one-accent colours, drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+- designer-home-pictures.md: The Visual Page Editor home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer-home-screen.md: Visual Page Editor home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
 - designer-interactions-panel.md: Interactions section of the properties panel and on the canvas: nodes, rows, _sdFxSet(), undo, canvas binding, Play button, code view back to props._fx.
@@ -264,6 +273,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-field-errors.md: Which controls a refused server submission marks (is-invalid, aria-invalid, linked invalid-feedback) on designed forms, member widgets and classic liveform fields (#4458).
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
+- form-list-one-per-submitter.md: The form list's one_per_submitter option: each signed-in submitter's newest record only; used by the Social template's People and staff lists
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - form-list-search-empty.md: The form list's empty state when a visitor's search matches nothing: "Nothing matched your search", not the configured empty message
 - form-list-url-filters.md: form_list_view filters valued from the page address (author, tag archives): reserved names, value rules, who passes the address, canonical/title/noindex, token, flags, feed
@@ -301,7 +311,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
-- no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image, is an icon without words so it reads the same in every site language (PR #4472)
+- no-image-placeholder.md: assets/images/no-image.svg, the fallback for a missing or failed image: an icon without words (PR #4472); its address sits in data-pg-fallback, never inside the onerror code (#6676)
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
 - options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
@@ -332,7 +342,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - palette-lists-keyboard.md: Palette lists from the keyboard: focusable rows Enter/Space insert, header toggle buttons with aria-expanded, named search boxes, reachable bulk box, tip card on focus
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
-- photo-gallery-widget.md: Photo Gallery widget and classic page: the folder setting and its fallback, ?folder_id= and the Recycle Bin, image types, alt text, rows, tokens, flags, Where used, what is left out.
+- photo-gallery-widget.md: Photo Gallery widget and classic page: folder setting, ?folder_id= and the Recycle Bin, photos and alt, tokens, flags, Where used, what is left out.
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter

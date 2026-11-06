@@ -906,10 +906,12 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // A cart quote whose link filled this cart is now ordered.
     pg_cart_quote_order_completed($order_id);
 
-    // A designed form's record whose fee this order charged is now paid; an
-    // offline payment (no paid_at yet) leaves it unpaid.
+    // A designed form's record whose fee this order charged, or a booking
+    // whose deposit it charged, is now paid; an offline payment (no paid_at
+    // yet) leaves it unpaid.
     if ((int) ($values['paid_at'] ?? 0) > 0) {
         pg_form_payment_mark_paid($order_id);
+        pg_booking_deposit_mark_paid($order_id);
     }
 
     // Keep the checkout documents with the order as the customer saw them,
@@ -1864,7 +1866,9 @@ function pg_order_complete_line_membership(array $line, $contact_id, $reference_
         pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
     }
 
-    $new_expiration_date = pg_order_extended_until($row['expiration_date'], $line['membership_renewal'], $line['quantity'], date('Y-m-d'));
+    // The member id the contact had before this order: one taken from the
+    // reference code just now is a first membership, never a lifetime one.
+    $new_expiration_date = pg_order_membership_renewal_until($row['member_id'], $row['expiration_date'], $line['membership_renewal'], $line['quantity'], date('Y-m-d'));
 
     $audit_members = pg_audit_fetch_by('contacts', 'member_id', $member_id);
     db_q("UPDATE contacts SET expiration_date = ? WHERE member_id = ?", array((string) $new_expiration_date, (string) $member_id)) or output_error('Query failed');
@@ -1935,6 +1939,332 @@ function pg_order_complete_line_folder_access(array $line, $user_id)
 }
 
 /**
+ * What taking back an order line's folder access does to the buyer's access
+ * row: a limited access (private_days > 0) loses days x quantity from its
+ * end and goes when that end is past; an access that never ends goes. A row
+ * with edit rights, or one that never ends after a limited purchase, was not
+ * written by the purchase (pg_order_folder_access_extends()) and stays. The
+ * row carries no order, so a grant staff added on the same folder goes with
+ * it. Pure.
+ *
+ * @param string $rights          aclfolder_rights, '' for no row
+ * @param string $expiration_date the row's expiration date, '' for no row
+ * @param int    $private_days    the product's days, 0 for access that never ends
+ * @param int    $quantity        the units taken back
+ * @param string $today           Y-m-d
+ * @return array action ('keep', 'delete' or 'update'), expiration_date (for update)
+ */
+function pg_order_folder_access_revoked($rights, $expiration_date, $private_days, $quantity, $today)
+{
+    $keep = array('action' => 'keep', 'expiration_date' => '');
+
+    if (((string) $rights !== '1') || ((int) $quantity <= 0)) {
+        return $keep;
+    }
+
+    if ((int) $private_days <= 0) {
+        return array('action' => 'delete', 'expiration_date' => '');
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $expiration_date) || ($expiration_date === '0000-00-00')) {
+        return $keep;
+    }
+
+    // Calendar days, as pg_order_extended_until() added them.
+    $end = date('Y-m-d', strtotime('-' . ((int) $private_days * (int) $quantity) . ' day', strtotime($expiration_date)));
+
+    if ($end < (string) $today) {
+        return array('action' => 'delete', 'expiration_date' => '');
+    }
+
+    return array('action' => 'update', 'expiration_date' => $end);
+}
+
+/**
+ * An order's lines that grant private access, with the units each still
+ * holds: the line's quantity less what refunded returns gave back. Lines
+ * saved for later are left out.
+ *
+ * @param int $order_id
+ * @return array rows: order_item_id, quantity (still held), grant_private_access,
+ *               private_folder, private_days, send_to_page
+ */
+function pg_order_folder_access_lines($order_id)
+{
+    $order_id = (int) $order_id;
+
+    $lines = db_items(
+        "SELECT
+            order_items.id AS order_item_id,
+            order_items.quantity,
+            products.grant_private_access,
+            products.private_folder,
+            products.private_days,
+            products.send_to_page
+        FROM order_items
+        INNER JOIN products ON products.id = order_items.product_id
+        WHERE
+            (order_items.order_id = '$order_id')
+            AND (products.grant_private_access = '1')" . pg_order_item_active_sql() . "
+        ORDER BY order_items.id ASC");
+
+    $returned = pg_credit_points_order_refunded($order_id)['returned'];
+
+    return pg_order_folder_access_held(is_array($lines) ? $lines : array(), $returned);
+}
+
+/**
+ * The lines with their quantity less the units returned and refunded, never
+ * below 0. Pure.
+ *
+ * @param array $lines    rows with order_item_id and quantity
+ * @param array $returned order item id => quantity refunded
+ * @return array the rows, quantity replaced
+ */
+function pg_order_folder_access_held(array $lines, array $returned)
+{
+    foreach ($lines as $index => $line) {
+        $id = (int) $line['order_item_id'];
+        $lines[$index]['quantity'] = max(0, (int) $line['quantity'] - (int) ($returned[$id] ?? 0));
+    }
+
+    return $lines;
+}
+
+/**
+ * Whether any of these purchase lines still holds its units once the
+ * refunded returns of its order are taken off (pg_order_folder_access_held()).
+ * Pure.
+ *
+ * @param array $lines    rows: order_id, order_item_id, quantity
+ * @param array $returned order id => (order item id => quantity refunded)
+ * @return bool
+ */
+function pg_order_folder_access_still_held(array $lines, array $returned)
+{
+    foreach ($lines as $line) {
+        $held = pg_order_folder_access_held(array($line), $returned[(int) $line['order_id']] ?? array());
+
+        if ((int) $held[0]['quantity'] > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether another order of the user, not cancelled or incomplete, still
+ * holds a never-ending access to this folder. Such access shares the one
+ * access row, so taking back this order's purchase must leave it.
+ *
+ * @param int $user_id
+ * @param int $folder
+ * @param int $order_id the order whose access is taken back
+ * @return bool
+ */
+function pg_order_folder_access_other_order_holds($user_id, $folder, $order_id)
+{
+    $lines = db_items(
+        "SELECT
+            order_items.order_id,
+            order_items.id AS order_item_id,
+            order_items.quantity
+        FROM order_items
+        INNER JOIN orders ON orders.id = order_items.order_id
+        INNER JOIN products ON products.id = order_items.product_id
+        WHERE
+            (orders.user_id = '" . (int) $user_id . "')
+            AND (orders.id <> '" . (int) $order_id . "')
+            AND (orders.status NOT IN ('incomplete', 'cancelled'))
+            AND (products.grant_private_access = '1')
+            AND (products.private_folder = '" . (int) $folder . "')
+            AND (COALESCE(products.private_days, 0) <= 0)" . pg_order_item_active_sql());
+    $lines = is_array($lines) ? $lines : array();
+    $returned = array();
+
+    foreach ($lines as $line) {
+        $id = (int) $line['order_id'];
+
+        if (!isset($returned[$id])) {
+            $returned[$id] = pg_credit_points_order_refunded($id)['returned'];
+        }
+    }
+
+    return pg_order_folder_access_still_held($lines, $returned);
+}
+
+/**
+ * Takes back the folder access of an order's lines from its customer
+ * (pg_order_folder_access_revoked()), for the units given. A never-ending
+ * access stays while units of this order (held, any line on the folder) or
+ * another order of the customer still grant it.
+ *
+ * @param array $lines    rows: quantity (the units taken back), held (the
+ *                        units this order keeps on the folder, 0 when absent),
+ *                        grant_private_access, private_folder, private_days
+ * @param int   $user_id
+ * @param int   $order_id the order whose access is taken back
+ * @return int the access rows changed or removed
+ */
+function pg_order_folder_access_take_back(array $lines, $user_id, $order_id = 0)
+{
+    $user_id = (int) $user_id;
+    $changed = 0;
+
+    if ($user_id <= 0) {
+        return 0;
+    }
+
+    foreach ($lines as $line) {
+        $folder = (int) $line['private_folder'];
+
+        if (empty($line['grant_private_access']) || ($folder <= 0)) {
+            continue;
+        }
+
+        $row = db_item(
+            "SELECT aclfolder_rights AS rights, expiration_date
+            FROM aclfolder
+            WHERE (aclfolder_user = '$user_id') AND (aclfolder_folder = '$folder')");
+
+        $plan = pg_order_folder_access_revoked($row['rights'] ?? '', $row['expiration_date'] ?? '', $line['private_days'], $line['quantity'], date('Y-m-d'));
+
+        if (($plan['action'] === 'delete') && ((int) $line['private_days'] <= 0)
+            && (((int) ($line['held'] ?? 0) > 0) || pg_order_folder_access_other_order_holds($user_id, $folder, $order_id))) {
+            continue;
+        }
+
+        if ($plan['action'] === 'delete') {
+            db("DELETE FROM aclfolder WHERE (aclfolder_user = '$user_id') AND (aclfolder_folder = '$folder')");
+            $changed++;
+        } elseif ($plan['action'] === 'update') {
+            db("UPDATE aclfolder SET expiration_date = '" . e($plan['expiration_date']) . "'
+                WHERE (aclfolder_user = '$user_id') AND (aclfolder_folder = '$folder')");
+            $changed++;
+        }
+    }
+
+    return $changed;
+}
+
+/**
+ * A cancelled order's folder access goes: each line's units its refunded
+ * returns did not take back already.
+ *
+ * @param array $order id, user_id, order_number
+ * @return int the access rows changed or removed
+ */
+function pg_order_folder_access_cancelled(array $order)
+{
+    $changed = pg_order_folder_access_take_back(pg_order_folder_access_lines($order['id']), $order['user_id'] ?? 0, $order['id']);
+
+    if ($changed > 0) {
+        log_activity(pg_log_lang(array(
+            'string' => 'Private folder access granted by order #{var:1} taken back.',
+            'vars'   => array(pg_order_log_number($order)))));
+    }
+
+    return $changed;
+}
+
+/**
+ * A restored order grants its folder access again, through the completion
+ * step, for the units its refunded returns did not take back. The user's
+ * home page is left as it is.
+ *
+ * @param array $order id, user_id, order_number
+ * @return int the lines granted again
+ */
+function pg_order_folder_access_restored(array $order)
+{
+    $user_id = (int) ($order['user_id'] ?? 0);
+    $granted = 0;
+
+    if ($user_id <= 0) {
+        return 0;
+    }
+
+    foreach (pg_order_folder_access_lines($order['id']) as $line) {
+        if (((int) $line['quantity'] <= 0) || ((int) $line['private_folder'] <= 0)) {
+            continue;
+        }
+
+        pg_order_complete_line_folder_access(array('send_to_page' => 0) + $line, $user_id);
+        $granted++;
+    }
+
+    if ($granted > 0) {
+        log_activity(pg_log_lang(array(
+            'string' => 'Private folder access granted by order #{var:1} given again.',
+            'vars'   => array(pg_order_log_number($order)))));
+    }
+
+    return $granted;
+}
+
+/**
+ * The lines a refunded return takes folder access back from, each with the
+ * units returned (quantity) and the units the order keeps on the same folder
+ * (held): its own and those of every other line of the order granting that
+ * folder, since they share the one access row. The return is already counted
+ * as refunded, so the lines' quantities are what the order keeps. Pure.
+ *
+ * @param array $lines      the order's lines (pg_order_folder_access_lines())
+ * @param array $quantities order item id => quantity refunded
+ * @return array rows: the line's fields, quantity (returned), held
+ */
+function pg_order_folder_access_return_lines(array $lines, array $quantities)
+{
+    $held = array();
+
+    foreach ($lines as $line) {
+        $folder = (int) $line['private_folder'];
+        $held[$folder] = ($held[$folder] ?? 0) + max(0, (int) $line['quantity']);
+    }
+
+    $back = array();
+
+    foreach ($lines as $line) {
+        $units = (int) ($quantities[(int) $line['order_item_id']] ?? 0);
+
+        if ($units > 0) {
+            $back[] = array('quantity' => $units, 'held' => $held[(int) $line['private_folder']]) + $line;
+        }
+    }
+
+    return $back;
+}
+
+/**
+ * A refunded return takes back the folder access of its lines. A cancelled
+ * order's access went with the cancellation.
+ *
+ * @param int   $order_id
+ * @param array $quantities order item id => quantity refunded
+ * @return int the access rows changed or removed
+ */
+function pg_order_folder_access_lines_refunded($order_id, array $quantities)
+{
+    $order = db_item("SELECT id, user_id, status, order_number FROM orders WHERE id = '" . (int) $order_id . "'");
+
+    if (!is_array($order) || ((int) $order['user_id'] <= 0) || in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
+        return 0;
+    }
+
+    $lines = pg_order_folder_access_return_lines(pg_order_folder_access_lines($order['id']), $quantities);
+    $changed = pg_order_folder_access_take_back($lines, $order['user_id'], $order['id']);
+
+    if ($changed > 0) {
+        log_activity(pg_log_lang(array(
+            'string' => 'Private folder access granted by order #{var:1} taken back for the refunded return.',
+            'vars'   => array(pg_order_log_number($order)))));
+    }
+
+    return $changed;
+}
+
+/**
  * How many gift cards an order line issues: one per unit, at most 100 (each
  * unit has its own recipient form, and a larger quantity would mean as many
  * forms). Pure.
@@ -1948,13 +2278,118 @@ function pg_order_gift_card_count($quantity)
 }
 
 /**
- * The day a gift card ends: the validity days counted from its delivery
- * date, or from today when it is sent at once ('0000-00-00'); '' when the
- * store sets no validity days. Pure.
+ * Whether a gift card line may hold this quantity: no more units than
+ * pg_order_gift_card_count() issues cards for, so a line is never charged for
+ * cards it does not issue. Pure.
  *
- * @param string $delivery_date Y-m-d or '0000-00-00'
- * @param int    $validity_days ECOMMERCE_GIFT_CARD_VALIDITY_DAYS
- * @param int    $now           the current Unix time
+ * @param int $quantity the line's quantity
+ * @return bool
+ */
+function pg_gift_card_line_quantity_allowed($quantity)
+{
+    return pg_order_gift_card_count($quantity) === (int) $quantity;
+}
+
+/**
+ * The one error every door shows when a gift card line would hold more units
+ * than pg_gift_card_line_quantity_allowed() takes.
+ *
+ * @return string
+ */
+function pg_gift_card_line_quantity_error()
+{
+    return lang('A gift card line can hold at most 100 units');
+}
+
+/**
+ * Whether an order line may take this quantity: always for a product that is
+ * not a gift card, for a gift card only through
+ * pg_gift_card_line_quantity_allowed(). A quantity inside the limit needs no
+ * query.
+ *
+ * @param int|string $order_item_id the cart line
+ * @param int $quantity the quantity it would hold
+ * @return bool
+ */
+function pg_order_item_quantity_allowed($order_item_id, $quantity)
+{
+    if (pg_gift_card_line_quantity_allowed($quantity)) {
+        return true;
+    }
+
+    $gift_card = db_value(
+        "SELECT products.gift_card
+        FROM order_items
+        JOIN products ON products.id = order_items.product_id
+        WHERE order_items.id = '" . e($order_item_id) . "'");
+
+    return $gift_card != 1;
+}
+
+/**
+ * Remembers, for this request, that add_order_item() refused a gift card line
+ * over its unit limit (pg_gift_card_quantity_refusal_take() reads it).
+ *
+ * @param bool|null $set true records a refusal; null only reads
+ * @return bool whether a refusal is recorded
+ */
+function pg_gift_card_quantity_refusal($set = null)
+{
+    static $refused = false;
+
+    if ($set !== null) {
+        $refused = (bool) $set;
+    }
+
+    return $refused;
+}
+
+/**
+ * Whether the last add_order_item() calls refused a gift card line over its
+ * unit limit; clears the record, so the error is shown once.
+ *
+ * @return bool
+ */
+function pg_gift_card_quantity_refusal_take()
+{
+    $refused = pg_gift_card_quantity_refusal();
+    pg_gift_card_quantity_refusal(false);
+
+    return $refused;
+}
+
+/**
+ * How many active gift card lines of an order hold more units than
+ * pg_gift_card_line_quantity_allowed() takes: a cart filled before the limit
+ * existed is refused at checkout until the quantity is lowered.
+ *
+ * @param int|string $order_id
+ * @return int
+ */
+function pg_order_gift_card_lines_over_limit($order_id)
+{
+    return (int) db_value(
+        "SELECT COUNT(*)
+        FROM order_items
+        JOIN products ON products.id = order_items.product_id
+        WHERE
+            (order_items.order_id = '" . e($order_id) . "')
+            AND (products.gift_card = '1')
+            AND (order_items.quantity > " . pg_order_gift_card_count(PHP_INT_MAX) . ")"
+            . pg_order_item_active_sql());
+}
+
+/**
+ * The day a gift card ends: the validity days counted on the calendar from
+ * its delivery date, or from today in the site time zone when it is sent at
+ * once ('0000-00-00') or the date is missing or not a real one (no
+ * recipient row gives NULL); '' when the store sets no validity days. A
+ * missing date used to reach strtotime() as false, so the days were counted
+ * from 1970 and the card was issued already expired (1971-01-01 for 365).
+ *
+ * @param string|null $delivery_date Y-m-d or '0000-00-00'
+ * @param int         $validity_days ECOMMERCE_GIFT_CARD_VALIDITY_DAYS
+ * @param int         $now           the current Unix time
  * @return string Y-m-d or ''
  */
 function pg_order_gift_card_expiration($delivery_date, $validity_days, $now)
@@ -1963,9 +2398,13 @@ function pg_order_gift_card_expiration($delivery_date, $validity_days, $now)
         return '';
     }
 
-    $start = ($delivery_date == '0000-00-00') ? $now : strtotime($delivery_date, $now);
+    $start = pg_return_date($delivery_date);
 
-    return date('Y-m-d', strtotime('+' . (int) $validity_days . ' day', $start));
+    if ($start === '') {
+        $start = date('Y-m-d', (int) $now);
+    }
+
+    return pg_return_add_days($start, (int) $validity_days);
 }
 
 /**
@@ -3325,21 +3764,64 @@ function pg_order_line_reward_points(array $line, $program_on)
 
 /**
  * The membership end the reward program gives: lifetime ('0000-00-00') when
- * it gives 0 days, else the days added to the current end when it is still
- * ahead, otherwise to today. Pure.
+ * it gives 0 days or the contact is a lifetime member already
+ * (pg_order_membership_lifetime()), else the days added to the current end
+ * when it is still ahead, otherwise to today. Pure.
  *
- * @param string $end   the contact's expiration date, '' for none
- * @param int    $days  ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS
- * @param string $today Y-m-d
+ * @param string $end       the contact's expiration date, '' for none
+ * @param int    $days      ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS
+ * @param string $today     Y-m-d
+ * @param string $member_id the contact's member id, '' for none
  * @return string Y-m-d
  */
-function pg_order_reward_membership_until($end, $days, $today)
+function pg_order_reward_membership_until($end, $days, $today, $member_id = '')
 {
-    if ($days == 0) {
+    if (($days == 0) || pg_order_membership_lifetime($member_id, $end)) {
         return '0000-00-00';
     }
 
     return pg_order_extended_until($end, $days, 1, $today);
+}
+
+/**
+ * Is the contact a lifetime member: a member id and no end date ('',
+ * '0000-00-00' or NULL)? A contact without a member id has no membership,
+ * whatever its date column holds. Pure.
+ *
+ * @param mixed $member_id contacts.member_id
+ * @param mixed $end       contacts.expiration_date
+ * @return bool
+ */
+function pg_order_membership_lifetime($member_id, $end)
+{
+    if (trim((string) $member_id) === '') {
+        return false;
+    }
+
+    $end = trim((string) $end);
+
+    return ($end === '') || ($end === '0000-00-00');
+}
+
+/**
+ * The membership end a renewal line gives: a lifetime member stays lifetime
+ * ('0000-00-00': a renewal never shortens what the member had), anybody else
+ * gets days x quantity (pg_order_extended_until()). Pure.
+ *
+ * @param mixed  $member_id the contact's member id before the order, '' for none
+ * @param mixed  $end       the contact's expiration date
+ * @param int    $days      days one unit gives
+ * @param int    $quantity  units bought
+ * @param string $today     Y-m-d
+ * @return string Y-m-d
+ */
+function pg_order_membership_renewal_until($member_id, $end, $days, $quantity, $today)
+{
+    if (pg_order_membership_lifetime($member_id, $end)) {
+        return '0000-00-00';
+    }
+
+    return pg_order_extended_until((string) $end, $days, $quantity, $today);
 }
 
 /**
@@ -3400,7 +3882,7 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
             db_q("UPDATE contacts SET member_id = ? WHERE id = ?", array((string) $order_number, (string) $contact_id)) or output_error('Query failed.');
         }
 
-        $new_expiration_date = pg_order_reward_membership_until($row['expiration_date'], ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS, date('Y-m-d'));
+        $new_expiration_date = pg_order_reward_membership_until($row['expiration_date'], ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS, date('Y-m-d'), $member_id);
 
         db_q("UPDATE contacts SET expiration_date = ? WHERE id = ?", array((string) $new_expiration_date, (string) $contact_id)) or output_error('Query failed.');
         pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
@@ -3680,7 +4162,7 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
 
         // A gift card of this system.
         if ($applied_gift_card['givex'] == 0) {
-            $result = db_q("SELECT id, balance FROM gift_cards WHERE id = ?", array((string) $applied_gift_card['gift_card_id'])) or output_error('Query failed.');
+            $result = db_q("SELECT id, balance" . pg_credit_owner_select_sql() . " FROM gift_cards WHERE id = ?", array((string) $applied_gift_card['gift_card_id'])) or output_error('Query failed.');
 
             // the card was deleted after it was applied
             $gift_card = mysqli_fetch_assoc($result) ?: array('id' => '');
@@ -3731,6 +4213,11 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
                     array((string) $amount, (string) $new_balance, (string) $applied_gift_card['id'])) or output_error('Query failed.');
 
                 $current_redemption_amount = $current_redemption_amount + $amount;
+
+                // A customer's store credit announces what the order took.
+                if (((int) ($gift_card['user_id'] ?? 0) > 0) && ($amount > 0)) {
+                    pg_credit_announce('credit.used', (int) $gift_card['id'], array('order_id' => (int) $order_id, 'amount_used' => (int) round($amount)));
+                }
             }
 
         // A Givex gift card: the service takes the amount.
@@ -4079,4 +4566,38 @@ function pg_next_order_number_refusal($posted, $last_order_number)
     }
 
     return '';
+}
+
+/**
+ * Whether an accepted Next Order Number must not be written after all: asked
+ * again under the counter's lock, with the counter as it is now.
+ * pg_next_order_number_refusal() runs before the lock against the orders
+ * written so far, so an order completed in between, or one that took its
+ * number and has not stored it yet, is not in that MAX(); written over the
+ * moved counter, the typed value would hand that number out again. A counter
+ * still at the value the screen was opened with is the operator's own to set
+ * (the check before the lock holds it above every stored order); a counter
+ * that moved meanwhile is never set back below where it is. Pure: the caller
+ * holds a table lock under which nothing else may be queried.
+ *
+ * @param string      $posted  the typed value, already accepted
+ * @param string|null $was     the value the screen was opened with, null when
+ *                             it was not posted
+ * @param int|null    $current the counter read under the lock, null for no row
+ * @return bool
+ */
+function pg_next_order_number_set_back($posted, $was, $current)
+{
+    if ($current === null) {
+        return false;
+    }
+
+    $current = (int) $current;
+    $was = ($was === null) ? '' : trim((string) $was);
+
+    if (ctype_digit($was) && ((int) $was === $current)) {
+        return false;
+    }
+
+    return (int) trim((string) $posted) < $current;
 }

@@ -120,7 +120,7 @@ function ws_watch_ready()
  * rule says it, what kind of record it is about, the right the creator needs
  * to see that record, and the one filter it takes (page: which form; status:
  * which order status; task_status: the status a task moves to; outcome: how
- * an approval request ended). The workspace's own events may also be
+ * an approval request ended; group: which contact group). The workspace's own events may also be
  * narrowed to one channel (channel). The shop's events only where the shop
  * is on.
  *
@@ -145,14 +145,93 @@ function ws_events_catalog()
             'order.cancelled'      => array('label' => lang('An order is cancelled'), 'when' => lang('When an order is cancelled'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'order.return.requested' => array('label' => lang('A return is requested'), 'when' => lang('When a return is requested'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
             'stock.low'            => array('label' => lang('A product runs low in stock'), 'when' => lang('When a product runs low in stock'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.approved' => array('label' => lang('A return is approved'), 'when' => lang('When a return is approved'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.received' => array('label' => lang('A return arrives back'), 'when' => lang('When the goods of a return arrive back'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'order.return.refunded' => array('label' => lang('A return is refunded'), 'when' => lang('When a return is refunded'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'marketplace.order.imported' => array('label' => lang('A marketplace order is imported'), 'when' => lang('When a marketplace order is imported'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+            'inventory.changed'    => array('label' => lang('A product\'s stock changes'), 'when' => lang('When a product\'s stock changes'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => ''),
         );
+
+        if (function_exists('pg_reviews_ready') && pg_reviews_ready()) {
+            $catalog['product.review.created'] = array('label' => lang('A product review is written'), 'when' => lang('When a product review is written'), 'record' => 'product', 'right' => 'ecommerce', 'filter' => '');
+        }
+
+        if (function_exists('pg_cart_quotes_ready') && pg_cart_quotes_ready()) {
+            $catalog += array(
+                'cart_quote.created' => array('label' => lang('A cart quote is made'), 'when' => lang('When a cart quote is made'), 'record' => 'cart_quote', 'right' => 'ecommerce', 'filter' => ''),
+                'cart_quote.ordered' => array('label' => lang('A cart quote is ordered'), 'when' => lang('When a cart quote is ordered'), 'record' => 'cart_quote', 'right' => 'ecommerce', 'filter' => ''),
+            );
+        }
+
+        // A renewal is about its order; a failure or a cancellation about
+        // the customer's contact (ws_events_record_of()).
+        if (function_exists('pg_subscriptions_ready') && pg_subscriptions_ready()) {
+            $catalog += array(
+                'subscription.renewed'   => array('label' => lang('A subscription is renewed'), 'when' => lang('When a subscription is renewed'), 'record' => 'order', 'right' => 'ecommerce', 'filter' => ''),
+                'subscription.failed'    => array('label' => lang('A subscription renewal fails'), 'when' => lang('When a subscription renewal fails'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+                'subscription.cancelled' => array('label' => lang('A subscription is cancelled'), 'when' => lang('When a subscription is cancelled'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+            );
+        }
+
+        // Spots of a calendar event taken by a placed order.
+        $catalog['calendar_event.reserved'] = array('label' => lang('A calendar event is reserved'), 'when' => lang('When an order reserves a calendar event'), 'record' => 'calendar_event', 'right' => 'calendars', 'filter' => '');
+
+        // Store credit, about the customer's contact.
+        if (function_exists('pg_credit_ready') && pg_credit_ready()) {
+            $catalog += array(
+                'credit.issued'  => array('label' => lang('Store credit is issued'), 'when' => lang('When store credit is issued'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+                'credit.expired' => array('label' => lang('Store credit expires'), 'when' => lang('When store credit expires with money left'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+            );
+        }
+
+        // The fee of a designed form's record, narrowed to one form like a
+        // submission.
+        if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
+            $catalog['form.paid'] = array('label' => lang('A form\'s fee is paid'), 'when' => lang('When a form\'s fee is paid'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page');
+        }
     }
 
     $catalog += array(
         'customer.created' => array('label' => lang('A new contact is added'), 'when' => lang('When a new contact is added'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
         'customer.updated' => array('label' => lang('A contact is changed'), 'when' => lang('When a contact is changed'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
         'form.submitted'   => array('label' => lang('A form is submitted'), 'when' => lang('When a form is submitted'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
+        'contact_group.joined' => array('label' => lang('A contact joins a contact group'), 'when' => lang('When a contact joins a contact group'), 'record' => 'contact', 'right' => 'contacts', 'filter' => 'group'),
+        'customer.consent_changed' => array('label' => lang('A contact\'s consent changes'), 'when' => lang('When a contact gives or withdraws a consent'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
+        'mail.bounced'     => array('label' => lang('An e-mail bounces'), 'when' => lang('When an e-mail to an address bounces'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
+        'campaign.sent'    => array('label' => lang('A campaign is sent'), 'when' => lang('When an e-mail campaign finishes sending or an SMS campaign is queued'), 'record' => '', 'right' => 'emails', 'filter' => ''),
+        'user.created'     => array('label' => lang('A user account is made'), 'when' => lang('When a user account is made through the API'), 'record' => 'user_account', 'right' => 'users', 'filter' => ''),
+        // A page: checked against the pages the creator's tag resolves
+        // (ws_events_creator_sees()).
+        'page.created'     => array('label' => lang('A page is made'), 'when' => lang('When a page is made'), 'record' => 'page', 'right' => 'member', 'filter' => ''),
+        'page.updated'     => array('label' => lang('A page is changed'), 'when' => lang('When a page is changed in the designer or through the API'), 'record' => 'page', 'right' => 'member', 'filter' => ''),
     );
+
+    // The ERP's: invoices, receipts and payments, incoming e-documents and
+    // sales quotes, for the ERP's readers (a receipt for its cash right).
+    if (defined('ERP_ENABLED') && ERP_ENABLED) {
+        $catalog += array(
+            'erp.invoice.created'      => array('label' => lang('An invoice is issued'), 'when' => lang('When an ERP invoice is issued'), 'record' => 'invoice', 'right' => 'erp', 'filter' => ''),
+            'erp.invoice.paid'         => array('label' => lang('An invoice is paid in full'), 'when' => lang('When an ERP invoice is paid in full'), 'record' => 'invoice', 'right' => 'erp', 'filter' => ''),
+            'erp.invoice.overdue'      => array('label' => lang('An invoice becomes overdue'), 'when' => lang('When the overdue reminders first list a sales invoice'), 'record' => 'invoice', 'right' => 'erp', 'filter' => ''),
+            'erp.invoice.edoc_changed' => array('label' => lang('An invoice\'s e-document is answered'), 'when' => lang('When an invoice\'s e-document status changes'), 'record' => 'invoice', 'right' => 'erp', 'filter' => ''),
+            'erp.receipt.created'      => array('label' => lang('A receipt or payment is recorded'), 'when' => lang('When a receipt or payment is recorded in the ERP'), 'record' => 'receipt', 'right' => 'erp_cash', 'filter' => ''),
+            'erp.edoc.received'        => array('label' => lang('An e-document is received'), 'when' => lang('When an incoming e-document is read from the provider'), 'record' => 'edoc', 'right' => 'erp', 'filter' => ''),
+            'erp.quote.accepted'       => array('label' => lang('A sales quote is accepted'), 'when' => lang('When a sales quote is accepted'), 'record' => 'erp_quote', 'right' => 'erp', 'filter' => ''),
+            'erp.quote.rejected'       => array('label' => lang('A sales quote is rejected'), 'when' => lang('When a sales quote is rejected'), 'record' => 'erp_quote', 'right' => 'erp', 'filter' => ''),
+        );
+    }
+
+    // The staff agenda's (pg_booking_changed()): every member may wait for
+    // them; each is checked against the bookings its creator's agenda shows
+    // when it comes (ws_events_creator_sees()).
+    if (function_exists('pg_booking_ready') && pg_booking_ready()) {
+        $catalog += array(
+            'booking.created'     => array('label' => lang('A booking is made'), 'when' => lang('When a booking is made'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+            'booking.confirmed'   => array('label' => lang('A booking is confirmed'), 'when' => lang('When a booking is confirmed'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+            'booking.rescheduled' => array('label' => lang('A booking is moved'), 'when' => lang('When a booking is moved to another time'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+            'booking.cancelled'   => array('label' => lang('A booking is cancelled'), 'when' => lang('When a booking is cancelled'), 'record' => 'booking', 'right' => 'member', 'filter' => ''),
+        );
+    }
 
     // The workspace's own: every member of the staff may wait for them, and
     // each event is checked against what its creator may read when it comes.
@@ -174,6 +253,13 @@ function ws_events_catalog()
         $catalog['workspace.mail.received'] = array('label' => lang('An e-mail is received'), 'when' => lang('When an e-mail is received'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
     }
 
+    // A run of another flow that failed: checked against the runs the
+    // creator reads (ws_events_creator_sees()); a flow never starts on its
+    // own failure (ws_events_own_failure()).
+    if (function_exists('ws_flows_ready') && ws_flows_ready()) {
+        $catalog['workspace.flow.run.failed'] = array('label' => lang('A flow run fails'), 'when' => lang('When a run of a flow fails'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
+    }
+
     return $catalog;
 }
 
@@ -192,9 +278,11 @@ function ws_events_own()
         'workspace.approval.decided',
         'workspace.guest.message',
         'workspace.mail.received',
+        'workspace.flow.run.failed',
         'workspace.wtable.row.created',
         'workspace.wtable.row.updated',
         'workspace.wtable.row.deleted',
+        'workspace.flow.mentioned',
     );
 }
 
@@ -207,6 +295,36 @@ function ws_events_own()
 function ws_events_is_own($event)
 {
     return in_array((string) $event, ws_events_own(), true);
+}
+
+/**
+ * Is the event the failure of the very flow a rule would start? A flow never
+ * starts on its own failure: a run that fails again would start the next.
+ * Pure.
+ *
+ * @param string $event
+ * @param array  $payload
+ * @param int    $flow_id the flow the waiting rule starts, 0 for a plain scheduled action
+ * @return bool
+ */
+function ws_events_own_failure($event, $payload, $flow_id)
+{
+    return ((string) $event === 'workspace.flow.run.failed') && ((int) $flow_id > 0)
+        && ((int) (((array) $payload)['flow_id'] ?? 0) === (int) $flow_id);
+}
+
+/**
+ * Is this event checked against what the creator of a scheduled action may
+ * read before it starts their action? The workspace's own events, and the
+ * staff agenda's, which every member may wait for while only some may see
+ * the booking (ws_events_creator_sees()).
+ *
+ * @param string $event
+ * @return bool
+ */
+function ws_events_checks_creator($event)
+{
+    return ws_events_is_own($event) || (strpos((string) $event, 'booking.') === 0) || (strpos((string) $event, 'page.') === 0);
 }
 
 /**
@@ -274,7 +392,7 @@ function ws_events_awaited($forget = false)
     if (function_exists('ws_scheduled_join_ready') && ws_scheduled_join_ready()) {
         foreach ((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%workspace.%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
-                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row'), true) && ws_events_is_own($rule['event'] ?? '')) {
+                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row', 'mention'), true) && ws_events_is_own($rule['event'] ?? '')) {
                     $awaited[] = (string) $rule['event'];
                 }
             }
@@ -331,7 +449,8 @@ function ws_event($event, $payload = array())
 /**
  * May the creator of a scheduled action read what one of the workspace's
  * own events is about: the task, or the channel of the request or of the
- * guest's message? Asked before the event starts their action.
+ * guest's message; for a booking's event, the booking? Asked before the
+ * event starts their action.
  *
  * @param int    $user_id
  * @param string $event
@@ -354,10 +473,44 @@ function ws_events_creator_sees($user_id, $event, $payload)
         return false;
     }
 
+    // A booking: on the creator's agenda (roles 0-2 every one, a role-3
+    // staff member their own), as edit_booking.php opens it.
+    if (strpos((string) $event, 'booking.') === 0) {
+        if (!function_exists('pg_booking_ready') || !pg_booking_ready()) {
+            return false;
+        }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+        $staff_id = db_value("SELECT staff_id FROM bookings WHERE id = '" . (int) ($payload['id'] ?? 0) . "'");
+
+        return ($staff_id !== null)
+            && pg_booking_agenda_scope_allows(pg_booking_agenda_user_scope(array('id' => $user_id, 'role' => (int) ($viewer['role'] ?? 3))), (int) $staff_id);
+    }
+
+    // A page: the creator's tag of it resolves (the folders they reach).
+    if (strpos((string) $event, 'page.') === 0) {
+        $id = (int) ($payload['id'] ?? 0);
+        $ref = ($id > 0) ? (ws_refs_resolve($viewer, array(array('sigil' => '#', 'type' => 'page', 'id' => $id)))['page:' . $id] ?? null) : null;
+
+        return is_array($ref) && !empty($ref['known']);
+    }
+
     if (strpos((string) $event, 'workspace.task.') === 0) {
         $task = ws_task((int) ($payload['id'] ?? 0));
 
         return $task && ws_can_see_task($viewer, $task);
+    }
+
+    // A failed run: one the creator reads (ws_flow_run_access()), whatever
+    // its channel; a run of no channel is read by the flow's own people.
+    if ((string) $event === 'workspace.flow.run.failed') {
+        if (!function_exists('ws_flow_run_access')) {
+            return false;
+        }
+
+        $run = ws_flow_run((int) ($payload['run_id'] ?? 0));
+
+        return $run && (ws_flow_run_access($viewer, ws_flow((int) $run['flow_id']), $run) !== '');
     }
 
     // A row of a workflow table: the table read, its owner on the team
@@ -398,7 +551,7 @@ function ws_events_channels($viewer)
 /**
  * The record an event is about, as a tag names it: the kind and the id.
  * Each event carries the id under its own key (an order's id, a stock
- * warning's product_id, a submission's id). A task's events are about the
+ * warning's product_id, a submission's id, a review's item_id). A task's events are about the
  * task; a settled approval request about the task it asked about, otherwise
  * its channel; a guest's message about the guest's room.
  *
@@ -411,12 +564,37 @@ function ws_events_record_of($event, $payload)
     $event = (string) $event;
     $payload = (array) $payload;
 
-    if (strpos($event, 'order.') === 0) {
+    if ((strpos($event, 'order.') === 0) || ($event === 'marketplace.order.imported')) {
         return array('order', (int) ($payload['id'] ?? 0));
+    }
+
+    if (strpos($event, 'cart_quote.') === 0) {
+        return array('cart_quote', (int) ($payload['id'] ?? 0));
+    }
+
+    // A renewal names its order; a failure or a cancellation the customer's
+    // contact, when the subscription's account has one.
+    if (strpos($event, 'subscription.') === 0) {
+        if ((int) ($payload['order_id'] ?? 0) > 0) {
+            return array('order', (int) $payload['order_id']);
+        }
+
+        return ((int) ($payload['customer_id'] ?? 0) > 0) ? array('contact', (int) $payload['customer_id']) : array('', 0);
+    }
+
+    // A review of a product, or of a product group shown as one product.
+    if ($event === 'product.review.created') {
+        $item_type = (string) ($payload['item_type'] ?? '');
+
+        return in_array($item_type, array('product', 'product_group'), true) ? array($item_type, (int) ($payload['item_id'] ?? 0)) : array('', 0);
     }
 
     if (strpos($event, 'workspace.task.') === 0) {
         return array('task', (int) ($payload['id'] ?? 0));
+    }
+
+    if (strpos($event, 'booking.') === 0) {
+        return array('booking', (int) ($payload['id'] ?? 0));
     }
 
     if ($event === 'workspace.approval.decided') {
@@ -425,20 +603,59 @@ function ws_events_record_of($event, $payload)
             : array('channel', (int) ($payload['channel_id'] ?? 0));
     }
 
-    if (($event === 'workspace.guest.message') || ($event === 'workspace.mail.received')) {
+    if (($event === 'workspace.guest.message') || ($event === 'workspace.mail.received') || ($event === 'workspace.flow.mentioned')) {
         return array('channel', (int) ($payload['channel_id'] ?? 0));
     }
 
+    // A failed run: the channel it ran in, none for a flow with no home.
+    if ($event === 'workspace.flow.run.failed') {
+        return ((int) ($payload['channel_id'] ?? 0) > 0) ? array('channel', (int) $payload['channel_id']) : array('', 0);
+    }
+
+    // A bounce: the contact of its address (pg_event_workspace_payload());
+    // store credit: the customer's contact.
+    if (($event === 'mail.bounced') || (strpos($event, 'credit.') === 0)) {
+        $contact_id = (int) ($payload[($event === 'mail.bounced') ? 'contact_id' : 'customer_id'] ?? 0);
+
+        return ($contact_id > 0) ? array('contact', $contact_id) : array('', 0);
+    }
+
+    // The ERP's: the invoice, the receipt, the inbox's e-document or the
+    // sales quote, each by its id.
+    $erp = array('erp.invoice.' => 'invoice', 'erp.receipt.' => 'receipt', 'erp.edoc.' => 'edoc', 'erp.quote.' => 'erp_quote');
+
+    foreach ($erp as $prefix => $kind) {
+        if (strpos($event, $prefix) === 0) {
+            return array($kind, (int) ($payload['id'] ?? 0));
+        }
+    }
+
     switch ($event) {
+        case 'user.created':
+            return array('user_account', (int) ($payload['id'] ?? 0));
+
+        case 'page.created':
+        case 'page.updated':
+            return array('page', (int) ($payload['id'] ?? 0));
+
+        case 'calendar_event.reserved':
+            return array('calendar_event', (int) ($payload['id'] ?? 0));
+
+        case 'customer.consent_changed':
+            return array('contact', (int) ($payload['id'] ?? 0));
+
         case 'stock.low':
+        case 'inventory.changed':
         case 'product.updated':
             return array('product', (int) ($payload['product_id'] ?? ($payload['id'] ?? 0)));
 
         case 'customer.created':
         case 'customer.updated':
+        case 'contact_group.joined':
             return array('contact', (int) ($payload['id'] ?? 0));
 
         case 'form.submitted':
+        case 'form.paid':
             return array('form', (int) ($payload['id'] ?? 0));
     }
 
@@ -468,18 +685,20 @@ function ws_events_watched($event)
  * Does an event rule of a scheduled action match this event? The event
  * itself, and its filters when it has them: the form (the page the form is
  * on), the status the order or the task moved to or how the approval request
- * ended (status), and the channel the workspace's event happened in. A row
+ * ended (status; for a contact joining a group, the group's id), and the
+ * channel the workspace's event happened in. A row
  * rule (a flow's row box) matches a row of its table, and a change only
- * when it wrote the rule's column, if it names one.
+ * when it wrote the rule's column, if it names one; a mention rule (a
+ * flow's mention box) a message of its channel.
  *
- * @param array  $rule    type event: event, page_id, status, channel_id; type row: event, table_id, column_id
+ * @param array  $rule    type event: event, page_id, status, channel_id; type row: event, table_id, column_id; type mention: event, channel_id
  * @param string $event
  * @param array  $payload
  * @return bool
  */
 function ws_events_rule_matches($rule, $event, $payload)
 {
-    if (!is_array($rule) || !in_array(($rule['type'] ?? ''), array('event', 'row'), true) || ((string) ($rule['event'] ?? '') !== (string) $event)) {
+    if (!is_array($rule) || !in_array(($rule['type'] ?? ''), array('event', 'row', 'mention'), true) || ((string) ($rule['event'] ?? '') !== (string) $event)) {
         return false;
     }
 
@@ -489,7 +708,11 @@ function ws_events_rule_matches($rule, $event, $payload)
         return function_exists('ws_flow_row_rule_matches') && ws_flow_row_rule_matches($rule, $payload);
     }
 
-    if (((string) ($rule['status'] ?? '') !== '') && ((string) ($payload['status'] ?? '') !== (string) $rule['status'])) {
+    if ($rule['type'] === 'mention') {
+        return function_exists('ws_flow_mention_rule_matches') && ws_flow_mention_rule_matches($rule, $payload);
+    }
+
+    if (((string) ($rule['status'] ?? '') !== '') && (ws_events_filter_value($event, $payload) !== (string) $rule['status'])) {
         return false;
     }
 
@@ -502,6 +725,65 @@ function ws_events_rule_matches($rule, $event, $payload)
     }
 
     return true;
+}
+
+/**
+ * The value of an event a rule's status filter is laid against: the group a
+ * contact joined (the rule keeps the group's id there, as the flow's event
+ * box writes every list filter into status), else the status the payload
+ * names.
+ *
+ * @param string $event
+ * @param array  $payload
+ * @return string
+ */
+function ws_events_filter_value($event, $payload)
+{
+    $payload = (array) $payload;
+
+    if ((string) $event === 'contact_group.joined') {
+        return (string) (int) ($payload['group_id'] ?? 0);
+    }
+
+    return (string) ($payload['status'] ?? '');
+}
+
+/**
+ * The contact groups a rule of contact_group.joined may be narrowed to: the
+ * id as text (the rule's status) and the name, a group filled by rules
+ * labelled so. Pure; ws_events_contact_groups() reads the rows.
+ *
+ * @param array $rows id, name, kind
+ * @return array id => label
+ */
+function ws_events_contact_group_labels($rows)
+{
+    $out = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || ((int) ($row['id'] ?? 0) <= 0)) {
+            continue;
+        }
+
+        $name = (string) ($row['name'] ?? '');
+        $out[(string) (int) $row['id']] = ((string) ($row['kind'] ?? '') === 'dynamic')
+            ? lang(array('string' => '{var:1} (filled by rules)', 'vars' => $name))
+            : $name;
+    }
+
+    return $out;
+}
+
+/**
+ * The site's contact groups, for the filter of a contact_group.joined rule.
+ *
+ * @return array id => label
+ */
+function ws_events_contact_groups()
+{
+    $kind = function_exists('pg_schema_has') && pg_schema_has('contact_groups', 'kind');
+
+    return ws_events_contact_group_labels(db_items("SELECT id, name" . ($kind ? ", kind" : "") . " FROM contact_groups ORDER BY name LIMIT 300"));
 }
 
 /**
@@ -608,8 +890,8 @@ function ws_events_process($limit = WS_EVENTS_BATCH)
  * an hour; the starts stand at the head of a chain (no source action), at
  * depth 0 - or, for a workspace event a scheduled action's run caused, one
  * step below that run, and not at all past WS_SCHEDULED_CHAIN_DEPTH. A
- * workspace event starts an action only when its creator may read what it
- * is about.
+ * workspace or booking event starts an action only when its creator may
+ * read what it is about (ws_events_checks_creator()).
  *
  * @param int    $event_id
  * @param string $event
@@ -627,10 +909,12 @@ function ws_events_start($event_id, $event, $payload)
     if ($waiting === null) {
         $waiting = array();
 
-        foreach ((array) db_items("SELECT id, rules, created_by FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
+        $flow_column = (function_exists('ws_flows_ready') && ws_flows_ready()) ? ', flow_id' : '';
+
+        foreach ((array) db_items("SELECT id, rules, created_by" . $flow_column . " FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
-                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row'), true)) {
-                    $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by']);
+                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row', 'mention'), true)) {
+                    $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by'], 'flow_id' => (int) ($row['flow_id'] ?? 0));
                 }
             }
         }
@@ -644,13 +928,22 @@ function ws_events_start($event_id, $event, $payload)
         return 0;
     }
 
-    $own = ws_events_is_own($event);
+    $own = ws_events_checks_creator($event);
     $now = time();
     $queued = 0;
     $context = json_encode(array('event' => (string) $event, 'payload' => $payload, 'event_id' => (int) $event_id), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
     foreach ($waiting as $action_id => $item) {
         if (!ws_events_rule_matches($item['rule'], $event, $payload)) {
+            continue;
+        }
+
+        if (ws_events_own_failure($event, $payload, $item['flow_id'])) {
+            continue;
+        }
+
+        // A mention starts only the flow it names.
+        if (function_exists('ws_flow_mention_other_flow') && ws_flow_mention_other_flow($item['rule'], $payload, $item['flow_id'])) {
             continue;
         }
 
@@ -700,6 +993,20 @@ function ws_events_fill_values($viewer, $event, $payload)
         '{{actor}}'         => '',
         '{{message}}'       => '',
     );
+
+    // A failed run: its channel's tag, the flow's name and the box's
+    // sentence, only for a creator who reads the run.
+    if ((string) $event === 'workspace.flow.run.failed') {
+        if (!is_array($viewer) || !ws_events_creator_sees((int) ($viewer['id'] ?? 0), $event, (array) $payload)) {
+            return $values;
+        }
+
+        $values['{{record}}'] = (($type !== '') && ($id > 0)) ? '<#' . $type . ':' . $id . '>' : '';
+        $values['{{record_title}}'] = (string) ($payload['flow_name'] ?? '');
+        $values['{{message}}'] = trim((string) ($payload['box'] ?? '') . ': ' . (string) ($payload['sentence'] ?? ''), ': ');
+
+        return $values;
+    }
 
     if (($type === '') || ($id <= 0)) {
         return $values;
@@ -1205,6 +1512,11 @@ function ws_events_js_config($viewer)
 
         if (isset($own_filters[$info['filter']])) {
             $list[$key] += $own_filters[$info['filter']];
+        }
+
+        // The contact groups, read only for someone who may wait for it.
+        if ($info['filter'] === 'group') {
+            $list[$key] += array('filter_label' => lang('Contact group'), 'any' => lang('Any contact group'), 'options' => $pairs(ws_events_contact_groups()));
         }
 
         if (!empty($info['channel'])) {
