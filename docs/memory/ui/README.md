@@ -167,6 +167,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - detail-screen-values.md: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; Visit Details' wide layout; ERP quarter option wording
 - details-panel-rule.md: The one structure rule of a list's details panel ("Ayrıntılar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
 - dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card
+- duplicate-products-options.md: Duplicate Products (duplicate_products.php) copy options as a titled card of labelled form-field boxes above the list (step B11, #7552)
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
 - edit-css-screen-layout.md: Edit CSS (edit_theme_css.php) on the wide edit layout: the code card, the Summary rows, the save bar, what stays in the screen
 - edit-file-header.md: Edit File (edit_file.php) layout and status column: preview, Summary mirroring the File Manager details ("W × H px", optimized, last change with name, address), access, Where is it used?
