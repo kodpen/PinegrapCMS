@@ -93,6 +93,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - comments-widget-recent.md: The Comments widget's recent mode (kind comments_recent): what a list shows, options, record filters, what it never does, tokens and flags, checks
 - comments-widget-replies.md: Replies in the comments widget: order units, quotes, reply/cancel/share on links and buttons, the kept parent_id and ?reply_to=, pg_comment_reply_ok, init_comment_actions
 - comments-widget-save-warnings.md: Save warnings about a page's comments not drawn (block plus widget, two widgets, nested record widget, comments off; an e-mail page only two widgets): census, approximation, codes
+- comments-widget-two-forms.md: A product page's reviews and questions widgets keep apart: form state, Messages, form id and anchor, which comment each form answers, the Reply script's scope
 - comments-widget-watch-staff.md: The comments widget's watch form, watcher list and staff open-or-close form: wiring, who gets them, address masking, count text, where their messages print, canvas fades by place
 - comments-widget.md: The comments system widget (regionType comments): whose thread it shows, options, the recent mode, e-mails, tokens, flags, escaping, default layout, checks
 - common-region-to-shared-component.md: A common region made a shared component (R2): one _editable block opened to content editors, grants carried over, the <cregion> tag drawing the component, the old write paths refused
