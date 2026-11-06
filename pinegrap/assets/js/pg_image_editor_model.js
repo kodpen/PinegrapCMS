@@ -3835,6 +3835,170 @@
 
     var KEYS = { KEY_STEP: KEY_STEP, keyList: keyList, keyAt: keyAt, keyIndex: keyIndex, keySet: keySet, keyMove: keyMove, keyDrop: keyDrop, keyPath: keyPath };
 
+    // -- a recorded move (pg_image_editor_record.js) --
+    //
+    // A layer dragged while the clock runs: samples { t, x, y, rot?, scale? }
+    // (t on the document's own time, x and y the keyed offset, rot and
+    // scale only where a twist or a corner recorded them), thinned into
+    // linear keys that replace the keys of the recorded span.
+
+    // The speeds the clock may run at while recording; a frame of 60 Hz.
+    var RECORD_RATES = [0.5, 1, 2], RECORD_FRAME = 1000 / 60, RECORD_PX = 1, RECORD_ROT = 0.5, RECORD_SCALE = 0.005;
+
+    // The clock elapsed real ms after a recording started at from.
+    function recordClock(from, elapsed, rate) {
+        return from + elapsed * ((RECORD_RATES.indexOf(rate) >= 0) ? rate : 1);
+    }
+
+    // The distance from point s to the segment a-b.
+    function recordSegDist(s, a, b) {
+        var dx = b[0] - a[0], dy = b[1] - a[1], len = dx * dx + dy * dy, f = 0;
+
+        if (len > 0) {
+            f = clamp(((s[0] - a[0]) * dx + (s[1] - a[1]) * dy) / len, 0, 1);
+        }
+
+        return Math.hypot(s[0] - a[0] - dx * f, s[1] - a[1] - dy * f);
+    }
+
+    // How far sample s is from the straight, even move from a to b: its
+    // place against where that move is within a frame of its time; its
+    // turn and size at its own time, scaled so the tolerance is 1.
+    function recordError(s, a, b, px, frame) {
+        var span = b.t - a.t, at = function (t) {
+            var f = (span > 0) ? clamp((t - a.t) / span, 0, 1) : 0;
+
+            return [a.x + (b.x - a.x) * f, a.y + (b.y - a.y) * f];
+        };
+        var f = (span > 0) ? (s.t - a.t) / span : 0, err = recordSegDist([s.x, s.y], at(s.t - frame), at(s.t + frame)) / px;
+
+        if (s.rot !== undefined) {
+            err = Math.max(err, Math.abs(a.rot + (b.rot - a.rot) * f - s.rot) / RECORD_ROT);
+        }
+
+        if (s.scale !== undefined) {
+            err = Math.max(err, Math.abs(a.scale + (b.scale - a.scale) * f - s.scale) / RECORD_SCALE);
+        }
+
+        return err;
+    }
+
+    // The samples thinned (Douglas-Peucker in place and time): cleaned,
+    // their times on the keys' 10 ms grid (the last of a slot kept), then
+    // only the samples a straight even move between their neighbours
+    // misses by more than px (default 1) within a frame of their time.
+    // The kept samples as keys { t, x, y, rot?, scale?, ease: 'linear' }.
+    function recordThin(samples, px, frame) {
+        var byT = {}, list = [], keep, stack, seg, i, worst, at, e;
+
+        px = (px > 0) ? px : RECORD_PX;
+        frame = (frame >= 0) ? frame : RECORD_FRAME;
+
+        (Array.isArray(samples) ? samples : []).forEach(function (s) {
+            if (!s || !isFinite(Number(s.t)) || !isFinite(Number(s.x)) || !isFinite(Number(s.y))) {
+                return;
+            }
+
+            var q = { t: Math.max(0, Math.round(Number(s.t) / KEY_STEP) * KEY_STEP), x: Number(s.x), y: Number(s.y) };
+
+            if (isFinite(Number(s.rot)) && (s.rot !== null) && (s.rot !== undefined)) {
+                q.rot = Number(s.rot);
+            }
+
+            if (isFinite(Number(s.scale)) && (s.scale !== null) && (s.scale !== undefined)) {
+                q.scale = clamp(Number(s.scale), KEY_SCALE[0], KEY_SCALE[1]);
+            }
+
+            byT[q.t] = q;
+        });
+
+        Object.keys(byT).forEach(function (t) { list.push(byT[t]); });
+        list.sort(function (a, b) { return a.t - b.t; });
+
+        // A twist or a corner that stopped part way holds its last value.
+        ['rot', 'scale'].forEach(function (f) {
+            var last;
+
+            if (list.some(function (q) { return q[f] !== undefined; })) {
+                list.forEach(function (q) { last = (q[f] !== undefined) ? q[f] : last; });
+                list.forEach(function (q) { last = (q[f] !== undefined) ? q[f] : last; q[f] = (last === undefined) ? ((f === 'rot') ? 0 : 1) : last; });
+            }
+        });
+
+        if (list.length < 3) {
+            keep = list.map(function () { return true; });
+        } else {
+            keep = list.map(function () { return false; });
+            keep[0] = keep[list.length - 1] = true;
+            stack = [[0, list.length - 1]];
+
+            while (stack.length) {
+                seg = stack.pop();
+                worst = 1;
+                at = -1;
+
+                for (i = seg[0] + 1; i < seg[1]; i++) {
+                    e = recordError(list[i], list[seg[0]], list[seg[1]], px, frame);
+
+                    if (e > worst) {
+                        worst = e;
+                        at = i;
+                    }
+                }
+
+                if (at >= 0) {
+                    keep[at] = true;
+                    stack.push([seg[0], at], [at, seg[1]]);
+                }
+            }
+        }
+
+        return list.filter(function (q, n) { return keep[n]; }).map(function (q) {
+            return Object.assign(q, { ease: 'linear' });
+        });
+    }
+
+    // The layer's keys with samples recorded on a timeline of end ms: the
+    // keys inside the recorded span replaced by the thinned samples (size,
+    // turn and opacity from the old keys where not recorded), the rest
+    // kept; the end lengthened past the last sample, up to MOTION_MAX.
+    // { keys, end }.
+    function recordApply(l, samples, end) {
+        var old = keyList(l), kept = recordThin((Array.isArray(samples) ? samples : []).filter(function (s) {
+            return s && (Number(s.t) <= MOTION_MAX);
+        })), from, to, keys;
+
+        end = Math.max(0, Number(end) || 0);
+
+        if (!kept.length) {
+            return { keys: old, end: end };
+        }
+
+        from = kept[0].t;
+        to = kept[kept.length - 1].t;
+
+        keys = old.filter(function (k) { return (k.t < from - KEY_NEAR) || (k.t > to + KEY_NEAR); }).concat(kept.map(function (q) {
+            var was = keyAt({ anim: { keys: old } }, q.t) || keyRest(q.t);
+
+            return keyClean({
+                t: q.t,
+                x: q.x,
+                y: q.y,
+                scale: (q.scale !== undefined) ? q.scale : was.scale,
+                rot: (q.rot !== undefined) ? q.rot : was.rot,
+                opacity: was.opacity,
+                ease: 'linear'
+            });
+        }));
+
+        return {
+            keys: keyList({ anim: { keys: keys } }),
+            end: (to > end) ? Math.min(MOTION_MAX, Math.ceil(to / 100) * 100) : end
+        };
+    }
+
+    var RECORD = { RECORD_RATES: RECORD_RATES, recordClock: recordClock, recordThin: recordThin, recordApply: recordApply };
+
     // -- tracks (pg_image_editor_tracks.js) --
     //
     // A row per layer under the play bar: a bar per phase from M.motionSpans(),
@@ -8005,7 +8169,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, RECORD, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
