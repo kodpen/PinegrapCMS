@@ -37,3 +37,27 @@ function test_import_contacts_uses_the_wide_layout()
 		pg_assert_contains($field, $source, 'keeps ' . $field);
 	}
 }
+
+// The Summary's contact count covers what the signed-in person may open:
+// every contact from the manager role up, only the contacts of their groups
+// for the user role (validate_contacts_access() lets such a person in).
+function test_import_contacts_summary_counts_only_reachable_contacts()
+{
+	pg_assert_true(function_exists('pg_contact_count_sql'), 'the count query has one function');
+
+	if (!function_exists('pg_contact_count_sql')) {
+		return;
+	}
+
+	foreach (array(0, 1, 2) as $role) {
+		pg_assert_same('SELECT COUNT(*) FROM contacts', pg_contact_count_sql(array('id' => 7, 'role' => $role)), 'role ' . $role . ' counts every contact');
+	}
+
+	$limited = pg_contact_count_sql(array('id' => 7, 'role' => 3));
+	pg_assert_same('SELECT COUNT(*) FROM contacts WHERE ' . pg_contact_owner_sql(7, 'contacts.id'), $limited, 'user role counts the contacts of its groups');
+	pg_assert_contains("users_contact_groups_xref.user_id = '7'", $limited, 'limited to the person');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_contacts.php');
+	pg_assert_contains('db_value(pg_contact_count_sql($user))', $source, 'Summary row uses the scoped count');
+	pg_assert_false(strpos($source, 'db_value("SELECT COUNT(*) FROM contacts")') !== false, 'no site-wide count');
+}
