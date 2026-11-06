@@ -82,3 +82,16 @@ function test_workspace_webhook_start_events_kept_on_demand()
 	pg_assert_true(!pg_event_workspace_awaited('inventory.changed', array('[{"type":"event","event":"stock.low"}]')));
 	pg_assert_true(pg_event_workspace_awaited('order.created', array()), 'the others are always kept');
 }
+
+// api_webhook_enqueue() keeps the event for the Workspace itself (unless
+// pg_announce() already did), so the API's stock write must not record it a
+// second time: each waiting flow would start twice.
+function test_workspace_webhook_start_events_api_stock_recorded_once()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/inventory.php');
+
+	pg_assert_contains("api_webhook_enqueue('inventory.changed', \$stock_event);", $source);
+	pg_assert_contains("api_webhook_enqueue('stock.low', \$low_event);", $source);
+	pg_assert_false(strpos($source, "pg_event_record('inventory.changed'") !== false, 'inventory.changed is kept by api_webhook_enqueue() alone');
+	pg_assert_false(strpos($source, "pg_event_record('stock.low'") !== false, 'stock.low is kept by api_webhook_enqueue() alone');
+}
