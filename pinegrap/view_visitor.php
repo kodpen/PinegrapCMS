@@ -137,22 +137,56 @@ if (($ip_address === '') && is_array($visitor_ip_settings) && ($visitor_ip_setti
     $ip_address_text = lang(array('string' => 'Removed after {var:1} days', 'vars' => array($visitor_ip_settings['ip_days'])));
 }
 
+
+// The screen follows the wide layout of the edit screens
+// (docs/memory/ui/edit-screen-wide-layout.md): what the visitor did sits in
+// the main column as value tiles, the facts of the visit and its location in
+// a sticky summary column beside it.
+
+// One value tile of the main column: its caption, then the value, which the
+// caller hands over already escaped.
+$output_tile = function ($label, $value_html, $size = 'h5') {
+    return '
+                                <div class="col-12 md:col-6 xl:col-4 my-3">
+                                    <div class="form-text">' . h($label) . '</div>
+                                    <div class="' . $size . ' text-break">' . $value_html . '</div>
+                                </div>';
+};
+
+// One row of a summary list: the caption on the left, the escaped value on
+// the right.
+$output_fact = function ($label, $value_html) {
+    return '
+                            <div class="d-flex justify-content-between align-items-baseline gap-3 py-1">
+                                <dt class="fw-normal fg-secondary">' . h($label) . '</dt>
+                                <dd class="mb-0 text-end text-break">' . $value_html . '</dd>
+                            </div>';
+};
+
+// A card of the main column, with its heading and its tiles.
+$output_card = function ($heading, $tiles) {
+    return '
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h($heading) . '</h2>
+                        <div class="card-body pt-0">
+                            <div class="row">' . $tiles . '
+                            </div>
+                        </div>
+                    </div>';
+};
+
 $output_currency_row = '';
 
 // if multi-currency is enabled, then output currency row
 if ((ECOMMERCE == true) && (ECOMMERCE_MULTICURRENCY == true)) {
     $currency_name_and_code = '';
-    
+
     // if there is a currency code, then output it
     if ($currency_code != '') {
         $currency_name_and_code = get_currency_name_from_code($currency_code) . ' (' . $currency_code . ')';
     }
-    
-    $output_currency_row =
-        '<div class="col-12 md:col-6 lg:col-4 my-3">
-            <div class="form-text">' . lang('Currency') . '</div>
-            <div class="h5">' . h($currency_name_and_code) . '</div>
-        </div>';
+
+    $output_currency_row = $output_fact(lang('Currency'), h($currency_name_and_code ? $currency_name_and_code : '-'));
 }
 
 // if http referer is too long, then shorten
@@ -172,11 +206,11 @@ if (mb_strlen($referring_host_name) > 100) {
 // if pay per click flag is in tracking code, this visitor is pay per click
 if ((defined('PAY_PER_CLICK_FLAG') == true) && (PAY_PER_CLICK_FLAG != '') && (mb_strpos($tracking_code, PAY_PER_CLICK_FLAG) !== false)) {
     $output_pay_per_click_organic = lang('Pay Per Click');
-    
+
 // else if referring seraching engine is not blank, this visitor is organic
 } elseif ($referring_search_engine != '') {
     $output_pay_per_click_organic = lang('Organic');
-    
+
 // else this visitor is neither
 } else {
     $output_pay_per_click_organic = '';
@@ -186,66 +220,33 @@ $output_first_visit = ($first_visit) ? lang('Yes') : lang('No');
 
 $output_affiliate_code = '';
 if (AFFILIATE_PROGRAM == true) {
-    $output_affiliate_code =
-        '<div class="col-12 md:col-6 lg:col-4 my-3">
-            <div class="form-text">' . lang('Affiliate Code') . '</div>
-            <div class="h5">' . h($affiliate_code ? $affiliate_code : '-') . '</div>
-        </div>';
+    $output_affiliate_code = $output_tile(lang('Affiliate Code'), h($affiliate_code ? $affiliate_code : '-'));
 }
 
+// The UTM card only for a visit that came with a UTM source, and in it only
+// the parts the link carried.
 $utm = '';
 
 if ($utm_source) {
-
-    $utm .=
-        '<div class="col-12">
-            <div class="card my-7">
-               <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                    ' . lang('UTM') . '
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-12 md:col-6 lg:col-4 my-3">
-                            <div class="form-text">' . lang('Source') . '</div>
-                            <div class="h5">' . h($utm_source) . '</div>
-                        </div>';
+    $utm_tiles = $output_tile(lang('Source'), h($utm_source));
 
     if ($utm_medium) {
-        $utm .=
-            '<div class="col-12 md:col-6 lg:col-4 my-3">
-                <div class="form-text">' . lang('UTM medium') . '</div>
-                <div class="h5">' . h($utm_medium) . '</div>
-            </div>';
+        $utm_tiles .= $output_tile(lang('UTM medium'), h($utm_medium));
     }
 
     if ($utm_campaign) {
-        $utm .=
-            '<div class="col-12 md:col-6 lg:col-4 my-3">
-                <div class="form-text">' . lang('Campaign') . '</div>
-                <div class="h5">' . h($utm_campaign) . '</div>
-            </div>';
+        $utm_tiles .= $output_tile(lang('Campaign'), h($utm_campaign));
     }
 
     if ($utm_term) {
-        $utm .=
-            '<div class="col-12 md:col-6 lg:col-4 my-3">
-                <div class="form-text">' . lang('Term') . '</div>
-                <div class="h5">' . h($utm_term) . '</div>
-            </div>';
+        $utm_tiles .= $output_tile(lang('Term'), h($utm_term));
     }
 
     if ($utm_content) {
-        $utm .=
-            '<div class="col-12 md:col-6 lg:col-4 my-3">
-                <div class="form-text">' . lang('Content') . '</div>
-                <div class="h5">' . h($utm_content) . '</div>
-            </div>';
+        $utm_tiles .= $output_tile(lang('Content'), h($utm_content));
     }
-        $utm .= '</div>
-            </div>
-        </div>
-    </div>';
 
+    $utm = $output_card(lang('UTM'), $utm_tiles);
 }
 
 $output_custom_form_submitted = ($custom_form_submitted) ? lang('Yes') : lang('No');
@@ -253,6 +254,28 @@ $output_order_created = ($order_created) ? lang('Yes') : lang('No');
 $output_order_retrieved = ($order_retrieved) ? lang('Yes') : lang('No');
 $output_order_checked_out = ($order_checked_out) ? lang('Yes') : lang('No');
 $output_order_completed = ($order_completed) ? lang('Yes') : lang('No');
+
+$output_referral = $output_card(lang('Referral Information'),
+    $output_tile(lang('URL'), $output_http_referer ? '<a class="pg-link-secondary text-break" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($output_http_referer) . '</a>' : '-', 'h6')
+    . $output_tile(lang('Host Name'), $output_referring_host_name ? '<a class="pg-link-secondary text-break" href="http://' . h($referring_host_name) . '" target="_blank">' . h($output_referring_host_name) . '</a>' : '-', 'h6')
+    . $output_tile(lang('Search Engine'), h($referring_search_engine ? $referring_search_engine : '-'))
+    . $output_tile(lang('Search Terms'), h($referring_search_terms ? $referring_search_terms : '-'))
+    . $output_tile(lang('Pay Per Click / Organic'), h($output_pay_per_click_organic ? $output_pay_per_click_organic : '-'))
+    . $output_tile(lang('First Visit'), h($output_first_visit))
+    . $output_tile(lang('Landing Page'), (($landing_page_name != '') ? '<a class="pg-link-secondary text-break" href="' . OUTPUT_PATH . h($landing_page_name) . '" target="_blank">' . h($landing_page_name) . '</a>' : '-'), 'h6')
+    . $output_tile(lang('Tracking Code'), h($tracking_code ? $tracking_code : '-'))
+    . $output_affiliate_code);
+
+$output_actions = $output_card(lang('Actions performed during Visit'),
+    $output_tile(lang('Page Views'), pg_format_number($page_views, 0), 'h4')
+    . $output_tile(lang('Order Total'), prepare_amount($order_total / 100), 'h4')
+    . $output_tile(lang('Site Search Terms'), h($site_search_terms ? str_replace('|', ', ', $site_search_terms) : '-'), 'h6')
+    . $output_tile(lang('Custom Form Submitted'), h($output_custom_form_submitted))
+    . $output_tile(lang('Custom Form'), h($custom_form_name ? $custom_form_name : '-'))
+    . $output_tile(lang('Order Created'), h($output_order_created))
+    . $output_tile(lang('Order Retrieved'), h($output_order_retrieved))
+    . $output_tile(lang('Order Checked Out'), h($output_order_checked_out))
+    . $output_tile(lang('Order Completed'), h($output_order_completed)));
 
 echo
 pg_page_shell(
@@ -272,154 +295,32 @@ pg_page_shell(
     )
 ) . '
 <main id="content" class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="row">
-                <div class="col-12">
-                    <div class="card my-7">
-                       <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('General Visit Information') . '
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Visitor Number') . '</div>
-                                    <div class="h5">' . h($id ? $id : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Start Time') . '</div>
-                                    <div class="h6">' . get_absolute_time(array('timestamp' => $start_timestamp)) . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('End Time') . '</div>
-                                    <div class="h6">' . get_absolute_time(array('timestamp' => $stop_timestamp)) . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Site Search Terms') . '</div>
-                                    <div class="h6">' . h($site_search_terms ? str_replace('|', ', ', $site_search_terms) : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('IP Address') . '</div>
-                                    <div class="h5">' . h($ip_address_text) . '</div>
-                                </div>
-                                ' . $output_currency_row . '
-                            </div>
-                        </div>
+    <div class="row g-7 mt-0">
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $output_referral . $utm . $output_actions . '
+        </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky" style="top:3.3rem;">
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</h2>
+                    <div class="card-body pt-0 small">
+                        <dl class="mb-0">'
+                            . $output_fact(lang('Visitor Number'), h($id ? $id : '-'))
+                            . $output_fact(lang('Start Time'), get_absolute_time(array('timestamp' => $start_timestamp)))
+                            . $output_fact(lang('End Time'), get_absolute_time(array('timestamp' => $stop_timestamp)))
+                            . $output_fact(lang('IP Address'), h($ip_address_text))
+                            . $output_currency_row . '
+                        </dl>
                     </div>
                 </div>
-                <div class="col-12">
-                    <div class="card my-7">
-                       <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('Referral Information') . '
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('URL') . '</div>
-                                    ' . ($output_http_referer ? '<a class="pg-link-secondary text-break" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($output_http_referer) . '</a>' : '-') . '
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Host Name') . '</div>
-                                    ' . ($output_referring_host_name ? '<a class="pg-link-secondary text-break" href="http://' . h($referring_host_name) . '" target="_blank">' . h($output_referring_host_name) . '</a>' : '-') . '
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Search Engine') . '</div>
-                                    <div class="h5">' . h($referring_search_engine ? $referring_search_engine : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Search Terms') . '</div>
-                                    <div class="h5">' . h($referring_search_terms ? $referring_search_terms : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Pay Per Click / Organic') . '</div>
-                                    <div class="h5">' . h($output_pay_per_click_organic ? $output_pay_per_click_organic : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('First Visit') . '</div>
-                                    <div class="h5">' . $output_first_visit . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Landing Page') . '</div>
-                                    ' . (($landing_page_name != '') ? '<a class="pg-link-secondary text-break" href="' . OUTPUT_PATH . h($landing_page_name) . '" target="_blank">' . h($landing_page_name) . '</a>' : '-') . '
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Tracking Code') . '</div>
-                                    <div class="h5">' . h($tracking_code ? $tracking_code : '-') . '</div>
-                                </div>
-                                ' . $output_affiliate_code . '
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                ' . $utm . '
-                <div class="col-12">
-                    <div class="card my-7">
-                       <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('Actions performed during Visit') . '
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Page Views') . '</div>
-                                    <div class="h4">' . pg_format_number($page_views, 0) . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Custom Form Submitted') . '</div>
-                                    <div class="h5">' . $output_custom_form_submitted . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Custom Form') . '</div>
-                                    <div class="h5">' . h($custom_form_name ? $custom_form_name : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Order Created') . '</div>
-                                    <div class="h5">' . $output_order_created . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Order Retrieved') . '</div>
-                                    <div class="h5">' . $output_order_retrieved . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Order Checked Out') . '</div>
-                                    <div class="h5">' . $output_order_checked_out . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Order Completed') . '</div>
-                                    <div class="h5">' . $output_order_completed . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Order Total') . '</div>
-                                    <div class="h4">' . prepare_amount($order_total / 100) . '</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12">
-                    <div class="card my-7">
-                       <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('Visitor\'s Location Information') . '
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('City') . '</div>
-                                    <div class="h5">' . h($city ? $city : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('State') . '</div>
-                                    <div class="h5">' . h($state ? $state : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Zip Code') . '</div>
-                                    <div class="h5">' . h($zip_code ? $zip_code : '-') . '</div>
-                                </div>
-                                <div class="col-12 md:col-6 lg:col-4 my-3">
-                                    <div class="form-text">' . lang('Country') . '</div>
-                                    <div class="h5">' . h($country ? $country : '-') . '</div>
-                                </div>
-                            </div>
-                        </div>
+                <div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Visitor\'s Location Information')) . '</h2>
+                    <div class="card-body pt-0 small">
+                        <dl class="mb-0">'
+                            . $output_fact(lang('City'), h($city ? $city : '-'))
+                            . $output_fact(lang('State'), h($state ? $state : '-'))
+                            . $output_fact(lang('Zip Code'), h($zip_code ? $zip_code : '-'))
+                            . $output_fact(lang('Country'), h($country ? $country : '-')) . '
+                        </dl>
                     </div>
                 </div>
             </div>

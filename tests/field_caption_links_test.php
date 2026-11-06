@@ -64,5 +64,14 @@ function test_field_caption_order_tracking_numbers()
 {
 	$source = pg_test_field_caption_source('view_order.php');
 
-	pg_assert_contains('<label class="col fg-secondary mt-5" for="\' . h($shipment_numbers_field) . \'">', $source, 'the tracking numbers caption is a label for the chips field');
+	pg_assert_contains('<label class="form-label" for="\' . h($shipment_numbers_field) . \'">', $source, 'the tracking numbers caption is a label for the chips field');
+}
+
+// The ship and delivery date boxes have captions that name their fields.
+function test_field_caption_order_ship_dates()
+{
+	$source = pg_test_field_caption_source('view_order.php');
+
+	pg_assert_contains('<label class="form-label" for="\' . $ship_dates_field_id . \'_\' . $date_column . \'">', $source, 'each date caption is a label for its field');
+	pg_assert_contains("\$ship_dates_field_id = 'ship_to_id_' . (int) \$ship_tos[\$key]['ship_to_id'];", $source, 'the field ids the liveform fields use');
 }

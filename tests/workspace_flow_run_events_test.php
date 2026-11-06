@@ -344,6 +344,7 @@ function test_workspace_flow_run_events_waiting_is_announced_once()
 		'ws_flow_delay_run'     => "ws_flow_run_announce_waiting((int) \$step['id'], \$key);",
 		'ws_flow_retry_wait'    => "ws_flow_run_announce_waiting((int) \$step['id'], \$key);",
 		'ws_flow_approval_wait' => "ws_flow_run_announce_waiting((int) \$step['id'], \$key);",
+		'ws_step_ai_wait'       => "ws_flow_run_announce_waiting((int) \$step['id'], \$key);",
 	);
 
 	foreach ($sites as $function => $call) {
@@ -419,5 +420,5 @@ function test_workspace_flow_run_events_other_moves_announce_nothing()
 		}
 	}
 
-	pg_assert_same(array('flow_run_events.php' => 3, 'flow_runs.php' => 7), $callers, 'three definitions, seven calls');
+	pg_assert_same(array('flow_ai_box.php' => 1, 'flow_run_events.php' => 3, 'flow_runs.php' => 7), $callers, 'three definitions, eight calls');
 }

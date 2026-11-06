@@ -31,6 +31,7 @@
     "1 page style was not deleted because it is being used by a folder or page.": "1 sayfa stili, bir klasör veya sayfa tarafından kullanıldığı için silinmedi.",
     "1 reply": "1 yanıt",
     "1 to 120 Hz, adapting to what you do": "Yaptığınız işe göre 1 ile 120 Hz arasında",
+    "1 to 720 hours. Pinegrap AI is asked again every hour until it answers; with no answer by then the box leaves on failed.": "1 ile 720 saat arası. Pinegrap AI yanıt verene kadar her saat yeniden sorulur; o zamana kadar yanıt gelmezse kutu başarısız yolundan çıkar.",
     "1 week": "1 hafta",
     "1 — This page + directly linked pages": "1 — Bu sayfa + doğrudan bağlantılı sayfalar",
     "1,200": "1.200",
@@ -157,6 +158,7 @@
     "30 min": "30 dk",
     "30 min · history and exam": "30 dk · öykü ve muayene",
     "30 minutes": "30 dakika",
+    "30 minutes in the studio": "Stüdyoda 30 dakika",
     "30 minutes, free": "30 dakika, ücretsiz",
     "30-day returns": "30 gün iade",
     "300 seats each, one for each track": "Her biri 300 koltuk, her oturum dizisi için bir salon",
@@ -265,9 +267,11 @@
     "8 GB": "8 GB",
     "8 Harbour Walk": "Liman Yolu No:8",
     "84% of every gift": "Her bağışın %84'ü",
+    "84% of what we spend goes to the programmes in the field; the transparency page shows the rest.": "Harcadığımızın %84'ü sahadaki programlara gider; gerisini şeffaflık sayfası gösterir.",
     "8K at 30 fps on Orbit One Plus": "Orbit One Plus'ta 30 fps'de 8K",
     "8K at 30 fps, 4K at 120 fps": "30 fps'de 8K, 120 fps'de 4K",
     "9 or more": "9 ya da daha fazla",
     "90 days": "90 gün",
-    "90 minutes": "90 dakika"
+    "90 minutes": "90 dakika",
+    "90 minutes on location": "Mekânda 90 dakika"
 }

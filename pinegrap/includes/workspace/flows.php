@@ -164,6 +164,24 @@ function ws_flow_kinds()
 }
 
 /**
+ * The outcomes an arrow may leave this box on: its kind's
+ * (ws_flow_arrow_outcomes()), but for a Pinegrap AI box, whose settings say
+ * which (a classifying box's named outcomes, flow_ai_box.php). Pure.
+ *
+ * @param array $kind ws_flow_kinds() entry
+ * @param array $node the box (kind, config)
+ * @return string[]
+ */
+function ws_flow_node_arrow_outcomes($kind, $node)
+{
+    if (((string) ($node['kind'] ?? '') === 'ai') && function_exists('ws_step_ai_arrow_outcomes')) {
+        return ws_step_ai_arrow_outcomes(ws_step_ai_normalize(is_array($node['config'] ?? null) ? $node['config'] : array()));
+    }
+
+    return ws_flow_arrow_outcomes($kind);
+}
+
+/**
  * The outcomes an arrow may leave a box of this kind on: its own, and
  * always (any of them) for a box that is not a start and has any. Pure.
  *
@@ -358,6 +376,7 @@ function ws_flow_config_normalize($kind, $config)
         case 'join':
         case 'row':
         case 'no_order':
+        case 'mention':
             return function_exists('ws_flow_anchor_normalize') ? ws_flow_anchor_normalize($kind, $config) : array();
     }
 
@@ -1039,7 +1058,7 @@ function ws_flow_graph_check($graph)
             }
         }
 
-        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order'), true)) {
+        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order', 'mention'), true)) {
             foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
@@ -1120,7 +1139,7 @@ function ws_flow_graph_check($graph)
 
         $kind = $nodes[$from]['kind'];
 
-        if (isset($kinds[$kind]) && !in_array($edge['on'], ws_flow_arrow_outcomes($kinds[$kind]), true)) {
+        if (isset($kinds[$kind]) && !in_array($edge['on'], ws_flow_node_arrow_outcomes($kinds[$kind], $nodes[$from]), true)) {
             $problems[] = ws_flow_problem('bad_outcome', $from, $index, lang(array('string' => 'An arrow leaves the box {var:1} on {var:2}, which is not one of its outcomes.', 'vars' => array($names[(string) $from], ($edge['on'] !== '') ? $edge['on'] : '-'))));
         }
 
@@ -1627,14 +1646,15 @@ function ws_flows_list_where($filters)
 
 /**
  * How a flow starts, by the kind of its start box: at a time, on an event
- * (a row of a workflow table written is one too, and a customer who stopped
- * ordering), when somebody joins a channel, or by hand.
+ * (a row of a workflow table written is one too, a customer who stopped
+ * ordering, and a mention of the flow in a channel), when somebody joins a
+ * channel, or by hand.
  *
  * @return array box kind => start
  */
 function ws_flow_start_names()
 {
-    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'join' => 'join', 'manual' => 'manual', 'web' => 'web');
+    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'mention' => 'event', 'join' => 'join', 'manual' => 'manual', 'web' => 'web');
 }
 
 /**
@@ -1920,6 +1940,13 @@ function ws_flow_start_rule($graph, $readable, $table_text = null)
 
     if ($kind === 'no_order') {
         return array('text' => ws_flow_no_order_said($config), 'rule' => null);
+    }
+
+    // A mention box names its channel only to whoever reads it.
+    if ($kind === 'mention') {
+        $channel = (((int) $config['channel_id'] > 0) && call_user_func($readable, (int) $config['channel_id'])) ? ws_channel((int) $config['channel_id']) : null;
+
+        return array('text' => ws_flow_mention_said($channel ? (string) $channel['name'] : ''), 'rule' => null);
     }
 
     if (((int) ($config['channel_id'] ?? 0) > 0) && !call_user_func($readable, (int) $config['channel_id'])) {
@@ -2951,6 +2978,7 @@ function ws_flow_js_strings()
         'fl_loop_collect_help' => lang('One value of a box inside the loop, gathered for every item into the list this box gives.'),
         'fl_loop_body'        => lang('Repeated for each item'),
         'fl_on_each'          => lang('For each item'),
+        'fl_on_other'         => lang('None of these'),
         'fl_digest_mode'      => lang('Which tasks'),
         'fl_digest_mine'      => lang('Each person their own open tasks'),
         'fl_digest_channel'   => lang('The open tasks of one channel'),
@@ -3068,6 +3096,10 @@ function ws_flow_js_strings()
         'fl_event_any_channel' => lang('Any channel'),
         'fl_join_channel'     => lang('Channel joined'),
         'fl_join_any'         => lang('Any public channel'),
+        'fl_kind_mention'     => lang('When the flow is mentioned in a channel'),
+        'fl_mention_channel'  => lang('Channel'),
+        'fl_mention_pick'     => lang('Choose a channel'),
+        'fl_mention_help'     => lang('A person who writes @ and the flow\'s name in this channel starts a run, as the flow\'s owner, with the message, its author and the channel. Messages of flows, applications and assistants start nothing; one person starts at most one run this way a minute.'),
         'fl_kind_row'         => lang('When a table row changes'),
         'fl_kind_no_order'    => lang('When a customer stops ordering'),
         'fl_no_order_days'    => lang('Days since the last order'),
@@ -3106,6 +3138,30 @@ function ws_flow_js_strings()
         'fl_record_kind_help' => lang('The kinds of record the flow\'s owner may read; the box reads with their rights.'),
         'fl_record_id'        => lang('Record'),
         'fl_record_id_help'   => lang('The record\'s number, or one value, such as {{trigger.record_id}}. A record that is not there, or one the owner may not read, gives found 0 and empty fields.'),
+        'fl_kind_ai'          => lang('Ask Pinegrap AI'),
+        'fl_ai_mode'          => lang('What it does'),
+        'fl_ai_mode_write'    => lang('Write'),
+        'fl_ai_mode_summarize' => lang('Summarize'),
+        'fl_ai_mode_extract'  => lang('Find a value'),
+        'fl_ai_mode_classify' => lang('Sort into outcomes'),
+        'fl_ai_mode_help_write' => lang('Writes the text the prompt asks for, such as a reply or a description, in the site\'s language.'),
+        'fl_ai_mode_help_summarize' => lang('Sums up the text in a few sentences; the prompt may say how.'),
+        'fl_ai_mode_help_extract' => lang('Finds in the text the value the prompt names; gives it as an answer and as a number, and found 1 or 0.'),
+        'fl_ai_mode_help_classify' => lang('Chooses which of the outcomes below the text belongs to; each outcome is an arrow, and None of these is one too.'),
+        'fl_ai_prompt'        => lang('Prompt'),
+        'fl_ai_prompt_help'   => lang('What Pinegrap AI is to do. Only this prompt and the text below, with their values, are sent; the site\'s Pinegrap AI quota is used.'),
+        'fl_ai_prompt_help_extract' => lang('The value to find, such as the order number or the delivery date.'),
+        'fl_ai_text'          => lang('Text it reads'),
+        'fl_ai_text_help'     => lang('Usually one value, such as a message or a form answer; it is sent as data, never as an instruction.'),
+        'fl_ai_classes'       => lang('Outcomes'),
+        'fl_ai_classes_help'  => lang('Up to 8 names, such as Complaint or Question. Text that fits none leaves on None of these.'),
+        'fl_ai_class_add'     => lang('Add an outcome'),
+        'fl_ai_class_n'       => ws_js_template('Outcome {var:1}', 1),
+        'fl_ai_class_remove'  => ws_js_template('Remove the outcome {var:1}', 1),
+        'fl_ai_number'        => lang('Answer as a number'),
+        'fl_ai_found'         => lang('Found (1 or 0)'),
+        'fl_ai_closes'        => lang('Hours to wait for the answer'),
+        'fl_ai_closes_help'   => lang('1 to 720 hours. Pinegrap AI is asked again every hour until it answers; with no answer by then the box leaves on failed.'),
         'fl_rows_get_row_help' => lang('The row\'s number, or one value, such as {{trigger.row_id}}. A row that is not there gives found 0 and empty cells.'),
         'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
         'fl_rows_row'         => lang('Row'),
@@ -3609,6 +3665,9 @@ function ws_flow_js_config($viewer, $mode)
 
         // The kinds of record a read box may read, with the values each gives.
         $steps['reads'] = function_exists('ws_flow_record_get_kinds') ? ws_flow_record_get_kinds($viewer) : array();
+        // The Pinegrap AI box is offered while the site has it set up
+        // (ws_step_ai_check()).
+        $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
 
         // A box on customers who stopped ordering, to whoever reads orders
         // and contacts.

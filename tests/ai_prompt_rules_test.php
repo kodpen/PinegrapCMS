@@ -58,6 +58,7 @@ function ai_prompt_rules_test_builders()
 		'includes/fn/ai_write.php'               => array('pg_ai_write_messages', 'writer'),
 		'includes/workspace/flow_draft.php'      => array('ws_flow_ai_sketch_messages', 'writer'),
 		'includes/workspace/mail_triage.php'     => array('ws_mail_triage_prompt', 'writer'),
+		'includes/workspace/flow_ai_box.php'     => array('ws_step_ai_messages', 'writer'),
 	);
 }
 

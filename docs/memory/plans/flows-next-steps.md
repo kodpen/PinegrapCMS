@@ -14,7 +14,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 ## B: new boxes (what other tools have)
 - B1 (done, PR #7388): Read a record (`record_get`): an order, product, contact, booking, task or form submission by id (a value), its fields as outputs, read with the run owner's rights as the change box checks them; `found` 0/1 instead of failing. As Zapier's Find and Make's Search steps. new flow_record_get.php, steps.php, the form.
 
-- B2 (free, M then M): Pinegrap AI box: a prompt with values only, through `pg_ai_chat()` on the site's quota; modes write, summarize, extract, classify into the named outcomes that become its arrows (else `other`); waits like the approval box.
+- B2 (done, #7467, #7494): Pinegrap AI box: a prompt with values only, through `pg_ai_chat()` on the site's quota; modes write, summarize, extract, classify into the named outcomes that become its arrows (else `other`); waits like the approval box.
 
 - B3 (done, #7411): text rules in the derived value box: replace, extract a number, extract an e-mail address, upper or lower case, trim and cut to N characters, split and take part N. As Zapier Formatter. flow_values.php.
 
@@ -35,4 +35,4 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 
 - C3 (done, PR #7428): ERP events not sent today: an invoice issued, paid and overdue, a payment received, an e-document received or answered, a sales quote accepted or rejected; `ws_event()` where the ERP writes them (`docs/memory/erp/`), then their catalogue lines.
 
-- C4 (free, M): a channel message as a start: only a mention of the flow by name in the named channel; never from flows or agents; one start per person a minute.
+- C4 (done, PR #7466): a channel message as a start: only a mention of the flow by name in the named channel; never from flows or agents; one start per person a minute.

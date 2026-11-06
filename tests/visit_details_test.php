@@ -26,8 +26,10 @@ function test_visit_details_values_are_not_headings()
 	}
 
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_visitor.php');
-	pg_assert_contains('<div class="h5">\' . h($ip_address_text) . \'</div>', $source, 'view_visitor.php: IP address as text');
-	pg_assert_contains('<div class="h4">\' . pg_format_number($page_views, 0) . \'</div>', $source, 'view_visitor.php: page views keep their size');
+	pg_assert_contains("\$output_fact(lang('IP Address'), h(\$ip_address_text))", $source, 'view_visitor.php: IP address as a summary row');
+	pg_assert_contains('<dd class="mb-0 text-end text-break">', $source, 'view_visitor.php: summary values as text, not headings');
+	pg_assert_contains("\$output_tile(lang('Page Views'), pg_format_number(\$page_views, 0), 'h4')", $source, 'view_visitor.php: page views keep their size');
+	pg_assert_contains('<div class="\' . $size . \' text-break">', $source, 'view_visitor.php: tile values as text, not headings');
 }
 
 function test_visit_details_search_terms_escaped_once()

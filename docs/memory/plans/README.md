@@ -42,6 +42,10 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-charity.md: Plan for the Charity template (pinegrap-charity): causes, campaigns with progress, gifts as donation products, volunteers, events, news, transparency; parts in a folder; steps 1-9
 - design-template-gym-design.md: Design of plans/design-template-gym.md: which shipped features the Gym template reuses for booking, trainers and membership, what it does not build, its look and Turkish words
 - design-template-gym.md: Plan: the Gym design template (pinegrap-gym), a fitness studio with classes, a timetable, trainers, membership plans, class booking and contact, built from existing features in ~1,000-line steps
+- design-template-photo-design.md: Design of plans/design-template-photo.md: which shipped features the Photo template reuses for galleries, booking, proofing and downloads, what it does not build, its look and Turkish words
+- design-template-photo.md: Plan: the Photography Studio design template (pinegrap-photo): galleries by category, session packages, shoot booking, a private client proofing area, gift vouchers; ~1,000-line steps
+- design-template-travel-design.md: Design of plans/design-template-travel.md: which shipped features the Travel template reuses for tours, bookings, deposits and reviews, what it does not build, its look and Turkish words
+- design-template-travel.md: Plan: the Travel Agency design template (pinegrap-travel): destinations, tours with itineraries, booking requests, shop deposits, reviews, enquiries; ~1,000-line steps
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it

@@ -30,16 +30,16 @@ function test_order_view_row_prints_label_and_value()
 {
 	$html = pg_order_view_row('PO Number', 'PO-7 &amp; 8');
 
-	pg_assert_contains('<span class="translateable col fg-secondary">PO Number:</span>', $html, 'the label with its colon');
-	pg_assert_contains('<span class="col text-end">PO-7 &amp; 8</span>', $html, 'the value as given');
-	pg_assert_same(1, substr_count($html, '<div class="row">'), 'one row');
+	pg_assert_contains('<span class="translateable fg-secondary">PO Number</span>', $html, 'the label, no colon');
+	pg_assert_contains('<span class="text-end text-break">PO-7 &amp; 8</span>', $html, 'the value as given');
+	pg_assert_same(1, substr_count($html, '<div class="d-flex justify-content-between gap-3">'), 'one line');
 }
 
 function test_order_view_row_wide_address_line()
 {
 	$html = pg_order_view_row('Address 2', 'Flat 3', true);
 
-	pg_assert_contains('<span class="translateable col-auto fg-secondary">Address 2:</span>', $html, 'the label in its own column');
+	pg_assert_contains('<span class="translateable col-auto fg-secondary">Address 2</span>', $html, 'the label in its own column');
 	pg_assert_contains('<span class="col offset-1" style="font-size:110%;font-weight:500">Flat 3</span>', $html, 'the value emphasised');
 }
 
