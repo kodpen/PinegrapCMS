@@ -1443,7 +1443,7 @@ if (!$_POST) {
                     $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="fg-primary text-decoration-none">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</a>';
                     // if a product image_name found, output
                     if ($image_name) {
-                        $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block pg-print-none" style="top:52px;position:sticky;" tabindex="-1" aria-hidden="true"><img class="rounded-9 card-img" src="' .  PATH . h($image_name) . '" alt=""/></a>';
+                        $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block" tabindex="-1" aria-hidden="true"><img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/></a>';
                     } 
                 
                 // else a product was not found, so do not include a link to product   
@@ -1451,7 +1451,7 @@ if (!$_POST) {
                     $output_product_name = lang('Product ID / SKU') . ': ' .h($product_name);
                     // if a product image_name found, output
                     if ($image_name) {
-                        $output_image = '<img class="rounded-9 card-img pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" alt=""/>';
+                        $output_image = '<img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/>';
                     } 
                 }
                 
@@ -1467,6 +1467,7 @@ if (!$_POST) {
                 }
                 
                 $output_shipped_quantity_field = '';
+                $shipped_quantity_field_id = '';
                 
                 // A cancelled order shows the quantity it had, read only.
                 if ($status == 'cancelled') {
@@ -1486,6 +1487,7 @@ if (!$_POST) {
                     // A whole number from 0 to the ordered quantity (update_order()
                     // refuses anything else); max stops the + button there.
                     // Inputmask's right alignment would override text-center.
+                    $shipped_quantity_field_id = 'order_item_id_' . $order_item_id . '_shipped_quantity';
                     $output_shipped_quantity_field = $liveform->output_field(array('class'=>'form-control text-center border-start-0 border-end-0','type'=>'text', 'id'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'name'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'size'=>'2', 'maxlength'=>'9', 'min'=>'0', 'max'=>(string) (int) $quantity, 'inputmode'=>'numeric', 'aria-label'=>lang('Shipped Qty'), 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false', 'data-inputmask-rightalign'=>'false', 'data-inputmask-placeholder'=>'0'));
                     
                     
@@ -1508,13 +1510,7 @@ if (!$_POST) {
                 
                 // if order item is a recurring order item, then prepare 
                 if ($recurring_payment_period != '') {
-                    $output_recurring_payment_period = '
-                        <div class="col-12 sm:col-4 md:col-auto">
-                            <div class="p-3  border h-100 rounded-4">
-                                <div class="h-50 text-center fg-secondary">' . lang('Payment Period') . '</div>
-                                <div class="h-50 text-center">' . lang($recurring_payment_period) . '</div>
-                            </div>
-                        </div>';
+                    $output_recurring_payment_period = pg_order_view_line_fact(lang('Payment Period'), lang($recurring_payment_period));
                     
                     // if the number of payments is set to 0, then change value to "No limit"
                     if ($recurring_number_of_payments == 0) {
@@ -1524,73 +1520,37 @@ if (!$_POST) {
                     } else {
                         $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                     }
-                    $output_recurring_number_of_payments = '
-                        <div class="col-12 sm:col-4 md:col-auto">
-                            <div class="p-3  border h-100 rounded-4">
-                                <div class="h-50 text-center fg-secondary">' . lang('Number of Payments') . '</div>
-                                <div class="h-50 text-center">' . $output_recurring_number_of_payments . '</div>
-                            </div>
-                        </div>';
+                    $output_recurring_number_of_payments = pg_order_view_line_fact(lang('Number of Payments'), $output_recurring_number_of_payments);
                         
-                    $output_recurring_start_date = '
-                        <div class="col-12 sm:col-4 md:col-auto">
-                            <div class="p-3  border h-100 rounded-4">
-                                <div class="h-50 text-center fg-secondary">' . lang('Start Date') . '</div>
-                                <div class="h-50 text-center">' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')) . '</div>
-                            </div>
-                        </div>';
+                    $output_recurring_start_date = pg_order_view_line_fact(lang('Start Date'), get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')));
                 }
 
                 $output_custom_field_1 = '';
                 // If the first custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
 
-                    $output_custom_field_1 ='
-                        <div class="col-12 sm:col-6 md:col-auto">
-                            <div class="p-3  border h-100 rounded-4">
-                                <div class="h-50 text-center fg-secondary">' . $output_custom_field_1_heading . '</div>
-                                <div class="h-50 text-center">' . h($order_item['custom_field_1']) .'</div>
-                            </div>
-                        </div>';
+                    $output_custom_field_1 = pg_order_view_line_fact($output_custom_field_1_heading, h($order_item['custom_field_1']));
                 }
 
                 $output_custom_field_2= '';
 
                 // If the second custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                    $output_custom_field_2 ='
-                    <div class="col-12 sm:col-6 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . $output_custom_field_2_heading . '</div>
-                            <div class="h-50 text-center">' . h($order_item['custom_field_2']) .'</div>
-                        </div>
-                    </div>';
+                    $output_custom_field_2 = pg_order_view_line_fact($output_custom_field_2_heading, h($order_item['custom_field_2']));
                 }
 
                 $output_custom_field_3 = '';
 
                 // If the third custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                    $output_custom_field_3 ='
-                    <div class="col-12 sm:col-6 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . $output_custom_field_3_heading . '</div>
-                            <div class="h-50 text-center">' . h($order_item['custom_field_3']) .'</div>
-                        </div>
-                    </div>';
+                    $output_custom_field_3 = pg_order_view_line_fact($output_custom_field_3_heading, h($order_item['custom_field_3']));
                 }
 
                 $output_custom_field_4 = '';
 
                 // If the fourth custom product field is active, then output cell for it.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                    $output_custom_field_4 ='
-                    <div class="col-12 sm:col-6 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . $output_custom_field_4_heading . '</div>
-                            <div class="h-50 text-center">' . h($order_item['custom_field_4']) .'</div>
-                        </div>
-                    </div>';
+                    $output_custom_field_4 = pg_order_view_line_fact($output_custom_field_4_heading, h($order_item['custom_field_4']));
                 }
 
                 $output_gift_cards = '';
@@ -1611,13 +1571,6 @@ if (!$_POST) {
                         // if number of gift cards is greater than 1, then add quantity number to legend
                         if ($number_of_gift_cards > 1) {
                             $output_legend_content .= ' (' . lang(array( 'string'=>'{var:1} of {var:2}','vars'=>array($quantity_number,$number_of_gift_cards) )) . ')'; 
-                        }
-                        
-                        $output_legend = '';
-                        
-                        // if the legend content is not blank, then output a legend
-                        if ($output_legend_content != '') {
-                            $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
                         }
 
                         // Get gift card data from database.
@@ -1651,49 +1604,17 @@ if (!$_POST) {
                         }
                         
                         $output_gift_cards .=
-                            '<div class="card my-3">
-                                ' . $output_legend . '
-                                <div class="card-body">
-                                    <div class="row g-1">
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('Code') . '</div>
-                                                <div class="h-50">' . $output_code . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Amount') . '</div>
-                                                <div class="h-50 text-center">' . prepare_amount($product_price) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('Recipient Email') . '</div>
-                                                <div class="h-50">' . h($order_item_gift_card['recipient_email_address']) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('From Name') . '</div>
-                                                <div class="h-50">' . h($order_item_gift_card['from_name']) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('Message') . '</div>
-                                                <div class="h-50">' . nl2br(h($order_item_gift_card['message'])) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-6 md:col-auto">
-                                            <div class="p-3 border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Delivery Date') . '</div>
-                                                <div class="h-50 text-center">' . $output_delivery_date . '</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>';
+                            pg_order_view_line_part(
+                                $output_legend_content,
+                                '<div class="order-line-facts">
+                                        ' . pg_order_view_line_fact(lang('Code'), $output_code) . '
+                                        ' . pg_order_view_line_fact(lang('Amount'), prepare_amount($product_price)) . '
+                                        ' . pg_order_view_line_fact(lang('Recipient Email'), h($order_item_gift_card['recipient_email_address'])) . '
+                                        ' . pg_order_view_line_fact(lang('From Name'), h($order_item_gift_card['from_name'])) . '
+                                        ' . pg_order_view_line_fact(lang('Message'), nl2br(h($order_item_gift_card['message']))) . '
+                                        ' . pg_order_view_line_fact(lang('Delivery Date'), $output_delivery_date) . '
+                                    </div>'
+                            );
                     }
                 }
 
@@ -1718,115 +1639,31 @@ if (!$_POST) {
                             $output_legend_content .= ' (' . lang(array( 'string'=>'{var:1} of {var:2}','vars'=>array($quantity_number,$number_of_forms) )) . ')';  
                         }
                         
-                        $output_legend = '';
-                        
-                        // if the legend content is not blank, then output a legend
-                        if ($output_legend_content != '') {
-                            $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
-                        }
-                        
                         $output_forms .=
-                            '<div class="card my-3">
-                                ' . $output_legend . '
-                                <div class="card-body">
-                                    <div class="row g-1">
-                                        <span class="col-12"><table>' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '</table></span>
-                                    </div>
-                                </div>
-                            </div>';
+                            pg_order_view_line_part($output_legend_content, '<table>' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '</table>');
                     }
                 }
                 
-                $output_form_row = '';
-                
-                // if there is a form to output, then prepare form row
-                if (($output_forms != '') || ($output_gift_cards != '')) {
-                    $colspan = 8;
-
-                    // If there is an extra column for the first custom product field, the add one to the colspan.
-                    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                        $colspan++;
-                    }
-
-                    // If there is an extra column for the second custom product field, the add one to the colspan.
-                    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                        $colspan++;
-                    }
-
-                    // If there is an extra column for the third custom product field, the add one to the colspan.
-                    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                        $colspan++;
-                    }
-
-                    // If there is an extra column for the fourth custom product field, the add one to the colspan.
-                    if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                        $colspan++;
-                    }
-
-                    $output_form_row =
-                        '<div class="row g-0">
-                            ' . $output_gift_cards . '
-                            ' . $output_forms . '
-                        </div>';
-                }
-                //shipable
+                // A line that ships: the shipped quantity sits beside the
+                // ordered one; its caption names the field when it is one.
                 $output_order_details .=
-                    '<div class="list-group-item">
-                            <div class="card-header bg-reset  text-end border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . $output_product_name . '
-                            </div>
-                            <div class="row g-0">
-                                <div class="col-4 offset-1 md:offset-0 md:col-2 lg:col-1 px-3">
-                                ' .  $output_image . '
-                                </div>
-                                <div class="col-12 md:col-10 lg:col-11">
-                                    <div class="card-body ">
-                                        <div class="row g-1">
-                                            <div class="col-12 sm:col-12 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 fg-secondary">' . lang('Short Description') . '</div>
-                                                    <div class="h-50">' . $short_description . '</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 sm:col-4 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 text-center fg-secondary">' . lang('Qty') . '</div>
-                                                    <div class="h-50 text-center h4">' . $quantity . '</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 sm:col-8 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 fg-secondary">' . lang('Shipped Qty') . '</div>
-                                                    <div class="h-50 pb-3">
-                                                        ' . $output_shipped_quantity_field . '
-                                                    </div>
-                                                </div>
-                                            </div> 
-                                            <div class="col-12 sm:col-6 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 text-center fg-secondary">' . lang('Price') . '</div>
-                                                    <div class="h-50 text-center">' . prepare_amount($product_price) . '</div>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 sm:col-6 md:col-auto">
-                                                <div class="p-3  border h-100 rounded-4">
-                                                    <div class="h-50 text-center fg-secondary">' . lang('Total') . '</div>
-                                                    <div class="h-50 text-center">' . prepare_amount($product_total) . '</div>
-                                                </div>
-                                            </div>
-                                            ' . $output_recurring_payment_period . '
-                                            ' . $output_recurring_number_of_payments . '
-                                            ' . $output_recurring_start_date . '
-                                            ' . $output_custom_field_1 . '
-                                            ' . $output_custom_field_2 . '
-                                            ' . $output_custom_field_3 . '
-                                            ' . $output_custom_field_4 . '
-                                        </div>
-                                        ' . $output_form_row . '
-                                    </div>
-                                </div>
-                            </div>
-                        </div>';
+                    pg_order_view_line(
+                        $output_product_name,
+                        $output_image,
+                        $short_description,
+                        pg_order_view_line_fact(lang('Qty'), $quantity)
+                            . pg_order_view_line_fact(lang('Shipped Qty'), $output_shipped_quantity_field, $shipped_quantity_field_id)
+                            . pg_order_view_line_fact(lang('Price'), prepare_amount($product_price))
+                            . pg_order_view_line_fact(lang('Total'), prepare_amount($product_total), '', true)
+                            . $output_recurring_payment_period
+                            . $output_recurring_number_of_payments
+                            . $output_recurring_start_date
+                            . $output_custom_field_1
+                            . $output_custom_field_2
+                            . $output_custom_field_3
+                            . $output_custom_field_4,
+                            $output_gift_cards . $output_forms
+                        );
             }
             
 
@@ -1929,7 +1766,7 @@ if (!$_POST) {
                 $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="fg-primary text-decoration-none">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</a>';
                 // if a product image_name found, output
                 if ($image_name) {
-                    $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block pg-print-none" style="top:52px;position:sticky;" tabindex="-1" aria-hidden="true"><img class="rounded-9 card-img" src="' .  PATH . h($image_name) . '" alt=""/></a>';
+                    $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block" tabindex="-1" aria-hidden="true"><img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/></a>';
                 } 
             
             // else a product was not found, so do not include a link to product   
@@ -1937,7 +1774,7 @@ if (!$_POST) {
                 $output_product_name = lang('Product ID / SKU') . ': ' .h($product_name);
                 // if a product image_name found, output
                 if ($image_name) {
-                    $output_image = '<img class="rounded-9 card-img pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" alt=""/>';
+                    $output_image = '<img class="order-line-image" src="' .  PATH . h($image_name) . '" alt=""/>';
                 } 
             }
             
@@ -1958,13 +1795,7 @@ if (!$_POST) {
             
             // if order item is a recurring order item, then prepare 
             if ($recurring_payment_period != '') {
-                $output_recurring_payment_period = '
-                    <div class="col-12 sm:col-4 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . lang('Payment Period') . '</div>
-                            <div class="h-50 text-center">' . lang($recurring_payment_period) . '</div>
-                        </div>
-                    </div>';
+                $output_recurring_payment_period = pg_order_view_line_fact(lang('Payment Period'), lang($recurring_payment_period));
                 
                 // if the number of payments is set to 0, then change value to "No limit"
                 if ($recurring_number_of_payments == 0) {
@@ -1974,73 +1805,37 @@ if (!$_POST) {
                 } else {
                     $output_recurring_number_of_payments = pg_format_number($recurring_number_of_payments, 0);
                 }
-                $output_recurring_number_of_payments = '
-                    <div class="col-12 sm:col-4 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . lang('Number of Payments') . '</div>
-                            <div class="h-50 text-center">' . $output_recurring_number_of_payments . '</div>
-                        </div>
-                    </div>';
+                $output_recurring_number_of_payments = pg_order_view_line_fact(lang('Number of Payments'), $output_recurring_number_of_payments);
                         
-                $output_recurring_start_date = '
-                    <div class="col-12 sm:col-4 md:col-auto">
-                        <div class="p-3  border h-100 rounded-4">
-                            <div class="h-50 text-center fg-secondary">' . lang('Start Date') . '</div>
-                            <div class="h-50 text-center">' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')) . '</div>
-                        </div>
-                    </div>';
+                $output_recurring_start_date = pg_order_view_line_fact(lang('Start Date'), get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date')));
             }
 
             $output_custom_field_1 = '';
 
             // If the first custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                $output_custom_field_1 ='
-                <div class="col-12 sm:col-6 md:col-auto">
-                    <div class="p-3  border h-100 rounded-4">
-                        <div class="h-50 text-center fg-secondary">' . $output_custom_field_1_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_1']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_1 = pg_order_view_line_fact($output_custom_field_1_heading, h($order_item['custom_field_1']));
             }
 
             $output_custom_field_2 = '';
 
             // If the second custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                $output_custom_field_2 ='
-                <div class="col-12 sm:col-6 md:col-auto">
-                    <div class="p-3  border h-100 rounded-4">
-                        <div class="h-50 text-center fg-secondary">' . $output_custom_field_2_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_2']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_2 = pg_order_view_line_fact($output_custom_field_2_heading, h($order_item['custom_field_2']));
             }
 
             $output_custom_field_3 = '';
 
             // If the third custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                $output_custom_field_3 ='
-                <div class="col-12 sm:col-6 md:col-auto">
-                    <div class="p-3  border h-100 rounded-4">
-                        <div class="h-50 text-center fg-secondary">' . $output_custom_field_3_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_3']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_3 = pg_order_view_line_fact($output_custom_field_3_heading, h($order_item['custom_field_3']));
             }
 
             $output_custom_field_4 = '';
 
             // If the fourth custom product field is active, then output cell for it.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                $output_custom_field_4 ='
-                <div class="col-12 sm:col-6 md:col-auto">
-                    <div class="p-3  border h-100 rounded-4">
-                        <div class="h-50 text-center fg-secondary">' . $output_custom_field_4_heading . '</div>
-                        <div class="h-50 text-center">' . h($order_item['custom_field_4']) .'</div>
-                    </div>
-                </div>';
+                $output_custom_field_4 = pg_order_view_line_fact($output_custom_field_4_heading, h($order_item['custom_field_4']));
             }
 
             $output_gift_cards = '';
@@ -2061,13 +1856,6 @@ if (!$_POST) {
                     // if number of gift cards is greater than 1, then add quantity number to legend
                     if ($number_of_gift_cards > 1) {
                         $output_legend_content .= ' (' . lang(array( 'string'=>'{var:1} of {var:2}','vars'=>array($quantity_number,$number_of_gift_cards) )) . ')';
-                    }
-                    
-                    $output_legend = '';
-                    
-                    // if the legend content is not blank, then output a legend
-                    if ($output_legend_content != '') {
-                        $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
                     }
 
                     // Get gift card data from database.
@@ -2101,49 +1889,17 @@ if (!$_POST) {
                     }
                     
                     $output_gift_cards .=
-                        '<div class="card my-3">
-                            ' . $output_legend . '
-                            <div class="card-body">
-                                <div class="row g-1">
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 fg-secondary">' . lang('Code') . '</div>
-                                            <div class="h-50">' . $output_code . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 text-center fg-secondary">' . lang('Amount') . '</div>
-                                            <div class="h-50 text-center">' . prepare_amount($product_price) . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 fg-secondary">' . lang('Recipient Email') . '</div>
-                                            <div class="h-50">' . h($order_item_gift_card['recipient_email_address']) . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 fg-secondary">' . lang('From Name') . '</div>
-                                            <div class="h-50">' . h($order_item_gift_card['from_name']) . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 fg-secondary">' . lang('Message') . '</div>
-                                            <div class="h-50">' . nl2br(h($order_item_gift_card['message'])) . '</div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 sm:col-6 md:col-auto">
-                                        <div class="p-3 border h-100 rounded-4">
-                                            <div class="h-50 text-center fg-secondary">' . lang('Delivery Date') . '</div>
-                                            <div class="h-50 text-center">' . $output_delivery_date . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>';
+                        pg_order_view_line_part(
+                                $output_legend_content,
+                                '<div class="order-line-facts">
+                                    ' . pg_order_view_line_fact(lang('Code'), $output_code) . '
+                                    ' . pg_order_view_line_fact(lang('Amount'), prepare_amount($product_price)) . '
+                                    ' . pg_order_view_line_fact(lang('Recipient Email'), h($order_item_gift_card['recipient_email_address'])) . '
+                                    ' . pg_order_view_line_fact(lang('From Name'), h($order_item_gift_card['from_name'])) . '
+                                    ' . pg_order_view_line_fact(lang('Message'), nl2br(h($order_item_gift_card['message']))) . '
+                                    ' . pg_order_view_line_fact(lang('Delivery Date'), $output_delivery_date) . '
+                                </div>'
+                            );
                         
                 }
             }
@@ -2169,108 +1925,29 @@ if (!$_POST) {
                         $output_legend_content .= ' (' . lang(array( 'string'=>'{var:1} of {var:2}','vars'=>array($quantity_number,$number_of_forms) )) . ')';
                     }
                     
-                    $output_legend = '';
-                    
-                    // if the legend content is not blank, then output a legend
-                    if ($output_legend_content != '') {
-                        $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
-                    }
-                    
                     $output_forms .=
-                        '<div class="card my-3">
-                            ' . $output_legend . '
-                            <div class="card-body">
-                                <div class="row g-1">
-                                    <span class="col-12"><table>' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '</table></span>
-                                </div>
-                            </div>
-                        </div>';
+                        pg_order_view_line_part($output_legend_content, '<table>' . get_submitted_product_form_content_without_form_fields($order_item_id, $quantity_number, 'backend') . '</table>');
                 }
             }
             
-            $output_form_row = '';
-            
-            // if there is a form to output, then prepare form row
-            if (($output_forms != '') || ($output_gift_cards != '')) {
-                $colspan = 7;
-
-                // If there is an extra column for the first custom product field, the add one to the colspan.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
-                    $colspan++;
-                }
-
-                // If there is an extra column for the second custom product field, the add one to the colspan.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL != '') {
-                    $colspan++;
-                }
-
-                // If there is an extra column for the third custom product field, the add one to the colspan.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_3_LABEL != '') {
-                    $colspan++;
-                }
-
-                // If there is an extra column for the fourth custom product field, the add one to the colspan.
-                if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_4_LABEL != '') {
-                    $colspan++;
-                }
-
-                $output_form_row =
-                    '<div class="row g-0">
-                        ' . $output_gift_cards . '
-                        ' . $output_forms . '
-                    </div>';
-            }
-            //not shipable
+            // A line that does not ship (a download, a membership, a gift card).
             $output_order_details .=
-                '<div class="list-group-item">
-                        <div class="card-header bg-reset  text-end border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . $output_product_name . '
-                        </div>
-                        <div class="row g-0">
-                            <div class="col-4 offset-1 md:offset-0 md:col-2 lg:col-1 px-3">
-                            ' .  $output_image . '
-                            </div>
-                            <div class="col-12 md:col-10 lg:col-11">
-                                <div class="card-body ">
-                                    <div class="row g-1">
-                                        <div class="col-12 sm:col-12 md:col-auto">
-                                            <div class="p-3  border h-100 rounded-4">
-                                                <div class="h-50 fg-secondary">' . lang('Short Description') . '</div>
-                                                <div class="h-50">' . $short_description . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-4 md:col-auto">
-                                            <div class="p-3  border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Qty') . '</div>
-                                                <div class="h-50 text-center h4">' . $quantity . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-4 md:col-auto">
-                                            <div class="p-3  border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Price') . '</div>
-                                                <div class="h-50 text-center">' . prepare_amount($product_price) . '</div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 sm:col-4 md:col-auto">
-                                            <div class="p-3  border h-100 rounded-4">
-                                                <div class="h-50 text-center fg-secondary">' . lang('Total') . '</div>
-                                                <div class="h-50 text-center">' . prepare_amount($product_total) . '</div>
-                                            </div>
-                                        </div>
-                                        ' . $output_recurring_payment_period . '
-                                        ' . $output_recurring_number_of_payments . '
-                                        ' . $output_recurring_start_date . '
-                                        ' . $output_custom_field_1 . '
-                                        ' . $output_custom_field_2 . '
-                                        ' . $output_custom_field_3 . '
-                                        ' . $output_custom_field_4 . '   
-                                    </div>
-                                    ' . $output_form_row . '
-                                </div>
-
-                            </div>
-                        </div>
-                    </div>';
+                pg_order_view_line(
+                    $output_product_name,
+                    $output_image,
+                    $short_description,
+                    pg_order_view_line_fact(lang('Qty'), $quantity)
+                        . pg_order_view_line_fact(lang('Price'), prepare_amount($product_price))
+                        . pg_order_view_line_fact(lang('Total'), prepare_amount($product_total), '', true)
+                        . $output_recurring_payment_period
+                        . $output_recurring_number_of_payments
+                        . $output_recurring_start_date
+                        . $output_custom_field_1
+                        . $output_custom_field_2
+                        . $output_custom_field_3
+                        . $output_custom_field_4,
+                        $output_gift_cards . $output_forms
+                    );
         }
     }
 
