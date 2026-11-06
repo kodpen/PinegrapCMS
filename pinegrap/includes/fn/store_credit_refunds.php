@@ -90,6 +90,47 @@ function pg_credit_refund_card_amount($amount, $percent)
 }
 
 /**
+ * What the credit card holds when only part of a refund earns the bonus: the
+ * bonus is put on at most $bonus_base (the payment money in it), the rest
+ * (money gift cards or store credit paid) goes on the card as it is.
+ *
+ * @param int   $amount     the refund in minor units
+ * @param int   $bonus_base the part of it that earns the bonus, minor units
+ * @param mixed $percent    the bonus percentage
+ * @return int minor units
+ */
+function pg_credit_refund_card_amount_on($amount, $bonus_base, $percent)
+{
+    $amount = (int) $amount;
+
+    if ($amount <= 0) {
+        return 0;
+    }
+
+    $base = max(0, min($amount, (int) $bonus_base));
+
+    return pg_credit_refund_card_amount($base, $percent) + ($amount - $base);
+}
+
+/**
+ * What the credit card holds for a cancelled order's refund
+ * (pg_order_cancel_refund_owed()): the bonus on the payment part only, the
+ * gift card part without it, so money that was store credit already does not
+ * grow each time an order paid with it is cancelled.
+ *
+ * @param array $owed    payment, gift_card, total (minor units)
+ * @param mixed $percent the bonus percentage
+ * @return int minor units
+ */
+function pg_credit_refund_cancel_card_amount($owed, $percent)
+{
+    $total = isset($owed['total']) ? (int) $owed['total'] : 0;
+    $payment = isset($owed['payment']) ? (int) $owed['payment'] : 0;
+
+    return pg_credit_refund_card_amount_on($total, $payment, $percent);
+}
+
+/**
  * The refund reference a cancelled order keeps for a refund given as store
  * credit (orders.refund_reference has no method beside it).
  *
@@ -130,17 +171,19 @@ function pg_credit_refund_possible($user_id)
 
 /**
  * Issues the card of a refund: kind 'refund', never expiring, the site's
- * bonus on top.
+ * bonus on top of the part that earns it.
  *
- * @param int    $user_id   the order's customer
- * @param int    $amount    the refund in minor units
- * @param string $reason    what the card is for (kept on the card)
- * @param int    $issued_by the staff member
+ * @param int    $user_id    the order's customer
+ * @param int    $amount     the refund in minor units
+ * @param string $reason     what the card is for (kept on the card)
+ * @param int    $issued_by  the staff member
+ * @param int    $bonus_base the part of the refund that earns the bonus (the
+ *                           payment money in it), minor units
  * @return array card_id (0 when nothing was written), credit (minor units)
  */
-function pg_credit_refund_issue($user_id, $amount, $reason, $issued_by)
+function pg_credit_refund_issue($user_id, $amount, $reason, $issued_by, $bonus_base)
 {
-    $credit = pg_credit_refund_card_amount($amount, pg_credit_refund_bonus());
+    $credit = pg_credit_refund_card_amount_on($amount, $bonus_base, pg_credit_refund_bonus());
 
     if ($credit <= 0) {
         return array('card_id' => 0, 'credit' => 0);
@@ -237,7 +280,7 @@ function pg_credit_refund_cancelled_order($order_id, $staff_id)
 
     $order_number = pg_order_log_number($order);
     $issued = pg_credit_refund_issue((int) $order['user_id'], $amount,
-        'Refund of cancelled order #' . $order_number, (int) $staff_id);
+        'Refund of cancelled order #' . $order_number, (int) $staff_id, (int) $owed['payment']);
 
     if ($issued['card_id'] <= 0) {
         db("UPDATE orders SET refund_status = '" . e((string) $order['refund_status']) . "', refunded_at = '" . (int) $order['refunded_at'] . "'

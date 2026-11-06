@@ -4032,9 +4032,12 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     if ($method === 'credit') {
         // The card is the refund: its id is the reference, the bonus is on
-        // the card only. No card written puts the return back to received.
+        // the card only and only on payment money not refunded yet
+        // (plan remaining), never on what gift cards paid. No card written
+        // puts the return back to received.
         $issued = pg_credit_refund_issue($customer_id, $amount,
-            'Refund of return request #' . (int) $return['id'] . ' of order #' . $plan['order']['order_number'], (int) $user_id);
+            'Refund of return request #' . (int) $return['id'] . ' of order #' . $plan['order']['order_number'], (int) $user_id,
+            min($amount, (int) $plan['remaining']));
 
         if ($issued['card_id'] <= 0) {
             db("UPDATE order_returns SET status = 'received', refunded_at = 0" . pg_return_touch_sql() . "
