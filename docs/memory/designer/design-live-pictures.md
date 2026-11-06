@@ -5,7 +5,7 @@ module: design_previews
 ---
 
 ## What is a live picture?
-- The real page, not a stored image: a 1280×800 frame scaled into a 16:10 box (`.pg-live-picture`, backend.src.css). A screenshot would need a browser on the server, which shared hosting lacks (template-previews plan, owner 2026-11-05).
+- The real page, not a stored image: a 1280×800 frame scaled into a 16:10 box (`.pg-live-picture`, backend.src.css). A screenshot would need a browser on the server, which shared hosting lacks (owner 2026-11-05, `workflow/decisions-made-product-35.md`). The drawings stay as the fallback; stored thumbnails only as a new plan if the frames prove too heavy on a real site.
 - PHP prints only the box: `pg_design_live_picture($src, $opts)` (`includes/fn/design_previews.php`) with `data-src`, an optional `label` (the box gets `role="img"`), `class`, `fallback` HTML (trusted, e.g. `pg_design_thumb_svg()`), `width`/`height`. No address: `.pg-failed` and the fallback at once.
 
 ## What does the browser side do?
@@ -23,4 +23,4 @@ module: design_previews
 - `pg_design_tour_html($opts)`: a whole standalone document (own inline CSS and script, light/dark from the system, `noindex`): bar with the template's icon and name, "Template preview · look · palette · sample content", a page `<select>` with an E-mails `<optgroup>`, previous/next, "n / total", desktop/phone, the continue button; under it the page full size in a frame (`sandbox="allow-scripts"`, so its own links and Bootstrap scripts work).
 - The frame's page posts `{pgDesignPreview: key}`; the tour takes it only from its frame's window and updates the bar.
 - Options: `where`, `template`, `page` (start), `look`/`palette` (absent: the template's own), `local`, `continue_href` (a link, `target="_top"`) or none: a button that tries `window.close()` and then says "You can close this tab.", `continue_label`. '' for an unknown template or one with nothing to show.
-- The installer's `design_tour` action (TP2) and `design_preview.php?tour=1` (TP3) print it.
+- The installer's `design_tour` action (#7409) and `design_preview.php?tour=1` (#7412) print it.

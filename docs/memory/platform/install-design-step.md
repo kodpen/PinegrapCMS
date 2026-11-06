@@ -12,4 +12,6 @@ description: The installer's Site Design screen: live-picture tiles, the chosen 
 ## Why are the designer's script files loaded one by one?
 - In development mode (or with the .min.js missing) `pg_js_bundle_urls('assets/js/style_designer.min.js')` gives several sources. They were glued into one address, the script never loaded and a template install stopped with "The design template could not be prepared in this browser". The step now gets the list as JSON and loads each after the one before (#7409).
 
+Owner decisions (home page only, tour, 1440 px): `workflow/decisions-made-product-35.md`.
+
 Related: docs/memory/platform/design-template-install-at-setup.md, docs/memory/designer/design-live-pictures.md
