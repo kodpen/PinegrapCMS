@@ -2097,11 +2097,11 @@ function pg_order_folder_access_other_order_holds($user_id, $folder, $order_id)
 /**
  * Takes back the folder access of an order's lines from its customer
  * (pg_order_folder_access_revoked()), for the units given. A never-ending
- * access stays while units of this order (held) or another order of the
- * customer still grant it.
+ * access stays while units of this order (held, any line on the folder) or
+ * another order of the customer still grant it.
  *
  * @param array $lines    rows: quantity (the units taken back), held (the
- *                        units this order keeps, 0 when absent),
+ *                        units this order keeps on the folder, 0 when absent),
  *                        grant_private_access, private_folder, private_days
  * @param int   $user_id
  * @param int   $order_id the order whose access is taken back
@@ -2204,6 +2204,39 @@ function pg_order_folder_access_restored(array $order)
 }
 
 /**
+ * The lines a refunded return takes folder access back from, each with the
+ * units returned (quantity) and the units the order keeps on the same folder
+ * (held): its own and those of every other line of the order granting that
+ * folder, since they share the one access row. The return is already counted
+ * as refunded, so the lines' quantities are what the order keeps. Pure.
+ *
+ * @param array $lines      the order's lines (pg_order_folder_access_lines())
+ * @param array $quantities order item id => quantity refunded
+ * @return array rows: the line's fields, quantity (returned), held
+ */
+function pg_order_folder_access_return_lines(array $lines, array $quantities)
+{
+    $held = array();
+
+    foreach ($lines as $line) {
+        $folder = (int) $line['private_folder'];
+        $held[$folder] = ($held[$folder] ?? 0) + max(0, (int) $line['quantity']);
+    }
+
+    $back = array();
+
+    foreach ($lines as $line) {
+        $units = (int) ($quantities[(int) $line['order_item_id']] ?? 0);
+
+        if ($units > 0) {
+            $back[] = array('quantity' => $units, 'held' => $held[(int) $line['private_folder']]) + $line;
+        }
+    }
+
+    return $back;
+}
+
+/**
  * A refunded return takes back the folder access of its lines. A cancelled
  * order's access went with the cancellation.
  *
@@ -2219,18 +2252,7 @@ function pg_order_folder_access_lines_refunded($order_id, array $quantities)
         return 0;
     }
 
-    $lines = array();
-
-    foreach (pg_order_folder_access_lines($order['id']) as $line) {
-        $units = (int) ($quantities[(int) $line['order_item_id']] ?? 0);
-
-        // The return is already counted as refunded, so the line's held
-        // units are what the order keeps after it.
-        if ($units > 0) {
-            $lines[] = array('quantity' => $units, 'held' => (int) $line['quantity']) + $line;
-        }
-    }
-
+    $lines = pg_order_folder_access_return_lines(pg_order_folder_access_lines($order['id']), $quantities);
     $changed = pg_order_folder_access_take_back($lines, $order['user_id'], $order['id']);
 
     if ($changed > 0) {

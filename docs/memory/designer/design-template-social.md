@@ -15,7 +15,7 @@ description: Social Community template (pinegrap-social): member photo posts and
 
 ## How does it work without new product behaviour?
 - A post is a Posts form record (collection, sent signed in): photo (image kind, `posts` folder), alt text, caption, topic (parts.php's titles), tags (`contains ?tag=`), place; office `status` Live/Hidden and `featured`. Every public list and the post view carry `status is not equal to Hidden` (the live rule); `staff_posts` shows all, and its rows open the record, never the post page (#7509).
-- A profile is a Profiles form record the member sends again to change it; card and page show the newest.
+- A profile: a Profiles record the member sends again; lists show the newest (`form-list-one-per-submitter`).
 - A post's byline is `submitter_name` (the account's name), never the profile's `display_name`; its hint says so (#7510). Saved posts are followed comment threads ([[form-list-viewer-filter]]).
 - A report is a Reports record opened with `?post=` (text, never a link); moderators' notes are `staff_report`'s comments, e-mailed to nobody.
 - Not built (new behaviour, #6296): likes, following, member messages, stories, video.

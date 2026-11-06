@@ -11,7 +11,7 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or they touch different files.
 - Starts each worker as a cloud session with a short brief: the plan step or task, the memory folder, "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
 - Keeps 4 to 10 workers busy (`coordinator-quota.md`).
-- No free plan step: issues, bug hunt, a new design template (`coordinator-no-plans.md`).
+- No free plan step: a new design template; never a bug hunt or a `bug` issue (`coordinator-no-plans.md`).
 - Keeps a to-do list of its workers' PRs (`coordinator-todo-list.md`).
 - Chooses the work itself, never asking the owner or the architect: which free step, the order, how many workers, which steps run in parallel. Only a decision question goes to an `architect` issue; the architect brings the answer to the PR (`architect.md`).
 - Writes no product code, opens, reopens or marks ready no PR, merges and reviews nothing: the merging session merges.

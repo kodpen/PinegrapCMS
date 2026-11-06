@@ -7,7 +7,8 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 - `link_resolve`: done (#4976: names in other letter case were broken links)
 - `list_paging`: clean (page window, limit, search terms and Turkish folding, label order, row output checked)
 - `list_period`: clean
-- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` (transport choice, address errors, attachments, DKIM, failure notice) and the three comment mails read: clean (conditional admin lists are validated when the field is saved)
+- `mail`: done (#5009: plain text capitalised bodies and links); `email()` and the comment mails: clean
+  - Second round (2026-11-06): mail #7596 (read: changes since 2026-11-01 in full; `email()`, `create_auto_email_campaigns()`, `replace_variables()` whole)
 - `mail_parse`: done (#4992: a quoted-printable part ending on a soft break kept its `=`)
 - `mail_queue`: done #4654 (rest checked: retry ladder, give-up and notices, property encoding and attachments, job-alive check, claim race, sweeps, List-Unsubscribe headers)
 - `maintenance_mode`: clean
@@ -24,7 +25,8 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 - `order_report`: clean
 - `order_status`: clean
 - `order_view`: clean (callers escape)
-- `output`: done (#5568: page panel Next/Skip Page links did not encode the page name; a deleted skip page linked to the root); clean for list sort, quick edit, back URL, filter, period nav, license check and card; menu helpers clean; header done (#5614: an OAuth client name ended <title> on the consent screen); second round clean (quick edit text, several-line and several-choice reading, page panel facts, actions and preview lists, logo, asset and srcset versions, script bundles, toolbar)
+- `output`: done (#5568: Next/Skip Page links not encoded; #5614: an OAuth client name ended <title>); list sort, quick edit, back URL, filter, period nav, licence card and menu helpers clean; first second round clean
+  - Second round (2026-11-06): output #7591 (Security and Commerce settings pages print secrets, not no-store); read: changes since 2026-11-01 in full; preloader, panel cache, list edit parse and licence check whole
 - `page_bulk`: clean
 - `page_cache`: clean (gate, serve and store checks, key, pack and write, stale lock, beacon, dirty rules, sweep checked)
 - `page_facts`: clean (empty cart '' is the owner's rule)

@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the pure parts of tools/free_work.php: which lines of a plan file
- * are steps, when a step is done, which open PR holds it, which issues a PR
- * body fixes, and which plans are shelved.
+ * are steps, when a step is done, which open PR holds it, and which plans
+ * are shelved.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -110,13 +110,6 @@ function test_free_work_holder_matches_plan_and_whole_id()
 	pg_assert_same(0, free_work_holder('audiences', 'AU4', $titles));
 	pg_assert_same(6307, free_work_holder('audiences', 'AU4b', $titles));
 	pg_assert_same(0, free_work_holder('store-credit', 'BK4', $titles));
-}
-
-function test_free_work_fixed_issues_forms()
-{
-	pg_assert_same(array(6392, 6393), free_work_fixed_issues("Fixes #6392, #6393.\n"));
-	pg_assert_same(array(1, 2, 3), free_work_fixed_issues("Closes #1 and #2\nresolves: #3"));
-	pg_assert_same(array(), free_work_fixed_issues('See #5 for the decision.'));
 }
 
 function test_free_work_shelved_by_description_or_file_name()

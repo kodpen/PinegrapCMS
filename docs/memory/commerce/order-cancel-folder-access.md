@@ -11,7 +11,7 @@ module: order_completion
 - The store-wide private folder every order grants (`pg_order_complete_private_access()`, `ECOMMERCE_PRIVATE_FOLDER_ID`) is not taken back: it is not bought by a line, and another order may hold it.
 
 ## And on a refunded return?
-- `pg_return_refund()` calls `pg_order_folder_access_lines_refunded($order_id, $returned_quantities)` next to the reward points: the returned units of each line are taken back, the same rule. Skipped for a cancelled order (the cancel took it) and a guest order.
+- `pg_return_refund()` calls `pg_order_folder_access_lines_refunded($order_id, $returned_quantities)` next to the reward points: the returned units of each line are taken back, the same rule. `pg_order_folder_access_return_lines()` (pure) sets each returned line's `held` to the units every line of the order still holds on that folder, so a never-ending row stays while another line of the same order grants the folder (#7556: returning one of two products on one folder deleted the row). Skipped for a cancelled order (the cancel took it) and a guest order.
 
 ## What does restoring the order do?
 - `pg_order_restore_cancelled()` calls `pg_order_folder_access_restored()`: each line with units still held goes through `pg_order_complete_line_folder_access()` again (send-to page left out), so a limited access is extended from today or its current end.

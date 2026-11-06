@@ -104,6 +104,7 @@ function _test_ph_page_keys()
 		'home', 'packages', 'experience', 'about', 'faq',
 		'galleries', 'gallery', 'gallery_new', 'book_online',
 		'book', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy', 'email_booking_new', 'email_booking_received', 'email_reply',
+		'email_selection_new', 'email_selection_received',
 		'client_area', 'proofing_sample', 'selection', 'selection_view', 'my_selections', 'staff_selections',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',

@@ -119,12 +119,14 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     if (!$product or ($product['id'] == '')) {
         return false;
     }
-    // if shipping is on and product is shippable, create ship to record or get existing ship to id
-    if ((ECOMMERCE_SHIPPING == true) && ($product['shippable'] == 1)) {
-        $ship_to_id = create_or_get_ship_to($ship_to, $add_name);
-        // else shipping is not on and/or product is not shippable
-    } else {
-        $ship_to_id = 0;
+    // If shipping is on and the product is shippable, the line goes to a
+    // recipient. Only an existing recipient is looked up here: a new one is
+    // created after the add is accepted, so a refused add leaves no empty
+    // recipient in the order.
+    $needs_ship_to = ((ECOMMERCE_SHIPPING == true) && ($product['shippable'] == 1));
+    $ship_to_id = 0;
+    if ($needs_ship_to) {
+        $ship_to_id = pg_ship_to_find_id(pg_ship_to_name_for_add($ship_to, $add_name));
     }
     // Don't allow a negative donation amount.
     if ($donation_amount < 0) {
@@ -141,8 +143,12 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             AND (calendar_event_id = ?)
             AND (recurrence_number = ?)
             AND (added_by_offer = '0')" . pg_order_item_active_sql();
-    $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
-    $row = mysqli_fetch_assoc($result);
+    // A recipient that does not exist yet has no lines.
+    $row = null;
+    if (!$needs_ship_to || $ship_to_id) {
+        $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+        $row = mysqli_fetch_assoc($result);
+    }
     // A gift card line issues one card per unit up to a limit; a line over it
     // would be charged for cards it never issues, so the add is refused and
     // the caller shows pg_gift_card_line_quantity_error().
@@ -150,6 +156,11 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
         && !pg_gift_card_line_quantity_allowed((int) ($row['quantity'] ?? 0) + (int) $quantity)) {
         pg_gift_card_quantity_refusal(true);
         return false;
+    }
+    // The add is accepted: create the recipient (or get it again) and put
+    // its name in the session's pick lists.
+    if ($needs_ship_to) {
+        $ship_to_id = create_or_get_ship_to($ship_to, $add_name);
     }
     // if product has already been added to order, update order item
     if ($row) {
@@ -769,40 +780,62 @@ function apply_offer_gift_to_cart($offer_id, $offer_action_id, $ship_to_id = 0)
     }
     return true;
 }
-function create_or_get_ship_to($ship_to, $add_name)
+/**
+ * The recipient name a cart add goes to: the typed name, else the name picked
+ * from the recipient list, else the buyer ("myself").
+ *
+ * The recipient pick lists carry "myself" as the option value while they show
+ * the translated label, so a selection arrives as the English word on a
+ * translated site. It means the buyer - the same recipient the cart creates by
+ * itself - so it is folded into that name instead of opening a second
+ * recipient the buyer never asked for. A gift landing in a recipient of its
+ * own is what made the cart refuse the order: a free item has to travel with
+ * a paid one.
+ *
+ * @param string $ship_to The name picked from the recipient list.
+ * @param string $add_name The name typed in the add name field.
+ * @return string
+ */
+function pg_ship_to_name_for_add($ship_to, $add_name)
 {
-    // get ship to name
-    // if add name text field was used, use that name for ship to name
     if ($add_name) {
         $ship_to_name = $add_name;
-        // else if a name was selected from the ship_to selection drop-down, then use that value
     } elseif (($ship_to != '') && ($ship_to != lang('- add name below -'))) {
         $ship_to_name = $ship_to;
-        // else use 'myself'
     } else {
         $ship_to_name = lang('myself');
     }
 
-    // The recipient pick lists carry "myself" as the option value while they
-    // show the translated label, so a selection arrives as the English word on
-    // a translated site. It means the buyer - the same recipient the cart
-    // creates by itself - so it is folded into that name instead of opening a
-    // second recipient the buyer never asked for. A gift landing in a
-    // recipient of its own is what made the cart refuse the order: a free item
-    // has to travel with a paid one.
     if (mb_strtolower($ship_to_name) == 'myself') {
         $ship_to_name = lang('myself');
     }
 
-    // figure out if ship_to record has already been created for ship to name
+    return $ship_to_name;
+}
+
+/**
+ * The id of the current order's recipient with this name, or 0 when the order
+ * has none; nothing is created.
+ *
+ * @param string $ship_to_name
+ * @return int
+ */
+function pg_ship_to_find_id($ship_to_name)
+{
     $query = "SELECT id FROM ship_tos WHERE ship_to_name = ? AND order_id = ?";
     $result = db_q($query, array((string) $ship_to_name, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error(lang('Query failed.'));
-    // if ship_to record has already been created, get ship to id
-    if (mysqli_num_rows($result)) {
-        $row = mysqli_fetch_assoc($result);
-        $ship_to_id = $row['id'];
-        // else ship_to record has not been created, so create record
-    } else {
+    $row = mysqli_fetch_assoc($result);
+
+    return $row ? (int) $row['id'] : 0;
+}
+
+function create_or_get_ship_to($ship_to, $add_name)
+{
+    $ship_to_name = pg_ship_to_name_for_add($ship_to, $add_name);
+
+    // Create the recipient when the order has none of this name yet.
+    $ship_to_id = pg_ship_to_find_id($ship_to_name);
+    if (!$ship_to_id) {
         $query = "INSERT INTO ship_tos (order_id, ship_to_name) VALUES (?, ?)";
         $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_name)) or output_error(lang('Query failed.'));
         $ship_to_id = mysqli_insert_id(db::$con);

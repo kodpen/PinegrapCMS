@@ -1,7 +1,10 @@
 ---
 name: bug-hunt
-description: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
+description: Plan, stopped 2026-11-06 (no module is taken): module-by-module bug hunt; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 ---
+
+## Is the hunt still running?
+- No: since 2026-11-06 no module is taken and no new round starts (`workflow/coordinator-no-plans.md`). The hunt PRs open then are finished and land; then these files are deleted.
 
 ## What is this plan?
 - A coordinator gives a free worker one module to hunt for real faults (`workflow/coordinator-no-plans.md`). One worker per module, never two on the same files.

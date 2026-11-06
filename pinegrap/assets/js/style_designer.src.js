@@ -34611,6 +34611,15 @@ const StyleDesigner = (function () {
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-orderby-days" data-sw-id="' + sid + '" min="1" max="180" value="' + _orderDays + '">' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Today and the days before it, 1 to 180: daily view figures are kept for six months.')) + '</div>'
                     ) : '') +
+                    // Each signed-in submitter's newest record only
+                    // (pg_sw_form_list_one_per_submitter_sql()).
+                    (_isFormListView ? row(_sdT('Newest record per submitter'),
+                        '<label class="sd-prop-switch">' +
+                            '<input type="checkbox" class="sd-sw-inp" data-sw-id="' + sid + '" data-sw-cfg="one_per_submitter" data-sw-cfg-kind="bool"' + (_cfg.one_per_submitter ? ' checked' : '') + '>' +
+                            '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
+                        '</label>' +
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('A member who sent the form more than once is listed once, with the newest record. Records sent without signing in are all listed.')) + '</div>'
+                    ) : '') +
                     // ── Viewer filter (form_list_view only — catalog products are public) ─
                     (_isFormListView ? row(_sdT('Filter by viewer'),
                         '<label class="sd-prop-switch">' +
