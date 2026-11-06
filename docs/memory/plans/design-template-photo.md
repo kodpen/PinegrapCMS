@@ -17,7 +17,7 @@ description: Plan: the Photography Studio design template (pinegrap-photo): gall
 
 - 3 (done, #7545): `galleries.php`: the Galleries collection (`galleries` by `?category=`, the `gallery` record page with its photos, `gallery_new`) and `book_online` (booking widget starter for studio mini sessions, privacy link); test.
 
-- 4: `mail.php` (the e-mail builders) and `bookings.php`: shoot booking requests (`book` with `?package=` and `?category=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`); test.
+- 4 (done, #7572): `mail.php` (the e-mail builders) and `bookings.php`: shoot booking requests (`book` with `?package=` and `?category=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`); test.
 
 - 5: `clients.php`: the client area (`client_area` in public; the `client_sample` private folder with the sample proofing gallery `proofing_sample` and its downloads), proof selections (`selection` with `?gallery=`, `selection_view`, `my_selections`, `staff_selections`); test.
 
