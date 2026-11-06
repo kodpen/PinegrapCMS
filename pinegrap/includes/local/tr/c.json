@@ -1528,6 +1528,7 @@
     "Collect the content": "İçeriği topla",
     "Collect the keys": "Anahtarları alın",
     "Collect the keys and read the meters with your agent": "Anahtarları alın ve sayaçları danışmanınızla okuyun",
+    "Collect the overdue invoice {{record_title}}": "Vadesi geçen {{record_title}} faturasını tahsil et",
     "Collected": "Tahsil edildi",
     "Collection": "Koleksiyon",
     "Collection Field": "Koleksiyon Alanı",

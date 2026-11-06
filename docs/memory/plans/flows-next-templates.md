@@ -28,11 +28,11 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T9 (after C1): a failed subscription payment: tell the owner and open a task to contact the customer.
 
-- T10 (after B4): booking reminder: a booking is confirmed → wait until a day before it → tell the person who hosts it (an e-mail to the guest after B8).
+- T10 (done, #PR): booking reminder: a booking is confirmed → wait until a day before it → tell the person who hosts it (an e-mail to the guest after B8).
 
-- T11 (after B6): failed runs to the team: a run fails → a line in the channel with the flow, the box and its sentence.
+- T11 (done, #PR): failed runs to the team: a run fails → a line in the channel with the flow, the box and its sentence.
 
-- T12 (after C3): overdue invoice follow-up: an invoice becomes overdue → a task for the person who collects it → still unpaid after 7 days → tell the manager.
+- T12 (done, #PR): overdue invoice follow-up: an invoice becomes overdue → a task for the person who collects it → still unpaid after 7 days → tell the manager.
 
 - T13 (after C1, B1): quote follow-up: a cart quote is made → wait 2 days → read the quote → not ordered: a task to call the customer (an e-mail after B8).
 
