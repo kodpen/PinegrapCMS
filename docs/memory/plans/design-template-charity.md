@@ -18,7 +18,7 @@ description: Plan for the Charity template (pinegrap-charity): causes, campaigns
 - As Market: steps 1-8 write `includes/design_templates/pinegrap-charity/`; step 9's main file includes them in one scope, returns kept as `$…_part`. Trap: no part may return into `$causes` or `$campaigns`.
 
 ## Which steps are there?
-- 1 Data and shared parts: `parts.php`; test `design_template_charity_test.php`.
+- 1 Done (#7468). Data and shared parts: `parts.php`; test `design_template_charity_test.php`.
 
 - 2 Public pages: `pages_public.php` (home, about, our work, impact, transparency, FAQ); home places `home_campaigns`, `home_events`, `home_posts`.
 
