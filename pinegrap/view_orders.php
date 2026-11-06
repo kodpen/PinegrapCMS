@@ -451,7 +451,7 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
 
     // if user is searching by billing state, add a left join
     if (($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) {
-        $join_billing_states = " LEFT JOIN states as billing_states ON orders.billing_state = billing_states.code";
+        $join_billing_states = pg_order_list_state_join('billing_states', 'orders.billing_state', 'orders.billing_country');
     }
 
     // if user is searching by billing country, add a left join
@@ -461,7 +461,7 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
 
     // if user is searching by shipping state, add a left join
     if (($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) {
-        $join_shipping_states = " LEFT JOIN states as shipping_states ON ship_tos.state = shipping_states.code";
+        $join_shipping_states = pg_order_list_state_join('shipping_states', 'ship_tos.state', 'ship_tos.country');
     }
 
     // if user is searching by shipping country, add a left join

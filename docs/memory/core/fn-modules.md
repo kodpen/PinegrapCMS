@@ -143,7 +143,7 @@ description: Generated from the module field of the memory files: each includes/
 - `object_storage_health`: [[object-storage-health]]
 - `offer_list_edit`: [[list-table-own-code-screens]], [[list-table-quick-edit-offers]]
 - `order_completion`: [[gift-card-line-quantity-limit]], [[gift-card-order-expiry]], [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]], [[order-completion-shipping-less]]
-- `order_list`: [[orders-list-amount-column]], [[orders-list-bulk-actions]]
+- `order_list`: [[orders-list-amount-column]], [[orders-list-bulk-actions]], [[orders-list-state-filter]]
 - `order_report`: [[order-report-screen]], [[order-report-totals]]
 - `order_view`: [[order-screen-shipping-input]], [[order-view-screen-rows]], [[print-order-shipping-card]]
 - `output`: [[list-status-words]]
