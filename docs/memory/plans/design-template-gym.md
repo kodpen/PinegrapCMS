@@ -19,7 +19,7 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 
 - 4 (done, #7571): `mail.php` (the e-mail builders) and `classes.php`: class booking requests (`class_booking`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, `email_booking_new`, `email_booking_received`) and the join request (`join`, `join_view`, `staff_joins`, `email_join_new`, `email_join_received`); `tests/design_template_gym_classes_test.php`.
 
-- 5: `members.php`: shop pages (`memberships`, product, cart, checkout, order, `email_order`, the catalog with membership products) and the members' area (`members`, `workouts`); test.
+- 5 (done, #7629): `members.php`: shop pages (`memberships`, product, cart, checkout, order, `email_order`, catalog group `memberships`) and the members' area (`members`, `workouts`, folder `members`); test.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
 
@@ -28,10 +28,10 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 - 8: assembly: `pinegrap-gym.php` (order, search sections, look, fonts, `pgy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-gym.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 5. `parts.php` has `$plans` (sku, days, prices per currency) and `$money`; copy the shop pages and the membership catalog from the Courses template ([[design-template-courses]]) and `pinegrap-hotel/shop.php`. The order e-mail uses `mail.php`'s builders.
-- `classes.php` already ships `privacy` and `email_reply`; step 7's e-mail pages are the account ones only. The template file (step 8) includes `mail.php` right after `parts.php`, before every page file.
+- Step 6: copy `pinegrap-hotel/standard.php` ([[design-templates-standard-pages]]); `email_reply` is already in `classes.php`, `cart_link` in `members.php`.
+- Step 8: `mail.php` right after `parts.php`; folder `members` with access `membership`; `catalog` from `members.php`.
 - Translation trap: an existing key may carry another template's word (`First visit` reads "İlk muayene"): check it before reuse.
-- PHP 7.1 traps met so far: no trailing comma after a call's last argument (step 2 failed CI on it). Commit with committer `Erdal Güral`, or the branch guard fails.
+- PHP 7.1: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
