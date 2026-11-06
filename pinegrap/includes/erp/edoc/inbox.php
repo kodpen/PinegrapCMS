@@ -356,7 +356,19 @@ function erp_edoc_inbox_keep($provider, $item)
             updated_at = '" . $now . "',
             " . implode(",\n            ", $pairs));
 
-    return ($ok === false) ? '' : 'added';
+    if ($ok === false) {
+        return '';
+    }
+
+    // A document read for the first time: announced once, as kept.
+    if (function_exists('erp_event')) {
+        erp_event('erp.edoc.received', array(
+            'id' => (int) mysqli_insert_id(db::$con),
+            'gib_uuid' => $uuid,
+        ) + $columns);
+    }
+
+    return 'added';
 }
 
 /**

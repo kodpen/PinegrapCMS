@@ -247,6 +247,12 @@ function ws_flow_event_outputs()
     $channel = $value('channel_id', 'number', lang('Channel'));
     $actor = $value('actor_id', 'number', lang('The person who did it'));
     $return = array($order, $value('return_id', 'number', lang('Return')), $value('reason', 'text', lang('Reason')));
+    $invoice = array($value('number', 'text', lang('Invoice number')), $value('direction', 'text', lang('Direction')), $value('doc_type', 'text', lang('Type')),
+        $value('status', 'text', lang('Status')), $value('account_id', 'number', lang('Current account')), $value('order_id', 'number', lang('Order')),
+        $value('issue_date', 'text', lang('Issue date')), $value('due_date', 'text', lang('Due date')), $value('currency', 'text', lang('Currency')),
+        $value('edoc_status', 'text', lang('E-document status')));
+    $quote = array($value('number', 'text', lang('Quote number')), $value('status', 'text', lang('Status')), $value('account_id', 'number', lang('Current account')),
+        $value('issue_date', 'text', lang('Issue date')), $value('valid_until', 'text', lang('Valid until')), $value('currency', 'text', lang('Currency')));
     $credit = array($value('customer_id', 'number', lang('Contact')), $value('account_id', 'number', lang('User')), $value('kind', 'text', lang('Kind')),
         $value('reason', 'text', lang('Reason')), $value('expires_at', 'text', lang('Expires')));
     $subscription = array($value('customer_id', 'number', lang('Contact')), $value('product_id', 'number', lang('Product')), $value('status', 'text', lang('Status')),
@@ -284,6 +290,17 @@ function ws_flow_event_outputs()
         'page.created'           => array($value('name', 'text', lang('Page'))),
         'page.updated'           => array($value('name', 'text', lang('Page'))),
         'calendar_event.reserved' => array($value('recurrence_number', 'number', lang('Repeat')), $value('quantity', 'number', lang('Quantity')), $value('order_id', 'number', lang('Order')), $order, $value('contact_id', 'number', lang('Contact'))),
+        'erp.invoice.created'    => $invoice,
+        'erp.invoice.paid'       => $invoice,
+        'erp.invoice.overdue'    => array_merge($invoice, array($value('days_overdue', 'number', lang('Days overdue')))),
+        'erp.invoice.edoc_changed' => $invoice,
+        'erp.receipt.created'    => array($value('direction', 'text', lang('Direction')), $value('date', 'text', lang('Date')), $value('currency', 'text', lang('Currency')),
+            $value('account_id', 'number', lang('Current account')), $value('cash_account_id', 'number', lang('Till or bank account')), $value('payment_method', 'text', lang('Payment method')),
+            $value('invoice_id', 'number', lang('Invoice')), $value('description', 'text', lang('Description'))),
+        'erp.edoc.received'      => array($value('gib_number', 'text', lang('Document number')), $value('invoice_type', 'text', lang('Type')), $value('issue_date', 'text', lang('Issue date')),
+            $value('supplier_title', 'text', lang('Supplier')), $value('supplier_tax_number', 'text', lang('Tax number')), $value('currency', 'text', lang('Currency'))),
+        'erp.quote.accepted'     => $quote,
+        'erp.quote.rejected'     => $quote,
         'credit.issued'          => $credit,
         'credit.expired'         => $credit,
         'workspace.task.completed'      => array_merge($task, array($value('priority', 'text', lang('Priority')), $channel, $actor)),

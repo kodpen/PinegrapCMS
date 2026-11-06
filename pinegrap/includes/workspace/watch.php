@@ -206,6 +206,21 @@ function ws_events_catalog()
         'page.updated'     => array('label' => lang('A page is changed'), 'when' => lang('When a page is changed in the designer or through the API'), 'record' => 'page', 'right' => 'member', 'filter' => ''),
     );
 
+    // The ERP's: invoices, receipts and payments, incoming e-documents and
+    // sales quotes, for the ERP's readers (a receipt for its cash right).
+    if (defined('ERP_ENABLED') && ERP_ENABLED) {
+        $catalog += array(
+            'erp.invoice.created'      => array('label' => lang('An invoice is issued'), 'when' => lang('When an ERP invoice is issued'), 'record' => 'invoice', 'right' => 'erp', 'filter' => ''),
+            'erp.invoice.paid'         => array('label' => lang('An invoice is paid in full'), 'when' => lang('When an ERP invoice is paid in full'), 'record' => 'invoice', 'right' => 'erp', 'filter' => ''),
+            'erp.invoice.overdue'      => array('label' => lang('An invoice becomes overdue'), 'when' => lang('When the overdue reminders first list a sales invoice'), 'record' => 'invoice', 'right' => 'erp', 'filter' => ''),
+            'erp.invoice.edoc_changed' => array('label' => lang('An invoice\'s e-document is answered'), 'when' => lang('When an invoice\'s e-document status changes'), 'record' => 'invoice', 'right' => 'erp', 'filter' => ''),
+            'erp.receipt.created'      => array('label' => lang('A receipt or payment is recorded'), 'when' => lang('When a receipt or payment is recorded in the ERP'), 'record' => 'receipt', 'right' => 'erp_cash', 'filter' => ''),
+            'erp.edoc.received'        => array('label' => lang('An e-document is received'), 'when' => lang('When an incoming e-document is read from the provider'), 'record' => 'edoc', 'right' => 'erp', 'filter' => ''),
+            'erp.quote.accepted'       => array('label' => lang('A sales quote is accepted'), 'when' => lang('When a sales quote is accepted'), 'record' => 'erp_quote', 'right' => 'erp', 'filter' => ''),
+            'erp.quote.rejected'       => array('label' => lang('A sales quote is rejected'), 'when' => lang('When a sales quote is rejected'), 'record' => 'erp_quote', 'right' => 'erp', 'filter' => ''),
+        );
+    }
+
     // The staff agenda's (pg_booking_changed()): every member may wait for
     // them; each is checked against the bookings its creator's agenda shows
     // when it comes (ws_events_creator_sees()).
@@ -602,6 +617,16 @@ function ws_events_record_of($event, $payload)
         $contact_id = (int) ($payload[($event === 'mail.bounced') ? 'contact_id' : 'customer_id'] ?? 0);
 
         return ($contact_id > 0) ? array('contact', $contact_id) : array('', 0);
+    }
+
+    // The ERP's: the invoice, the receipt, the inbox's e-document or the
+    // sales quote, each by its id.
+    $erp = array('erp.invoice.' => 'invoice', 'erp.receipt.' => 'receipt', 'erp.edoc.' => 'edoc', 'erp.quote.' => 'erp_quote');
+
+    foreach ($erp as $prefix => $kind) {
+        if (strpos($event, $prefix) === 0) {
+            return array($kind, (int) ($payload['id'] ?? 0));
+        }
     }
 
     switch ($event) {

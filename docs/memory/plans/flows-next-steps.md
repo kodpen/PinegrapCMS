@@ -33,6 +33,6 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 
 - C2 (done, PR #7416): people and content: user.created, customer.consent_changed, mail.bounced, campaign.sent, page.created/updated, calendar_event.reserved, credit.issued/expired. watch.php.
 
-- C3 (free, M): ERP events not sent today: an invoice issued, paid and overdue, a payment received, an e-document received or answered, a sales quote accepted or rejected; `ws_event()` where the ERP writes them (`docs/memory/erp/`), then their catalogue lines.
+- C3 (done, PR #7428): ERP events not sent today: an invoice issued, paid and overdue, a payment received, an e-document received or answered, a sales quote accepted or rejected; `ws_event()` where the ERP writes them (`docs/memory/erp/`), then their catalogue lines.
 
 - C4 (free, M): a channel message as a start: only a mention of the flow by name in the named channel; never from flows or agents; one start per person a minute.

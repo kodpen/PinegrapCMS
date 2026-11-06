@@ -251,8 +251,8 @@ function pg_contact_group_joined_events($event)
 
 // The events the workspace listens to (includes/workspace/watch.php): what
 // starts a scheduled action with an event rule, and what is written into the
-// channels that watch a record. Only these are kept from pg_announce(): the
-// ERP's (erp.*) have nobody here to read them, and the workspace keeps its
+// channels that watch a record. Only these are kept from pg_announce() and
+// erp_event(): of the ERP's (erp.*) only the ones a flow may start on, and the workspace keeps its
 // own (workspace.*) through ws_event(), only while a scheduled action waits
 // for one - a public channel announces every message.
 function pg_event_workspace_events()
@@ -295,6 +295,14 @@ function pg_event_workspace_events()
         'calendar_event.reserved',
         'credit.issued',
         'credit.expired',
+        'erp.invoice.created',
+        'erp.invoice.paid',
+        'erp.invoice.overdue',
+        'erp.invoice.edoc_changed',
+        'erp.receipt.created',
+        'erp.edoc.received',
+        'erp.quote.accepted',
+        'erp.quote.rejected',
     );
 }
 
@@ -313,6 +321,11 @@ function pg_event_workspace_payload($event, $payload, $contact_of = 'pg_event_co
         foreach (array('channel', 'purpose', 'status', 'source') as $key) {
             $payload['consent_' . $key] = (string) ($consent[$key] ?? '');
         }
+    }
+
+    // An invoice's e-document: its status as a single value.
+    if ((strpos((string) $event, 'erp.invoice.') === 0) && is_array($payload['edoc'] ?? null)) {
+        $payload['edoc_status'] = (string) ($payload['edoc']['status'] ?? '');
     }
 
     if ((string) $event === 'mail.bounced') {
