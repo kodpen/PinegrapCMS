@@ -3,10 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The All Gift Cards list (view_gift_cards.php) and its quick edit: the
- * expiration date and the notes are fields, checked by the gift card
- * screen's (edit_gift_card.php) own check and written by its own save
- * (includes/forms/gift_card_form.php); the notes keep their lines. The
- * balance and store credit change only on the screen.
+ * balance, the expiration date and the notes are fields, checked by the
+ * gift card screen's (edit_gift_card.php) own check and written by its own
+ * save (includes/forms/gift_card_form.php); the balance only over the one
+ * its cell opened with, the notes keep their lines. Store credit changes
+ * only on the screen.
  *
  * Loaded where it is needed (require_once), not by functions.php; it needs
  * includes/forms/gift_card_form.php.
@@ -22,18 +23,18 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The quick edit fields, keyed by the list's column. The expiration date is
- * typed in the site's date order, blank for none. The balance stays on the
- * gift card's screen: its save is refused when the balance changed since the
- * screen opened (balance_was), and the list's edit posts only the new value,
- * so it could not tell a redemption made after the list was drawn and would
- * put the spent amount back. Pure but for lang().
+ * The quick edit fields, keyed by the list's column. The balance is typed
+ * as on the screen and written only over the balance its cell opened with
+ * (pg_gift_card_quick_balance_was()), so a redemption made after the list
+ * was drawn is not put back. The expiration date is typed in the site's
+ * date order, blank for none. Pure but for lang().
  *
  * @return array field => definition
  */
 function pg_gift_card_edit_columns()
 {
     return array(
+        'balance' => array('type' => 'money', 'label' => lang('Balance')),
         'expiration_date' => array('type' => 'text', 'label' => lang('Expiration Date'), 'max' => 20),
         'notes' => array('type' => 'textarea', 'label' => lang('Notes')),
     );
@@ -88,7 +89,7 @@ function pg_gift_card_quick_value($gift_card, $field)
  */
 function pg_gift_card_quick_form_values($gift_card, $field, $value)
 {
-    // The balance is not a field, but the screen's check requires it.
+    // The screen's check requires the balance whichever field changes.
     $values = array('balance' => pg_gift_card_quick_value($gift_card, 'balance'));
 
     foreach (array_keys(pg_gift_card_edit_columns()) as $key) {
@@ -100,6 +101,30 @@ function pg_gift_card_quick_form_values($gift_card, $field, $value)
     }
 
     return $values;
+}
+
+/**
+ * The balance a quick edit may be written over, in minor units (the
+ * screen's balance_was): for the balance, the one its cell opened with, so
+ * a card spent since the list was drawn refuses the write; for another
+ * field, the stored one, which leaves the balance alone. Null when a
+ * balance edit does not carry a readable one: it is refused, never written
+ * blind. Pure.
+ *
+ * @param string      $field  the edited field
+ * @param string|null $was    the value the cell opened with (pg_list_edit_was())
+ * @param int         $stored the balance read now, in minor units
+ * @return int|null
+ */
+function pg_gift_card_quick_balance_was($field, $was, $stored)
+{
+    if ($field !== 'balance') {
+        return (int) $stored;
+    }
+
+    $amount = ($was === null) ? '' : pg_normalize_amount($was);
+
+    return (($amount !== '') && is_numeric($amount) && ($amount >= 0)) ? (int) round($amount * 100) : null;
 }
 
 /**
@@ -269,19 +294,21 @@ function pg_gift_card_quick_saved(array $cells, $field)
 
 /**
  * Writes one value changed on the list through the gift card screen's own
- * check (pg_gift_card_form_check(): a real expiration date or blank; the
- * stored balance passes it) and save
- * (pg_gift_card_form_write(): the stored balance is left alone, the notes
- * are written only over the ones read). The same values again write nothing.
+ * check (pg_gift_card_form_check(): a balance of 0 or above, a real
+ * expiration date or blank) and save (pg_gift_card_form_write(): a typed
+ * balance only over the one its cell opened with, else the balance is left
+ * alone; the notes only over the ones read). The same values again write
+ * nothing.
  *
  * @param int    $id
  * @param string $field      a key of pg_gift_card_edit_columns()
  * @param mixed  $value      as pg_list_edit_parse() read it
  * @param int    $user_id
  * @param array  $quick_edit pg_gift_card_edit_columns()
+ * @param string|null $was   the value the cell opened with (pg_list_edit_was())
  * @return array the answer for pg_list_edit_reply()
  */
-function pg_gift_card_quick_update($id, $field, $value, $user_id, array $quick_edit)
+function pg_gift_card_quick_update($id, $field, $value, $user_id, array $quick_edit, $was = null)
 {
     $id = (int) $id;
 
@@ -303,6 +330,12 @@ function pg_gift_card_quick_update($id, $field, $value, $user_id, array $quick_e
         return $refuse(lang('This column cannot be changed here.'));
     }
 
+    $balance_was = pg_gift_card_quick_balance_was($field, $was, (int) $gift_card['balance']);
+
+    if ($balance_was === null) {
+        return $refuse(lang('The gift card changed in the meantime. Reload the list and try again.'), 'changed');
+    }
+
     $form = new liveform('gift_card_quick_edit');
     $form->remove_form();
 
@@ -321,7 +354,7 @@ function pg_gift_card_quick_update($id, $field, $value, $user_id, array $quick_e
 
     $save = array(
         'balance' => (int) round($amount * 100),
-        'balance_was' => (int) $gift_card['balance'],
+        'balance_was' => $balance_was,
         'expiration_date' => pg_gift_card_form_expiration($form->get_field_value('expiration_date')),
         'notes' => (string) $form->get_field_value('notes'),
         'notes_was' => (string) $gift_card['notes'],
@@ -344,7 +377,7 @@ function pg_gift_card_quick_update($id, $field, $value, $user_id, array $quick_e
         log_activity(
             lang(array(
                 'string' => 'gift card ({var:1}) was changed on the gift card list: {var:2} from "{var:3}" to "{var:4}"',
-                'vars'   => array(output_gift_card_code($gift_card['code']), (string) ($quick_edit[$field]['label'] ?? $field), pg_gift_card_quick_value($gift_card, $field), (string) $value),
+                'vars'   => array(output_gift_card_code($gift_card['code']), (string) ($quick_edit[$field]['label'] ?? $field), pg_gift_card_quick_value($gift_card, $field), ($field === 'balance') ? pg_gift_card_quick_value(array('balance' => $save['balance']), 'balance') : (string) $value),
             )),
             $_SESSION['sessionusername'] ?? '');
 

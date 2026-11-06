@@ -1789,7 +1789,8 @@ function pg_list_edit_parse($column, $raw)
  * @param array    $columns field => definition
  * @param callable $allowed function ($user): whether this user may change the list
  * @return array array('user' => the user, 'field' => field, 'id' => record number,
- *               'value' => the value pg_list_edit_parse() read)
+ *               'value' => the value pg_list_edit_parse() read,
+ *               'was' => the value the cell opened with, pg_list_edit_was())
  */
 function pg_list_edit_request($columns, $allowed)
 {
@@ -1828,7 +1829,22 @@ function pg_list_edit_request($columns, $allowed)
         pg_list_edit_reply(array('ok' => false, 'code' => 'invalid', 'message' => $parsed['error']), 422);
     }
 
-    return array('user' => $user, 'field' => $field, 'id' => $id, 'value' => $parsed['value']);
+    return array('user' => $user, 'field' => $field, 'id' => $id, 'value' => $parsed['value'], 'was' => pg_list_edit_was($_POST));
+}
+
+/**
+ * The value the edited cell opened with, as the list drew it (its
+ * data-pg-edit-value): a screen whose write must not overwrite a change
+ * made elsewhere since the list was drawn compares it with what is stored.
+ * Null when the request does not carry it (a page drawn by an older
+ * script). Pure.
+ *
+ * @param array $post the request's fields
+ * @return string|null
+ */
+function pg_list_edit_was(array $post)
+{
+    return (isset($post['was']) && is_string($post['was'])) ? $post['was'] : null;
 }
 
 /**
