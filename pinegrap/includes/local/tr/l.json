@@ -54,6 +54,7 @@
     "Laptops, prams, dogs and grandparents are all welcome; so is staying for a second coffee.": "Dizüstü bilgisayarlar, bebek arabaları, köpekler ve büyükanneler hoş geldi; ikinci bir kahve için kalmak da.",
     "Large": "Büyük",
     "Large Picture": "Büyük Görsel",
+    "Large bags, umbrellas and suitcases go in the free lockers by the entrance.": "Büyük çantalar, şemsiyeler ve valizler girişteki ücretsiz dolaplara konur.",
     "Large corners, pill buttons, no outlines, deep layered shadows, grotesque headings.": "Büyük köşeler, hap düğmeler, çerçevesiz yüzeyler, katmanlı derin gölgeler, grotesk başlıklar.",
     "Large pictures, few words and a project archive the partners update themselves.": "Büyük görseller, az söz ve ortakların kendilerinin güncellediği bir proje arşivi.",
     "Large tables": "Büyük tablolar",
@@ -332,6 +333,7 @@
     "Leave a comment": "Yorum bırakın",
     "Leave a hello": "Bir merhaba bırakın",
     "Leave a hello on Jane's guest book and see who else dropped by.": "Ayşe'nin ziyaretçi defterine bir merhaba bırakın ve başka kimlerin uğradığını görün.",
+    "Leave a legacy": "Kalıcı bir iz bırakın",
     "Leave a review on the maker's page; every review is read.": "Üreticinin sayfasına bir değerlendirme bırakın; her değerlendirme okunur.",
     "Leave as is": "Olduğu gibi bırak",
     "Leave as it is": "Olduğu gibi kalsın",
@@ -1130,5 +1132,6 @@
     "low": "düşük",
     "lower": "düşür",
     "lower-case letters": "küçük harfler",
-    "lowercase": "küçük harf"
+    "lowercase": "küçük harf",
+    "luggage, cloakroom, locker, backpack": "bagaj, vestiyer, dolap, sırt çantası"
 }

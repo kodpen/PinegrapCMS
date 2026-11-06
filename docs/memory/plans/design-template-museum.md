@@ -13,7 +13,7 @@ description: Plan: the Museum / Art Gallery design template (pinegrap-museum): e
 ## Steps (claim as `[plan:design-template-museum] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7626): `parts.php` (builders, the museum's data and pick lists, the shared parts, the cards, form fields, comment thread, blog parts); `tests/design_template_museum_test.php`.
 
-- 2: `pages_public.php`: home (`home_exhibitions`, `home_events`, `home_posts`), `visit`, `support` (membership and giving as words), `about`, `faq`; `tests/design_template_museum_public_test.php`.
+- 2 (done, #7657): `pages_public.php`: home (`home_exhibitions`, `home_events`, `home_posts`), `visit`, `support` (membership and giving as words), `about`, `faq`; `tests/design_template_museum_public_test.php`.
 
 - 3: `exhibitions.php`: the Exhibitions collection (`exhibitions` by `?status=`, the `exhibition` page, `exhibition_new`), `home_exhibitions`; test.
 
