@@ -5968,3 +5968,20 @@ function pg_seo_link_name($row)
 
     return lang('SEO Score') . ': ' . (int) $row['seo_score'] . '/100';
 }
+
+/**
+ * The first day (Y-m-d, site time zone) of the SEO screens' recent-views
+ * window: that many calendar days before today. Stepped in days, not in
+ * 86400-second blocks, so a clock change inside the window does not move
+ * the first day by one. Pure.
+ *
+ * @param int $days
+ * @param int $now  unix time; 0 for now
+ * @return string
+ */
+function pg_seo_impact_since($days, $now = 0)
+{
+    $now = ((int) $now > 0) ? (int) $now : time();
+
+    return date('Y-m-d', strtotime('-' . max(1, (int) $days) . ' days', $now));
+}
