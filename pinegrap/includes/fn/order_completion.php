@@ -2032,15 +2032,82 @@ function pg_order_folder_access_held(array $lines, array $returned)
 }
 
 /**
- * Takes back the folder access of an order's lines from its customer
- * (pg_order_folder_access_revoked()), for the units given.
+ * Whether any of these purchase lines still holds its units once the
+ * refunded returns of its order are taken off (pg_order_folder_access_held()).
+ * Pure.
  *
- * @param array $lines   rows: quantity (the units taken back),
- *                       grant_private_access, private_folder, private_days
+ * @param array $lines    rows: order_id, order_item_id, quantity
+ * @param array $returned order id => (order item id => quantity refunded)
+ * @return bool
+ */
+function pg_order_folder_access_still_held(array $lines, array $returned)
+{
+    foreach ($lines as $line) {
+        $held = pg_order_folder_access_held(array($line), $returned[(int) $line['order_id']] ?? array());
+
+        if ((int) $held[0]['quantity'] > 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether another order of the user, not cancelled or incomplete, still
+ * holds a never-ending access to this folder. Such access shares the one
+ * access row, so taking back this order's purchase must leave it.
+ *
+ * @param int $user_id
+ * @param int $folder
+ * @param int $order_id the order whose access is taken back
+ * @return bool
+ */
+function pg_order_folder_access_other_order_holds($user_id, $folder, $order_id)
+{
+    $lines = db_items(
+        "SELECT
+            order_items.order_id,
+            order_items.id AS order_item_id,
+            order_items.quantity
+        FROM order_items
+        INNER JOIN orders ON orders.id = order_items.order_id
+        INNER JOIN products ON products.id = order_items.product_id
+        WHERE
+            (orders.user_id = '" . (int) $user_id . "')
+            AND (orders.id <> '" . (int) $order_id . "')
+            AND (orders.status NOT IN ('incomplete', 'cancelled'))
+            AND (products.grant_private_access = '1')
+            AND (products.private_folder = '" . (int) $folder . "')
+            AND (COALESCE(products.private_days, 0) <= 0)" . pg_order_item_active_sql());
+    $lines = is_array($lines) ? $lines : array();
+    $returned = array();
+
+    foreach ($lines as $line) {
+        $id = (int) $line['order_id'];
+
+        if (!isset($returned[$id])) {
+            $returned[$id] = pg_credit_points_order_refunded($id)['returned'];
+        }
+    }
+
+    return pg_order_folder_access_still_held($lines, $returned);
+}
+
+/**
+ * Takes back the folder access of an order's lines from its customer
+ * (pg_order_folder_access_revoked()), for the units given. A never-ending
+ * access stays while units of this order (held) or another order of the
+ * customer still grant it.
+ *
+ * @param array $lines    rows: quantity (the units taken back), held (the
+ *                        units this order keeps, 0 when absent),
+ *                        grant_private_access, private_folder, private_days
  * @param int   $user_id
+ * @param int   $order_id the order whose access is taken back
  * @return int the access rows changed or removed
  */
-function pg_order_folder_access_take_back(array $lines, $user_id)
+function pg_order_folder_access_take_back(array $lines, $user_id, $order_id = 0)
 {
     $user_id = (int) $user_id;
     $changed = 0;
@@ -2062,6 +2129,11 @@ function pg_order_folder_access_take_back(array $lines, $user_id)
             WHERE (aclfolder_user = '$user_id') AND (aclfolder_folder = '$folder')");
 
         $plan = pg_order_folder_access_revoked($row['rights'] ?? '', $row['expiration_date'] ?? '', $line['private_days'], $line['quantity'], date('Y-m-d'));
+
+        if (($plan['action'] === 'delete') && ((int) $line['private_days'] <= 0)
+            && (((int) ($line['held'] ?? 0) > 0) || pg_order_folder_access_other_order_holds($user_id, $folder, $order_id))) {
+            continue;
+        }
 
         if ($plan['action'] === 'delete') {
             db("DELETE FROM aclfolder WHERE (aclfolder_user = '$user_id') AND (aclfolder_folder = '$folder')");
@@ -2085,7 +2157,7 @@ function pg_order_folder_access_take_back(array $lines, $user_id)
  */
 function pg_order_folder_access_cancelled(array $order)
 {
-    $changed = pg_order_folder_access_take_back(pg_order_folder_access_lines($order['id']), $order['user_id'] ?? 0);
+    $changed = pg_order_folder_access_take_back(pg_order_folder_access_lines($order['id']), $order['user_id'] ?? 0, $order['id']);
 
     if ($changed > 0) {
         log_activity(pg_log_lang(array(
@@ -2152,12 +2224,14 @@ function pg_order_folder_access_lines_refunded($order_id, array $quantities)
     foreach (pg_order_folder_access_lines($order['id']) as $line) {
         $units = (int) ($quantities[(int) $line['order_item_id']] ?? 0);
 
+        // The return is already counted as refunded, so the line's held
+        // units are what the order keeps after it.
         if ($units > 0) {
-            $lines[] = array('quantity' => $units) + $line;
+            $lines[] = array('quantity' => $units, 'held' => (int) $line['quantity']) + $line;
         }
     }
 
-    $changed = pg_order_folder_access_take_back($lines, $order['user_id']);
+    $changed = pg_order_folder_access_take_back($lines, $order['user_id'], $order['id']);
 
     if ($changed > 0) {
         log_activity(pg_log_lang(array(

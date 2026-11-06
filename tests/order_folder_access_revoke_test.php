@@ -80,3 +80,16 @@ function test_order_folder_access_bundle_refuses_a_private_access_component()
 	pg_assert_true(pg_bundle_component_problem(array('grant_private_access' => '1')) !== '', 'private access refused');
 	pg_assert_same('', pg_bundle_component_problem(array('grant_private_access' => '0')), 'no private access');
 }
+
+function test_order_folder_access_never_ending_stays_while_another_purchase_holds_it()
+{
+	$lines = array(
+		array('order_id' => 1, 'order_item_id' => 10, 'quantity' => 1),
+		array('order_id' => 2, 'order_item_id' => 20, 'quantity' => 2),
+	);
+
+	pg_assert_true(pg_order_folder_access_still_held($lines, array()), 'another order still holds the folder');
+	pg_assert_true(pg_order_folder_access_still_held($lines, array(2 => array(20 => 2))), 'order 1 holds it though order 2 was returned');
+	pg_assert_false(pg_order_folder_access_still_held($lines, array(1 => array(10 => 1), 2 => array(20 => 2))), 'every unit returned');
+	pg_assert_false(pg_order_folder_access_still_held(array(), array()), 'no other purchase');
+}
