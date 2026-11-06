@@ -364,6 +364,38 @@ function pg_iys_number_variants($digits)
 }
 
 /**
+ * Contacts found for pulled numbers, grouped by the number pg_sms_number()
+ * reads from the phone each was found by, each contact once per number (one
+ * found by both its mobile number and its latest order's billing phone).
+ * Pure.
+ *
+ * @param array[] $rows id, email_address, phone
+ * @return array number => rows
+ */
+function pg_iys_sms_contacts_by_number($rows)
+{
+    $contacts = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['id'], $row['phone'])) {
+            continue;
+        }
+
+        $number = pg_sms_number((string) $row['phone']);
+
+        if (($number !== '') && !isset($contacts[$number][(int) $row['id']])) {
+            $contacts[$number][(int) $row['id']] = $row;
+        }
+    }
+
+    foreach ($contacts as $number => $list) {
+        $contacts[$number] = array_values($list);
+    }
+
+    return $contacts;
+}
+
+/**
  * Whether a refusal pulled from İYS is written to the consent log for a
  * contact: only while their last SMS answer here is a yes, so sending stops.
  * A contact never asked, or one who said no already, gets no new row.
@@ -863,9 +895,12 @@ function pg_iys_apply_change($change)
 }
 
 /**
- * Writes the SMS changes of one page to the contacts with each number. The
- * page's numbers are looked up in one query by the forms they may be stored
- * in (pg_iys_number_variants()), and each contact found is confirmed with
+ * Writes the SMS changes of one page to the contacts with each number: those
+ * whose mobile number it is and those whose checkout answer was about it
+ * (the billing phone of their latest order), the same contacts
+ * pg_sms_marketing_permission() reads before sending to the number. The
+ * page's numbers are looked up by the forms they may be stored in
+ * (pg_iys_number_variants()), and each contact found is confirmed with
  * pg_sms_number(). A refusal stops marketing SMS at once: a contact whose
  * last answer here is a yes gets a refusal row (source iys, never pushed
  * back). An approval only records the status, as for e-mail.
@@ -886,18 +921,34 @@ function pg_iys_apply_sms_changes($changes)
         return $applied;
     }
 
-    $stripped = pg_sms_number_sql('mobile_phone');
+    $in = "('" . implode("', '", array_map('e', array_unique($variants))) . "')";
 
-    $contacts = array();
-
-    foreach ((array) db_items(
-        "SELECT id, email_address, mobile_phone
+    $found = (array) db_items(
+        "SELECT id, email_address, mobile_phone AS phone
         FROM contacts
         WHERE
             (mobile_phone <> '')
-            AND (" . $stripped . " IN ('" . implode("', '", array_map('e', array_unique($variants))) . "'))") as $contact) {
-        $contacts[pg_sms_number($contact['mobile_phone'])][] = $contact;
-    }
+            AND (" . pg_sms_number_sql('mobile_phone') . " IN " . $in . ")");
+
+    // The contacts whose checkout answer was about the number: the billing
+    // phone of their latest order, as pg_iys_push_number() pushes it and
+    // pg_sms_marketing_permission() reads it before sending to the number.
+    $found = array_merge($found, (array) db_items(
+        "SELECT contacts.id, contacts.email_address, orders.billing_phone_number AS phone
+        FROM orders
+        JOIN contacts ON contacts.id = orders.contact_id
+        WHERE
+            (orders.contact_id > 0)
+            AND (" . pg_sms_number_sql('orders.billing_phone_number') . " IN " . $in . ")
+            AND (orders.id = (SELECT MAX(latest.id) FROM orders AS latest WHERE latest.contact_id = orders.contact_id))
+            AND EXISTS (
+                SELECT 1 FROM consent_log
+                WHERE
+                    (consent_log.contact_id = orders.contact_id)
+                    AND (consent_log.channel = 'sms')
+                    AND (consent_log.source = 'checkout'))"));
+
+    $contacts = pg_iys_sms_contacts_by_number($found);
 
     // A number changed twice on one page ends in its last state.
     foreach ($changes as $change) {

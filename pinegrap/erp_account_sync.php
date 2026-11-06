@@ -25,6 +25,7 @@ if (!validate_erp_access($user)) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_account_sync');
 
@@ -70,22 +71,9 @@ if ($_POST) {
         go($back);
     }
 
-    $collect = function ($name) {
-        $ids = array();
-
-        // A ticked row is one number; one sent as an array is no row, rather
-        // than card or account 1.
-        foreach ((array) ($_POST[$name] ?? array()) as $value) {
-            if (is_scalar($value) && ((int) $value > 0)) {
-                $ids[(int) $value] = true;
-            }
-        }
-
-        return array_keys($ids);
-    };
-
-    $card_ids = $collect('card_ids');
-    $account_ids = $collect('account_ids');
+    $bulk_ids = erp_edoc_accounts_bulk_ids($_POST);
+    $card_ids = $bulk_ids['card'];
+    $account_ids = $bulk_ids['account'];
     $total = count($card_ids) + count($account_ids);
 
     if ($total === 0) {
@@ -207,29 +195,21 @@ $sources = array(
     'imported' => lang('Taken into the ERP'),
 );
 
-$view = function ($url) {
-    return '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'' . h($url) . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>';
-};
-
-// The read-only accountant reads the lists: no ticks, no bulk buttons and
-// no Read from the provider (the gate refuses their POST anyway).
+// The read-only accountant reads the lists: no selection, no bulk buttons
+// and no Read from the provider (the gate refuses their POST anyway).
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
-$select_head = $readonly ? '' : '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>';
-
-$check = function ($name, $id, $label) use ($readonly) {
-    if ($readonly) {
-        return '';
-    }
-
-    return '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="' . $name . '[]" value="' . (int) $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => $label))) . '" /></td>';
+// The name of a row opens its comparison screen (data-pg-open).
+$open_link = function ($url, $html) {
+    return '<a href="' . h($url) . '" class="pg-link-body-emphasis" data-pg-open>' . $html . '</a>';
 };
 
-$card_cell = function ($row) {
+$card_cell = function ($row) use ($open_link) {
     $sub = array_filter(array((string) $row['tax_number'], ((string) $row['code'] !== '') ? lang(array('string' => 'code {var:1}', 'vars' => (string) $row['code'])) : ''), 'strlen');
+    $title = ((string) $row['title'] !== '') ? (string) $row['title'] : ('#' . $row['external_id']);
 
-    return '<div class="text-wrap text-break">' . h(((string) $row['title'] !== '') ? $row['title'] : ('#' . $row['external_id'])) . '</div>'
-        . '<div class="small fg-secondary">' . h(implode(' · ', $sub)) . '</div>';
+    return pg_list_cell($open_link('erp_account_sync_item.php?id=' . (int) $row['id'], h($title))
+        . '<div class="small fg-secondary">' . h(implode(' · ', $sub)) . '</div>', 'align-middle text-wrap text-break', array('data-pg-sort-value' => $title));
 };
 
 $gone = function ($row) use ($provider_label) {
@@ -238,8 +218,12 @@ $gone = function ($row) use ($provider_label) {
         : '';
 };
 
-$head = '';
-$output_rows = '';
+// Each view prints its rows whole for the list table driver (browser mode),
+// with columns of its own; the selected ids are posted in the field the
+// bulk handler reads (erp_edoc_accounts_bulk_ids()).
+$columns = array();
+$list_rows = array();
+$ids_field = '';
 $bulk = '';
 $form_open = '';
 $form_close = '';
@@ -247,35 +231,40 @@ $form_close = '';
 switch ($tab) {
     case 'differ':
     case 'same':
-        $head = '<th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . h(lang(array('string' => 'Card at {var:1}', 'vars' => $provider_label))) . '</th>
-                                <th>' . lang('ERP account') . '</th>
-                                <th>' . (($tab === 'differ') ? lang('Differences') : lang('How linked')) . '</th>';
+        $columns = array(
+            'name' => array('heading' => lang(array('string' => 'Card at {var:1}', 'vars' => $provider_label)), 'kind' => 'link'),
+            'account' => array('heading' => lang('ERP account')),
+            'info' => array('heading' => ($tab === 'differ') ? lang('Differences') : lang('How linked')),
+        );
 
         foreach ($groups[$tab] as $row) {
             $output_info = ($tab === 'differ')
                 ? h(implode(', ', array_map(function ($field) use ($fields) { return $fields[$field]; }, array_keys($row['diff']))))
                 : h($sources[(string) $row['link_source']] ?? '')
                     . (((int) $row['synced_at'] > 0) ? '<div class="small fg-secondary">' . h(lang(array('string' => 'aligned {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $row['synced_at']), 'date and time')))) . '</div>' : '');
+            $name = $card_cell($row);
+            $name['html'] .= $gone($row);
 
-            $output_rows .= '
-                        <tr>
-                            <td class="align-middle text-start">' . $view('erp_account_sync_item.php?id=' . (int) $row['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle">' . $card_cell($row) . $gone($row) . '</td>
-                            <td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $row['a_id'] . '">' . h($row['a_title']) . '</a>'
-                                . '<div class="small fg-secondary">' . h($row['a_tax_number']) . '</div></td>
-                            <td class="align-middle">' . $output_info . '</td>
-                        </tr>';
+            $list_rows[] = array(
+                'id' => (int) $row['id'],
+                'cells' => array(
+                    'name' => $name,
+                    'account' => pg_list_cell('<a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $row['a_id'] . '">' . h($row['a_title']) . '</a>'
+                        . '<div class="small fg-secondary">' . h($row['a_tax_number']) . '</div>', 'align-middle text-wrap text-break', array('data-pg-sort-value' => (string) $row['a_title'])),
+                    'info' => pg_list_cell($output_info),
+                ),
+            );
         }
         break;
 
     case 'provider_only':
-        $head = $select_head . '
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Name') . '</th>
-                                <th>' . lang('City') . '</th>
-                                <th>' . lang('Type') . '</th>
-                                <th>' . lang('Note') . '</th>';
+        $columns = array(
+            'name' => array('heading' => lang('Name'), 'kind' => 'link'),
+            'city' => array('heading' => lang('City')),
+            'kind' => array('heading' => lang('Type')),
+            'note' => array('heading' => lang('Note')),
+        );
+        $ids_field = 'card_ids[]';
 
         foreach ($groups['provider_only'] as $row) {
             $note = array();
@@ -289,90 +278,103 @@ switch ($tab) {
                     . (((int) $candidate['card_id'] > 0) ? ' <span class="fg-secondary">(' . lang('linked to another card') . ')</span>' : '');
             }
 
-            $output_rows .= '
-                        <tr>
-                            ' . $check('card_ids', $row['id'], (string) $row['title']) . '
-                            <td class="align-middle text-start">' . $view('erp_account_sync_item.php?id=' . (int) $row['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle">' . $card_cell($row) . $gone($row) . '</td>
-                            <td class="align-middle">' . h($row['city']) . '</td>
-                            <td class="align-middle">' . h(erp_edoc_account_value_text('kind', $row['kind'])) . (empty($row['is_active']) ? ' <span class="badge rounded-pill badge-subtle theme-secondary">' . lang('Passive') . '</span>' : '') . '</td>
-                            <td class="align-middle small">' . implode('<br />', $note) . '</td>
-                        </tr>';
+            $name = $card_cell($row);
+            $name['html'] .= $gone($row);
+
+            $list_rows[] = array(
+                'id' => (int) $row['id'],
+                'cells' => array(
+                    'name' => $name,
+                    'city' => pg_list_cell(h($row['city'])),
+                    'kind' => pg_list_cell(h(erp_edoc_account_value_text('kind', $row['kind'])) . (empty($row['is_active']) ? ' <span class="badge rounded-pill badge-subtle theme-secondary">' . lang('Passive') . '</span>' : '')),
+                    'note' => pg_list_cell(implode('<br />', $note), 'align-middle small text-wrap'),
+                ),
+            );
         }
 
-        $bulk = '
-                <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_import" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Take the ticked cards into the ERP as new accounts? A card whose number an account already carries is linked to that account instead.')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Take into the ERP') . '</button>
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
-                </span>';
+        $bulk = '<button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_import" class="btn btn-sm btn-text theme-secondary" data-confirm-content="' . h(lang('Take the ticked cards into the ERP as new accounts? A card whose number an account already carries is linked to that account instead.')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Take into the ERP') . '</button>'
+            . '<button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>';
         break;
 
     case 'erp_only':
-        $head = $select_head . '
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Name') . '</th>
-                                <th>' . h(erp_tax_id_label()) . '</th>
-                                <th>' . lang('City') . '</th>
-                                <th>' . lang('Type') . '</th>';
+        $columns = array(
+            'name' => array('heading' => lang('Name'), 'kind' => 'link'),
+            'tax_number' => array('heading' => erp_tax_id_label()),
+            'city' => array('heading' => lang('City')),
+            'kind' => array('heading' => lang('Type')),
+        );
+        $ids_field = 'account_ids[]';
 
         foreach ($groups['erp_only'] as $account) {
-            $output_rows .= '
-                        <tr>
-                            ' . $check('account_ids', $account['id'], (string) $account['title']) . '
-                            <td class="align-middle text-start">' . $view('erp_account_sync_item.php?account_id=' . (int) $account['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $account['id'] . '">' . h($account['title']) . '</a></td>
-                            <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
-                            <td class="align-middle">' . h($account['city']) . '</td>
-                            <td class="align-middle">' . h(erp_edoc_account_value_text('kind', $account['kind'])) . '</td>
-                        </tr>';
+            $list_rows[] = array(
+                'id' => (int) $account['id'],
+                'cells' => array(
+                    'name' => pg_list_cell($open_link('erp_account_sync_item.php?account_id=' . (int) $account['id'], h($account['title'])), 'align-middle text-wrap text-break', array('data-pg-sort-value' => (string) $account['title'])),
+                    'tax_number' => pg_list_cell(h($account['tax_number']), 'align-middle text-nowrap'),
+                    'city' => pg_list_cell(h($account['city'])),
+                    'kind' => pg_list_cell(h(erp_edoc_account_value_text('kind', $account['kind']))),
+                ),
+            );
         }
 
-        $bulk = '
-                <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_push" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang(array('string' => 'Open a card at {var:1} for each ticked account?', 'vars' => $provider_label))) . '"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $provider_label))) . '</button>
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
-                </span>';
+        $bulk = '<button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_push" class="btn btn-sm btn-text theme-secondary" data-confirm-content="' . h(lang(array('string' => 'Open a card at {var:1} for each ticked account?', 'vars' => $provider_label))) . '"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $provider_label))) . '</button>'
+            . '<button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>';
         break;
 
     case 'ignored':
-        $head = $select_head . '
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Name') . '</th>
-                                <th>' . h(erp_tax_id_label()) . '</th>
-                                <th>' . lang('Side') . '</th>';
+        $columns = array(
+            'name' => array('heading' => lang('Name'), 'kind' => 'link'),
+            'tax_number' => array('heading' => erp_tax_id_label()),
+            'side' => array('heading' => lang('Side')),
+        );
+        // Cards and accounts in one list: a card and an account can share a
+        // number, so each id says which it is.
+        $ids_field = 'sync_rows[]';
 
         foreach ($groups['ignored'] as $row) {
-            $output_rows .= '
-                        <tr class="fg-secondary">
-                            ' . $check('card_ids', $row['id'], (string) $row['title']) . '
-                            <td class="align-middle text-start">' . $view('erp_account_sync_item.php?id=' . (int) $row['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle">' . $card_cell($row) . '</td>
-                            <td class="align-middle text-nowrap">' . h($row['tax_number']) . '</td>
-                            <td class="align-middle">' . h(lang(array('string' => 'Card at {var:1}', 'vars' => $provider_label))) . '</td>
-                        </tr>';
+            $list_rows[] = array(
+                'id' => 'card-' . (int) $row['id'],
+                'class' => 'fg-secondary',
+                'cells' => array(
+                    'name' => $card_cell($row),
+                    'tax_number' => pg_list_cell(h($row['tax_number']), 'align-middle text-nowrap'),
+                    'side' => pg_list_cell(h(lang(array('string' => 'Card at {var:1}', 'vars' => $provider_label)))),
+                ),
+            );
         }
 
         foreach ($groups['ignored_accounts'] as $account) {
-            $output_rows .= '
-                        <tr class="fg-secondary">
-                            ' . $check('account_ids', $account['id'], (string) $account['title']) . '
-                            <td class="align-middle text-start">' . $view('erp_account_sync_item.php?account_id=' . (int) $account['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle text-wrap text-break">' . h($account['title']) . '</td>
-                            <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
-                            <td class="align-middle">' . lang('ERP account') . '</td>
-                        </tr>';
+            $list_rows[] = array(
+                'id' => 'account-' . (int) $account['id'],
+                'class' => 'fg-secondary',
+                'cells' => array(
+                    'name' => pg_list_cell($open_link('erp_account_sync_item.php?account_id=' . (int) $account['id'], h($account['title'])), 'align-middle text-wrap text-break', array('data-pg-sort-value' => (string) $account['title'])),
+                    'tax_number' => pg_list_cell(h($account['tax_number']), 'align-middle text-nowrap'),
+                    'side' => pg_list_cell(lang('ERP account')),
+                ),
+            );
         }
 
-        $bulk = '
-                <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>
-                </span>';
+        $bulk = '<button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>';
         break;
 }
 
 if ($readonly) {
     $bulk = '';
+    $ids_field = '';
 }
+
+$list_name = 'erp_account_sync_' . $tab;
+$sort_columns = pg_list_table_printed_sort_columns($columns);
+$sort_default = array('sort' => 'name', 'order' => 'asc');
+$list_state = pg_list_state($list_name, $sort_columns, $sort_default);
+$list = pg_list_table_printed(array(
+    'list' => $list_name,
+    'columns' => $columns,
+    'levels' => $list_state['sorts'],
+    'rows' => $list_rows,
+    'ids_field' => $ids_field,
+));
 
 if ($bulk !== '') {
     $form_open = '<form id="erp_account_sync_bulk" method="post" action="' . h($self_url) . '">' . get_token_field() . '<input type="hidden" name="tab" value="' . h($tab) . '" />';
@@ -449,29 +451,21 @@ pg_page_shell([
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . $output_fetch . '
-                ' . $bulk . '
                 <div class="pg-toolbar-grow"></div>
+                ' . pg_list_table_search_box($list_name) . '
+                ' . pg_list_sort_menu('erp_account_sync.php', $sort_columns, $list_state['sorts'], $sort_default, array('tab' => $tab)) . '
                 ' . $output_filter . '
             </nav>
             ' . $output_tab_note . '
             ' . $form_open . '
             <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none;">
-                        <thead>
-                            <tr>
-                                ' . $head . '
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Account sync'), $bulk) . '
             </div>
             ' . $form_close . '
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

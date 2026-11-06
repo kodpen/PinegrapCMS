@@ -3,9 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The schedule label of an e-mail campaign profile on My Campaign Profiles
- * ("Schedule: 1 day after from action, at 10:00"). Each translation is one
- * whole key, so a language moves the pieces with its word order and the
- * time always stays at the end.
+ * ("1 day after from action, at 10:00"). The column heading already says
+ * Schedule, so the cell carries no prefix. Each translation is one whole
+ * key, so a language moves the pieces with its word order and the time
+ * always stays at the end.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -44,10 +45,10 @@ function pg_email_campaign_profile_schedule_label($length, $unit, $period, $base
     $vars = array($amount, lang((string) $period), $from);
 
     if ((string) $time_label === '') {
-        return lang(array('string' => 'Schedule: {var:1} {var:2} {var:3}', 'vars' => $vars));
+        return lang(array('string' => '{var:1} {var:2} {var:3}', 'vars' => $vars));
     }
 
     $vars[] = (string) $time_label;
 
-    return lang(array('string' => 'Schedule: {var:1} {var:2} {var:3}, at {var:4}', 'vars' => $vars));
+    return lang(array('string' => '{var:1} {var:2} {var:3}, at {var:4}', 'vars' => $vars));
 }

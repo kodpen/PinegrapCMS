@@ -378,16 +378,39 @@ function ws_wtable_rows($table_id, $columns = null)
 }
 
 /**
+ * Where the rows after the last row of a page begin, as SQL: past its
+ * position, or, given its id too, past it in (position, id) order. Two rows
+ * added at the same moment can share a position; by position alone the
+ * second of them would be skipped when the page ended on the first. Pure.
+ *
+ * @param int $after    the last row's position, 0 for the first page
+ * @param int $after_id the last row's id, 0 when not known
+ * @return string
+ */
+function ws_wtable_rows_after_sql($after, $after_id = 0)
+{
+    $after = max(0, (int) $after);
+    $after_id = max(0, (int) $after_id);
+
+    if (($after === 0) || ($after_id === 0)) {
+        return "position > '" . $after . "'";
+    }
+
+    return "(position > '" . $after . "' OR (position = '" . $after . "' AND id > '" . $after_id . "'))";
+}
+
+/**
  * One page of a table's rows in order, as read: the rows after a position,
  * and the position the next page starts after (null on the last page).
  *
  * @param int   $table_id
  * @param array $columns ws_wtable_columns()
- * @param int   $after   the position of the last row of the page before, 0 for the first
- * @param int   $limit   1-250
+ * @param int   $after    the position of the last row of the page before, 0 for the first
+ * @param int   $limit    1-250
+ * @param int   $after_id the id of that row, 0 when not known
  * @return array rows (ws_wtable_row_out()), next
  */
-function ws_wtable_rows_page($table_id, $columns, $after, $limit)
+function ws_wtable_rows_page($table_id, $columns, $after, $limit, $after_id = 0)
 {
     $limit = max(1, min(250, (int) $limit));
 
@@ -396,7 +419,7 @@ function ws_wtable_rows_page($table_id, $columns, $after, $limit)
     }
 
     $records = (array) db_items("SELECT * FROM ws_wtable_rows WHERE table_id = '" . (int) $table_id . "'
-        AND position > '" . max(0, (int) $after) . "' ORDER BY position, id LIMIT " . ($limit + 1));
+        AND " . ws_wtable_rows_after_sql($after, $after_id) . " ORDER BY position, id LIMIT " . ($limit + 1));
     $more = (count($records) > $limit);
     $bound = ws_wtable_formulas_bound($columns);
     $rows = array();

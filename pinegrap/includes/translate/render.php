@@ -835,9 +835,10 @@ function pg_tr_render_finalize($content)
     // The alternates: the source and x-default on the source, and every
     // enabled target whose address of the page the search engines may index
     // - the rule sitemap.xml follows; for the language being drawn, the
-    // answer just kept. Only for an address that is a page, and
-    // none at all when no other language may be indexed.
-    if (($canonical !== '') && !preg_match('~<link\b[^>]*\shreflang=~i', $content)) {
+    // answer just kept. Only for an address that is a page and that the
+    // search engines may index itself, and none at all when no other
+    // language may be indexed.
+    if (pg_tr_head_alternates_wanted($content, $canonical)) {
         $links = '';
         $source_url = pg_tr_alternate_url($canonical, $source);
 

@@ -26,7 +26,7 @@ pg_request_single_values(array('page_id'));
 
 $form = new liveform('generate_layout');
 
-$page = db_item("SELECT page_id AS id, page_name AS name, page_type AS type FROM page WHERE page_id = '" . e($_GET['page_id'] ?? '') . "'");
+$page = db_item("SELECT page_id AS id, page_name AS name, page_type AS type, page_style AS style_id, layout_type FROM page WHERE page_id = '" . e($_GET['page_id'] ?? '') . "'");
 
 // Opened without a page, or for one that no longer exists (stale link,
 // hand-typed URL): a "not found" screen instead of PHP notices and an empty
@@ -43,9 +43,27 @@ if (!check_if_page_type_supports_layout($page['type'])) {
 
 require('generate_layout_content.php');
 
-$form->set('layout', "\n" . generate_layout_content($_GET['page_id']));
+$layout_code = generate_layout_content($_GET['page_id']);
+$form->set('layout', "\n" . $layout_code);
 
 $edit_page_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $page['id'];
+
+// The Summary: what the code was generated for and how long it is.
+$layout_lines = ($layout_code === '') ? 0 : substr_count($layout_code, "\n") + 1;
+
+// A page that already draws a custom layout gets Edit Layout in the save
+// bar, the same target as Edit Page's link; a page on the system layout has
+// none to paste into until its layout type is switched.
+$edit_layout_url = '';
+if ($page['layout_type'] === 'custom') {
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
+    $edit_layout_url = pg_layout_edit_url(
+        $page['id'],
+        $page['style_id'],
+        pg_page_is_visual_design(array('page_style' => $page['style_id'])),
+        USER_ROLE,
+        pg_hosted());
+}
 
 echo pg_page_shell([
         'title'=> h($page['name']) . ' | ' . lang('Generate Layout'),

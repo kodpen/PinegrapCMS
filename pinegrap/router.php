@@ -502,6 +502,23 @@ if ($short_link && !empty($short_link['is_pattern'])) {
     $short_link = null;
 }
 
+// A link whose page or file was deleted has nothing to show: the address is
+// answered as if no link had it (a 404, or a pattern), not with the home page
+// an empty page name would draw.
+if ($short_link) {
+    router_short_link_module();
+
+    if ((string) $short_link['destination_type'] === 'file') {
+        $router_link_file = mysqli_query(db::$con, "SELECT name FROM files WHERE id = '" . (int) $short_link['file_id'] . "'");
+        $router_link_file_row = $router_link_file ? mysqli_fetch_assoc($router_link_file) : null;
+        $short_link['file_name'] = is_array($router_link_file_row) ? (string) $router_link_file_row['name'] : '';
+    }
+
+    if (pg_short_link_destination_gone($short_link)) {
+        $short_link = null;
+    }
+}
+
 // If short link was found, then process it.
 if ($short_link) {
 
@@ -666,9 +683,9 @@ function router_utf8_name($name)
  * 301 or 302, 302 for a link that closes) and the visitor's query string. The
  * address is written by pg_short_link_location()
  * (includes/fn/short_link_redirects.php), loaded here on its own: the module
- * runs no query and needs nothing of functions.php for this. A destination
- * that is gone (a deleted page or file) is left to the answer the link always
- * gave.
+ * runs no query and needs nothing of functions.php for this. A link whose
+ * destination is gone (a deleted page or file) never gets here: the router
+ * answers its address as if no link had it.
  *
  * @param array $short_link The row with page_name and the catalog address names
  * @return void

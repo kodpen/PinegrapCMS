@@ -214,6 +214,46 @@ function test_bundle_cart_allowance_unavailable_bundle()
 	pg_assert_same(array('allowed' => 2, 'unavailable' => false), $answer[3], 'an untracked component sets no limit');
 }
 
+// A line the stock can only cover below its product's minimum quantity is
+// removed, not cut: check_quantity() would raise it back to the minimum and
+// the checkout would bounce between the two notices for good. The units it
+// leaves go to the lines after it.
+function test_bundle_cart_allowance_below_minimum()
+{
+	$stock = array(
+		7 => array('tracked' => true, 'quantity' => 5, 'backorder' => false),
+		8 => array('tracked' => true, 'quantity' => 2, 'backorder' => false),
+	);
+	$lines = array(
+		array('id' => 1, 'product_id' => 7, 'quantity' => 3, 'minimum' => 3),
+		array('id' => 2, 'product_id' => 7, 'quantity' => 3, 'minimum' => 3),
+		array('id' => 3, 'product_id' => 8, 'quantity' => 3, 'minimum' => 3),
+		array('id' => 4, 'product_id' => 50, 'quantity' => 2, 'minimum' => 2,
+			'components' => array(array('product_id' => 7, 'quantity' => 1))),
+		array('id' => 5, 'product_id' => 7, 'quantity' => 2, 'minimum' => 2),
+	);
+
+	pg_assert_same(array(
+		1 => array('allowed' => 3, 'unavailable' => false),
+		2 => array('allowed' => 0, 'unavailable' => false),
+		3 => array('allowed' => 0, 'unavailable' => true),
+		4 => array('allowed' => 2, 'unavailable' => false),
+		5 => array('allowed' => 0, 'unavailable' => false),
+	), pg_bundle_cart_allowance($lines, $stock));
+
+	$stock = array(7 => array('tracked' => true, 'quantity' => 4, 'backorder' => false));
+	$lines = array(
+		array('id' => 1, 'product_id' => 50, 'quantity' => 3, 'minimum' => 3,
+			'components' => array(array('product_id' => 7, 'quantity' => 2))),
+		array('id' => 2, 'product_id' => 7, 'quantity' => 5, 'minimum' => 2),
+	);
+
+	pg_assert_same(array(
+		1 => array('allowed' => 0, 'unavailable' => true),
+		2 => array('allowed' => 4, 'unavailable' => false),
+	), pg_bundle_cart_allowance($lines, $stock), 'a bundle the components make only twice of three; its units go to the plain line');
+}
+
 // The saving is the components' sum less the bundle's price, never negative.
 function test_bundle_saving()
 {

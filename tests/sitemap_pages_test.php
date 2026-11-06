@@ -82,3 +82,37 @@ function test_sitemap_pages_builder_uses_helpers()
 	$skip = strpos($source, "!isset(\$unlisted_page_ids[(int) \$page['id']])");
 	pg_assert_true(($home !== false) && ($skip !== false) && ($home < $skip));
 }
+
+// A legacy form list view filter compared with the viewer (no fixed value,
+// dynamic value viewer or viewers email address) marks the list as one
+// whose records differ per visitor; any other filter does not.
+function test_sitemap_pages_legacy_filters_compare_viewer()
+{
+	pg_assert_true(pg_sitemap_legacy_filters_compare_viewer(array(
+		array('form_field_id' => '0', 'standard_field' => 'submitter', 'operator' => 'is equal to', 'value' => '', 'dynamic_value' => 'viewer'),
+	)), 'submitter is the viewer');
+	pg_assert_true(pg_sitemap_legacy_filters_compare_viewer(array(
+		array('form_field_id' => '0', 'standard_field' => 'status', 'operator' => 'is equal to', 'value' => 'Live', 'dynamic_value' => ''),
+		array('form_field_id' => '12', 'standard_field' => '', 'operator' => 'is equal to', 'value' => '', 'dynamic_value' => 'viewers email address'),
+	)), 'a custom field holds the viewer\'s e-mail');
+	pg_assert_false(pg_sitemap_legacy_filters_compare_viewer(array(
+		array('form_field_id' => '12', 'standard_field' => '', 'operator' => 'is equal to', 'value' => 'jane', 'dynamic_value' => 'viewer'),
+	)), 'a fixed value wins over the dynamic one');
+	pg_assert_false(pg_sitemap_legacy_filters_compare_viewer(array(
+		array('form_field_id' => '0', 'standard_field' => 'submitted_date_and_time', 'operator' => 'is greater than', 'value' => '', 'dynamic_value' => 'days ago'),
+	)), 'a date filter');
+	pg_assert_false(pg_sitemap_legacy_filters_compare_viewer(array()), 'no filters');
+	pg_assert_false(pg_sitemap_legacy_filters_compare_viewer(null), 'not a list');
+}
+
+// The kept sitemap is shared by every visitor and drawn by whoever asks
+// first (a crawler, a panel save through update_sitemap_and_ping()), so a
+// list whose filters compare a field with the viewer lists none of its
+// records: both branches skip it, as the search index does.
+function test_sitemap_pages_builder_skips_viewer_lists()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_sitemap_info.php');
+
+	pg_assert_contains('pg_sitemap_legacy_filters_compare_viewer($filters)', $source);
+	pg_assert_contains('pg_sw_filters_compare_viewer(pg_sw_merge_record_filters($cfg, $record_view[\'cfg\']))', $source);
+}

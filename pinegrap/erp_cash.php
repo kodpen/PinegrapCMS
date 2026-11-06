@@ -21,6 +21,7 @@ if (!validate_erp_access($user, 'cash')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_cash');
 
@@ -39,7 +40,10 @@ $kind_labels = array(
 );
 
 $total = 0;
-$output_rows = '';
+
+// Every till is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
 foreach ($cash_accounts as $till) {
     $id = (int) $till['id'];
@@ -57,20 +61,38 @@ foreach ($cash_accounts as $till) {
 
     $name_class = ((int) $till['is_active'] === 1) ? '' : ' fg-secondary text-decoration-line-through';
 
-    $output_rows .=
-        '<tr>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . ($readonly ? lang('View') : lang('Edit')) . '" onclick="window.location.href=\'edit_erp_till.php?id=' . $id . '\'"><i class="bi ' . ($readonly ? 'bi-eye' : 'bi-pencil') . '"></i></button>
-            </td>
-            <td style="min-width:10rem;max-width:280px" class="text-wrap text-break align-middle chart_label' . $name_class . '">' . h($till['name']) . '</td>
-            <td class="align-middle">' . h($kind_labels[$till['kind']] ?? $till['kind']) . '</td>
-            <td class="align-middle">' . h($till['bank_name']) . '</td>
-            <td style="max-width:220px" class="text-wrap text-break align-middle">' . h($till['iban']) . '</td>
-            <td class="align-middle">' . h($till['currency']) . '</td>
-            <td class="align-middle text-end" data-order="' . $movements . '">' . pg_format_number($movements, 0) . '</td>
-            <td class="align-middle text-end fw-bold ' . (($balance < 0) ? 'fg-danger' : '') . '" data-order="' . $balance . '">' . h(erp_fx_enabled() ? erp_money_out_currency($balance, $till_currency) : erp_money_out($balance)) . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => $id,
+        'cells' => array(
+            'name' => pg_list_cell('<a href="edit_erp_till.php?id=' . $id . '" class="' . trim('pg-link-body-emphasis' . $name_class) . '" data-pg-open>' . h($till['name']) . '</a>', 'align-middle text-wrap text-break', array('data-pg-sort-value' => (string) $till['name'])),
+            'kind' => pg_list_cell(h($kind_labels[$till['kind']] ?? $till['kind'])),
+            'bank' => pg_list_cell(h($till['bank_name'])),
+            'iban' => pg_list_cell(h($till['iban']), 'align-middle text-wrap text-break'),
+            'currency' => pg_list_cell(h($till['currency'])),
+            'movements' => pg_list_cell(pg_format_number($movements, 0), 'align-middle', array('data-pg-sort-value' => $movements)),
+            'balance' => pg_list_cell(h(erp_fx_enabled() ? erp_money_out_currency($balance, $till_currency) : erp_money_out($balance)), 'align-middle fw-bold' . (($balance < 0) ? ' fg-danger' : ''), array('data-pg-sort-value' => $balance)),
+        ),
+    );
 }
+
+$columns = array(
+    'name' => array('heading' => lang('Name'), 'kind' => 'link'),
+    'kind' => array('heading' => lang('Type')),
+    'bank' => array('heading' => lang('Bank')),
+    'iban' => array('heading' => lang('IBAN')),
+    'currency' => array('heading' => lang('Currency')),
+    'movements' => array('heading' => lang('Movements'), 'kind' => 'number'),
+    'balance' => array('heading' => lang('Balance'), 'kind' => 'money'),
+);
+$sort_columns = pg_list_table_printed_sort_columns($columns);
+$sort_default = array('sort' => 'name', 'order' => 'asc');
+$list_state = pg_list_state('erp_cash', $sort_columns, $sort_default);
+$list = pg_list_table_printed(array(
+    'list' => 'erp_cash',
+    'columns' => $columns,
+    'levels' => $list_state['sorts'],
+    'rows' => $list_rows,
+));
 
 echo
 pg_page_shell([
@@ -94,6 +116,9 @@ pg_page_shell([
                         <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_transfer.php"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Transfer') . '</a>
                         <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_till.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('Open a Till') . '</a>') . '
                         <a class="btn btn-sm btn-outline theme-secondary" href="erp_cashflow.php"><i class="bi bi-graph-up-arrow me-1" aria-hidden="true"></i>' . lang('Cash flow') . '</a>
+                        <div class="pg-toolbar-grow"></div>
+                        ' . pg_list_table_search_box('erp_cash') . '
+                        ' . pg_list_sort_menu('erp_cash.php', $sort_columns, $list_state['sorts'], $sort_default) . '
                     </nav>
 
             <div class="card my-7">
@@ -104,28 +129,12 @@ pg_page_shell([
             </div>
 
             <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none;">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Name') . '</th>
-                                <th>' . lang('Type') . '</th>
-                                <th>' . lang('Bank') . '</th>
-                                <th>' . lang('IBAN') . '</th>
-                                <th>' . lang('Currency') . '</th>
-                                <th class="text-end">' . lang('Movements') . '</th>
-                                <th class="text-end">' . lang('Balance') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Cash and Bank')) . '
             </div>
         </div>
     </div>
 </main>
-' .
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

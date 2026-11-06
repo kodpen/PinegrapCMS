@@ -271,6 +271,61 @@ function test_ws_customer_history_build_pages()
 	pg_assert_same(700, $history['before'], 'and the next page reads below that second');
 }
 
+// Forms are read a few times over the page and the closed ones dropped: when
+// the read was full and too few were open, older open forms were not read.
+function test_ws_customer_history_forms_horizon()
+{
+	$rows = array();
+
+	foreach (array(900, 800, 700, 600, 500, 400) as $index => $at) {
+		$rows[] = array('id' => 50 - $index, 'submitted_timestamp' => $at, 'open' => false);
+	}
+
+	pg_assert_same(400, ws_customer_history_forms_horizon($rows, 6, 2), 'a full read with no open form: nothing below 400 is known');
+	pg_assert_same(0, ws_customer_history_forms_horizon(array_slice($rows, 0, 5), 6, 2), 'a short read saw every form');
+
+	$rows[0]['open'] = $rows[1]['open'] = true;
+	pg_assert_same(0, ws_customer_history_forms_horizon($rows, 6, 2), 'enough open forms read: the newest are all known');
+	pg_assert_same(0, ws_customer_history_forms_horizon(array(), 6, 2), 'no forms');
+}
+
+// Below the forms horizon nothing is shown: an older order would otherwise
+// end the history before an open form that was never read.
+function test_ws_customer_history_build_forms_horizon()
+{
+	$data = array(
+		'orders' => array(array('id' => 7, 'order_number' => '1007', 'status' => 'complete', 'total' => 100, 'order_date' => 300)),
+		'tasks'  => array(array('id' => 3, 'title' => 'T', 'status_label' => '', 'created_at' => 600)),
+		'forms_horizon' => 400,
+	);
+
+	$history = ws_customer_history_build(workspace_customer_history_test_rights(), $data, 'workspace_customer_history_test_money', '/p/', 1);
+
+	pg_assert_same(array(600), array_column($history['entries'], 'at'), 'the task above the horizon');
+	pg_assert_same(true, $history['more'], 'older entries may wait');
+	pg_assert_same(401, $history['before'], 'the next page reads from the horizon down');
+
+	$history = ws_customer_history_build(workspace_customer_history_test_rights(), $data, 'workspace_customer_history_test_money', '/p/', 20);
+
+	pg_assert_same(array(600), array_column($history['entries'], 'at'), 'the order below the horizon waits for the next page');
+	pg_assert_same(true, $history['more'], 'more although the page is not full');
+	pg_assert_same(401, $history['before'], 'below 401, so the forms of second 400 are read again');
+
+	$data['tasks'] = array();
+	$data['orders'][0]['order_date'] = 400;
+	$history = ws_customer_history_build(workspace_customer_history_test_rights(), $data, 'workspace_customer_history_test_money', '/p/', 20);
+
+	pg_assert_same(array(400), array_column($history['entries'], 'at'), 'nothing above the horizon: its own second is kept');
+	pg_assert_same(400, $history['before'], 'and the next page reads below it');
+
+	$data['orders'][0]['order_date'] = 300;
+	$history = ws_customer_history_build(workspace_customer_history_test_rights(), $data, 'workspace_customer_history_test_money', '/p/', 20);
+
+	pg_assert_same(array(), $history['entries'], 'an empty page');
+	pg_assert_same(true, $history['more'], 'still says more');
+	pg_assert_same(400, $history['before'], 'and moves below the horizon');
+}
+
 // How many entries a page holds: 20 when nothing is asked, 1 to 50.
 function test_ws_customer_history_limit()
 {

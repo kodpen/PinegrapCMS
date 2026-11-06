@@ -132,6 +132,54 @@ function pg_contact_list_groups($user)
 }
 
 /**
+ * The contact groups a mass delete ran on, for its notice and log line: the
+ * picked groups (advanced filters) or the one group of the picker. The
+ * notice is printed as HTML, so a name is escaped; an id the user has no
+ * access to, or of a group deleted meanwhile, is left out.
+ *
+ * @param bool         $advanced     whether the advanced filters are on
+ * @param array|string $picked       the advanced filters' picked group ids
+ * @param string       $group_filter the picker's group id, [All] or [None]
+ * @param array        $groups       the user's groups (pg_contact_list_groups())
+ * @return string escaped, comma-separated names
+ */
+function pg_contact_list_deleted_groups_label($advanced, $picked, $group_filter, array $groups)
+{
+    $none = '[' . lang('None') . ']';
+    $all = '[' . lang('All') . ']';
+
+    $names = array();
+    foreach ($groups as $group) {
+        $names[(string) $group['id']] = (string) $group['name'];
+    }
+
+    $label = function ($value) use ($none, $all, $names) {
+        $value = is_scalar($value) ? (string) $value : '';
+
+        if (($value === $none) || ($value === $all)) {
+            return $value;
+        }
+
+        return isset($names[$value]) ? h($names[$value]) : '';
+    };
+
+    if (!$advanced) {
+        return $label($group_filter);
+    }
+
+    $labels = array();
+    foreach ((is_array($picked) ? $picked : array()) as $value) {
+        $text = $label($value);
+
+        if ($text !== '') {
+            $labels[] = $text;
+        }
+    }
+
+    return implode(', ', $labels);
+}
+
+/**
  * The contact groups the Organize Selected dialog offers: the ones the user
  * may edit and that are filled by hand. A group filled by rules is left
  * out, as on the import screen and the contact card: edit_contacts.php

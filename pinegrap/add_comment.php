@@ -183,10 +183,23 @@ if (CAPTCHA == TRUE) {
     validate_captcha_answer($liveform);
 }
 
+// An attachment PHP did not take in whole (larger than upload_max_filesize,
+// cut short) arrives with its name but an empty tmp_name: it is refused here,
+// so the visitor is told instead of copy() stopping the request on PHP 8 or
+// a files row being written for a file that never arrived.
+if (isset($_FILES['file'])) {
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        $liveform->mark_error('file', h($upload_refusal));
+    }
+}
+
 // An attachment the web server would run or read as its own settings is
 // refused at validation, so the visitor is told rather than a renamed file
 // quietly landing in the upload folder.
-if (isset($_FILES['file']) && ($_FILES['file']['name'] != '') && pg_upload_name_blocked($_FILES['file']['name'])) {
+if (isset($_FILES['file']) && ($liveform->check_field_error('file') == false) && ($_FILES['file']['name'] != '') && pg_upload_name_blocked($_FILES['file']['name'])) {
     $liveform->mark_error('file', pg_upload_blocked_message(htmlspecialchars($_FILES['file']['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
 }
 
@@ -585,8 +598,11 @@ if (($comments_allow_file_attachments == 1) && isset($_FILES['file']) && ($_FILE
         $file_extension = mb_substr($file_name, $position_of_last_period + 1);
     }
     
-    // create file
-    copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name);
+    // The files row is written only for a file that was stored.
+    if (!@copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name)) {
+        log_activity(pg_log_lang(array('string'=>'a comment attachment ({var:1}) could not be stored','vars'=>$file_name)), $_SESSION['sessionusername'] ?? '');
+        output_error(lang(array('string' => 'The server could not accept {var:1}. Please try again.', 'vars' => array(h($file_name)))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
 
     // create file record in database
     $query =

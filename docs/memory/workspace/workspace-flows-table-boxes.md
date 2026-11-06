@@ -15,11 +15,14 @@ description: The table boxes of flows (F6b-1 #3189): row_add adds a workflow tab
 - The owner's rights alone: the starter rule stays change-only (`workflow/decisions-made-workspace.md`).
 
 ## How does it run?
-- `ws_step_run()` writes `began:<kind>` first (a stopped box fails, never writes twice), checks, fills, then `ws_step_row_do()` in the run's event depth: `ws_wtable_row_create($owner, …)` or `ws_wtable_row_update()` on the row's revision now, read again once on `changed_meanwhile`. The store keeps the row limit, the cell checks, the row event (a row start box's flow starts one level down) and the record tags.
+- `ws_step_run()` writes `began:<kind>` first (a stopped box fails, never writes twice), checks, fills, then `ws_step_row_do()` in the run's event depth: `ws_wtable_row_create($owner, …)` or `ws_wtable_row_update()` on the row's revision now, read again on `changed_meanwhile` (up to `WS_STEP_ROW_TRIES`). The store keeps the row limit, the cell checks, the row event (a row start box's flow starts one level down) and the record tags.
 - Refusals in words: `ws_step_row_cells_refusal()`, `ws_step_row_write_refusal()` (each refused column by name, `ws_step_row_cell_reason()`).
 
 ## What if the table's owner has left the team?
 - Gate `paused` (`workflow-table-shares.md`): publish refused; at run `ws_step_row_wait()`: waiting, effect cleared, `wait_key` `wtable:<table id>`, next look in `WS_FLOW_RECHECK`. `ws_flow_step_recheck()` hands it to `ws_step_row_recheck()`: still away, it waits on; else ready again, the try not counted. No `workspace.flow.run.waiting` event (its `for` lists no table).
+
+## Can a cell add to what it holds?
+- Yes, "+3" in a number or money cell of `row_set` (`workspace-flows-row-add-to-cell.md`); a changed row is read again up to `WS_STEP_ROW_TRIES`.
 
 ## And reading a row?
 - `row_get`, the Read a row box: `workspace-flows-row-get-box.md`.

@@ -1,6 +1,6 @@
 ---
 name: order-report-screen
-description: view_order_report.php: default filters (no carts, no cancelled orders), first-group rule, cart figures, form state after a save error, order date filter parsing.
+description: view_order_report.php: default filters (no carts, no cancelled orders), first-group rule, cart figures and shipping, form state after a save error, order date filter parsing.
 module: order_report
 ---
 
@@ -12,6 +12,9 @@ module: order_report
 
 ## How is a cart summed when a filter names a product or a recipient?
 - The report's WHERE only picks the carts (`orders.id IN (SELECT … $where AND status = 'incomplete')`); each picked cart is summed from all its active lines (`order_items AS cart_items`). Filtering the lines themselves dropped the cart's other products, and joining `ship_tos` on `orders.id` counted each line once per recipient (#5762).
+
+## Where does a cart's shipping come from?
+- `SUM(ship_tos.shipping_cost)` over the cart's recipients that hold an active line, merged by `pg_order_report_carts()`. `order_items.shipping` is only a line's own rate per unit, rounded: `SUM(shipping * quantity)` left out the method and zone base rates and the shipping offer, so a cart's Shipping and Total differed from what checkout charged (#7248). Placed orders read `orders.shipping`.
 
 ## What survives a save that comes back with an error?
 - "Submitted" is `field_in_session('last_filter_number')` (the hidden field is posted with every save; there is no `submit` field). Defaults and the stored filters are loaded only when it is not set, so the levels and filters typed before the error stay. An existing report's form opens again on an error, and the heading reads the stored name from `order_reports`, not the typed one (#5760).

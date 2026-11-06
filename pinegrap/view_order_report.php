@@ -801,35 +801,46 @@ if (!$_POST) {
         $number_of_summarize_bys = 0;
     }
     
-    // A cart's figures come from its active lines (a line saved for later
-    // counts in no total), as the orders list shows its cart total: the
-    // orders.* figures are written only when the order is placed. The report's
-    // own filters only pick the carts: a picked cart is summed from all its
+    // A cart's subtotal and tax come from its active lines (a line saved for
+    // later counts in no total), as the orders list shows its cart total: the
+    // orders.* figures are written only when the order is placed. Its
+    // shipping is its recipients' shipping_cost, which holds the base rates
+    // and the shipping offer that the lines' per-unit shipping leaves out;
+    // a recipient with no active line is not counted. The report's own
+    // filters only pick the carts: a picked cart is summed from all its
     // active lines, so a product name filter does not drop its other lines
     // and a cart with several recipients does not count a line once per
     // recipient.
-    $incomplete_orders = array();
+    $sql_picked_carts =
+        "SELECT orders.id
+        FROM orders
+        $join_order_items
+        $join_ship_tos
+        " . (($where === '') ? 'WHERE ' : $where . ' AND ') . "(orders.status = 'incomplete')";
 
-    $query =
+    $cart_lines = db_items(
         "SELECT
             cart_items.order_id AS id,
             SUM(cart_items.price * CAST(cart_items.quantity AS signed)) as subtotal,
-            SUM(cart_items.tax_total) as tax,
-            SUM(cart_items.shipping * cart_items.quantity) as shipping
+            SUM(cart_items.tax_total) as tax
         FROM order_items AS cart_items
-        WHERE
-            cart_items.order_id IN (
-                SELECT orders.id
-                FROM orders
-                $join_order_items
-                $join_ship_tos
-                " . (($where === '') ? 'WHERE ' : $where . ' AND ') . "(orders.status = 'incomplete'))" . pg_order_item_active_sql('cart_items') . "
-        GROUP BY cart_items.order_id";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        WHERE cart_items.order_id IN ($sql_picked_carts)" . pg_order_item_active_sql('cart_items') . "
+        GROUP BY cart_items.order_id");
 
-    while ($row = mysqli_fetch_assoc($result)) {
-        $incomplete_orders[$row['id']] = $row;
-    }
+    $cart_recipients = db_items(
+        "SELECT
+            cart_recipients.order_id AS id,
+            SUM(cart_recipients.shipping_cost) as shipping
+        FROM ship_tos AS cart_recipients
+        WHERE
+            cart_recipients.order_id IN ($sql_picked_carts)
+            AND EXISTS (
+                SELECT 1
+                FROM order_items AS cart_items
+                WHERE cart_items.ship_to_id = cart_recipients.id" . pg_order_item_active_sql('cart_items') . ")
+        GROUP BY cart_recipients.order_id");
+
+    $incomplete_orders = pg_order_report_carts($cart_lines, $cart_recipients);
 
     // get all orders
     $query =

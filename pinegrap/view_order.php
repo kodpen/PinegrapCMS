@@ -3331,9 +3331,11 @@ if (!$_POST) {
             go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
 
-        // Record the refund.
-        $new_refunded_total = (int)($order_row['refunded_amount'] ?? 0) + $refund_cents;
-        db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "', " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
+        // Record the refund. Added to the column, then read back: a return or
+        // store credit refund recorded during the payment service call has
+        // added its own amount, which the total read above does not hold.
+        db("UPDATE orders SET refunded_amount = " . pg_order_refunded_add_expr($refund_cents) . ", " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
+        $new_refunded_total = (int) db_value("SELECT COALESCE(refunded_amount, 0) FROM orders WHERE id = '" . e($order_id) . "'");
 
         // A refund by lines takes those lines' reward points back. The points
         // taken are noted on the refund row, which a later cancellation (a

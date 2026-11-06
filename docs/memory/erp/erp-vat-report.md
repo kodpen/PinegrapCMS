@@ -12,6 +12,7 @@ description: ERP VAT report: the one place tax totals are added up (vat_report.p
 - Difference: `erp_vat_difference($calculated, $deductible, $withheld_sales)` (`includes/erp/rules.php`); the VAT withheld on sales comes off only while `erp_vat_net_withholding()` is on (erp-accounting-rules.md). Caption: `erp_vat_difference_label()`. Never subtract it by hand elsewhere.
 - The second tax is reported apart and never enters the difference: a line's VAT is `tax_total − tax2_amount`.
 - Base currency throughout. Drafts count for nothing; a cancelled document or expense is listed and marked, never in a total.
+- Expenses come from `erp_expenses_period($from, $to)` (`includes/erp/expenses.php`): every expense of the period, oldest first, no cap; the accountant pack reads the same. Never `erp_expenses_list()`: it serves the list screen, stops at 5000 rows newest first, and a period with more lost its oldest expenses and their deductible tax. Test: `tests/erp_vat_report_expense_cap_test.php`.
 - The report also shows the period's completed orders that have no invoice and their tax (`erp_vat_uninvoiced_orders()`): a sale the report cannot see.
 
 ## What is the report called?

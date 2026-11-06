@@ -124,6 +124,6 @@ log_activity(lang(array('string'=>'{var:1} ({var:2}) was duplicated','vars'=>arr
 
 include_once('liveform.class.php');
 $liveform = new liveform('edit_email_campaign_profile');
-$liveform->add_notice(lang(array('string'=>'The {var:1} has been duplicated, and you are now editing the duplicate.','vars'=>lang('campaign profile') )) );
+$liveform->add_notice(lang('The campaign profile has been duplicated, and you are now editing the duplicate.'));
 
 go(PATH . SOFTWARE_DIRECTORY . '/edit_email_campaign_profile.php?id=' . $new_id);

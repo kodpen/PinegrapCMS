@@ -1234,6 +1234,33 @@ function pg_short_link_binned_original($link)
 }
 
 /**
+ * Whether the page or file a link shows is gone: its row was deleted and the
+ * link left behind (a deleted file keeps its links; a page, product group or
+ * product delete removes them, other doors may not). Such a link has nothing
+ * to show: router.php then answers the address as no link had it, a 404,
+ * where before the empty page name drew the home page at the short address.
+ * A destination in the Recycle Bin is not gone (it keeps its parked name),
+ * and an address, a guest's way in or an unknown type never is. Pure.
+ *
+ * @param array $link A short_links row with page_name (the joined page) and file_name (the joined file)
+ * @return bool
+ */
+function pg_short_link_destination_gone($link)
+{
+    switch ((string) ($link['destination_type'] ?? '')) {
+        case 'page':
+        case 'product_group':
+        case 'product':
+            return (string) ($link['page_name'] ?? '') === '';
+
+        case 'file':
+            return (string) ($link['file_name'] ?? '') === '';
+    }
+
+    return false;
+}
+
+/**
  * Where a link that sends visitors on sends them.
  *
  * A page is reached at the page's own address (under the language prefix the

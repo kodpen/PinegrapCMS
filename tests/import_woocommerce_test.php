@@ -74,7 +74,7 @@ function test_import_woocommerce_simple()
 	pg_assert_same(1250, $data['price'], 'price');
 	pg_assert_same(null, $data['compare_at'], 'no compare-at');
 	pg_assert_same(25, $data['stock'], 'stock');
-	pg_assert_same('0.4', $data['weight'], 'weight');
+	pg_assert_same('0.8818', $data['weight'], 'Weight (kg) in pounds, the unit products.weight holds');
 	pg_assert_same(true, $data['enabled'], 'published');
 	pg_assert_same(array(array('Kitchen', 'Mugs'), array('Gifts')), $data['categories'], 'categories');
 	pg_assert_same('coffee, mug', $data['keywords'], 'tags');
@@ -165,4 +165,28 @@ function test_import_woocommerce_writer_rows()
 	pg_assert_same(2, count($set['attribute_meta']), 'axes');
 	pg_assert_same(true, $set['variants'][0]['price_manual'], 'own prices');
 	pg_assert_false(isset($set['common']['price']), 'price is per variant');
+}
+
+function test_import_woocommerce_weight_units()
+{
+	// The unit is the one the header names; WooCommerce's default is kg.
+	pg_assert_same('2.2046', pg_import_woocommerce_weight(array('weight (kg)' => '1')), 'kg');
+	pg_assert_same('2.2046', pg_import_woocommerce_weight(array('weight (kg)' => '1,0')), 'decimal comma');
+	pg_assert_same('1.5', pg_import_woocommerce_weight(array('weight (lbs)' => '1.5')), 'lbs as written');
+	pg_assert_same('0.5', pg_import_woocommerce_weight(array('weight (oz)' => '8')), 'oz');
+	pg_assert_same('0.5512', pg_import_woocommerce_weight(array('weight (g)' => '250')), 'g');
+	pg_assert_same('2.2046', pg_import_woocommerce_weight(array('weight' => '1')), 'no unit is kg');
+	pg_assert_same('', pg_import_woocommerce_weight(array('weight (kg)' => '')), 'empty');
+	pg_assert_same('', pg_import_woocommerce_weight(array('weight (kg)' => 'heavy')), 'words');
+	pg_assert_same('', pg_import_woocommerce_weight(array('name' => 'x')), 'no column');
+}
+
+function test_import_weight_pounds()
+{
+	pg_assert_same('2.2046', pg_import_weight_pounds(1, 'kg'), 'kg');
+	pg_assert_same('1', pg_import_weight_pounds(453.59237, 'g'), 'g');
+	pg_assert_same('0.0625', pg_import_weight_pounds(1, 'oz'), 'oz');
+	pg_assert_same('3', pg_import_weight_pounds(3, 'lb'), 'lb');
+	pg_assert_same('', pg_import_weight_pounds(0, 'kg'), 'zero');
+	pg_assert_same('', pg_import_weight_pounds(-2, 'kg'), 'negative');
 }

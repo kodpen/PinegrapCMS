@@ -166,6 +166,13 @@ function erp_api_cash_transfers_create($params)
 
     erp_api_cash_lock_check($date, 'date');
 
+    // Asked before the dry run: erp_post_transfer() refuses a date after
+    // today, so a rehearsal answered "created" for a transfer the real call
+    // turned away, and the refusal named the amount field.
+    if (($refusal = erp_till_future_date_refusal($date)) !== '') {
+        api_fail_validation($refusal, 'date');
+    }
+
     // One currency on both sides: a transfer that changed currency would
     // need a rate and a difference of its own (erp_post_transfer()).
     $currency = erp_api_cash_till_currency($from);

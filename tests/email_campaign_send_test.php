@@ -134,3 +134,29 @@ function test_email_campaign_problem_reason_leaves_out_suppressed()
 	pg_assert_contains('(attempts > 0)', $where, 'a suppressed recipient has no attempt');
 	pg_assert_contains("(email_campaign_id = '1')", pg_email_campaign_problem_where("1' OR '1"), 'the id is a number');
 }
+
+function test_email_campaign_claim_query_takes_only_free_due_rows()
+{
+	$sql = pg_email_campaign_claim_query(array('7', 3, '7', "4' OR '1", 0, -2), 'abc');
+
+	pg_assert_contains('(id IN (7,3,4))', $sql, 'ids are numbers, kept once, positive only');
+	pg_assert_contains("claim_token = 'abc'", $sql);
+	pg_assert_contains("(complete = '0')", $sql);
+	pg_assert_contains('(claimed_at = 0)', $sql, 'a row another run holds is not taken');
+	pg_assert_contains('(next_attempt_at <= UNIX_TIMESTAMP())', $sql);
+	pg_assert_same('', pg_email_campaign_claim_query(array(), 'abc'), 'nothing to claim');
+}
+
+function test_email_campaign_stale_claim_query_scopes_to_campaign()
+{
+	$all = pg_email_campaign_stale_claim_query();
+	pg_assert_contains('(claimed_at < (UNIX_TIMESTAMP() - 900))', $all);
+	pg_assert_false(strpos($all, 'email_campaign_id') !== false, 'the job frees every campaign');
+
+	pg_assert_contains("(email_campaign_id = '12')", pg_email_campaign_stale_claim_query('12'), 'Send now frees its own campaign');
+}
+
+function test_email_campaign_claim_token_is_hex()
+{
+	pg_assert_true(preg_match('/^[0-9a-f]{32}$/', pg_email_campaign_claim_token()) === 1);
+}

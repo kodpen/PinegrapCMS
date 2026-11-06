@@ -914,6 +914,7 @@ function ws_api_wtable_rows_list($params)
     $viewer = ws_api_viewer();
     $table = ws_api_wtable_or_404($viewer, $params['id']);
     $after = 0;
+    $after_id = 0;
 
     if (isset($params['cursor']) && ($params['cursor'] !== '')) {
         $cursor = api_cursor_decode($params['cursor']);
@@ -923,10 +924,11 @@ function ws_api_wtable_rows_list($params)
         }
 
         $after = (int) $cursor['v'];
+        $after_id = (int) ($cursor['i'] ?? 0);
     }
 
     $limit = (int) ($params['limit'] ?? 100);
-    $page = ws_wtable_rows_page((int) $table['id'], ws_wtable_columns((int) $table['id']), $after, $limit);
+    $page = ws_wtable_rows_page((int) $table['id'], ws_wtable_columns((int) $table['id']), $after, $limit, $after_id);
     $last = end($page['rows']);
 
     api_ok_list(array_map('ws_api_wtable_row_present', $page['rows']), $limit,

@@ -467,6 +467,16 @@ if (!defined('PG_INIT_LOADED')) {
 				<td class="text-right"><?=$surcharge_info?></td>
 			</tr>
 			<?php endif ?>
+			<?php if ($installment_charges_info): ?>
+			<tr>
+				<th scope="row" class="text-right"><?=h(lang('Number of Installments'))?>:</th>
+				<td class="text-right"><?=h($number_of_installment)?></td>
+			</tr>
+			<tr>
+				<th scope="row" class="text-right"><?=h(lang('Installment Charge'))?>:</th>
+				<td class="text-right"><?=$installment_charges_info?></td>
+			</tr>
+			<?php endif ?>
 			<tr>
 				<th scope="row" class="text-right" style="width: 100%">Total:</th>
 				<td class="text-right">

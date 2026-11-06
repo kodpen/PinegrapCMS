@@ -137,7 +137,7 @@ function test_ws_voice_asks_are_wired()
 	$voice = $read('includes/workspace/voice.php');
 	pg_assert_contains("ws_voice_announce(\$message, \$channel, \$row, \$outcome, \$config['provider'], \$model);\n            ws_voice_ask((int) \$row['message_id']);", $voice, 'once written out');
 	pg_assert_contains("WHERE id = '\" . (int) \$row['id'] . \"'\");\n\n    // Asked without a transcript: the assistant is told it was not heard.\n    ws_voice_ask((int) \$row['message_id']);", $voice, 'skipped or failed');
-	pg_assert_contains('ws_voice_ask((int) $message_id);', $voice, 'given up by the watchdog');
+	pg_assert_contains("if (\$failed) {\n            ws_voice_ask((int) \$row['message_id']);", $voice, 'given up by the watchdog');
 	pg_assert_true(strpos($voice, 'ws_voice_watchdog();') < strpos($voice, "if (!ws_voice_config()['enabled']) {\n        return 'idle';"), 'the watchdog runs while transcripts are off');
 
 	pg_assert_contains("ws_voice_posted(\$viewer, \$channel, \$result['message_id'], \$body, \$stored['name'], \$queued)", $read('includes/workspace/files.php'), 'the panel upload');

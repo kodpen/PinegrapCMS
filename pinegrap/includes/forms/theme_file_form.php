@@ -8,6 +8,7 @@
  * disk, the activation that takes the other theme off the device type and
  * moves the pages to its styles, the record update and its log lines.
  * The screen keeps the form, the delete, the export and its notices.
+ * Also the heading check of the system theme CSV import (add_theme_file.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -375,4 +376,38 @@ function pg_theme_file_form_save($liveform, $user_id)
     }
     
     return array('ok' => true, 'name' => $name, 'missing' => $theme_file_missing, 'deactivated' => $deactivated);
+}
+
+/**
+ * The rule columns of a system theme CSV import (Create Theme), read from
+ * its heading row: the eight columns the export writes (edit_theme_file.php),
+ * each once, in any order and letter case. The list is built from the known
+ * names, never from the cells, and quoted: `row` is a reserved word in
+ * MySQL 8.
+ *
+ * @param array $heading the cells of the file's first row
+ * @return string|null the column list for the INSERT, null when the heading
+ *                     is not one the import can take
+ */
+function pg_theme_csv_import_columns($heading)
+{
+    $known = array('area', 'row', 'col', 'module', 'region_type', 'region_name', 'property', 'value');
+
+    if (!is_array($heading) || (count($heading) !== count($known))) {
+        return null;
+    }
+
+    $columns = array();
+
+    foreach ($heading as $cell) {
+        $name = strtolower(trim((string) $cell));
+
+        if (!in_array($name, $known, true) || in_array($name, $columns, true)) {
+            return null;
+        }
+
+        $columns[] = $name;
+    }
+
+    return '`' . implode('`, `', $columns) . '`';
 }

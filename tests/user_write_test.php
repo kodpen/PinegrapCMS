@@ -99,3 +99,22 @@ function test_user_write_rights_read_the_given_fields()
 	pg_assert_contains("pg_user_permission_ws_sql('values', \$fields)", $write);
 	pg_assert_contains("pg_user_erp_readonly_sql('values', \$fields)", $write);
 }
+
+// A deleted account's own connected accounts are ended with it, through the
+// disconnect that revokes them, so a later account given the same id never
+// signs in to the old owner's Drive, calendar or notes.
+function test_user_delete_ends_personal_connections()
+{
+	$write = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_write.php');
+	$delete = substr($write, (int) strpos($write, 'function pg_user_delete('));
+
+	pg_assert_contains('pg_connect_forget_user($user_id)', $delete, 'pg_user_delete() ends the account\'s connections');
+
+	$connect = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/connect.php');
+	$forget = substr($connect, (int) strpos($connect, 'function pg_connect_forget_user('));
+	$forget = substr($forget, 0, (int) strpos($forget, "\n}\n"));
+
+	pg_assert_contains("pg_connect_accounts(array('user_id' => \$user_id))", $forget, 'only the person\'s own rows');
+	pg_assert_contains('pg_connect_disconnect($account[\'id\'])', $forget, 'each is revoked and deleted');
+	pg_assert_contains('$user_id <= 0', $forget, 'user 0 (the site\'s accounts) is never ended');
+}

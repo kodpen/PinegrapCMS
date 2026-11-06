@@ -442,29 +442,56 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 $new_inventory_quantity = $scan['total'];
             }
 
-            $sql_out_of_stock = '';
-            $sql_out_of_stock_timestamp = '';
-            if($new_inventory_quantity == 0 && $inventory == 1){
-                $sql_out_of_stock = "out_of_stock = '1',";
-                $sql_out_of_stock_timestamp = "out_of_stock_timestamp = UNIX_TIMESTAMP(),";
-            }
-
             // update the product
             $audit_before = pg_audit_fetch('products', (int) $id);
-            $query =
-                "UPDATE products
-                SET
-                    " . (($scan === null) ? "inventory_quantity = ?," : "") . "
-                    $sql_out_of_stock
-                    $sql_out_of_stock_timestamp
-                    user = ?,
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = ?";
-            $values = array((string) $new_inventory_quantity, (string) $user['id'], (string) (int) $id);
-            if ($scan !== null) {
-                array_shift($values);
+
+            if ($scan === null) {
+                // The units are taken in the statement and stop at 0 there,
+                // not written back as the figure read above: a sale or another
+                // scan between that read and this write would otherwise be
+                // overwritten (the units it took back on the shelf).
+                db_q(
+                    "UPDATE products
+                    SET
+                        inventory_quantity = GREATEST(0, CAST(inventory_quantity AS SIGNED) - ?),
+                        user = ?,
+                        timestamp = UNIX_TIMESTAMP()
+                    WHERE id = ?",
+                    array((string) $quantity, (string) $user['id'], (string) (int) $id)) or output_error('Query failed');
+
+                $new_inventory_quantity = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $id . "'");
+
+                // What the stock was right before the statement: the stock
+                // left plus the units taken, or, when it stopped at 0, no
+                // more than the units scanned.
+                $inventory_quantity = ($new_inventory_quantity > 0)
+                    ? $new_inventory_quantity + $quantity
+                    : min((int) $inventory_quantity, $quantity);
+
+                // The flag from the stock left after the statement, once.
+                db_q(
+                    "UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()
+                    WHERE (id = ?) AND (inventory = '1') AND (inventory_quantity <= 0) AND (out_of_stock != '1')",
+                    array((string) (int) $id)) or output_error('Query failed');
+            } else {
+                $sql_out_of_stock = '';
+                $sql_out_of_stock_timestamp = '';
+                if($new_inventory_quantity == 0 && $inventory == 1){
+                    $sql_out_of_stock = "out_of_stock = '1',";
+                    $sql_out_of_stock_timestamp = "out_of_stock_timestamp = UNIX_TIMESTAMP(),";
+                }
+
+                db_q(
+                    "UPDATE products
+                    SET
+                        $sql_out_of_stock
+                        $sql_out_of_stock_timestamp
+                        user = ?,
+                        timestamp = UNIX_TIMESTAMP()
+                    WHERE id = ?",
+                    array((string) $user['id'], (string) (int) $id)) or output_error('Query failed');
             }
-            $result = db_q($query, $values) or output_error('Query failed');
+
             pg_audit_record('update', 'products', (int) $id, $audit_before);
 
             // A scan is a stock write like any other: inventory.changed (and

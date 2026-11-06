@@ -106,9 +106,14 @@ function api_file_present($row) {
 // decides those per user through the access control list. An application is not
 // a user and has no list of its own, so the honest line is the public one: it
 // reads what the site is already publishing.
+//
+// A file uploaded with a submitted form or a comment (attachment = 1) is filed
+// in the field's upload folder, which may be a public one, yet get_file.php
+// serves it only to people who may see its record; the editor's file and image
+// lists leave it out for the same reason, so the API does too.
 function api_files_public_clause() {
 
-	return "(folder.folder_access_control_type = 'public')";
+	return "(folder.folder_access_control_type = 'public') AND (files.attachment = '0')";
 
 }
 

@@ -21,3 +21,7 @@ module: ecommerce
 
 ## What happens on a product with stock tracking off?
 - The count is written as before (Modify Selected and the Catalog Manager do the same); the answer's `inventory` is read by the screen, and when it is not `1` the table row, the status line and a warning box say "Stock tracking is off for this product; the count is used when tracking is turned on." `out_of_stock` and `inventory.changed` are untouched (#5788). Pinned by `test_barcode_stock_screens_warn_on_an_untracked_product`.
+
+## How is the count written without stock locations?
+- In the statement: the increase adds (`inventory_quantity = inventory_quantity + ?`, the column's top in the WHERE, no row matched = "too large"), the decrease takes and stops at 0 (`GREATEST(0, CAST(… AS SIGNED) - ?)`, then the guarded `out_of_stock` update); the count is read back after. With locations `pg_stock_scan()` writes it.
+- Before, both screens wrote the figure worked out from their first read: a checkout or another scan between the read and the write was overwritten, a sold unit coming back on the shelf. Pinned by `tests/barcode_stock_in_statement_test.php`.

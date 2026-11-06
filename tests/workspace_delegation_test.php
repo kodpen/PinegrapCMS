@@ -87,3 +87,18 @@ function test_delegation_run_key_of_a_request()
 	pg_assert_same('claude', ws_task_run_key(array('agent' => 'claude', 'mcp_server_id' => '3')), 'only Pinegrap AI or the server\'s agent answers with a server');
 	pg_assert_same('claude', ws_task_run_key(array()), 'before the agent column every request is Claude\'s');
 }
+
+function test_delegation_stop_problem_who_may_stop_and_take_back()
+{
+	// Anybody who may change the task stops a run and takes the task back.
+	pg_assert_same('', ws_task_delegation_stop_problem(false, true, false));
+	pg_assert_same('', ws_task_delegation_stop_problem(false, true, true));
+	pg_assert_same('', ws_task_delegation_stop_problem(true, true, true));
+	// The person who asked for the run stops it, though they may only see the task.
+	pg_assert_same('', ws_task_delegation_stop_problem(true, false, false));
+	// A note starts a run for whoever sees the task: taking the task back
+	// from its assistant is a change of the task all the same.
+	pg_assert_same('edit', ws_task_delegation_stop_problem(true, false, true));
+	pg_assert_same('edit', ws_task_delegation_stop_problem(false, false, false));
+	pg_assert_same('edit', ws_task_delegation_stop_problem(false, false, true));
+}
