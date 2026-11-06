@@ -358,6 +358,7 @@
     "Part of {var}: it shows the record this widget shows, and nothing when the page opens none.": "{var} parçası: bu bileşenin gösterdiği kaydı gösterir, sayfa kayıt açmadığında hiçbir şey göstermez.",
     "Part service history": "Bakımların bir kısmı kayıtlı",
     "Part time": "Yarı zamanlı",
+    "Part to take (1 the first, -1 the last)": "Alınacak parça (1 ilki, -1 sonuncusu)",
     "Part {var:1} of the payment was not recorded: {var:2}": "Ödemenin {var:1}. parçası kaydedilmedi: {var:2}",
     "Part {var:1}: amount": "{var:1}. parça: tutar",
     "Part {var:1}: how it is paid": "{var:1}. parça: ödeme şekli",

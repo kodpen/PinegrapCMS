@@ -140,8 +140,10 @@ function ws_flow_constants_problems($config, $name)
  * The rules a derived value box works its value out by, with the type of
  * the value each gives: compare (1 when it holds, else 0), join (the two
  * inputs with a space between), add, subtract, round, date format, add
- * days, calculate (one expression of the workspace calculator). Nothing
- * that reads the database: the box is pure.
+ * days, calculate (one expression of the workspace calculator), and the text
+ * rules: replace, take out a number or an e-mail address, capitals, small
+ * letters, tidy the spaces, cut to a length, split and take one part.
+ * Nothing that reads the database: the box is pure.
  *
  * @return array rule => type
  */
@@ -156,6 +158,14 @@ function ws_flow_derived_rules()
         'date_format' => 'text',
         'add_days'    => 'text',
         'calculate'   => 'number',
+        'replace'        => 'text',
+        'extract_number' => 'number',
+        'extract_email'  => 'text',
+        'upper'          => 'text',
+        'lower'          => 'text',
+        'trim'           => 'text',
+        'cut'            => 'text',
+        'split'          => 'text',
     );
 }
 
@@ -166,7 +176,18 @@ function ws_flow_derived_rules()
  */
 function ws_flow_derived_two_inputs()
 {
-    return array('compare', 'join', 'add', 'subtract', 'add_days');
+    return array('compare', 'join', 'add', 'subtract', 'add_days', 'replace', 'cut', 'split');
+}
+
+/**
+ * The rules that read a third input (c): replace (what goes in, empty to
+ * take the text out) and split (the part to take, 1 when empty).
+ *
+ * @return string[]
+ */
+function ws_flow_derived_three_inputs()
+{
+    return array('replace', 'split');
 }
 
 /**
@@ -208,11 +229,19 @@ function ws_flow_derived_lists()
         'date_format' => lang('Write a date in another shape'),
         'add_days'    => lang('Add days to a date'),
         'calculate'   => lang('Calculate'),
+        'replace'        => lang('Replace a text'),
+        'extract_number' => lang('Take the number out of a text'),
+        'extract_email'  => lang('Take the e-mail address out of a text'),
+        'upper'          => lang('Write in capitals'),
+        'lower'          => lang('Write in small letters'),
+        'trim'           => lang('Tidy the spaces'),
+        'cut'            => lang('Cut to a length'),
+        'split'          => lang('Split and take one part'),
     );
     $rules = array();
 
     foreach (ws_flow_derived_rules() as $key => $type) {
-        $rules[] = array('key' => $key, 'label' => $labels[$key], 'type' => $type, 'two' => in_array($key, ws_flow_derived_two_inputs(), true));
+        $rules[] = array('key' => $key, 'label' => $labels[$key], 'type' => $type, 'two' => in_array($key, ws_flow_derived_two_inputs(), true), 'three' => in_array($key, ws_flow_derived_three_inputs(), true));
     }
 
     $formats = array();
@@ -232,12 +261,12 @@ function ws_flow_derived_lists()
 
 /**
  * A derived value box's set-up in its kept shape: a rule of
- * ws_flow_derived_rules() (else join), its inputs a and b one line each
+ * ws_flow_derived_rules() (else join), its inputs a, b and c one line each
  * (they may hold {{node.*}} and {{trigger.*}}), the comparison, the places
  * to round to (0-6) and the date shape. Pure.
  *
  * @param array $config
- * @return array rule, a, b, op, places, format
+ * @return array rule, a, b, c, op, places, format
  */
 function ws_flow_derived_normalize($config)
 {
@@ -253,6 +282,7 @@ function ws_flow_derived_normalize($config)
         'rule'   => isset(ws_flow_derived_rules()[$rule]) ? $rule : 'join',
         'a'      => $input($config['a'] ?? ''),
         'b'      => $input($config['b'] ?? ''),
+        'c'      => $input($config['c'] ?? ''),
         'op'     => in_array($op, ws_flow_derived_operators(), true) ? $op : 'eq',
         'places' => (is_bool($places) || !is_numeric($places)) ? 0 : max(0, min(6, (int) $places)),
         'format' => in_array($format, ws_flow_derived_formats(), true) ? $format : 'Y-m-d',
@@ -281,7 +311,7 @@ function ws_flow_derived_reads($config)
 {
     $ids = array();
 
-    foreach (array($config['a'] ?? '', $config['b'] ?? '') as $text) {
+    foreach (array($config['a'] ?? '', $config['b'] ?? '', $config['c'] ?? '') as $text) {
         if (preg_match_all(WS_STEP_VALUE_PATTERN, (string) $text, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
                 if ((string) $match[1] !== '') {
@@ -312,7 +342,8 @@ function ws_flow_derived_problems($config, $name)
         $out[] = lang(array('string' => 'The box {var:1} needs the value it works from.', 'vars' => $name));
     }
 
-    if (in_array($config['rule'], ws_flow_derived_two_inputs(), true) && ($config['b'] === '')) {
+    // Split reads an empty separator as spaces.
+    if (in_array($config['rule'], ws_flow_derived_two_inputs(), true) && ($config['b'] === '') && ($config['rule'] !== 'split')) {
         $out[] = lang(array('string' => 'The box {var:1} needs its second value.', 'vars' => $name));
     }
 
@@ -322,6 +353,14 @@ function ws_flow_derived_problems($config, $name)
 
     if (($config['rule'] === 'add_days') && (strpos($config['b'], '{{') === false) && ($config['b'] !== '') && !preg_match('/^-?\d{1,4}$/', $config['b'])) {
         $out[] = lang(array('string' => 'The box {var:1} adds days: its second value must be a whole number.', 'vars' => $name));
+    }
+
+    if (($config['rule'] === 'cut') && (strpos($config['b'], '{{') === false) && ($config['b'] !== '') && !preg_match('/^[1-9]\d{0,3}$/', $config['b'])) {
+        $out[] = lang(array('string' => 'The box {var:1} cuts a text: its second value must be a whole number of characters.', 'vars' => $name));
+    }
+
+    if (($config['rule'] === 'split') && (strpos($config['c'], '{{') === false) && ($config['c'] !== '') && !preg_match('/^-?[1-9]\d{0,3}$/', $config['c'])) {
+        $out[] = lang(array('string' => 'The box {var:1} splits a text: the part to take must be a whole number other than 0.', 'vars' => $name));
     }
 
     return $out;
@@ -609,9 +648,10 @@ function ws_flow_derived_calculate($formula, $values, $places)
  * @param string $a      the first input, filled (calculate: as written)
  * @param string $b      the second input, filled
  * @param array  $values the run's values, for calculate
+ * @param string $c      the third input, filled
  * @return string
  */
-function ws_flow_derived_value($config, $a, $b, $values = array())
+function ws_flow_derived_value($config, $a, $b, $values = array(), $c = '')
 {
     if ($config['rule'] === 'calculate') {
         return ws_flow_derived_calculate($a, $values, $config['places']);
@@ -619,6 +659,7 @@ function ws_flow_derived_value($config, $a, $b, $values = array())
 
     $a = trim(mb_substr((string) $a, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
     $b = trim(mb_substr((string) $b, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
+    $c = trim(mb_substr((string) $c, 0, WS_FLOW_DERIVED_VALUE_LENGTH));
     $numbers = is_numeric($a) && is_numeric($b);
 
     switch ($config['rule']) {
@@ -664,7 +705,85 @@ function ws_flow_derived_value($config, $a, $b, $values = array())
             return gmdate((string) $config['format'], $time);
     }
 
+    return ws_flow_derived_text($config['rule'], $a, $b, $c);
+}
+
+/**
+ * The value of a text rule (replace, extract_number, extract_email, upper,
+ * lower, trim, cut, split) from its inputs as filled and trimmed: empty
+ * when an input is not what the rule reads. Replace finds b as written,
+ * never as a pattern; split reads an empty b as spaces and c as the part
+ * to take (1 when empty, -1 the last). Capitals and small letters follow
+ * Turkish on a Turkish site.
+ *
+ * @param string $rule
+ * @param string $a
+ * @param string $b
+ * @param string $c
+ * @return string
+ */
+function ws_flow_derived_text($rule, $a, $b, $c)
+{
+    switch ($rule) {
+        case 'replace':
+            return ($b === '') ? '' : str_replace($b, $c, $a);
+
+        case 'extract_number':
+            // A dash right after a letter or digit is part of a code, not a minus.
+            if (!preg_match('/(?:(?<![\p{L}\p{N}])-)?\d(?:[\d.,]*\d)?/u', $a, $match)) {
+                return '';
+            }
+
+            $number = ws_flow_typed_number($match[0]);
+
+            return ($number === null) ? '' : ws_flow_derived_number($number);
+
+        case 'extract_email':
+            return preg_match('/[a-z0-9._%+\-]+@[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?)*\.[a-z]{2,63}\b/i', $a, $match) ? $match[0] : '';
+
+        case 'upper':
+        case 'lower':
+            return ws_flow_derived_case($a, $rule === 'upper', lang(array('info' => '')) === 'tr');
+
+        case 'trim':
+            return trim((string) preg_replace('/\s+/u', ' ', $a));
+
+        case 'cut':
+            return preg_match('/^[1-9]\d{0,3}$/', $b) ? mb_substr($a, 0, (int) $b) : '';
+
+        case 'split':
+            if (($c !== '') && !preg_match('/^-?[1-9]\d{0,3}$/', $c)) {
+                return '';
+            }
+
+            $parts = ($b === '') ? preg_split('/\s+/u', $a, -1, PREG_SPLIT_NO_EMPTY) : explode($b, $a);
+            $part = ($c === '') ? 1 : (int) $c;
+            $at = ($part > 0) ? $part - 1 : count($parts) + $part;
+
+            return (($at >= 0) && isset($parts[$at])) ? trim($parts[$at]) : '';
+    }
+
     return '';
+}
+
+/**
+ * A text in capitals or small letters; with Turkish rules i and İ, ı and I
+ * are pairs. Pure.
+ *
+ * @param string $text
+ * @param bool   $upper   capitals, else small letters
+ * @param bool   $turkish the Turkish pairs of i
+ * @return string
+ */
+function ws_flow_derived_case($text, $upper, $turkish)
+{
+    $text = (string) $text;
+
+    if ($upper) {
+        return mb_strtoupper($turkish ? str_replace(array('i', 'ı'), array('İ', 'I'), $text) : $text, 'UTF-8');
+    }
+
+    return mb_strtolower($turkish ? str_replace(array('İ', 'I'), array('i', 'ı'), $text) : $text, 'UTF-8');
 }
 
 /**
@@ -775,7 +894,8 @@ function ws_flow_pure_values($graph, $values = array(), $now = null)
             } else {
                 $a = ws_flow_derived_fill(strtr($config['a'], $words), $known);
                 $b = ws_flow_derived_fill(strtr($config['b'], $words), $known);
-                $out[$id] = array('value' => ws_flow_derived_value($config, $a, $b));
+                $c = ws_flow_derived_fill(strtr($config['c'], $words), $known);
+                $out[$id] = array('value' => ws_flow_derived_value($config, $a, $b, array(), $c));
             }
             unset($derived[$id]);
             $added = true;

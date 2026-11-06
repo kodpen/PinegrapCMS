@@ -5,10 +5,10 @@ description: The derived value box of a flow (kind value, T3, PR #2701): its all
 
 ## What is it?
 - Kind `value` in `ws_flow_kinds()`, `pure` like constants (no arrows, outcomes, run row). It gives one value, `{{node.<id>.value}}`, worked out from one or two inputs by a rule.
-- `ws_flow_derived_normalize()`: `rule`, `a`, `b` (one line of 500, may hold `{{node.*}}` and `{{trigger.*}}`), `op`, `places` (0-6), `format`. An unknown rule is kept as join.
+- `ws_flow_derived_normalize()`: `rule`, `a`, `b`, `c` (lines of 500, may hold `{{node.*}}`, `{{trigger.*}}`; `c` for replace, split), `op`, `places` (0-6), `format`. An unknown rule is kept as join.
 
 ## Which rules?
-- `ws_flow_derived_rules()`: compare (number: 1 when it holds, else 0; `op` of `ws_flow_derived_operators()`, as a value condition: `ws_fold()` texts, gt/gte/lt/lte only numbers), join (text: a and b with a space, trimmed), add, subtract (number), round (number, `places`), date_format (text, `format` of `ws_flow_derived_formats()`), add_days (text, b a whole number, at most 3650), calculate (number, a formula: workspace-flows-derived-calculate.md).
+- `ws_flow_derived_rules()`: compare (number: 1 when it holds, else 0; `op` of `ws_flow_derived_operators()`, as a value condition: `ws_fold()` texts, gt/gte/lt/lte only numbers), join (text: a and b with a space, trimmed), add, subtract (number), round (number, `places`), date_format (text, `format` of `ws_flow_derived_formats()`), add_days (text, b a whole number, at most 3650), calculate (number: workspace-flows-derived-calculate.md), text rules (workspace-flows-derived-text.md).
 - Numbers by `ws_flow_derived_number()` (no trailing zeros, six places at most). Dates by `ws_flow_derived_date()`: `Y-m-d`, with `H:i(:s)`, or a Unix time in the site's zone; no free words (no `strtotime()`), only the date words below; `gmmktime()`/`gmdate()` on the wall-clock parts.
 - An input the rule cannot read gives an empty value, never an error.
 - No record field: it would read the database.

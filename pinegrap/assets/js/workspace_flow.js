@@ -3075,7 +3075,7 @@
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
         approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]],
-        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]],
+        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500], ['c', 'fl_derived_with', 500]],
         for_each: [['list', 'fl_loop_list', 200], ['count', 'fl_loop_count', 200]],
         for_each_end: [['collect', 'fl_loop_collect', 200]]
     };
@@ -3232,7 +3232,7 @@
 
         // A loop's box reads one value: its field is open while empty.
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
-            return (node.kind !== 'value') || (item[0] !== 'b') || derivedRule(config.rule).two;
+            return (node.kind !== 'value') || ((item[0] !== 'b') || derivedRule(config.rule).two) && ((item[0] !== 'c') || derivedRule(config.rule).three);
         }).filter(function (item) {
             return ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list'))) && (!kindOf(node).loop || !config[item[0]]);
         }).map(function (item) {
@@ -6814,12 +6814,12 @@
 
     // A derived value box's rule (FL.derived, ws_flow_derived_rules()): its
     // label, the type of the value it gives and whether it reads a second
-    // value; an unknown one as join, as the server keeps it.
+    // and a third value; an unknown one as join, as the server keeps it.
     function derivedRule(key) {
         var rules = (FL.derived || {}).rules || [];
         var rule = rules.filter(function (item) { return item.key === key; })[0] || rules.filter(function (item) { return item.key === 'join'; })[0];
 
-        return rule || { key: 'join', label: key || '', type: 'text', two: true };
+        return rule || { key: 'join', label: key || '', type: 'text', two: true, three: false };
     }
 
     // A derived value box: its rule, the values it works from (with value
@@ -6857,8 +6857,17 @@
         }
 
         if (rule.two) {
-            box.appendChild(valueField(node, t((rule.key === 'add_days') ? 'fl_derived_days' : 'fl_derived_b'), config.b || '', 500, function (value) {
+            var second = { add_days: 'fl_derived_days', replace: 'fl_derived_find', cut: 'fl_derived_length', split: 'fl_derived_split' }[rule.key] || 'fl_derived_b';
+
+            box.appendChild(valueField(node, t(second), config.b || '', 500, function (value) {
                 config.b = value;
+                refreshNode(node);
+            }, false));
+        }
+
+        if (rule.three) {
+            box.appendChild(valueField(node, t((rule.key === 'split') ? 'fl_derived_part' : 'fl_derived_with'), config.c || '', 500, function (value) {
+                config.c = value;
                 refreshNode(node);
             }, false));
         }
