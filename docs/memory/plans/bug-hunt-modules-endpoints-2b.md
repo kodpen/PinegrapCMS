@@ -9,3 +9,4 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 ## Which groups outside the root and fn lists are hunted?
 - Dashboard v2 (`includes/dashboard/v2/`, its actions in `includes/panel/dashboard.php`, `pg_dash*.js`): done #7003.
+- MCP server (`mcp.php`, `includes/mcp/protocol.php`, `tools.php`, `resources.php`, `prompts.php`) and the Workspace's MCP server routes (`includes/workspace/api_mcp.php`, the proposed-call apply path in `mcp_ask.php`): clean (gates and credentials before every request, tools/resources/prompts only from the caller's scoped routes with the router's scope check repeated, `'mcp' => false` on every file route, no tool-name collisions, outer request's headers and query kept out of a tool's input, refusals give the route's own error and nothing more, administrator-only server routes refuse an assistant's key, a proposed call applied only by its asker).
