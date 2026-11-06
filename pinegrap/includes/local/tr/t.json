@@ -2514,6 +2514,7 @@
     "The file {var:1} changed while it was fetched.": "{var:1} dosyası alınırken değişti.",
     "The file {var:1} changed while it was sent.": "{var:1} dosyası gönderilirken değişti.",
     "The file {var:1} could not be brought back from the object store after {var:2} attempts and stays there: {var:3}": "{var:1} dosyası {var:2} denemeden sonra nesne depolamadan geri alınamadı ve orada kalıyor: {var:3}",
+    "The file {var:1} could not be brought back from the object store to the disk.": "{var:1} dosyası nesne deposundan diske geri getirilemedi.",
     "The file {var:1} could not be moved to the object store after {var:2} attempts and stays on the disk: {var:3}": "{var:1} dosyası {var:2} denemeden sonra nesne deposuna taşınamadı ve diskte kalıyor: {var:3}",
     "The file {var:1} could not be written to the disk.": "{var:1} dosyası diske yazılamadı.",
     "The file {var:1} is not an image.": "{var:1} dosyası bir görsel değil.",

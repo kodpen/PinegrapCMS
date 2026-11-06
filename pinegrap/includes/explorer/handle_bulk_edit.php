@@ -303,6 +303,11 @@ function pg_explorer_handle_files_bulk_edit($type, $request, $user)
 
         pg_audit_record_many('update', 'files', $audit_before);
 
+        // Stored files just marked as design files have to be on the disk.
+        if (isset($set['design']) && ((string) $set['design'] === '1') && ($user['role'] <= 1)) {
+            pg_file_storage_bring_home($allowed);
+        }
+
         log_activity(((count($allowed) == 1) ? lang(array('string' => '{var:1} file was updated', 'vars' => 1)) : lang(array('string' => '{var:1} files were updated', 'vars' => count($allowed)))), $_SESSION['sessionusername']);
     }
 

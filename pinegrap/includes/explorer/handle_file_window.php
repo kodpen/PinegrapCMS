@@ -247,6 +247,11 @@ function pg_explorer_handle_file_save($type, $request, $user)
             timestamp = UNIX_TIMESTAMP(),
             user = '" . e($user['id']) . "'
         WHERE id = '" . e($file_id) . "'");
+
+    // A new name or the design flag may have made a stored file one that
+    // has to be on the disk.
+    pg_file_storage_bring_home(array($file_id));
+
     if ($audit_content) {
         pg_audit_record_file($file_id, $audit_before, $new_path);
     } else {

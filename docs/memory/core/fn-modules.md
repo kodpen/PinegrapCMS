@@ -89,7 +89,7 @@ description: Generated from the module field of the memory files: each includes/
 - `field_list`: [[list-table-region-lists]]
 - `file_copy_gate`: [[file-copy-chat-attachments]]
 - `file_storage`: [[file-object-storage]], [[file-object-storage-readers]], [[object-storage-active-types]], [[object-storage-migration]], [[workspace-files-object-storage]]
-- `files`: [[design-files-modify-dialog]], [[design-files-screens]], [[edit-file-header]], [[import-my-site-scans]], [[name-length-refusal]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]], [[theme-screens-names-and-returns]]
+- `files`: [[design-files-modify-dialog]], [[design-files-screens]], [[edit-file-header]], [[import-my-site-scans]], [[name-length-refusal]], [[object-storage-unmovable-come-home]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]], [[theme-screens-names-and-returns]]
 - `form_mails`: [[custom-form-mails]]
 - `form_payment_step`: [[custom-form-payment-step]]
 - `form_payments`: [[custom-form-payment]], [[custom-form-payment-staff]]
