@@ -13,7 +13,7 @@ description: Plan: the Private School / Kindergarten design template (pinegrap-s
 ## Steps (claim as `[plan:design-template-school] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7582): `parts.php` (node builders, the school's data: programmes with age ranges, classes, daily routine, approach pillars, facilities, staff, figures, accreditations, parents' words, event samples, pick lists; shared parts: account bar, notice, header, footer, admissions band, staff bar; programme, staff, event and testimonial cards, form fields, comment thread, blog parts); `tests/design_template_school_test.php`.
 
-- 2: `pages_public.php`: home (`home_events`, `home_posts`), `programmes` and one `programme_<key>` per programme, `day`, `approach`, `campus`, `staff_team`, `about`, `fees`, `faq`; `tests/design_template_school_public_test.php`.
+- 2 (done, #7625): `pages_public.php`: home (`home_events`, `home_posts`), `programmes` and one `programme_<key>` per programme, `day`, `approach`, `campus`, `staff_team`, `about`, `fees`, `faq`; `tests/design_template_school_public_test.php`.
 
 - 3: `events.php`: the Events collection (`events` by `?programme=`, the `event` page with date as words, place and details, `event_new`), `home_events`; test.
 
