@@ -702,9 +702,9 @@ function ws_flow_node_texts($node)
         return ((($rule['type'] ?? '') === 'value') && is_string($rule['ref'] ?? null) && ($rule['ref'] !== '')) ? array($rule['ref']) : array();
     }
 
-    // A derived value box reads its two inputs.
+    // A derived value box reads its inputs.
     if ($kind === 'value') {
-        return array_values(array_filter(array($node['config']['a'] ?? null, $node['config']['b'] ?? null), 'is_string'));
+        return array_values(array_filter(array($node['config']['a'] ?? null, $node['config']['b'] ?? null, $node['config']['c'] ?? null), 'is_string'));
     }
 
     // A loop's boxes read their list or the value they gather.
@@ -2795,6 +2795,11 @@ function ws_flow_js_strings()
         'fl_derived_a'        => lang('Value it works from'),
         'fl_derived_b'        => lang('With'),
         'fl_derived_days'     => lang('Days to add'),
+        'fl_derived_find'     => lang('Find'),
+        'fl_derived_with'     => lang('Replace with (empty takes it out)'),
+        'fl_derived_length'   => lang('Number of characters'),
+        'fl_derived_split'    => lang('Split at (empty: spaces)'),
+        'fl_derived_part'     => lang('Part to take (1 the first, -1 the last)'),
         'fl_derived_op'       => lang('Comparison'),
         'fl_derived_places'   => lang('Decimal places'),
         'fl_derived_formula'  => lang('Formula'),

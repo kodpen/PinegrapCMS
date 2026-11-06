@@ -1508,6 +1508,8 @@
     "Write in a channel": "Bir kanala yaz",
     "Write in a sentence what the flow should do.": "Akışın ne yapacağını bir cümleyle yazın.",
     "Write in a sentence what the scheduled action should do.": "Programlanmış işlemin ne yapacağını bir cümleyle yazın.",
+    "Write in capitals": "Büyük harfle yaz",
+    "Write in small letters": "Küçük harfle yaz",
     "Write in the cells. Tab moves to the next one; right-click a cell for rows, columns and alignment.": "Hücrelere yazın; Tab bir sonrakine geçer. Satır, sütun ve hizalama için hücreye sağ tıklayın.",
     "Write in the channel they joined: “{var:1}”": "Katıldığı kanala yaz: “{var:1}”",
     "Write in {var:1}: “{var:2}”": "{var:1} kanalına yaz: “{var:2}”",
