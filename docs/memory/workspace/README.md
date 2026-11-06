@@ -289,6 +289,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-screen-messages.md: Server-drawn Workspace screens show liveform errors, warnings and notices as corner toasts through ws_screen_messages(), never the panel's Notice/Warning/Error boxes (#6799)
 - workspace-settings-card-saves.md: Workspace Settings card saves: list allow-list, refused form refilled with its error, rank rule for team rows, hours and holiday checks, mailbox fields
 - workspace-settings-row-names.md: Workspace Settings rows name their person or department, hours boxes use the panel's decimal separator, the Claude guide's copy fields are named (#2918); no two active departments of one name
+- workspace-status-ai-draft.md: The Pinegrap AI draft of a channel's status update (ws_status_ai, status.php): what the model reads, why it asks through pg_ai_chat() and not ws_ai_http()
 - workspace-tag-card.md: A Workspace message that is one record tag and nothing else drawn as a card per reader (ws_tag_card_html(), PR #2150): which bodies, what the card shows, rights, where it is drawn, what stays text
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-task-filters.md: My Tasks, planning board and Work Calendar filters (workspace.js): named department selects, scope buttons that follow a department pick, pressed week buttons, the announced task count
