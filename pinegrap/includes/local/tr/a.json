@@ -1605,6 +1605,7 @@
     "A value may go only into the path or query of the address, never into its host or scheme.": "Bir değer yalnız adresin yol veya sorgu kısmına girebilir; sunucu adına veya şemasına asla.",
     "A value of an earlier box": "Önceki bir kutunun değeri",
     "A value of the box {var:1} needs a name of small letters, digits and _ that does not start with a digit.": "{var:1} kutusundaki bir değerin küçük harf, rakam ve _ ile yazılmış, rakamla başlamayan bir adı olmalı.",
+    "A value such as a booking's start, or a date written as YYYY-MM-DD HH:MM. A date that has passed lets the boxes after it start at once; at most 90 days ahead.": "Rezervasyonun başlangıcı gibi bir değer ya da YYYY-AA-GG SS:DD biçiminde yazılmış bir tarih. Geçmiş bir tarihte ardından gelen kutular hemen başlar; en fazla 90 gün ilerisi.",
     "A value to use when the first one fails": "İlki hata verirse kullanılacak değer",
     "A vapour chamber that keeps it cool": "Serin tutan buhar odası",
     "A variant of this experiment is no longer a draft.": "Bu deneyin bir varyantı artık taslak değil.",

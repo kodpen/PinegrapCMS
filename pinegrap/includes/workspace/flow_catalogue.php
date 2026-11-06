@@ -59,6 +59,7 @@ function ws_flow_setting_values()
         'task.priority'      => $priorities,
         'task_open.priority' => $priorities,
         'delay.unit'         => array_keys(ws_flow_delay_units()),
+        'delay.mode'         => array('for', 'until'),
         'webhook.format'     => array('generic', 'text', 'discord'),
         'web_check.mode'     => array('status', 'ssl'),
         'task_digest.mode'   => array('mine', 'channel'),

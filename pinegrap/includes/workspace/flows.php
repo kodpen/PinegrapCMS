@@ -707,6 +707,11 @@ function ws_flow_node_texts($node)
         return array_values(array_filter(array($node['config']['a'] ?? null, $node['config']['b'] ?? null, $node['config']['c'] ?? null), 'is_string'));
     }
 
+    // A delay box waiting until a date reads that date.
+    if ($kind === 'delay') {
+        return ((($node['config']['mode'] ?? '') === 'until') && is_string($node['config']['at'] ?? null)) ? array($node['config']['at']) : array();
+    }
+
     // A loop's boxes read their list or the value they gather.
     if ($kind === 'for_each') {
         $keys = array(function_exists('ws_flow_loop_source_key') ? ws_flow_loop_source_key((array) $node['config']) : 'list');
@@ -2961,7 +2966,15 @@ function ws_flow_js_strings()
         'fl_delay_unit_minutes' => lang('Minutes'),
         'fl_delay_unit_hours' => lang('Wait hours'),
         'fl_delay_unit_days'  => lang('Wait days'),
-        'fl_delay_help'       => lang('The boxes after it start when the time is up: at least a minute, at most a week.'),
+        'fl_delay_help'       => lang('The boxes after it start when the time is up: at least a minute, at most 90 days.'),
+        'fl_delay_mode'       => lang('Wait'),
+        'fl_delay_mode_for'   => lang('For a time'),
+        'fl_delay_mode_until' => lang('Until a date'),
+        'fl_delay_at'         => lang('Date and time'),
+        'fl_delay_at_help'    => lang('A value such as a booking\'s start, or a date written as YYYY-MM-DD HH:MM. A date that has passed lets the boxes after it start at once; at most 90 days ahead.'),
+        'fl_delay_before'     => lang('This long before it'),
+        'fl_delay_until'      => ws_js_template('until {var:1}', 1),
+        'fl_delay_until_before' => ws_js_template('{var:1} before {var:2}', 2),
         'fl_delay_none'       => lang('No time set'),
         'fl_self_retry'       => lang('Tries again after a failure'),
         'fl_self_retry_help'  => lang('0 for never; at most 7 more tries, 8 in all. The arrow on failed is taken once they are used.'),
@@ -3521,7 +3534,7 @@ function ws_flow_js_config($viewer, $mode)
 
     // The boxes that may try again on their own after a failure, and how
     // many times at most (flow_runs.php).
-    $steps['retry'] = array('kinds' => function_exists('ws_step_kinds') ? array_keys(ws_step_kinds()) : array(), 'max' => WS_FLOW_RETRY_MAX, 'after_max' => WS_FLOW_DELAY_MAX);
+    $steps['retry'] = array('kinds' => function_exists('ws_step_kinds') ? array_keys(ws_step_kinds()) : array(), 'max' => WS_FLOW_RETRY_MAX, 'after_max' => WS_FLOW_RETRY_AFTER_MAX);
 
     if ($build && function_exists('ws_scheduled_metrics')) {
         foreach (ws_scheduled_metrics() as $key => $metric) {

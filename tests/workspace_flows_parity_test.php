@@ -2453,7 +2453,7 @@ function workspace_flows_parity_table()
 			array(array('step webhook first 4000'), 3, 'webhook box: text 4000 characters'),
 			array(array('step web_check min 365', 'step web_check first 200', 'step web_check min 60000'), 3, 'web check box: at most 365 days left asked for, a text of 200 characters, 60000 ms'),
 			array(array('step report first 160', 'step report first 20'), 3, 'report box: title 160 characters, at most 20 counts'),
-			array(array('step trigger min 10080'), 3, 'delay box, the flows\' own: at most 10080 minutes (a week)'),
+			array(array('step trigger min 10080'), 3, 'delay box, the flows\' own: at most 129600 minutes (90 days)'),
 			array(array('ws_scheduled_people() first 50'), 3, 'notify, task and task e-mail boxes: at most 50 people'),
 			array(array('ws_scheduled_url_input() length > 2000'), 3, 'webhook and web check boxes: an address of at most 2000 characters'),
 		),
