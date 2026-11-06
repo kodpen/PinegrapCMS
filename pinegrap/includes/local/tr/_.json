@@ -182,6 +182,7 @@
     "%d minutes": "%d dakika",
     "%s a month": "Aylık %s",
     "%s out of 5": "5 üzerinden %s",
+    "%s per traveller, paid once we confirm your places. The balance is due six weeks before departure.": "Kişi başı %s kapora, yerlerinizi onayladığımızda ödenir. Kalan tutar kalkıştan altı hafta önce ödenir.",
     "%s: Classroom": "%s: Sınıf",
     "%{var:1} off shipping ({var:2})": "kargoya %{var:1} indirim ({var:2})",
     "& Time": "ve Saati",
