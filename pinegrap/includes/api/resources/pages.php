@@ -625,6 +625,8 @@ function api_pages_update($params) {
 		'vars'   => array($existing['page_name'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
+	// api_webhook_enqueue() keeps the event for the Workspace too, so a page
+	// changed through the API starts flows without a second record.
 	api_webhook_enqueue('page.updated', array('id' => $id, 'name' => $existing['page_name']));
 
 	$row = api_row(api_page_select() . " WHERE page.page_id = '" . $id . "' LIMIT 1");
@@ -773,6 +775,18 @@ function api_pages_delete($params) {
 	if (!pg_folder_edit_access($page['page_folder'], $app['owner']['id'], $app['owner']['role'])) {
 
 		api_fail(403, 'forbidden', lang('The account that owns this application cannot edit this folder.'));
+
+	}
+
+	// The variant draft of an experiment that is set up, running or paused
+	// stays until the experiment ends, as the panel's recycle refuses it
+	// (pg_recycle_page()): binned or deleted, the experiment serves visitors
+	// a page that is no longer there. Asked for both paths, before the dry run.
+	$held = pg_experiment_variant_hold_message($id, (string)$page['page_name']);
+
+	if ($held !== '') {
+
+		api_fail(409, 'experiment_variant_held', $held);
 
 	}
 

@@ -18,4 +18,7 @@ description: Which columns erp_account_save() writes only when given and which i
 ## What is the optional-column rule for CSV import?
 - Do NOT put the key in the `$account` defaults; write it only when its `case` matches. Then the key-exists rule protects a column absent from the file (a new card keeps the DB default). `overdue_notify_customer` works this way.
 
+## What does an empty cell do on an update import?
+- Nothing: `erp_import_normalize_row()` lists a field in `mapped` only when its cell holds a value, and `erp_import_merge()` writes only `mapped` fields. Before, a mapped column with an empty cell counted as supplied, so an update replaced the stored type, country, currency and status with the row's fallback (default type and country, base currency, Active) and the Taxpayer with a guess from the tax number. `tests/erp_import_update_empty_cell_test.php`.
+
 Related: docs/memory/erp/erp-account-contact-link.md

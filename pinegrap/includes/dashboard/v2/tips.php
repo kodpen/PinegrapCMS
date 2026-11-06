@@ -56,6 +56,19 @@ function pg_dashboard_v2_tips($labels, $values, $format, $compare = null, $compa
 }
 
 /**
+ * The English plural suffix for a count, the value of a lang() string's
+ * {suffix:1}: empty for one, "s" otherwise. Compares the raw count, never
+ * its formatted text ("1,000"). Pure.
+ *
+ * @param int|string $count
+ * @return string
+ */
+function pg_dashboard_v2_plural_suffix($count)
+{
+    return ((int) $count === 1) ? '' : 's';
+}
+
+/**
  * The labels of evenly sized time slots from $from: the hour ("14:00") for
  * hourly slots, else the day in the site's words. Pure apart from the
  * clock's zone.

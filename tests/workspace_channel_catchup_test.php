@@ -55,3 +55,22 @@ function test_workspace_channel_catchup_for_late_tasks_alone_opens_no_message()
 	pg_assert_same(0, $line['go'], 'no message came, so none is offered');
 	pg_assert_true($line['tasks']);
 }
+
+function test_workspace_channel_task_counts_leave_an_empty_due_date_out()
+{
+	$open = array(
+		array('id' => 1, 'due_date' => '0000-00-00', 'status' => 'todo'),
+		array('id' => 2, 'due_date' => null, 'status' => 'waiting'),
+		array('id' => 3, 'due_date' => '2026-11-04', 'status' => 'doing'),
+		array('id' => 4, 'due_date' => '2026-11-05', 'status' => 'todo'),
+		array('id' => 5, 'due_date' => '2026-11-09', 'status' => 'todo'),
+	);
+	$people = array(1 => array(7), 3 => array(7, 8), 5 => array(8));
+
+	$counts = ws_channel_task_counts($open, $people, 7, '2026-11-05');
+
+	pg_assert_same(1, $counts['overdue'], 'a 0000-00-00 due date is no due date, not a late one');
+	pg_assert_same(1, $counts['due_today']);
+	pg_assert_same(1, $counts['waiting']);
+	pg_assert_same(2, $counts['mine']);
+}

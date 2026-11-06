@@ -23,7 +23,14 @@ validate_contacts_access($user);
 $contact_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 // try to find contact for supplied id
-$query = "SELECT id, email_address, affiliate_approved, affiliate_code FROM contacts WHERE id = ?";
+$query = "SELECT
+        contacts.id, contacts.email_address, contacts.affiliate_approved, contacts.affiliate_code, contacts.affiliate_name,
+        contacts.first_name, contacts.last_name, contacts.company, contacts.website, contacts.business_phone,
+        contacts.mobile_phone, contacts.business_city, contacts.business_country, contacts.timestamp,
+        user.user_username
+    FROM contacts
+    LEFT JOIN user ON contacts.user = user.user_id
+    WHERE contacts.id = ?";
 $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
 
 // if contact could not be found output error
@@ -49,23 +56,37 @@ $already_approved = ($row['affiliate_approved'] == 1);
 // the approval itself is a POST that carries the token, so a link on a
 // foreign page cannot approve an affiliate on the administrator's behalf.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    require_once(PG_FUNCTIONS_DIR . '/includes/forms/approve_affiliate_form.php');
+
     $contact_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $contact_id;
+
+    $last_modified = ((int) $row['timestamp'] > 0)
+        ? get_relative_time(array('timestamp' => (int) $row['timestamp'])) . ((string) $row['user_username'] !== '' ? ' ' . h($row['user_username']) : '')
+        : '&mdash;';
 
     // The request e-mail can be opened more than once: an approved affiliate
     // is only reported, so a second approval sends no second welcome e-mail.
     if ($already_approved) {
-        $output_body = '
-                            <p>' . lang(array('string' => '{var:1} is already an approved affiliate. Affiliate code: {var:2}', 'vars' => array('<strong>' . h($email_address) . '</strong>', '<strong>' . h($existing_affiliate_code) . '</strong>'))) . '</p>
-                            <a href="' . $contact_url . '" class="btn btn-solid theme-primary">' . lang('Go to Contact') . '</a>';
+        $buttons = '
+                                        <a href="' . h($contact_url) . '" class="btn my-1 btn-solid theme-primary"><span class="material-icons me-3" aria-hidden="true">person</span><span class="pg-btn-label">' . lang('Go to Contact') . '</span></a>';
     } else {
-        $output_body = '
-                            <p>' . lang(array('string' => 'Approve {var:1} as an affiliate? The affiliate code is created if there is none yet, and a welcome e-mail is sent to the contact.', 'vars' => '<strong>' . h($email_address) . '</strong>')) . '</p>
-                            <form method="post" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/approve_affiliate.php" class="disable_shortcut">
-                                ' . get_token_field() . '
-                                <input type="hidden" name="id" value="' . $contact_id . '">
-                                <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-check-lg me-1"></i>' . lang('Approve Affiliate') . '</button>
-                                <a href="' . $contact_url . '" class="btn btn-outline theme-secondary">' . lang('Cancel') . '</a>
-                            </form>';
+        $buttons = '
+                                        <button type="submit" id="submit_approve" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">how_to_reg</span><span class="pg-btn-label">' . lang('Approve Affiliate') . '</span></button>';
+    }
+
+    $content = pg_approve_affiliate_form_layout(
+        pg_approve_affiliate_form_card($row, $already_approved)
+        . pg_approve_affiliate_form_status($row, $already_approved, $last_modified, $contact_url),
+        $buttons
+    );
+
+    // Only a pending request posts: the approval carries the session token.
+    if (!$already_approved) {
+        $content = '
+                <form method="post" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/approve_affiliate.php" class="disable_shortcut">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="id" value="' . $contact_id . '">' . $content . '
+                </form>';
     }
 
     echo
@@ -83,16 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 ),
             )
         ) . '
-        <main class="container mb-12" style="min-height:calc(100vh - 175px)" id="content">
-            <div class="row">
-                <div class="col-12 md:col-8 lg:col-6">
-                    <div class="card">
-                        <div class="card-body">
-                            ' . $output_body . '
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <main id="content" class="container-fluid">' . $content . '
         </main>
     ' . output_footer();
     exit();

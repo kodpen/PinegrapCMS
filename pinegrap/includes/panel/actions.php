@@ -195,7 +195,6 @@ function pg_panel_actions()
         // contacts right and the group; the handler checks both.
         'audience_refresh' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_refresh', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => true),
         'audience_count' => array('file' => 'audiences.php', 'handler' => 'pg_panel_audience_count', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'booking_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_booking_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'list_table_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'list_table_sort' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_sort', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),

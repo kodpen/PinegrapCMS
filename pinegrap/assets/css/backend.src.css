@@ -22259,6 +22259,75 @@ select.pg-list-table-field option.private {
 .pg-bookings-week .list-group-item .d-flex {
   flex-wrap: wrap;
 }
+
+/* Live picture of a design or template (pg_design_live_picture(),
+   assets/js/pg_live_picture.js): the real page drawn at 1280x800 in a
+   script-free frame, scaled to the box from its top left corner. The frame
+   never takes a click: the box's parent (a card, a radio's label) does. */
+.pg-live-picture {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .5rem;
+  background: var(--pg-bg-2);
+}
+.pg-live-picture > iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  background: #fff;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.pg-live-picture.pg-loaded > iframe {
+  opacity: 1;
+}
+.pg-live-picture-wait {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--pg-border-color) 45%, transparent) 50%, transparent 70%) 0 0 / 300% 100%;
+}
+.pg-live-picture.pg-loading .pg-live-picture-wait {
+  display: block;
+  animation: pg-live-picture-wait 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-live-picture.pg-loading .pg-live-picture-wait {
+    animation: none;
+  }
+  .pg-live-picture > iframe {
+    transition: none;
+  }
+}
+@keyframes pg-live-picture-wait {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+.pg-live-picture-fallback {
+  position: absolute;
+  inset: 0;
+}
+.pg-live-picture-fallback[hidden] {
+  display: none;
+}
+.pg-live-picture-fallback > svg,
+.pg-live-picture-fallback > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pg-live-picture.pg-failed:not(:has(.pg-live-picture-fallback))::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(135deg, transparent 0 .75rem, color-mix(in srgb, var(--pg-border-color) 35%, transparent) .75rem 1.5rem);
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which

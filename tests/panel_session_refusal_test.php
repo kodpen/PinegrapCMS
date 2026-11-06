@@ -129,3 +129,39 @@ function test_panel_session_refusal_exempt_handlers_refuse_before_validate_user(
 		}
 	}
 }
+
+function test_panel_session_refusal_every_exempt_handler_answers_json_first()
+{
+	// Every exempt action that is not a storefront endpoint: a handler that
+	// loads the user with validate_user() refuses an ended session in JSON
+	// before it, either with panel_login_refusal() or with validate_token(),
+	// which answers a missing session token in JSON too.
+	require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+	$seen = array();
+	foreach (pg_panel_actions() as $action => $entry) {
+		if (empty($entry['exempt']) || !empty($entry['public']) || isset($seen[$entry['handler']])) {
+			continue;
+		}
+		$seen[$entry['handler']] = true;
+		$path = 'includes/panel/' . $entry['file'];
+		$body = panel_session_refusal_handler_body(str_replace("\r\n", "\n", panel_session_refusal_source($path)), $entry['handler']);
+		pg_assert_true($body !== '', $path . ': ' . $entry['handler'] . ' not found');
+		$validate_at = strpos($body, '= validate_user();');
+		if ($validate_at === false) {
+			continue;
+		}
+		$guard_at = strpos($body, 'respond(panel_login_refusal());');
+		$token_at = strpos($body, 'validate_token();');
+		pg_assert_true(
+			(($guard_at !== false) && ($guard_at < $validate_at)) || (($token_at !== false) && ($token_at < $validate_at)),
+			$path . ': ' . $entry['handler'] . ' calls validate_user() before any JSON session refusal'
+		);
+	}
+}
+
+function test_panel_session_refusal_toolbar_properties()
+{
+	$body = panel_session_refusal_handler_body(panel_session_refusal_source('includes/panel/designer.php'), 'pg_panel_update_toolbar_properties');
+	pg_assert_contains('respond(panel_login_refusal());', $body, 'update_toolbar_properties: session refusal');
+	pg_assert_true(strpos($body, "'Invalid login.'") === false, 'update_toolbar_properties: a session refusal without a way out');
+}

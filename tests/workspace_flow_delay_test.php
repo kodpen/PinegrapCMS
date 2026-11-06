@@ -68,31 +68,32 @@ function test_workspace_flow_delay_kind()
 // Its settings: a whole amount and a unit; anything else is dropped.
 function test_workspace_flow_delay_config()
 {
-	pg_assert_same(array('amount' => 2, 'unit' => 'hours'), ws_flow_config_normalize('delay', array('amount' => '2', 'unit' => 'hours', 'x' => 1)));
-	pg_assert_same(array('amount' => '', 'unit' => 'minutes'), ws_flow_config_normalize('delay', array()));
-	pg_assert_same(array('amount' => '', 'unit' => 'minutes'), ws_flow_config_normalize('delay', array('amount' => 'soon', 'unit' => 'weeks')));
-	pg_assert_same(array('amount' => 0, 'unit' => 'days'), ws_flow_config_normalize('delay', array('amount' => -3, 'unit' => 'days')));
-	pg_assert_same(array('amount' => 99999, 'unit' => 'days'), ws_flow_config_normalize('delay', array('amount' => 10 ** 9, 'unit' => 'days')), 'held to a number the problems name');
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 2, 'unit' => 'hours'), ws_flow_config_normalize('delay', array('amount' => '2', 'unit' => 'hours', 'x' => 1)));
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => '', 'unit' => 'minutes'), ws_flow_config_normalize('delay', array()));
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => '', 'unit' => 'minutes'), ws_flow_config_normalize('delay', array('amount' => 'soon', 'unit' => 'weeks')));
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 0, 'unit' => 'days'), ws_flow_config_normalize('delay', array('amount' => -3, 'unit' => 'days')));
+	pg_assert_same(array('mode' => 'for', 'at' => '', 'amount' => 999999, 'unit' => 'days'), ws_flow_config_normalize('delay', array('amount' => 10 ** 9, 'unit' => 'days')), 'held to a number the problems name');
 
 	pg_assert_same(120, ws_flow_delay_minutes(array('amount' => 2, 'unit' => 'hours')));
 	pg_assert_same(4320, ws_flow_delay_minutes(array('amount' => 3, 'unit' => 'days')));
 	pg_assert_same(0, ws_flow_delay_minutes(array('amount' => '', 'unit' => 'minutes')));
 }
 
-// The range of a scheduled action's start delay: a minute to a week.
+// A minute to 90 days.
 function test_workspace_flow_delay_problems()
 {
-	pg_assert_same(10080, WS_FLOW_DELAY_MAX);
+	pg_assert_same(129600, WS_FLOW_DELAY_MAX);
 	pg_assert_same(array(), ws_flow_delay_problems(array('amount' => 1, 'unit' => 'minutes'), 'Wait'));
 	pg_assert_same(array(), ws_flow_delay_problems(array('amount' => 7, 'unit' => 'days'), 'Wait'));
 	pg_assert_same(1, count(ws_flow_delay_problems(array('amount' => '', 'unit' => 'minutes'), 'Wait')), 'no time set');
 	pg_assert_same(1, count(ws_flow_delay_problems(array('amount' => 0, 'unit' => 'hours'), 'Wait')), 'nothing to wait');
-	pg_assert_same(1, count(ws_flow_delay_problems(array('amount' => 169, 'unit' => 'hours'), 'Wait')), 'over a week');
+	pg_assert_same(1, count(ws_flow_delay_problems(array('amount' => 2161, 'unit' => 'hours'), 'Wait')), 'over 90 days');
+	pg_assert_same(array(), ws_flow_delay_problems(array('amount' => 90, 'unit' => 'days'), 'Wait'), '90 days');
 
 	$check = ws_flow_graph_check(ws_flow_graph_normalize(array(
 		'nodes' => array(
 			array('id' => 'start', 'kind' => 'manual', 'config' => array()),
-			array('id' => 'wait', 'kind' => 'delay', 'config' => array('amount' => 8, 'unit' => 'days')),
+			array('id' => 'wait', 'kind' => 'delay', 'config' => array('amount' => 91, 'unit' => 'days')),
 		),
 		'edges' => array(array('from' => 'start', 'to' => 'wait', 'on' => 'next')),
 	)));

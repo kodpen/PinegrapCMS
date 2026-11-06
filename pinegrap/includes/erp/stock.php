@@ -435,20 +435,31 @@ function erp_stock_split_by_cost($total, $components)
  *
  * @param array $parent_moves     erp_stock_moves rows of the invoice line:
  *                                product_id, kind, quantity, cost_total, stock_wanted
+ * Each share is the rounded running total after this return less the one
+ * before it, so a line returned in parts gives back exactly the cost and
+ * quantity it moved: three single returns of a 3-unit line costed 200 take
+ * back 67, 66 and 67, where three rounded thirds would take back 201.
+ *
  * @param float $parent_quantity  the invoice line's quantity
  * @param float $returned         the quantity returned
+ * @param float $returned_before  the line's quantity already returned by
+ *                                returns still standing
  * @return array  list of product_id, kind, direction, quantity, cost_total,
  *                stock_wanted, purchase_side
  */
-function erp_stock_return_moves($parent_moves, $parent_quantity, $returned)
+function erp_stock_return_moves($parent_moves, $parent_quantity, $returned, $returned_before = 0.0)
 {
     $parent_quantity = (float) $parent_quantity;
     $returned = (float) $returned;
+    $before = max(0.0, (float) $returned_before);
     $out = array();
 
     if (($parent_quantity <= 0) || ($returned <= 0)) {
         return $out;
     }
+
+    $share_before = $before / $parent_quantity;
+    $share_after = ($before + $returned) / $parent_quantity;
 
     foreach ($parent_moves as $parent) {
         if ((float) $parent['quantity'] <= 0) {
@@ -456,14 +467,15 @@ function erp_stock_return_moves($parent_moves, $parent_quantity, $returned)
         }
 
         $purchase = ((string) $parent['kind'] === 'purchase');
-        $quantity = round((float) $parent['quantity'] * $returned / $parent_quantity, 4);
+        $quantity = round(round((float) $parent['quantity'] * $share_after, 4) - round((float) $parent['quantity'] * $share_before, 4), 4);
+        $cost = (int) round((int) $parent['cost_total'] * $share_after) - (int) round((int) $parent['cost_total'] * $share_before);
 
         $out[] = array(
             'product_id' => (int) $parent['product_id'],
             'kind' => $purchase ? 'purchase_return' : 'sales_return',
             'direction' => $purchase ? 'out' : 'in',
             'quantity' => $quantity,
-            'cost_total' => (int) round((int) $parent['cost_total'] * $returned / $parent_quantity),
+            'cost_total' => $cost,
             'stock_wanted' => ((int) $parent['stock_wanted'] === 1) && erp_stock_whole($quantity),
             'purchase_side' => $purchase,
         );
@@ -621,7 +633,16 @@ function erp_stock_post_return($return_id, $created_by = 0)
 
         $parent_quantity = (float) db_value("SELECT quantity FROM erp_invoice_items WHERE id = '" . (int) $line['parent_line_id'] . "' LIMIT 1");
 
-        foreach (erp_stock_return_moves($parents, $parent_quantity, (float) $line['quantity']) as $move) {
+        // What earlier returns of the same line took back and still stand
+        // (a cancelled return's moves are turned round), so this one's cost
+        // share is taken from the running total.
+        $returned_before = (float) db_value("SELECT COALESCE(SUM(i.quantity), 0) FROM erp_invoice_items i
+            WHERE i.parent_line_id = '" . (int) $line['parent_line_id'] . "' AND i.id <> '" . (int) $line['id'] . "'
+              AND EXISTS (SELECT 1 FROM erp_stock_moves m
+                  WHERE m.line_id = i.id AND m.kind IN ('purchase_return', 'sales_return')
+                    AND NOT EXISTS (SELECT 1 FROM erp_stock_moves r WHERE r.reverses_id = m.id))");
+
+        foreach (erp_stock_return_moves($parents, $parent_quantity, (float) $line['quantity'], $returned_before) as $move) {
             $ok = erp_stock_record(array_merge($move, array(
                 'invoice_id' => (int) $return['id'],
                 'line_id' => (int) $line['id'],

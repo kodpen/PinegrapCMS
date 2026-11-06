@@ -26,6 +26,19 @@ if (!pg_cron_is_background_run()) {
     validate_area_access($user, 'manager');
 }
 
+// One run at a time, whoever starts it: a crontab line and a manager's
+// request take the job's lock in cron_runs as the general job's dispatcher
+// does (it has taken it already for a dispatched run, and releases it
+// itself). A member is marked as warned only after the mail is sent, so two
+// runs side by side read the same members and each mailed them the warning.
+if (!defined('PG_CRON_DISPATCH')) {
+    if (!pg_cron_claim('membership_job')) {
+        exit();
+    }
+
+    register_shutdown_function('pg_cron_release', 'membership_job');
+}
+
 // A job also when a signed-in manager opens it: its contact lines name no one.
 pg_audit_as_job(true);
 

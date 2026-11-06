@@ -272,3 +272,31 @@ function pg_visitor_report_export_columns($row, $ecommerce)
 
     return $ecommerce ? $columns : array_slice($columns, 0, 4);
 }
+
+/**
+ * One export line (RFC 4180, as spreadsheets read it), with its line break:
+ * a cell holding a quote, comma, line break or edge space is quoted with its
+ * quotes doubled. Written by hand rather than with fputcsv(), whose backslash
+ * escape leaves the quote after a backslash undoubled: a visitor-set
+ * referrer or utm_* value `x\",=1+1` then ended its cell early and put
+ * `=1+1` unguarded in the next one. Pure.
+ *
+ * @param array $cells
+ * @return string
+ */
+function pg_visitor_report_csv_line($cells)
+{
+    $quoted = array();
+
+    foreach ($cells as $text) {
+        $text = (string) $text;
+
+        if (($text !== trim($text)) || (strpbrk($text, "\",\r\n") !== false)) {
+            $text = '"' . str_replace('"', '""', $text) . '"';
+        }
+
+        $quoted[] = $text;
+    }
+
+    return implode(',', $quoted) . "\n";
+}

@@ -524,6 +524,13 @@ function api_comments_delete($params) {
 
 	api_exec("DELETE FROM notifications WHERE comment_id = '" . $id . "'");
 
+	// A question goes with its staff answers, as on the comments screen.
+	if (api_comment_kind($row) === 'question') {
+
+		pg_product_question_delete_answers($id);
+
+	}
+
 	pg_comment_refresh_record_info((int)$row['page_id'], (string)$row['item_type'], (int)$row['item_id']);
 
 	pg_review_comment_changed((string)$row['item_type'], (int)$row['item_id']);

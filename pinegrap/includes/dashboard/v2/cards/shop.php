@@ -73,6 +73,24 @@ function pg_dashboard_v2_shop_columns($windows)
     return implode(",\n            ", $columns);
 }
 
+/**
+ * Where the card's "See all" link goes. The card is open to a user with
+ * commerce reports only, whom the orders list refuses (it asks for
+ * commerce), so that user is sent to the order reports. Pure.
+ *
+ * @param bool $can_orders  the person may open view_orders.php
+ * @param bool $can_reports the person may open view_order_reports.php
+ * @return string a panel address, or '' for no link
+ */
+function pg_dashboard_v2_shop_url($can_orders, $can_reports)
+{
+    if ($can_orders) {
+        return 'view_orders.php';
+    }
+
+    return $can_reports ? 'view_order_reports.php' : '';
+}
+
 function pg_dashboard_v2_card_shop($user, $period, $compare)
 {
     if (!pg_dashboard_v2_gate('shop_summary', $user)) {
@@ -135,6 +153,9 @@ function pg_dashboard_v2_card_shop($user, $period, $compare)
         'bars_label' => lang('Revenue per day, last 7 days, today last') . ' — ' . implode(', ', $bar_labels),
         'rows_title' => lang('Best Sellers'),
         'rows'       => $rows,
-        'url'        => 'view_orders.php',
+        'url'        => pg_dashboard_v2_shop_url(
+            pg_dashboard_v2_gate('shop', $user),
+            ((int) $user['role'] < 3) || (defined('USER_MANAGE_ECOMMERCE_REPORTS') && USER_MANAGE_ECOMMERCE_REPORTS)
+        ),
     ));
 }

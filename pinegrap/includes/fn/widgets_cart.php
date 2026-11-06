@@ -3548,7 +3548,7 @@ function _pg_cart_recurring_defaults($row)
     return array(
         'period'     => $period,
         'payments'   => (int)($row['product_number_of_payments'] ?? 0),
-        'start_date' => date('Y-m-d', time() + (86400 * max(0, $days))),
+        'start_date' => date('Y-m-d', pg_calendar_days_later(max(0, $days))),
     );
 }
 

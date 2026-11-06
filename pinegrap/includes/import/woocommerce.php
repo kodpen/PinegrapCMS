@@ -373,6 +373,41 @@ function pg_import_woocommerce_options($row)
 }
 
 /**
+ * The weight of a row in pounds, the unit products.weight holds. The
+ * column is named with the shop's unit, as "Weight (kg)", "Weight (g)",
+ * "Weight (lbs)" or "Weight (oz)"; one without a unit is in kilograms,
+ * WooCommerce's default. A decimal comma is read too; '' when the cell is
+ * empty or not a number. Pure.
+ *
+ * @param array $row lower-case header => cell
+ * @return string
+ */
+function pg_import_woocommerce_weight($row)
+{
+    foreach ($row as $column => $cell) {
+        if (strpos((string) $column, 'weight') !== 0) {
+            continue;
+        }
+
+        $figure = trim((string) $cell);
+
+        if ((strpos($figure, ',') !== false) && (strpos($figure, '.') === false)) {
+            $figure = str_replace(',', '.', $figure);
+        }
+
+        if (!is_numeric($figure)) {
+            return '';
+        }
+
+        $unit = preg_match('/\(\s*([a-z]+)\s*\)/', (string) $column, $match) ? $match[1] : 'kg';
+
+        return pg_import_weight_pounds((float) $figure, $unit);
+    }
+
+    return '';
+}
+
+/**
  * The product item of a row and, for a variable product, its variation
  * rows. Pure but for the price reader's file.
  *
@@ -421,11 +456,7 @@ function pg_import_woocommerce_item($row, $children, $line)
         'error'       => '',
     );
 
-    foreach ($row as $column => $cell) {
-        if (strpos($column, 'weight') === 0) {
-            $data['weight'] = $cell;
-        }
-    }
+    $data['weight'] = pg_import_woocommerce_weight($row);
 
     if ($type === 'variation') {
         $data['error'] = lang(array('string' => 'Its parent product ({var:1}) is not in the file.', 'vars' => array($row['parent'])));

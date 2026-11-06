@@ -107,7 +107,7 @@ function test_log_activity_ip_both_copies_and_the_limit_share_the_helper()
 	pg_assert_same(false, strpos($body, 'REMOTE_ADDR'), 'get_file.php reads no REMOTE_ADDR');
 
 	$limit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/email_a_friend.php');
-	pg_assert_contains("waf_rate_hits(pg_auth_request_address(), 'eaf', 86400)", $limit, 'the limit counts by the logged address');
+	pg_assert_contains('pg_eaf_limit_take(pg_auth_request_address())', $limit, 'the limit counts by the logged address');
 	pg_assert_same(false, strpos($limit, 'REMOTE_ADDR'), 'email_a_friend.php reads no REMOTE_ADDR');
 }
 

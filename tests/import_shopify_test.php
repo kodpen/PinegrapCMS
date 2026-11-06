@@ -66,7 +66,7 @@ function test_import_shopify_variable_product()
 	pg_assert_same(array('https://cdn.example.com/files/shirt-front.jpg', 'https://cdn.example.com/files/shirt-back.jpg'), $data['images'], 'pictures in order');
 	pg_assert_same(array(array('Shirts')), $data['categories'], 'type as category');
 	pg_assert_same('summer, linen', $data['keywords'], 'tags');
-	pg_assert_same('0.25', $data['weight'], 'grams in kg');
+	pg_assert_same('0.5512', $data['weight'], 'grams in pounds, the unit products.weight holds');
 	pg_assert_true($data['enabled'], 'published');
 }
 
@@ -118,8 +118,12 @@ function test_import_shopify_customers()
 
 function test_import_shopify_weight()
 {
-	pg_assert_same('1.5', pg_import_shopify_weight(array('variant grams' => '1500', 'variant weight unit' => 'kg')), 'kg');
-	pg_assert_same('250', pg_import_shopify_weight(array('variant grams' => '250', 'variant weight unit' => 'g')), 'g');
+	// products.weight is in pounds whatever unit the shop showed: before,
+	// 1500 g in a kg shop was stored as 1.5 (lb), 250 g in a g shop as 250.
+	pg_assert_same('3.3069', pg_import_shopify_weight(array('variant grams' => '1500', 'variant weight unit' => 'kg')), 'kg shop');
+	pg_assert_same('0.5512', pg_import_shopify_weight(array('variant grams' => '250', 'variant weight unit' => 'g')), 'g shop');
+	pg_assert_same('1', pg_import_shopify_weight(array('variant grams' => '453.59237', 'variant weight unit' => 'lb')), 'lb shop');
+	pg_assert_same('0.0022', pg_import_shopify_weight(array('variant grams' => '1')), 'one gram');
 	pg_assert_same('', pg_import_shopify_weight(array('variant grams' => '0')), 'none');
 }
 

@@ -4,7 +4,7 @@ description: Turkish search of DataTables lists searched in the browser (orders,
 ---
 
 ## Which lists does it cover?
-- Every `table.chart` without `data-pg-list-action` whose search box is on (not `datatable-restricted-mode`), on a panel whose `software_system_language` starts with `tr`: orders (`view_orders.php`), pages, styles, menus, calendars and the rest. Lists paged on the server search in SQL (`server-paged-lists.md`, PR #3677) and are skipped (`options.serverSide`). Other panel languages keep DataTables' own search unchanged.
+- Every `table.chart` left on DataTables whose search box is on (not `datatable-restricted-mode`), on a panel whose `software_system_language` starts with `tr`; since TD14a only `product_builder.php`'s product groups list (TD14b moves it). The list table driver uses the same `pgListTurkishMatch()` in browser mode; server lists search in SQL (`server-paged-lists.md`, PR #3677). Other panel languages keep DataTables' own search unchanged.
 
 ## What does a search word find?
 - `pgListTurkishMatch(term, text)` in `backend.src.js` (pure; tests in `tests/list_turkish_client_search_test.php` under Node). The words are DataTables' smart words (any order, a "quoted phrase" is one word, `!word` must be missing). A word is found when DataTables' own match finds it (case-insensitive, marks stripped: IPHONE→iPhone, DEMİR→Demir) or when it occurs folded (`pgListTurkishFold()`: `window.pgFoldTR`, so I, İ, ı and i are one letter, then marks stripped): YILDIZ and yildiz→Yıldız, YALÇIN→Yalçın, isik→Işık, ismail→İsmail.

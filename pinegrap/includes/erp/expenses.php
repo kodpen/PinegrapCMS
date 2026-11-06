@@ -547,6 +547,33 @@ function erp_expenses_list($filters = array())
 }
 
 /**
+ * Every expense of a period, cancelled ones included, oldest first.
+ *
+ * For the reports that add a period up (the VAT report, the accountant's
+ * pack): erp_expenses_list() serves a screen and stops at 5000 rows, newest
+ * first, so a busy period would lose its oldest expenses and their tax.
+ *
+ * @param string $from  Y-m-d
+ * @param string $to    Y-m-d
+ * @return array
+ */
+function erp_expenses_period($from, $to)
+{
+    if (!erp_expenses_ready()) {
+        return array();
+    }
+
+    $where = erp_expenses_where(array('from' => $from, 'to' => $to, 'status' => 'all'));
+
+    return (array) db_items("SELECT e.*, c.name AS category_name, c.code AS category_code, t.name AS till_name
+        FROM erp_expenses e
+        LEFT JOIN erp_expense_categories c ON c.id = e.category_id
+        LEFT JOIN erp_cash_accounts t ON t.id = e.cash_account_id
+        WHERE " . $where . "
+        ORDER BY e.expense_date ASC, e.id ASC");
+}
+
+/**
  * The WHERE of a list or a total, over erp_expenses e.
  *
  * @param array $filters

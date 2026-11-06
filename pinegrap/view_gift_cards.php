@@ -23,7 +23,7 @@ include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/gift_card_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/gift_card_list_edit.php');
 
-// A gift card's expiration date or notes changed in place on the
+// A gift card's balance, expiration date or notes changed in place on the
 // list (pg_list_edit_request() in includes/fn/output.php). Answered in JSON,
 // before anything below draws the screen; the check and the write are the
 // gift card screen's own (pg_gift_card_quick_update()).
@@ -33,7 +33,7 @@ if (pg_list_edit_requested()) {
         return ($user['role'] < 3) || !empty($user['manage_ecommerce']);
     });
 
-    $saved = pg_gift_card_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id'], $quick_edit);
+    $saved = pg_gift_card_quick_update($edit['id'], $edit['field'], $edit['value'], (int) $edit['user']['id'], $quick_edit, $edit['was']);
 
     pg_list_edit_reply($saved, $saved['ok'] ? 200 : 422);
 }

@@ -421,12 +421,15 @@ function ws_file_history($message_id, $viewer_id = 0)
 }
 
 /**
- * How many earlier versions each message's file has.
+ * How many earlier versions of each message's file the viewer's history
+ * lists (ws_file_history()): a redacted edit's hidden versions are not
+ * counted, or the message would offer versions the list then leaves out.
  *
  * @param int[] $message_ids
+ * @param int   $viewer_id
  * @return array message id => count
  */
-function ws_file_versions_map($message_ids)
+function ws_file_versions_map($message_ids, $viewer_id = 0)
 {
     $message_ids = array_filter(array_map('intval', (array) $message_ids));
 
@@ -434,13 +437,41 @@ function ws_file_versions_map($message_ids)
         return array();
     }
 
+    // 11.0.144: before the upgrade runs no row is redacted.
+    $flag = pg_schema_has('ws_file_edits', 'redacted');
+
+    return ws_file_versions_counts((array) db_items("SELECT id, message_id, edited_by" . ($flag ? ', redacted' : '') . " FROM ws_file_edits
+        WHERE message_id IN (" . implode(',', array_unique($message_ids)) . ")"), $viewer_id);
+}
+
+/**
+ * The counts of ws_file_versions_map() from its rows: per message, the rows
+ * ws_file_edits_visible() leaves the viewer; a message with none is left
+ * out. Pure.
+ *
+ * @param array[] $rows      id, message_id, edited_by and, from 11.0.144, redacted
+ * @param int     $viewer_id
+ * @return array message id => count
+ */
+function ws_file_versions_counts($rows, $viewer_id)
+{
+    $by_message = array();
+
+    foreach ((array) $rows as $row) {
+        $by_message[(int) $row['message_id']][] = $row;
+    }
+
     $out = array();
 
-    foreach ((array) db_items("SELECT message_id, COUNT(*) AS versions FROM ws_file_edits
-        WHERE message_id IN (" . implode(',', array_unique($message_ids)) . ")
-        GROUP BY message_id") as $row) {
-        $out[(int) $row['message_id']] = (int) $row['versions'];
+    foreach ($by_message as $message_id => $list) {
+        $count = count(ws_file_edits_visible($list, $viewer_id));
+
+        if ($count > 0) {
+            $out[$message_id] = $count;
+        }
     }
+
+    ksort($out);
 
     return $out;
 }

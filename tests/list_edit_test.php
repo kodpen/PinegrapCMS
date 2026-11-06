@@ -182,3 +182,11 @@ function test_list_edit_cell_escapes_its_value()
 	pg_assert_contains(' data-pg-edit-value="&quot;&gt;&lt;b&gt;"', $cell, 'value escaped');
 	pg_assert_contains(' tabindex="0"', $cell, 'reachable by keyboard');
 }
+
+function test_list_edit_was_is_the_value_the_cell_opened_with()
+{
+	pg_assert_same('12,50', pg_list_edit_was(array('was' => '12,50')), 'the posted value as sent');
+	pg_assert_same('', pg_list_edit_was(array('was' => '')), 'an empty cell opened empty');
+	pg_assert_same(null, pg_list_edit_was(array()), 'a page drawn before the driver sent it');
+	pg_assert_same(null, pg_list_edit_was(array('was' => array('1'))), 'not a string');
+}

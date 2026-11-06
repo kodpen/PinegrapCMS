@@ -7,6 +7,7 @@ description: waf_ip_subject(): counters key on the address for IPv4 and on the /
 - The SUBJECT, not the raw address: `waf_ip_subject()` returns the address itself for IPv4 and the `/64` for IPv6, in CIDR form (the same string is a valid ban-list pattern, so what is counted can be banned).
 - Why: an IPv6 subscriber gets at least a /64 and every address in it is free; an address-keyed bucket never exceeds 1, and a ban on the last-used address costs nothing.
 - Users: the three rate limits, `waf_register_offence()` (count and ban target), the login lock `'a'` subject, `pwreset-ip`, and the concurrent request cap. `waf_log.ip_address` still stores the real address.
+- Every other per-address `waf_rate_*` limit passes `waf_ip_subject(waf_client_ip())` too, never the address itself. Symptom fixed: `erp_doc` (get_account_document.php), `oauth_reg` and `oauth_cimd` keyed on the raw address gave each IPv6 address of one sender its own allowance (tests/rate_subject_call_sites_test.php).
 
 ## Why is IPv4 /24 not aggregated?
 - An operator block behind CGNAT counted as one bucket would give real customers 429 on a campaign day; rotation is not free in IPv4 anyway.

@@ -452,22 +452,40 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 $sql_out_of_stock = "out_of_stock = '0',";
             }
 
-
             // update the product
             $audit_before = pg_audit_fetch('products', (int) $id);
-            $query =
-                "UPDATE products
-                SET
-                    " . (($scan === null) ? "inventory_quantity = ?," : "") . "
-                    $sql_out_of_stock
-                    user = ?,
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = ?";
-            $values = array((string) $new_inventory_quantity, (string) $user['id'], (string) (int) $id);
-            if ($scan !== null) {
-                array_shift($values);
+
+            if ($scan === null) {
+                // The units are added in the statement, not written back as
+                // the figure read above: a sale or another scan between that
+                // read and this write would otherwise be overwritten (a sold
+                // unit back on the shelf, or the other scan lost). The top is
+                // checked in the statement for the same reason.
+                $query =
+                    "UPDATE products
+                    SET
+                        inventory_quantity = inventory_quantity + ?,
+                        $sql_out_of_stock
+                        user = ?,
+                        timestamp = UNIX_TIMESTAMP()
+                    WHERE (id = ?) AND (inventory_quantity <= ?)";
+                db_q($query, array((string) $quantity, (string) $user['id'], (string) (int) $id,
+                    (string) (PG_INVENTORY_QUANTITY_MAX - $quantity))) or output_error('Query failed');
+
+                if (mysqli_affected_rows(db::$con) < 1) {
+                    echo encode_json(array(
+                        'status' => 'error',
+                        'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('New Inventory Quantity'))))));
+                    exit();
+                }
+
+                $new_inventory_quantity = (int) db_value("SELECT inventory_quantity FROM products WHERE id = '" . (int) $id . "'");
+                $inventory_quantity = $new_inventory_quantity - $quantity;
+            } else {
+                db_q("UPDATE products SET $sql_out_of_stock user = ?, timestamp = UNIX_TIMESTAMP() WHERE id = ?",
+                    array((string) $user['id'], (string) (int) $id)) or output_error('Query failed');
             }
-            $result = db_q($query, $values) or output_error('Query failed');
+
             pg_audit_record('update', 'products', (int) $id, $audit_before);
 
             // A scan is a stock write like any other: inventory.changed is

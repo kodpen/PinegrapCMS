@@ -19,7 +19,7 @@ description: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the
 - `check_address` runs `api_http_check_url()` and pins cURL to the checked address with `CURLOPT_RESOLVE`. A site behind `PROXY_ADDRESS` may not resolve the host itself, and a fixed vendor host gains nothing from the check, so the calls moved so far leave it off. An address an operator types belongs in `api_http_request()`, unless it may be on the same host or LAN (below).
 
 ## What is allow_http for?
-- `migration.php`'s source site: the operator types its API address, and a source on the same host or LAN on plain http worked before. `allow_http` admits http for that request only (`CURLOPT_PROTOCOLS` http|https; redirects stay https only) and goes with `check_address` off. `api_http_request()` would refuse those private addresses, so the call is not there (#2022).
+- `allow_http` admits http for that request only (`CURLOPT_PROTOCOLS` http|https; redirects stay https only). With `check_address` off: `migration.php`'s source site, which may be on the same host or LAN, so `api_http_request()` would refuse it (#2022). With `check_address` on, the check is `api_http_check_url($url, true)`: a public service on plain http whose address is still checked and pinned (the time stamp authority, `designer/signature-timestamp-rfc3161.md`).
 
 ## Which calls use it?
 - The list, what changed for each and which wait: `curl-run-callers.md`.

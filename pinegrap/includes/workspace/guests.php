@@ -1145,7 +1145,7 @@ function ws_guest_messages($context, $after = 0, $limit = 80)
 
     // The current conversation only: what came before a clear is an earlier
     // version the team keeps (eras.php).
-    $floor = function_exists('ws_channel_floor') ? ws_channel_floor($channel_id) : 0;
+    $floor = ws_guest_room_floor($channel_id);
 
     $rows = array_reverse((array) db_items("SELECT id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name, edited_at, created_at
         FROM ws_messages
@@ -1327,6 +1327,45 @@ function ws_guest_approval_outcome($outcome)
 }
 
 /**
+ * The first message of a room's current conversation the guest may reach is
+ * after this id: what came before a clear is kept for the team (eras.php)
+ * and never shown on the guest page.
+ *
+ * @param int $channel_id
+ * @return int
+ */
+function ws_guest_room_floor($channel_id)
+{
+    return function_exists('ws_channel_floor') ? (int) ws_channel_floor((int) $channel_id) : 0;
+}
+
+/**
+ * The WHERE part a guest's request on one message of their room is held to:
+ * the room, its current conversation (after $floor), not deleted. Pure.
+ *
+ * @param int    $channel_id
+ * @param int    $floor      ws_guest_room_floor()
+ * @param string $alias      table prefix with its dot, e.g. 'm.'
+ * @return string
+ */
+function ws_guest_message_reach_sql($channel_id, $floor, $alias = '')
+{
+    return $alias . "channel_id = '" . (int) $channel_id . "' AND " . $alias . "id > '" . max(0, (int) $floor) . "' AND " . $alias . "deleted_at = 0";
+}
+
+/**
+ * Is a message id inside the room's current conversation? Pure.
+ *
+ * @param int $message_id
+ * @param int $floor ws_guest_room_floor()
+ * @return bool
+ */
+function ws_guest_message_in_reach($message_id, $floor)
+{
+    return ((int) $message_id > 0) && ((int) $message_id > max(0, (int) $floor));
+}
+
+/**
  * The guest's vote in a poll of their room, replacing the one before; an
  * empty choice takes it back.
  *
@@ -1339,7 +1378,8 @@ function ws_guest_vote($context, $poll_id, $option_ids)
 {
     $poll = function_exists('ws_poll') ? ws_poll((int) $poll_id) : null;
 
-    if (!$poll || ((int) $poll['channel_id'] !== (int) $context['channel']['id']) || !ws_guest_votes_ready()) {
+    if (!$poll || ((int) $poll['channel_id'] !== (int) $context['channel']['id']) || !ws_guest_votes_ready()
+        || !ws_guest_message_in_reach($poll['message_id'], ws_guest_room_floor($context['channel']['id']))) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
     }
 
@@ -1381,8 +1421,8 @@ function ws_guest_vote($context, $poll_id, $option_ids)
 function ws_guest_check($context, $message_id, $item, $checked)
 {
     $message = db_item("SELECT * FROM ws_messages
-        WHERE id = '" . (int) $message_id . "' AND channel_id = '" . (int) $context['channel']['id'] . "'
-        AND deleted_at = 0 AND sender_kind = 'user'");
+        WHERE id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($context['channel']['id'], ws_guest_room_floor($context['channel']['id'])) . "
+        AND sender_kind = 'user'");
 
     if (!is_array($message) || !ws_guest_votes_ready() || !function_exists('ws_checklist_items')) {
         return array('ok' => false, 'error' => lang('Invalid request.'));
@@ -1437,8 +1477,8 @@ function ws_guest_file_send($context, $message_id)
 {
     $row = $context ? db_item("SELECT m.file_name, f.name AS stored FROM ws_messages m
         INNER JOIN files f ON f.id = m.file_id
-        WHERE m.id = '" . (int) $message_id . "' AND m.channel_id = '" . (int) $context['channel']['id'] . "'
-        AND m.deleted_at = 0 AND m.sender_kind = 'user' AND m.file_id > 0") : null;
+        WHERE m.id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($context['channel']['id'], ws_guest_room_floor($context['channel']['id']), 'm.') . "
+        AND m.sender_kind = 'user' AND m.file_id > 0") : null;
 
     // The local file, or a copy of one moved to the object store: the guest
     // page streams it, the store's address is never shown to a guest.
@@ -1564,8 +1604,8 @@ function ws_guest_react($context, $message_id, $emoji)
     }
 
     $message = db_item("SELECT id FROM ws_messages
-        WHERE id = '" . (int) $message_id . "' AND channel_id = '" . (int) $context['channel']['id'] . "'
-        AND deleted_at = 0 AND kind = 'message' AND sender_kind IN ('user', 'guest')");
+        WHERE id = '" . (int) $message_id . "' AND " . ws_guest_message_reach_sql($context['channel']['id'], ws_guest_room_floor($context['channel']['id'])) . "
+        AND kind = 'message' AND sender_kind IN ('user', 'guest')");
 
     if (!is_array($message)) {
         return array('ok' => false, 'error' => lang('That message could not be found.'));

@@ -222,8 +222,8 @@ function pg_dashboard_recent_orders($limit)
         LEFT JOIN contacts ON orders.contact_id = contacts.id
         WHERE orders.status != 'incomplete'
         ORDER BY orders.order_date DESC
-        LIMIT " . (int) $limit;
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        LIMIT ?";
+    $result = db_q($query, array((int) $limit)) or output_error('Query failed.');
 
     // loop through the result in order to prepare array of items
     while ($row = mysqli_fetch_assoc($result)) {

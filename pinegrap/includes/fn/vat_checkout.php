@@ -149,20 +149,41 @@ function pg_vat_order_ready()
 }
 
 /**
+ * The tax-exempt box as the order takes it: 1 only when it was ticked and the
+ * store offers it (tax on and tax exemption on, the settings that draw the
+ * box). The field is posted by the browser, so a value sent while the box is
+ * not offered would otherwise place the order without tax.
+ *
+ * @param mixed $posted     the posted tax_exempt value
+ * @param bool  $tax_on     ECOMMERCE_TAX
+ * @param bool  $exempt_on  ECOMMERCE_TAX_EXEMPT
+ * @return int
+ */
+function pg_tax_exempt_box($posted, $tax_on, $exempt_on)
+{
+    return ($tax_on && $exempt_on && !empty($posted)) ? 1 : 0;
+}
+
+/**
  * Runs the check for a checkout form and writes the order's VAT columns.
  * Called after the form's own checks, before its orders UPDATE; answers the
  * tax_exempt value that UPDATE writes. A refusal marks the tax number box;
  * a notice goes to $notice_form (the screen the customer sees next).
  *
  * @param liveform      $form        the billing or express order form
- * @param int           $tax_exempt  the posted tax-exempt box (0 or 1)
+ * @param int           $tax_exempt  the posted tax-exempt box (0 or 1); counts only
+ *                                   where the store offers it (pg_tax_exempt_box())
  * @param string|int    $order_id
  * @param liveform|null $notice_form where the notice is shown; null: $form
  * @return int
  */
 function pg_vat_checkout_apply($form, $tax_exempt, $order_id, $notice_form = null)
 {
-    $tax_exempt = $tax_exempt ? 1 : 0;
+    $tax_exempt = pg_tax_exempt_box(
+        $tax_exempt,
+        defined('ECOMMERCE_TAX') && ECOMMERCE_TAX,
+        defined('ECOMMERCE_TAX_EXEMPT') && ECOMMERCE_TAX_EXEMPT
+    );
 
     if (!defined('ECOMMERCE_TAX') || !ECOMMERCE_TAX || !pg_vat_order_ready() || !$form->field_in_session('tax_number')) {
         return $tax_exempt;

@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Which rail items hold several tools?
-- `M.RAIL_GROUPS` in `pg_image_editor_model.js`: `photo` (Crop, Adjust, Redact, Select area, Frame) and `vectors` (Pen, Scissors, Shape builder, Warp), owner 2026-11-03/04 (`workflow/decisions-made-product-27.md`). E28 joins `photo`, E26 joins `vectors`: add the tool name to the group's list.
+- `M.RAIL_GROUPS` in `pg_image_editor_model.js`: `photo` (Crop, Adjust, Redact, Select area, Frame) and `vectors` (Pen, Scissors, Shape builder, Warp, Free deformation), owner 2026-11-03/04 (`workflow/decisions-made-product-27.md`). A new mode joins a group by adding its tool name to the group's list.
 - `M.railItems(list)` turns a call's tools into rail items `{ id, modes }`: a group stands where its first tool stands in the profile's list, its modes in the group's order; a group with one tool of the list is that tool's own item (the canvas profile's Frame). Photo rail: Select, Photo, Canvas, Draw, Text, Sticker, Vector, Animate, Layers at the foot; it keeps its labels at 1280×800. The phone's bar is the same list.
 - The mini bar (a caller's `tools`, annotate) keeps a button per tool.
 

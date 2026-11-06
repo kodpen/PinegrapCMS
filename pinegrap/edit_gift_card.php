@@ -388,7 +388,7 @@ if (!$_POST) {
 
         db("DELETE FROM gift_cards WHERE id = '" . e($liveform->get_field_value('id')) . "'");
         
-        log_activity(lang(array('string'=>'gift card ({var:1}) was deleted','vars'=>output_gift_card_code($gift_card['code']))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'gift card ({var:1}) was deleted','vars'=>pg_gift_card_log_code($gift_card['code']))), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_gift_cards = new liveform('view_gift_cards');
         $liveform_view_gift_cards->add_notice(lang('The gift card has been deleted.'));
@@ -454,7 +454,7 @@ if (!$_POST) {
             pg_audit('update', 'store_credit', (int) $gift_card['id'], pg_credit_audit_fields($credit_before), pg_credit_audit_fields($credit_after), pg_credit_audit_label($gift_card['code']));
         }
 
-        log_activity(lang(array('string'=>'gift card ({var:1}) was modified','vars'=>output_gift_card_code($gift_card['code']))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'gift card ({var:1}) was modified','vars'=>pg_gift_card_log_code($gift_card['code']))), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_gift_cards = new liveform('view_gift_cards');
         $liveform_view_gift_cards->add_notice(lang('The gift card has been saved.'));

@@ -14,7 +14,7 @@ module: calendar_writes
 ## What does GET /calendars/events/{id}/reservations list?
 - The `order_items` rows with that `calendar_event_id` whose order is placed (`orders.status != 'incomplete'`, lines saved for later left out), oldest first, cursor on `order_items.id`. A cancelled order's line stays listed with `order_status`: a cancellation does not give the spots back.
 - `recurrence_number` is 0 for a one-off event or a repeating one whose repeats share their spots (`reserve_calendar_event.php`).
-- The event follows the calendar row rule (`api_calendar_event_visible_or_fail()`, 404 outside the assigned calendars). `customer` (contact_id, name, e-mail) is null unless the owner may open orders (role < 3 or `manage_ecommerce`, `api_calendar_owner_reads_orders()`): `calendars:read` alone does not open order data.
+- The event follows the calendar row rule (`api_calendar_event_visible_or_fail()`, 404 outside the assigned calendars). `customer` (contact_id, name, e-mail) is null unless the owner may open orders (role < 3 or `manage_ecommerce`) **and** the key holds `orders:read` (`api_calendar_reservation_customer_shown()`): `calendars:read` alone does not open order data. Before the scope check (PR #7197) an administrator's key with only `calendars:read` received every buyer's name and e-mail.
 
 ## When is calendar_event.reserved announced?
 - From `pg_order_complete_line_reservation()` (`includes/fn/order_completion.php`), after the reservations check and the spot count, so every path that completes an order announces it once per line. Payload `pg_order_reservation_event()`: id (the event's), recurrence_number, quantity, order_item_id, order_id, order_number, contact_id.

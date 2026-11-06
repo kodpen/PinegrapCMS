@@ -421,6 +421,12 @@ function pg_tr_jobs_run_due($budget = 40)
         }
     }
 
+    // The job runs outside a signed-in request: the translated pages the
+    // file cache keeps would show the old text for the TTL.
+    if (($summary['done'] > 0) && function_exists('pg_page_cache_mark_dirty')) {
+        pg_page_cache_mark_dirty();
+    }
+
     return $summary;
 }
 

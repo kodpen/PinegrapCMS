@@ -897,14 +897,23 @@ function ws_bulk_step($change_id)
         @set_time_limit(120);
     }
 
-    // Read again under the lock: another worker may have finished it.
+    // Read again under the lock: another worker may have finished or failed
+    // it, or ws_bulk_start() may not have written its records yet.
     $change = db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change['id'] . "'");
     $spec = json_decode((string) $change['fields'], true);
     $state = json_decode((string) $change['snapshot'], true);
+    $verdict = ws_bulk_step_verdict((string) $change['status'], $state, (int) $change['decided_at'], time());
+
+    if (($verdict === 'stop') || ($verdict === 'wait')) {
+        db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+        return array('status' => ($verdict === 'wait') ? 'applying' : (string) $change['status'], 'progress' => ws_bulk_present($change)['progress']);
+    }
+
     $viewer = ws_change_viewer_for_id((int) ($state['started_by'] ?? $change['requested_by']));
     $types = ws_change_types();
 
-    if (!is_array($spec) || !is_array($state) || !isset($state['ids']) || !$viewer || !isset($types[$spec['type']])) {
+    if (($verdict !== 'run') || !is_array($spec) || !$viewer || !isset($types[$spec['type']])) {
         db("UPDATE ws_ai_changes SET status = 'failed', error = '" . e(lang('Invalid request.')) . "' WHERE id = '" . (int) $change['id'] . "'");
         db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
         ws_message_touch($change['message_id']);
@@ -1012,6 +1021,11 @@ function ws_bulk_step($change_id)
             continue;
         }
 
+        // The place, already counted in pos, is kept first: a request that
+        // dies after the write does not raise a percent or add change twice
+        // on resume (as ws_bulk_create_row() does for a new record).
+        ws_bulk_save_state((int) $change['id'], $state);
+
         $done = ws_change_write($viewer, $type, $spec['action'], $record, $values, true);
 
         if (empty($done['ok'])) {
@@ -1049,6 +1063,32 @@ function ws_bulk_step($change_id)
     ws_message_touch($change['message_id']);
 
     return array('status' => $finished ? 'applied' : 'applying', 'progress' => ws_bulk_present(array('fields' => $change['fields'], 'snapshot' => json_encode($state)))['progress']);
+}
+
+/**
+ * What a slice runner does with a bulk change it holds the lock of: stop
+ * when it is no longer being applied (another worker finished or failed it,
+ * so no second decision is posted), wait while ws_bulk_start() is still
+ * matching its records (the screens' tick may reach it in between), run
+ * when its records are there, and fail one whose start died long ago.
+ *
+ * @param string     $status     ws_ai_changes.status
+ * @param array|null $state      the decoded snapshot
+ * @param int        $decided_at when it was taken for applying
+ * @param int        $now
+ * @return string run | wait | stop | invalid
+ */
+function ws_bulk_step_verdict($status, $state, $decided_at, $now)
+{
+    if ($status !== 'applying') {
+        return 'stop';
+    }
+
+    if (is_array($state) && isset($state['ids']) && is_array($state['ids'])) {
+        return 'run';
+    }
+
+    return (((int) $decided_at > 0) && ((int) $now - (int) $decided_at < WS_CHANGE_APPLYING_TIMEOUT)) ? 'wait' : 'invalid';
 }
 
 /**
