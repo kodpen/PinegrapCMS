@@ -540,6 +540,12 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
         // relative date) comes back as it is.
         if ($filters !== null) $data = pg_sw_fill_value($data, $mods);
 
+        // A submitted value that starts a link's or a form's address must not
+        // carry a scheme that runs script when the address is followed.
+        if (pg_sw_token_starts_address($template, $whole_string) && pg_sw_address_runs_script($data)) {
+            $data = '#';
+        }
+
         $template = preg_replace(
             '/' . preg_quote($whole_string, '/') . '/',
             addcslashes($data, '\\$'),
@@ -549,6 +555,25 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
     }
 
     return $template;
+}
+
+// Whether the first $token in $template opens an href, action or formaction
+// value: the address then starts with what the field holds.
+function pg_sw_token_starts_address($template, $token)
+{
+    $at = strpos($template, $token);
+    if ($at === false) return false;
+    return (bool)preg_match('/\b(?:href|action|formaction)\s*=\s*["\']?$/i', substr($template, max(0, $at - 40), min(40, $at)));
+}
+
+// Whether an address escaped for HTML ($html) opens with a scheme that runs
+// script. Browsers drop control characters and spaces inside a scheme
+// ("java\tscript:"), so they are dropped before the check.
+function pg_sw_address_runs_script($html)
+{
+    $raw = html_entity_decode((string)$html, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $raw = strtolower(preg_replace('/[\x00-\x20]+/', '', $raw));
+    return (bool)preg_match('/^(?:javascript|vbscript|livescript|data):/', $raw);
 }
 
 // Make one loop row's element ids its own.
