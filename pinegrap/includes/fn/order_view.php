@@ -23,7 +23,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * One row of an order card: the label, a colon, the value on the right.
+ * One row of an order card: the label, the value on the right.
  * Nothing when the value is empty: a row with no value says nothing and only
  * makes the card longer.
  *
@@ -43,14 +43,16 @@ function pg_order_view_row($label, $value_html, $wide = false)
 
     if ($wide) {
         return '<div class="row">
-                                        <span class="translateable col-auto fg-secondary">' . $label . ':</span>
+                                        <span class="translateable col-auto fg-secondary">' . $label . '</span>
                                         <span class="col offset-1" style="font-size:110%;font-weight:500">' . $value_html . '</span>
                                     </div>';
     }
 
-    return '<div class="row">
-                                        <span class="translateable col fg-secondary">' . $label . ':</span>
-                                        <span class="col text-end">' . $value_html . '</span>
+    // A line, not a two-column grid: a long value takes the room the label
+    // leaves instead of wrapping inside half the card.
+    return '<div class="d-flex justify-content-between gap-3">
+                                        <span class="translateable fg-secondary">' . $label . '</span>
+                                        <span class="text-end text-break">' . $value_html . '</span>
                                     </div>';
 }
 

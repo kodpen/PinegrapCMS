@@ -13,8 +13,11 @@ module: order_view
 - Every card is printed `card mt-5`. `pg_order_view_card_column($cards)` (`includes/fn/order_view.php`) joins a column's cards, skips empty ones and removes `mt-5` from the first, so the right column starts level with the left one whether the order has a ship-to or not.
 - A rule in `backend.src.css` cannot: Bootstrap 6's `utilities` layer comes after `custom`, so `.mt-5` beats any panel rule. Tested in `tests/order_view_rows_test.php`.
 
+## How is a label and its value drawn?
+- Part 3: a line `d-flex justify-content-between gap-3`, the label `fg-secondary` without a colon, the value `text-end text-break`; `pg_order_view_row()` prints the same (also on `print_order.php`). Before, a `.row` of two `.col` halves wrapped a country or an e-mail inside half the card. The address lines (`pg_order_view_row(..., true)`, Address 1, the ship-to Address) keep their own column layout, also without a colon.
+
 ## What is left for the later parts?
-- The cards still use label/value `.row` lines and the order lines their old boxes.
+- The order lines (`.order-list-group`) keep their old boxes.
 
 ## How are the shipping card's fields drawn?
 - Part 2: Ship Date and Delivery Date are labelled `form-field` boxes side by side from `sm` (`<label for>` naming each date field; before, the captions named no field). A cancelled order shows them as text under a plain caption, a dash when empty. Tracking Numbers (the parcel list and the chips field) and Shipping Labels each sit in a `form-field` with a `form-label` caption. Pinned by `tests/field_caption_links_test.php`.
