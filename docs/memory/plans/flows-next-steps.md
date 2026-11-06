@@ -26,7 +26,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 
 - B7 (free, M): a web address that starts a flow: a sealed secret per flow, editors only, renewable; only a published flow, in its owner's name; body fields as `trigger.*`; 60 calls a minute per address (WAF), 64 KB; its own root file.
 
-- B8 (free, M): e-mail to the record's person: recipient `record_person`, never a typed value; purpose `info` or `marketing`, marketing only with consent, else skipped with its reason, with an unsubscribe link.
+- B8 (done, #7429): e-mail to the record's person: recipient `record_person`, never a typed value; purpose `info` or `marketing`, marketing only with consent, else skipped with its reason, with an unsubscribe link.
 
 ## C: flows reaching the rest of the site
 - C1 (free, S, done #7261): events the site sends as webhooks (`api_webhook_events()`) but flows cannot start on: product.review.created, order.return.approved/received/refunded, cart_quote.created/ordered, marketplace.order.imported, subscription.failed/renewed/cancelled, form.paid, inventory.changed. Their lines in `ws_events_catalog()` with record, right, filter and outputs. watch.php.
