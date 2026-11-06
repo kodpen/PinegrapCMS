@@ -81,9 +81,68 @@ function erp_order_refund_lines($order_id)
 
     $built = erp_order_lines($order, $charged);
 
+    // What earlier refunds by lines gave back: noted on their order_refunds
+    // rows (erp_order_refund_lines_note()). Older rows carry no note.
+    $returned = array();
+    if (pg_schema_has('order_refunds', 'notes')) {
+        $returned = erp_order_refund_lines_noted(array_column((array) db_items(
+            "SELECT notes FROM order_refunds
+            WHERE order_id = '" . $order_id . "' AND refund_type = 'refund'"), 'notes'));
+    }
+
     return array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '',
-        'lines' => erp_order_refund_order_lines($built['lines'], $charged),
+        'lines' => erp_order_refund_order_lines($built['lines'], $charged, $returned),
         'left_out' => $left_out);
+}
+
+/**
+ * The note a refund by lines of an order without an invoice leaves on its
+ * order_refunds row: the refund line ids (order_items ids, -1 shipping, -2
+ * surcharge) and the quantities given back, so the next refund counts them
+ * as returned. An invoice keeps that count through its return invoices, so
+ * only the order's own lines are noted. Pure.
+ *
+ * @param array $quantities  refund line id => quantity (erp_order_refund_amount())
+ * @return string  'lines:12=1,-1=1'; '' for none
+ */
+function erp_order_refund_lines_note(array $quantities)
+{
+    $parts = array();
+
+    foreach ($quantities as $line_id => $quantity) {
+        if ((float) $quantity > 0.00001) {
+            $parts[] = (int) $line_id . '=' . erp_quantity_out($quantity);
+        }
+    }
+
+    return $parts ? 'lines:' . implode(',', $parts) : '';
+}
+
+/**
+ * The quantities the notes of an order's refunds gave back per refund line
+ * (erp_order_refund_lines_note()), summed. Pure.
+ *
+ * @param array $notes  order_refunds.notes values
+ * @return array  refund line id => quantity
+ */
+function erp_order_refund_lines_noted(array $notes)
+{
+    $returned = array();
+
+    foreach ($notes as $note) {
+        if (!preg_match_all('/(?:^|\s)lines:(-?\d+=\d+(?:\.\d+)?(?:,-?\d+=\d+(?:\.\d+)?)*)/', (string) $note, $found)) {
+            continue;
+        }
+
+        foreach ($found[1] as $list) {
+            foreach (explode(',', $list) as $pair) {
+                list($line_id, $quantity) = explode('=', $pair, 2);
+                $returned[(int) $line_id] = (isset($returned[(int) $line_id]) ? $returned[(int) $line_id] : 0) + (float) $quantity;
+            }
+        }
+    }
+
+    return $returned;
 }
 
 /**
@@ -92,8 +151,9 @@ function erp_order_refund_lines($order_id)
  * Each line gets the id its quantity is posted under: the item lines keep the
  * id of their order_items row, in the order the lines were built from the
  * rows; the lines that have none (shipping, surcharge) come after them with
- * -1, -2, ... Nothing has been given back yet, so returned_qty is 0 and so is
- * each tax given back so far.
+ * -1, -2, ... What earlier refunds by lines gave back ($returned, from their
+ * notes) is returned_qty, and the rest remaining_qty; with nothing given back
+ * each tax given back so far is 0.
  *
  * Those three zeros are what make the refund meet the order. A line's tax is
  * the order's figure: tied to the order's header by erp_order_lines(), or
@@ -105,22 +165,32 @@ function erp_order_refund_lines($order_id)
  * amount collected - the card got one less, and the order, refunded a kurus
  * below its total, was never marked cancelled.
  *
+ * A line given back in part before has no taxes noted: they are left out,
+ * so its rest is taxed at its rate like any piece, never given the whole
+ * line's tax as the piece that empties it.
+ *
  * @param array $built_lines  erp_order_lines()['lines']
  * @param array $items        The order_items rows the lines were built from, indexed from 0
+ * @param array $returned     refund line id => quantity given back (erp_order_refund_lines_noted())
  * @return array
  */
-function erp_order_refund_order_lines($built_lines, $items)
+function erp_order_refund_order_lines($built_lines, $items, $returned = array())
 {
     $lines = array();
     $extra = -1;
 
     foreach ((array) $built_lines as $index => $line) {
         $line['id'] = isset($items[$index]) ? (int) $items[$index]['id'] : $extra--;
-        $line['returned_qty'] = 0;
-        $line['remaining_qty'] = (float) $line['quantity'];
-        $line['returned_tax'] = 0;
-        $line['returned_withholding'] = 0;
-        $line['returned_tax2'] = 0;
+        $given = isset($returned[$line['id']]) ? max(0, min((float) $line['quantity'], (float) $returned[$line['id']])) : 0;
+        $line['returned_qty'] = $given;
+        $line['remaining_qty'] = (float) $line['quantity'] - $given;
+
+        if ($given <= 0) {
+            $line['returned_tax'] = 0;
+            $line['returned_withholding'] = 0;
+            $line['returned_tax2'] = 0;
+        }
+
         $lines[] = $line;
     }
 
