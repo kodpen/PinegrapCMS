@@ -10,6 +10,7 @@
     "Quality": "Kalite",
     "Quality When Resizing": "Küçültme Kalitesi",
     "Quality checks at every stage": "Her aşamada kalite kontrolü",
+    "Quality checks recorded at every stage": "Her aşamada kayda geçirilen kalite kontrolleri",
     "Quality management": "Kalite yönetimi",
     "Quanta": "Quanta",
     "Quantity": "Miktar",
@@ -144,11 +145,13 @@
     "Quotes about to expire": "Süresi dolmak üzere olan teklifler",
     "Quotes come with the software update; run the update to use them.": "Teklifler yazılım güncellemesiyle gelir; kullanmak için güncellemeyi çalıştırın.",
     "Quotes for your company's breakfasts, lunches and events.": "Şirketinizin kahvaltıları, öğle yemekleri ve etkinlikleri için teklifler.",
+    "Quotes, permits and life on site. Not answered here? Write to us.": "Teklifler, ruhsatlar ve şantiye hayatı. Yanıtını bulamadınız mı? Bize yazın.",
     "quantity": "adet",
     "quantity must be a whole number.": "quantity tam sayı olmalıdır.",
     "quantity must be between {var:1} and {var:2}.": "quantity {var:1} ile {var:2} arasında olmalıdır.",
     "quantity must be numeric.": "quantity sayısal olmalıdır.",
     "question": "soru",
     "questions": "sorular",
-    "quote, catering order, offer, event catering, request": "teklif, catering siparişi, fiyat teklifi, etkinlik catering, talep"
+    "quote, catering order, offer, event catering, request": "teklif, catering siparişi, fiyat teklifi, etkinlik catering, talep",
+    "quote, estimate, price, how long": "teklif, tahmini maliyet, fiyat, ne kadar sürer"
 }
