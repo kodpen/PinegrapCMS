@@ -28,6 +28,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-charity.md: Plan for the Charity template (pinegrap-charity): causes, campaigns with progress, gifts as donation products, volunteers, events, news, transparency; parts in a folder; steps 1-9
 - design-template-construction-design.md: Design of plans/design-template-construction.md: which shipped features the Construction template reuses for projects, quotes and careers, what it does not build, its look and Turkish words
 - design-template-construction.md: Plan: the Construction Firm design template (pinegrap-construction): projects portfolio, services, quote requests, team, careers, news; ~1,000-line steps
+- design-template-filmstudio-design.md: Design of plans/design-template-filmstudio.md: which shipped features the Film Studio template reuses, what it does not build, its look and Turkish words
+- design-template-filmstudio.md: Plan: the Film Studio design template (pinegrap-filmstudio): showreel, projects by industry and service, services, the studio's stages for hire, crew, project enquiries, crew calls
 - design-template-gym-design.md: Design of plans/design-template-gym.md: which shipped features the Gym template reuses for booking, trainers and membership, what it does not build, its look and Turkish words
 - design-template-gym.md: Plan: the Gym design template (pinegrap-gym), a fitness studio with classes, a timetable, trainers, membership plans, class booking and contact, built from existing features in ~1,000-line steps
 - design-template-music-design.md: Design of plans/design-template-music.md: what the Music template reuses for shows, releases, merch, press kit and mailing list, what it does not build, its look and Turkish words
