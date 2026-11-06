@@ -426,6 +426,7 @@
     "One of your flows asks you to approve": "Akışlarınızdan biri sizden onay istiyor",
     "One of {var:1} is past its due date, and it is the one to open first.": "{var:1} arasında son tarihi geçmiş bir tane var; ilk açılacak olan o.",
     "One offer per stay; offers are not added to each other and depend on the rooms that are free.": "Her konaklamada bir teklif; teklifler birbirine eklenmez ve boş odalara bağlıdır.",
+    "One on each line: the role and the name, for example Flowers: Wild Stem Florals.": "Her satıra bir tane: görev ve ad, örneğin Çiçekler: Wild Stem Florals.",
     "One option button on its own; buttons with the same name make one choice.": "Tek başına bir seçenek düğmesi; aynı adı taşıyan düğmeler tek bir seçim oluşturur.",
     "One option per line: <code>value</code> · <code>value|label</code> · <code>value|label|on</code> (selected by default).": "Satır başına bir seçenek: <code>değer</code> · <code>değer|etiket</code> · <code>değer|etiket|on</code> (varsayılan seçili).",
     "One or More Classes for the Active Menu Item. Separate classes with a space": "Aktif Menü Öğesi için Bir veya Daha Fazla Sınıf. Sınıfları boşluk ile ayırınız",

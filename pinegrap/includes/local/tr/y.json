@@ -643,6 +643,7 @@
     "Your own calendar on the Work Calendar": "İş Takviminde kendi takviminiz",
     "Your own connection ended.": "Kendi bağlantınız sona erdi.",
     "Your own connection to @{var:1} ended. Connect your account again.": "@{var:1} ile kendi bağlantınız sona erdi. Hesabınızı yeniden bağlayın.",
+    "Your own day": "Sizin gününüz",
     "Your own event at our café": "Kendi etkinliğiniz, bizim kafemizde",
     "Your own flows are not shared: only you run them.": "Kendi akışlarınız paylaşılmaz: onları yalnız siz çalıştırırsınız.",
     "Your own flows have no home channel: only you run them.": "Kendi akışlarınızın ana kanalı olmaz: onları yalnız siz çalıştırırsınız.",
