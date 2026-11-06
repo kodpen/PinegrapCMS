@@ -28,7 +28,7 @@ description: Plan for the Charity template (pinegrap-charity): causes, campaigns
 
 - 5 Done (#7550). Volunteers: `volunteer.php` (with `forms.php`) (`volunteer`, `volunteer_view`, `my_volunteering`, `staff_volunteers`, `privacy`, `email_reply`, notify e-mails).
 
-- 6 Events and reports: `events.php` (`events`, `event_view`, `event_new`, `home_events`; Reports collection, `report_new`).
+- 6 In progress. Events and reports: `events.php` (`events`, `event_view`, `event_new`, `home_events`; Reports collection, `report_new`).
 
 - 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, News, blog post, search, error); test `…_standard_test.php`.
 
