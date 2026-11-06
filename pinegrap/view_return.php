@@ -469,6 +469,21 @@ if ($return_labels || $label_drivers) {
 // it went back another way.
 $refund_plan = ($status === 'received') ? pg_return_refund_plan($return) : null;
 
+// A cancelled order's money went back with the cancellation: no refund form,
+// only why (pg_return_refund() refuses it as well).
+if (($refund_plan !== null) && !pg_return_refund_order_open($refund_plan['order']['status'])) {
+    $refund_plan = null;
+    $output_forms .= '
+            <div class="card mb-7">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Payment Refund')) . '</span>
+                </div>
+                <div class="card-body">
+                    <p class="small fg-secondary mb-0">' . h(lang('The order was cancelled: its money goes back with the cancellation, not with the return.')) . '</p>
+                </div>
+            </div>';
+}
+
 if ($refund_plan !== null) {
     $money = function ($cents) {
         return pg_format_money((int) $cents / 100, BASE_CURRENCY_SYMBOL);

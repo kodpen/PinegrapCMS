@@ -12,6 +12,7 @@ module: widgets_express_order, widgets_shipping_address
 - `_eo_state_list_prefixes()` notes each address that holds a state control (emptied at the start of each widget's render); `_eo_state_list_scripts($form_id)` prints one `pg_sa_state_script()` per address after the form.
 - `_pg_sa_state_controls()` stamps `data-pg-sa-for` (the state's name, which the unused control loses) beside `data-pg-sa-state`, and the script takes its pair by it, so the checkout's addresses switch on their own. The single-address widgets work as before.
 - The text box's id is the field name and the list's `<field>_list`, so `form.elements[name]` may be a collection: the place suggester and the address autocomplete take its visible member; the checkout script reads `[name=…]:not([disabled])`.
+- The checkout script's address refetch (`fetchMethods(rid)`) listens on the form and tests the changed control's name, since the name moves between the two state controls; bound to the control named at load, a state picked from the list after a country change did not refresh the methods (#7564).
 
 ## What is not changed?
 - The server-drawn rows used when a layout has no address fields: `_eo_render_shipping_section()`'s address part (its list stays off) and `_eo_render_billing_address()` (a text box).

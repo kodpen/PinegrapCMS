@@ -38,7 +38,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-fn-2c.md: Module list of plans/bug-hunt.md, part 2c: includes/fn/ modules widgets_lists_menu to wishlist, one line each with its state
 - bug-hunt-modules-fn-2d.md: Module list of plans/bug-hunt.md, part 2d: the includes/fn/ modules widgets_cart and widgets_catalog (moved out of part 2b for size) and the booking modules, one line each with its state
 - bug-hunt-modules-migrations.md: Module list of plans/bug-hunt.md, migrations part: the open version's migration file and its runner helpers, one line each with its state
-- bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
+- bug-hunt.md: Plan, stopped 2026-11-06 (no module is taken): module-by-module bug hunt; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
 - design-template-charity.md: Plan for the Charity template (pinegrap-charity): causes, campaigns with progress, gifts as donation products, volunteers, events, news, transparency; parts in a folder; steps 1-9
@@ -52,6 +52,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-photo.md: Plan: the Photography Studio design template (pinegrap-photo): galleries by category, session packages, shoot booking, a private client proofing area, gift vouchers; ~1,000-line steps
 - design-template-travel-design.md: Design of plans/design-template-travel.md: which shipped features the Travel template reuses for tours, bookings, deposits and reviews, what it does not build, its look and Turkish words
 - design-template-travel.md: Plan: the Travel Agency design template (pinegrap-travel): destinations, tours with itineraries, booking requests, shop deposits, reviews, enquiries; ~1,000-line steps
+- design-template-wedding-design.md: Design of plans/design-template-wedding.md: which shipped features the Wedding template reuses for packages, real weddings, enquiries and visits, what it does not build, its look and Turkish words
+- design-template-wedding.md: Plan: the Wedding Planner and Venue design template (pinegrap-wedding): services, packages, venue, real weddings, timeline, enquiries and visits; ~1,000-line steps
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it

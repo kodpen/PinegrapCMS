@@ -107,7 +107,7 @@ function _test_mu_trees()
 function _test_mu_page_keys()
 {
 	return array_merge(array(
-		'home', 'about', 'videos', 'faq', 'mailing_list',
+		'home', 'about', 'videos', 'faq',
 		'discography', 'release', 'release_new', 'tour', 'past_shows', 'show', 'show_new',
 		'press', 'booking', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy', 'email_reply',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',

@@ -304,3 +304,34 @@ function test_api_returns_write_refusals_map_to_codes()
 		pg_assert_contains('409 ' . $code, $description, 'every 409 is described on its route');
 	}
 }
+
+// A cancelled order's money went back with the cancellation (the payment's
+// void, which does not raise refunded_amount): its received return is not
+// refunded again, by the screen, the API or the write function.
+function test_api_returns_refund_refused_on_a_cancelled_order()
+{
+	foreach (array('complete' => true, 'exported' => true, 'cancelled' => false, 'incomplete' => false, '' => false) as $status => $open) {
+		pg_assert_same($open, pg_return_refund_order_open($status), 'order status ' . $status);
+	}
+
+	$row = api_returns_test_row('received');
+	$plan = array('order' => array('status' => 'cancelled'), 'driver' => '', 'remaining' => 5000);
+
+	foreach (array('manual', 'driver') as $method) {
+		$checked = api_return_action_check($row, array('action' => 'refund', 'amount' => 100, 'method' => $method), array('plan' => $plan));
+		pg_assert_same(409, $checked['http'], $method);
+		pg_assert_same('refund_order_cancelled', $checked['code'], $method);
+	}
+
+	$plan['order']['status'] = 'exported';
+	$checked = api_return_action_check($row, array('action' => 'refund', 'amount' => 100, 'method' => 'manual'), array('plan' => $plan));
+	pg_assert_true($checked['ok'], 'an exported order is refunded');
+
+	$refund = api_returns_test_body('includes/fn/returns.php', 'pg_return_refund');
+	$refused = strpos($refund, "'order_cancelled'");
+	pg_assert_true(($refused !== false) && ($refused > strpos($refund, 'pg_return_refund_plan(')) && ($refused < strpos($refund, 'pg_return_move(')), 'refused under the lock, before the return moves');
+
+	pg_assert_contains("'refund_order_cancelled'", api_returns_test_body('includes/api/resources/returns.php', 'api_return_write_refuse'));
+	pg_assert_contains('409 refund_order_cancelled', api_returns_test_route('returns.update')['description']);
+	pg_assert_contains('pg_return_refund_order_open(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_return.php'));
+}

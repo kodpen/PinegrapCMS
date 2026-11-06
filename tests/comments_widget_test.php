@@ -668,6 +668,8 @@ function test_comments_widget_link_values()
 	pg_assert_same(array('', '', '', ''), array($root['__comment_parent_id'], $root['__comment_parent_name'], $root['__comment_parent_url'], $root['__comment_quote']), 'no parent: no parent tokens');
 	pg_assert_same('0', $root['__comment_depth'], 'depth 0');
 	pg_assert_same('/t?reply_to=8#software_add_comment', $root['__comment_reply_url'], 'a reply link on a bare address');
+	$question = pg_comments_widget_link_values(array('id' => 8, 'depth' => 0, 'replies' => 0, 'quoted' => true), null, false, '/t', array(), true, 'software_add_question');
+	pg_assert_same('/t?reply_to=8#software_add_question', $question['__comment_reply_url'], 'a questions widget\'s reply link opens its own form');
 }
 
 // A thread's comment has the start of its own words too, and a node bound to
@@ -862,6 +864,9 @@ function test_comments_widget_form_bindings()
 	pg_assert_false(strpos($html, 'novalidate'), 'the browser checks the required message');
 	pg_assert_false(strpos($html, '/elsewhere'), 'the designer\'s action is replaced');
 	pg_assert_false(strpos($html, 'id="mine"'), 'the designer\'s form id is replaced');
+	$question_tree = comments_widget_test_form_tree();
+	pg_comments_apply_form_bindings($question_tree, comments_widget_test_form_ctx(array('anchor' => 'software_add_question')));
+	pg_assert_contains('<form id="software_add_question"', _render_tree_node($question_tree, 0, 0), 'a questions form has its own anchor');
 
 	pg_assert_same(1, substr_count($html, 'name="message"'), 'one message box');
 	pg_assert_true((bool) preg_match('#<textarea id="comment_message"[^>]*name="message"[^>]*required=""[^>]*>\^\^pg_comment_form_message\^\^</textarea>#', $html), 'the message box: name, required, its text slot');
@@ -2146,7 +2151,7 @@ function test_comments_widget_module_wiring()
 	pg_assert_contains('return _render_system_widget_comments($tree_json, $sid, $cfg, $mode);', $designer, 'to its renderer');
 
 	$module = comments_widget_test_source('includes/fn/widgets_comments.php');
-	pg_assert_contains("_pg_inject_messages_node(\$tree, 'add_comment');", $module, 'its Messages node shows the add_comment errors');
+	pg_assert_contains("_pg_inject_messages_node(\$tree, \$form_names['state']);", $module, 'its Messages node shows its own form\'s errors');
 	pg_assert_same('Comments', pg_sw_type_labels()['comments'], 'named for the panel');
 
 	$start = strpos($module, 'function _render_system_widget_comments(');
@@ -2154,8 +2159,8 @@ function test_comments_widget_module_wiring()
 	pg_assert_contains("'parent_id' => true", $renderer, 'the rows carry their parent');
 	pg_assert_contains("'thread_key' => true", $renderer, 'and their thread');
 	pg_assert_contains("\$search ? 0 : \$options['per_page']", $renderer, 'the search index is never paged');
-	$inject = strpos($renderer, "_pg_inject_messages_node(\$tree, 'add_comment');");
-	$stamp = strpos($renderer, 'pg_comments_stamp_form_messages($tree);');
+	$inject = strpos($renderer, "_pg_inject_messages_node(\$tree, \$form_names['state']);");
+	$stamp = strpos($renderer, "pg_comments_stamp_form_messages(\$tree, \$form_names['state']);");
 	pg_assert_true(($inject !== false) && ($stamp !== false) && ($inject < $stamp), 'the small forms\' Messages are re-stamped after');
 	$draw = strpos($renderer, 'pg_comments_widget_draw($tree');
 	$watcher_form = strpos($renderer, "(new liveform('add_or_remove_watcher', \$page_id))->remove_form();");
@@ -2171,7 +2176,7 @@ function test_comments_widget_module_wiring()
 			pg_assert_contains($needle, $js, $file . ': ' . $needle);
 		}
 		pg_assert_true((bool) preg_match('/init_comment_forms\(\)[;,]\s*software\.init_comment_actions\(\)/', $js), $file . ': both run on ready');
-		pg_assert_true((bool) preg_match('/\[data-pg-comment-replying\]["\']\)\.prop\(["\']hidden["\'],\s*(id === \'0\'|"0"===e)\)\.toggleClass\(["\']d-none["\'],\s*(id === \'0\'|"0"===e)\)/', $js), $file . ': the reply box shows and hides past a display class');
+		pg_assert_true((bool) preg_match('/\[data-pg-comment-replying\]["\']\)\.prop\(["\']hidden["\'],\s*(id === \'0\'|"0"===[et])\)\.toggleClass\(["\']d-none["\'],\s*(id === \'0\'|"0"===[et])\)/', $js), $file . ': the reply box shows and hides past a display class');
 		pg_assert_contains('init_add_comment_publish', $js, $file . ': the classic form keeps its own');
 		// The message may be a textarea or a one-line input.
 		pg_assert_contains('.find(\'[name="message"]\')', $js, $file . ': the leave warning finds the message whatever its tag');

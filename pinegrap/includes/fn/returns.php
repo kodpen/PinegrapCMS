@@ -3910,6 +3910,22 @@ function pg_return_refund_plan($return)
 }
 
 /**
+ * Can a return of an order in this status be refunded: only while the order
+ * is complete or exported, the statuses a return is created on
+ * (pg_return_create_check()). A cancelled order's money goes back with the
+ * cancellation (the payment's void, pg_order_cancel_refund_owed()), and
+ * orders.refunded_amount does not show it: a refund of its return would pay
+ * the same money a second time.
+ *
+ * @param string $status orders.status
+ * @return bool
+ */
+function pg_return_refund_order_open($status)
+{
+    return in_array((string) $status, array('complete', 'exported'), true);
+}
+
+/**
  * Gives the money of a received return back and marks it refunded.
  *
  * Through the payment's driver ('driver': the one that took the order's
@@ -3935,7 +3951,8 @@ function pg_return_refund_plan($return)
  *                       person, as on the panel)
  * @param int   $user_id
  * @return array ok, error, code (why it was refused: not_installed,
- *               not_found, busy, not_received, no_driver, amount,
+ *               not_found, busy, not_received, order_cancelled (the
+ *               order is no longer complete or exported), no_driver, amount,
  *               amount_exceeds, changed, refused, unclear, no_customer
  *               (no account for store credit), credit (no card written);
  *               '' when ok),
@@ -3988,6 +4005,12 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         $release();
 
         return $fail(lang('The order could not be found.'), 'not_found');
+    }
+
+    if (!pg_return_refund_order_open($plan['order']['status'])) {
+        $release();
+
+        return $fail(lang('The order was cancelled: its money goes back with the cancellation, not with the return.'), 'order_cancelled');
     }
 
     if (($method === 'driver') && ($plan['driver'] === '')) {

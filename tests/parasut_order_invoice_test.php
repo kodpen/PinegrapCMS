@@ -250,7 +250,7 @@ function test_parasut_order_invoice_refusal_names_a_line_below_zero()
 function test_parasut_create_invoice_names_a_line_below_zero_before_the_totals()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
-	$start = strpos($source, 'function parasut_create_invoice(');
+	$start = strpos($source, 'function _parasut_create_invoice_claimed(');
 	pg_assert_true($start !== false, 'parasut_create_invoice() is found');
 
 	$asked = strpos($source, 'erp_edoc_parasut_negative_line_refusal($built[\'lines\'])', $start);
@@ -596,7 +596,7 @@ function test_parasut_order_invoice_status_badge()
 function test_parasut_create_invoice_looks_before_it_writes_again()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
-	$start = strpos($source, 'function parasut_create_invoice(');
+	$start = strpos($source, 'function _parasut_create_invoice_claimed(');
 	pg_assert_true($start !== false, 'parasut_create_invoice() is found');
 	$end = strpos($source, "\nfunction ", (int) $start + 1);
 	$body = ($end === false) ? substr($source, (int) $start) : substr($source, (int) $start, $end - (int) $start);
