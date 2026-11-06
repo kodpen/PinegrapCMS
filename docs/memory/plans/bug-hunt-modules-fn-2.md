@@ -16,7 +16,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `qr`: clean
 - `record_revisions`: clean
 - `returns`: clean (#4619)
-- Second round: returns (`includes/fn/returns.php`, changes since 2026-11-01): taken by Tuğba worker
+- Second round: returns (`includes/fn/returns.php`, changes since 2026-11-01: store credit bonus base, folder access and review take-back on refund): #7559 (read: refund lock and rollback, unclear answers, moves, held goods, line checks, estimate, mails, reminders)
 - `reviews`: taken by LC, #4597
 - `search_console`: #4852
 - `seo`: #4870
