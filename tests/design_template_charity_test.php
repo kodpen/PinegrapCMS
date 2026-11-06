@@ -85,6 +85,7 @@ function _test_charity_page_keys()
 		'donate', 'pledge_view', 'product', 'cart', 'checkout', 'order', 'email_order',
 		'campaigns', 'campaign', 'campaign_new',
 		'volunteer', 'volunteer_view', 'my_volunteering', 'staff_volunteers', 'privacy', 'email_reply',
+		'my_pledges', 'staff_pledges', 'email_account_welcome', 'email_password_reset',
 		'email_volunteer_new', 'email_volunteer_received', 'email_pledge_new', 'email_pledge_received',
 		'events', 'event_view', 'event_new', 'report_new',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
