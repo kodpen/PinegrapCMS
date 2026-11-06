@@ -517,6 +517,37 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'collect', 'next'), array('collect', 'late', 'timeout')));
     }
 
+    // A review of two stars or fewer: a task to answer it and a line in the
+    // channel. A review without stars has no rating, which is never "2 or
+    // less" (ws_flow_condition_value_holds()).
+    if (in_array('product.review.created', $events, true)) {
+        $out[] = array('key' => 'low_review', 'category' => 'sales', 'icon' => 'bi-star-half',
+            'title' => lang('Answer a low review'),
+            'help' => lang('When a product gets a review of two stars or fewer, a task to answer it and a line in the channel.'),
+            'boxes' => array(
+                'start'  => $on('product.review.created'),
+                'low'    => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{trigger.rating}}', 'op' => 'lte', 'value' => '2'))),
+                'answer' => $task(lang('Answer the low review of {{record_title}}'), 'high'),
+                'tell'   => $tell(lang('A review of {{trigger.rating}} stars was written: {{record}}')),
+            ),
+            'edges' => array(array('start', 'low', 'next'), array('low', 'answer', 'yes'), array('low', 'tell', 'yes')));
+    }
+
+    // A subscription whose renewal payment failed: the person is told and a
+    // task to contact the customer opens (the record is the contact).
+    if (in_array('subscription.failed', $events, true)) {
+        $out[] = array('key' => 'subscription_failed', 'category' => 'sales', 'icon' => 'bi-credit-card-2-back',
+            'title' => lang('Failed subscription payment'),
+            'help' => lang('When a subscription renewal payment fails, you are told and a task to contact the customer opens.'),
+            'boxes' => array(
+                'start'   => $on('subscription.failed'),
+                'told'    => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('A subscription renewal payment failed: {{record}}')), 'setting' => array('person', 'user_ids')),
+                'contact' => $task(lang('Contact {{record_title}} about the failed subscription payment'), 'high'),
+            ),
+            'edges' => array(array('start', 'told', 'next'), array('start', 'contact', 'next')));
+    }
+
     // The templates a scheduled action has no form for: tasks that wait for
     // each other, a wait between them, approvals and their outcomes.
 

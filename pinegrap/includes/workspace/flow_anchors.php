@@ -207,6 +207,10 @@ function ws_flow_trigger_outputs($kind, $config = array())
         return ws_flow_no_order_outputs();
     }
 
+    if ($kind === 'web') {
+        return function_exists('ws_flow_web_outputs') ? ws_flow_web_outputs($config) : array();
+    }
+
     if ($kind === 'mention') {
         return ws_flow_mention_outputs();
     }

@@ -110,6 +110,11 @@ function ws_flow_kinds()
         $kinds[$kind] = array('label' => $info['label'], 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array());
     }
 
+    // A start by the flow's own web address (flow_web_start.php).
+    if (function_exists('ws_flow_web_normalize')) {
+        $kinds['web'] = array('label' => lang('When a web address is called'), 'trigger' => true, 'outcomes' => array('next'), 'step' => false, 'outputs' => array());
+    }
+
     // One condition of a scheduled action (flow_conditions.php).
     if (function_exists('ws_flow_condition_outcomes')) {
         $kinds['condition'] = array('label' => lang('Condition'), 'trigger' => false, 'outcomes' => ws_flow_condition_outcomes(), 'step' => false, 'outputs' => array());
@@ -325,6 +330,9 @@ function ws_flow_config_normalize($kind, $config)
                 'priority'    => in_array($priority, array('low', 'normal', 'high', 'urgent'), true) ? $priority : 'normal',
                 'timeout'     => (is_bool($timeout) || !is_numeric($timeout)) ? '' : max(1, min(defined('WS_FLOW_TIMEOUT_MAX') ? WS_FLOW_TIMEOUT_MAX : 720, (int) $timeout)),
             );
+
+        case 'web':
+            return function_exists('ws_flow_web_normalize') ? ws_flow_web_normalize($config) : array();
 
         case 'condition':
             return function_exists('ws_flow_condition_normalize') ? ws_flow_condition_normalize($config) : array();
@@ -1628,7 +1636,7 @@ function ws_flows_list_where($filters)
  */
 function ws_flow_start_names()
 {
-    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'mention' => 'event', 'join' => 'join', 'manual' => 'manual');
+    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'mention' => 'event', 'join' => 'join', 'manual' => 'manual', 'web' => 'web');
 }
 
 /**
@@ -1895,6 +1903,10 @@ function ws_flow_start_rule($graph, $readable, $table_text = null)
 
     $kind = (string) $trigger['kind'];
     $anchors = function_exists('ws_flow_anchor_kinds') ? ws_flow_anchor_kinds() : array();
+
+    if ($kind === 'web') {
+        return array('text' => lang('When a web address is called'), 'rule' => null);
+    }
 
     if (!isset($anchors[$kind])) {
         return array('text' => lang('By hand'), 'rule' => null);
@@ -3074,6 +3086,18 @@ function ws_flow_js_strings()
         'fl_no_order_days'    => lang('Days since the last order'),
         'fl_no_order_days_help' => lang('Looked at every hour: each customer whose last order is this many days old starts one run, as the flow\'s owner, with the customer\'s values. A new order starts the count again; customers who never ordered start nothing.'),
         'fl_no_order_meta'    => ws_js_template('No order for {var:1} days', 1),
+        'fl_kind_web'         => lang('When a web address is called'),
+        'fl_web_meta'         => lang('No field read yet'),
+        'fl_web_fields'       => lang('Fields it reads'),
+        'fl_web_field_name'   => lang('Field name'),
+        'fl_web_field_add'    => lang('Add a field'),
+        'fl_web_fields_help'  => lang('The fields the caller sends, as a JSON object or as form fields. Each one named here is a value of the run, {{trigger.name}}; the others are left out.'),
+        'fl_web_address'      => lang('Web address'),
+        'fl_web_address_none' => lang('No address yet'),
+        'fl_web_address_make' => lang('Make an address'),
+        'fl_web_address_renew' => lang('Renew the address'),
+        'fl_web_address_renew_confirm' => lang('The old address stops working at once. Renew it?'),
+        'fl_web_address_help' => lang('Another system starts the published flow by sending a POST to this address, in the name of the flow\'s owner: at most 60 calls a minute and 64 KB each. Keep it secret: whoever has it can start the flow.'),
         'fl_row_table'        => lang('Table'),
         'fl_row_table_pick'   => lang('Choose a table'),
         'fl_row_table_help'   => lang('Each row written starts a run, as the flow\'s owner, while the flow is live and they may read the table. Rows a file import adds start nothing.'),
@@ -3664,7 +3688,8 @@ function ws_flow_js_config($viewer, $mode)
         // (ws_flow_run_contact_check() decides which).
         'run_customer' => !empty($viewer['contacts']),
         'derived'  => function_exists('ws_flow_derived_rules') ? ws_flow_derived_lists() : array(),
-        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20),
+        'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
+            'web_fields' => defined('WS_FLOW_WEB_FIELDS_MAX') ? WS_FLOW_WEB_FIELDS_MAX : 20),
     );
 }
 
