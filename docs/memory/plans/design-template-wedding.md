@@ -12,7 +12,7 @@ description: Plan: the Wedding Planner and Venue design template (pinegrap-weddi
 
 ## Steps (claim as `[plan:design-template-wedding] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7503): `parts.php` (node builders, the planner's data: services, packages with prices per guest, venue spaces, gallery pictures, sample real weddings, the planning timeline, why-us points, figures, testimonials, pick lists; shared parts: account bar, notice, header, footer, date band, staff bar; service, package, space, wedding and testimonial cards, timeline stage, form fields, comment thread, blog parts); `tests/design_template_wedding_test.php`.
-- 2: `pages_public.php`: home (`home_weddings`, `home_posts`), `about`, `services`, `packages`, `venue`, `gallery`, `timeline`, `faq`; `tests/design_template_wedding_public_test.php`.
+- 2 (done, #7585): `pages_public.php`: home (`home_weddings`, `home_posts`), `about`, `services`, `packages`, `venue`, `gallery`, `timeline`, `faq`; `tests/design_template_wedding_public_test.php`.
 - 3: `weddings.php`: the Real Weddings collection (`weddings` by `?space=` and `?season=`, the `wedding` record page with its story, photos, suppliers and the couple's words, `wedding_new`); test.
 - 4: `mail.php` (the e-mail builders) and `enquiries.php`: consultation enquiries (`enquiry` with `?package=`, `?service=`, `?space=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`) and `book_visit` (the booking widget's starter beside the enquiry, [[booking-templates]]); test.
 - 5: `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (a date-hold deposit per package, gift cards); test.
