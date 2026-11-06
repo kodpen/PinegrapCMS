@@ -24,9 +24,9 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T7 (done, PR #7454): daily cash count: each evening → an approval asking the counted amount → Calculate the difference from the expected amount → tell the manager when it is not zero.
 
-- T8 (done, PR #NNNN): a low review: a product review is written → rating 2 or less → a task to answer it and a line in the channel.
+- T8 (done, PR #7461): a low review: a product review is written → rating 2 or less → a task to answer it and a line in the channel.
 
-- T9 (done, PR #NNNN): a failed subscription payment: tell the owner and open a task to contact the customer.
+- T9 (done, PR #7461): a failed subscription payment: tell the owner and open a task to contact the customer.
 
 - T10 (done, #7435): booking reminder: a booking is confirmed → wait until a day before it → tell the person who hosts it (an e-mail to the guest after B8).
 
