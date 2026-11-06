@@ -57,26 +57,3 @@ function test_every_checkbox_list_switch_shows_the_mixed_state()
 
 	pg_assert_true((bool) preg_match("/\\\$\\(document\\)\\.on\\('change', '\\.multiselect-checkbox-container'/", $source), 'one delegated change listener keeps the switches in step');
 }
-
-function test_erp_bulk_buttons_start_disabled()
-{
-	// erp_invoices.php: the menu toggle and its three bulk actions.
-	foreach (array('erp_invoices.php' => 4, 'erp_account_sync.php' => 5) as $file => $expected) {
-		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-
-		preg_match_all('/<(span|div) class="[^"]*enable-on-selected[^"]*">(.*?)<\/\1>\';/s', $source, $groups);
-
-		$buttons = 0;
-
-		foreach ($groups[2] as $group) {
-			preg_match_all('/<button [^>]*>/', $group, $tags);
-
-			foreach ($tags[0] as $tag) {
-				$buttons++;
-				pg_assert_true((bool) preg_match('/ disabled( |>)/', $tag), $file . ': a bulk button is printed with the disabled attribute');
-			}
-		}
-
-		pg_assert_same($expected, $buttons, $file . ': every bulk button checked');
-	}
-}

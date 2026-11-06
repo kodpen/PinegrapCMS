@@ -436,8 +436,10 @@ function pg_recycle_hard_delete_item($item_kind, $item_id, $user)
                 break;
             }
 
+            // The right is decided for the user given, as for a page: the
+            // daily purge deletes for the software, not for the visitor.
             if (
-                (check_edit_access($file['folder']) == false)
+                (pg_folder_edit_access($file['folder'], $user['id'], $user['role']) == false)
                 || (($file['design'] == 1) && ($user['role'] > 1))
             ) {
                 return array('status' => 'error', 'message' => lang(array('string' => 'Access denied for {var:1}.', 'vars' => $file['name'])));
@@ -459,6 +461,16 @@ function pg_recycle_hard_delete_item($item_kind, $item_id, $user)
         // A short link is one row and an address. Nothing on disk, nothing
         // pointing at it -- the row is the whole of it.
         case 'short_link':
+
+            // A link this user may not see is refused, not taken for gone:
+            // falling through would drop its bin record and leave the link
+            // binned for good, out of every later purge.
+            if (
+                (pg_short_link_visible($user) == false)
+                && ((int) db_value("SELECT COUNT(*) FROM short_links WHERE id = '" . e((int) $item_id) . "'") > 0)
+            ) {
+                return array('status' => 'error', 'message' => lang('Access denied'));
+            }
 
             $short_link = pg_short_link_by_id($user, $item_id, true);
 
@@ -501,7 +513,7 @@ function pg_recycle_hard_delete_item($item_kind, $item_id, $user)
                 return array('status' => 'error', 'message' => lang('The root folder cannot be moved.'));
             }
 
-            if (check_edit_access($item_id) == false) {
+            if (pg_folder_edit_access($item_id, $user['id'], $user['role']) == false) {
                 return array('status' => 'error', 'message' => lang(array('string' => 'Access denied for {var:1}.', 'vars' => $folder['folder_name'])));
             }
 

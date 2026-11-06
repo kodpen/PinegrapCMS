@@ -92,18 +92,14 @@ function test_list_edit_key_code_cells_follow_the_enabled_flag()
 	pg_assert_false(strpos($cells['last_modified']['html'], ' by ') !== false, 'nobody named when the change has no user');
 }
 
-function test_list_edit_gift_card_notes_column_takes_one_line()
+function test_list_edit_gift_card_notes_column_keeps_its_lines()
 {
 	$columns = pg_gift_card_edit_columns();
 
-	pg_assert_same('text', $columns['notes']['type'], 'a text');
+	pg_assert_same('textarea', $columns['notes']['type'], 'several lines');
 	pg_assert_same('', pg_list_edit_parse($columns['notes'], '   ')['value'], 'notes can be cleared');
 	pg_assert_same('sent to Ayşe', pg_list_edit_parse($columns['notes'], " sent to Ayşe ")['value'], 'kept as typed, trimmed');
-
-	pg_assert_true(pg_gift_card_notes_fit_list(''), 'no notes fit');
-	pg_assert_true(pg_gift_card_notes_fit_list('sent to Ayşe'), 'one line fits');
-	pg_assert_false(pg_gift_card_notes_fit_list("first\nsecond"), 'two lines stay on the gift card');
-	pg_assert_false(pg_gift_card_notes_fit_list("first\r\nsecond"), 'two lines from a browser too');
+	pg_assert_same("first\nsecond", pg_list_edit_parse($columns['notes'], "first\r\nsecond")['value'], 'two lines stay two lines');
 }
 
 function test_list_edit_gift_card_cells_escape_the_notes()

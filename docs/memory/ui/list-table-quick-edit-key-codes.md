@@ -5,8 +5,8 @@ module: key_code_list_edit
 ---
 
 ## Which cells change?
-- Every list value `edit_key_code.php` changes (`pg_key_code_edit_columns()`): Key Code, Offer Code, Enabled, Expiration Date (typed in the site's date order, blank for never), Notes, Single-Use, Report. Text: the offer's message (the offer's own field) and Last Modified. `tests/key_code_list_edit_test.php` fails for a new column that is neither.
-- Notes written on more lines stay text and a write to them is refused (`pg_key_code_quick_cell_editable()`): the list's box is one line and would join them, as on the gift card list.
+- Every list value `edit_key_code.php` changes (`pg_key_code_edit_columns()`): Key Code, Offer Code, Enabled, Expiration Date (typed in the site's date order, blank for never), Notes (`textarea`, lines kept), Single-Use, Report. Text: the offer's message (the offer's own field) and Last Modified. `tests/key_code_list_edit_test.php` fails for a new column that is neither.
+- Before the `textarea` type, notes written on more lines stayed text (a one-line box would have joined them).
 - Before, only Enabled was a field.
 
 ## Who may change them?

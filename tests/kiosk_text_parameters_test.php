@@ -44,3 +44,20 @@ function test_kiosk_logout_needs_kiosk_mode_and_the_token()
 	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/frontend.src.js');
 	pg_assert_contains("'/kiosk.php?action=logout&token=' + encodeURIComponent(software_token)", $script, 'kiosk script sends the token');
 }
+
+function test_kiosk_logout_clears_the_visitor_cookies()
+{
+	// The next customer at the kiosk starts without the last one's guest
+	// wishlist (merged into the next account signed in there) and without
+	// the partner or tracking code the last one arrived with.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/kiosk.php');
+	$logout = substr($source, (int) strpos($source, "case 'logout':"));
+	$gate = (int) strpos($logout, '$kiosk_on');
+	$end = (int) strpos($logout, 'logout();');
+
+	foreach (array('pg_wishlist_cookie_clear();', "setcookie('software[affiliate_code]', '', time() - 1000, '/');", "setcookie('software[tracking_code]', '', time() - 1000, '/');") as $call) {
+		$at = strpos($logout, $call);
+		pg_assert_true($at !== false, $call . ' in the kiosk logout');
+		pg_assert_true(($at > $gate) && ($at < $end), $call . ' after the gate, before the session ends');
+	}
+}

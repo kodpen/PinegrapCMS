@@ -313,7 +313,9 @@ function pg_record_file_sql_operation($operator, $operand_1, $operand_2)
     $operand_2 = (string)$operand_2;
     $size  = array('is less than', 'is less than or equal to', 'is greater than', 'is greater than or equal to');
     $quote = (in_array($operator, $size, true) && !is_numeric($operand_2)) ? "'" : '';
-    $like  = str_replace('_', '\_', str_replace('%', '\%', $operand_2));
+    // escape_like(): the backslash first, or a value holding one escapes the
+    // letter after it and matches other rows than the list shows.
+    $like  = str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), $operand_2);
     switch ($operator) {
         case 'does not contain':
             return "IFNULL(" . $operand_1 . ", '') NOT LIKE '%" . escape($like) . "%'";

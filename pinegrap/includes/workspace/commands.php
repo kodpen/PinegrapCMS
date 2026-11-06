@@ -1449,7 +1449,7 @@ function ws_command_run($viewer, $channel, $body, $options = array())
             $new_due = '';
 
             foreach (preg_split('/\s+/u', $rest_text) as $word) {
-                $new_due = ws_parse_date_word($word, $task['due_date'] ?: date('Y-m-d'));
+                $new_due = ws_parse_date_word($word, (ws_task_date_value($task['due_date']) !== '') ? $task['due_date'] : date('Y-m-d'));
 
                 if (($new_due !== '') && (strpos($word, '+') !== 0)) {
                     // An absolute day is read from today, not from the old due date.
@@ -1465,12 +1465,12 @@ function ws_command_run($viewer, $channel, $body, $options = array())
                 return array('type' => 'error', 'error' => lang('Say when: a day, a date or +2d.'));
             }
 
-            $data = array('due_date' => $new_due);
+            // The start moves with the due date, so the task keeps its length;
+            // a start without a due date stays where it is.
+            $data = ws_task_move_dates($task, $new_due);
 
-            // The start moves with the due date, so the task keeps its length.
-            if ($task['start_date'] && $task['due_date']) {
-                $shift = (int) round((strtotime($new_due) - strtotime($task['due_date'])) / 86400);
-                $data['start_date'] = date('Y-m-d', strtotime($task['start_date'] . ' 12:00:00 ' . (($shift >= 0) ? '+' : '') . $shift . ' days'));
+            if (array_key_exists('start_date', $data) && ($data['start_date'] === null)) {
+                unset($data['start_date']);
             }
 
             $result = ws_task_update($viewer, $task, $data);

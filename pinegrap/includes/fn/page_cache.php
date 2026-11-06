@@ -1839,6 +1839,29 @@ function pg_page_cache_announce_dirties($event)
 }
 
 /**
+ * Whether a Workspace proposal the Workspace applied (ws_change_write())
+ * changed what pages show: a page, a file, a product, a product group or a
+ * variant set, an offer (prices), a form record or a calendar event. The
+ * workspace scripts are left out of pg_page_cache_request_dirties(), and
+ * several of these writes announce nothing the cache hears (a page or file
+ * put in the bin, a file edit, an offer, a record, an event). Stock waits
+ * for the lifetime, as everywhere; orders, contacts, the ERP, users and the
+ * Workspace's own items are on no page. A refused write changed nothing.
+ *
+ * @param string     $type a kind of ws_change_types()
+ * @param array|null $done the writer's answer
+ * @return bool
+ */
+function pg_page_cache_ws_change_dirties($type, $done)
+{
+    if (!is_array($done) || empty($done['ok'])) {
+        return false;
+    }
+
+    return in_array((string) $type, array('page', 'file', 'product', 'product_group', 'variant_set', 'offer', 'form', 'calendar_event'), true);
+}
+
+/**
  * Marks this request as one that changed what pages show: once it ends
  * without an error status, every stored page is made old. The number is
  * raised while the page cache is off too: the kept sitemap.xml follows it

@@ -70,11 +70,14 @@ function pg_explorer_handle_paste($type, $request, $user)
                 }
 
                 // A copy of the signing key would carry another name,
-                // and get_file.php serves it under that name.
+                // and get_file.php serves it under that name; a copy of a
+                // team chat attachment is no attachment any more, so only
+                // whoever may open the original copies it.
                 if (
                     (check_edit_access($file['folder']) == false)
                     || (($file['design'] == 1) && ($user['role'] > 1))
                     || pg_file_withheld($file['name'])
+                    || pg_chat_attachment_refused($file['id'], $user)
                 ) {
                     $errors[] = lang(array('string' => 'Access denied for {var:1}.', 'vars' => $file['name']));
                     break;
@@ -345,6 +348,11 @@ function pg_explorer_handle_files_design($type, $request, $user)
             WHERE id IN (" . implode(',', $allowed) . ")");
 
         pg_audit_record_many('update', 'files', $audit_before);
+
+        // Stored files just marked as design files have to be on the disk.
+        if ($design === '1') {
+            pg_file_storage_bring_home($allowed);
+        }
 
         log_activity(((count($allowed) == 1) ? lang(array('string' => '{var:1} file was updated', 'vars' => 1)) : lang(array('string' => '{var:1} files were updated', 'vars' => count($allowed)))), $_SESSION['sessionusername']);
     }

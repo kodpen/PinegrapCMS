@@ -20,7 +20,31 @@ include('init.php');
 if (!defined('USER_LOGGED_IN') || !USER_LOGGED_IN) {
     list($image_editor_payload, $image_editor_status) = pg_image_editor_refusal(lang('Your session has expired. Reload the page and sign in again.'), 401, 'session');
 } else {
-    list($image_editor_payload, $image_editor_status) = pg_image_editor_api(file_get_contents('php://input'), validate_user());
+    $image_editor_body = (string) file_get_contents('php://input');
+    $image_editor_user = validate_user();
+
+    // A file a team chat message carries opens only for a side of that
+    // conversation or a role-0 administrator, as in get_file.php: the
+    // folder's edit right would otherwise read its pixels or save a copy
+    // anyone could open. The request is read as pg_image_editor_api() reads
+    // it: the whole body, or its first line when a file's bytes follow.
+    $image_editor_request = json_decode($image_editor_body, true);
+
+    if (!is_array($image_editor_request)) {
+        list($image_editor_line) = pg_image_editor_binary_body($image_editor_body);
+        $image_editor_request = json_decode($image_editor_line, true);
+        unset($image_editor_line);
+    }
+
+    $image_editor_files = pg_image_editor_request_files($image_editor_request);
+    unset($image_editor_request);
+
+    if (pg_chat_attachment_files_refused(pg_chat_attachment_conversations_by_file($image_editor_files['ids'], $image_editor_files['names']), (int) $image_editor_user['id'], (int) $image_editor_user['role'])) {
+        log_activity(pg_log_lang(array('string' => 'access denied to file attachment ({var:1})', 'vars' => array(implode(', ', array_merge($image_editor_files['ids'], $image_editor_files['names']))))), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        list($image_editor_payload, $image_editor_status) = pg_image_editor_refusal(lang('Access denied'), 403);
+    } else {
+        list($image_editor_payload, $image_editor_status) = pg_image_editor_api($image_editor_body, $image_editor_user);
+    }
 }
 
 header('Cache-Control: private, no-store');

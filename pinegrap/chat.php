@@ -474,31 +474,10 @@ function pg_chat_unread_for_push($user_id, $limit = 3)
 // them does not need a banner on their phone as well. The queue holds the row
 // for a minute and drops it unsent if the read mark has moved past the message
 // by the time it comes due, which is what "unanswered" means here.
-//
-// The visitor side of a site conversation is not an account and cannot be
-// woken; the operator side is whoever the conversation was assigned to, or the
-// operator the site is configured with.
 function pg_chat_push_peer($conversation, $message_id, $sender_user_id)
 {
-    $sender_user_id = (int) $sender_user_id;
-
-    if ($conversation['channel'] == 'site') {
-
-        $recipient = (int) $conversation['target_user_id'];
-
-        if (($recipient < 1) && (defined('CHAT_OPERATOR_USER_ID'))) {
-            $recipient = (int) CHAT_OPERATOR_USER_ID;
-        }
-
-        // The operator writing to a visitor has nobody with an account to wake.
-        if ($recipient === $sender_user_id) {
-            $recipient = 0;
-        }
-
-    } else {
-
-        $recipient = pg_chat_peer_id($conversation, $sender_user_id);
-    }
+    $recipient = pg_chat_push_recipient($conversation, $sender_user_id,
+        defined('CHAT_OPERATOR_USER_ID') ? (int) CHAT_OPERATOR_USER_ID : 0);
 
     if ($recipient < 1) {
         return;
@@ -507,6 +486,34 @@ function pg_chat_push_peer($conversation, $message_id, $sender_user_id)
     include_once(dirname(__FILE__) . '/includes/push.php');
 
     pg_push_enqueue($recipient, 'chat', $message_id, pg_push_chat_delay());
+}
+
+// The account a message wakes, 0 for nobody. A panel conversation wakes the
+// other side. A site conversation has two ends: the person who started it -
+// an anonymous visitor (initiator 0, no account to wake) or a signed-in
+// member - and the staff side, which is the operator it was addressed to (the
+// configured operator when none was stored) or a role-0 administrator
+// answering in its place. A message from the starter wakes the operator; a
+// message from anyone on the staff side wakes the member who started it.
+function pg_chat_push_recipient($conversation, $sender_user_id, $operator_user_id)
+{
+    $sender_user_id = (int) $sender_user_id;
+
+    if ($conversation['channel'] != 'site') {
+        $recipient = ((int) $conversation['initiator_user_id'] === $sender_user_id)
+            ? (int) $conversation['target_user_id']
+            : (int) $conversation['initiator_user_id'];
+    } elseif ((int) $conversation['initiator_user_id'] === $sender_user_id) {
+        $recipient = (int) $conversation['target_user_id'];
+
+        if ($recipient < 1) {
+            $recipient = (int) $operator_user_id;
+        }
+    } else {
+        $recipient = (int) $conversation['initiator_user_id'];
+    }
+
+    return ($recipient === $sender_user_id) ? 0 : $recipient;
 }
 
 // ── Permission rules ─────────────────────────────────────────────────────

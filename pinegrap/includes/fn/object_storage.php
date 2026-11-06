@@ -719,13 +719,16 @@ function pg_os_delete(array $config, $key)
  *
  * @param array $config
  * @param string $prefix below the configured prefix ('' for everything)
- * @param array $options limit (objects, default 10000)
+ * @param array $options limit (objects, default 10000); start_after (a key
+ *                       below the configured prefix: only keys after it, in
+ *                       the store's byte order)
  * @return array ok, items (key below the configured prefix, size, modified,
  *               etag), truncated (more than limit); or pg_os_fail()
  */
 function pg_os_list(array $config, $prefix = '', array $options = array())
 {
     $limit = isset($options['limit']) ? max(1, (int) $options['limit']) : 10000;
+    $after = isset($options['start_after']) ? (string) $options['start_after'] : '';
     $full = pg_os_object_key($config, $prefix);
 
     // The prefix a listed key carries that callers do not see.
@@ -735,15 +738,7 @@ function pg_os_list(array $config, $prefix = '', array $options = array())
     $token = '';
 
     do {
-        $query = array('list-type' => '2', 'max-keys' => (string) min(1000, $limit - count($items)));
-
-        if ($full !== '') {
-            $query['prefix'] = $full;
-        }
-
-        if ($token !== '') {
-            $query['continuation-token'] = $token;
-        }
+        $query = pg_os_list_query($config, $full, min(1000, $limit - count($items)), $token, $after);
 
         $result = pg_os_request($config, 'GET', '', array('query' => $query, 'timeout' => 60, 'cap' => 16777216));
 
@@ -758,6 +753,36 @@ function pg_os_list(array $config, $prefix = '', array $options = array())
     } while (($token !== '') && (count($items) < $limit));
 
     return array('ok' => true, 'items' => array_slice($items, 0, $limit), 'truncated' => ($token !== ''));
+}
+
+
+/**
+ * The query of one ListObjectsV2 page. The first page starts after
+ * $start_after when one is given; a later page follows its continuation
+ * token, which already carries where the listing stands.
+ *
+ * @param array $config
+ * @param string $full the full key prefix (pg_os_object_key()), '' for none
+ * @param int $max keys on this page
+ * @param string $token continuation token, '' on the first page
+ * @param string $start_after a key below the configured prefix, '' for none
+ * @return array raw query pairs
+ */
+function pg_os_list_query(array $config, $full, $max, $token, $start_after)
+{
+    $query = array('list-type' => '2', 'max-keys' => (string) (int) $max);
+
+    if ($full !== '') {
+        $query['prefix'] = $full;
+    }
+
+    if ($token !== '') {
+        $query['continuation-token'] = $token;
+    } elseif ($start_after !== '') {
+        $query['start-after'] = pg_os_object_key($config, $start_after);
+    }
+
+    return $query;
 }
 
 

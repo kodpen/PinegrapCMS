@@ -54,7 +54,7 @@ $order = db_item(
             billing_email_address, billing_phone_number, billing_salutation,
             billing_address_1, billing_address_2,
             billing_city, billing_state, billing_zip_code, billing_country,
-            subtotal, discount, tax, shipping, surcharge, total,
+            subtotal, discount, tax, shipping, surcharge, gift_card_discount, total,
             payment_method, transaction_id, special_offer_code,
             payment_installment, installment_charges,
             reference_code,
@@ -170,6 +170,18 @@ $order_status_labels = array(
 );
 $order_status_label = isset($order_status_labels[(string)$order['status']]) ? $order_status_labels[(string)$order['status']] : (string)$order['status'];
 
+// The captions of the totals rows (pg_order_print_totals()).
+$total_labels = array(
+    'subtotal'            => lang('Subtotal'),
+    'discount'            => lang('Discount'),
+    'tax'                 => lang('Tax'),
+    'shipping'            => lang('Shipping'),
+    'surcharge'           => lang('Surcharge'),
+    'gift_card'           => lang('Gift Card'),
+    'installment_charges' => lang('Installment Charge'),
+    'total'               => lang('Total'),
+);
+
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
 <html lang="<?= h(lang(array('info' => true))) ?>">
@@ -280,20 +292,9 @@ header('Content-Type: text/html; charset=utf-8');
     </table>
 
     <div class="totals">
-        <div class="row"><span><?= h(lang('Subtotal')) ?></span><span><?= h($fmt((int)$order['subtotal'])) ?></span></div>
-        <?php if ((int)$order['discount'] > 0): ?>
-            <div class="row"><span><?= h(lang('Discount')) ?></span><span>-<?= h($fmt((int)$order['discount'])) ?></span></div>
-        <?php endif; ?>
-        <?php if ((int)$order['tax'] > 0): ?>
-            <div class="row"><span><?= h(lang('Tax')) ?></span><span><?= h($fmt((int)$order['tax'])) ?></span></div>
-        <?php endif; ?>
-        <?php if ((int)$order['shipping'] > 0): ?>
-            <div class="row"><span><?= h(lang('Shipping')) ?></span><span><?= h($fmt((int)$order['shipping'])) ?></span></div>
-        <?php endif; ?>
-        <?php if ((int)$order['surcharge'] > 0): ?>
-            <div class="row"><span><?= h(lang('Surcharge')) ?></span><span><?= h($fmt((int)$order['surcharge'])) ?></span></div>
-        <?php endif; ?>
-        <div class="row grand"><span><?= h(lang('Total')) ?></span><span><?= h($fmt((int)$order['total'])) ?></span></div>
+        <?php foreach (pg_order_print_totals($order) as $total_row): ?>
+            <div class="row<?= $total_row['grand'] ? ' grand' : '' ?>"><span><?= h($total_labels[$total_row['key']]) ?></span><span><?= $total_row['negative'] ? '-' : '' ?><?= h($fmt($total_row['amount'])) ?></span></div>
+        <?php endforeach; ?>
         <?php if ((int)$order['payment_installment'] > 1): ?>
             <div class="row" style="font-size:.85rem;color:#6c757d">
                 <span><?= h((int)$order['payment_installment'] . ' ' . lang('Installments')) ?></span>

@@ -124,11 +124,22 @@ function ws_api_channel_apply_template($params)
         api_fail_validation(lang('That template could not be found.'), 'template_id');
     }
 
+    // The refusals of the real call (body, each task, note room, message
+    // burst), so a rehearsal refuses what the write would refuse.
+    $checked = ws_api_as_owner(function () use ($viewer, $channel, $template) {
+        return ws_template_apply_check($viewer, $channel, $template, array('app_id' => ws_api_writer_app_id()));
+    });
+
+    if (!$checked['ok']) {
+        api_fail_validation($checked['error']);
+    }
+
     api_dry_run_stop('applied', 'workspace_template', array(
         'channel_id'  => (int) $channel['id'],
         'template_id' => (string) $template['id'],
-        'tasks'       => count($template['body']['tasks']),
-        'notes'       => count($template['body']['notes']),
+        'tasks'       => count($checked['planned']),
+        'notes'       => count($checked['body']['notes']),
+        'unassigned'  => (int) $checked['unassigned'],
     ));
 
     $result = ws_api_as_owner(function () use ($viewer, $channel, $template) {

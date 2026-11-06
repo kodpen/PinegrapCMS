@@ -83,61 +83,25 @@ if ($list_page === false) {
     output_error(lang('Query failed.'));
 }
 
-// get pending total
+// The status totals of the range, from the commissions alone: a join on the
+// affiliate code counted a commission once per contact holding the code.
 $query =
-    "SELECT SUM(commissions.amount) as pending_total
+    "SELECT status, SUM(amount) AS total
     FROM commissions
-    LEFT JOIN contacts ON commissions.affiliate_code = contacts.affiliate_code
-    LEFT JOIN orders ON commissions.order_id = orders.id
-    WHERE
-        (commissions.status = 'pending')
-        AND (commissions.created_timestamp >= ?)
-        AND (commissions.created_timestamp <= ?)";
+    WHERE (created_timestamp >= ?) AND (created_timestamp <= ?)
+    GROUP BY status";
 $result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
-$row = mysqli_fetch_assoc($result);
-$pending_total = $row['pending_total'];
+$status_rows = array();
 
-// get payable total
-$query =
-    "SELECT SUM(commissions.amount) as payable_total
-    FROM commissions
-    LEFT JOIN contacts ON commissions.affiliate_code = contacts.affiliate_code
-    LEFT JOIN orders ON commissions.order_id = orders.id
-    WHERE
-        (commissions.status = 'payable')
-        AND (commissions.created_timestamp >= ?)
-        AND (commissions.created_timestamp <= ?)";
-$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
-$row = mysqli_fetch_assoc($result);
-$payable_total = $row['payable_total'];
+while ($row = mysqli_fetch_assoc($result)) {
+    $status_rows[] = $row;
+}
 
-// get ineligible total
-$query =
-    "SELECT SUM(commissions.amount) as ineligible_total
-    FROM commissions
-    LEFT JOIN contacts ON commissions.affiliate_code = contacts.affiliate_code
-    LEFT JOIN orders ON commissions.order_id = orders.id
-    WHERE
-        (commissions.status = 'ineligible')
-        AND (commissions.created_timestamp >= ?)
-        AND (commissions.created_timestamp <= ?)";
-$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
-$row = mysqli_fetch_assoc($result);
-$ineligible_total = $row['ineligible_total'];
-
-// get paid total
-$query =
-    "SELECT SUM(commissions.amount) as paid_total
-    FROM commissions
-    LEFT JOIN contacts ON commissions.affiliate_code = contacts.affiliate_code
-    LEFT JOIN orders ON commissions.order_id = orders.id
-    WHERE
-        (commissions.status = 'paid')
-        AND (commissions.created_timestamp >= ?)
-        AND (commissions.created_timestamp <= ?)";
-$result = db_q($query, array((string) $start_timestamp, (string) $stop_timestamp)) or output_error('Query failed.');
-$row = mysqli_fetch_assoc($result);
-$paid_total = $row['paid_total'];
+$status_totals = pg_commission_list_totals($status_rows);
+$pending_total = $status_totals['pending'];
+$payable_total = $status_totals['payable'];
+$ineligible_total = $status_totals['ineligible'];
+$paid_total = $status_totals['paid'];
 
 
 // if the advanced filters are off

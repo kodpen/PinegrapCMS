@@ -374,6 +374,149 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'task', 'next')));
     }
 
+    // A week after delivery the customer has used what came: a task to ask
+    // how it went and for a review (the delay box waits at most 90 days).
+    if (in_array('order.delivered', $events, true)) {
+        $out[] = array('key' => 'review_request', 'category' => 'sales', 'icon' => 'bi-star',
+            'title' => lang('Ask for a review after delivery'),
+            'help' => lang('A week after an order is delivered, a task to ask the customer how it went and for a review.'),
+            'boxes' => array(
+                'start' => $on('order.delivered'),
+                'wait'  => array('kind' => 'delay', 'config' => array('amount' => 7, 'unit' => 'days')),
+                'ask'   => $task(lang('Ask the customer for a review of {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'wait', 'next'), array('wait', 'ask', 'done')));
+    }
+
+    // Restocking asked first: an order to the supplier spends money, so
+    // somebody approves it before the task to place it opens.
+    if (in_array('stock.low', $events, true)) {
+        $out[] = array('key' => 'restock_approval', 'category' => 'sales', 'icon' => 'bi-cart-check',
+            'title' => lang('Restock after approval'),
+            'help' => lang('When a product runs low, asks in a channel whether to order more; approved, a task to order it opens.'),
+            'boxes' => array(
+                'start' => $on('stock.low'),
+                'ask'   => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Order more of {{record_title}}?'),
+                    'text' => lang('{{record_title}} is running low. Approve to order more, or reject to leave it as it is.'),
+                    'approvers' => array($me), 'rule' => 'any', 'closes_in' => 48),
+                    'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+                'order' => $task(lang('Order more of {{record_title}}'), 'high'),
+                'left'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Not ordering more of {{record_title}} for now.')), 'setting' => array('person', 'user_ids')),
+                'late'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Nobody decided in time whether to order more of {{record_title}}.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'ask', 'next'), array('ask', 'order', 'approved'), array('ask', 'left', 'rejected'),
+                array('ask', 'late', 'expired')));
+    }
+
+    // A return to handle within two days, said in the channel; the person
+    // is told when the task is still open by then.
+    if (in_array('order.return.requested', $events, true)) {
+        $out[] = array('key' => 'return_task', 'category' => 'sales', 'icon' => 'bi-arrow-return-left',
+            'title' => lang('Handle a return'),
+            'help' => lang('A requested return becomes a task due in two days and a line in the channel; you are told if it is still open then.'),
+            'boxes' => array(
+                'start'  => $on('order.return.requested'),
+                'handle' => array('kind' => 'task', 'config' => array('title' => lang('Handle the return of {{record_title}}'),
+                    'description' => '{{record}}' . "\n" . '{{record_link}}', 'assignees' => array($me), 'due_in' => 2, 'priority' => 'high', 'timeout' => 48),
+                    'setting' => array('person', 'assignees')),
+                'tell'   => $tell(lang('A return was requested: {{record}}')),
+                'late'   => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('The return of {{record_title}} is still not handled after two days.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'handle', 'next'), array('start', 'tell', 'next'), array('handle', 'late', 'timeout')));
+    }
+
+    // A cancelled booking leaves a free slot and a guest who may still
+    // come: a line in the channel and a task to offer another time.
+    if (in_array('booking.cancelled', $events, true)) {
+        $out[] = array('key' => 'booking_cancelled', 'category' => 'sales', 'icon' => 'bi-calendar-x',
+            'title' => lang('Rebook a cancelled booking'),
+            'help' => lang('When a booking is cancelled, a line in the channel and a task to offer the guest another time.'),
+            'boxes' => array(
+                'start' => $on('booking.cancelled'),
+                'tell'  => $tell(lang('A booking was cancelled: {{record}}')),
+                'offer' => $task(lang('Offer another time for {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'tell', 'next'), array('start', 'offer', 'next')));
+    }
+
+    // A cancelled order, by the customer or the shop: a line in the
+    // channel and a task to find out why and win the customer back.
+    if (in_array('order.cancelled', $events, true)) {
+        $out[] = array('key' => 'order_cancelled', 'category' => 'sales', 'icon' => 'bi-bag-x',
+            'title' => lang('Follow up a cancelled order'),
+            'help' => lang('When an order is cancelled, a line in the channel and a task to find out why and help the customer.'),
+            'boxes' => array(
+                'start' => $on('order.cancelled'),
+                'tell'  => $tell(lang('An order was cancelled: {{record}}')),
+                'ask'   => $task(lang('Follow up the cancellation of {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'tell', 'next'), array('start', 'ask', 'next')));
+    }
+
+    // A day before a confirmed booking the host is told and the guest gets
+    // a reminder. The booking is read again after the wait: one cancelled
+    // or no longer confirmed meanwhile is not reminded, and the texts give
+    // the start it has then.
+    if (in_array('booking.confirmed', $events, true)) {
+        $read = function () {
+            return array('kind' => 'record_get', 'config' => array('record' => 'booking', 'id' => '{{trigger.record_id}}'));
+        };
+        $out[] = array('key' => 'booking_reminder', 'category' => 'sales', 'icon' => 'bi-calendar-check',
+            'title' => lang('Booking reminder'),
+            'help' => lang('A day before a confirmed booking, the person who hosts it is told and the guest gets a reminder e-mail.'),
+            'boxes' => array(
+                'start' => $on('booking.confirmed'),
+                'read'  => $read(),
+                'wait'  => array('kind' => 'delay', 'config' => array('mode' => 'until', 'at' => '{{node.read.start}}', 'amount' => 1, 'unit' => 'days')),
+                'again' => $read(),
+                'still' => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.again.status}}', 'op' => 'eq', 'value' => 'confirmed'))),
+                'host'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Tomorrow at {{node.again.start}}: {{record}}')), 'setting' => array('person', 'user_ids')),
+                'guest' => array('kind' => 'email', 'config' => array('to' => '', 'recipient' => 'record_person', 'purpose' => 'info', 'page_id' => 0,
+                    'subject' => lang('A reminder of your booking tomorrow'),
+                    'body' => lang('Hello {{node.again.name}},') . "\n\n" . lang('This is a reminder of your booking for {{node.again.service}} on {{node.again.start}}. We look forward to seeing you.'))),
+            ),
+            'edges' => array(array('start', 'read', 'next'), array('read', 'wait', 'done'), array('wait', 'again', 'done'), array('again', 'still', 'done'),
+                array('still', 'host', 'yes'), array('still', 'guest', 'yes')));
+    }
+
+    // A failed run of a flow of the team's channel, said in that channel
+    // with the flow, the box and what went wrong. The start is narrowed to
+    // the channel the line goes to, so a private channel's run is never
+    // told in another.
+    if (in_array('workspace.flow.run.failed', $events, true)) {
+        $out[] = array('key' => 'failed_runs', 'category' => 'team', 'icon' => 'bi-exclamation-octagon',
+            'title' => lang('Failed runs to the team'),
+            'help' => lang('When a run of one of the channel\'s flows fails, a line in the channel names the flow, the box and what went wrong.'),
+            'boxes' => array(
+                'start' => $on('workspace.flow.run.failed', array('channel_id' => $channel)) + array('setting' => array('channel', 'channel_id')),
+                'tell'  => array('kind' => 'post', 'config' => array('channel_id' => $channel,
+                    'body' => lang('A run of the flow {{record_title}} failed (run {{trigger.run_id}}). {{message}}')), 'setting' => array('channel', 'channel_id')),
+            ),
+            'edges' => array(array('start', 'tell', 'next')));
+    }
+
+    // An invoice past its due date: a task to collect it that waits seven
+    // days; still open by then, the person is told. No box reads an
+    // invoice, so the task is the payment's mark: done once it is paid.
+    if (in_array('erp.invoice.overdue', $events, true)) {
+        $out[] = array('key' => 'invoice_overdue_follow_up', 'category' => 'sales', 'icon' => 'bi-receipt',
+            'title' => lang('Follow up an overdue invoice'),
+            'help' => lang('When an invoice becomes overdue, a task to collect it; you are told if it is still not collected seven days later.'),
+            'boxes' => array(
+                'start'   => $on('erp.invoice.overdue'),
+                'collect' => array('kind' => 'task', 'config' => array('title' => lang('Collect the overdue invoice {{record_title}}'),
+                    'description' => '{{record}}' . "\n" . lang('Due on {{trigger.due_date}}, {{trigger.days_overdue}} days overdue.') . "\n" . '{{record_link}}',
+                    'assignees' => array($me), 'due_in' => 7, 'priority' => 'high', 'timeout' => 168), 'setting' => array('person', 'assignees')),
+                'late'    => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('The overdue invoice {{record_title}} is still not collected after seven days.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'collect', 'next'), array('collect', 'late', 'timeout')));
+    }
+
     // The templates a scheduled action has no form for: tasks that wait for
     // each other, a wait between them, approvals and their outcomes.
 

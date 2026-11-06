@@ -626,6 +626,34 @@ function test_page_cache_announce_dirties()
 	}
 }
 
+// A Workspace proposal applied from workspace*.php (left out of the request
+// rule) binned a page or a file, or changed an offer, a record or an event,
+// announcing nothing the cache hears: the deleted page stayed served.
+function test_page_cache_ws_change_dirties()
+{
+	foreach (array('page', 'file', 'product', 'product_group', 'variant_set', 'offer', 'form', 'calendar_event') as $type) {
+		pg_assert_true(pg_page_cache_ws_change_dirties($type, array('ok' => true, 'id' => 4)), $type);
+		pg_assert_false(pg_page_cache_ws_change_dirties($type, array('ok' => false, 'error' => 'x')), $type . ' refused');
+	}
+
+	foreach (array('stock', 'order', 'contact', 'erp_account', 'erp_quote', 'channel', 'user', 'task', 'task_note', 'note', '') as $type) {
+		pg_assert_false(pg_page_cache_ws_change_dirties($type, array('ok' => true, 'id' => 4)), $type);
+	}
+
+	pg_assert_false(pg_page_cache_ws_change_dirties('page', null), 'no answer');
+
+	// Every kind the Workspace writes is sorted on purpose.
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/includes/workspace/changes.php');
+	preg_match_all('/^function ws_change_write_([a-z_]+)\(/m', $source, $m);
+	$sorted = array('page', 'file', 'product', 'product_group', 'variant_set', 'offer', 'form', 'calendar_event',
+		'stock', 'order', 'contact', 'erp_account', 'erp_quote', 'channel', 'user', 'task', 'task_note', 'note');
+	pg_assert_true(count($m[1]) > 10, 'writers found');
+	pg_assert_same(array(), array_values(array_diff($m[1], $sorted)), 'a new Workspace writer is sorted in the test and the rule');
+
+	$write = substr($source, (int) strpos($source, 'function ws_change_write('), 4000);
+	pg_assert_true(strpos($write, 'pg_page_cache_ws_change_dirties($type, $done)') !== false, 'ws_change_write() asks the rule');
+}
+
 // The router answers from the file cache before any page or file lookup and
 // lets get_page.php store only on the two paths
 // where the address it was asked for is the page it draws.

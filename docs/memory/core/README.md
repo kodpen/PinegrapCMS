@@ -27,6 +27,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - ai-prompt-version.md: pg_ai_prompt_version() (r + 8 hex of the rules' SHA-1), ws_ai_requests.prompt_version (11.0.112, #2829), the insert helper and its scan test, where the version is shown
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
+- audiences-door-join.md: pg_audience_door_join(): storefront sign-up doors put a contact into the registration, membership or a ticked group and announce the join for flows, campaign profiles and webhooks
 - audiences-doors.md: Hand doors of a contact group filled by rules: which paths refuse or skip a dynamic group, API/MCP 409 contact_group_by_rule, the guard functions, readers and erasure
 - audiences-overview.md: Contact groups filled by rules as a whole (owner 2026-11-02): why they exist, the decisions that bind them, and which file holds each part (rules, recompute, editor, doors, token, joined triggers)
 - audiences-recompute.md: How a contact group filled by rules is recomputed: pages of contact ids, the rule-row diff, the hour and 20-second budget of the general job, the announce once a pass, Refresh now (audience_refresh)
@@ -65,6 +66,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
 - content-translation-result-check.md: pg_tr_result_check(): when a translation of a site text is refused or marked suspicious, and why a brand name the glossary keeps is not suspicious
 - content-translation-uses.md: translation_uses (where a text of the front-end translation is drawn): owner types, who rewrites them, and how a deleted or binned page's texts leave the counts and the pending list
+- cross-site-json-requests.md: api.php and booking_slots.php refuse a browser's cross-site request (pg_request_cross_site()), because the session cookie can be SameSite=None after a checkout.
 - css-bundles.md: The panel stylesheet served minified (pg_css_bundles(), tools/build_css.php, tools/css_minify.php): what the minifier removes and keeps, src mode, the CI and pre-push check, how it was proved equal
 - csv-escape-argument.md: Every fgetcsv(), fputcsv() and str_getcsv() call passes enclosure '"' and escape '\\': PHP 8.4 deprecates leaving the escape out; why '\\' and not '', and the test that holds it
 - csv-exports.md: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset and byte order mark) and stamp times with pg_csv_export_time() (site clock); pg_csv_open() steps over the mark on import
@@ -72,6 +74,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - csv-import-feedback.md: Contacts, Users, Products, Submitted Forms and Campaign Profiles CSV import: separator from the header line, unknown headings and unused rows named 'Line n: reason'
 - csv-import-headings.md: How Import Products and Import Campaign Profiles match headings (pg_import_heading: case, spaces, dashes), the products name-column refusal, and blank submitted-form rows passed over
 - csv-line-endings.md: The CSV importers open the upload with pg_csv_open(), which turns a classic Mac (CR-only) file into LF lines instead of the auto_detect_line_endings setting deprecated in PHP 8.1 (PR #1757)
+- custom-form-private-access-expiry.md: A custom form's private access expiry is today plus N calendar days (pg_cf_private_expiry_date()), never N * 86400 seconds, so a clock change does not end it a day early (PR #7039)
 - db-legacy-and-magic-quotes.md: PHP 5 remnants removed (PR #3149, #3195): the DB_LEGACY mysql_* connection in db_connect() and router.php, the magic quotes strip of init.php and the installer; a config that still sets DB_LEGACY
 - deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close()/openssl_x509_free(); db_connect() checks a reused connection with SELECT 1, not mysqli_ping() (PR #1744)
 - designer-i18n-audit-tool.md: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
@@ -82,6 +85,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - email-campaign-html-body.md: How an HTML campaign body is drawn from a page: an e-mail render with no session token and signed-out account widgets, the token cut as a guard, and no hard wrap of mail bodies
 - email-campaign-job-log-user.md: Which user email_campaign_job.php writes into its activity log lines: the manager of a web run, else UNKNOWN (no session read in a scheduled run)
 - email-campaign-schedule-label.md: The schedule label on My Campaign Profiles built from two whole keys, the send time as {var:4} at the end
+- email-campaign-send-claims.md: Send now and the campaign job claim recipients with one conditional UPDATE, so overlapping runs never deliver twice; follow-ups only from the run that finished the campaign
 - email-campaign-send.md: Send now and the campaign job share includes/fn/email_campaign_send.php: mail properties with purpose, refused deliveries stored as attempts, finish counts only deliveries
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
 - error-screen-language-and-status.md: The error screen output_error() draws leaves through pg_tr_finalize() like a page, so <html lang> is the site's or the address's language; which "not found" screens answer 404; what is still left
@@ -105,6 +109,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - init-constants-and-config-file.md: Constants defined in init.php (CONFIG_FILE_PATH, OUTPUT_PATH, ECOMMERCE, ADS ...) and how data/config.php is written (installer, settings screens, escaping, closing tag).
 - js-bundles.md: Scripts minified from a list (pg_js_bundles(), tools/build_js.php): the bundles, how a screen prints one, src mode, the CI check, the test, the Workspace drawer's loader on record screens.
 - json-endpoint-rules.md: Endpoints that speak JSON: rejections and CSRF failures in JSON with the right status, api.php reads a JSON body (FormData gets "Invalid action."), no pg_post_body_discarded() on a JSON body.
+- jsonld-script-escaping.md: How JSON-LD is printed inside <script type="application/ld+json"> so no value can break out of the element or swallow the page.
 - lang-compiled-cache.md: The compiled language cache data/temp/lang_<code>.php that pg_lang_map() reads through opcache: speed, the signature that rebuilds it, atomic write, no writable data/temp, the gate (PR #1933)
 - lang-file-writes.md: Language file writes refuse text that is not UTF-8 instead of emptying a shard
 - lang-files.md: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
@@ -115,10 +120,13 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
 - mail-bounces.md: The bounce record (mail_bounces, one row per address) and the send gate the mail queue and campaigns ask before a send; complaint withdraws e-mail consent; resubscribe or address change clears
 - mail-failure-reason.md: Screens that send an e-mail at once show the mail server's reason on failure through pg_mail_failure_sentence(), not a pointer at the log
+- mail-merge-values-once.md: replace_variables() fills every ^^field^^ in one pass; a filled-in value is never read again as a field.
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
 - mail-transport-failure.md: PHP mail() failing with no SMTP server set is permanent, stores the product sentence, sends no sender notice, and the mail queue screen warns with a link to SMTP Settings
 - mail-transport-webhooks.md: mail_webhook.php — bounce, complaint and delivery reports of the API mail transports into the bounce record; URL key, Mailgun/Resend signatures, replays, SES subscription
 - mail-transports.md: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, the SMTP Settings card
+- mailchimp-key-kept.md: Mailchimp API key on the Communication settings card: never printed, empty box keeps it, remove tick, data center checked as a plain host label before any request
+- membership-day-in-get-file.md: Which calendar day ends a membership or private access in get_file.php (site zone set before USER_MEMBER) and in the recurring job (the calendar day before)
 - message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings; what is still left
 - multibyte-trim.md: trim()/rtrim()/ltrim() read their character list byte by byte, so "–", "—", "·" or "“" in it breaks other characters; trim those with a /u regex (pg_ai_write_cut(), #744)
 - output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags
@@ -140,20 +148,25 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - php-regions-eval-and-content.md: get_page_content.php evaluates the assembled page when PHP_REGIONS is on; who may write PHP, where content-level markup is defused with pg_defuse_php_tags(), and the site importer's fetch rules.
 - preg-replace-replacement-escaping.md: Text put into a page through preg_replace() goes through pg_regex_replacement(): $NN and \N in it are back references, "$400'dan" printed as "0'dan"; where it applies and the guard test
 - privacy-log-retention.md: How long audit_log and consent_log keep lines: config.audit_log_retention_years (11.0.47), the Audit Trail settings card, the daily job pass, why the answer in force stays
+- push-disabled-account.md: The device push queue drops a disabled or deleted account's queued rows and browsers instead of waking them (pg_push_account_wakeable())
 - qr-code-generator.md: QR code generation via includes/fn/qr.php (pg_qr_matrix, pg_qr_svg), its limits, forbidden library paths, and why secret QRs are inline SVG only.
 - record-gate-request-id.md: A record screen's access gate checks the id its handlers read ($_POST on a submit, $_GET on the form), never $_REQUEST, which a cookie of the same name can feed
 - recycle-bin-offline.md: Everything inside the Recycle Bin folder is offline for visitors, whatever the access type a binned folder carries itself
+- recycle-bin-purge-rights.md: The daily recycle bin purge deletes as the software (administrator role), whoever's explorer visit claims it; a hidden short link is refused, never its record dropped
 - registration-gate-form-submitter.md: The registration folder gate in get_page.php lets a visitor without a session reach a custom form's confirmation page with the code of a form this session submitted (PR #4959, bug #4804)
 - request-parameter-arrays.md: How screens must treat a request parameter that arrives as an array (?id[]=x), missing records, and null passed to escaping helpers
+- reset-link-revoked-on-change.md: A pending password reset or set password link (user.token) is cleared when the owner changes the password or the e-mail address on the site.
 - sdt-designer-js-text-rules.md: How visible text in style_designer.src.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
 - security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle.
 - send-to-url-safety.md: What pg_send_to_url() refuses (control characters, '//' and '/\' starts, non-paths) and why it matches pg_safe_redirect_path() (PR #3563)
 - session-token-binding.md: How a signed-in session is bound to its auth_tokens row (selector kept in the session), what ends a session server-side, and the rules every sign-in and minting path must follow.
 - sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
+- site-fetch-language.md: Site-side fetch()/XMLHttpRequest calls send the page language (pg_lang from <html data-pg-lang>) themselves: which scripts do it, how the server reads it, the scan test
 - site-log-client-address.md: Which address a site log row records: pg_auth_request_address(), the visitor behind a trusted proxy, in both log_activity() copies and the e-mail-a-friend limit (#2044)
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - sms-consent-box.md: The SMS marketing box beside the e-mail box (PR #3660, #3694 checkout, #3715 custom forms): when it is drawn, how it starts, the consent_log sms rows it writes
 - sms-consent-custom-form.md: The SMS marketing question on custom forms (PR #3715): the opt_in_sms binding, which is no contacts column, when it is drawn, how it starts, the sms:marketing row it writes
+- smtp-kept-password.md: SMTP Settings: an empty password box keeps the saved SMTP password only for the same host and port; a new server drops it and a save that would sign in there is refused
 - social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 - social-sign-in-buttons.md: Where the social sign-in buttons come from (pg_signin_buttons()), when a provider shows, the Settings and designer hints, starter layouts, and what an old browser does.
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it

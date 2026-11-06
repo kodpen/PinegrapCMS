@@ -1944,6 +1944,7 @@ function api_order_label_refusal($result) {
 		'not_found'     => array(404, 'not_found'),
 		'not_completed' => array(409, 'order_not_completed'),
 		'label_exists'  => array(409, 'label_exists'),
+		'busy'          => array(409, 'label_busy'),
 		'no_driver'     => array(409, 'no_label_service')
 	);
 

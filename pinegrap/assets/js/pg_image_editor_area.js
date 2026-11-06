@@ -973,10 +973,12 @@
 
     // The picture inside the selection, with its colour step, as a picture
     // layer in place (a PNG the save keeps as a file); redacted and erased
-    // areas stay out of it. Null without an area or when the picture cannot
-    // be read back (the panel then says so).
-    Editor.prototype.areaCutout = function () {
-        var rings = this.areaRings(), geo = M.areaLayer(rings), img = this.img, src = this.doc.source;
+    // areas stay out of it. Given rings (a subject found without a
+    // selection) it cuts those, with soft as their soft edge. Null without
+    // an area or when the picture cannot be read back (the panel then says
+    // so).
+    Editor.prototype.areaCutout = function (given, soft) {
+        var sel = given ? null : this.doc.selection, rings = given || this.areaRings(), geo = M.areaLayer(rings), img = this.img, src = this.doc.source;
 
         if (!geo || !img || !src) {
             return null;
@@ -1005,7 +1007,7 @@
                 g.putImageData(data, 0, 0);
             }
 
-            var shape = Object.assign({ feather: this.doc.selection ? (this.doc.selection.feather || 0) : 0 }, geo), matte = M.selectionMatte(this.doc.selection);
+            var shape = Object.assign({ feather: sel ? (sel.feather || 0) : 0 }, geo), matte = given ? (soft || 0) : M.selectionMatte(sel);
 
             g.globalCompositeOperation = 'destination-in';
 
@@ -1186,16 +1188,25 @@
         });
     };
 
+    // The subject (rings, with soft edge matte) taken out of the picture in
+    // one undo step: it becomes a picture layer of its own (the cut-out Cut
+    // to a layer makes) over the picture erased whole, so dragging it moves
+    // the subject alone and leaves nothing of the picture behind. The erased
+    // area, locked so a drag on the background cannot move it, opens with
+    // its fills (see-through, a colour, a blur, a picture), which now lie
+    // under the whole subject; a press on the subject takes the piece.
     Editor.prototype.areaEraseRest = function (rings, matte) {
-        var rest = rings.length ? M.areaRest(rings, M.pictureBox(this.doc)) : [], id = null;
+        var frame = M.areaRest([], M.pictureBox(this.doc)), piece = rings.length ? this.areaCutout(rings, matte) : null, id = null;
 
-        if (M.ringsArea(rest) < 1) {
+        if (!piece || (M.ringsArea(frame) < 1)) {
             return;
         }
 
         this.change(function (doc) {
             delete doc.selection;
-            id = pushArea(doc, 'erase', null, rest, matte);
+            id = pushArea(doc, 'erase', { locked: true }, frame, 0);
+            piece.id = M.newId(doc);
+            doc.layers.push(piece);
         });
         this.history.key = null;
         this.areaShow(id);

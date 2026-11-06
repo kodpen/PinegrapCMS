@@ -1,6 +1,6 @@
 ---
 name: short-link-names
-description: Short link names (2026.11.0): the name rule, a pasted old address as a name, how a request finds its link (as it came, then in the stored form), IIS name recovery, how two names compare.
+description: Short link names (2026.11.0): the name and address rules, a pasted old address as a name, how a request finds its link, IIS name recovery, how two names compare.
 ---
 
 ## What can a name be?
@@ -20,5 +20,9 @@ description: Short link names (2026.11.0): the name rule, a pasted old address a
 - Under `utf8mb4_unicode_ci`: `ı`/`i`, `ø`/`o`, `ł`/`l`, `æ`/`ae` are two names; `ę`/`e`, `ș`/`s`, `ő`/`o`, `ß`/`ss`, case are one.
 - Symptom before (#1033): keys were `pg_transliterate_to_ascii()` + lower case, so `hakkimizda` -> `/hakkımızda` was refused as "its own address", the CSV import skipped or overwrote `kılıf` for `kilif`, and `święta` -> `/swieta` was saved as an endless self-redirect.
 - Without a connection (the test runner) `pg_short_link_fold()`: NFKD without marks, lower case (intl), only lower case without intl.
+
+## What may an address destination be?
+- `pg_short_link_url_problem()`: http/https or a path on this site, no `//` start, no backslash or control character, within the column; on every save path (classic screens, File Manager wizard, API, CSV import).
+- Symptom before: the File Manager wizard (`pg_short_link_read_request()`) saved `javascript:`, `data:` or `//host`, which the other paths refused (`tests/explorer_short_link_url_test.php`).
 
 Tests: `tests/short_link_redirects_test.php`. PRs: #699, #1006, #1033.

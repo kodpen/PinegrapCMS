@@ -86,3 +86,33 @@ function test_api_inventory_quantity_bound_matches_the_single_route()
 
 	pg_assert_same(array(-API_INVENTORY_QUANTITY_LIMIT, API_INVENTORY_QUANTITY_LIMIT), $bound);
 }
+
+// GET /inventory lists what GET /products lists: a product in the catalogue
+// Recycle Bin is left out, also when asked for by product_id, and kept only on
+// a site whose catalogue has no bin yet.
+function test_api_inventory_list_where_leaves_binned_products_out()
+{
+	$where = api_inventory_list_where(array(), 0, 1, true);
+
+	pg_assert_true(in_array("products.recycled = '0'", $where, true), 'binned products left out');
+	pg_assert_true(in_array("products.inventory = '1'", $where, true), 'only products that track stock');
+
+	$one = api_inventory_list_where(array('product_id' => '7'), 0, 1, true);
+
+	pg_assert_true(in_array("products.recycled = '0'", $one, true), 'a binned product asked for by id is left out too');
+	pg_assert_true(in_array("products.id = '7'", $one, true), 'the product filter');
+
+	pg_assert_false(in_array("products.recycled = '0'", api_inventory_list_where(array(), 0, 1, false), true), 'no bin column, no filter');
+}
+
+// The stock filter keeps its two forms: by the location's rows, or by the total.
+function test_api_inventory_list_where_in_stock()
+{
+	pg_assert_true(in_array('products.inventory_quantity > 0', api_inventory_list_where(array('in_stock' => true), 0, 1, true), true), 'total in stock');
+	pg_assert_true(in_array('products.inventory_quantity <= 0', api_inventory_list_where(array('in_stock' => false), 0, 1, true), true), 'total out of stock');
+
+	$held = implode(' ', api_inventory_list_where(array('in_stock' => true), 2, 1, true));
+
+	pg_assert_true(strpos($held, "held.location_id = '2'") !== false, 'units at the location');
+	pg_assert_true(strpos($held, 'seeded') === false, 'not the default location: no seeded total');
+}

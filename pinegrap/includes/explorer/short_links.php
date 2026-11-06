@@ -466,20 +466,20 @@ function pg_short_link_read_request($request, $user, $current = null)
         case 'url':
             $url = $value('url');
 
-            if ($url == '') {
-                return array('error' => 'url', 'message' => lang('Destination URL is required.'));
-            }
-
             // A space here would reach the rewrite file and take every URL on
             // the site down with it.
-            if (preg_match('/\s/', $url) == 1) {
+            if (($url !== '') && (preg_match('/\s/', $url) == 1)) {
                 return array('error' => 'url', 'message' => lang('Sorry, you may not enter a space in the URL.'));
             }
 
-            // The column holds this many characters; a longer address would
-            // be cut short in silence. The classic screens refuse it too.
-            if (mb_strlen($url, 'UTF-8') > pg_short_link_url_max()) {
-                return array('error' => 'url', 'message' => lang(array('string' => 'The address can be at most {var:1} characters long.', 'vars' => array(pg_short_link_url_max()))));
+            // The rule the classic screens, the external API and the CSV
+            // import apply: a web address or a path on this site within the
+            // column. Another scheme (javascript:, data:), a protocol-relative
+            // address or a backslash is refused here as there.
+            $problem = pg_short_link_url_problem($url);
+
+            if ($problem !== '') {
+                return array('error' => 'url', 'message' => $problem);
             }
 
             $columns['url'] = $url;

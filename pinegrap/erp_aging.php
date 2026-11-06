@@ -64,7 +64,7 @@ foreach ($folded['accounts'] as $account) {
     $output_cells = '';
     foreach (array_keys($buckets) as $key) {
         $amount = (int) $account['buckets'][$key];
-        $output_cells .= '<td class="align-middle text-end' . (($amount > 0) ? '' : ' fg-secondary') . '" data-order="' . $amount . '">'
+        $output_cells .= '<td class="text-end' . (($amount > 0) ? '' : ' fg-secondary') . '" data-sort="' . $amount . '">'
             . (($amount > 0)
                 ? '<a href="erp_invoices.php?' . h($account_query . '&bucket=' . $key) . '" class="pg-link-body-emphasis">' . h(erp_money_out($amount)) . '</a>'
                 : h(erp_money_out(0)))
@@ -73,13 +73,10 @@ foreach ($folded['accounts'] as $account) {
 
     $output_rows .=
         '<tr>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_account.php?id=' . $account_id . '\'"><i class="bi bi-eye"></i></button>
-            </td>
-            <td style="max-width:280px" class="text-wrap text-break align-middle chart_label">' . h($account['title'])
+            <td class="text-wrap text-break" style="max-width:280px" data-sort="' . h($account['title']) . '"><a href="edit_erp_account.php?id=' . $account_id . '" class="pg-link-body-emphasis">' . h($account['title']) . '</a>'
                 . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $account['count']))) . '</div></td>
             ' . $output_cells . '
-            <td class="align-middle text-end fw-bold" data-order="' . (int) $account['total'] . '"><a href="erp_invoices.php?' . h($account_query . '&filter=open') . '" class="pg-link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
+            <td class="text-end fw-bold" data-sort="' . (int) $account['total'] . '"><a href="erp_invoices.php?' . h($account_query . '&filter=open') . '" class="pg-link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
         </tr>';
 }
 
@@ -131,11 +128,10 @@ pg_page_shell(array(
             </nav>
 
             <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table" style="width:100%;display:none;">
+                <div class="card-body p-0 table-responsive">
+                    <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
                                 <th>' . lang('Account') . '</th>
                                 ' . $output_headings . '
                                 <th class="text-end">' . lang('Total') . '</th>
@@ -144,7 +140,6 @@ pg_page_shell(array(
                         <tbody>' . $output_rows . '</tbody>
                         <tfoot>
                             <tr>
-                                <th></th>
                                 <th>' . lang('Total') . '</th>
                                 ' . $output_total_cells . '
                                 <th class="text-end">' . h(erp_money_out((int) $folded['totals']['total'])) . '</th>

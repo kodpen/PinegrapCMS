@@ -6,7 +6,7 @@ module: booking_agenda
 
 ## What do the screens show?
 - `view_bookings.php`: `?view=day|week|list` (week by default), `?date=YYYY-MM-DD` (today by default), `?staff=<booking_staff id>`, `?status[]=` chips. `pg_booking_agenda_period()` (pure): wall-clock days of the site zone, real start/end (a week over a clock change is 7 days ± 1 h), ‹ › dates: a day, the week from `pg_list_period_week_first_day()`, or the date's month for the list.
-- Day and week draw a card per day, bookings from `pg_booking_agenda_rows()` laid out by `pg_booking_agenda_by_day()`. The list view: `booking_list_rows` (`includes/panel/lists.php`), server-paged, filters checked again on the server, searched by name, e-mail, phone, service, status label. `.pg-bookings-week` columns may shrink (backend.src.css).
+- Day and week draw a card per day, bookings from `pg_booking_agenda_rows()` laid out by `pg_booking_agenda_by_day()`. The list view: the month's rows printed on the list table driver (`view_bookings`, browser mode, TD14a). `.pg-bookings-week` columns may shrink (backend.src.css).
 - Default chips: requested, confirmed, no-show, done; cancelled and held show only when chosen (`pg_booking_agenda_status_filter()`). Chips: v6 toggles (`label.btn.btn-check`).
 - Menu: Calendars › Bookings, once a `booking_services` row exists and the viewer's scope is not false. Role-3 staff without calendar access: search or a link.
 

@@ -797,14 +797,15 @@ function test_comment_thread_rules_rows_review()
 
 	$count = comment_thread_rules_test_squash($queries[0]);
 	$select = comment_thread_rules_test_squash($queries[1]);
-	pg_assert_same("SELECT COUNT(*) FROM comments WHERE comments.page_id = '5' AND (item_id = '9') AND (item_type = 'product') AND ((comments.published = '1')) AND (comments.verified_order_id > 0)", $count, 'the count is of verified purchases');
-	pg_assert_contains("AND ((comments.published = '1')) AND (comments.verified_order_id > 0) ORDER BY comments.created_timestamp DESC", $select, 'the rows: verified, newest first');
+	$verified = comment_thread_rules_test_squash(pg_review_verified_filter_sql('yes'));
+	pg_assert_same("SELECT COUNT(*) FROM comments WHERE comments.page_id = '5' AND (item_id = '9') AND (item_type = 'product') AND ((comments.published = '1')) AND (" . $verified . ")", $count, 'the count is of verified purchases');
+	pg_assert_contains("AND ((comments.published = '1')) AND (" . $verified . ") ORDER BY comments.created_timestamp DESC", $select, 'the rows: verified, newest first');
 	pg_assert_false(strpos($select, "featured = '1') ORDER") !== false, 'no featured filter');
 
 	// Staff read every review, still verified only.
 	$queries = array();
 	pg_comments_rows('5', $thread, array('staff' => true), array('review' => true), comment_thread_rules_test_fetch(array(), $queries));
-	pg_assert_contains("AND (item_type = 'product') AND (comments.verified_order_id > 0) ORDER BY comments.created_timestamp DESC", comment_thread_rules_test_squash($queries[1]), 'staff: verified only');
+	pg_assert_contains("AND (item_type = 'product') AND (" . $verified . ") ORDER BY comments.created_timestamp DESC", comment_thread_rules_test_squash($queries[1]), 'staff: verified only');
 
 	// Not a review: the block's three statements.
 	$legacy = array_map('comment_thread_rules_test_squash', comment_thread_rules_test_legacy_statements('5', comment_thread_rules_test_legacy_where(true, 'product', '9', false, false, false, null), false));

@@ -581,6 +581,33 @@ function test_payment_stripe_refund()
 	pg_assert_same(array(), payment_stripe_test_calls(), 'another service\'s payment id is not sent to Stripe');
 }
 
+function test_payment_stripe_refund_is_asked_once()
+{
+	$order = payment_stripe_test_order(array('refunded_amount' => '0'));
+	$answers = array('POST /v1/refunds' => array(200, array('id' => 're_9', 'object' => 'refund', 'status' => 'succeeded', 'amount' => 1250)));
+
+	pg_payment_stripe_refund_with($order, 1250, payment_stripe_test_settings(), payment_stripe_test_http($answers));
+	$first = payment_stripe_test_calls()[0]['idempotency'];
+	pg_payment_stripe_refund_with($order, 1250, payment_stripe_test_settings(), payment_stripe_test_http($answers));
+	$again = payment_stripe_test_calls()[0]['idempotency'];
+	pg_payment_stripe_refund_with(array_merge($order, array('refunded_amount' => '1250')), 1250, payment_stripe_test_settings(), payment_stripe_test_http($answers));
+	$next = payment_stripe_test_calls()[0]['idempotency'];
+
+	pg_assert_true(strpos($first, 'pg-refund-') === 0, 'the refund carries an Idempotency-Key');
+	pg_assert_same($first, $again, 'the same refund asked twice before it was recorded is made once');
+	pg_assert_true($first !== $next, 'a second refund after the first was recorded is a new one');
+
+	// No answer from Stripe: the refund may have been made.
+	$unreached = pg_payment_answer('refund', pg_payment_stripe_refund_with($order, 1250, payment_stripe_test_settings(), payment_stripe_test_http(array())));
+	pg_assert_false($unreached['success']);
+	pg_assert_true($unreached['unclear'], 'a refund Stripe never answered is unclear, not refused');
+
+	$refused = pg_payment_answer('refund', pg_payment_stripe_refund_with($order, 99999, payment_stripe_test_settings(), payment_stripe_test_http(array(
+		'POST /v1/refunds' => array(400, array('error' => array('message' => 'Refund amount is greater than unrefunded amount'))),
+	))));
+	pg_assert_false($refused['unclear'], 'Stripe saying no is a plain refusal');
+}
+
 function test_payment_stripe_cancel()
 {
 	$cases = array(

@@ -603,6 +603,10 @@ function api_user_fields_from_row($row) {
 		'badge'         => (string)$row['user_badge'],
 		'badge_label'   => (string)$row['user_badge_label'],
 		'reward_points' => (string)(int)$row['user_reward_points'],
+		// The balance read here, as the edit screen posts it: the update
+		// writes user_reward_points only when the request changed it, so an
+		// order or a conversion to store credit landing meanwhile is kept.
+		'reward_points_original' => (string)(int)$row['user_reward_points'],
 		'password_hint' => isset($row['user_password_hint']) ? (string)$row['user_password_hint'] : ''
 	);
 

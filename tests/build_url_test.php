@@ -58,3 +58,35 @@ function test_build_url_path_only_url()
 			'url' => '/list',
 			'parameters' => array('page' => 2))));
 }
+
+// A path without a leading slash placed after a host is made to start with
+// one: a form's posted Send To "@evil.example/x" became
+// "https://site.test@evil.example/x", where the browser takes the site's
+// name as user information and opens evil.example.
+function test_build_url_relative_path_after_host_starts_with_slash()
+{
+	pg_assert_same(
+		'https://site.test/@evil.example/x?5_confirmation=true',
+		build_url(array(
+			'url' => '@evil.example/x',
+			'scheme' => 'https://',
+			'hostname' => 'site.test',
+			'parameters' => array('5_confirmation' => 'true'))));
+
+	pg_assert_same(
+		'https://site.test/.evil.example/x',
+		build_url(array(
+			'url' => '.evil.example/x',
+			'scheme' => 'https://',
+			'hostname' => 'site.test')));
+}
+
+// A path-only URL without a host keeps its relative form.
+function test_build_url_relative_path_without_host_unchanged()
+{
+	pg_assert_same(
+		'kiosk.php?a=1',
+		build_url(array(
+			'url' => 'kiosk.php',
+			'parameters' => array('a' => '1'))));
+}

@@ -186,6 +186,43 @@
         });
     }
 
+    // Whether a message to the opener comes from the OneDrive picker page:
+    // the origin of the address the server named for this account, and for
+    // a personal account Microsoft's consumer content host as well, where
+    // onedrive.live.com/picker may hand over. The window and the channel id
+    // alone are not enough: the window can be navigated to another site,
+    // which must never be answered with a token.
+    function pickerOriginAllowed(origin, pickerUrl) {
+        var expected;
+
+        try {
+            expected = new URL(pickerUrl).origin;
+        } catch (error) {
+            return false;
+        }
+
+        if ((typeof origin !== 'string') || (expected.indexOf('https://') !== 0)) {
+            return false;
+        }
+
+        if (origin === expected) {
+            return true;
+        }
+
+        return (expected === 'https://onedrive.live.com') && (origin === 'https://my.microsoftpersonalcontent.com');
+    }
+
+    // A channel id no other page can guess.
+    function pickerChannelId() {
+        var bytes = new Uint8Array(16);
+
+        window.crypto.getRandomValues(bytes);
+
+        return Array.prototype.map.call(bytes, function (byte) {
+            return ('0' + byte.toString(16)).slice(-2);
+        }).join('');
+    }
+
     // The OneDrive file picker v8: Microsoft's page, opened in a window by a
     // form POST carrying the picker's settings and a token, then talked to
     // over a MessageChannel. The page asks for a token per resource (OneDrive
@@ -194,7 +231,8 @@
     function pickOneDrive(button) {
         // A browser allows a new window only straight from the click.
         var win = window.open('', 'pg_onedrive_picker', 'width=1080,height=680');
-        var channelId = String(Date.now()) + Math.random().toString(36).slice(2);
+        var channelId = pickerChannelId();
+        var pickerUrl = '';
         var port = null;
         var watch = null;
 
@@ -263,7 +301,11 @@
         }
 
         function initialize(event) {
-            if ((event.source !== win) || !event.data || (event.data.type !== 'initialize') || (event.data.channelId !== channelId)) {
+            if ((event.source !== win) || (pickerUrl === '') || !pickerOriginAllowed(event.origin, pickerUrl) || port || !event.data || (event.data.type !== 'initialize') || (event.data.channelId !== channelId)) {
+                return;
+            }
+
+            if (!event.ports || !event.ports[0]) {
                 return;
             }
 
@@ -296,8 +338,16 @@
                 filePicker: JSON.stringify(settings),
                 locale: document.documentElement.lang || 'en-us'
             });
-            var form = win.document.createElement('form');
-            var input = win.document.createElement('input');
+            var form;
+            var input;
+
+            if ((typeof answer.picker_url !== 'string') || (answer.picker_url.indexOf('https://') !== 0) || win.closed) {
+                throw new Error(config.texts.failed);
+            }
+
+            pickerUrl = answer.picker_url;
+            form = win.document.createElement('form');
+            input = win.document.createElement('input');
 
             form.setAttribute('action', answer.picker_url + '?' + query.toString());
             form.setAttribute('method', 'POST');

@@ -94,3 +94,18 @@ function test_erp_expense_recurrence_changes()
 	pg_assert_same(false, array_key_exists('tax_rate', $changes), 'another currency keeps the tax rate');
 	pg_assert_same('Kira B', $changes['supplier'] ?? null, 'another currency still corrects the supplier');
 }
+
+// A repeat's first and end dates are calendar days: a typed 30 February or
+// month 13 passed the pattern and was stored as 0000-00-00 or refused by the
+// server, so the repeat never ran or the end was silently dropped.
+function test_erp_recurring_date_ok()
+{
+	pg_assert_same(true, erp_recurring_date_ok('2026-01-31'), 'a real day');
+	pg_assert_same(true, erp_recurring_date_ok('2028-02-29'), '29 February of a leap year');
+	pg_assert_same(false, erp_recurring_date_ok('2027-02-29'), '29 February of a common year');
+	pg_assert_same(false, erp_recurring_date_ok('2026-02-30'), '30 February');
+	pg_assert_same(false, erp_recurring_date_ok('2026-13-01'), 'month 13');
+	pg_assert_same(false, erp_recurring_date_ok('0000-00-00'), 'the empty date');
+	pg_assert_same(false, erp_recurring_date_ok('2026-1-5'), 'not Y-m-d');
+	pg_assert_same(false, erp_recurring_date_ok(array('2026-01-31')), 'an array');
+}

@@ -1,15 +1,18 @@
 ---
 name: designer-home-screen
-description: Visual Page Editor home (view_system_styles.php): one-accent colours, drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+description: Visual Page Editor home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 ---
 
 ## Which colours may the screen use?
 - Greys plus the panel's primary as the one accent; previews keep theirs (`designer-home-colours.md`, tooltips there too).
 
 ## What does the home show?
-- Top: four starts as cards of one height: a small drawing (3:1), icon, title, one short sentence (`pg_designer_home_start_card()`, `pg_designer_home_drawing()`): blank canvas, ZIP into tabs, pasted markup, and the template card with three real template thumbnails side by side (`pg_design_thumb_svg()`). Designers only; below that level a one-line alert. Phones: two by two, title only.
+- Top: four starts as cards of one height: a small drawing (3:1), icon, title, one short sentence (`pg_designer_home_start_card()`, `pg_designer_home_drawing()`): blank canvas, ZIP into tabs, pasted markup, and the template card with three templates' home pages side by side (`designer-home-pictures.md`). Designers only; below that level a one-line alert. Phones: two by two, title only.
 - Below: no DataTable since PR #584. `pg_designer_home_featured_id()` picks the design shown large: the only one, or the single design holding the home page; otherwise all are tiles. The large card: preview in a browser frame, then name, status, the home-page line, facts as a label/value grid (framework, template, theme, last modified), page chips (12, then "+n more") and at most four buttons. Tiles: preview, name, status, pages, time.
 - No designs: a dashed box with the three steps (start, build, publish). More than six designs: a name search (accent and dotless-i folding).
+
+## What do the pictures show?
+- Real pages, drawings as fallback: `designer-home-pictures.md`.
 
 ## Where is the data from?
 - `pg_designer_list_designs()` as before; `pg_designer_list_pages()` (home first, then page_id; `pg_designer_page_access()` hides 'hidden' pages and marks 'locked' ones for content roles); `pg_designer_list_folder_counts()` (folders using it as default, for the delete warning).
@@ -28,4 +31,4 @@ description: Visual Page Editor home (view_system_styles.php): one-accent colour
 - `api.php designer/design_rename` -> `pg_designer_rename_design()` (includes/fn/designer.php): designers only, visual designs only, name cleaned by `pg_designer_design_name_clean()` (one line, 100 chars), a name another style has is refused, refused while the design is open in the editor (its next save would write the old name back). Logged as "{var:1} was renamed to {var:2}".
 
 ## Files and tests?
-- `includes/designer_screen.php` (home functions), `assets/js/designer_home.js`, `assets/css/designer_home.css` (also the template gallery CSS). Tests: `tests/designer_home_test.php`.
+- `includes/designer_screen.php` (home functions), `assets/js/designer_home.js`, `assets/css/designer_home.css` (also the template gallery CSS); the page loads `pg_live_picture.min.js`. Tests: `tests/designer_home_test.php`.

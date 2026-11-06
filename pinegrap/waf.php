@@ -342,30 +342,63 @@ function waf_client_ip_resolve()
         }
     }
 
-    // X-Forwarded-For is a chain: client, proxy1, proxy2. Walk it from the
-    // right and stop at the first address that is NOT one of our own
-    // trusted proxies. Anything further left was supplied by the client and
-    // cannot be believed.
     if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $chain = array_map('trim', explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']));
+        $candidate = waf_forwarded_for_client((string) $_SERVER['HTTP_X_FORWARDED_FOR'], $trusted);
 
-        for ($i = count($chain) - 1; $i >= 0; $i--) {
-            $candidate = $chain[$i];
-
-            if (!waf_is_ip($candidate)) {
-                continue;
-            }
-
-            if (waf_ip_in_any($candidate, $trusted)) {
-                continue;
-            }
-
+        if ($candidate !== '') {
             $ip = $candidate;
-            return $ip;
         }
     }
 
     return $ip;
+}
+
+/**
+ * The visitor an X-Forwarded-For chain names, or '' when it names none that
+ * can be believed.
+ *
+ * The chain is client, proxy1, proxy2. It is walked from the right, past our
+ * own trusted proxies, to the first entry that is not one: that entry was
+ * appended by a proxy we trust, anything further left was supplied by the
+ * client. An entry written with a port (1.2.3.4:5678, [2001:db8::1]:443, as
+ * Azure Application Gateway and IIS ARR append it) is read without the port.
+ * An entry that is still no address ("unknown", a malformed one) ends the
+ * walk: skipping it took the next entry to the left, the client's own, so a
+ * proxy that appends the visitor with a port let any visitor name any
+ * address, past a ban or into the allow list.
+ *
+ * @param string $header the X-Forwarded-For value
+ * @param array $trusted the trusted proxy ranges (waf_proxy_ranges())
+ * @return string
+ */
+function waf_forwarded_for_client($header, $trusted)
+{
+    $chain = explode(',', (string) $header);
+
+    for ($i = count($chain) - 1; $i >= 0; $i--) {
+        $candidate = trim($chain[$i]);
+
+        if (!waf_is_ip($candidate)) {
+            if ((preg_match('/^\[([0-9A-Fa-f:.]+)\](?::(\d{1,5}))?$/', $candidate, $m)
+                    || preg_match('/^(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$/', $candidate, $m))
+                && (!isset($m[2]) || ((int) $m[2] <= 65535))
+            ) {
+                $candidate = $m[1];
+            }
+
+            if (!waf_is_ip($candidate)) {
+                return '';
+            }
+        }
+
+        if ($trusted && waf_ip_in_any($candidate, $trusted)) {
+            continue;
+        }
+
+        return $candidate;
+    }
+
+    return '';
 }
 
 /**
@@ -2943,12 +2976,12 @@ function waf_csp_policy()
         $policy = trim(preg_replace('/[\r\n]+/', ' ', $custom));
     } else {
         $policy = "default-src 'self' blob:; "
-                . "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://code.jquery.com https://cdn.datatables.net https://codemirror.net https://static.cloudflareinsights.com https://*.search.ai.cloudflare.com; "
-                . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com https://fonts.googleapis.com https://cdn.datatables.net https://codemirror.net; "
+                . "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://code.jquery.com https://codemirror.net https://static.cloudflareinsights.com https://*.search.ai.cloudflare.com; "
+                . "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://code.jquery.com https://fonts.googleapis.com https://codemirror.net; "
                 . "img-src 'self' data: blob: https:; "
                 . "font-src 'self' data: https:; "
                 . "media-src 'self' data: blob: https:; "
-                . "connect-src 'self' https://cdn.jsdelivr.net https://cdn.datatables.net https://cloudflareinsights.com; "
+                . "connect-src 'self' https://cdn.jsdelivr.net https://cloudflareinsights.com; "
                 . "object-src 'none'; "
                 . "base-uri 'self'";
 
