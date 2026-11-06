@@ -4307,7 +4307,9 @@
         puppet: [
             { keys: ['Click'], label: 'keyPinAdd' },
             { keys: ['Alt', 'Click'], label: 'keyPinRemove' },
-            { keys: ['Delete'], label: 'keyPinDelete' }
+            { keys: ['Delete'], label: 'keyPinDelete' },
+            { keys: ['Arrows'], label: 'keyPinNudge' },
+            { keys: ['Shift', 'Arrows'], label: 'keyPinNudgeMore' }
         ]
     };
 
@@ -4399,6 +4401,12 @@
 
         if (!s.layers && !s.picture && !s.area) {
             return out;
+        }
+
+        // A chosen deformation pin: its removal first, as a phone has
+        // neither Alt nor the Delete key; Delete still removes the layer.
+        if (s.pin && s.layers) {
+            add('removePin');
         }
 
         if (s.sheet) {
@@ -5155,9 +5163,24 @@
         return best;
     }
 
+    // Where pin i moves when the arrow keys nudge it by dx, dy document
+    // pixels: its drawn point as a share of the box, the layer's turn and
+    // mirror taken into account; null without that pin. Its rest stays.
+    function puppetNudge(l, i, dx, dy) {
+        var pin = (l && l.puppet && Array.isArray(l.puppet.pins)) ? l.puppet.pins[i] : null;
+
+        if (!pin || !pinValid(pin) || !(l.w > 0) || !(l.h > 0)) {
+            return null;
+        }
+
+        var a = drawnLocal(l, 0, 0), b = drawnLocal(l, dx, dy);
+
+        return [frac(pin.at[0] * l.w + b[0] - a[0], l.w), frac(pin.at[1] * l.h + b[1] - a[1], l.h)];
+    }
+
     var PUPPET = {
         PUPPET_MAX: PUPPET_MAX, puppetOn: puppetOn, puppetPins: puppetPins, mlsRigid: mlsRigid, puppetRest: puppetRest,
-        puppetAdd: puppetAdd, puppetHit: puppetHit
+        puppetAdd: puppetAdd, puppetHit: puppetHit, puppetNudge: puppetNudge
     };
 
     // -- scenes (pg_image_editor_scenes.js) --

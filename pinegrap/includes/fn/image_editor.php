@@ -4443,6 +4443,8 @@ function pg_image_editor_strings_access()
         'keyPinAdd'       => lang('Add a pin on the shape and drag it to bend'),
         'keyPinRemove'    => lang('Remove a pin'),
         'keyPinDelete'    => lang('Remove the chosen pin'),
+        'keyPinNudge'     => lang('Move the chosen pin by 1 pixel'),
+        'keyPinNudgeMore' => lang('Move the chosen pin by 10 pixels'),
     );
 }
 

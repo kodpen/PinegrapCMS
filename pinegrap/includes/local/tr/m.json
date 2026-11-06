@@ -1052,6 +1052,8 @@
     "Move outside the widget": "Bileşenin dışına taşı",
     "Move page content into the page": "Sayfa içeriğini sayfaya taşı",
     "Move photo {position} of {total}": "Fotoğrafı taşı: {position} / {total}",
+    "Move the chosen pin by 1 pixel": "Seçili pimi 1 piksel taşı",
+    "Move the chosen pin by 10 pixels": "Seçili pimi 10 piksel taşı",
     "Move the electricity, water and gas into your name": "Elektrik, su ve doğalgazı adınıza alın",
     "Move the group “{var:1}” inside “{var:2}”? With it go {var:3} groups and {var:4} channels inside it; access given on “{var:2}” reaches them too.": "“{var:1}” grubu “{var:2}” grubunun içine taşınsın mı? Onunla birlikte içindeki {var:3} grup ve {var:4} kanal da taşınır; “{var:2}” grubunda verilen yetki bunlara da ulaşır.",
     "Move the group “{var:1}” to the top level?": "“{var:1}” grubu en üst düzeye taşınsın mı?",

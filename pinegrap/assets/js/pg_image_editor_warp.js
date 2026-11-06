@@ -232,6 +232,13 @@
             return;
         }
 
+        // While the mesh shows, the selection's resize, rotate and radius
+        // handles are hidden as while pinning (the class Free deformation
+        // sets): the corner ones sat on the mesh's corner points, and with
+        // a finger's 44 px targets they covered each other. Select keeps
+        // them.
+        Array.prototype.forEach.call(this.selEl.querySelectorAll('.pgie-selbox'), function (b) { b.classList.add('pgie-pinning'); });
+
         var v = this.view, vr = this.viewRect(), k = v.k, wp = l.warp, i, d = '';
         var box = el('div', { class: 'pgie-wbox' });
         var over = svg('svg', { class: 'pgie-vover', 'aria-hidden': 'true' });
