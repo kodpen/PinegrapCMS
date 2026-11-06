@@ -407,7 +407,7 @@ foreach ($fields as $field_key => $field) {
             $upload_refusal = pg_upload_file_refusal($_FILES[$field['id']], pg_upload_limits()['file_max']);
 
             if ($upload_refusal !== '') {
-                $liveform->mark_error($field['id'], $upload_refusal);
+                $liveform->mark_error($field['id'], htmlspecialchars($upload_refusal, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
             }
         }
 
