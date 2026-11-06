@@ -24,3 +24,6 @@ description: Product import rows left out and why each list says so (too large, 
 
 ## What guards it?
 - `tests/import_products_test.php` (price read, row prices, quantity refusal, the lists and messages, the bin check before Update Existing Products, the update by id), `tests/import_decimal_comma_test.php` (decimal problems). The import loop itself needs a database and was not run here.
+
+## When does an update drop the product's tag cloud keywords?
+- Only when the row's `enabled` cell disables it: `pg_products_import_disables()` (`includes/fn/ecommerce.php`) reads a non-empty cell as the TINYINT stores it (rounded, a word as 0); an empty cell leaves the product and its keywords alone. Before, `$enabled == 0` held for an empty cell on PHP 7 and deleted an enabled product's keywords. Test: `tests/import_products_test.php`.

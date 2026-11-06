@@ -7,7 +7,8 @@
  * an account. The token in the address opens this one quote.
  *
  *   GET  erp_quote.php?t=...   the quote, or where it stands
- *   POST erp_quote.php         t, signer_name, signature, token (the form token)
+ *   POST erp_quote.php         t, d (the hash of the quote shown), signer_name,
+ *                              signature, token (the form token)
  *
  * Opening the page changes nothing, so a mail scanner or a link preview
  * accepts nothing. A wrong, unknown or revoked token gets the same neutral
@@ -47,15 +48,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     validate_token_field();
 
     // A field posted as an array counts as not given.
-    pg_request_single_values(array('t', 'signer_name', 'signature'));
+    pg_request_single_values(array('t', 'd', 'signer_name', 'signature'));
 
     $token = (isset($_POST['t']) && is_string($_POST['t'])) ? $_POST['t'] : '';
     $signer_name = (isset($_POST['signer_name']) && is_string($_POST['signer_name'])) ? mb_substr(trim($_POST['signer_name']), 0, 255) : '';
+    $shown_hash = (isset($_POST['d']) && is_string($_POST['d'])) ? $_POST['d'] : '';
     $png = pg_signature_png_from_data_url((isset($_POST['signature']) && is_string($_POST['signature'])) ? $_POST['signature'] : '');
 
     $result = ($png === false)
         ? array('success' => false, 'error' => lang('The signature could not be read. Sign again.'))
-        : erp_quote_link_accept($token, $png, $signer_name);
+        : erp_quote_link_accept($token, $png, $signer_name, $shown_hash);
 
     if ($result['success']) {
         header('Location: ' . $self . '?t=' . rawurlencode($token), true, 303);
@@ -128,6 +130,7 @@ if ($state === 'open') {
         $card .= '<form method="post" action="' . h($self) . '" autocomplete="off" class="mt-5">'
             . get_token_field()
             . '<input type="hidden" name="t" value="' . h($token) . '">'
+            . '<input type="hidden" name="d" value="' . h(erp_signature_document_hash_quote($quote)) . '">'
             . '<label class="form-label" for="signer_name">' . h(lang('Name of the person signing')) . '</label>'
             . '<input type="text" class="form-control mb-3" id="signer_name" name="signer_name" value="' . h($signer_name) . '" maxlength="255" required>'
             . erp_signature_pad_markup('signature', array('id' => 'erp_quote_signature'))

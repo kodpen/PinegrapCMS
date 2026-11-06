@@ -38,13 +38,15 @@ if (!defined('PG_INIT_LOADED')) {
             array('key' => 'auto',       'label' => lang('Automatic'),  'count' => $counts['auto'],       'always' => true),
             array('key' => 'incomplete', 'label' => lang('Incomplete'), 'count' => $counts['incomplete'], 'always' => false, 'badge' => 'theme-warning'));
         ?>
+        <?php // Each chip is a filter of the list table driver on the Status cell's groups (pg_offer_list_filter()); All shows every row. ?>
         <div class="d-flex flex-wrap align-items-center gap-1" role="group" aria-label="<?=lang('Filter')?>">
             <?php foreach ($filters as $f): ?>
-                <button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5 d-inline-flex align-items-center gap-3<?php if ($f['key'] == 'all'): ?> active<?php endif ?><?php if (!$f['always'] && $f['count'] == 0): ?> d-none<?php endif ?>" data-filter="<?=$f['key']?>"<?php if (!$f['always']): ?> data-optional="1"<?php endif ?> aria-pressed="<?=$f['key'] == 'all' ? 'true' : 'false'?>">
+                <button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5 d-inline-flex align-items-center gap-3<?php if ($f['key'] == 'all'): ?> active<?php endif ?><?php if (!$f['always'] && $f['count'] == 0): ?> d-none<?php endif ?>" data-filter="<?=$f['key']?>" data-pg-list-filter="view_offers" data-pg-filter-column="enabled" data-pg-filter-value="<?=$f['key'] == 'all' ? '' : $f['key']?>"<?php if (!$f['always']): ?> data-optional="1"<?php endif ?> aria-pressed="<?=$f['key'] == 'all' ? 'true' : 'false'?>">
                     <?=h($f['label'])?><span class="badge rounded-pill <?=isset($f['badge']) ? $f['badge'] : 'theme-secondary'?>" data-count><?=$f['count']?></span>
                 </button>
             <?php endforeach ?>
         </div>
+        <?=pg_list_table_search_box('view_offers')?>
         <div class="pg-toolbar-grow"></div>
         <div class="pg-menu-wrap ms-auto">
             <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="<?=lang('More')?>"><i class="bi bi-three-dots-vertical" aria-hidden="true"></i></button>
@@ -56,67 +58,8 @@ if (!defined('PG_INIT_LOADED')) {
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body p-0 position-relative disable_shortcut">
-            <table class="chart table-hover table" style="width:100%;display:none"<?=pg_list_edit_table('view_offers.php', $quick_edit)?>>
-                <thead>
-                    <tr>
-                        <th class="noVis"><?=lang('Action')?></th>
-                        <th><?=lang('Offer')?></th>
-                        <th><?=lang('Message')?></th>
-                        <th><?=lang('Flow')?></th>
-                        <th><?=lang('How')?></th>
-                        <th><?=lang('Status')?></th>
-                        <th><?=lang('Start Date')?></th>
-                        <th><?=lang('End Date')?></th>
-                        <th><?=lang('Last Modified')?></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($offers as $offer): ?>
-                    <?php
-                    // A cell an operator can change carries its field; the
-                    // answer to an edit redraws it from pg_offer_list_cells().
-                    $cells = pg_offer_list_cells($offer);
-                    $cell = function ($name) use ($cells, $offer, $quick_edit) {
-                        return '<td class="' . $cells[$name]['class'] . '" data-pg-cell="' . $name . '"' . (isset($cells[$name]['sort']) ? ' data-sort="' . h($cells[$name]['sort']) . '"' : '') . pg_list_edit_cell($quick_edit, $name, $offer['id'], pg_offer_quick_value($offer, $name)) . '>' . $cells[$name]['html'] . '</td>';
-                    };
-                    ?>
-                    <tr data-id="<?=$offer['id']?>" data-status="<?=$offer['status']?>" data-how="<?=$offer['require_code'] ? 'code' : 'auto'?>" data-incomplete="<?=$offer['incomplete'] ? '1' : '0'?>">
-                        <td class="align-middle text-start text-nowrap">
-                            <a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_offer.php?id=<?=$offer['id']?>" title="<?=lang('Edit')?>"><i class="bi bi-pencil"></i></a>
-                            <a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="edit_offer.php?duplicate=<?=$offer['id']?>" title="<?=lang('Duplicate')?>"><i class="bi bi-copy"></i></a>
-                            <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 pg-offer-toggle" data-id="<?=$offer['id']?>" title="<?=$offer['enabled'] ? lang('Disable offer') : lang('Enable offer')?>" aria-label="<?=$offer['enabled'] ? h(lang('Disable offer')) : h(lang('Enable offer'))?>"><i class="bi bi-power" aria-hidden="true"></i></button>
-                        </td>
-                        <?=$cell('code')?>
-                        <?=$cell('description')?>
-                        <td class="align-middle" title="<?=h($offer['sentence'])?>">
-                            <div class="d-flex flex-wrap align-items-center gap-1">
-                                <?php if ($offer['condition_chips']): ?>
-                                    <?php foreach ($offer['condition_chips'] as $chip): ?><span class="badge rounded-pill bg-subtle-primary fg-emphasis-primary border border-subtle-primary fw-normal"><i class="bi bi-funnel" aria-hidden="true"></i> <?=h($chip)?></span><?php endforeach ?>
-                                <?php else: ?>
-                                    <span class="badge rounded-pill bg-1 fg-secondary border fw-normal"><?=lang('Every order')?></span>
-                                <?php endif ?>
-                                <span class="fg-secondary small">→</span>
-                                <?php if ($offer['action_chips']): ?>
-                                    <?php foreach ($offer['action_chips'] as $chip): ?><span class="badge rounded-pill bg-subtle-success fg-emphasis-success border border-subtle-success fw-normal"><i class="bi <?=$chip['icon']?>" aria-hidden="true"></i> <?=h($chip['text'])?></span><?php endforeach ?>
-                                <?php else: ?>
-                                    <span class="badge rounded-pill bg-subtle-danger fg-emphasis-danger border border-subtle-danger fw-normal"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <?=lang('No result')?></span>
-                                <?php endif ?>
-                                <?php if ($offer['upsell']): ?><span class="badge rounded-pill bg-1 fg-secondary border fw-normal" title="<?=lang('Up-sell message')?>"><i class="bi bi-chat-square-text" aria-hidden="true"></i><span class="visually-hidden"><?=lang('Up-sell message')?></span></span><?php endif ?>
-                            </div>
-                        </td>
-                        <?=$cell('require_code')?>
-                        <?=$cell('enabled')?>
-                        <?=$cell('start_date')?>
-                        <?=$cell('end_date')?>
-                        <?=$cell('modified')?>
-                    </tr>
-                    <?php endforeach ?>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <?php // The offers, printed whole: the driver sorts, searches and filters them in the browser; its quick edit writes through pg_offer_quick_update(). ?>
+    <?=pg_list_table_html($list['source'], $list['page'], lang('All Offers'))?>
 
     <script>
     $(function () {
@@ -130,54 +73,21 @@ if (!defined('PG_INIT_LOADED')) {
             'cleanup_text'   => lang('Rule and result records that no offer uses will be permanently deleted.'),
             'delete'         => lang('Delete'),
             'cancel'         => lang('Cancel')))?>;
-        var filter = 'all';
-        var hooked = false;
+        var root = document.querySelector('.pg-list-table[data-pg-list-table="view_offers"]');
 
-        function matches(tr) {
-            if (!tr || filter === 'all') { return true; }
-            if (filter === 'code' || filter === 'auto') { return tr.getAttribute('data-how') === filter; }
-            if (filter === 'incomplete') { return tr.getAttribute('data-incomplete') === '1'; }
-            return tr.getAttribute('data-status') === filter;
+        function driver() { return root ? root.pgListTable : null; }
+        function rows() { return root ? Array.prototype.slice.call(root.querySelectorAll('tbody tr[data-pg-id]')) : []; }
+        function groups(tr) {
+            var cell = tr ? tr.querySelector('td[data-pg-col="enabled"]') : null;
+            return cell ? String(cell.getAttribute('data-pg-filter') || '').split(' ') : [];
         }
-        function table() {
-            if ($.fn.dataTable && $.fn.dataTable.isDataTable('table.chart')) { return $('table.chart').DataTable(); }
-            return null;
-        }
-        // The chips narrow the table through DataTables so paging, sorting and
-        // the search box keep working on the narrowed set. DataTables is not
-        // always on the page yet when this runs, so the hook is registered
-        // both now and on the table's own init event, and the plain jQuery
-        // fallback keeps the chips working on a page without it.
-        //
-        // The hook recognises its own rows by data-status rather than by the
-        // table element: scrollX makes DataTables clone the table for the
-        // scrolling header, so "table.chart" matches three tables on this page
-        // and the clone is the first of them.
-        function hook() {
-            if (hooked || !$.fn.dataTable) { return; }
-            hooked = true;
-            $.fn.dataTable.ext.search.push(function (settings, data, index) {
-                var tr = settings.aoData[index] ? settings.aoData[index].nTr : null;
-                if (!tr || !tr.getAttribute('data-status')) { return true; }
-                return matches(tr);
-            });
-        }
-        hook();
-        // A chip clicked while the table is still initialising would be undone
-        // by the first draw, so the filter is applied again once init lands.
-        $(document).on('init.dt', function () { hook(); applyFilter(); });
-
+        // The chips narrow the list through the driver (data-pg-list-filter);
+        // after a change of a row's groups the driver applies the chip in
+        // use again, so a row that left it is hidden and counted out.
         function applyFilter() {
-            var dt = table();
-            if (dt) { hook(); dt.draw(); return; }
-            $('table.chart tbody tr[data-status]').each(function () { $(this).toggle(matches(this)); });
+            var d = driver();
+            if (d && d.browser) { d.showHere(); }
         }
-        $('#pg-offers-toolbar [data-filter]').on('click', function () {
-            filter = $(this).data('filter');
-            $('#pg-offers-toolbar [data-filter]').removeClass('active').attr('aria-pressed', 'false');
-            $(this).addClass('active').attr('aria-pressed', 'true');
-            applyFilter();
-        });
 
         function api(body) {
             body.action = 'offer_editor';
@@ -189,17 +99,14 @@ if (!defined('PG_INIT_LOADED')) {
             if (window.pgToast) { window.pgToast({ message: message, variant: variant || 'info' }); }
         }
 
-        // The filter chips carry counts; recount from the rows after a toggle so
-        // they keep matching the table. DataTables detaches rows on other
-        // pages, so the rows are taken from its API rather than the DOM.
+        // The filter chips carry counts; recount from the rows after a change
+        // so they keep matching the list. Every row is in the page, hidden or
+        // not, so the count is taken over all of them.
         function recount() {
-            var dt = table();
-            var rows = dt ? dt.rows().nodes().toArray() : $('table.chart tbody tr[data-status]').toArray();
-            var counts = { all: rows.length, active: 0, disabled: 0, scheduled: 0, expired: 0, code: 0, auto: 0, incomplete: 0 };
-            rows.forEach(function (tr) {
-                counts[tr.getAttribute('data-status')]++;
-                counts[tr.getAttribute('data-how')]++;
-                if (tr.getAttribute('data-incomplete') === '1') { counts.incomplete++; }
+            var all = rows();
+            var counts = { all: all.length, active: 0, disabled: 0, scheduled: 0, expired: 0, code: 0, auto: 0, incomplete: 0 };
+            all.forEach(function (tr) {
+                groups(tr).forEach(function (name) { if (counts.hasOwnProperty(name)) { counts[name]++; } });
             });
             // An optional chip shows while it has rows; the chip in use stays
             // so the operator is not left on a filter they cannot see.
@@ -210,6 +117,12 @@ if (!defined('PG_INIT_LOADED')) {
                     chip.toggleClass('d-none', n === 0 && !chip.hasClass('active'));
                 }
             });
+        }
+
+        // A row's groups follow a change: the Status cell carries them.
+        function regroup(tr, value) {
+            var cell = tr ? tr.querySelector('td[data-pg-col="enabled"]') : null;
+            if (cell) { cell.setAttribute('data-pg-filter', value); }
         }
 
         // The backend turns every title into a hover popover, so the button's
@@ -224,64 +137,61 @@ if (!defined('PG_INIT_LOADED')) {
             }
         }
 
-        // Enable / disable in place; the row's badge and filter data follow.
+        // Enable / disable in place; the row's badge and groups follow. In the
+        // quick edit mode the cell shows its field, so the badge it shows
+        // after the mode is changed instead (pgQuickHtml).
         $(document).on('click', '.pg-offer-toggle', function () {
-            var btn = $(this), id = btn.data('id'), tr = btn.closest('tr');
+            var btn = $(this), id = btn.data('id'), tr = btn.closest('tr')[0];
             btn.prop('disabled', true);
             api({ type: 'offer_toggle_status', id: id }).then(function (res) {
                 btn.prop('disabled', false);
                 if (res.status !== 'success') { toast(res.message || labels.request_failed, 'danger'); return; }
                 var cls = { active: 'theme-success', scheduled: 'theme-info', expired: 'theme-warning', disabled: 'theme-secondary' }[res.offer_status] || 'theme-secondary';
-                tr.find('.pg-offer-status').attr('class', 'badge rounded-pill pg-offer-status fw-normal ' + cls).text(res.label);
-                tr.attr('data-status', res.offer_status);
-                relabel(btn, res.enabled ? labels.disable : labels.enable);
-                tr.find('td[data-pg-edit="enabled"]').attr('data-pg-edit-value', res.enabled ? '1' : '0');
-                // A narrowing chip can filter the row out on the redraw, and
-                // focus would go with it: it moves to the toggle of the row now
-                // at that place, else the last row on the drawn page, else the
-                // active chip.
-                var body = tr.closest('tbody'), at = body.children('tr[data-status]').index(tr);
-                var focused = document.activeElement === btn[0] || !document.activeElement || document.activeElement === document.body;
-                var dt = table();
-                if (dt) {
-                    dt.draw(false);
-                    // draw(false) keeps the start even when the filtered set
-                    // shrank below it, so the only row of the last page left a
-                    // blank table (and the pager hides at one page): go to the
-                    // new last page instead.
-                    var info = dt.page.info();
-                    if (info.recordsDisplay > 0 && info.start >= info.recordsDisplay) { dt.page('last').draw('page'); }
+                var cell = tr.querySelector('td[data-pg-col="enabled"]');
+                if (cell) {
+                    var shown = document.createElement('div');
+                    shown.innerHTML = cell.pgQuick ? (cell.pgQuickHtml || '') : cell.innerHTML;
+                    $(shown).find('.pg-offer-status').attr('class', 'badge rounded-pill pg-offer-status fw-normal ' + cls).text(res.label);
+                    if (cell.pgQuick) {
+                        cell.pgQuickHtml = shown.innerHTML;
+                        cell.pgQuick.control.value = res.enabled ? '1' : '0';
+                    } else {
+                        cell.innerHTML = shown.innerHTML;
+                    }
+                    cell.setAttribute('data-pg-edit-value', res.enabled ? '1' : '0');
                 }
+                var kept = groups(tr).slice(1);
+                regroup(tr, [res.offer_status].concat(kept).join(' '));
+                relabel(btn, res.enabled ? labels.disable : labels.enable);
+                // A narrowing chip can hide the row, and focus would go with
+                // it: it moves to the toggle of the next row shown, else the
+                // last row shown, else the active chip.
+                var focused = document.activeElement === btn[0] || !document.activeElement || document.activeElement === document.body;
+                applyFilter();
                 recount();
-                if (focused && !$.contains(document.documentElement, btn[0])) {
-                    var next = body.children('tr[data-status]').eq(at).find('.pg-offer-toggle');
-                    if (!next.length) { next = body.children('tr[data-status]').last().find('.pg-offer-toggle'); }
+                if (focused && tr.hidden) {
+                    var shownRows = rows().filter(function (r) { return !r.hidden; });
+                    var after = shownRows.filter(function (r) { return r.compareDocumentPosition(tr) & Node.DOCUMENT_POSITION_PRECEDING; });
+                    var next = $(after.length ? after[0] : shownRows[shownRows.length - 1]).find('.pg-offer-toggle');
                     (next.length ? next : $('#pg-offers-toolbar [data-filter].active')).first().trigger('focus');
                 }
             }).catch(function () { btn.prop('disabled', false); toast(labels.request_failed, 'danger'); });
         });
 
-        // A value changed in place on the list (backend.src.js quick edit):
-        // the row's filter data and its toggle's name follow the answer, and
-        // a row a narrowing chip no longer matches leaves the drawn page.
-        document.addEventListener('pg:list-edit-saved', function (event) {
-            var row = event.detail ? event.detail.row : null;
-            var tr = $(event.target).closest('tr[data-status]');
-            if (!row || !tr.length) { return; }
-            tr.attr('data-status', row.status).attr('data-how', row.how).attr('data-incomplete', row.incomplete);
-            relabel(tr.find('.pg-offer-toggle'), row.enabled ? labels.disable : labels.enable);
-            recount();
-            if (!matches(tr[0])) {
-                var dt = table();
-                if (dt) {
-                    dt.draw(false);
-                    var info = dt.page.info();
-                    if (info.recordsDisplay > 0 && info.start >= info.recordsDisplay) { dt.page('last').draw('page'); }
-                } else {
-                    tr.hide();
-                }
-            }
-        });
+        // A value changed in the driver's quick edit mode: the row's groups
+        // and its toggle's name follow the answer, and a row the chip in use
+        // no longer matches is hidden.
+        if (root) {
+            root.addEventListener('pg-list-table:saved', function (event) {
+                var row = (event.detail && event.detail.data) ? event.detail.data.row : null;
+                var tr = event.detail ? event.detail.row : null;
+                if (!row || !tr) { return; }
+                regroup(tr, row.filter);
+                relabel($(tr).find('.pg-offer-toggle'), row.enabled ? labels.disable : labels.enable);
+                recount();
+                applyFilter();
+            });
+        }
 
         $('#pg-offers-cleanup').on('click', function (e) {
             e.preventDefault();

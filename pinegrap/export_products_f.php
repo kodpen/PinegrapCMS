@@ -623,7 +623,9 @@ function pg_products_export_xlsx($table, $file_name = 'products.xlsx')
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: ' . pg_products_export_disposition($file_name));
     header('Content-Length: ' . filesize($book_path));
-    header('Cache-Control: max-age=0');
+    // The workbook holds the store's own figures (costs, stock): no shared
+    // cache keeps a copy, the browser keeps none either.
+    header('Cache-Control: private, no-store');
 
     readfile($book_path);
     unlink($book_path);

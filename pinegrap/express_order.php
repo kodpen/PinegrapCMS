@@ -1416,6 +1416,16 @@ foreach ($order_items as $order_item) {
                         break;
                 }
 
+                // A pick list, radio button or check box value must be of the
+                // field's option list; a hand-made request stored any value.
+                if (pg_cf_type_has_options($form_field['type']) && ($liveform->check_field_error($html_field_name) == false)) {
+                    $option_error = pg_cf_option_value_error($form_field, $liveform->get_field_value($html_field_name), (array) db_values("SELECT value FROM form_field_options WHERE form_field_id = '" . (int) $form_field['id'] . "'"));
+
+                    if ($option_error !== null) {
+                        $liveform->mark_error($html_field_name, $option_error);
+                    }
+                }
+
                 // If product updates a submitted form and this is the reference code field,
                 // and this is the first quantity number field or a submitted form is updated
                 // for every quantity, and there is not already an error for this field

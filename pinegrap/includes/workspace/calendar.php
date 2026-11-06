@@ -277,24 +277,7 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
             continue;
         }
 
-        foreach (array_keys($days) as $date) {
-            $day_start = strtotime($date . ' 00:00:00');
-            $day_end = strtotime($date . ' 00:00:00 +1 day');
-
-            if (((int) $event['starts_at'] >= $day_end) || ((int) $event['ends_at'] < $day_start)) {
-                continue;
-            }
-
-            $days[$date]['events'][] = array(
-                'id'     => (int) $event['id'],
-                'kind'   => (string) $event['kind'],
-                'title'  => (string) $event['title'],
-                'time'   => ((int) $event['all_day'] === 1) ? '' : date('H:i', max((int) $event['starts_at'], $day_start)),
-                'scope'  => (string) $event['scope'],
-                'people' => array_values($event['people']),
-                'meeting_url' => (string) ($event['meeting_url'] ?? ''),
-            );
-        }
+        $days = ws_calendar_plan_place($days, $event);
     }
 
     // ── The reader's own calendars, a read-only layer only they see ──
@@ -519,6 +502,40 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
         'person_id'    => $person_id,
         'scope'        => ($scope === true) ? 'all' : 'limited',
     );
+}
+
+/**
+ * Puts one plan item on the days of the calendar grid it touches. Its end is
+ * the moment it stops, so a meeting until midnight stays on its own day and
+ * draws no "00:00" line on the next; an all-day item ends at 23:59:59 of its
+ * last day. Pure.
+ *
+ * @param array $days  ws_calendar()'s days
+ * @param array $event ws_events_between()'s row
+ * @return array
+ */
+function ws_calendar_plan_place($days, $event)
+{
+    foreach (array_keys($days) as $date) {
+        $day_start = strtotime($date . ' 00:00:00');
+        $day_end = strtotime($date . ' 00:00:00 +1 day');
+
+        if (((int) $event['starts_at'] >= $day_end) || ((int) $event['ends_at'] <= $day_start)) {
+            continue;
+        }
+
+        $days[$date]['events'][] = array(
+            'id'     => (int) $event['id'],
+            'kind'   => (string) $event['kind'],
+            'title'  => (string) $event['title'],
+            'time'   => ((int) $event['all_day'] === 1) ? '' : date('H:i', max((int) $event['starts_at'], $day_start)),
+            'scope'  => (string) $event['scope'],
+            'people' => array_values($event['people']),
+            'meeting_url' => (string) ($event['meeting_url'] ?? ''),
+        );
+    }
+
+    return $days;
 }
 
 /**

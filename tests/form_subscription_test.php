@@ -154,3 +154,14 @@ function test_form_subscription_subscribed()
 	pg_assert_false(pg_fs_subscribed(false, null), 'not in the group');
 	pg_assert_false(pg_fs_subscribed(false, '1'), 'an opt_in row without the group');
 }
+
+// A confirmation that put the contact into the group announces it as a join,
+// so "joined a group" campaign profiles and flows hear it; a second press
+// that wrote no row, a group filled by rules (no row) and a failed write do not.
+function test_form_subscription_confirm_announces_only_a_new_row()
+{
+	pg_assert_same(array(5), pg_fs_confirm_joined(5, 1), 'a new membership row');
+	pg_assert_same(array(), pg_fs_confirm_joined(5, 0), 'already a member: nothing written');
+	pg_assert_same(array(), pg_fs_confirm_joined(5, -1), 'failed or no write');
+	pg_assert_same(array(), pg_fs_confirm_joined(0, 1), 'no contact');
+}

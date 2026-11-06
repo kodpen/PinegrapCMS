@@ -945,6 +945,21 @@ function pg_submitted_form_store_upload($field, $user_id)
 }
 
 /**
+ * Whether saving an existing submitted form writes this field. A signature is
+ * written once, when the form is created: its form_data row points at the
+ * drawn file and its form_signatures record seals it, and no edit screen
+ * offers it again, so a value posted under its id is not an answer to store.
+ * An information field holds no answer. Pure.
+ *
+ * @param array $field  form_fields row: type
+ * @return bool
+ */
+function pg_submitted_form_edit_writes_field($field)
+{
+    return !in_array((string) ($field['type'] ?? ''), array('signature', 'information'), true);
+}
+
+/**
  * Writes the posted value of one field (not a file upload or signature) as
  * form_data rows: one row per value of a check box group or multiple pick
  * list. Date, date and time and time values keep their type; a rich-text

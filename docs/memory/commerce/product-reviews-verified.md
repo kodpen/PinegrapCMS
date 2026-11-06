@@ -21,7 +21,7 @@ module: reviews
 - `tests/reviews_test.php`: the rules, and that each write path asks or refreshes.
 
 ## How is a product's rating kept?
-- `products.rating_avg` (DECIMAL 3,2) and `rating_count`: published, verified, starred (1-5) reviews of the product only (`pg_review_rating_sql()`). Comments from before 11.0.14 are unverified and never count. Group reviews have no rating yet.
+- `products.rating_avg` (DECIMAL 3,2), `rating_count`: published, verified ([[product-review-purchase-stands]]), starred (1-5) reviews (`pg_review_rating_sql()`). Comments from before 11.0.14 are unverified and never count. Group reviews have no rating yet.
 - Refreshed by `pg_review_refresh_products()` / `pg_review_comment_changed()` after add (when published), moderation save or delete (`edit_comment.php`), the scheduled publish (`job.php`) and the API update/delete. Paths that delete a page's comments (`edit_page.php`, `edit_pages.php`, the file manager) do not call it: `pg_review_refresh_daily()` in `job.php` recomputes every product once a day (state in `data/temp/review_ratings_refreshed.txt`).
 - Designer pages: catalog widget tokens `__rating_avg` / `__rating_count`, flags `has_rating` / `no_rating` (`designer/catalog-rating-tokens.md`).
 

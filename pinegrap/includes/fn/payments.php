@@ -1854,6 +1854,92 @@ function pg_gateway_secret_fields()
 }
 
 /**
+ * The legacy gateways' other keys and passwords. They stay plain in their
+ * columns (a sealed Stripe key or PayPal signature would not fit them), but
+ * like the sealed ones they are drawn as the mask on the Commerce card, so a
+ * manager who opens the card never receives them in the page.
+ *
+ * @return array column names
+ */
+function pg_gateway_masked_fields()
+{
+    return array(
+        'ecommerce_clearcommerce_password',
+        'ecommerce_paypal_payments_pro_api_signature',
+        'ecommerce_sage_merchant_key',
+        'ecommerce_stripe_api_key',
+        'ecommerce_paypal_express_checkout_api_signature',
+        'ecommerce_givex_password',
+    );
+}
+
+/**
+ * The value to store for a masked key: a blank or masked box keeps the
+ * stored one, a typed one replaces it. Pure.
+ *
+ * @param mixed $posted
+ * @param string $stored
+ * @return string
+ */
+function pg_gateway_masked_for_save($posted, $stored)
+{
+    $posted = trim((string) $posted);
+
+    if (($posted === '') || ($posted === pg_gateway_secret_mask())) {
+        return (string) $stored;
+    }
+
+    return $posted;
+}
+
+/**
+ * The Givex password to store. Givex sends it inside every request to the
+ * primary and secondary hostnames, so a kept password goes only to the hosts
+ * it was saved for: when a hostname changes (or one is added) and the box is
+ * blank, the save is refused, else a manager could send the stored password
+ * to a server of their choice. With both hostnames cleared it is dropped.
+ * Pure.
+ *
+ * @param mixed $posted
+ * @param string $stored
+ * @param array $old_hosts stored primary and secondary hostname
+ * @param array $new_hosts posted primary and secondary hostname
+ * @return array value (string), refused (bool)
+ */
+function pg_givex_password_for_save($posted, $stored, array $old_hosts, array $new_hosts)
+{
+    $posted = trim((string) $posted);
+    $stored = (string) $stored;
+
+    if (($posted !== '') && ($posted !== pg_gateway_secret_mask())) {
+        return array('value' => $posted, 'refused' => false);
+    }
+
+    if ($stored === '') {
+        return array('value' => '', 'refused' => false);
+    }
+
+    $hosts = function (array $list) {
+        return array_map(function ($host) {
+            return strtolower(trim((string) $host));
+        }, array_values(array_pad($list, 2, '')));
+    };
+
+    $old = $hosts($old_hosts);
+    $new = $hosts($new_hosts);
+
+    if ($old === $new) {
+        return array('value' => $stored, 'refused' => false);
+    }
+
+    if (implode('', $new) === '') {
+        return array('value' => '', 'refused' => false);
+    }
+
+    return array('value' => $stored, 'refused' => true);
+}
+
+/**
  * What the settings form prints for a stored secret. A box posted back with it
  * unchanged keeps the stored value.
  *

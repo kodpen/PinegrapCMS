@@ -279,7 +279,7 @@ function test_workspace_flow_row_write_runs_through_the_store()
 
 	pg_assert_contains("ws_wtable_flow_check(\$viewer, (int) \$table['id'], 'edit')", $check, 'a table the owner may change');
 	pg_assert_contains("\$gate === 'paused'", $check, 'a table whose owner left the team pauses the box');
-	pg_assert_contains('ws_step_row_cells_refusal($columns, $cells)', $check);
+	pg_assert_contains('ws_step_row_cells_refusal($columns, $cells, $kind)', $check);
 
 	$run = workspace_flow_row_write_test_source('ws_step_run');
 	$write = strpos($run, 'ws_step_row_do($owner, $action)');
@@ -292,7 +292,7 @@ function test_workspace_flow_row_write_runs_through_the_store()
 	$do = workspace_flow_row_write_test_source('ws_step_row_do');
 
 	pg_assert_contains('ws_wtable_row_create($owner, $table, ', $do, 'a row added through the store');
-	pg_assert_contains("ws_wtable_row_update(\$owner, \$table, \$row, array('cells' => \$cells, 'revision' => (int) \$row['revision']))", $do, 'a row changed on its revision');
+	pg_assert_contains("ws_wtable_row_update(\$owner, \$table, \$row, array('cells' => \$added['cells'], 'revision' => (int) \$row['revision']))", $do, 'a row changed on its revision');
 	pg_assert_contains("'changed_meanwhile'", $do, 'read again once when changed in between');
 	pg_assert_false((bool) preg_match('~\bdb\(~', $do), 'nothing written past the store');
 	pg_assert_same('', ws_step_starter_refusal(array('started_by' => 9, 'actor_id' => 3), 'row_add', array(), function () {

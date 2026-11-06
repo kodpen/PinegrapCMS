@@ -75,3 +75,50 @@ function pg_config_text_save($name, $value)
 
     return $result !== false;
 }
+
+/**
+ * The statement of pg_config_text_claim(): an INSERT that only a missing row
+ * takes when the value read was '', else an UPDATE that only a row still
+ * holding the value read takes. Pure.
+ *
+ * @param string $name
+ * @param string $expected  the value this request read
+ * @param string $value     the value to write, not ''
+ * @return array  array(sql, params)
+ */
+function pg_config_text_claim_query($name, $expected, $value)
+{
+    if ((string) $expected === '') {
+        return array("INSERT IGNORE INTO config_text (name, value) VALUES (?, ?)", array((string) $name, (string) $value));
+    }
+
+    return array("UPDATE config_text SET value = ? WHERE (name = ?) AND (value = ?)", array((string) $value, (string) $name, (string) $expected));
+}
+
+/**
+ * Replace a settings text only while it still holds the value this request
+ * read, so of two overlapping runs that read the same pass time only one
+ * goes on with the window it opens. Writing the value it already holds
+ * changes no row and counts as not claimed: that window is empty.
+ *
+ * @param string $name
+ * @param string $expected  the value read with pg_config_text()
+ * @param string $value     the new value, not ''
+ * @return bool  true only when this request's write changed the row
+ */
+function pg_config_text_claim($name, $expected, $value)
+{
+    $value = (string) $value;
+
+    if (!pg_config_text_name_valid($name) || ($value === '') || (strlen($value) > 65535) || !pg_schema_has('config_text')) {
+        return false;
+    }
+
+    list($sql, $params) = pg_config_text_claim_query($name, $expected, $value);
+
+    if (db_q($sql, $params) === false) {
+        return false;
+    }
+
+    return mysqli_affected_rows(db::$con) === 1;
+}

@@ -720,15 +720,37 @@ function ws_task_delegate($viewer, $task, $key, $instruction)
 }
 
 /**
- * Whether the person may stop the assistant's run on a task: the checks of
- * ws_task_delegation_stop(), made on their own so that the API's dry run
- * meets the same refusals.
+ * Why a person may not stop a run or take a task back, from what they are
+ * to it. The person who asked for the run stops it even when they may only
+ * see the task (a note starts a run for anybody who sees it); taking the task
+ * back from its assistant changes the task, so it needs the right to change
+ * it. Pure.
+ *
+ * @param bool $mine      the run under way was asked for by this person
+ * @param bool $can_edit  the person may change the task
+ * @param bool $take_back the task is with an assistant and is to be taken back
+ * @return string '' | edit
+ */
+function ws_task_delegation_stop_problem($mine, $can_edit, $take_back)
+{
+    if ($can_edit) {
+        return '';
+    }
+
+    return ($mine && !$take_back) ? '' : 'edit';
+}
+
+/**
+ * Whether the person may stop the assistant's run on a task, and with
+ * $undelegate take the task back: the checks of ws_task_delegation_stop(),
+ * made on their own so that the API's dry run meets the same refusals.
  *
  * @param array $viewer
  * @param array $task
+ * @param bool  $undelegate
  * @return array ok, error, run (the run under way, null when there is none)
  */
-function ws_task_delegation_stop_check($viewer, $task)
+function ws_task_delegation_stop_check($viewer, $task, $undelegate = false)
 {
     if (!ws_delegation_ready()) {
         return array('ok' => false, 'error' => lang('Invalid request.'), 'run' => null);
@@ -736,8 +758,9 @@ function ws_task_delegation_stop_check($viewer, $task)
 
     $run = ws_task_delegation_open_run($task['id']);
     $mine = $run && ((int) $run['requested_by'] === (int) $viewer['id']);
+    $take_back = $undelegate && ((string) ($task['delegate'] ?? '') !== '');
 
-    if (!$mine && !ws_can_edit_task($viewer, $task)) {
+    if (ws_task_delegation_stop_problem($mine, ws_can_edit_task($viewer, $task), $take_back) !== '') {
         return array('ok' => false, 'error' => lang('You may not change this task.'), 'run' => null);
     }
 
@@ -756,7 +779,7 @@ function ws_task_delegation_stop_check($viewer, $task)
  */
 function ws_task_delegation_stop($viewer, $task, $undelegate)
 {
-    $check = ws_task_delegation_stop_check($viewer, $task);
+    $check = ws_task_delegation_stop_check($viewer, $task, $undelegate);
 
     if (!$check['ok']) {
         return array('ok' => false, 'error' => $check['error']);

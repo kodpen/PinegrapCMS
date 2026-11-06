@@ -751,7 +751,9 @@ function ws_ical_text($value)
  * The all-day events of an iCalendar text: uid, name, start, end (Y-m-d, the
  * last day itself), yearly. Only what a holiday calendar needs is read: a
  * DTEND on a date is the day after the last one (RFC 5545), a yearly RRULE
- * marks the day as coming back every year, and timed events are left out.
+ * marks the day as coming back every year, timed and cancelled events are
+ * left out, and a moved occurrence (RECURRENCE-ID) gets the uid
+ * '<UID>|<RECURRENCE-ID>' so it never replaces its repeating day.
  *
  * Google's public holiday calendars list observances (Mother's Day and the
  * like) beside the days off. An observance's DESCRIPTION says, in the
@@ -780,8 +782,9 @@ function ws_ical_events($text, $public_only = true)
     foreach ($events as $event) {
         $start = $day($event['DTSTART']['value'] ?? '');
 
-        // A timed event is a meeting, not a day off.
-        if (($start === null) || (strpos(($event['DTSTART']['value'] ?? ''), 'T') !== false)) {
+        // A timed event is a meeting, not a day off; a cancelled one is no day.
+        if (($start === null) || (strpos(($event['DTSTART']['value'] ?? ''), 'T') !== false)
+            || (strtoupper(trim((string) ($event['STATUS']['value'] ?? ''))) === 'CANCELLED')) {
             continue;
         }
 
@@ -803,10 +806,23 @@ function ws_ical_events($text, $public_only = true)
             $end = date('Y-m-d', strtotime($next . ' 12:00:00 -1 day'));
         }
 
-        $uid = mb_substr(trim((string) ($event['UID']['value'] ?? '')), 0, 191);
+        $uid = trim((string) ($event['UID']['value'] ?? ''));
 
         if ($uid === '') {
             $uid = md5($start . '|' . $name);
+        }
+
+        // A moved occurrence of a repeating day carries the day's own UID
+        // with a RECURRENCE-ID. The sync keys its rows by uid, so without a
+        // uid of its own the moved year replaced the yearly row (or was
+        // replaced by it).
+        $occurrence = trim((string) ($event['RECURRENCE-ID']['value'] ?? ''));
+
+        if ($occurrence !== '') {
+            $suffix = '|' . preg_replace('/[^0-9TZ]/', '', strtoupper($occurrence));
+            $uid = mb_substr($uid, 0, 191 - strlen($suffix)) . $suffix;
+        } else {
+            $uid = mb_substr($uid, 0, 191);
         }
 
         $out[] = array(

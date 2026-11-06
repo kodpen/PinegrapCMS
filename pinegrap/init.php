@@ -1142,13 +1142,14 @@ if (ECOMMERCE == true) {
     // If multi-currency is enabled in the site settings,
     // and the visitor has updated the currency,
     // and the updated currency is different from the base currency,
-    // then get info about the visitor's currency.
+    // then get info about the visitor's currency. A currency without a rate
+    // above zero falls back to the base (pg_visitor_currency_row()).
     if (
         (ECOMMERCE_MULTICURRENCY == true)
         && (isset($_SESSION['ecommerce']['currency_id']) == true)
         && ($_SESSION['ecommerce']['currency_id'] != BASE_CURRENCY_ID)
     ) {
-        $visitor_currency = db_item(
+        $visitor_currency = pg_visitor_currency_row(db_item(
             "SELECT
                 id,
                 code,
@@ -1156,7 +1157,7 @@ if (ECOMMERCE == true) {
                 exchange_rate
             FROM currencies
             WHERE id = '" . escape($_SESSION['ecommerce']['currency_id']) . "'"
-        );
+        ));
     }
 
     // If a visitor currency was found, then prepare constants.

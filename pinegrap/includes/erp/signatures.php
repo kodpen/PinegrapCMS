@@ -273,7 +273,9 @@ function erp_signature_store($doc_type, $doc_id, $png, $context = array())
  * The signature as the document template prints it, or an empty array when
  * the document carries none - or no longer reads as it did when it was
  * signed: a signature printed under figures the customer never saw would
- * say they agreed to them.
+ * say they agreed to them. A record that fails its seal, or whose drawing
+ * on disk is not the one signed, is not printed either: the quote screen
+ * reads both as not intact, and the PDF would print it as a signature.
  *
  * @param string $doc_type
  * @param int    $doc_id
@@ -284,7 +286,10 @@ function erp_signature_document_block($doc_type, $doc_id, $current_hash)
 {
     $record = erp_signature($doc_type, $doc_id);
 
-    if (($record === null) || (erp_signature_document_matches($record, $current_hash) === false)) {
+    if (($record === null)
+        || (erp_signature_document_matches($record, $current_hash) === false)
+        || !erp_signature_verify($record)
+        || !erp_signature_image_matches($record)) {
         return array();
     }
 

@@ -36,9 +36,10 @@ function pg_test_mail_link_request_host_lines($file)
 	return $lines;
 }
 
-// Screens and helpers that e-mail a link to the site: account and password
-// mails, the affiliate approval request, the comment notifications and the
-// double opt-in confirmation link.
+// Screens and helpers that e-mail or store a link to the site: account and
+// password mails, the affiliate approval request, the comment notifications,
+// the double opt-in confirmation link and the personal data notice link kept
+// in an order's legal documents.
 function test_mail_link_hostname_mail_screens_use_hostname_setting()
 {
 	$files = array(
@@ -51,6 +52,7 @@ function test_mail_link_hostname_mail_screens_use_hostname_setting()
 		'email_a_friend.php',
 		'includes/erp/order_bridge.php',
 		'includes/fn/form_subscription.php',
+		'includes/fn/legal_documents.php',
 		'includes/fn/mail.php',
 		'includes/fn/widgets_account.php',
 		'includes/fn/widgets_comments.php',

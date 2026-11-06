@@ -110,17 +110,51 @@ function test_api_orders_create_parts()
 {
 	pg_assert_same(
 		array(
-			array('method' => 'cash', 'till' => 3, 'amount' => 500),
-			array('method' => 'card', 'till' => 4, 'amount' => 0),
+			'parts' => array(
+				array('method' => 'cash', 'till' => 3, 'amount' => 500),
+				array('method' => 'card', 'till' => 4, 'amount' => 700),
+			),
+			'bad' => 0,
 		),
 		api_local_sale_parts(array(
 			array('method' => 'cash', 'till_id' => 3, 'amount' => 500),
-			array('method' => 'card', 'till_id' => 4, 'amount' => 12.5),
-			'junk',
+			array('method' => 'card', 'till_id' => 4, 'amount' => '700'),
 		)),
-		'read as the counter reads its split; a decimal amount is no amount'
+		'read as the counter reads its split; a form body sends the amount as digits'
 	);
-	pg_assert_same(array(), api_local_sale_parts(null));
+	pg_assert_same(array('parts' => array(), 'bad' => 0), api_local_sale_parts(null));
+	pg_assert_same(
+		array('method' => 'card', 'till' => 4, 'amount' => 0),
+		api_local_sale_parts(array(
+			array('method' => 'cash', 'till_id' => 3, 'amount' => 500),
+			array('method' => 'card', 'till_id' => 4, 'amount' => 0),
+		))['parts'][1],
+		'a part of 0 stays the counter\'s empty part'
+	);
+}
+
+// A part the counter would skip as empty is refused when it was sent with an
+// amount that is not a whole number of minor units: skipped, the money it
+// stood for would be recorded as owed on the account.
+function test_api_orders_create_parts_refuse_malformed()
+{
+	$cases = array(
+		'a decimal amount'      => array('method' => 'card', 'till_id' => 4, 'amount' => 12.5),
+		'a decimal string'      => array('method' => 'card', 'till_id' => 4, 'amount' => '12.50'),
+		'a negative amount'     => array('method' => 'card', 'till_id' => 4, 'amount' => -200),
+		'no amount'             => array('method' => 'card', 'till_id' => 4),
+		'a list as the amount'  => array('method' => 'card', 'till_id' => 4, 'amount' => array(200)),
+		'not an object at all'  => 'junk',
+	);
+
+	foreach ($cases as $label => $part) {
+		$read = api_local_sale_parts(array(
+			array('method' => 'cash', 'till_id' => 3, 'amount' => 500),
+			$part,
+		));
+
+		pg_assert_same(2, $read['bad'], $label . ' names the second item');
+	}
 }
 
 function test_api_orders_create_present()

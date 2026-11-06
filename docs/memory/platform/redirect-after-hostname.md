@@ -10,6 +10,8 @@ Pattern used everywhere: `header('Location: ' . URL_SCHEME . HOSTNAME . $send_to
 ## What is the rule?
 - Every user-sourced value placed after `HOSTNAME` goes through `pg_safe_redirect_path()`.
 - Not only `header('Location:')`: also `window.parent.location = ...`, `<a href>`, the argument of `go()`.
+- `build_url()` with a `hostname` property is a place too: it puts a slash in front of a path that has none (`@evil.com/x` became `https://site.com@evil.com/x` in a form's message confirmation); a caller still passes a posted address through `pg_safe_redirect_path()` first (`pg_form_payment_confirmation_url()`).
+- JavaScript never navigates to a `send_to` it reads from the address bar: it takes the value the server checked and printed (the designer's Ctrl+G exit uses `_design.exitUrl`, from `pg_safe_back_url()`). A browser drops spaces and tabs from an address, so ` javascript:` or `java<TAB>script:` passed the old prefix check in JS; `tests/designer_exit_target_test.php`.
 - `escape_javascript()` and `h()` are NOT URL validators: they escape quotes and tags, they do not check where the address goes.
 
 ## Why does pg_safe_redirect_path() look only at the first two characters?

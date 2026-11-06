@@ -136,3 +136,24 @@ function test_orders_csv_exports_line_tax_and_installment_charges()
 	pg_assert_contains('orders.installment_charges,', $source, 'the flat orders query selects the installment charge');
 	pg_assert_true(strpos($source, 'order_items.tax_total AS tax') === false, 'the line total is not read back as the unit tax');
 }
+
+function test_order_list_state_join_is_scoped_to_the_country()
+{
+	$sql = pg_order_list_state_join('billing_states', 'orders.billing_state', 'orders.billing_country');
+
+	pg_assert_contains('LEFT JOIN states AS billing_states', $sql, 'the states row is joined under the given alias');
+	pg_assert_contains('billing_states.code = orders.billing_state', $sql, 'the state is matched by its code');
+	pg_assert_contains('billing_states.country_id IN (SELECT', $sql, 'the state is matched only inside the address country');
+	pg_assert_contains('.code = orders.billing_country', $sql, 'the country is read from the address country column');
+	pg_assert_true(stripos($sql, 'JOIN countries') === false, 'no countries join that could repeat an order row');
+}
+
+function test_orders_list_state_filters_use_the_country_scoped_join()
+{
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_orders.php');
+
+	pg_assert_true(strpos($src, '= billing_states.code"') === false, 'the billing state join no longer matches a code of any country');
+	pg_assert_true(strpos($src, '= shipping_states.code"') === false, 'the shipping state join no longer matches a code of any country');
+	pg_assert_contains("pg_order_list_state_join('billing_states', 'orders.billing_state', 'orders.billing_country')", $src, 'billing state filter');
+	pg_assert_contains("pg_order_list_state_join('shipping_states', 'ship_tos.state', 'ship_tos.country')", $src, 'shipping state filter');
+}

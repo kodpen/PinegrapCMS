@@ -1195,9 +1195,15 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         ),
         'condition.rule' => array('hint' => ws_flow_ai_rule_shape()),
         'approval.approvers' => array('hint' => 'user ids from the list of people, the ones who answer; the person who asked when the request says I or me'),
-        'value.a' => array('hint' => 'the value it works from; {{date}} (Y-m-d), {{time}} (H:i) and {{weekday}} are the moment the box is worked out, as in "{{date}} {{time}}" for date_format or add_days'),
+        'value.a' => array('hint' => 'the value it works from; {{date}} (Y-m-d), {{time}} (H:i) and {{weekday}} are the moment the box is worked out, as in "{{date}} {{time}}" for date_format or add_days; with rule calculate one formula of numbers, values, + - * / ^, a percent (18%) and functions such as ROUND, MIN, MAX, IF (arguments split by ;), as in "{{node.ID.qty}} * {{node.ID.price}} * (1 + 18%)", rounded to places'),
+        'row_set.cells' => array('hint' => 'a JSON object of column ids and values, as row_add\'s; a number or money cell written as "+3" or "+{{node.ID.answer_number}}" adds that amount (below zero takes away) to what the row holds when the box writes it, so runs at the same time never lose an addition'),
+        'email.recipient' => array('hint' => 'typed writes to the addresses in to; record_person to the person of the record the run is about (the order\'s customer, the form\'s sender, the booking\'s guest, the e-mail\'s sender, the contact), read when the box runs: never write that address in to'),
+        'email.purpose' => array('hint' => 'with recipient record_person: info for an answer or a reminder; marketing only goes to a person who agreed to marketing e-mail, with an unsubscribe link'),
+        'delay.mode' => array('hint' => 'for waits amount unit; until waits until the date in at, less amount unit when set; at most 90 days'),
+        'delay.at' => array('hint' => 'with mode until, the date and time it waits until: one value such as {{trigger.FIELD}} or a date written as YYYY-MM-DD HH:MM; a date that has passed goes on at once'),
         'for_each.count' => array('hint' => 'with mode count, how many times the body repeats: a whole number from 1 to ' . WS_FLOW_LOOP_ITEMS_MAX . ' or one value; index and item are then 1 to the count, and list, path and fields are not read'),
-        'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b'),
+        'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b; replace finds b as written, cut keeps the first b characters, split splits at b (spaces when empty)'),
+        'value.c' => array('hint' => 'the third value; with rule replace what goes in place of b (empty takes it out), with rule split the part to take: 1 the first (when empty), -1 the last'),
     );
     // The same two settings on every step box.
     $any = array(
@@ -1208,6 +1214,7 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
         'post'     => 'only says something in a channel; it never waits for an answer',
         'row_get'  => 'reads one row of a workflow table, named by its id or one value such as {{trigger.row_id}}; it gives found (1, or 0 when the row is not there) and cell_COLUMN_ID for each column',
+        'record_get' => 'reads one record (record: order, product, contact, booking, task or form, a submitted form) named by its id or one value such as {{trigger.record_id}}, with the owner\'s rights; it gives found (1, or 0 when the record is not there or out of reach) and the record\'s fields, such as email, status or total',
     );
 
     foreach ($catalogue as $at => $kind) {
@@ -2207,7 +2214,8 @@ function ws_flow_ai_read($asker, $args)
             return array('error' => 'There is no such flow, or the person who asked may not read it.');
         }
 
-        $graph = ws_flow_graph_of($flow);
+        $version = ((int) $flow['version_id'] > 0) ? ws_flow_version((int) $flow['version_id']) : null;
+        $graph = ws_flow_ai_read_graph($flow, is_array($version) ? ws_flow_graph_of($version) : null);
         $boxes = array();
 
         foreach ($graph['nodes'] as $node) {
@@ -2241,6 +2249,32 @@ function ws_flow_ai_read($asker, $args)
     }
 
     return array('results' => $found, 'note' => empty($found) ? 'No flow matched. Try one shorter word.' : 'Read one with read_flow and its id before you change it.');
+}
+
+/**
+ * The graph read_flow tells the model of one flow, as the Flows screen
+ * gives it to the same person (ws_flow_detail()): whoever may change the
+ * flow reads its draft whole; anybody else reads its live version, or the
+ * draft of a flow never published, with a webhook's address, a change or
+ * table box's record and values and a condition's value kept back
+ * (ws_flow_graph_present()). The answer may be posted where others read it.
+ * Box settings stay arrays. Pure.
+ *
+ * @param array      $flow ws_flow_for() row (access, draft)
+ * @param array|null $live the live version's graph, null when never published
+ * @return array v, nodes, edges, notes
+ */
+function ws_flow_ai_read_graph($flow, $live)
+{
+    $edit = ((string) ($flow['access'] ?? '') === 'edit');
+    $graph = ($edit || !is_array($live)) ? ws_flow_graph_of($flow) : $live;
+    $shown = ws_flow_graph_present($graph, $edit);
+
+    foreach ($shown['nodes'] as $index => $node) {
+        $shown['nodes'][$index]['config'] = (array) $node['config'];
+    }
+
+    return $shown;
 }
 
 /**

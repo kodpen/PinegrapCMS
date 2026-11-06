@@ -9,6 +9,7 @@ description: New dashboard cards goals, notes (#4981), pins, perf (N12b): where 
 
 ## What may a goal count?
 - At most three goals: name (60 characters), metric, whole target, span `week` (Monday 00:00) or `month`. Metrics are the sign-in chip counts that make sense as goals (`pg_dashboard_v2_chip_count()`: visits, forms, comments, subscribers, files, tasks_done, orders) and `revenue` (complete and exported orders, minor units turned into whole ones; gate `shop_summary`).
+- `files` (goal and sign-in chip) counts only the files the person's Files card and file list show (`pg_dashboard_files_where()`: no archived folders, design files only for roles 0-1, a User only their granted folders, 0 with none) through `pg_dashboard_v2_files_count_sql()`; it counted every file on the site, so a User's chip named uploads in folders they cannot open.
 - The tone compares the share reached with the share of the span gone by: ahead (good), behind (warn), reached (good). A goal on a metric the person can no longer count stays stored but is not drawn; the next goal save drops it.
 
 ## What may a pin open?

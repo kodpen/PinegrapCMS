@@ -240,6 +240,7 @@ function connections_status_badge($status) {
 }
 
 $cards = '';
+$summary_rows = '';
 
 foreach ($providers as $provider_key => $provider) {
 
@@ -259,8 +260,16 @@ foreach ($providers as $provider_key => $provider) {
 	// The accounts.
 
 	$account_rows = '';
+	$account_count = 0;
+	$reauth_count = 0;
 
 	foreach (pg_connect_accounts(array('provider' => $provider_key, 'user_id' => 0)) as $account) {
+
+		$account_count++;
+
+		if ($account['status'] === 'reauth') {
+			$reauth_count++;
+		}
 
 		$purpose_labels = array();
 
@@ -321,10 +330,12 @@ foreach ($providers as $provider_key => $provider) {
 
 		$option_fields .= '
 			<div class="col-12 md:col-6">
-				<label for="option_' . h($provider_key . '_' . $option_key) . '" class="form-label">' . h($option['label']) . '</label>
-				<input type="text" class="form-control form-control-sm' . ($option_bad ? ' is-invalid' : '') . '" id="option_' . h($provider_key . '_' . $option_key) . '"
-					name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off"' . ($option_bad ? ' aria-invalid="true"' : '') . '>
-				<div class="form-text">' . h($option['help']) . '</div>
+				<div class="form-field">
+					<label class="form-label" for="option_' . h($provider_key . '_' . $option_key) . '">' . h($option['label']) . '</label>
+					<input type="text" class="form-control' . ($option_bad ? ' is-invalid' : '') . '" id="option_' . h($provider_key . '_' . $option_key) . '"
+						name="option_' . h($option_key) . '" value="' . h($value) . '" maxlength="100" autocomplete="off"' . ($option_bad ? ' aria-invalid="true"' : '') . '>
+					<div class="form-text">' . h($option['help']) . '</div>
+				</div>
 			</div>';
 
 	}
@@ -368,27 +379,33 @@ foreach ($providers as $provider_key => $provider) {
 				? '<div class="alert theme-info small py-3">' . h(lang('This is the application of Sign in with Google (Security settings). Add the redirect address below to it in Google Cloud Console, or save an application of its own here.')) . '</div>'
 				: '') . '
 			<ol class="small ps-5 mb-5">' . $setup_steps . '</ol>
-			<label class="form-label" for="redirect_' . h($provider_key) . '">' . h(lang('Redirect address')) . '</label>
-			<div class="input-group input-group-sm mb-1">
-				<input type="text" class="form-control font-monospace" id="redirect_' . h($provider_key) . '" value="' . h($redirect_uri) . '" readonly>
-				<button type="button" class="btn btn-outline theme-secondary connections-copy" data-target="redirect_' . h($provider_key) . '">
-					<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+			<div class="form-field mb-5">
+				<label class="form-label" for="redirect_' . h($provider_key) . '">' . h(lang('Redirect address')) . '</label>
+				<div class="input-group">
+					<input type="text" class="form-control font-monospace" id="redirect_' . h($provider_key) . '" value="' . h($redirect_uri) . '" readonly>
+					<button type="button" class="btn btn-outline theme-secondary connections-copy" data-target="redirect_' . h($provider_key) . '">
+						<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+				</div>
+				<div class="form-text mb-0 connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
 			</div>
-			<div class="form-text mb-5 connections-copy-status" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></div>
-			<div class="row g-3">
+			<div class="row g-5">
 				<div class="col-12 md:col-6">
-					<label for="client_id_' . h($provider_key) . '" class="form-label">' . h(lang('Client ID')) . '</label>
-					<input type="text" class="form-control form-control-sm' . ($client_id_bad ? ' is-invalid' : '') . '" id="client_id_' . h($provider_key) . '" name="client_id"
-						value="' . h($client_id_value) . '" maxlength="255" autocomplete="off"' . ($client_id_bad ? ' aria-invalid="true"' : '') . '>
+					<div class="form-field">
+						<label class="form-label" for="client_id_' . h($provider_key) . '">' . h(lang('Client ID')) . '</label>
+						<input type="text" class="form-control' . ($client_id_bad ? ' is-invalid' : '') . '" id="client_id_' . h($provider_key) . '" name="client_id"
+							value="' . h($client_id_value) . '" maxlength="255" autocomplete="off"' . ($client_id_bad ? ' aria-invalid="true"' : '') . '>
+					</div>
 				</div>
 				<div class="col-12 md:col-6">
-					<label for="client_secret_' . h($provider_key) . '" class="form-label">' . h(lang('Client secret')) . '</label>
-					<input type="password" class="form-control form-control-sm" id="client_secret_' . h($provider_key) . '" name="client_secret"
-						value="" autocomplete="new-password"
-						placeholder="' . h($secret_stored ? lang('Stored. Leave empty to keep it.') : '') . '">
-					' . ((is_array($provider_draft) && $provider_draft['had_secret'])
-						? '<div class="form-text fg-warning">' . h(lang('The secret you entered was not saved. Enter it again.')) . '</div>'
-						: '') . '
+					<div class="form-field">
+						<label class="form-label" for="client_secret_' . h($provider_key) . '">' . h(lang('Client secret')) . '</label>
+						<input type="password" class="form-control" id="client_secret_' . h($provider_key) . '" name="client_secret"
+							value="" autocomplete="new-password"
+							placeholder="' . h($secret_stored ? lang('Stored. Leave empty to keep it.') : '') . '">
+						' . ((is_array($provider_draft) && $provider_draft['had_secret'])
+							? '<div class="form-text fg-warning">' . h(lang('The secret you entered was not saved. Enter it again.')) . '</div>'
+							: '') . '
+					</div>
 				</div>
 				' . $option_fields . '
 				<div class="col-12">
@@ -412,8 +429,7 @@ foreach ($providers as $provider_key => $provider) {
 		</form>';
 
 	$cards .= '
-		<div class="col-12 2xl:col-6">
-			<div class="card h-100">
+			<div class="card mb-5" id="connections-' . h($provider_key) . '">
 				<div class="card-header d-flex justify-content-between align-items-center">
 					<span class="text-uppercase h5 fg-primary fw-bold mb-0" lang="en"><i class="bi ' . h($provider['icon']) . ' me-3" aria-hidden="true"></i>' . h($provider['label']) . '</span>
 					' . $app_badge . '
@@ -431,8 +447,22 @@ foreach ($providers as $provider_key => $provider) {
 						' . $app_form . '
 					</details>
 				</div>
-			</div>
-		</div>';
+			</div>';
+
+	// The Summary row of the status column: the application's state and how
+	// many accounts work or wait to be connected again, a jump to the card.
+	$summary_rows .= '
+					<li class="list-group-item px-0 d-flex align-items-center gap-3">
+						<a class="flex-grow-1 min-w-0 text-truncate pg-link-body-emphasis" href="#connections-' . h($provider_key) . '" lang="en">'
+							. '<i class="bi ' . h($provider['icon']) . ' me-2" aria-hidden="true"></i>' . h($provider['label']) . '</a>
+						' . (($account_count > 0)
+							? '<span class="small fg-secondary text-nowrap">' . h(lang(array('string' => '{var:1} connected', 'vars' => pg_format_number($account_count, 0)))) . '</span>'
+							: '') . '
+						' . (($reauth_count > 0)
+							? '<span class="badge theme-warning fw-normal" title="' . h(lang('Connect again')) . '"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> ' . (int) $reauth_count . '<span class="visually-hidden"> ' . h(lang('Connect again')) . '</span></span>'
+							: '') . '
+						' . $app_badge . '
+					</li>';
 
 }
 
@@ -444,6 +474,8 @@ $liveform_messages = $liveform->output_errors() . $liveform->output_notices();
 
 $liveform->remove_form();
 
+// The wide layout without its save bar: each provider card saves its own
+// application, so there is no one form for a shared bar to submit.
 echo pg_page_shell(array(
 	'title'               => lang('Connected accounts'),
 	'icon'                => 'settings',
@@ -459,7 +491,20 @@ echo pg_page_shell(array(
 			: '<div class="alert theme-danger">' . h(lang('This site has no encryption key, so it cannot keep the permissions of a connected account.')) . '</div>') . '
 	</div></div>
 
-	<div class="row g-5">' . $cards . '</div>
+	<div class="row g-5">
+		<div class="col-12 lg:col-8 2xl:col-9 order-1">' . $cards . '</div>
+		<div class="col-12 lg:col-4 2xl:col-3 order-2">
+			<div class="position-sticky" style="top:3.3rem;">
+				<div class="card mb-5" id="connections-summary">
+					<h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Summary')) . '</h2>
+					<div class="card-body pt-0">
+						<ul class="list-group list-group-flush">' . $summary_rows . '</ul>
+						<p class="small fg-secondary mt-3 mb-0">' . h(lang('A provider is ready once its application is set up; then its accounts can be connected.')) . '</p>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	<form method="post" action="connections.php" id="connections_form" class="disable_shortcut d-none">
 		' . get_token_field() . '

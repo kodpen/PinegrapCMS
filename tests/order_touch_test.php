@@ -85,7 +85,11 @@ function test_order_touch_list_status_cell()
 function test_order_touch_operator_refund_mark_and_exports()
 {
 	// Screens and the ShipWorks feed are scripts, read whole.
-	foreach (array('view_order.php' => 2, 'view_orders.php' => 2, 'shipworks.php' => 1) as $file => $count) {
+	// The exports (view_orders.php, shipworks.php) write through
+	// pg_order_export_mark_sql().
+	foreach (array('view_order.php' => 2) as $file => $count) {
 		order_touch_test_assert_touched(file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file, $count);
 	}
+
+	order_touch_test_assert_touched(pg_test_function_source('pg_order_export_mark_sql'), 'export mark', 1);
 }

@@ -336,6 +336,28 @@ JS
 	pg_assert_same(array(false, 2), $result['cleared']);
 }
 
+// A cell may stand in several groups of the same buttons: its values are
+// separated by spaces, and a filter keeps it when one of them is the value.
+function test_list_table_js_filter_several_values()
+{
+	$result = list_table_js_test_node(<<<'JS'
+console.log(JSON.stringify([
+    T.filterHas('active code incomplete', 'code'),
+    T.filterHas('active code', 'incomplete'),
+    T.filterHas('error', 'error'),
+    T.filterHas('error', 'err'),
+    T.filterHas(null, 'active')
+]));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, false, true, false, false), $result);
+}
+
 // The details panel's sections: the name first, then the pictures, the
 // label/value lines and the buttons; an empty cell is left out.
 function test_list_table_js_details_sections()

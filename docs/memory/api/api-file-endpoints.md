@@ -14,3 +14,6 @@ description: External API routes that send or take a file: api_send_file() and b
 
 ## Smaller copies of pictures?
 - `ws_file_preview($path, $wanted, $file_id)` (`includes/workspace/files.php`, #5402) answers from the image derivative cache: `pg_image_derivative()` with the file's `files` id, in its own format, at `ws_file_preview_width()` (edge 160/320 → 320, 640 → 960, 1280 → 1440, 1920 → 1920), so one copy serves Workspace and panel lists, with the derivatives' signature, encode slots and daily sweep (`platform/image-derivatives.md`). Null (the original) when no copy is made. The Workspace access checks stay in front in `ws_api_files_get()`. The old `data/temp/workspace_previews` folder is emptied by the general job. A rehearsed upload is checked in memory (`ws_upload_inspect()`) and never reaches the disk.
+
+## Which files does `GET /files` list?
+- Only what any visitor may open: `api_files_public_clause()` (`includes/api/resources/files.php`) keeps files in a `public` folder and leaves out `attachment = 1` (submitted form and comment uploads, drawn signatures), which `get_file.php` serves only to people who may see the record. The list, its count and `GET /files/{id}` all use it. Before this an application with files read listed those uploads' names and sizes.

@@ -5,7 +5,8 @@ description: pg_geo_country() (includes/geo.php): edge header, server module or 
 
 ## Where does a request's country come from?
 - `pg_geo_country()`, once per request: `code` (two letters, `T1`, or '' when unknown) and `source` (`cloudflare`, `cloudfront`, `server`, `database`). The first source with an answer wins:
-  1. `CF-IPCountry` / `CloudFront-Viewer-Country`, only when the peer is a Cloudflare edge or a trusted proxy (`pg_geo_trusted_edge()`, the rule `waf_client_ip()` applies to address headers), so a request's country and address come from the same place.
+  1. `CF-IPCountry` / `CloudFront-Viewer-Country`, each only from a peer that stands for that edge (`pg_geo_edge_sources($raw, $remote)`, cached by `pg_geo_trusted_sources()`): a Cloudflare edge address sets Cloudflare's headers (country, `CF-IPCity`); a Trusted Proxies entry naming `cf-connecting-ip` (Cloudflare Tunnel) the same; an entry saved without a header both edges; any other entry (`x-forwarded-for`, `true-client-ip`, ...) none, and the country comes from the database by the resolved address.
+  - Why: such a proxy passes the visitor's own `CF-IPCountry` through, so before this a visitor behind a load balancer listed as `x-forwarded-for` chose the country the firewall's country restriction, the language redirect and visitor statistics read. A Cloudflare edge likewise passes a client `CloudFront-Viewer-Country` through.
   2. `GEOIP_COUNTRY_CODE` / `MM_COUNTRY_CODE` set by a web server module, only when no proxy stands between (`waf_client_ip()` equals `REMOTE_ADDR`): such a module places the address it was connected from.
   3. The site's own database under `data/geo/`, looked up by the real address (`pg_geo_db_lookup()`: binary search on disk, IPv6 by its /64, an IPv4-mapped address as IPv4).
 - `XX`, `ZZ` and `--` mean unknown; a private, loopback or reserved address has no country.

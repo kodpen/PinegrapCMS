@@ -15,6 +15,7 @@ description: How a route and an object are declared for the OpenAPI document: re
 
 ## What about parameters?
 - A `'type' => 'list'` parameter names its items with `'of'`: `'integer'`, `'string'` or an inline object `array('hash' => 'string', ...)`. Without `'of'` the document calls it a list of objects.
+- `min`/`max` of an `int`, `money` or `decimal` parameter become `minimum`/`maximum` in the document and the MCP tool schema (`api_openapi_type()`): the router refuses values outside them, so a client must be told; decimal bounds were left out until the API schema bug hunt (tests/api_openapi_decimal_bounds_test.php).
 - A body parameter's `description` is printed in the document and in the MCP tool a model reads: English, short, true.
 
 ## How does the panel build the document?
