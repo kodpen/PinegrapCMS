@@ -284,7 +284,7 @@ $profile_widgets = array(
         'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
         'tree'   => $widget_root(array(
             $field('sc-profile-name', lang('Name shown to members'), pg_cf_with_role($input('sc-profile-name', 'text', 'display_name', 'nickname'), 'title'), 'mb-3',
-                lang('The name members see on your page and beside your posts.')),
+                lang('The name members see on your page and in the people list. Your posts show the name in your account details.')),
             $field('sc-profile-avatar', lang('Profile picture'), pg_cf_with_role($file('sc-profile-avatar', 'avatar', 'avatars'), 'media'), 'mb-3',
                 lang('A square picture looks best; it is shown in a circle.')),
             $row(array(

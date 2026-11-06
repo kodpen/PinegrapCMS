@@ -247,8 +247,9 @@ $report_pages[] = array(
 );
 
 // Every member post for the staff: the hidden ones first, then all of them,
-// the newest first, with a search. A row opens the post; its pencil opens
-// the record, where the Status hides or shows it.
+// the newest first, with a search. A row's pencil opens the record, where
+// the Status hides or shows it; a row links no post page, because the post
+// page keeps the live rule for everyone and would not show a hidden one.
 $report_pages[] = array(
     'key'     => 'staff_posts',
     'name'    => lang('all-member-posts'),
@@ -342,9 +343,9 @@ $report_row = function ($staff) use ($el, $span, $icon, $bind, $report_sample) {
 };
 
 // A member post in the staff's list: the photo, the caption, who shared it,
-// the topic, the status and the date; the row opens the post.
+// the topic, the status and the date. Not a link: see staff_posts.
 $staff_post_row = function ($status) use ($el, $span, $icon, $image, $bind, $photo, $staff_post_sample, $members, $topics) {
-    return $el('a', 'list-group-item list-group-item-action d-flex gap-3 p-3', lang('Post Row'), array(
+    return $el('div', 'list-group-item d-flex gap-3 p-3', lang('Post Row'), array(
         $el('span', 'flex-shrink-0 rounded-3 overflow-hidden bg-body-tertiary psc-thumb', lang('Picture Frame'), array(
             $image($photo('post-ayla-1', 160, 160), $staff_post_sample['alt'], 'object-fit-cover w-100 h-100',
                 array('_bindings' => array('src' => 'photo', 'alt' => 'alt_text'))),
@@ -369,7 +370,7 @@ $staff_post_row = function ($status) use ($el, $span, $icon, $image, $bind, $pho
                 )),
             )),
         )),
-    ), array('href' => '#', '_bindings' => array('href' => 'form_item_view')));
+    ));
 };
 
 // A list of records on a member or staff page. No live rule: these lists
