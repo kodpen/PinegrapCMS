@@ -27,3 +27,6 @@ Related: docs/memory/commerce/cart-widget-rows-and-groups.md, docs/memory/commer
 
 ## In which language does the remove link answer an error?
 - The site's: `remove_item_from_cart.php` passes its four refusals (no active cart, no `order_item_id`, line not found, line of another cart) and "Query failed." through `lang()`. Before, they were raw English on every site, e.g. a remove link followed twice (back button) showed "It might have already been removed." in English on a Turkish shop.
+
+## When does adding a product create its recipient? (#7568)
+- After the gift card unit limit check: `add_order_item()` only looks the recipient up first (`pg_ship_to_name()`, `pg_ship_to_find()`, no insert) and calls `create_or_get_ship_to()` once the add is accepted. Before, a gift card add refused over the limit for a new name (or the first add of an empty cart) left an empty `ship_tos` row and a pick-list name behind.
