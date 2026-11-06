@@ -212,3 +212,56 @@ function test_erp_order_refund_dialog_leaves_the_credit_row_to_the_goods()
 	pg_assert_true(strpos($html, 'data-refund-line="100" data-refund-credit') === false);
 	pg_assert_contains('input.hasAttribute("data-refund-credit") ? 0 : input.max', $html);
 }
+
+// A refund by lines notes the lines it gave back on its order_refunds row,
+// beside the reward points marker, and the notes are read back summed.
+function test_erp_order_refund_lines_note_round_trip()
+{
+	pg_assert_same('lines:101=1,-1=1', erp_order_refund_lines_note(array(101 => 1, 102 => 0, -1 => 1.0)));
+	pg_assert_same('lines:7=1.5', erp_order_refund_lines_note(array(7 => '1.5')));
+	pg_assert_same('', erp_order_refund_lines_note(array()));
+	pg_assert_same('', erp_order_refund_lines_note(array(5 => 0)));
+
+	pg_assert_same(array(101 => 3.0, -1 => 1.0, 102 => 0.5), erp_order_refund_lines_noted(array(
+		'Reward points taken back: 40 lines:101=1,-1=1',
+		'lines:101=2,102=0.5',
+		'Reward points taken back: 10',
+		'',
+		null,
+		'note about the outlines:9=9',
+	)));
+	pg_assert_same(array(), erp_order_refund_lines_noted(array()));
+	pg_assert_same(40, pg_credit_points_marked(array('Reward points taken back: 40 lines:101=1')));
+}
+
+// The same line cannot be given back twice: what earlier refunds noted is
+// returned, the rest remains, and asking for more is refused.
+function test_erp_order_refund_noted_lines_are_not_refunded_again()
+{
+	list($order, $items) = pg_test_erp_order_refund_cart(array(array(1, 10000), array(3, 10000)), 0);
+	$built = erp_order_lines($order, $items);
+	$lines = erp_order_refund_order_lines($built['lines'], $items, array(100 => 1, 101 => 1, 999 => 4));
+	$source = array('source' => 'order', 'invoice_id' => 0, 'invoice_number' => '', 'lines' => $lines);
+
+	pg_assert_same(0.0, (float) $lines[0]['remaining_qty']);
+	pg_assert_same(1.0, (float) $lines[0]['returned_qty']);
+	pg_assert_same(2.0, (float) $lines[1]['remaining_qty']);
+	pg_assert_false(isset($lines[1]['returned_tax']));
+
+	$again = erp_order_refund_amount($source, array(100 => 1));
+	pg_assert_true($again['error'] !== '');
+
+	$rest = erp_order_refund_amount($source, array(101 => 2));
+	pg_assert_same('', $rest['error']);
+	pg_assert_same(24000, $rest['amount']);
+	pg_assert_false($rest['is_full']);
+
+	// More noted than sold stops at what was sold.
+	$over = erp_order_refund_order_lines($built['lines'], $items, array(101 => 9));
+	pg_assert_same(0.0, (float) $over[1]['remaining_qty']);
+
+	// Nothing noted: as before, every line whole with its taxes at 0.
+	$fresh = erp_order_refund_order_lines($built['lines'], $items);
+	pg_assert_same(3.0, (float) $fresh[1]['remaining_qty']);
+	pg_assert_same(0, $fresh[1]['returned_tax']);
+}
