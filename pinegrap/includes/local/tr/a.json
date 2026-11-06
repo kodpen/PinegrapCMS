@@ -4215,6 +4215,7 @@
     "a calendar application": "bir takvim uygulaması",
     "a change of the page {var:1} was proposed": "{var:1} sayfası için bir değişiklik önerildi",
     "a channel that is gone": "artık olmayan bir kanal",
+    "a comment attachment ({var:1}) could not be stored": "bir yorum eki ({var:1}) kaydedilemedi",
     "a contact group that is gone": "artık olmayan bir kişi grubu",
     "a count, by its key": "anahtarıyla bir sayaç",
     "a decision written down": "bir karar yazıldı",
