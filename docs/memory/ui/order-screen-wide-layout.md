@@ -14,7 +14,7 @@ module: order_view
 - A rule in `backend.src.css` cannot: Bootstrap 6's `utilities` layer comes after `custom`, so `.mt-5` beats any panel rule. Tested in `tests/order_view_rows_test.php`.
 
 ## How is a label and its value drawn?
-- Part 3: a line `d-flex justify-content-between gap-3`, the label `fg-secondary` without a colon, the value `text-end text-break`; `pg_order_view_row()` prints the same (also on `print_order.php`). Before, a `.row` of two `.col` halves wrapped a country or an e-mail inside half the card. The address lines (`pg_order_view_row(..., true)`, Address 1, the ship-to Address) keep their own column layout, as do the order lines.
+- Part 3: a line `d-flex justify-content-between gap-3`, the label `fg-secondary` without a colon, the value `text-end text-break`; `pg_order_view_row()` prints the same (also on `print_order.php`). Before, a `.row` of two `.col` halves wrapped a country or an e-mail inside half the card. The address lines (`pg_order_view_row(..., true)`, Address 1, the ship-to Address) keep their own column layout, also without a colon.
 
 ## What is left for the later parts?
 - The order lines (`.order-list-group`) keep their old boxes.

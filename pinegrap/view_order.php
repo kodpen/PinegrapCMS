@@ -1310,7 +1310,7 @@ if (!$_POST) {
                                         </div>
                                         ' . pg_order_view_row(lang('Company'), h($ship_tos[$key]['company'])) . '
                                         <div class="row">
-                                            <span class="translateable col-auto fg-secondary">' . lang('Address') . ':</span>
+                                            <span class="translateable col-auto fg-secondary">' . lang('Address') . '</span>
                                             <span class="col offset-1 " style="font-size:110%;font-weight:500">' . h($address) . '</span>
                                             ' . $output_postcode_province . '
                                         </div>
@@ -1336,7 +1336,7 @@ if (!$_POST) {
                                             <span class="fg-secondary">' . lang('Shipping Method') . '</span>
                                             <span class="text-end text-break">' . $shipping_method . '</span>
                                         </div>
-                                        ' . (($output_tracking_numbers_caption !== '') ? '<div class="form-field mb-5">
+                                        ' . (($output_tracking_numbers_caption !== '') ? '<div class="form-field my-5">
                                             ' . $output_tracking_numbers_caption . '
                                             ' . $output_shipping_tracking_numbers . '
                                             ' . $output_shipping_tracking_numbers_field . '
@@ -2993,7 +2993,7 @@ if (!$_POST) {
                                             </div>
                                             ' . pg_order_view_row(lang('Company'), h($billing_company)) . '
                                             <div class="row" >
-                                                <span class="translateable col-auto fg-secondary">' . lang('Address') . ' 1:</span>
+                                                <span class="translateable col-auto fg-secondary">' . lang('Address') . ' 1</span>
                                                 <span class="col offset-1" style="font-size:110%;font-weight:500">' . h($billing_address_1) . '</span>
                                             </div>
                                             ' . pg_order_view_row(lang('Address') . ' 2', h($billing_address_2), true) . '

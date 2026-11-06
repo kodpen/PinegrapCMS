@@ -43,7 +43,7 @@ function pg_order_view_row($label, $value_html, $wide = false)
 
     if ($wide) {
         return '<div class="row">
-                                        <span class="translateable col-auto fg-secondary">' . $label . ':</span>
+                                        <span class="translateable col-auto fg-secondary">' . $label . '</span>
                                         <span class="col offset-1" style="font-size:110%;font-weight:500">' . $value_html . '</span>
                                     </div>';
     }

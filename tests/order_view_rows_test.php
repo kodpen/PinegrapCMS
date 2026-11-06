@@ -39,7 +39,7 @@ function test_order_view_row_wide_address_line()
 {
 	$html = pg_order_view_row('Address 2', 'Flat 3', true);
 
-	pg_assert_contains('<span class="translateable col-auto fg-secondary">Address 2:</span>', $html, 'the label in its own column');
+	pg_assert_contains('<span class="translateable col-auto fg-secondary">Address 2</span>', $html, 'the label in its own column');
 	pg_assert_contains('<span class="col offset-1" style="font-size:110%;font-weight:500">Flat 3</span>', $html, 'the value emphasised');
 }
 
