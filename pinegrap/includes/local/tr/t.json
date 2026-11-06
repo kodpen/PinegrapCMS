@@ -869,6 +869,7 @@
     "The Express Order widget was upgraded from the old minimal layout to the full designer layout. Remember to save.": "Hızlı Sipariş widget'ı eski Faz-1 düzeninden yeni tam tasarımcı düzenine yükseltildi. Kaydetmeyi unutmayın.",
     "The FTP extension of PHP is not available on this server.": "Bu sunucuda PHP'nin FTP eklentisi yok.",
     "The FTP server address is empty.": "FTP sunucusu adresi boş.",
+    "The FTP server or its encryption changed. Enter the password again.": "FTP sunucusu ya da şifrelemesi değişti. Parolayı yeniden girin.",
     "The FTP server refused the sign-in. {var:1}": "FTP sunucusu oturum açmayı kabul etmedi. {var:1}",
     "The Family Garden Room has a double bed for the parents and a separate corner with two single beds for the children, divided by a sliding door. It opens onto the lawn, a few steps from the pool, and a cot can be added for a baby.": "Bahçe Katı Aile Odası'nda ebeveynler için çift kişilik bir yatak ve sürgülü kapıyla ayrılan, çocuklar için iki tek kişilik yataklı bir köşe vardır. Havuza birkaç adım uzaklıktaki çimenliğe açılır; bebek için yatak eklenebilir.",
     "The Fediverse settings could not be saved: the settings texts table is missing. Run the upgrade.": "Fediverse ayarları kaydedilemedi: ayar metinleri tablosu eksik. Yükseltmeyi çalıştırın.",

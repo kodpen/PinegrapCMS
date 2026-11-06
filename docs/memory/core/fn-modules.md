@@ -28,7 +28,7 @@ description: Generated from the module field of the memory files: each includes/
 - `auto_dialogs`: [[api-design-dialogs-regions]]
 - `aws_sign`: [[aws-sigv4-signing]]
 - `background_render`: [[background-render]]
-- `backup`: [[backup-folder-download-zip]], [[backup-manager-names-and-list]], [[backup-object-storage]], [[fn-module-errors-mail-backup-consent]]
+- `backup`: [[backup-folder-download-zip]], [[backup-manager-names-and-list]], [[backup-object-storage]], [[backup-remote-stored-secret]], [[fn-module-errors-mail-backup-consent]]
 - `backup_restore`: [[restore-files-placement]]
 - `booking_agenda`: [[booking-agenda]], [[workspace-booking-record]], [[workspace-bookings]]
 - `booking_deposit_pay`: [[booking-deposit-payment]]
