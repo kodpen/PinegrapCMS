@@ -7282,10 +7282,15 @@
     }
 
     // A cell as its field shows it: money in minor units as an amount, a
-    // number with the site's decimal mark (siteShown()).
+    // number with the site's decimal mark (siteShown()); an amount added to
+    // the cell ("+1250") keeps its plus.
     function cellShown(column, value) {
         if ((value === null) || (value === undefined)) {
             return '';
+        }
+
+        if (((column.type === 'number') || (column.type === 'money')) && (typeof value === 'string') && /^\+-?\d+(\.\d+)?$/.test(value.trim())) {
+            return '+' + cellShown(column, Number(value.trim().slice(1)));
         }
 
         if ((column.type === 'money') && (typeof value === 'number')) {
@@ -7302,12 +7307,23 @@
     // What a field typed keeps, as the table takes it: nothing for an empty
     // field, a number typed the site's way as a number (siteNumber(); money
     // in minor units, rounded), a text otherwise; a value from a box before
-    // stays a text the run fills.
+    // stays a text the run fills. A number or money typed after "+" is added
+    // to what the row holds: kept as "+" and its machine form ("+1250").
     function cellKept(column, text) {
         var typed = text.trim();
 
         if (typed === '') {
             return undefined;
+        }
+
+        if (((column.type === 'number') || (column.type === 'money')) && (typed.charAt(0) === '+')) {
+            var amount = siteNumber(typed.slice(1).trim());
+
+            if (amount === null) {
+                return typed;
+            }
+
+            return '+' + ((column.type === 'money') ? Math.round(Number(amount) * Math.pow(10, cellPlaces(column))) : Number(amount));
         }
 
         if (((column.type === 'number') && (siteNumber(typed) !== null)) || ((column.type === 'person') && /^\d+$/.test(typed))) {

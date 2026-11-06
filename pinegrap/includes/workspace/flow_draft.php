@@ -1196,6 +1196,7 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'condition.rule' => array('hint' => ws_flow_ai_rule_shape()),
         'approval.approvers' => array('hint' => 'user ids from the list of people, the ones who answer; the person who asked when the request says I or me'),
         'value.a' => array('hint' => 'the value it works from; {{date}} (Y-m-d), {{time}} (H:i) and {{weekday}} are the moment the box is worked out, as in "{{date}} {{time}}" for date_format or add_days; with rule calculate one formula of numbers, values, + - * / ^, a percent (18%) and functions such as ROUND, MIN, MAX, IF (arguments split by ;), as in "{{node.ID.qty}} * {{node.ID.price}} * (1 + 18%)", rounded to places'),
+        'row_set.cells' => array('hint' => 'a JSON object of column ids and values, as row_add\'s; a number or money cell written as "+3" or "+{{node.ID.answer_number}}" adds that amount (below zero takes away) to what the row holds when the box writes it, so runs at the same time never lose an addition'),
         'for_each.count' => array('hint' => 'with mode count, how many times the body repeats: a whole number from 1 to ' . WS_FLOW_LOOP_ITEMS_MAX . ' or one value; index and item are then 1 to the count, and list, path and fields are not read'),
         'value.b' => array('hint' => 'the second value; ' . implode(', ', ws_flow_derived_two_inputs()) . ' need it (join writes a, a space, then b), so a text with values in it is split between a and b'),
     );

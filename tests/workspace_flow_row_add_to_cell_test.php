@@ -105,3 +105,23 @@ function test_workspace_flow_row_add_to_cell_runs_on_the_revision()
 	pg_assert_contains("ws_wtable_row_update(\$owner, \$table, \$row, array('cells' => \$added['cells'], 'revision' => (int) \$row['revision']))", $do, 'written on that revision');
 	pg_assert_contains('WS_STEP_ROW_TRIES', $do, 'read again while somebody else wrote in between');
 }
+
+// Claude and Pinegrap AI read how a change-row box adds to a cell.
+function test_workspace_flow_row_add_to_cell_drafts_hint()
+{
+	foreach (ws_flow_ai_catalogue_hints(ws_flow_kind_catalogue(), array()) as $kind) {
+		if ($kind['kind'] !== 'row_set') {
+			continue;
+		}
+
+		foreach ($kind['settings'] as $setting) {
+			if ($setting['key'] === 'cells') {
+				pg_assert_contains('"+3"', (string) ($setting['hint'] ?? ''));
+
+				return;
+			}
+		}
+	}
+
+	pg_assert_true(false, 'the change-row box has a cells setting');
+}

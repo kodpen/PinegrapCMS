@@ -191,6 +191,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-record-get-box.md: The Read a record box of flows (record_get): kinds and fields, the owner's reach as the change box checks it, found 0 for a missing or unreachable record, readers, canvas
 - workspace-flows-references.md: The reference check of a flow (D4, PR #2305): bad_reference for {{node.*}} of a missing, later or field-less box; a warning for a box that may not run, unless a fallback is written
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again on its own (3d, PR #2275, retry/retry_after) or by hand or skipped (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, routes, canvas
+- workspace-flows-row-add-to-cell.md: Adding to a cell in the change-row flow box (flows-next B5, PR #7408): "+3" in a number or money cell adds to the row read at write time, on its revision
 - workspace-flows-row-box.md: The row start box of flows (#3064): a table row added, changed or deleted starts the flow; rule type row, ws_event() in ws_wtable_row_announce(), the table gate, cells as trigger values
 - workspace-flows-row-get-box.md: The Read a row box of flows (row_get): view reach with the owner's rights, pause, outputs row_id/found/cell_<id>, a missing row done with found 0, non-editors, canvas
 - workspace-flows-run-chain-notice.md: One flow_finished inbox line per chain of runs (#3526 step 1, PR #3537, #3371): root from context chain_root or start_key, fold rule, update while unread, sent again, push, failure turn
