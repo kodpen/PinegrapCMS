@@ -1230,6 +1230,7 @@
     "disabled": "devre dışı",
     "disabled in config.php": "config.php'de devre dışı",
     "disaster, emergency, flood, earthquake, shelter, aid": "afet, acil durum, sel, deprem, barınak, yardım",
+    "discography": "diskografi",
     "disconnected the {var:1} account {var:2}": "{var:1} hesabı {var:2} için bağlantıyı kesti",
     "discount": "indirim",
     "discount order": "indirimli sipariş",
