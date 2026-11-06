@@ -258,8 +258,9 @@ function test_hotel_footer_filters_the_room_list()
 			pg_assert_true(in_array($q['type'], $d['lists']['room_type_titles'], true), 'the link names a Type answer');
 			$seen['type'][$q['type']] = true;
 		} else {
-			pg_assert_true(in_array($q['view'], $d['lists']['view_titles'], true), 'the link names a View answer');
-			$seen['view'][$q['view']] = true;
+			pg_assert_true(isset($q['room_view']), 'the link sets ?room_view= (?view= is reserved)');
+			pg_assert_true(in_array($q['room_view'], $d['lists']['view_titles'], true), 'the link names a View answer');
+			$seen['view'][$q['room_view']] = true;
 		}
 	}
 	pg_assert_same(count($d['room_types']), count($seen['type']), 'a link per kind of room');
