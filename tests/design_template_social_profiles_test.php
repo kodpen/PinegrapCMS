@@ -123,6 +123,16 @@ function test_social_profiles_lists_read_what_links_send()
 	pg_assert_false((bool)preg_match('/"href":"website"/', $json), 'a member\'s address is never a link');
 }
 
+// A member who sends the profile form again is one card in People and in
+// the staff list: their newest profile, never every one they sent.
+function test_social_profiles_lists_show_one_profile_per_member()
+{
+	$w = _test_social_profiles_load()['widgets'];
+	foreach (array('people_list', 'staff_members_list') as $key) {
+		pg_assert_true($w[$key]['config']['one_per_submitter'], "$key lists each member once");
+	}
+}
+
 // A post's byline is the account's name (submitter_name), not the profile's
 // display name: the field's hint says so instead of promising the posts.
 function test_social_profiles_display_name_hint_tells_where_it_shows()

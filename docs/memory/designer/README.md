@@ -272,6 +272,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-field-errors.md: Which controls a refused server submission marks (is-invalid, aria-invalid, linked invalid-feedback) on designed forms, member widgets and classic liveform fields (#4458).
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
+- form-list-one-per-submitter.md: form_list_view option one_per_submitter ("Newest record per submitter"): each signed-in submitter's newest record only, anonymous rows kept, count, paging and search after the collapse (#7508)
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
 - form-list-search-empty.md: The form list's empty state when a visitor's search matches nothing: "Nothing matched your search", not the configured empty message
 - form-list-url-filters.md: form_list_view filters valued from the page address (author, tag archives): reserved names, value rules, who passes the address, canonical/title/noindex, token, flags, feed

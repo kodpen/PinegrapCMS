@@ -1757,6 +1757,8 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //                               comment they read: pg_sw_counter_order_sql())
 //   order_by_direction  ASC | DESC (default DESC)
 //   order_by_2_field, order_by_2_direction — the second order, same values
+//   one_per_submitter   bool (default false): each signed-in submitter's
+//                       newest record only, pg_sw_form_list_one_per_submitter_sql()
 //   order_recent_days   int 1-180 (default 7): the recent_views window,
 //                       today and the days before it
 //   filters             list  the classic form list view's filters, see
@@ -1815,6 +1817,34 @@ function pg_sw_form_list_empty_message($configured, $search_active)
     $configured = is_string($configured) ? $configured : '';
 
     return ($configured !== '') ? $configured : lang('No records found.');
+}
+
+/**
+ * The form list option "newest record per submitter": for each signed-in
+ * submitter (forms.user_id > 0) only the highest forms.id among the form's
+ * complete records stays; anonymous records (user_id 0) are never collapsed.
+ * The newest record is chosen before the filters and the search, so an older
+ * record never comes back because it alone matches; the count, the pages and
+ * the search all run on what is left.
+ *
+ * The ids come from a derived table, so the database builds the list once
+ * rather than per row.
+ *
+ * @param  int   $custom_form_page_id the form's page id
+ * @param  mixed $cfg                 the widget config
+ * @return string An " AND (…)" clause for the list's WHERE, or '' when off.
+ */
+function pg_sw_form_list_one_per_submitter_sql($custom_form_page_id, $cfg)
+{
+    $custom_form_page_id = (int)$custom_form_page_id;
+    if ($custom_form_page_id <= 0 || !is_array($cfg) || empty($cfg['one_per_submitter'])) return '';
+
+    return " AND (forms.user_id = 0 OR forms.id IN (SELECT f_newest.id FROM (
+                SELECT MAX(f_ops.id) AS id FROM forms f_ops
+                 WHERE f_ops.page_id = '$custom_form_page_id'
+                   AND f_ops.complete = 1
+                   AND f_ops.user_id > 0
+                 GROUP BY f_ops.user_id) f_newest)) ";
 }
 
 function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
@@ -2113,6 +2143,9 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $result_count_html = '0';
     $paging_tokens     = array();
 
+    // Each signed-in submitter's newest record only, when the list asks.
+    $one_per_submitter = pg_sw_form_list_one_per_submitter_sql($custom_form_page_id, $cfg);
+
     // ── Build the optional EXISTS clause for search filtering ─────────────
     $search_where = '';
     if ($search_active) {
@@ -2185,6 +2218,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            AND forms.complete = 1
            $filter_where
            $search_where
+           $one_per_submitter
            $sql_viewer_filter"
     );
     // The number a visitor can page through, as the classic list's "Found
@@ -2219,6 +2253,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
                $filter_where
                {$filter_sql['exact']}
                $search_where
+               $one_per_submitter
                $sql_viewer_filter
              LIMIT 1"
         ))
@@ -2312,6 +2347,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
            AND forms.complete = 1
            $filter_where
            $search_where
+           $one_per_submitter
            $sql_viewer_filter
          ORDER BY $order_by_sql
          LIMIT $page_limit OFFSET $offset"
