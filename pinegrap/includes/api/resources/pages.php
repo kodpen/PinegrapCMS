@@ -776,6 +776,18 @@ function api_pages_delete($params) {
 
 	}
 
+	// The variant draft of an experiment that is set up, running or paused
+	// stays until the experiment ends, as the panel's recycle refuses it
+	// (pg_recycle_page()): binned or deleted, the experiment serves visitors
+	// a page that is no longer there. Asked for both paths, before the dry run.
+	$held = pg_experiment_variant_hold_message($id, (string)$page['page_name']);
+
+	if ($held !== '') {
+
+		api_fail(409, 'experiment_variant_held', $held);
+
+	}
+
 	$directory = defined('PG_FUNCTIONS_DIR') ? PG_FUNCTIONS_DIR : dirname(dirname(dirname(__FILE__)));
 
 	require_once($directory . '/view_folder_and_files_f.php');
