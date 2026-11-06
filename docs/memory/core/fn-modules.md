@@ -249,7 +249,7 @@ description: Generated from the module field of the memory files: each includes/
 - `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]]
-- `widgets`: [[form-feed-item-guid-enclosure]], [[list-search-sort-price-forms]], [[order-view-not-found]], [[page-link-record-address]], [[search-results-catalog-detail-page]], [[unread-segment-404]], [[widget-address-params]], [[widget-pages-index]], [[widget-repeat-placement-ids]], [[widget-search-like-pattern]]
+- `widgets`: [[bound-href-scheme]], [[form-feed-item-guid-enclosure]], [[list-search-sort-price-forms]], [[order-view-not-found]], [[page-link-record-address]], [[search-results-catalog-detail-page]], [[unread-segment-404]], [[widget-address-params]], [[widget-pages-index]], [[widget-repeat-placement-ids]], [[widget-search-like-pattern]]
 - `widgets_accessibility`: [[accessibility-statement]]
 - `widgets_affiliate_sign_up`: [[affiliate-sign-up-widget]]
 - `widgets_attrs`: [[widget-attr-bindings]]
