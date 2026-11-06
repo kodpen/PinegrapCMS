@@ -4215,7 +4215,7 @@
     var KEY_TOOLS = {
         v: ['select'], c: ['crop'], a: ['adjust', 'arrow'], d: ['draw'], t: ['text'], r: ['redact'], u: ['rect'], s: ['sticker'],
         f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse'],
-        m: ['motion']
+        m: ['motion'], q: ['area'], x: ['scissors'], g: ['builder'], w: ['warp'], n: ['puppet']
     };
 
     function toolForKey(key, list) {
@@ -4283,11 +4283,40 @@
         return (a <= -180) ? a + 360 : (a === 0 ? 0 : a);
     }
 
+    // How near, in screen pixels, a press must come to a point or an edge
+    // a tool picks up (pointer: the PointerEvent's pointerType): a finger
+    // gets half of a 44 px target, a mouse or a pen the tool's own reach.
+    var TOUCH_REACH = 22;
+
+    function touchReach(pointer, px) {
+        return (pointer === 'touch') ? Math.max(TOUCH_REACH, Number(px) || 0) : (Number(px) || 0);
+    }
+
+    // The keys and touches of the tools that have their own, one group per
+    // tool of the call, titled with its name.
+    var KEY_MODES = {
+        area: [
+            { keys: ['Shift', 'Drag'], label: 'keyAreaAdd' },
+            { keys: ['Alt', 'Drag'], label: 'keyAreaSubtract' },
+            { keys: ['DoubleClick'], label: 'keyAreaClose' },
+            { keys: [], label: 'touchAreaClose' }
+        ],
+        builder: [
+            { keys: ['Alt', 'Drag'], label: 'keyBuilderRemove' }
+        ],
+        puppet: [
+            { keys: ['Click'], label: 'keyPinAdd' },
+            { keys: ['Alt', 'Click'], label: 'keyPinRemove' },
+            { keys: ['Delete'], label: 'keyPinDelete' }
+        ]
+    };
+
     // The help sheet's groups for a call's tools: { title, rows: [{ keys,
     // label }] }, keys as tokens (Mod is Ctrl, or Cmd on a Mac; Space,
-    // Delete, Arrows and Drag are named by the sheet), title and label as
-    // label keys. Layer keys show only with a tool that makes layers, Enter
-    // only with Crop.
+    // Delete, Arrows, Drag, Click and DoubleClick are named by the sheet),
+    // title and label as label keys. Layer keys show only with a tool that
+    // makes layers, Enter only with Crop, a tool's own group (KEY_MODES)
+    // only with that tool.
     var KEY_NOLAYERS = ['crop', 'adjust', 'export'];
 
     function keyMap(list) {
@@ -4329,6 +4358,12 @@
             ] });
         }
 
+        list.forEach(function (id) {
+            if (KEY_MODES.hasOwnProperty(id)) {
+                groups.push({ title: 'tool_' + id, rows: KEY_MODES[id].slice() });
+            }
+        });
+
         groups.push({ title: 'keysView', rows: [
             { keys: ['+'], label: 'zoomIn' },
             { keys: ['-'], label: 'zoomOut' },
@@ -4345,7 +4380,8 @@
         return groups;
     }
 
-    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
+    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap,
+        TOUCH_REACH: TOUCH_REACH, touchReach: touchReach, KEY_MODES: KEY_MODES };
 
     // -- The selection's commands (pg_image_editor_actions.js) --
 

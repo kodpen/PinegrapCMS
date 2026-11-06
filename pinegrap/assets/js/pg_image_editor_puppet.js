@@ -200,7 +200,7 @@
             p = this.toDoc(e.clientX, e.clientY);
             q = M.drawnLocal(l, p[0], p[1]);
 
-            if (!onShape(M.outline(l), q, EDGE / this.view.k) || ((l.puppet && l.puppet.pins.length) >= M.PUPPET_MAX)) {
+            if (!onShape(M.outline(l), q, M.touchReach(e.pointerType, EDGE) / this.view.k) || ((l.puppet && l.puppet.pins.length) >= M.PUPPET_MAX)) {
                 this.puppetPin = -1;
                 this.startDrag(e);
                 return;

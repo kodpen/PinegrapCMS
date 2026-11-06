@@ -413,7 +413,7 @@
         if (kind === 'polygon') {
             var poly = this.areaPoly;
 
-            if (poly && (poly.pts.length > 2) && (Math.hypot(p[0] - poly.pts[0][0], p[1] - poly.pts[0][1]) * k < CLOSE_PX)) {
+            if (poly && (poly.pts.length > 2) && (Math.hypot(p[0] - poly.pts[0][0], p[1] - poly.pts[0][1]) * k < M.touchReach(e.pointerType, CLOSE_PX))) {
                 this.areaClosePolygon();
                 return;
             }
