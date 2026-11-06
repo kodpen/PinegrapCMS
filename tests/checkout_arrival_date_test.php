@@ -88,3 +88,17 @@ function test_shipping_address_step_refuses_an_arrival_date_not_offered()
 		strpos($source, "\$liveform->mark_error('arrival_date', lang('The selected arrival date is not available. Please select another one.'));") !== false,
 		'an id outside the window is refused');
 }
+
+function test_checkout_arrival_choice_touches_only_its_recipients_date_box()
+{
+	$js = _eo_render_widget_js(7, 'eo_form', true, array(array('id' => 3), array('id' => 4)), '/', array(
+		'shipping_drawn' => 0,
+		'shipping'       => 0,
+		'total'          => 2700,
+	));
+
+	pg_assert_false(strpos($js, "form.querySelectorAll('.pg-eo-custom-arrival')") !== false, 'no radio hides every recipient\'s box');
+	pg_assert_true(strpos($js, "form.querySelectorAll('.pg-eo-custom-arrival[data-pg-eo-rid=\"' + rid + '\"]')") !== false, 'boxes hidden are the radio recipient\'s');
+	pg_assert_true(strpos($js, "form.querySelector('.pg-eo-custom-arrival[data-pg-eo-rid=\"' + rid + '\"][data-pg-eo-arrival-id=\"' + r.value + '\"]')") !== false, 'box shown is the radio recipient\'s');
+	pg_assert_true(strpos($js, "form.querySelectorAll('.pg-eo-custom-arrival[data-pg-eo-rid=\"' + rid + '\"] input[type=\"date\"]')") !== false, 'a date change refetches only its recipient');
+}

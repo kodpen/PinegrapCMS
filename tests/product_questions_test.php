@@ -235,3 +235,46 @@ function test_product_question_mail_wiring()
 	$add = product_questions_test_source('add_comment.php');
 	pg_assert_true(strpos($add, "if ((\$comment_kind === 'answer') && (\$published == '1') && (\$comment_id > 0)) {\n    pg_product_question_answer_mail(\$parent_id);") !== false, 'a published answer from the page mails');
 }
+
+// A reviews widget and a questions widget on one product page each keep
+// their own form state, Messages and anchor, so a refused question comes
+// back in the questions form and a reply lands in the form that posts it.
+function test_product_question_form_names()
+{
+	pg_assert_same(array('state' => 'add_question', 'anchor' => 'software_add_question'), pg_product_question_form_names('question'), 'a question form');
+	pg_assert_same(array('state' => 'add_comment', 'anchor' => 'software_add_comment'), pg_product_question_form_names(''), 'a comment form');
+	pg_assert_same(array('state' => 'add_comment', 'anchor' => 'software_add_comment'), pg_product_question_form_names(array('question')), 'an array');
+	pg_assert_same(array('state' => 'add_comment', 'anchor' => 'software_add_comment'), pg_product_question_form_names(null), 'nothing posted');
+}
+
+function test_product_question_reply_fits()
+{
+	pg_assert_true(pg_product_question_reply_fits(true, 'question'), 'the questions form answers a question');
+	pg_assert_false(pg_product_question_reply_fits(true, 'comment'), 'never a review');
+	pg_assert_false(pg_product_question_reply_fits(true, 'answer'), 'never an answer');
+	pg_assert_true(pg_product_question_reply_fits(false, 'comment'), 'the reviews form answers a review');
+	pg_assert_false(pg_product_question_reply_fits(false, 'question'), 'never a question');
+	pg_assert_false(pg_product_question_reply_fits(false, 'answer'), 'never an answer');
+}
+
+function test_product_question_form_wiring()
+{
+	$add = product_questions_test_source('add_comment.php');
+	pg_assert_true(strpos($add, "\$form_names = pg_product_question_form_names(\$_POST['kind'] ?? '');\n\$liveform = new liveform(\$form_names['state'], \$_POST['page_id'] ?? 0);") !== false, 'a question is kept apart from a comment');
+	pg_assert_false(strpos($add, "'#software_add_comment'"), 'every refusal goes back to the form that posted');
+	pg_assert_same(3, substr_count($add, "'#' . \$form_names['anchor']"), 'the three refusals');
+
+	$module = product_questions_test_source('includes/fn/widgets_comments.php');
+	$start = strpos($module, 'function _render_system_widget_comments(');
+	$renderer = ($start === false) ? '' : substr($module, $start);
+	pg_assert_true(strpos($renderer, "\$form_names = pg_product_question_form_names(\$questions ? 'question' : '');") !== false, 'the widget picks its names');
+	pg_assert_true(strpos($renderer, "new liveform(\$form_names['state'], \$page_id)") !== false, 'reads its own state');
+	pg_assert_true(strpos($renderer, "_pg_inject_messages_node(\$tree, \$form_names['state']);") !== false, 'prints its own errors');
+	pg_assert_true(strpos($renderer, "pg_product_question_reply_fits(\$questions, pg_product_question_state(\$reply_parent['id'])['kind'])") !== false, 'answers only a comment of its kind');
+	pg_assert_false(strpos($renderer, "liveform('add_comment'"), 'no shared state');
+
+	foreach (array('frontend.src.js', 'frontend.min.js') as $file) {
+		$js = product_questions_test_source($file);
+		pg_assert_true((strpos($js, '.has("form[data-pg-comment-form]")') !== false) || (strpos($js, ".has('form[data-pg-comment-form]')") !== false), $file . ': the reply fills the form of its own widget');
+	}
+}

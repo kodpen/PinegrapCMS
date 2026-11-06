@@ -239,7 +239,7 @@ function test_parasut_order_gates_link_reads_the_erps_record()
 // read, before anything is asked of Paraşüt or written.
 function test_parasut_order_gates_create_invoice_refuses_before_any_request()
 {
-	$body = parasut_order_gates_test_source('parasut_create_invoice');
+	$body = parasut_order_gates_test_source('_parasut_create_invoice_claimed');
 	$read = parasut_order_gates_test_at('$order = mysqli_fetch_assoc($result);', $body);
 	$gate = parasut_order_gates_test_at("\$refusal = parasut_order_press_refusal(\$order, 'invoice', parasut_order_erp_invoice((int) \$order['id']));", $body);
 	$returned = parasut_order_gates_test_at("if (\$refusal !== '') {\n        return ['success' => false, 'parasut_invoice_id' => null, 'error' => \$refusal];", $body);
@@ -259,7 +259,7 @@ function test_parasut_order_gates_create_invoice_refuses_before_any_request()
 // Paraşüt no longer holds it.
 function test_parasut_order_gates_create_shipment_refuses_before_any_request()
 {
-	$body = parasut_order_gates_test_source('parasut_create_shipment');
+	$body = parasut_order_gates_test_source('_parasut_create_shipment_claimed');
 	$read = parasut_order_gates_test_at('$order = mysqli_fetch_assoc($result);', $body);
 	$erp = parasut_order_gates_test_at("\$erp_invoice = parasut_order_erp_invoice((int) \$order['id']);", $body);
 	$gate = parasut_order_gates_test_at("\$refusal = parasut_order_press_refusal(\$order, 'shipment', \$erp_invoice);", $body);

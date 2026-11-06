@@ -44,6 +44,47 @@ function test_free_work_steps_without_a_steps_heading()
 	pg_assert_same(array('X2', 'X4'), array_column($steps, 0));
 }
 
+function test_free_work_steps_with_numbered_ids()
+{
+	$text = "## Which steps are there?\n- 1 Done (#7468). Data: `parts.php`.\n\n- 5 Volunteers: `volunteer.php`.\n\n"
+		. "- 20-25, 390x844 (E1b): the phone layout.\n- 2026-10-19: open this later.\n\n"
+		. "## Steps (claim as `[plan:x] <n> — <topic>`; each waits for the one before it)\n- 3 (done, #7501): `tours.php`.\n\n"
+		. "- 4: `mail.php` and `bookings.php`; test.\n- E20 (S) Close-out.\n- **12a** Bold one.\n\n"
+		. "## What is there already?\n- 22 start events: orders.\n";
+	$steps = free_work_steps($text);
+
+	pg_assert_same(array(
+		array('1', 'Done (#7468). Data: `parts.php`.'),
+		array('5', 'Volunteers: `volunteer.php`.'),
+		array('3', '(done, #7501): `tours.php`.'),
+		array('4', '`mail.php` and `bookings.php`; test.'),
+		array('E20', '(S) Close-out.'),
+		array('12a', 'Bold one.'),
+	), $steps);
+
+	pg_assert_true(free_work_step_done($steps[0][1]));
+	pg_assert_false(free_work_step_done($steps[1][1]));
+	pg_assert_true(free_work_step_done($steps[2][1]));
+	pg_assert_false(free_work_step_done($steps[3][1]));
+}
+
+function test_free_work_steps_numbered_ids_need_a_steps_heading()
+{
+	pg_assert_same(array(), free_work_steps("## What is left?\n- 409 panel files.\n- 201 with the order.\n"));
+}
+
+function test_free_work_holder_numbered_step()
+{
+	$titles = array(7540 => '[plan:design-template-charity] 5 — volunteers', 7541 => '[plan:design-template-travel] 4-5 — bookings and enquiries');
+
+	pg_assert_same(7540, free_work_holder('design-template-charity', '5', $titles));
+	pg_assert_same(0, free_work_holder('design-template-charity', '6', $titles));
+	pg_assert_same(7541, free_work_holder('design-template-travel', '5', $titles));
+	pg_assert_same(0, free_work_holder('design-template-travel', '7540', $titles));
+	pg_assert_same(0, free_work_holder('design-template-gym', '8', array(7542 => '[plan:design-template-gym] 3 — trainers on Bootstrap 5.3.8')));
+	pg_assert_same(7542, free_work_holder('design-template-gym', '3', array(7542 => '[plan:design-template-gym] 3 — trainers on Bootstrap 5.3.8')));
+}
+
 function test_free_work_step_done_forms()
 {
 	foreach (array('(M) Actor. `done` (#6378).', '(S) API. After BK3. Done in #6377.', '(M) Keyframes. Done (#6290).', '(M) Model. Done in PR #6156.', 'Returns read: PR #5925.', 'zones: PRs #5377, #5491.', 'to M4 are done; what is left') as $line) {

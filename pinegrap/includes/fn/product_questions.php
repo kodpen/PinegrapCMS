@@ -78,6 +78,50 @@ function pg_product_question_post_kind($posted, $product_thread, $ready, $staff,
 }
 
 /**
+ * The session slot and the page anchor of a comment form, by the kind it
+ * posts. Pure.
+ *
+ * A product page places a reviews widget and a questions widget, each with
+ * a form posting to add_comment.php. The questions form posts kind
+ * 'question' and keeps its refused state under 'add_question' and its anchor
+ * 'software_add_question', so neither widget prints, refills or uses up the
+ * other's refused post, and a reply link or a refusal opens the form that
+ * posts it. Every other form keeps 'add_comment' / 'software_add_comment'.
+ *
+ * @param mixed $kind the posted kind
+ * @return array 'state' (the liveform name) and 'anchor' (the form's id)
+ */
+function pg_product_question_form_names($kind)
+{
+    if (is_string($kind) && ($kind === 'question')) {
+        return array('state' => 'add_question', 'anchor' => 'software_add_question');
+    }
+
+    return array('state' => 'add_comment', 'anchor' => 'software_add_comment');
+}
+
+/**
+ * Whether a widget's form may answer a comment of this kind. Pure.
+ *
+ * The questions widget answers only a question (its form posts kind
+ * 'question', stored as the answer); the reviews widget never a question or
+ * an answer, which its list does not show and its form would store as a
+ * plain comment.
+ *
+ * @param bool   $questions   the widget shows questions
+ * @param string $parent_kind pg_product_question_state()'s kind of the comment answered
+ * @return bool
+ */
+function pg_product_question_reply_fits($questions, $parent_kind)
+{
+    if ($questions) {
+        return $parent_kind === 'question';
+    }
+
+    return !in_array($parent_kind, array('question', 'answer'), true);
+}
+
+/**
  * What a comments widget shows, from its Display setting. Pure.
  *
  * @param mixed $cfg the widget's config
