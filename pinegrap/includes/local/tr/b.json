@@ -1074,6 +1074,7 @@
     "book, booking, reserve, place": "ayırtma, rezervasyon, yer, kayıt",
     "book, request, confirm, deposit, payment, balance": "rezervasyon, talep, onay, kapora, ödeme, kalan tutar",
     "book, table, reservation, booking": "ayırtmak, masa, rezervasyon, yer ayırtma",
+    "book-a-class": "derse-yer-ayirt",
     "book-a-consultation": "gorusme-talep-et",
     "book-a-table": "masa-ayirt",
     "book-a-test-drive": "test-surusu-ayarla",
