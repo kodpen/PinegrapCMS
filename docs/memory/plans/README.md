@@ -39,6 +39,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
+- design-template-charity.md: Plan for the Charity template (pinegrap-charity): causes, campaigns with progress, gifts as donation products, volunteers, events, news, transparency; parts in a folder; steps 1-9
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
