@@ -440,6 +440,49 @@ function pg_email_campaign_profile_values_problem($values, $commerce)
 }
 
 /**
+ * The problems with a profile's text columns, field name => message: the
+ * subject and the from name the form requires, and every text column within
+ * its column length (name, from name and the addresses varchar(100), subject
+ * varchar(255)), counted in characters as the utf8mb4 columns count them. A
+ * longer value would be cut on the save without a word. Used by the form
+ * (pg_email_campaign_profile_form_validate()) and by the import beside
+ * pg_email_campaign_profile_values_problem().
+ *
+ * @param array $values  Column name => value; a missing column reads as ''
+ * @return array  Field name => message, empty when the text columns can be saved
+ */
+function pg_email_campaign_profile_text_problems($values)
+{
+    $problems = array();
+    $value = function ($name) use ($values) {
+        return (isset($values[$name]) && is_scalar($values[$name])) ? trim((string) $values[$name]) : '';
+    };
+
+    foreach (array('subject' => lang('Subject'), 'from_name' => lang('From Name')) as $field => $label) {
+        if ($value($field) === '') {
+            $problems[$field] = lang(array('string' => '{var:1} is required', 'vars' => $label));
+        }
+    }
+
+    $limits = array(
+        'name' => array(lang('Name'), 100),
+        'subject' => array(lang('Subject'), 255),
+        'from_name' => array(lang('From Name'), 100),
+        'from_email_address' => array(lang('From E-mail Address'), 100),
+        'reply_email_address' => array(lang('Reply to E-mail Address'), 100),
+        'bcc_email_address' => array(lang('BCC E-mail Address'), 100),
+    );
+
+    foreach ($limits as $field => $limit) {
+        if (!isset($problems[$field]) && (mb_strlen($value($field)) > $limit[1])) {
+            $problems[$field] = lang(array('string' => '{var:1} can be at most {var:2} characters long.', 'vars' => array($limit[0], $limit[1])));
+        }
+    }
+
+    return $problems;
+}
+
+/**
  * The access problem with a profile's trigger item and body page, checked
  * as the form checks them: the calendar event, the custom form (edit
  * access), the followed profile (a basic user's own only) and the HTML
@@ -842,6 +885,20 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
         }
     }
 
+    // The preview address of every page the body picker offers, by page id,
+    // built as the source above: the option labels carry marks such as
+    // [ARCHIVED], and the placeholder has no page, so it blanks the preview
+    // instead of loading a missing address.
+    $page_id_options = get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0);
+    $page_preview_urls = array();
+    $page_option_ids = array_filter(array_map('intval', array_values($page_id_options)));
+
+    if ($page_option_ids) {
+        foreach (db_items("SELECT page_id, page_name FROM page WHERE page_id IN (" . implode(',', $page_option_ids) . ")") as $page_row) {
+            $page_preview_urls[$page_row['page_id']] = OUTPUT_PATH . encode_url_path($page_row['page_name']) . '?edit=no&email=true';
+        }
+    }
+
     $action_options = array(
         '-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Action')) )) . '-' => '',
         lang('Auto Campaign Sent') => 'email_campaign_sent',
@@ -1026,7 +1083,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                                 <div class="col-12 sm:col-8 my-1">
                                                     <label class="form-label" for="page_id">' . lang('Page') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     ' . $page_gone_notice . '
-                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'required'=>($liveform->get_field_value('format') == 'html' ? 'required' : ''), 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'required'=>($liveform->get_field_value('format') == 'html' ? 'required' : ''), 'options'=>$page_id_options, 'data-bs-target'=>'#body_preview_row', 'onchange'=>'var f = document.getElementById(\'body_preview_iframe\'), u = JSON.parse(f.getAttribute(\'data-page-urls\'))[this.value]; f.src = u ? u : \'about:blank\';')) . '
                                                 </div>
                                                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -1034,7 +1091,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                                         <div class="row">
                                                             <div class="col-12 my-1">
                                                                 <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
-                                                                <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
+                                                                <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" data-page-urls="' . h(json_encode($page_preview_urls, JSON_FORCE_OBJECT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)) . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1339,6 +1396,20 @@ function pg_email_campaign_profile_form_validate($liveform, $profile_id = 0)
     }
 
     $liveform->validate_required_field('schedule_unit', lang(array('string'=>'{var:1} is required','vars'=>lang('Day(s)/Hour(s)'))));
+
+    // The text columns within their column length, so no value is cut on the
+    // save; a field that already has an error keeps that one.
+    $text_values = array();
+
+    foreach (array('name', 'subject', 'from_name', 'from_email_address', 'reply_email_address', 'bcc_email_address') as $field) {
+        $text_values[$field] = $liveform->get_field_value($field);
+    }
+
+    foreach (pg_email_campaign_profile_text_problems($text_values) as $field => $message) {
+        if ($liveform->check_field_error($field) == false) {
+            $liveform->mark_error($field, $message);
+        }
+    }
 
     // If calendar event reserved action was selected, then validate fields for that.
     if ($liveform->get_field_value('action') == 'calendar_event_reserved') {

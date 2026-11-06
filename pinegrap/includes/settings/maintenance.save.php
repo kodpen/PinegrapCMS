@@ -170,8 +170,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 'tls'      => ($backup_post('backup_ftp_tls') !== ''),
             ));
 
-            if ($backup_ftp['password'] === '') {
-                $backup_ftp['password'] = $backup_stored['ftp']['password'];
+            // Kept only for the server it was given for (pg_backup_ftp_password_kept()).
+            $backup_ftp_typed = ($backup_ftp['password'] !== '');
+            $backup_ftp['password'] = pg_backup_ftp_password_kept($backup_ftp, $backup_stored['ftp']);
+
+            if (($backup_type_value === 'ftp') && !$backup_ftp_typed && ($backup_ftp['password'] === '') && ($backup_stored['ftp']['password'] !== '')) {
+                $liveform->mark_error('backup_ftp_password', lang('The FTP server or its encryption changed. Enter the password again.'));
             }
 
             $backup_s3 = pg_backup_remote_normalize('s3', array(

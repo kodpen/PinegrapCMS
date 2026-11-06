@@ -67,7 +67,7 @@ function test_image_editor_rail_profiles()
 	pg_assert_same(array('select', 'photo', 'artboard', 'draw', 'text', 'sticker', 'vectors', 'motion'), $r['photo'], 'the photo rail has one item per group');
 	pg_assert_same(array('select', 'artboard', 'draw', 'text', 'sticker', 'vectors', 'frame', 'motion'), $r['canvas'], 'a group with one tool of the list is that tool');
 	pg_assert_same(array('crop', 'adjust', 'redact', 'area', 'frame'), $r['photoModes'], 'Photo opens the crop, adjust, redact, area and frame modes');
-	pg_assert_same(array('vector', 'scissors', 'builder', 'warp'), $r['vectorModes'], 'Vector opens the pen, scissors, shape builder and warp in the group order');
+	pg_assert_same(array('vector', 'scissors', 'builder', 'warp', 'puppet'), $r['vectorModes'], 'Vector opens the pen, scissors, shape builder, warp and free deformation in the group order');
 	pg_assert_same(array(array('id' => 'select', 'modes' => array('select')), array('id' => 'frame', 'modes' => array('frame')), array('id' => 'text', 'modes' => array('text'))), $r['frame'], 'a single photo tool is its own item');
 }
 

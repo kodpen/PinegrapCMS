@@ -231,6 +231,7 @@
     "Hello Card": "Merhaba Kartı",
     "Hello again!": "Yeniden merhaba!",
     "Hello {var:1},": "Merhaba {var:1},",
+    "Hello {{node.again.name}},": "Merhaba {{node.again.name}},",
     "Hello!": "Merhaba!",
     "Hello,": "Merhaba,",
     "Hello, I am": "Merhaba, ben",

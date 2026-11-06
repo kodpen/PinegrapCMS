@@ -13,15 +13,15 @@ description: Plan: module-by-module bug hunt when no plan step is free; how a mo
 - A new endpoint joins its area's line; a big group (`erp`, `workspace`, `order`) may be split by the worker who takes it, naming the files on each line.
 
 ## How is a module taken?
-- Check the open PRs first (CLAUDE.md, claim step 1): a PR touching the module's files holds it.
-- Change the module's line from `open` to `taken by <worker>` in the first PR of the hunt; the line names the files when the group is not obvious.
+- Check the open PRs first (CLAUDE.md, claim step 1): a PR changing the module's line holds it.
+- The hunter's one draft PR (docs only, `[iş] Bug hunt: <modules>`) changes the module's line from `open` to `taken`; the line names the files when the group is not obvious.
 
 ## How is a module hunted?
 - Read `workflow/decisions-made.md` and its parts first: a listed place is not a finding.
 - Read the code, run its tests, look for wrong results, unescaped output, missing CSRF or permission checks, SQL traps (`data/`), PHP 7.1–8.5 breakage.
-- One fault per PR, titled `[iş] Bug hunt: <module> — <fault>`, failing test first.
+- One `bug` issue per fault (`workflow/test-coordinator.md`): the hunter fixes nothing; a worker takes the issue as free work and opens the fix PR, failing test first.
 - A fault needing a product or schema decision goes to an `architect` issue; a large one becomes a plan.
 
 ## How is a module closed?
-- Its line says `done` with the PR numbers, or `clean` when nothing was found (a docs-only PR).
+- Its line says `done` with the issue numbers, or `clean` when nothing was found, in the hunter's draft PR, which then goes ready (docs only, it lands alone).
 - When every line is done or clean, the lasting findings move to their topic folders and these files are deleted.

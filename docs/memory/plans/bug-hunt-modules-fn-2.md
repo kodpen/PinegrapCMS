@@ -23,6 +23,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `shipment_lookup`: clean (NY); round 2 (functions.php hunt): its missing PG_FUNCTIONS_DIR gate added
 - `shipment_tracking`: clean (MJ)
 - `shipping`: taken by LL, #4625
+- shipping rates and methods, second round (`shipping.php` rates, cut-offs, ship and delivery dates; `shipping_method.php`; `forms/shipping_method_form.php`; `shipping_method_list_edit.php`; `pg_order_complete_ship_dates()`): clean
 - `shipping_import`: clean (NY)
 - `short_link_redirects`: clean (NY)
 - `signature`: #5131 (NY)

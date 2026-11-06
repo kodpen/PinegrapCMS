@@ -634,6 +634,24 @@ function pg_pb_whole_number_from_input($value, $thousands = ',')
 }
 
 /**
+ * The posted inventory_quantity as a whole number in a string ("1.200" is
+ * "1200" in Turkish), '' when empty or absent. pg_pb_number_fields_problem()
+ * refused an unreadable one before the save.
+ *
+ * @return string
+ */
+function pg_pb_posted_stock_quantity()
+{
+    if (!isset($_POST['inventory_quantity'])) {
+        return '';
+    }
+
+    $number = pg_pb_whole_number_from_input($_POST['inventory_quantity'], pg_pb_thousands_separator());
+
+    return ($number === false) ? '' : (string) $number;
+}
+
+/**
  * The thousands separator the panel writes figures with ('.' in Turkish).
  *
  * @return string
@@ -677,6 +695,10 @@ function pg_pb_number_fields_problem($post, $thousands = ',')
         'default_quantity'   => 'Default Quantity',
         'minimum_quantity'   => 'Min. Quantity',
         'maximum_quantity'   => 'Max. Quantity',
+        'inventory_quantity' => 'Inventory Quantity',
+        'primary_weight_points'   => 'Primary Weight Points',
+        'secondary_weight_points' => 'Secondary Weight Points',
+        'preparation_time'   => 'Preparation Time',
     );
 
     $numbers = array();
@@ -690,6 +712,12 @@ function pg_pb_number_fields_problem($post, $thousands = ',')
 
         if ($number === false) {
             return lang(array('string' => '{var:1} must be a whole number of 0 or more.', 'vars' => array(lang($label))));
+        }
+
+        // Every one of these is an int(10) unsigned column; a larger figure
+        // was cut to the column's top without a word.
+        if (($number !== '') && ((float) $number > 4294967295)) {
+            return lang(array('string' => '{var:1} is too large.', 'vars' => array(lang($label))));
         }
 
         $numbers[$field] = $number;
@@ -1007,6 +1035,14 @@ function pg_pb_common_from_post()
         return ($number === false) ? $_POST[$key] : $number;
     };
 
+    // A NOT NULL count column: an empty box is 0, not '' (which the
+    // non-strict session stores as 0 with a warning).
+    $count = function ($key) use ($whole) {
+        $number = $whole($key, 0);
+
+        return ($number === '') ? 0 : $number;
+    };
+
     // Every column the screen draws a control for. A field on screen that is not
     // in this list is filled in by the operator and thrown away on save, and
     // nothing says so — the value simply is not there the next time they look.
@@ -1076,10 +1112,10 @@ function pg_pb_common_from_post()
         'length'                  => $length,
         'width'                   => $width,
         'height'                  => $height,
-        'primary_weight_points'   => $post('primary_weight_points', 0),
-        'secondary_weight_points' => $post('secondary_weight_points', 0),
+        'primary_weight_points'   => $count('primary_weight_points'),
+        'secondary_weight_points' => $count('secondary_weight_points'),
         'container_required'      => $switch('container_required'),
-        'preparation_time'        => $post('preparation_time'),
+        'preparation_time'        => $count('preparation_time'),
         'free_shipping'           => $switch('free_shipping'),
         'extra_shipping_cost'     => pg_pb_price_to_cents($post('extra_shipping_cost', 0)),
         'gtin'                    => $post('gtin'),
@@ -1844,7 +1880,7 @@ function pg_pb_save_new_product()
     $product['title']              = isset($_POST['title']) ? trim($_POST['title']) : '';
     $product['meta_description']   = isset($_POST['meta_description']) ? trim($_POST['meta_description']) : '';
     $product['inventory']          = empty($_POST['inventory']) ? '' : '1';
-    $product['inventory_quantity'] = isset($_POST['inventory_quantity']) ? trim($_POST['inventory_quantity']) : '';
+    $product['inventory_quantity'] = pg_pb_posted_stock_quantity();
     $product['address_name']       = isset($_POST['address_name']) ? $_POST['address_name'] : '';
 
     // The "was" price names one article, like the GTIN, so only a single
@@ -6665,7 +6701,7 @@ function pg_pb_update_product($product_id)
     $product['title']              = isset($_POST['title']) ? trim($_POST['title']) : '';
     $product['meta_description']   = isset($_POST['meta_description']) ? trim($_POST['meta_description']) : '';
     $product['inventory']          = empty($_POST['inventory']) ? '' : '1';
-    $product['inventory_quantity'] = isset($_POST['inventory_quantity']) ? trim($_POST['inventory_quantity']) : '';
+    $product['inventory_quantity'] = pg_pb_posted_stock_quantity();
     $product['image_name']         = $images ? $images[0] : '';
 
     // Its switch off, or the amount emptied, takes the "was" price off.

@@ -2902,6 +2902,10 @@ function get_form_list_view($properties) {
             $number_of_results_for_this_page = $number_of_results - (($page_number - 1) * $maximum_number_of_results_per_page);
         }
         
+        // The record id breaks ties between records sharing a sort value, so
+        // each one keeps its place from one page to the next.
+        $sql_order_by = pg_form_list_view_order_sql($sql_order_by);
+
         // prepare the limit clause
         $sql_limit = "LIMIT " . $start . ", " . $number_of_results_for_this_page;
         

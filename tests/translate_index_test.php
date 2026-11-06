@@ -164,3 +164,19 @@ function test_translate_index_rules_check_keeps_answers()
 	pg_assert_contains("pg_tr_invalidate_pages('', 0, false);", $body, 'drops bodies only');
 	pg_assert_same(1, substr_count($body, 'pg_tr_invalidate_pages('), 'one drop');
 }
+
+// The head names the page's language versions only for a page the search
+// engines may index: a page that says noindex (page.noindex, a language's
+// policy) is in no sitemap.xml cluster, whatever the language policy, and
+// one that already names its alternates gets no second set.
+function test_translate_index_head_alternates_wanted()
+{
+	$head = '<head><link rel="canonical" href="https://example.com/about"></head>';
+
+	pg_assert_true(pg_tr_head_alternates_wanted($head, 'https://example.com/about'), 'an indexable page');
+	pg_assert_false(pg_tr_head_alternates_wanted($head, ''), 'no canonical address');
+	pg_assert_false(pg_tr_head_alternates_wanted('<head><meta name="robots" content="noindex, follow"></head>', 'https://example.com/about'), 'noindex');
+	pg_assert_false(pg_tr_head_alternates_wanted('<head><meta name="robots" content="none"></head>', 'https://example.com/about'), 'none');
+	pg_assert_true(pg_tr_head_alternates_wanted('<head><meta name="robots" content="noarchive, max-snippet:20"></head>', 'https://example.com/about'), 'other directives');
+	pg_assert_false(pg_tr_head_alternates_wanted('<head><link rel="alternate" hreflang="de" href="https://example.com/de/about"></head>', 'https://example.com/about'), 'alternates already named');
+}

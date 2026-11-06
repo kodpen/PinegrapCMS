@@ -18,6 +18,7 @@ description: Marketplace package status rules: first sight, fill-only dates, tra
 - Cancel with `process_order_cancellation(..., $attempt_refund = false)`: the gateway never took the money.
 - Stock IS restored here. `process_order_cancellation()` never does this anywhere else, and for in-store cancellation that was deliberately left unchanged.
 - The return value is `'success'`, NOT `'ok'`.
+- Stock comes back and `marketplace.order.cancelled` is announced only on `'success'` (`mp_order_cancel_returns_stock()`). `'already'` is a cancel that landed between the status read and the call: the webhook and the job's pull applying the same package at once (the other pass gave the stock back), or the shop's own cancel (which gives none back). Before, `'already'` gave the stock back too, counting the goods twice.
 - No customer cancellation e-mail for a marketplace order (`orders.type` `marketplace`, `pg_order_cancellation_mails_customer()`): the marketplace tells its buyer, the address is its relay, and a Trendyol split cancels the old order while nothing was cancelled for the buyer (PR #1459). The same holds when the panel cancels one.
 - A pass, and a webhook delivery, applies its cancelled packages first, each package once in its newest copy (`mp_order_cancellations_first()`, orders.php), so a split's old package gives its stock back before the new one takes it (the take stops at zero). Whether Trendyol stamps the new package before the old one's change was not observed.
 
