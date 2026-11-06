@@ -1,6 +1,7 @@
 {
     "I Have Read and Accept": "Okudum, Kabul Ediyorum",
     "I agree that my details are kept to arrange this appointment.": "Bu randevuyu düzenlemek için bilgilerimin saklanmasını kabul ediyorum.",
+    "I agree that the agency keeps these details to answer my request and arrange my journey, as its privacy notice explains.": "Acentenin, gizlilik bildiriminde açıklandığı gibi, talebimi yanıtlamak ve seyahatimi düzenlemek için bu bilgileri saklamasını kabul ediyorum.",
     "I agree that the agency keeps these details to arrange the viewing and answer me, as its privacy notice explains.": "Gezmeyi ayarlamak ve bana yanıt vermek için emlak ofisinin bu bilgileri, gizlilik bildiriminde açıklandığı gibi saklamasını kabul ediyorum.",
     "I agree that the agency keeps these details to value my home and answer me, as its privacy notice explains.": "Evimi değerlemek ve bana yanıt vermek için emlak ofisinin bu bilgileri, gizlilik bildiriminde açıklandığı gibi saklamasını kabul ediyorum.",
     "I agree that the café keeps my application and CV for six months to fill this and similar positions.": "Kafenin başvurumu ve özgeçmişimi bu ve benzeri pozisyonlar için altı ay saklamasını kabul ediyorum.",
@@ -876,6 +877,7 @@
     "It came from the appointment form. Confirm the time with the patient, then set the status on the appointment's page; what you write under it reaches the patient by e-mail.": "Randevu formundan geldi. Saati hastayla netleştirin, sonra durumu randevunun sayfasında güncelleyin; altına yazdıklarınız hastaya e-postayla ulaşır.",
     "It came from the booking form. Answer under the request on its page with the price and the room you hold, and set the status; what you write there reaches the guest by e-mail.": "Rezervasyon formundan geldi. Talebin sayfasında, altına fiyatı ve ayırdığınız odayı yazarak yanıt verin ve durumu ayarlayın; oraya yazdıklarınız misafire e-postayla ulaşır.",
     "It came from the booking form. Check the café's tables, then set the status on the booking's page; what you write under it reaches the guest by e-mail.": "Rezervasyon formundan geldi. Kafenin masalarına bakın, ardından rezervasyon sayfasında durumunu belirleyin; altına yazdıklarınız misafire e-postayla ulaşır.",
+    "It came from the booking form. Check the places on the departure, answer under the request on its page with the price, and set the status; what you write there reaches the traveller by e-mail.": "Rezervasyon formundan geldi. Hareket tarihindeki yerlere bakın, talebin sayfasında altına fiyatla yanıt verin ve durumu belirleyin; oraya yazdıklarınız gezgine e-postayla ulaşır.",
     "It came from the booking form. Confirm the hour with the client, then set the status on the booking's page; what you write under it reaches the client by e-mail.": "Randevu formundan geldi. Saati müşteriyle netleştirin, sonra durumu randevunun sayfasında ayarlayın; altına yazdıklarınız müşteriye e-postayla ulaşır.",
     "It came from the brief form. Answer on the brief's page within two working days and set its status there; what you write under it reaches the client by e-mail.": "Talep formundan geldi. İki iş günü içinde talebin sayfasında yanıtlayın ve durumunu orada belirleyin; altına yazdıklarınız müşteriye e-postayla ulaşır.",
     "It came from the careers page. Read the CV, then set the status on the application's page.": "Kariyer sayfasından geldi. Özgeçmişi okuyun, ardından başvurunun sayfasında durumu belirleyin.",
@@ -942,6 +944,7 @@
     "It is off and cannot be turned on (no encryption key)": "Kapalı ve açılamıyor (şifreleme anahtarı yok)",
     "It is on but the key cannot be read (recovery codes only)": "Açık ama anahtar okunamıyor (yalnız kurtarma kodları)",
     "It is our anniversary: a quiet room high up, if one is free, and a table on the terrace for the first evening.": "Yıl dönümümüz: boşsa üst katlarda sessiz bir oda ve ilk akşam için terasta bir masa.",
+    "It is our honeymoon: a quiet room if one is free, and we would love the balloon flight on the first morning.": "Balayımızdayız: boşsa sessiz bir oda isteriz, balon uçuşu da ilk sabah olursa çok seviniriz.",
     "It is running already, or it cannot run any more.": "Zaten çalışıyor ya da artık çalıştırılamaz.",
     "It is safe to enable Secure Mode.": "Güvenli Modu etkinleştirmek güvenlidir.",
     "It is scheduled to be published on {var:1}.": "{var:1|c} yayınlanması planlanıyor.",

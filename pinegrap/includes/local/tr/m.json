@@ -931,6 +931,7 @@
     "More than one payment method is offered": "Birden fazla ödeme yöntemi sunuluyor",
     "More than one product matches “{var:1}”. Pick one from the list.": "“{var:1}” ile birden çok ürün eşleşiyor. Listeden birini seçin.",
     "More than one record: receivers ignore them all. Keep one.": "Birden fazla kayıt var: alıcı sunucular hepsini yok sayar. Yalnızca birini bırakın.",
+    "More than six weeks before departure only the deposit is kept if you cancel.": "Hareketten altı haftadan uzun süre önce iptal ederseniz yalnızca kapora alıkonur.",
     "More than six weeks before departure only the deposit is kept; closer to the date, part of the price. Travel insurance covers most reasons to cancel.": "Kalkıştan altı haftadan fazla önce yalnızca kapora alıkonur; tarihe yaklaştıkça fiyatın bir kısmı. Seyahat sigortası çoğu iptal nedenini karşılar.",
     "More than six weeks before departure: only the deposit is kept": "Kalkıştan altı haftadan fazla önce: yalnızca kapora alıkonur",
     "More than two weeks": "İki haftadan uzun",
