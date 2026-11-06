@@ -3634,6 +3634,7 @@
     "The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.": "Ödeme doğrulanırken sipariş toplamı değişti. Ödeme iptal edildi. Lütfen siparişinizi kontrol edip tekrar deneyiniz.",
     "The order total changed while you were at PayPal. Nothing was charged. Please review your order and try again.": "Siz PayPal'dayken sipariş tutarı değişti. Hiçbir ücret alınmadı. Lütfen siparişinizi gözden geçirip tekrar deneyin.",
     "The order was cancelled.": "Sipariş iptal edildi.",
+    "The order was cancelled: its money goes back with the cancellation, not with the return.": "Sipariş iptal edildi: parası iadeyle değil, iptalle geri döner.",
     "The order was cancelled; this document is not made for it.": "Sipariş iptal edildi; bu belge onun için düzenlenmez.",
     "The order was paid through a payment provider (refund by hand)": "Sipariş bir ödeme sağlayıcısıyla ödendi (geri ödeme elle)",
     "The order will be deleted.": "Sipariş silinecek.",
