@@ -799,7 +799,7 @@ if (!$_POST) {
 
             $output_option_field = '
                                     <div class="col">
-                                        <label for="option_id">' . h(lang('Product Attribute')) . '</label>
+                                        <label class="form-label" for="option_id">' . h(lang('Product Attribute')) . '</label>
                                         <select class="form-control" id="option_id" name="option_id">
                                             <option value="">' . h(lang('Do not change')) . '</option>
                                             ' . $output_option_groups . '</optgroup>
@@ -834,12 +834,12 @@ if (!$_POST) {
                                 <p class="mb-0">' . h(lang('The new letter replaces the 1 character removed from the ID and Short Description fields.')) . '</p>
                             </div>
                             <div class="col-auto">
-                                <label for="lettertodelete">' . h(lang('Number of Letters to Remove')) . '</label>
-                                <input type="number" class="form-control" id="lettertodelete" name="lettertodelete" value="1" min="1" />
-                                <span class="small">' . h(lang('Add +1 for each space as well')) . '</span>
+                                <label class="form-label" for="lettertodelete">' . h(lang('Number of Letters to Remove')) . '</label>
+                                <input type="number" class="form-control" id="lettertodelete" name="lettertodelete" value="1" min="1" aria-describedby="lettertodelete_help" />
+                                <span class="form-text" id="lettertodelete_help">' . h(lang('Add +1 for each space as well')) . '</span>
                             </div>
                             <div class="col">
-                                <label for="newletter">' . h(lang('Word or Letter to Add')) . '</label>
+                                <label class="form-label" for="newletter">' . h(lang('Word or Letter to Add')) . '</label>
                                 <input type="text" class="form-control" id="newletter" name="newletter" />
                             </div>
                             ' . $output_option_field . '
