@@ -64,6 +64,11 @@ function subscriptions_operator_test_io(array &$store, array &$calls, $shared = 
 		'log' => function ($message) use (&$calls) {
 			$calls[] = array('log');
 		},
+		'lock' => function ($id, $wait = 0) {
+			return true;
+		},
+		'unlock' => function ($id) {
+		},
 	);
 }
 
