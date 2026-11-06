@@ -375,7 +375,7 @@ function ws_flow_templates($fill)
     }
 
     // A week after delivery the customer has used what came: a task to ask
-    // how it went and for a review (the delay box waits at most a week).
+    // how it went and for a review (the delay box waits at most 90 days).
     if (in_array('order.delivered', $events, true)) {
         $out[] = array('key' => 'review_request', 'category' => 'sales', 'icon' => 'bi-star',
             'title' => lang('Ask for a review after delivery'),

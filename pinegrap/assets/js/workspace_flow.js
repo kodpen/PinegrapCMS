@@ -3077,7 +3077,8 @@
         approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]],
         value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500], ['c', 'fl_derived_with', 500]],
         for_each: [['list', 'fl_loop_list', 200], ['count', 'fl_loop_count', 200]],
-        for_each_end: [['collect', 'fl_loop_collect', 200]]
+        for_each_end: [['collect', 'fl_loop_collect', 200]],
+        delay: [['at', 'fl_delay_at', 200]]
     };
 
     // How many tones a type's threads take turns in (.wsf-tone-<type>-<n>).
@@ -3213,7 +3214,8 @@
             return (typeof config[item[0]] === 'string')
                 // A For each box reads its list, or in count mode its count
                 // (ws_flow_loop_source_key()).
-                && ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list')));
+                && ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list')))
+                && ((node.kind !== 'delay') || (config.mode === 'until'));
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: config[item[0]] };
         }).concat(cells);
@@ -3232,7 +3234,9 @@
 
         // A loop's box reads one value: its field is open while empty.
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
-            return (node.kind !== 'value') || ((item[0] !== 'b') || derivedRule(config.rule).two) && ((item[0] !== 'c') || derivedRule(config.rule).three);
+            return ((node.kind !== 'value') || ((item[0] !== 'b') || derivedRule(config.rule).two) && ((item[0] !== 'c') || derivedRule(config.rule).three))
+                // A delay box reads a date only while it waits until one.
+                && ((node.kind !== 'delay') || (config.mode === 'until'));
         }).filter(function (item) {
             return ((node.kind !== 'for_each') || (item[0] === ((config.mode === 'count') ? 'count' : 'list'))) && (!kindOf(node).loop || !config[item[0]]);
         }).map(function (item) {
@@ -6688,9 +6692,18 @@
         box.appendChild(field(t('fl_start_delay'), delay, t('fl_start_delay_help')));
     }
 
-    // How long a delay box waits, in words: "2 hours", or that none is set.
+    // How long a delay box waits, in words: "2 hours", or that none is set;
+    // in until mode "until <date>", with the time before it.
     function delayText(config) {
         var amount = parseInt(config.amount, 10);
+
+        if (config.mode === 'until') {
+            var at = String(config.at || '').trim();
+            var until = at ? t('fl_delay_until', at) : t('fl_delay_none');
+
+            return (at && (amount > 0)) ? t('fl_delay_until_before', delayText({ amount: amount, unit: config.unit }), at) : until;
+        }
+
         var words = {
             minutes: ['fl_delay_minute', 'fl_delay_minutes'],
             hours: ['fl_delay_hour', 'fl_delay_hours'],
@@ -6704,10 +6717,13 @@
         return (amount === 1) ? t(words[0]) : t(words[1], amount);
     }
 
-    // A delay box: how long it waits and the unit counted in, at most a
-    // week (WS_FLOW_DELAY_MAX minutes), as a scheduled action's start delay.
+    // A delay box: for a time, how long it waits and the unit counted in;
+    // until a date, the date (a value) and how long before it. At most 90
+    // days (WS_FLOW_DELAY_MAX minutes).
     function delayFields(box, node) {
         var config = node.config;
+        var until = config.mode === 'until';
+        var mode = K.select([['for', t('fl_delay_mode_for')], ['until', t('fl_delay_mode_until')]], until ? 'until' : 'for');
         var amount = el('input', 'form-control form-control-sm wsf-number');
         var unit = K.select([
             ['minutes', t('fl_delay_unit_minutes')],
@@ -6715,19 +6731,33 @@
             ['days', t('fl_delay_unit_days')]
         ], config.unit || 'minutes');
 
+        mode.addEventListener('change', function () {
+            config.mode = mode.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_delay_mode'), mode));
+
+        if (until) {
+            box.appendChild(valueField(node, t('fl_delay_at'), config.at || '', 200, function (value) {
+                config.at = value;
+                refreshNode(node);
+            }, false, t('fl_delay_at_help')));
+        }
+
         amount.type = 'number';
-        amount.min = '1';
-        amount.max = '10080';
+        amount.min = until ? '0' : '1';
+        amount.max = '129600';
         amount.value = (config.amount === '' || config.amount === undefined) ? '' : String(config.amount);
         amount.addEventListener('input', function () {
-            config.amount = (amount.value === '') ? '' : clamp(parseInt(amount.value, 10) || 0, 0, 99999);
+            config.amount = (amount.value === '') ? '' : clamp(parseInt(amount.value, 10) || 0, 0, 999999);
             refreshNode(node);
         });
         unit.addEventListener('change', function () {
             config.unit = unit.value;
             refreshNode(node);
         });
-        box.appendChild(field(t('fl_delay_amount'), amount, t('fl_delay_help')));
+        box.appendChild(field(t(until ? 'fl_delay_before' : 'fl_delay_amount'), amount, until ? '' : t('fl_delay_help')));
         box.appendChild(field(t('fl_delay_unit'), unit));
     }
 

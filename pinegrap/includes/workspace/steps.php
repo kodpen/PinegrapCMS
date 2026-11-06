@@ -2190,6 +2190,24 @@ function ws_flow_box_try($viewer, $flow, $data)
                 return array('refusal' => (string) $problems[0]) + $answer;
             }
 
+            $delay = ws_flow_delay_normalize($node['config']);
+
+            if ($delay['mode'] === 'until') {
+                $date = ws_flow_delay_until_date($delay, ws_flow_derived_fill($delay['at'], $values), time());
+
+                if ($date['until'] === 0) {
+                    return array('outcome' => 'failed', 'refusal' => $date['error']) + $answer;
+                }
+
+                return array(
+                    'outcome' => 'done',
+                    'said'    => ($date['until'] <= time())
+                        ? lang('The date has passed, so it would not wait.')
+                        : lang(array('string' => 'Waits until {var:1}, then the boxes after it start.', 'vars' => ws_scheduled_moment($date['until']))),
+                    'next'    => array(ws_scheduled_moment($date['until'])),
+                ) + $answer;
+            }
+
             return array(
                 'outcome' => 'done',
                 'said'    => lang(array('string' => 'Waits {var:1}, then the boxes after it start.', 'vars' => ws_flow_delay_text($node['config']))),
