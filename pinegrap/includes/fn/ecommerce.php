@@ -11927,6 +11927,23 @@ function pg_order_restore_commissions($order_id)
     return $result;
 }
 
+// The affiliate code an order is submitted with: the visitor's own code
+// (session or cookie, get_affiliate_code()), else the one the cart stored on
+// the order when an affiliate code was typed as an offer code. Without visitor
+// tracking that code lives on the order only, and the off-site payment
+// completion credits it from there; the on-site submit must not overwrite it
+// with an empty value. Pure.
+function pg_order_submit_affiliate_code($visitor_code, $order_code)
+{
+    $visitor_code = trim((string) $visitor_code);
+
+    if ($visitor_code !== '') {
+        return $visitor_code;
+    }
+
+    return trim((string) $order_code);
+}
+
 // The site log line of a cancellation's commissions, '' when it changed none.
 function pg_order_commission_cancel_line($order_log_number, $voided, $stopped)
 {
