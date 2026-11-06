@@ -19,6 +19,7 @@ module: store_credit_points
 - Untouched: `pg_order_complete_rewards()` still fires on the order whose points cross `ECOMMERCE_REWARD_PROGRAM_POINTS`. A customer who converts and then crosses the goal again gets its membership or mail again.
 - `pg_order_complete_rewards()` now adds the order's points in place (`user_reward_points + ?`): it used to write the balance it had read, so a conversion at the same moment could be overwritten and the points spent twice.
 - The user screen (`edit_user.php`) posts the balance it was opened with (`reward_points_original`); `pg_credit_points_staff_sql()` writes the field only when staff changed it, so saving a record opened before a conversion or an order no longer puts the moved points back.
+- The external API's `POST /users/{id}` does the same: `api_user_fields_from_row()` sets `reward_points_original` to the balance it read, so an update that does not send `reward_points` (or sends the stored figure) leaves the column alone; before, every update wrote the read balance back and an order or conversion landing in between was lost.
 
 ## Are an order's points taken back when it is cancelled or refunded?
 - Yes: `store-credit-points-take-back.md`.

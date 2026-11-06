@@ -17,6 +17,6 @@ description: List table driver sorting and filters in the browser: heading click
 - A printed list (`data-pg-list-printed`) posts its sort to `list_table_sort` (`pg_list_table_printed_sort()`), so the screen comes back sorted the same way.
 
 ## How does a filter button narrow the list?
-- Filters: a button `data-pg-list-filter="<list>" data-pg-filter-column="<key>" data-pg-filter-value="<value>"` ('' = all) is pressed in its group (`active`, `aria-pressed`) and calls `setFilter(key, value)`: a list printed whole keeps the rows whose cell has `data-pg-filter="<value>"`, a server list reloads with it in its params; a whole-list selection is replaced (Node test).
+- Filters: a button `data-pg-list-filter="<list>" data-pg-filter-column="<key>" data-pg-filter-value="<value>"` ('' = all) is pressed in its group (`active`, `aria-pressed`) and calls `setFilter(key, value)`: a list printed whole keeps the rows whose cell has the value in `data-pg-filter` (one value, or several separated by spaces: `list-table-own-code-screens.md`), a server list reloads with it in its params; a whole-list selection is replaced (Node test).
 
 Related: docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/list-table-driver.md

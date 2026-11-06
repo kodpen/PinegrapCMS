@@ -11,6 +11,7 @@ module: ecommerce
 - `expiration_date`: `pg_date_input_iso()` (site order with `/ - , .`, or ISO); empty, `0000-00-00` or unreadable is `0000-00-00`, an unreadable one with a problem.
 - Text longer than its column is cut with a problem. The lengths come from `SHOW COLUMNS FROM contacts` (`pg_import_column_lengths()`), not a list in the code, so a migration that widens a column needs nothing here.
 - `affiliate_commission_rate`: `pg_parse_commission_rate()`, as before.
+- `affiliate_code`: `pg_import_affiliate_code()` leaves a code another contact already holds empty, with a problem (rows written earlier in the same file count). Checkout and the commission screens find the affiliate by the code, and the contact form refuses a taken code; before, re-importing an export doubled every code. The user importer (`import_users.php`) clears it the same way, without a problem line.
 
 ## What happens to two headings for one field?
 - `pg_import_unique_columns()` keeps the first heading per contacts column and leaves the later one out; the result names them ("These columns fill the same field…"). Outlook writes Title + Job Title and Location + Office Location: the insert named the column twice and MySQL stopped the whole import with "Query failed." (#5330).

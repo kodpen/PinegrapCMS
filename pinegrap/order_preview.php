@@ -223,6 +223,23 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
     
 // else the mode is paypal_express_checkout_return or the purchase now button was clicked, so submit the order
 } else {
+    // Each card a gift card line issues is made from its own recipient row.
+    // The recipients are entered in the cart, and a cart can reach this page
+    // without them (the designer cart saves only the units it drew before a
+    // quantity raised in the same post; a visitor may open the checkout
+    // without the legacy cart's Checkout button): the order waits for them
+    // instead of issuing cards with no recipient.
+    if (!$is_gateway_return && (ECOMMERCE_GIFT_CARD == true)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/gift_card_recipients.php');
+
+        if (pg_order_gift_card_recipients_missing($_SESSION['ecommerce']['order_id'] ?? 0) > 0) {
+            include_once('liveform.class.php');
+            $liveform = new liveform('order_preview');
+            $liveform->mark_error('', pg_gift_card_recipients_missing_error());
+            go(PATH . encode_url_path(get_page_name($_POST['page_id'])));
+        }
+    }
+
     require(dirname(__FILE__) . '/submit_order.php');
     submit_order('order preview');
 }

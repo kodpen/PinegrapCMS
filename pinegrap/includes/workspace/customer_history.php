@@ -110,6 +110,7 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
 
     if ($rights['forms']) {
         $data['forms'] = ws_customer_history_form_rows($viewer, $identity, $before, $read);
+        $data['forms_horizon'] = ws_customer_history_forms_horizon($data['forms'], $read * 3, $read);
     }
 
     if ($rights['workspace']) {
@@ -137,7 +138,8 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
  *                         messages (channel_name, sender_name, excerpt),
  *                         tasks (title, status_label), notes (name, excerpt,
  *                         updated_at), rows (table_id, table, title,
- *                         updated_at), visits (title, starts_at)
+ *                         updated_at), visits (title, starts_at),
+ *                         forms_horizon (ws_customer_history_forms_horizon())
  * @param callable $money  function ($minor, $currency): string
  * @param string   $base   the panel's address, ending in /
  * @param int      $limit  the entries the page holds
@@ -269,10 +271,33 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
         return $b['id'] - $a['id'];
     });
 
+    // Below the forms horizon the forms were not all read: an open form
+    // there could be newer than any other entry, so the page stops above it
+    // and the next one starts at it. A page that would be left with nothing
+    // above it keeps the horizon's own second, as a page of one second does.
+    $horizon = !empty($rights['forms']) ? max(0, (int) ($data['forms_horizon'] ?? 0)) : 0;
+    $floor = 0;
+
+    if ($horizon > 0) {
+        $newer = array_values(array_filter($entries, function ($item) use ($horizon) {
+            return $item['at'] > $horizon;
+        }));
+
+        if (!empty($newer)) {
+            $entries = $newer;
+            $floor = $horizon + 1;
+        } else {
+            $entries = array_values(array_filter($entries, function ($item) use ($horizon) {
+                return $item['at'] >= $horizon;
+            }));
+            $floor = $horizon;
+        }
+    }
+
     $limit = max(1, (int) $limit);
 
     if (count($entries) <= $limit) {
-        return array('entries' => $entries, 'more' => false, 'before' => 0);
+        return array('entries' => $entries, 'more' => ($floor > 0), 'before' => $floor);
     }
 
     $boundary = $entries[$limit]['at'];
@@ -448,6 +473,33 @@ function ws_customer_history_form_rows($viewer, $identity, $before, $limit)
     }
 
     return $rows;
+}
+
+/**
+ * Where the forms read for a page stop being complete: the moment of the
+ * oldest form read when the read was full (ws_customer_history_form_rows()
+ * reads $cap) and fewer than $wanted of them are open to the reader, since
+ * an older open form may then belong on the page. 0 when the forms read
+ * hold every one the page could need. Pure.
+ *
+ * @param array[] $rows   ws_customer_history_form_rows(), newest first
+ * @param int     $cap    how many were asked of the database
+ * @param int     $wanted how many open forms the page could take
+ * @return int
+ */
+function ws_customer_history_forms_horizon($rows, $cap, $wanted)
+{
+    $rows = array_values((array) $rows);
+
+    if (empty($rows) || (count($rows) < (int) $cap)) {
+        return 0;
+    }
+
+    if (count(array_filter(array_column($rows, 'open'))) >= (int) $wanted) {
+        return 0;
+    }
+
+    return max(0, (int) ($rows[count($rows) - 1]['submitted_timestamp'] ?? 0));
 }
 
 /**

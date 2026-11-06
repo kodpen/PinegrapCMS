@@ -30,6 +30,24 @@ if (!pg_cron_is_background_run()) {
     }
 }
 
+// One run at a time, whoever starts it: a crontab line and a request from the
+// panel take the job's lock in cron_runs as the general job's dispatcher does
+// (it has taken it already for a dispatched run, and releases it
+// itself). The run is stamped as sent only at its end, so two runs side by
+// side both found the reminders due and mailed and texted every customer twice.
+// A request from the panel while a run is working goes to its screen.
+if (!defined('PG_CRON_DISPATCH')) {
+    if (!pg_cron_claim('erp_overdue_job')) {
+        if (!pg_cron_is_background_run()) {
+            go(PATH . SOFTWARE_DIRECTORY . '/erp_dashboard.php');
+        }
+
+        exit();
+    }
+
+    register_shutdown_function('pg_cron_release', 'erp_overdue_job');
+}
+
 $result = array('ran' => false, 'reason' => 'off');
 
 // The module switched off is not a failure: the run is recorded so the

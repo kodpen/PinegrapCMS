@@ -322,7 +322,7 @@ function ws_home_calendar($viewer, $today)
 
     if (function_exists('ws_personal_ical_layer')) {
         foreach (ws_personal_ical_layer($me) as $event) {
-            if (((int) $event['starts_at'] <= $end) && ((int) $event['ends_at'] >= $start)) {
+            if (ws_personal_ical_touches($event, $start, $end + 1)) {
                 $items[] = $event;
             }
         }

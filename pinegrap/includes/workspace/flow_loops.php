@@ -1099,6 +1099,42 @@ function ws_flow_loop_outer($graph, $loops, $body)
 }
 
 /**
+ * The boxes skipped behind a box of a run at one pass, as
+ * ws_flow_skipped_behind() finds them, read the way the walk wrote them: at
+ * pass 0 on the graph outside the loops, where a For each box leads to its
+ * End box (ws_flow_loop_outer()), so a For each box tried again, or a box
+ * before it, takes back its End box and what follows it; inside a body on
+ * that item's rows alone. Pure.
+ *
+ * @param array   $graph   ws_flow_graph_normalize()
+ * @param array[] $rows    the run's steps: node_id, pass, status, outcome; oldest first
+ * @param string  $node_id the box tried again or skipped
+ * @param int     $pass    its pass
+ * @return string[]
+ */
+function ws_flow_loop_skipped_behind($graph, $rows, $node_id, $pass)
+{
+    $pass = (int) $pass;
+    $loops = ws_flow_loops($graph);
+
+    if (($pass === 0) && !empty($loops)) {
+        $body = array();
+
+        foreach ($loops as $loop) {
+            $body += array_fill_keys($loop['body'], true);
+        }
+
+        $graph = ws_flow_loop_outer($graph, $loops, $body);
+    }
+
+    $same = array_filter((array) $rows, function ($row) use ($pass) {
+        return (int) ($row['pass'] ?? 0) === $pass;
+    });
+
+    return ws_flow_skipped_behind($graph, ws_flow_step_states($same), (string) $node_id);
+}
+
+/**
  * How a run of a graph with loops stands, as ws_flow_run_state() says it: a
  * box of a body that failed fails its item, not the run (its End box counts
  * it), so only a failed box outside the loops fails the run. Pure.

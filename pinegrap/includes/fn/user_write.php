@@ -507,9 +507,9 @@ function pg_user_update($user_id, $fields, $editor, $save_access = true)
 
 /**
  * Deletes an account and everything that is only its own: sign-in tokens,
- * second factor and passkeys, linked identities, favourites, back-in-stock
- * requests, access records, address book, messages and saved replies. The
- * audit line keeps the row as it was. The caller has checked that the editor
+ * second factor and passkeys, linked identities, connected accounts,
+ * favourites, back-in-stock requests, access records, address book, messages
+ * and saved replies. The audit line keeps the row as it was. The caller has checked that the editor
  * reaches the account and that it is not the last administrator.
  *
  * @param int $user_id
@@ -534,6 +534,12 @@ function pg_user_delete($user_id)
 
     // The Microsoft and Apple identities go with the account.
     pg_signin_identities_forget($user_id);
+
+    // Its own connected accounts (file picker, calendar, notes, MCP) are
+    // ended and revoked: a later account given the same id must not use them.
+    if (function_exists('pg_connect_forget_user')) {
+        pg_connect_forget_user($user_id);
+    }
 
     // So do its favourites and back-in-stock requests.
     pg_wishlist_forget_user($user_id);

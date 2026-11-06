@@ -29,13 +29,13 @@ function erp_list_names_wrap_pins()
 			'<h5 class="drawer-title text-break me-auto" id="erp_drawer_title"></h5>',
 		),
 		'erp_accounts.php' => array(
-			'<td style="max-width:220px" class="text-wrap text-break align-middle chart_label\' . $status_class . \'">\' . h($account[\'title\']) . $output_edoc_flag . \'</td>',
+			'data-pg-open>\' . h($account[\'title\']) . \'</a>\' . $output_edoc_flag, \'align-middle text-wrap text-break\'',
 		),
 		'erp_aging.php' => array(
-			'<td style="max-width:280px" class="text-wrap text-break align-middle chart_label">\' . h($account[\'title\'])',
+			'<td class="text-wrap text-break" style="max-width:280px" data-sort="\' . h($account[\'title\']) . \'">',
 		),
 		'erp_cash.php' => array(
-			'<td style="max-width:220px" class="text-wrap text-break align-middle">\' . h($till[\'iban\']) . \'</td>',
+			'\'iban\' => pg_list_cell(h($till[\'iban\']), \'align-middle text-wrap text-break\'),',
 		),
 		'erp_cheques.php' => array(
 			'<td style="max-width:240px" class="text-break pg-cell-wrap">\' . h((string) $row[\'account_title\']) . (((string) $row[\'drawer\'] !== \'\') ? \'<div class="small fg-secondary text-break">',
@@ -48,8 +48,7 @@ function erp_list_names_wrap_pins()
 			'<div class="small fg-secondary">\' . h((string) $movement[\'till_name\']) . \'</div>',
 		),
 		'erp_inbox.php' => array(
-			'<td style="max-width:280px" class="align-middle text-wrap text-break">',
-			'<div class="text-break">\' . h($row[\'supplier_title\']) . \'</div>',
+			'<div class="text-break">\' . h($row[\'supplier_title\']) . \'</div><div class="small fg-secondary">\' . h($row[\'supplier_tax_number\']) . \'</div>\', \'align-middle text-wrap text-break\'',
 		),
 		'erp_invoice_recurrences.php' => array(
 			'<td style="max-width:260px" class="text-break">\' . h((string) $row[\'account_title\']) . \'</td>',
@@ -74,10 +73,9 @@ function erp_list_names_wrap_pins()
 			'<td class="text-wrap text-break" style="max-width:14rem">\' . h($name)',
 		),
 		'erp_account_sync.php' => array(
-			'return \'<div class="text-wrap text-break">\' . h(((string) $row[\'title\'] !== \'\')',
-			'<td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=\' . (int) $row[\'a_id\'] . \'">',
-			'<td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=\' . (int) $account[\'id\'] . \'">',
-			'<td style="max-width:320px" class="align-middle text-wrap text-break">\' . h($account[\'title\']) . \'</td>',
+			'. \'<div class="small fg-secondary">\' . h(implode(\' · \', $sub)) . \'</div>\', \'align-middle text-wrap text-break\'',
+			'. \'<div class="small fg-secondary">\' . h($row[\'a_tax_number\']) . \'</div>\', \'align-middle text-wrap text-break\'',
+			'h($account[\'title\'])), \'align-middle text-wrap text-break\'',
 		),
 		'erp_expenses.php' => array(
 			'<a class="pg-link-body-emphasis text-decoration-none text-break" href="edit_erp_expense.php?id=\' . (int) $recurrence[\'source_expense_id\'] . $output_send_to . \'">\' . h($label) . \'</a>',

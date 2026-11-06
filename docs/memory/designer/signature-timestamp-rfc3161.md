@@ -23,3 +23,6 @@ description: RFC 3161 timestamping of signatures: what is stamped, storage, netw
 - PHP's `openssl` extension exposes no timestamp functions, and the `openssl` command line may be closed on shared hosts (`disable_functions`). The DER reader also descends into octet strings, because the stamp's signed content is an octet string.
 
 Related: docs/memory/designer/signature-receipt-and-output.md
+
+## How is the authority's address fetched?
+- `pg_signature_request_stamp()` posts through `pg_curl_run()` with the pure `pg_signature_stamp_http_options()`: `check_address` (a loopback, private, link-local or cloud metadata address is refused before cURL runs, the host pinned to the checked address), `allow_http` (many public authorities answer only on http), no redirect, the reply capped at `PG_SIGNATURE_TSA_MAX_REPLY` (256 KB). Before, the operator-typed address was called with raw cURL, unchecked and uncapped, and the settings test button printed the reason back, which made it a probe of the server's own network (`tests/signature_tsa_address_test.php`).

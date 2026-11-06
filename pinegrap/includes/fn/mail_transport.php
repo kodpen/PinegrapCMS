@@ -623,3 +623,42 @@ function pg_mail_transport_settings_script()
         })();
     </script>';
 }
+
+
+/**
+ * The SMTP password a save of SMTP Settings stores when its box was left empty.
+ *
+ * The box is never drawn back into the form, so an empty one keeps the saved
+ * password -- but only for the server it was typed for. SMTP AUTH sends the
+ * password itself, so keeping it for a new host, or a new port (465 is the
+ * only one with TLS before the greeting), would hand it to a server the person
+ * who typed it never chose; "Save and send a test" sends it at once. The
+ * username may change.
+ *
+ * @param array $posted host, port, password as posted
+ * @param array $stored host, port, password as saved in config.php
+ * @return string the password to store; '' when it has to be typed again
+ */
+function pg_smtp_password_kept(array $posted, array $stored)
+{
+    $password = isset($posted['password']) ? (string) $posted['password'] : '';
+
+    if ($password !== '') {
+        return $password;
+    }
+
+    $host = function ($values) {
+        return strtolower(trim(isset($values['host']) ? (string) $values['host'] : ''));
+    };
+
+    // An empty port box sends through 587 (pg_mail_send_built()).
+    $port = function ($values) {
+        $value = trim(isset($values['port']) ? (string) $values['port'] : '');
+
+        return ($value === '') ? 587 : (int) $value;
+    };
+
+    $same_server = ($host($posted) !== '') && ($host($posted) === $host($stored)) && ($port($posted) === $port($stored));
+
+    return $same_server ? (isset($stored['password']) ? (string) $stored['password'] : '') : '';
+}

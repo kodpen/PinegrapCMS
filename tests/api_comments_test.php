@@ -109,3 +109,24 @@ function test_api_comments_select_bridge()
 
 	pg_assert_true(strpos($list, "api_comment_parent_filter(\$params['parent_id'], pg_comment_replies_ready())") !== false, 'the list filters through the helper');
 }
+
+// Deleting a question deletes its staff answers, as the comment screen does:
+// an answer left behind would show without its question in the recent
+// comments list, the panel list and the API.
+function test_api_comments_delete_takes_answers()
+{
+	pg_assert_true(function_exists('pg_product_question_delete_answers'), 'the shared helper exists');
+
+	$delete = api_comments_test_function_source('api_comments_delete');
+
+	pg_assert_contains("if (api_comment_kind(\$row) === 'question') {\n\n\t\tpg_product_question_delete_answers(\$id);", $delete, 'the API deletes the answers');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_comment.php');
+
+	pg_assert_contains("if (\$comment_kind === 'question') {\n            pg_product_question_delete_answers(\$comment_id);", $edit, 'the screen uses the same helper');
+
+	$helper = api_comments_test_function_source('pg_product_question_delete_answers');
+
+	pg_assert_contains('DELETE FROM notifications WHERE comment_id IN', $helper, 'the answers\' notifications go too');
+	pg_assert_contains("DELETE FROM comments WHERE (answer_of = ?) AND (kind = 'answer')", $helper, 'only answers of that question');
+}

@@ -1357,7 +1357,7 @@ function pg_seo_traffic_join($type, $id_expression)
         return '';
     }
 
-    $since = date('Y-m-d', time() - (pg_seo_impact_window_days() * 86400));
+    $since = pg_seo_impact_since(pg_seo_impact_window_days());
 
     if ($type == 'page') {
         return

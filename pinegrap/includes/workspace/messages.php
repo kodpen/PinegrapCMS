@@ -207,10 +207,11 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'changes'    => function_exists('ws_changes_map') ? ws_changes_map($viewer, $ids) : array(),
         // Page changes the answers propose (includes/designer_ai.php).
         'design'     => (function_exists('ws_design_ai') && ws_design_ai()) ? pg_design_ai_proposals_map($viewer, $ids) : array(),
-        // How many earlier versions an edited file has (file_edits.php).
+        // How many earlier versions of an edited file the viewer may list
+        // (file_edits.php).
         'versions'   => function_exists('ws_file_versions_map') ? ws_file_versions_map(array_map(function ($row) {
             return ((int) $row['file_id'] > 0) ? (int) $row['id'] : 0;
-        }, $rows)) : array(),
+        }, $rows), (int) $viewer['id']) : array(),
         'outside'    => array(),
         // Notes shared in the channel, as they are now (notes.php).
         'note_cards' => function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array(),

@@ -56,23 +56,33 @@ if (!extension_loaded('pdo_mysql') ) {
 
 
 
-// auto backup defined from init
-if(defined('LAST_SOFTWARE_AUTO_BACKUP') && ( !defined('SOFTWARE_AUTO_BACKUP') || SOFTWARE_AUTO_BACKUP != false )){
-    
-    // if define is 0, that mean this script is first time runing so we set a timestamp value
-    if(LAST_SOFTWARE_AUTO_BACKUP == 0){
-        $last_software_auto_backup = time() - 86401;
-    }else{
-        // otherwise its not first time, we set from db
-        $last_software_auto_backup = LAST_SOFTWARE_AUTO_BACKUP;
+// One backup at a time, whoever starts it: a crontab line and a manager's
+// request take the job's lock in cron_runs as the general job's dispatcher
+// does (it has taken it already for a dispatched run, and releases it
+// itself). The last backup time is written only when the archive is done,
+// so without the lock every start during a long backup found it a day old
+// and wrote another full backup of the same week beside the first.
+if (defined('LAST_SOFTWARE_AUTO_BACKUP') && (!defined('SOFTWARE_AUTO_BACKUP') || SOFTWARE_AUTO_BACKUP != false)) {
+
+    if (!defined('PG_CRON_DISPATCH')) {
+        if (!pg_cron_claim('auto_backup')) {
+            exit();
+        }
+
+        register_shutdown_function('pg_cron_release', 'auto_backup');
     }
 
-    // now timestamp - last check
-    $last_software_auto_backup = time() - $last_software_auto_backup;
+    // Read again under the lock: the value init.php loaded may predate a
+    // backup that finished while this request waited to start.
+    $last_software_auto_backup = (int) db_value("SELECT last_software_auto_backup FROM config");
 
-    //we dont want server atacked, software can work this script once a day.
-    if($last_software_auto_backup > 86400){//86400 = 24 hours
-        // run auto_backup function
+    // 0: the job has never run.
+    if ($last_software_auto_backup === 0) {
+        $last_software_auto_backup = time() - 86401;
+    }
+
+    // At most one backup a day, whatever starts the script.
+    if ((time() - $last_software_auto_backup) > 86400) {
         software_auto_backup();
     }
 }

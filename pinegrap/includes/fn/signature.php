@@ -645,6 +645,27 @@ function pg_signature_image_matches($record)
     return hash_equals((string) $record['image_hash'], hash_file('sha256', $path));
 }
 
+// The verdicts a stored signature is shown with: the record seal, the document
+// and the drawing on disk, each from its own check. A screen that prints only
+// the first two calls a replaced drawing intact, because the seal covers the
+// file's id and not its contents. The drawing's verdict is left out for a
+// record written before its digest was kept ($image === null).
+function pg_signature_verdicts($verified, $document, $image)
+{
+    $verdicts = array(
+        $verified ? lang('Record intact') : lang('Record does not match its seal'),
+        $document === null
+            ? lang('Document not recorded')
+            : ($document ? lang('Document unchanged') : lang('Document changed since it was signed')),
+    );
+
+    if ($image !== null) {
+        $verdicts[] = $image ? lang('Signature file unchanged') : lang('Signature file changed since it was signed');
+    }
+
+    return $verdicts;
+}
+
 // A stored signature, shown rather than offered. Every screen that displays a
 // submitted form uses this: once signed there is no control anywhere, because a
 // signature that can be redrawn is not evidence of anything.
@@ -675,8 +696,10 @@ function pg_signature_display($record, $options = array())
     <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/signature_receipt.php?form_id=' . (int) $record['form_id'] . '&field_id=' . (int) $record['form_field_id']) . '" target="_blank" style="display:inline-block;margin:.35rem 0 0 1rem">' . h(lang('Evidence receipt')) . '</a>';
 
     if (empty($options['image_only'])) {
-        $verified = pg_signature_verify($record);
-        $document = pg_signature_document_matches($record);
+        $verdicts = pg_signature_verdicts(
+            pg_signature_verify($record),
+            pg_signature_document_matches($record),
+            pg_signature_image_matches($record));
 
         $output .= '
     <small style="display:block;margin-top:.35rem">'
@@ -688,10 +711,7 @@ function pg_signature_display($record, $options = array())
                 'vars' => date(get_date_format_code() . '/Y H:i', $signed),
             )))
             . ' &middot; ' . h($record['ip_address'])
-            . ' &middot; ' . h($verified ? lang('Record intact') : lang('Record does not match its seal'))
-            . ' &middot; ' . h($document === null
-                ? lang('Document not recorded')
-                : ($document ? lang('Document unchanged') : lang('Document changed since it was signed')))
+            . ' &middot; ' . implode(' &middot; ', array_map('h', $verdicts))
             . '</small>';
     }
 
@@ -748,6 +768,7 @@ function pg_signature_receipt_html($record)
 
     $verified = pg_signature_verify($record);
     $document_matches = pg_signature_document_matches($record);
+    $image_matches = pg_signature_image_matches($record);
     $parts = pg_signature_document_parts($record);
 
     $file = db_item("SELECT name FROM files WHERE id = '" . e((int) $record['file_id']) . "' LIMIT 1");
@@ -775,6 +796,10 @@ function pg_signature_receipt_html($record)
 
     if (!$verified) {
         $warnings .= '<p class="warn">' . h(lang('The stored record does not match its seal, so it was edited after it was written.')) . '</p>';
+    }
+
+    if ($image_matches === false) {
+        $warnings .= '<p class="warn">' . h(lang('The signature file was replaced or removed after it was signed, so the drawing shown is not the one that was signed.')) . '</p>';
     }
 
     $document = '';
@@ -829,8 +854,6 @@ function pg_signature_receipt_html($record)
         array(lang('Browser'), h($record['user_agent'])),
     );
 
-    $image_matches = pg_signature_image_matches($record);
-
     $checks = array(
         array(lang('Document fingerprint (SHA-256)'), '<span class="mono">' . h($record['document_hash']) . '</span>'),
         array(lang('Document'), h($document_matches === null
@@ -839,9 +862,9 @@ function pg_signature_receipt_html($record)
         array(lang('Signature file fingerprint (SHA-256)'), $record['image_hash'] === ''
             ? '<span class="muted">&mdash;</span>'
             : '<span class="mono">' . h($record['image_hash']) . '</span>'),
-        array(lang('Signature file'), h($image_matches === null
-            ? lang('Document not recorded')
-            : ($image_matches ? lang('Signature file unchanged') : lang('Signature file changed since it was signed')))),
+        array(lang('Signature file'), $image_matches === null
+            ? '<span class="muted">&mdash;</span>'
+            : h($image_matches ? lang('Signature file unchanged') : lang('Signature file changed since it was signed'))),
         array(lang('Record seal'), h($verified ? lang('Record intact') : lang('Record does not match its seal'))),
     );
 
@@ -978,6 +1001,10 @@ function pg_signature_receipt_html($record)
 // bounded instead - a short timeout, and a failure that leaves the signature
 // stored without a stamp rather than refusing the signature.
 define('PG_SIGNATURE_TSA_TIMEOUT', 6);
+
+// Bytes a time stamp authority's reply may have: a token is a few kilobytes,
+// with the authority's certificate chain at most a few dozen.
+define('PG_SIGNATURE_TSA_MAX_REPLY', 262144);
 
 // The value the authority is asked to vouch for: the document, the bytes of the
 // drawing, and the moment. All three are printed on the receipt, so the recipe
@@ -1157,6 +1184,39 @@ function pg_signature_stamp_request($digest, $nonce)
         . pg_signature_der_tlv(0x01, chr(0xFF)));
 }
 
+// The pg_curl_run() options of a request to a time stamp authority. The
+// address is typed by the operator, and the server sends the request from
+// inside its own network, so it is checked and pinned like every outgoing
+// call to an operator's address (check_address): a loopback, private, link
+// local or metadata address is refused, and no redirect is followed. Plain
+// http stays allowed because many public authorities answer only on it; the
+// reply is a token of a few kilobytes, so the body is capped.
+// Pure.
+function pg_signature_stamp_http_options($request, $auth, $username, $password)
+{
+    $options = array(
+        'body'            => (string) $request,
+        'headers'         => array(
+            'Content-Type: application/timestamp-query',
+            'Accept: application/timestamp-reply',
+        ),
+        'timeout'         => PG_SIGNATURE_TSA_TIMEOUT,
+        'connect_timeout' => PG_SIGNATURE_TSA_TIMEOUT,
+        'allow_http'      => true,
+        'check_address'   => true,
+        'cap'             => PG_SIGNATURE_TSA_MAX_REPLY,
+    );
+
+    // Credentials go only where the site said they should. Sending them to an
+    // authority that was never told to expect them puts a password on the wire
+    // for nothing.
+    if (($auth === 'basic') && ((string) $username !== '')) {
+        $options['userpwd'] = $username . ':' . $password;
+    }
+
+    return $options;
+}
+
 // Asks the configured authority to stamp $digest.
 //
 // Returns array(token, time, authority) or false. Every failure returns false
@@ -1182,48 +1242,36 @@ function pg_signature_request_stamp($digest, $settings = null, &$reason = null)
 
     $reason = '';
 
-    if (($url === '') || !function_exists('curl_init')) {
+    if (($url === '') || !function_exists('curl_init') || !function_exists('pg_curl_run')) {
         $reason = 'no address';
 
         return false;
     }
 
+    if (!function_exists('api_http_check_url')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+    }
+
     $nonce = function_exists('random_bytes') ? random_bytes(8) : pack('N2', mt_rand(), mt_rand());
     $request = pg_signature_stamp_request(hex2bin($digest), $nonce);
 
-    $curl = curl_init($url);
+    $answer = pg_curl_run('POST', $url, pg_signature_stamp_http_options($request, $auth, $username, $password));
+    $response = (string) $answer['body'];
+    $status = (int) $answer['status'];
 
-    curl_setopt($curl, CURLOPT_POST, true);
-    curl_setopt($curl, CURLOPT_POSTFIELDS, $request);
-    curl_setopt($curl, CURLOPT_HTTPHEADER, array(
-        'Content-Type: application/timestamp-query',
-        'Accept: application/timestamp-reply',
-    ));
-    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($curl, CURLOPT_TIMEOUT, PG_SIGNATURE_TSA_TIMEOUT);
-    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, PG_SIGNATURE_TSA_TIMEOUT);
-    curl_setopt($curl, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
+    // A refused address has no cURL error number, only its reason; a reply
+    // over the cap ends the transfer as cURL error 23.
+    if ($status === 0 || $response === '') {
+        if (!empty($answer['capped'])) {
+            $reason = 'reply is too large';
+        } elseif ($answer['errno'] > 0) {
+            $reason = 'cURL ' . $answer['errno'] . ': ' . $answer['error'] . (function_exists('pg_curl_tls_hint') ? ' ' . pg_curl_tls_hint($answer['errno']) : '');
+        } elseif ($status > 0) {
+            $reason = 'HTTP ' . $status;
+        } else {
+            $reason = ((string) $answer['error'] !== '') ? (string) $answer['error'] : 'no reply';
+        }
 
-    if (function_exists('pg_curl_tls')) {
-        pg_curl_tls($curl);
-    }
-
-    // Credentials go only where the site said they should. Sending them to an
-    // authority that was never told to expect them puts a password on the wire
-    // for nothing.
-    if (($auth === 'basic') && ($username !== '')) {
-        curl_setopt($curl, CURLOPT_USERPWD, $username . ':' . $password);
-    }
-
-    $response = curl_exec($curl);
-    $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    $errno = curl_errno($curl);
-    $error = curl_error($curl);
-
-    unset($curl);
-
-    if (($response === false) || ($response === '')) {
-        $reason = 'cURL ' . $errno . ': ' . $error . (function_exists('pg_curl_tls_hint') ? ' ' . pg_curl_tls_hint($errno) : '');
         pg_signature_stamp_failed($url, $reason);
 
         return false;

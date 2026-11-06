@@ -46,6 +46,21 @@ function test_product_group_screens_parent_ok()
 	pg_assert_false(pg_product_group_form_parent_ok($map, 2, array(4), 1), 'a list is no id');
 }
 
+function test_product_group_screens_new_group_parent_checked()
+{
+	$map = product_group_screens_test_map();
+
+	// A new group has no id and no stored parent yet.
+	pg_assert_true(pg_product_group_form_parent_ok($map, 0, 2, 0), 'a new group under a live group');
+	pg_assert_false(pg_product_group_form_parent_ok($map, 0, 99, 0), 'a new group under a group deleted or binned meanwhile');
+
+	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_product_group.php');
+	$check = strpos($add, 'pg_product_group_form_parent_ok(pg_catalog_group_map(), 0, $_POST[\'parent_id\'], 0)');
+	$insert = strpos($add, 'INSERT INTO product_groups');
+	pg_assert_true($check !== false, 'Create Product Group checks the posted parent against the live tree');
+	pg_assert_true(($check !== false) && ($insert !== false) && ($check < $insert), 'before the group is stored');
+}
+
 function test_product_group_screens_unique_name_limit()
 {
 	pg_assert_same(100, pg_unique_name_limit('product_group'), 'product_groups.name is varchar(100)');

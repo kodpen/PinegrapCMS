@@ -11,6 +11,10 @@ description: How update packages must be downloaded and extracted (pg_extract_ar
 2. The `extractTo()` return value is checked.
 3. EVERY entry inside the archive is looked up on disk. This step catches the real partial extraction; (2) can return `true` on some platforms even when entries were skipped.
 
+## Which entry names does it accept?
+- Before anything else, every entry (directories too) must pass `pg_update_safe_entry()`: a plain relative path, no `..` or `.` segment, no leading `/`, drive letter, empty segment or NUL. One that fails refuses the whole archive (`blocked` names it), nothing written.
+- Why: the permission check, its repair (`unlink` of a read-only target) and the proof after extraction joined the raw name to the destination, so a `../` entry made them touch and delete a file outside it, while `extractTo()` rewrites such names on its own terms. The package is signed and the rollback archive hashed, so this is the last fence, not the first. `download_assistant.php` carries the same check inline. Test: `tests/update_extract_entry_test.php`.
+
 ## What download-side silent failures were closed?
 - HTTP status was never checked (a 403/404 body was written as a `.zip`); a short transfer did not return `false` so it counted as success; the `fopen(...,'x')` return and the `fwrite()` byte count were ignored.
 

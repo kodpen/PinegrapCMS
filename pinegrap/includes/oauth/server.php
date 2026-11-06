@@ -576,8 +576,10 @@ function pg_oauth_client_resolve($client_id) {
 	// allowed right now.
 	$stale = (($row !== null) && ((int)$row['metadata_expires'] + pg_oauth_metadata_stale_limit() > time())) ? $row : null;
 
-	if (function_exists('waf_rate_exceeded') && function_exists('waf_client_ip')
-		&& waf_rate_exceeded(waf_client_ip(), 'oauth_cimd', pg_oauth_metadata_fetch_limit(), 3600)) {
+	// Per subject (the /64 for IPv6), so the addresses of one sender share
+	// one allowance of outgoing reads.
+	if (function_exists('waf_rate_exceeded') && function_exists('waf_client_ip') && function_exists('waf_ip_subject')
+		&& waf_rate_exceeded(waf_ip_subject(waf_client_ip()), 'oauth_cimd', pg_oauth_metadata_fetch_limit(), 3600)) {
 
 		return array('client' => $stale, 'error' => ($stale === null) ? 'Too many client metadata documents read from this address. Try again later.' : '');
 

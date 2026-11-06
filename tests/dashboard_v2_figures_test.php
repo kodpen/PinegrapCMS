@@ -239,3 +239,20 @@ function test_dashboard_v2_yesterday_across_a_clock_change()
 
 	pg_assert_same(array('2026-03-29 00:00', '2026-10-25 00:00', '2026-06-09 00:00'), $results);
 }
+
+// The "files" chip and goal count only the files the person's Files card and
+// file list show them: the same condition (pg_dashboard_files_where()), the
+// folder joined for it, nothing when no folder is granted.
+function test_dashboard_v2_files_count_reads_the_persons_files()
+{
+	pg_assert_same(null, pg_dashboard_v2_files_count_sql(null, 100));
+
+	$sql = pg_dashboard_v2_files_count_sql("(folder.folder_archived = '0') AND (files.design = '0')", 100);
+
+	pg_assert_contains('FROM files LEFT JOIN folder ON files.folder = folder.folder_id', $sql);
+	pg_assert_contains("WHERE ((folder.folder_archived = '0') AND (files.design = '0')) AND files.timestamp >= 100", $sql);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
+	pg_assert_contains('pg_dashboard_v2_files_count_sql(pg_dashboard_files_where($user), $since)', $source);
+	pg_assert_false(strpos($source, 'FROM files WHERE timestamp') !== false, 'files counted site-wide');
+}

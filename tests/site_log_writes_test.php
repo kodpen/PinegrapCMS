@@ -40,10 +40,10 @@ function test_site_log_writes_order_exports()
 {
 	$source = site_log_writes_source('view_orders.php');
 
-	$multiple = site_log_writes_slice($source, "UPDATE orders SET status = 'exported'", "get all custom shipping form data");
+	$multiple = site_log_writes_slice($source, "db(pg_order_export_mark_sql(", "get all custom shipping form data");
 	$single_from = strpos($source, "'Export Orders (single file)'");
 	pg_assert_true($single_from !== false, 'single-file branch found');
-	$single = site_log_writes_slice($source, "UPDATE orders SET status = 'exported'", "else user did not request to export orders", (int) $single_from);
+	$single = site_log_writes_slice($source, "db(pg_order_export_mark_sql(", "else user did not request to export orders", (int) $single_from);
 
 	foreach (array('multiple files' => $multiple, 'single file' => $single) as $label => $block) {
 		pg_assert_true($block !== '', $label . ' export block found');

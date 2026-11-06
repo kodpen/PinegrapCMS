@@ -95,7 +95,7 @@ function test_shipment_label_create_refusal_codes_and_messages()
 // calls no service, so a rehearsal that stops after it changes nothing.
 function test_shipment_label_create_goes_through_the_check()
 {
-	$create = shipment_label_api_test_source('pg_shipment_label_create');
+	$create = shipment_label_api_test_source('pg_shipment_label_create_locked');
 	$check = shipment_label_api_test_source('pg_shipment_label_create_check');
 
 	$at_check = strpos($create, 'pg_shipment_label_create_check(');

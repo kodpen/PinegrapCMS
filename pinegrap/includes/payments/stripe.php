@@ -855,11 +855,21 @@ function pg_payment_stripe_refund_with($order, $amount, $settings, $http)
         return pg_payment_failure(lang('The refund amount must be greater than 0.'));
     }
 
+    // The same refund asked twice before the first was recorded (a retry
+    // after a timeout, a double click) carries the same key, and Stripe
+    // makes it once; once recorded, refunded_amount moves and a further
+    // refund of the same amount is a new one.
     $call = pg_payment_stripe_call($http, $settings, 'POST', '/v1/refunds', array(
         (($kind[1] === 'ch') ? 'charge' : 'payment_intent') => $transaction_id,
         'amount'   => $units,
         'metadata' => array('order_id' => pg_payment_stripe_order_value($order, 'id')),
-    ));
+    ), 'pg-refund-' . sha1(pg_payment_stripe_order_value($order, 'id') . '|' . $transaction_id . '|' . (int) $amount . '|' . pg_payment_stripe_order_value($order, 'refunded_amount')));
+
+    // No answer at all: the request may have reached Stripe and the money
+    // may have gone back.
+    if ($call['code'] === 'unreached') {
+        return pg_payment_unclear(lang('The payment service could not be reached.'), array('message' => $call['message']));
+    }
 
     $refund_status = ($call['ok'] && isset($call['body']['status']) && is_string($call['body']['status'])) ? $call['body']['status'] : '';
     $reference = ($call['ok'] && isset($call['body']['id']) && is_string($call['body']['id'])) ? $call['body']['id'] : '';

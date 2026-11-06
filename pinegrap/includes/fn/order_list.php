@@ -337,3 +337,24 @@ function pg_order_country_filter_sql($column, $term)
 
     return " OR (" . $column . " IN ('" . implode("', '", array_map('escape', $codes)) . "'))";
 }
+
+/**
+ * The join that names an address's state for the orders list's State
+ * filters. A state code is unique only inside its country (state_form.php),
+ * so the states row is matched by code within the address's own country:
+ * matched by code alone, a code two countries share (WA in the United States
+ * and Australia) repeated the order in the CSV exports and let one country's
+ * state name find another country's orders. The country is read by a
+ * subquery, never joined, so no row is repeated.
+ *
+ * @param string $alias          the states alias, e.g. billing_states
+ * @param string $state_column   the column holding the stored state code
+ * @param string $country_column the column holding the stored country code
+ * @return string ' LEFT JOIN states AS ...'
+ */
+function pg_order_list_state_join($alias, $state_column, $country_column)
+{
+    return " LEFT JOIN states AS " . $alias
+        . " ON " . $alias . ".code = " . $state_column
+        . " AND " . $alias . ".country_id IN (SELECT " . $alias . "_country.id FROM countries AS " . $alias . "_country WHERE " . $alias . "_country.code = " . $country_column . ")";
+}

@@ -3633,14 +3633,7 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('Invalid request.'));
             }
 
-            $fields = array('due_date' => $date);
-
-            if ($task['start_date'] && $task['due_date']) {
-                $shift = (int) round((strtotime($date . ' 12:00:00') - strtotime($task['due_date'] . ' 12:00:00')) / 86400);
-                $fields['start_date'] = date('Y-m-d', strtotime($task['start_date'] . ' 12:00:00 ' . (($shift >= 0) ? '+' : '') . $shift . ' days'));
-            } elseif ($task['start_date']) {
-                $fields['start_date'] = null;
-            }
+            $fields = ws_task_move_dates($task, $date);
 
             $people = ws_task_assignee_ids($task['id']);
             $from_user = (int) ($request['from_user_id'] ?? 0);

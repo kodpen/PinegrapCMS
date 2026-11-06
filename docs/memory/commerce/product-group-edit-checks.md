@@ -11,9 +11,10 @@ description: Edit Product Group, Duplicate Product Group and Featured and New It
 ## Can get_product_groups() loop for ever?
 - No. It passes the ids above it on the walk (`seen`) and skips a child already among them, so a `parent_id` ring ends the walk.
 
-## Is the parent of Edit Product Group checked on the server?
+## Is the parent of Create and Edit Product Group checked on the server?
 - Yes. `pg_product_group_form_parent_ok()` (`includes/forms/product_group_form.php`, pure, tested in `tests/product_group_screens_test.php`) accepts 0, a live group from `pg_catalog_group_map()` or the parent the group already has, and refuses the group itself and its own subtree (`pg_catalog_group_is_within()`) with "A product group cannot be moved into itself.", as the Catalog Manager's cut does.
 - Symptom it fixed: a group moved under this one while the screen was open was saved as its parent; the two formed a ring and dropped out of the catalogue.
+- Create Product Group asks it with id 0 and parent 0; a parent binned or deleted meanwhile stored the new group outside the live tree.
 
 ## Why did Duplicate Product Group say "Sorry, something went wrong"?
 - The form posts back to its own address, and the hidden `id` was printed through `output_field()`, which prefers the value an earlier visit left in the session; the posted id then differed from the address's and the screen refused. The hidden field is now written from the checked id, and `remove_form()` runs before the redirect, so the next Duplicate screen opens with its switches off and the address's group.
