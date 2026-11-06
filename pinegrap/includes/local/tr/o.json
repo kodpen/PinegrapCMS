@@ -1255,6 +1255,7 @@
     "Optional. The invoice has to belong to the account chosen above. Anything over what it is short of stays on the open account.": "İsteğe bağlı. Fatura, yukarıda seçilen cariye ait olmalı. Faturanın açığını aşan kısım açık hesapta kalır.",
     "Optional. The link never shows whom the quote was made for.": "İsteğe bağlı. Bağlantı, teklifin kimin için hazırlandığını hiçbir zaman göstermez.",
     "Optional. With it, a report that the service did not sign is refused.": "İsteğe bağlı. Girildiğinde hizmetin imzalamadığı bildirimler reddedilir.",
+    "Optional: a PDF, a document or a picture.": "İsteğe bağlı: bir PDF, bir belge ya da bir resim.",
     "Optional: a flow also ends at a box no arrow leaves.": "İsteğe bağlı: akış, ok çıkmayan bir kutuda da biter.",
     "Optional: it stops repeating after this day.": "İsteğe bağlı: bu günden sonra tekrarlanmaz.",
     "Optional: slower than this is a failure.": "İsteğe bağlı: bundan yavaşı başarısızlık sayılır.",
