@@ -110,6 +110,49 @@ function test_reviews_rating_sql()
 	pg_assert_contains('comments.rating BETWEEN 1 AND 5', $sql);
 }
 
+// A verified review counts and shows only while its purchase stands: the
+// order is bought, or deleted (its history is kept), and the reviewed item's
+// whole ordered quantity on it was not returned and refunded.
+function test_reviews_purchase_stands_sql()
+{
+	$with = pg_review_purchase_stands_sql(true);
+	$without = pg_review_purchase_stands_sql(false);
+
+	foreach (array($with, $without) as $sql) {
+		pg_assert_contains('comments.verified_order_id > 0', $sql);
+		pg_assert_contains('NOT EXISTS (SELECT 1 FROM orders WHERE orders.id = comments.verified_order_id)', $sql, 'a deleted order counts as bought');
+		pg_assert_contains(pg_review_bought_sql(), $sql, 'a cancelled order does not');
+	}
+
+	pg_assert_contains('order_returns.refunded_at > 0', $with, 'a refunded return, closed later or not');
+	pg_assert_contains('order_items.quantity > (SELECT COALESCE(SUM(order_return_items.quantity), 0)', $with, 'only the whole quantity');
+	pg_assert_contains("(comments.item_type = 'product') AND (order_items.product_id = comments.item_id)", $with, 'the lines of the reviewed product');
+	pg_assert_contains('products_groups_xref.product_group = comments.item_id', $with, 'or of its group');
+	pg_assert_contains('order_items.saved_for_later = 0', $with);
+	pg_assert_false(strpos($without, 'order_return') !== false, 'no returns table before the step adds them');
+
+	pg_assert_contains($with, pg_review_rating_sql(true), 'the rating');
+	pg_assert_contains($without, pg_review_rating_sql(false));
+	pg_assert_same($with, pg_review_verified_filter_sql('yes', true), 'the verified-only thread and filter');
+	pg_assert_same($without, pg_review_verified_filter_sql('yes', false));
+}
+
+// Cancelling, restoring and a refunded return move the ratings of the
+// order's products at once; the daily pass catches the rest.
+function test_reviews_purchase_change_refreshes()
+{
+	$source = function ($name) {
+		$function = new ReflectionFunction($name);
+		$lines = file($function->getFileName());
+
+		return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+	};
+
+	pg_assert_contains('pg_review_refresh_order(', $source('process_order_cancellation'), 'cancellation');
+	pg_assert_contains('pg_review_refresh_order(', $source('pg_order_restore_cancelled'), 'restore');
+	pg_assert_contains('pg_review_refresh_products(', $source('pg_return_refund'), 'a refunded return');
+}
+
 // The markup carries a rating only when real reviews stand behind it.
 function test_reviews_aggregate_jsonld()
 {
@@ -317,7 +360,7 @@ function test_reviews_request_targets_from_rows()
 // rest; anything else posted lists all.
 function test_reviews_verified_filter_sql()
 {
-	pg_assert_same('comments.verified_order_id > 0', pg_review_verified_filter_sql('yes'));
+	pg_assert_same(pg_review_purchase_stands_sql(false), pg_review_verified_filter_sql('yes', false));
 	pg_assert_same('comments.verified_order_id = 0', pg_review_verified_filter_sql('no'));
 	pg_assert_same('', pg_review_verified_filter_sql(''), 'all comments');
 	pg_assert_same('', pg_review_verified_filter_sql("yes' OR '1'='1"), 'nothing but the two choices');
@@ -410,7 +453,7 @@ function test_reviews_request_cancel()
 	$lines = file($cancellation->getFileName());
 	$source = implode('', array_slice($lines, $cancellation->getStartLine() - 1, $cancellation->getEndLine() - $cancellation->getStartLine() + 1));
 
-	$write = strpos($source, "AND status <> 'cancelled'");
+	$write = strpos($source, "AND status NOT IN ('cancelled', 'incomplete')");
 	$guard = strpos($source, 'mysqli_affected_rows(db::$con) < 1');
 	$cancel = strpos($source, 'pg_review_request_cancel($order_id)');
 

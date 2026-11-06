@@ -39,8 +39,11 @@ function test_editor_link_picker_rows_hold_buttons()
 {
 	$source = order_view_picker_links_source('editor_select_page_or_file.php');
 
-	pg_assert_true(substr_count($source, '<button type="button" class="btn btn-link p-0 text-start"') >= 3, 'button in each row kind');
-	pg_assert_true(substr_count($source, 'event.stopPropagation();') >= 3, 'button click kept off the row');
+	// One name cell for the three kinds: a link the keyboard reaches, which a
+	// click, a double click or Enter on the row sends to the editor.
+	pg_assert_contains('<a href="\' . h($item[\'href\']) . \'" data-pg-open data-pg-pick="\' . h($item[\'href\']) . \'">', $source, 'the address is a link in its row');
+	pg_assert_contains('event.target.closest("a[data-pg-pick]")', $source, 'a pick goes back to the editor');
+	pg_assert_false(strpos($source, 'onclick="window.opener') !== false, 'no click handler on the rows');
 }
 
 // The type buttons are named by their words, not by the ligature.

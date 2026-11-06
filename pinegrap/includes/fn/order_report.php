@@ -75,6 +75,40 @@ function pg_order_report_order($row, $cart = null)
 }
 
 /**
+ * The carts' figures by order id: subtotal and tax from their active lines,
+ * shipping from their recipients' shipping_cost. The cost is what the
+ * shipping step charged: the method's and the zone's base rates and the
+ * shipping offer's discount are in it, while order_items.shipping holds
+ * only a line's own rate per unit, rounded. A cart with no active line is
+ * left out. Pure.
+ *
+ * @param array $lines      rows of id, subtotal, tax (the active lines summed)
+ * @param array $recipients rows of id, shipping (the recipients summed)
+ * @return array id => subtotal, tax, shipping
+ */
+function pg_order_report_carts(array $lines, array $recipients)
+{
+    $shipping = array();
+
+    foreach ($recipients as $row) {
+        $shipping[(string) ($row['id'] ?? '')] = $row['shipping'] ?? 0;
+    }
+
+    $carts = array();
+
+    foreach ($lines as $row) {
+        $id = (string) ($row['id'] ?? '');
+        $carts[$id] = array(
+            'subtotal' => $row['subtotal'] ?? 0,
+            'tax' => $row['tax'] ?? 0,
+            'shipping' => $shipping[$id] ?? 0,
+        );
+    }
+
+    return $carts;
+}
+
+/**
  * An empty group of the report: its name, its order count and its figures.
  * Pure.
  *

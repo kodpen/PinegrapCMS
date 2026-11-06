@@ -192,15 +192,16 @@ function ws_approval_guest_note_clean($note)
  * @param array $guest    ws_approval_guests row
  * @param array $approval ws_approvals row
  * @param int   $now
+ * @param bool  $frozen   its channel takes no writing (ws_approval_guest_channel_frozen())
  * @return string open | answered | closed | expired
  */
-function ws_approval_guest_state($guest, $approval, $now)
+function ws_approval_guest_state($guest, $approval, $now, $frozen = false)
 {
     if ((string) $guest['decision'] !== 'pending') {
         return 'answered';
     }
 
-    if (((int) $approval['closed_at'] > 0) || (((int) $approval['closes_at'] > 0) && ((int) $approval['closes_at'] <= (int) $now))) {
+    if ($frozen || ((int) $approval['closed_at'] > 0) || (((int) $approval['closes_at'] > 0) && ((int) $approval['closes_at'] <= (int) $now))) {
         return 'closed';
     }
 
@@ -209,6 +210,27 @@ function ws_approval_guest_state($guest, $approval, $now)
     }
 
     return 'open';
+}
+
+/**
+ * Does the request's channel take no more writing, so that an answer from
+ * outside the team would settle it where the team itself may not answer
+ * (ws_approval_decide_check() asks ws_can_post_channel())? Gone, archived,
+ * a discussion of an archived (or gone) channel, or the request's message
+ * in an earlier version of a cleared conversation. Pure.
+ *
+ * @param array|null $channel ws_channels row
+ * @param array|null $parent  the channel of a discussion, null otherwise
+ * @param bool       $in_past ws_message_in_past() of the request's message
+ * @return bool
+ */
+function ws_approval_guest_channel_frozen($channel, $parent, $in_past)
+{
+    if (!is_array($channel) || ((int) $channel['archived_at'] > 0) || $in_past) {
+        return true;
+    }
+
+    return ((string) $channel['kind'] === 'thread') && ((int) ($parent['archived_at'] ?? 1) > 0);
 }
 
 /**
@@ -497,8 +519,12 @@ function ws_approval_guest_view($token, $count = true)
         'withdrawn' => lang('Closed without a decision'),
     );
 
+    $channel = ws_channel($approval['channel_id']);
+    $parent = (is_array($channel) && ((string) $channel['kind'] === 'thread')) ? ws_thread_parent_channel($channel) : null;
+    $frozen = ws_approval_guest_channel_frozen($channel, $parent, function_exists('ws_message_in_past') && ws_message_in_past($message));
+
     return array(
-        'state'    => ws_approval_guest_state($guest, $approval, time()),
+        'state'    => ws_approval_guest_state($guest, $approval, time(), $frozen),
         'title'    => (string) $approval['title'],
         'details'  => ws_approval_guest_details_html($message['body']),
         'asker'    => ws_person_name($approval['created_by']),

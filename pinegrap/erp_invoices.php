@@ -23,6 +23,7 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/drawer.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_invoices');
 
@@ -291,7 +292,9 @@ $direction_labels = array(
     'purchase' => lang('Purchase'),
 );
 
-$output_rows = '';
+// The invoices read are printed: the list table driver sorts and searches
+// them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
 foreach ($invoices as $invoice) {
     $id = (int) $invoice['id'];
@@ -307,9 +310,8 @@ foreach ($invoices as $invoice) {
     // documents written before the copy existed.
     $account_title = (trim((string) $invoice['account_title']) !== '') ? (string) $invoice['account_title'] : (string) $invoice['live_account_title'];
     $output_link_url = h(($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id . '&send_to=' . urlencode(REQUEST_URL));
-    $output_number = $is_draft
-        ? '<span class="fg-secondary fst-italic">' . lang('Draft') . '</span>'
-        : h($invoice['full_number']);
+    $output_number = '<a href="' . $output_link_url . '" class="pg-link-body-emphasis" data-pg-open>'
+        . ($is_draft ? '<span class="fg-secondary fst-italic">' . lang('Draft') . '</span>' : h($invoice['full_number'])) . '</a>';
 
     $order_cell = erp_order_link_html($invoice['order_id'], $invoice['order_number'], $invoice['order_exists'] !== null);
 
@@ -349,57 +351,72 @@ foreach ($invoices as $invoice) {
     // Where the document stands with the tax authority. A sales invoice that
     // has not been sent says so plainly; a purchase invoice or a draft has
     // nothing to say here at all.
-    $output_edoc_cell = '';
+    $cells_edoc = array();
 
     if ($edoc_column) {
         $edoc_status = (string) ($invoice['edoc_status'] ?? 'none');
         $edoc_sendable = (!$is_draft && ((string) $invoice['direction'] === 'sales') && ((string) $invoice['status'] !== 'cancelled'));
 
         if (($edoc_status === 'none') && !$edoc_sendable) {
-            $output_edoc_cell = '<td class="align-middle fg-secondary" data-order="">&mdash;</td>';
+            $cells_edoc['edoc'] = pg_list_cell('&mdash;', 'align-middle fg-secondary', array('data-pg-sort-value' => ''));
         } else {
             $edoc_label = $edoc_labels[$edoc_status] ?? array($edoc_status, 'secondary');
-            $output_edoc_cell = '<td class="align-middle text-nowrap" data-order="' . h($edoc_status) . '">'
-                . '<span class="badge theme-' . h($edoc_label[1]) . '">' . h($edoc_label[0]) . '</span>'
-                . (((string) ($invoice['gib_number'] ?? '') !== '') ? '<div class="small fg-secondary">' . h($invoice['gib_number']) . '</div>' : '')
-                . '</td>';
+            $cells_edoc['edoc'] = pg_list_cell('<span class="badge theme-' . h($edoc_label[1]) . '">' . h($edoc_label[0]) . '</span>'
+                . (((string) ($invoice['gib_number'] ?? '') !== '') ? '<div class="small fg-secondary">' . h($invoice['gib_number']) . '</div>' : ''),
+                'align-middle text-nowrap', array('data-pg-sort-value' => $edoc_status));
         }
     }
 
-    // Only a document a provider would carry can be ticked; the others keep an
-    // empty cell so the columns line up, and are left out of "select all".
-    $output_pick_cell = '';
-    $row_class = '';
-
-    if ($edoc_bulk) {
-        $pickable = !$is_draft && ((string) $invoice['direction'] === 'sales') && ($status !== 'cancelled');
-
-        $output_pick_cell = $pickable
-            ? '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="invoice_ids[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => (string) $invoice['full_number']))) . '" /></td>'
-            : '<td class="align-middle"></td>';
-        $row_class = $pickable ? '' : ' class="unselectable"';
-    }
-
-    $output_rows .=
-        '<tr' . erp_drawer_row_attributes($id) . $row_class . '>
-            ' . $output_pick_cell . '
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . ($is_draft ? lang('Edit') : lang('View')) . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi ' . ($is_draft ? 'bi-pencil' : 'bi-eye') . '"></i></button>
-            </td>
-            <td class="align-middle text-nowrap chart_label" data-order="' . h($is_draft ? ('~' . $id) : $invoice['full_number']) . '">' . $output_number . '</td>
-            <td class="align-middle text-nowrap" data-order="' . h($invoice['issue_date']) . '">' . h(prepare_form_data_for_output($invoice['issue_date'], 'date')) . '</td>
-            <td class="align-middle text-nowrap" data-order="' . h($effective_due) . '">' . $output_due . '</td>
-            <td class="text-nowrap align-middle" title="' . h($account_title) . '"><span class="d-inline-block text-truncate pg-cell-truncate">' . h($account_title) . '</span></td>
-            <td class="align-middle">' . h($direction_labels[$invoice['direction']] ?? $invoice['direction']) . '</td>
-            <td class="align-middle ' . ($status_classes[$status] ?? '') . '">' . h($status_labels[$status] ?? $status) . '</td>
-            ' . $output_edoc_cell . '
-            <td class="align-middle">' . $order_cell . '</td>
-            <td class="align-middle text-end" data-order="' . (int) $invoice['tax_total'] . '">' . h(erp_money_out_currency((int) $invoice['tax_total'], $currency)) . '</td>
-            <td class="align-middle text-end fw-bold" data-order="' . (int) $invoice['grand_total_base'] . '">' . h(erp_money_out_currency((int) $invoice['grand_total'], $currency))
-                . ($is_foreign ? '<div class="fg-secondary small fw-normal">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : '') . '</td>
-            <td class="align-middle text-end ' . (($open > 0) ? 'fg-danger' : 'fg-secondary') . '" data-order="' . $open . '">' . h(erp_money_out_currency($open, $currency)) . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => $id,
+        'cells' => array(
+            // A draft has no number: it sorts after the numbered documents.
+            'number' => pg_list_cell($output_number, 'align-middle text-nowrap', array('data-pg-sort-value' => $is_draft ? ('~' . $id) : (string) $invoice['full_number'])),
+            'date' => pg_list_cell(h(prepare_form_data_for_output($invoice['issue_date'], 'date')), 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $invoice['issue_date'])),
+            'due' => pg_list_cell($output_due, 'align-middle text-nowrap', array('data-pg-sort-value' => $effective_due)),
+            'account' => pg_list_cell('<span class="d-inline-block text-truncate pg-cell-truncate" title="' . h($account_title) . '">' . h($account_title) . '</span>', 'align-middle text-nowrap', array('data-pg-sort-value' => $account_title)),
+            'direction' => pg_list_cell(h($direction_labels[$invoice['direction']] ?? $invoice['direction'])),
+            'status' => pg_list_cell(h($status_labels[$status] ?? $status), 'align-middle ' . ($status_classes[$status] ?? '')),
+        ) + $cells_edoc + array(
+            'order' => pg_list_cell($order_cell),
+            'tax' => pg_list_cell(h(erp_money_out_currency((int) $invoice['tax_total'], $currency)), 'align-middle', array('data-pg-sort-value' => (int) $invoice['tax_total'])),
+            'total' => pg_list_cell(h(erp_money_out_currency((int) $invoice['grand_total'], $currency))
+                . ($is_foreign ? '<div class="fg-secondary small fw-normal">' . h(erp_money_out((int) $invoice['grand_total_base'])) . '</div>' : ''),
+                'align-middle fw-bold', array('data-pg-sort-value' => (int) $invoice['grand_total_base'])),
+            'outstanding' => pg_list_cell(h(erp_money_out_currency($open, $currency)), 'align-middle ' . (($open > 0) ? 'fg-danger' : 'fg-secondary'), array('data-pg-sort-value' => $open)),
+            'actions' => pg_list_cell(erp_drawer_button($id)),
+        ),
+    );
 }
+
+$columns = array(
+    'number' => array('heading' => lang('Document Number'), 'kind' => 'link'),
+    'date' => array('heading' => lang('Date'), 'kind' => 'date'),
+    'due' => array('heading' => lang('Due Date'), 'kind' => 'date'),
+    'account' => array('heading' => lang('Account')),
+    'direction' => array('heading' => lang('Direction')),
+    'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
+) + ($edoc_column ? array('edoc' => array('heading' => lang('e-Document'), 'kind' => 'badge')) : array()) + array(
+    'order' => array('heading' => lang('Order')),
+    'tax' => array('heading' => erp_tax_label('tax'), 'kind' => 'money'),
+    'total' => array('heading' => lang('Total'), 'kind' => 'money'),
+    'outstanding' => array('heading' => lang('Outstanding'), 'kind' => 'money'),
+    'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
+);
+$sort_columns = pg_list_table_printed_sort_columns($columns);
+$sort_default = array('sort' => 'date', 'order' => 'desc');
+$list_state = pg_list_state('erp_invoices', $sort_columns, $sort_default);
+
+// Bulk e-document work posts the selected ids as invoice_ids[], the list the
+// handler above has always read. A document the action does not apply to
+// (a draft, a purchase, a cancelled one) is counted there as skipped.
+$list = pg_list_table_printed(array(
+    'list' => 'erp_invoices',
+    'columns' => $columns,
+    'levels' => $list_state['sorts'],
+    'rows' => $list_rows,
+    'ids_field' => $edoc_bulk ? 'invoice_ids[]' : '',
+));
 
 // The e-document views, each with how many documents stand in it. Counted
 // over the whole register, not the rows on screen, so the number matches the
@@ -430,22 +447,19 @@ if (!empty($edoc_filters)) {
                 </div>';
 }
 
-// The bulk actions act on the ticked rows of the page on screen. They sit in
-// one menu whose toggle stays disabled until something is ticked
-// (chart_checkbox_state_change() enables every button under
-// .enable-on-selected); the submit buttons post the bulk form by its id.
+// The bulk actions act on the selected rows. They sit in one menu in the
+// list's selection bar, shown while rows are selected; the submit buttons
+// post the bulk form the list sits in by its id.
 $output_bulk_menu = '';
 
 if ($edoc_bulk) {
-    $output_bulk_menu = '
-                <div class="pg-menu-wrap enable-on-selected">
-                    <button class="btn btn-sm btn-text theme-secondary pg-menu-caret disabled" type="button" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" disabled><i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Selected invoices') . '</button>
-                    <ul class="menu">
-                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="menu-item pg-link-body-emphasis" disabled data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-3" aria-hidden="true"></i>' . lang('Send selected') . '</button></li>
-                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="menu-item pg-link-body-emphasis" disabled data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-3" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button></li>
-                        <li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="menu-item pg-link-body-emphasis" disabled><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . lang('Ask status') . '</button></li>
-                    </ul>
-                </div>';
+    $output_bulk_menu = '<span class="pg-menu-wrap">'
+        . '<button class="btn btn-sm btn-text theme-secondary pg-menu-caret" type="button" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('e-Document') . '</button>'
+        . '<ul class="menu">'
+        . '<li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-3" aria-hidden="true"></i>' . lang('Send selected') . '</button></li>'
+        . '<li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="menu-item pg-link-body-emphasis" data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-3" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button></li>'
+        . '<li><button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="menu-item pg-link-body-emphasis"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i>' . lang('Ask status') . '</button></li>'
+        . '</ul></span>';
 }
 
 // The related screens share one menu, so the bar keeps to one line.
@@ -465,10 +479,10 @@ $output_tools_menu = '
 
 $output_toolbar = pg_screen_toolbar(array(
     'primary' => $readonly ? '' : array('label' => lang('New Invoice'), 'url' => 'add_erp_manual_invoice.php', 'icon' => 'bi-plus-lg'),
-    'secondary' => array($output_tools_menu, $output_bulk_menu),
+    'secondary' => array($output_tools_menu),
     // A kept bucket would force the due-date view back to "Open", so "All"
     // could never be picked; every other part of the view is kept.
-    'search' => array($output_edoc_menu, pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php', 'keep' => array('edoc', 'direction', 'account_id', 'as_of')))),
+    'search' => array(pg_list_table_search_box('erp_invoices'), pg_list_sort_menu('erp_invoices.php', $sort_columns, $list_state['sorts'], $sort_default, $self_query), $output_edoc_menu, pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php', 'keep' => array('edoc', 'direction', 'account_id', 'as_of')))),
 ));
 
 echo
@@ -490,34 +504,13 @@ pg_page_shell([
             ' . $output_filter_note . '
             ' . ($edoc_bulk ? '<form id="erp_edoc_bulk" method="post" action="' . h($self_url) . '">' . get_token_field() : '') . '
             <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none;">
-                        <thead>
-                            <tr>
-                                ' . ($edoc_bulk ? '<th class="noVis"><input class="check" title="' . lang(array('string' => 'Select/Deselect All')) . '" type="checkbox" id="select_all"></th>' : '') . '
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Document Number') . '</th>
-                                <th>' . lang('Date') . '</th>
-                                <th>' . lang('Due Date') . '</th>
-                                <th>' . lang('Account') . '</th>
-                                <th>' . lang('Direction') . '</th>
-                                <th>' . lang('Status') . '</th>
-                                ' . ($edoc_column ? '<th>' . lang('e-Document') . '</th>' : '') . '
-                                <th>' . lang('Order') . '</th>
-                                <th class="text-end">' . h(erp_tax_label('tax')) . '</th>
-                                <th class="text-end">' . lang('Total') . '</th>
-                                <th class="text-end">' . lang('Outstanding') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>' . $output_cap_note . '
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Invoices'), $output_bulk_menu) . $output_cap_note . '
             </div>
             ' . ($edoc_bulk ? '</form>' : '') . '
         </div>
     </div>
 </main>
-' . erp_drawer_markup('invoice') .
+' . erp_drawer_markup('invoice') . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

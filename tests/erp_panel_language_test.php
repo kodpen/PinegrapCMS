@@ -26,7 +26,7 @@ function erp_panel_language_source($path)
 function test_erp_panel_language_save_bar_names()
 {
 	$paths = array(
-		'add_erp_account.php', 'add_erp_expense.php', 'add_erp_invoice.php', 'add_erp_manual_invoice.php',
+		'add_erp_account.php', 'add_erp_expense.php', 'includes/forms/invoice_order_form.php', 'add_erp_manual_invoice.php',
 		'add_erp_purchase_order.php', 'add_erp_quote.php', 'add_erp_till.php', 'add_erp_transfer.php',
 		'add_erp_waybill.php', 'edit_erp_account.php', 'edit_erp_invoice.php', 'edit_erp_invoice_draft.php',
 		'edit_erp_purchase_order.php', 'edit_erp_quote.php', 'edit_erp_till.php', 'edit_erp_waybill.php',

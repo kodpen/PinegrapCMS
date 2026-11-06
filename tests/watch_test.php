@@ -32,9 +32,12 @@ function test_watch_recorded_events_leave_out_workspace_and_erp()
 		pg_assert_true(in_array($event, $events, true), $event . ' kept');
 	}
 
+	// Of the ERP's only the ones a flow may start on.
+	$erp = array('erp.invoice.created', 'erp.invoice.paid', 'erp.invoice.overdue', 'erp.invoice.edoc_changed', 'erp.receipt.created', 'erp.edoc.received', 'erp.quote.accepted', 'erp.quote.rejected');
+
 	foreach ($events as $event) {
 		pg_assert_false(strpos($event, 'workspace.') === 0, $event . ' is not the workspace\'s own');
-		pg_assert_false(strpos($event, 'erp.') === 0, $event . ' is not the ERP\'s');
+		pg_assert_false((strpos($event, 'erp.') === 0) && !in_array($event, $erp, true), $event . ' is not an ERP event a flow starts on');
 	}
 }
 
@@ -101,7 +104,7 @@ function test_watch_own_events_are_kept_apart()
 		pg_assert_false(in_array($event, $recorded, true), $event . ' not kept by pg_event_record()');
 	}
 
-	pg_assert_same(9, count(ws_events_own()), 'six events, and the three of a workflow table\'s rows');
+	pg_assert_same(10, count(ws_events_own()), 'seven events, and the three of a workflow table\'s rows');
 	pg_assert_false(ws_events_is_own('workspace.message.created'), 'a message in a public channel is the webhooks\' only');
 	pg_assert_false(ws_events_is_own('order.created'), 'a site event');
 	pg_assert_false(ws_event('workspace.task.completed', array('id' => 1)), 'nothing kept without the workspace\'s tables');

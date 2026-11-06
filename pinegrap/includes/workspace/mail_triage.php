@@ -339,6 +339,10 @@ function ws_mail_triage_draft_offer($row, $can_post)
  * under the card. It writes that one message and nothing else; any failure
  * leaves the conversation as it was, with one Site Log line.
  *
+ * The call goes through pg_ai_chat(): it is not made while the connection is
+ * on hold after a failed call, and its answer keeps the licence verdict and
+ * the hold up to date for every other caller.
+ *
  * @param int $conversation_id
  * @return bool a suggestion was posted
  */
@@ -358,9 +362,8 @@ function ws_mail_triage_run($conversation_id)
         ? ws_assistant_writer(ws_ai_owner(), ws_ai_viewer((int) $box['created_by']), $channel)
         : null;
     $item = $card ? db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $card['sender_id'] . "' AND direction = 'in'") : null;
-    $model = ws_ai_model();
 
-    if (!$writer || !is_array($item) || ($model === '') || ((int) $card['deleted_at'] > 0)) {
+    if (!$writer || !is_array($item) || ((int) $card['deleted_at'] > 0)) {
         return false;
     }
 
@@ -371,15 +374,19 @@ function ws_mail_triage_run($conversation_id)
         $members[(int) $id] = (string) $person['name'];
     }
 
-    $response = ws_ai_http('POST', '/chat/completions', array(
-        'model'       => $model,
-        'messages'    => ws_mail_triage_prompt($item, $members, ws_ai_language_name()),
+    if (!function_exists('pg_ai_chat')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/translate/engine_ai.php');
+    }
+
+    // A hold that starts between the check above and here, or a missing
+    // model, is refused there; a failed answer sets the hold and stores a
+    // licence verdict.
+    $reply = pg_ai_chat(ws_mail_triage_prompt($item, $members, ws_ai_language_name()), array(
         'max_tokens'  => 1200,
         'temperature' => 0.2,
-        'stream'      => false,
-    ), ws_ai_call_timeout());
+    ));
 
-    $suggestion = ((int) $response['http'] === 200) ? ws_mail_triage_parse((string) ($response['json']['choices'][0]['message']['content'] ?? ''), array_keys($members)) : null;
+    $suggestion = $reply['ok'] ? ws_mail_triage_parse((string) $reply['text'], array_keys($members)) : null;
 
     if (!$suggestion) {
         ws_ai_log(lang(array('string' => 'Pinegrap AI could not suggest on an e-mail conversation in #{var:1}', 'vars' => $channel['name'])));

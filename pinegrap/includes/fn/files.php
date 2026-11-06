@@ -331,6 +331,48 @@ function pg_file_withheld($name)
     return mb_strtolower(trim((string) $name)) === 'dkim.key';
 }
 
+// Whether a file in the object store has to come back to the disk: a rename
+// or the design flag made it a file the move job never takes
+// (pg_file_storage_movable(): a design or theme file, a style sheet, a
+// script), which the design screens, the code editors and the design export
+// read only by path, and whose {path} get_file.php rewrites only on the disk.
+// Pure; $row is the files row as it is after the change, with storage and
+// storage_key.
+function pg_file_storage_comes_home(array $row)
+{
+    return function_exists('pg_file_storage') && function_exists('pg_file_storage_movable')
+        && (pg_file_storage($row) === 's3') && !pg_file_storage_movable($row);
+}
+
+// Brings back to the disk the stored files among these ids that may no
+// longer stay in the object store (pg_file_storage_comes_home()), once the
+// door that renamed them or set their design flag has written its row. The
+// bytes are copied into the file directory (pg_file_make_local()), which the
+// general job's reconcile pass then sets the row back to local for; a file
+// whose bytes cannot be fetched now stays stored, still served, and is named
+// in the Site Log.
+function pg_file_storage_bring_home($ids)
+{
+    if (!function_exists('pg_file_storage_ready') || !pg_file_storage_ready()) {
+        return;
+    }
+
+    $ids = array_values(array_filter(array_map('intval', (array) $ids)));
+
+    if (!$ids) {
+        return;
+    }
+
+    $rows = db_items("SELECT id, name, design, theme, storage, storage_key FROM files
+        WHERE storage = 's3' AND id IN (" . implode(',', $ids) . ")");
+
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        if (pg_file_storage_comes_home($row) && (pg_file_make_local($row['name']) === '')) {
+            log_activity(lang(array('string' => 'The file {var:1} could not be brought back from the object store to the disk.', 'vars' => array($row['name']))), 'UNKNOWN');
+        }
+    }
+}
+
 // Whether this person may not give a file this name. The one such name is
 // dkim.key: the mailer signs the site's mail with whatever file is called
 // that (includes/fn/mail.php), and the SMTP settings screen offers its
@@ -343,6 +385,53 @@ function pg_file_withheld($name)
 function pg_file_name_reserved($name, $role)
 {
     return pg_file_withheld($name) && (($role === null) || ((int) $role >= 3));
+}
+
+// Whether the file manager may hand out a file's contents (the Office
+// preview, the file window's text) to this person, on top of the folder
+// check the reader already made. Readers that send the bytes in the answer
+// must refuse what get_file.php refuses: a submitted-form or comment
+// attachment needs edit rights on its folder (#1989, a form upload may be a
+// CV in the public default upload folder), and a team chat attachment opens
+// only for a side of its conversation or a role-0 administrator, whatever
+// the folder allows (#5973).
+//
+// $attachment is files.attachment, $can_edit_folder check_edit_access() on
+// the file's folder, $chat_conversations pg_file_chat_conversations().
+function pg_file_panel_content_verdict($attachment, $can_edit_folder, $user_id, $role, $chat_conversations)
+{
+    if ($chat_conversations && !pg_chat_attachment_access_verdict($user_id, $role, $chat_conversations)) {
+        return false;
+    }
+
+    if (((int) $attachment === 1) && !$can_edit_folder) {
+        return false;
+    }
+
+    return true;
+}
+
+// The panel chat conversations whose messages carry this file, as
+// get_file.php reads them. Before the chat tables or the attachment column
+// exist the query fails and the file is no chat attachment.
+function pg_file_chat_conversations($file_id)
+{
+    $conversations = array();
+
+    if ((int) $file_id <= 0) {
+        return $conversations;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT c.initiator_user_id, c.target_user_id
+        FROM chat_messages m
+        INNER JOIN chat_conversations c ON c.id = m.conversation_id AND c.channel = 'backend'
+        WHERE m.attachment_file_id = '" . (int) $file_id . "'");
+
+    while (($result !== false) && ($row = mysqli_fetch_assoc($result))) {
+        $conversations[] = $row;
+    }
+
+    return $conversations;
 }
 
 // The one sentence every door says when it refuses such a file.

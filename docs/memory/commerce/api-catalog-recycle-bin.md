@@ -9,6 +9,7 @@ description: How the external API treats products and product groups in the cata
 
 ## What do the catalogue routes show of a binned record?
 - `GET /products` and `GET /product-groups` do not list it; `GET /products/{id}` and `GET /product-groups/{id}` still read it, with `recycled: true`.
+- `GET /inventory` does not list a binned product either, not even with `product_id` (`api_inventory_list_where()`). Symptom it fixed: a stock sync reading `/inventory` kept sending the stock of products the shop no longer sells.
 - Filing a binned product into a group (`POST /product-groups` `product_ids`, `POST /product-groups/{id}/products` `add`) is refused with 422, as if there were no such product (`api_product_group_product_ids()`).
 
 ## Does a group's product_ids include binned products?

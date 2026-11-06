@@ -47,8 +47,9 @@ function mailchimp_init() {
     define('MAILCHIMP_SYNC_DAYS', $config['mailchimp_sync_days']);
     define('MAILCHIMP_SYNC_LIMIT', $config['mailchimp_sync_limit']);
 
-    // Get the datacenter which is after the dash in the key.
-    define('MAILCHIMP_DC', substr(MAILCHIMP_KEY, strpos(MAILCHIMP_KEY, '-') + 1));
+    // The data center after the dash in the key, '' for a key that does not
+    // end in a plain host label (pg_mailchimp_dc()).
+    define('MAILCHIMP_DC', pg_mailchimp_dc(MAILCHIMP_KEY));
 }
 
 mailchimp_init();
@@ -59,8 +60,12 @@ function mailchimp_sync() {
 
     // If the sync is already running from a different process, then log and exit, because we
     // don't want multiple processes trampling on each other (trying to sync the same orders).
+    // The flag is claimed in one statement: read apart from its write, two general job runs
+    // that overlap both saw it clear and both synced.
 
-    if (db("SELECT mailchimp_sync_running FROM config")) {
+    $claimed = db_q("UPDATE config SET mailchimp_sync_running = '1' WHERE mailchimp_sync_running = '0'");
+
+    if (($claimed === false) || (mysqli_affected_rows(db::$con) < 1)) {
 
         $message = lang('A MailChimp sync is already running, so we will not run an extra sync. This might be normal if there are a lot of orders to sync. A cron job might have attempted to run a second sync before the first sync was complete. If you would like to avoid this error, then you might try lowering Limit Sync in the MailChimp Settings, and/or setting the cron job to run less frequently. If you feel that a sync is not actually running then you may run the following SQL command to fix the issue: UPDATE config SET mailchimp_sync_running = 0;');
 
@@ -70,8 +75,6 @@ function mailchimp_sync() {
 
         return error_response($message);
     }
-
-    db("UPDATE config SET mailchimp_sync_running = '1'");
 
     $response = mailchimp_sync_products();
 
@@ -1119,8 +1122,8 @@ function mailchimp_request($request) {
 
         $key = $request['key'];
 
-        // Get the datacenter which is after the dash in the key.
-        $dc = substr($key, strpos($key, '-') + 1);
+        // The data center after the dash in the key.
+        $dc = pg_mailchimp_dc($key);
 
     // Otherwise the key was not passed in the request, so use values from settings.
     } else {
@@ -1136,6 +1139,12 @@ function mailchimp_request($request) {
         $quiet = $request['quiet'];
     } else {
         $quiet = false;
+    }
+
+    // A key without a data center names no Mailchimp host: nothing is sent,
+    // so the key never reaches a host written into it.
+    if ($dc === '') {
+        return error_response(lang('Sorry, the API key is not valid') . '.');
     }
 
     $url = 'https://' . $dc . '.api.mailchimp.com/3.0' . $path;

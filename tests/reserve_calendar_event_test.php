@@ -55,3 +55,36 @@ function test_calendar_event_view_screen_uses_calendar_condition()
 	pg_assert_contains('pg_calendar_event_view_calendar_condition(', $source, 'the view screen builds the condition with the shared helper');
 	pg_assert_false(strpos($source, '$where_calendar_id') !== false, 'the hand-built OR list is gone');
 }
+
+// A recurring event that keeps separate spots per occurrence took any posted
+// recurrence_number: one past the last occurrence, or one removed from the
+// calendar, had no remaining spots row, so it offered the initial spots and
+// the visitor paid for a date that does not take place.
+function test_reserve_calendar_event_occurrence_must_exist()
+{
+	pg_assert_true(pg_calendar_reserve_occurrence_ok('0', 1, 5, 1, array()), 'the first occurrence');
+	pg_assert_true(pg_calendar_reserve_occurrence_ok('5', 1, 5, 1, array()), 'the last occurrence');
+	pg_assert_true(pg_calendar_reserve_occurrence_ok('', 1, 5, 1, array()), 'no number is the first occurrence');
+	pg_assert_false(pg_calendar_reserve_occurrence_ok('6', 1, 5, 1, array()), 'past the last occurrence');
+	pg_assert_false(pg_calendar_reserve_occurrence_ok('999', 1, 5, 1, array()), 'far past the last occurrence');
+	pg_assert_false(pg_calendar_reserve_occurrence_ok('3', 1, 5, 1, array('3')), 'a removed occurrence');
+	pg_assert_false(pg_calendar_reserve_occurrence_ok('0', 1, 5, 1, array(0)), 'a removed first occurrence');
+	pg_assert_false(pg_calendar_reserve_occurrence_ok('-1', 1, 5, 1, array()), 'a negative number');
+	pg_assert_false(pg_calendar_reserve_occurrence_ok('2x', 1, 5, 1, array()), 'text');
+	pg_assert_false(pg_calendar_reserve_occurrence_ok(array('1'), 1, 5, 1, array()), 'an array');
+}
+
+// Shared spots and single events book the event itself (number 0), whatever
+// occurrence the visitor opened.
+function test_reserve_calendar_event_occurrence_shared_spots()
+{
+	pg_assert_true(pg_calendar_reserve_occurrence_ok('9', 1, 5, 0, array('9')), 'shared spots book the event');
+	pg_assert_true(pg_calendar_reserve_occurrence_ok('3', 0, 0, 1, array()), 'a single event');
+	pg_assert_false(pg_calendar_reserve_occurrence_ok('x', 0, 0, 0, array()), 'text is refused anyway');
+}
+
+function test_reserve_calendar_event_endpoint_checks_occurrence()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/reserve_calendar_event.php');
+	pg_assert_contains('pg_calendar_reserve_occurrence_ok(', $source, 'the endpoint checks the occurrence');
+}

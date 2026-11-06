@@ -168,6 +168,16 @@ switch ($_GET['action'] ?? '') {
         $continue_button_label = ($_SESSION['software']['kiosk']['continue_button_label'] ?? '');
         $logout_button_label = ($_SESSION['software']['kiosk']['logout_button_label'] ?? '');
 
+        // The kiosk is shared, so the next customer starts without what this
+        // one left in the browser beside the session: the guest wishlist
+        // (shown to the next visitor and merged into the next account signed
+        // in here) and the partner and tracking codes this visitor arrived
+        // with (credited on the next customer's order).
+        pg_wishlist_cookie_clear();
+        setcookie('software[affiliate_code]', '', time() - 1000, '/');
+        setcookie('software[tracking_code]', '', time() - 1000, '/');
+        unset($_COOKIE['software']['affiliate_code'], $_COOKIE['software']['tracking_code']);
+
         // If kiosk user is logged into a user account, then logout from that user account.
         if (!empty($_SESSION['sessionusername'])) {
             logout();

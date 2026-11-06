@@ -8,6 +8,8 @@ description: Flow event contact_group.joined: one ws_events_in row per contact a
 - A pass of thousands keeps thousands of rows; the existing event run (`ws_events_process()`) drains them in its batches. Nothing new is scheduled.
 - Owner decision #6599/#6625 (`workflow/decisions-made-product-27.md`): once per contact, never one run per change.
 - Added in #6651.
+- A confirmed double opt-in (`pg_fs_confirm()`) announces the contact when its membership insert wrote a row (`pg_fs_confirm_joined()`, pure); a second press and a dynamic group announce nothing. Before, a confirmed sign-up never started a "joined a group" profile or flow.
+- Open gap: the form door in `custom_form.php` (its group loop) still inserts without announcing.
 
 ## What does it carry?
 - Payload `id` (the contact, as every contact event names it), `contact_id`, `group_id`, `group_name`. `ws_events_record_of()` maps it to `contact`; `ws_events_watched()` leaves it out (no line in a watching channel).

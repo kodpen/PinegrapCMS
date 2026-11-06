@@ -23,6 +23,7 @@ if (!validate_erp_access($user)) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_inbox');
 
@@ -104,7 +105,9 @@ $is_date = function ($value) {
 $fetch_from = $is_date($liveform->get_field_value('from')) ? $liveform->get_field_value('from') : $default_from;
 $fetch_to = $is_date($liveform->get_field_value('to')) ? $liveform->get_field_value('to') : $default_to;
 
-$output_rows = '';
+// Every document of the view is printed: the list table driver sorts and
+// searches them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
 foreach ($rows as $row) {
     $id = (int) $row['id'];
@@ -119,23 +122,39 @@ foreach ($rows as $row) {
         $output_state .= ' <a href="edit_erp_invoice.php?id=' . (int) $row['invoice_id'] . '" class="small">' . h($row['invoice_number']) . '</a>';
     }
 
-    $output_rows .=
-        '<tr' . (($row_state === 'ignored') ? ' class="fg-secondary"' : '') . '>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'erp_inbox_document.php?id=' . $id . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
-            </td>
-            <td class="align-middle text-nowrap" data-order="' . h($row['issue_date']) . '">' . h(prepare_form_data_for_output($row['issue_date'], 'date')) . '</td>
-            <td class="align-middle text-nowrap chart_label">' . h($row['gib_number']) . '</td>
-            <td style="max-width:280px" class="align-middle text-wrap text-break">
-                <div class="text-break">' . h($row['supplier_title']) . '</div>
-                <div class="small fg-secondary">' . h($row['supplier_tax_number']) . '</div>
-            </td>
-            <td class="align-middle text-nowrap">' . h(erp_edoc_inbox_type_label($row['invoice_type'])) . '<div class="small fg-secondary">' . h($row['profile']) . '</div></td>
-            <td class="align-middle text-end text-nowrap" data-order="' . (int) $row['total'] . '">' . h(erp_money_out_currency((int) $row['total'], $row['currency'])) . '</td>
-            <td class="align-middle">' . h($row['provider_status']) . '</td>
-            <td class="align-middle">' . $output_state . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => $id,
+        'class' => ($row_state === 'ignored') ? 'fg-secondary' : '',
+        'cells' => array(
+            'number' => pg_list_cell('<a href="erp_inbox_document.php?id=' . $id . '" class="pg-link-body-emphasis" data-pg-open>' . h(((string) $row['gib_number'] !== '') ? $row['gib_number'] : $row['gib_uuid']) . '</a>', 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $row['gib_number'])),
+            'date' => pg_list_cell(h(prepare_form_data_for_output($row['issue_date'], 'date')), 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $row['issue_date'])),
+            'supplier' => pg_list_cell('<div class="text-break">' . h($row['supplier_title']) . '</div><div class="small fg-secondary">' . h($row['supplier_tax_number']) . '</div>', 'align-middle text-wrap text-break', array('data-pg-sort-value' => (string) $row['supplier_title'])),
+            'type' => pg_list_cell(h(erp_edoc_inbox_type_label($row['invoice_type'])) . '<div class="small fg-secondary">' . h($row['profile']) . '</div>', 'align-middle text-nowrap'),
+            'total' => pg_list_cell(h(erp_money_out_currency((int) $row['total'], $row['currency'])), 'align-middle text-nowrap', array('data-pg-sort-value' => (int) $row['total'])),
+            'provider_status' => pg_list_cell(h($row['provider_status'])),
+            'status' => pg_list_cell($output_state),
+        ),
+    );
 }
+
+$columns = array(
+    'number' => array('heading' => lang('Document Number'), 'kind' => 'link'),
+    'date' => array('heading' => lang('Date'), 'kind' => 'date'),
+    'supplier' => array('heading' => lang('Supplier')),
+    'type' => array('heading' => lang('Type')),
+    'total' => array('heading' => lang('Total'), 'kind' => 'money'),
+    'provider_status' => array('heading' => lang('At GİB')),
+    'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
+);
+$sort_columns = pg_list_table_printed_sort_columns($columns);
+$sort_default = array('sort' => 'date', 'order' => 'desc');
+$list_state = pg_list_state('erp_inbox', $sort_columns, $sort_default);
+$list = pg_list_table_printed(array(
+    'list' => 'erp_inbox',
+    'columns' => $columns,
+    'levels' => $list_state['sorts'],
+    'rows' => $list_rows,
+));
 
 // The states, each with how many documents stand in it.
 $filter_options = array();
@@ -202,31 +221,17 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . $output_fetch . '
                 <div class="pg-toolbar-grow"></div>
+                ' . pg_list_table_search_box('erp_inbox') . '
+                ' . pg_list_sort_menu('erp_inbox.php', $sort_columns, $list_state['sorts'], $sort_default, array('state' => $state)) . '
                 ' . $output_filter . '
             </nav>
             <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none;">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Date') . '</th>
-                                <th>' . lang('Document Number') . '</th>
-                                <th>' . lang('Supplier') . '</th>
-                                <th>' . lang('Type') . '</th>
-                                <th class="text-end">' . lang('Total') . '</th>
-                                <th>' . lang('At GİB') . '</th>
-                                <th>' . lang('Status') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Incoming e-invoices')) . '
             </div>
         </div>
     </div>
 </main>
-' . get_date_picker_format() . pg_fields_script() .
+' . get_date_picker_format() . pg_fields_script() . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

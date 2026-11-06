@@ -172,7 +172,7 @@ if (!$_POST) {
 
     // If one gift card was created, then prepare log and notice for that situation.
     if ($quantity == 1) {
-        log_activity(lang(array('string'=>'gift card ({var:1}) was created','vars'=>output_gift_card_code($code))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'gift card ({var:1}) was created','vars'=>pg_gift_card_log_code($code))), $_SESSION['sessionusername']);
         
         $liveform_view_gift_cards->add_notice(lang(array('string'=>'The gift card has been created. You may now give the code ({var:1}) to the customer.','vars'=>output_gift_card_code($code) )) );
         

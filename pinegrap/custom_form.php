@@ -394,6 +394,23 @@ foreach ($fields as $field_key => $field) {
             $liveform->mark_error($field['id'], pg_upload_blocked_message(htmlspecialchars($_FILES[$field['id']]['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
         }
 
+        // A file PHP did not accept (over upload_max_filesize, cut short, no
+        // temporary folder) arrives with its name and an error code: the form
+        // comes back with the field marked rather than storing a file that
+        // is not there.
+        if (
+            ($field['type'] == 'file upload')
+            && ($liveform->check_field_error($field['id']) == false)
+            && (isset($_FILES[$field['id']]) == true)
+            && ($_FILES[$field['id']]['name'] != '')
+        ) {
+            $upload_refusal = pg_upload_file_refusal($_FILES[$field['id']], pg_upload_limits()['file_max']);
+
+            if ($upload_refusal !== '') {
+                $liveform->mark_error($field['id'], htmlspecialchars($upload_refusal, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
+            }
+        }
+
         // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
         if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
             $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>h(function_exists('pg_tr_label') ? pg_tr_label($field['label']) : $field['label']))) );
@@ -583,6 +600,65 @@ if ((defined('PHP_REGIONS') and PHP_REGIONS === true) && ($hook_code != '')) {
     eval(prepare_for_eval($hook_code));
 }
 
+// Every uploaded file is copied and given its files row before the forms row
+// is written: a copy that fails (a full disk, a folder the web server cannot
+// write) sends the form back with the field marked and takes back the files
+// placed before it, rather than storing a submission whose attachment points
+// at nothing.
+$placed_uploads = array();
+
+if ($liveform->check_form_errors() == false) {
+    foreach ($fields as $field) {
+        if (($field['type'] != 'file upload') || empty($_FILES[$field['id']]['name'])) {
+            continue;
+        }
+
+        $file_name = prepare_file_name($_FILES[$field['id']]['name']);
+
+        // Check if file name is already in use and change it if necessary.
+        $file_name = get_unique_name(array(
+            'name' => $file_name,
+            'type' => 'file'));
+
+        if (!pg_cf_place_upload($_FILES[$field['id']], FILE_DIRECTORY_PATH . '/' . $file_name)) {
+            $liveform->mark_error($field['id'], lang(array('string' => 'The server could not accept {var:1}. Please try again.', 'vars' => h(pg_basename((string) $_FILES[$field['id']]['name'])))));
+            pg_cf_remove_placed_uploads($placed_uploads);
+            $placed_uploads = array();
+            break;
+        }
+
+        // Get the position of the last period in order to get the extension.
+        $position_of_last_period = mb_strrpos($file_name, '.');
+
+        $file_extension = '';
+
+        // If there is an extension then remember it.
+        if ($position_of_last_period !== false) {
+            $file_extension = mb_substr($file_name, $position_of_last_period + 1);
+        }
+
+        // create file record in database
+        $query = "INSERT INTO files (
+                    name,
+                    folder,
+                    type,
+                    size,
+                    user,
+                    design,
+                    attachment,
+                    timestamp)
+                 VALUES (?, ?, ?, ?, ?, '0', '1', UNIX_TIMESTAMP())";
+        db_q($query, array(
+            (string) $file_name,
+            (string) $field['upload_folder_id'],
+            (string) $file_extension,
+            (string) $_FILES[$field['id']]['size'],
+            (string) $user_id)) or output_error('Query failed.');
+
+        $placed_uploads[$field['id']] = array('id' => mysqli_insert_id(db::$con), 'name' => $file_name);
+    }
+}
+
 // A visitor sent back with an error has spent the fill time once; the form
 // drawn for them next is signed accordingly (pg_cf_issued_time()).
 if ($form_protected && $liveform->check_form_errors()) {
@@ -739,49 +815,9 @@ if ($liveform->check_form_errors() == false) {
         // else this field does not have multiple values
         } else {
             // if field has file upload type and file was uploaded for field, prepare uploaded file
-            if (($field['type'] == 'file upload') && !empty($_FILES[$field['id']]['name'])) {
-                $file_name = prepare_file_name($_FILES[$field['id']]['name']);
-
-                // Check if file name is already in use and change it if necessary.
-                $file_name = get_unique_name(array(
-                    'name' => $file_name,
-                    'type' => 'file'));
-
-                $file_size = $_FILES[$field['id']]['size'];
-                $file_temp_name = $_FILES[$field['id']]['tmp_name'];
-
-                // Get the position of the last period in order to get the extension.
-                $position_of_last_period = mb_strrpos($file_name, '.');
-
-                $file_extension = '';
-                
-                // If there is an extension then remember it.
-                if ($position_of_last_period !== false) {
-                    $file_extension = mb_substr($file_name, $position_of_last_period + 1);
-                }
-                
-                // create file
-                copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name);
-
-                // create file record in database
-                $query = "INSERT INTO files (
-                            name,
-                            folder,
-                            type,
-                            size,
-                            user,
-                            design,
-                            attachment,
-                            timestamp)
-                         VALUES (?, ?, ?, ?, ?, '0', '1', UNIX_TIMESTAMP())";
-                $result = db_q($query, array(
-                    (string) $file_name,
-                    (string) $field['upload_folder_id'],
-                    (string) $file_extension,
-                    (string) $file_size,
-                    (string) $user_id)) or output_error('Query failed.');
-                
-                $file_id = mysqli_insert_id(db::$con);
+            // The file and its files row were placed before the forms row.
+            if (($field['type'] == 'file upload') && isset($placed_uploads[$field['id']])) {
+                $file_id = $placed_uploads[$field['id']]['id'];
                 $data = '';
 
                 // Add file to array, so later we can update the folder for the file,
@@ -1419,11 +1455,8 @@ if ($liveform->check_form_errors() == false) {
 
             // If the private access is limited in length, then prepare new expiration date.
             if ($private_days) {
-                // Get current date.
-                $current_date = date('Y-m-d');
-
-                // Calculate the expiration date based on the number of days from today.
-                $calculated_expiration_date = date('Y-m-d', strtotime($current_date) + ($private_days * 86400));
+                // The expiration date is the number of calendar days from today.
+                $calculated_expiration_date = pg_cf_private_expiry_date(date('Y-m-d'), $private_days);
 
                 // If the calculated expiration is greater than the previous expiration date,
                 // then use the calculated expiration date.

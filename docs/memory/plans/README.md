@@ -35,6 +35,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-fn-2b.md: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to widgets_lists_checkout (widgets_cart and widgets_catalog in part 2d), one line each with its state
 - bug-hunt-modules-fn-2c.md: Module list of plans/bug-hunt.md, part 2c: includes/fn/ modules widgets_lists_menu to wishlist, one line each with its state
 - bug-hunt-modules-fn-2d.md: Module list of plans/bug-hunt.md, part 2d: the includes/fn/ modules widgets_cart and widgets_catalog, moved out of part 2b for size, one line each with its state
+- bug-hunt-modules-migrations.md: Module list of plans/bug-hunt.md, migrations part: the open version's migration file and its runner helpers, one line each with its state
 - bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
@@ -45,10 +46,14 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - external-api-coverage.md: External API (integration.php): find what the panel can do that the API cannot, then add the missing endpoints in steps (owner, 2026-11-01); claim as [plan:external-api-coverage] X<n>
 - feature-plans-2026-11.md: The eleven feature plans approved 2026-11-02: index and order, how one coordinator and its five workers hold a plan, the shared rules
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
+- flows-next-steps.md: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow boxes, and site events flows can start on; claim as [plan:flows-next] <step>
+- flows-next-templates.md: Template steps T1-T14 of plans/flows-next.md: ready flows people pick instead of building box by box, what each needs and how it is tested before it is added
+- flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, and ready templates; steps in flows-next-steps and -templates
 - image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
 - image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
+- image-editor-animation-steps-2.md: Steps AN12 on of plans/image-editor-animation.md (owner 2026-11-05): a move recorded by dragging, its path and speed kept as keyframes; claim as [plan:image-editor-animation] AN<n>
 - image-editor-animation-steps.md: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion, tracks, GIF, saving, APNG, WebP, video, scenes, Present, PDF, keyframes, SVG; claim as [plan:image-editor-animation] AN<n>
-- image-editor-animation-visuals.md: Screens of plans/image-editor-animation.md (AN0), 26 to 32 in plans/image-editor/: what each shows and which step builds it
+- image-editor-animation-visuals.md: Screens of plans/image-editor-animation.md (AN0, AN12), 26 to 34 in plans/image-editor/: what each shows and which step builds it
 - image-editor-animation.md: Plan (owner 2026-11-01): image editor animation, layers and scenes that move, saved as GIF, APNG, WebP, MP4 or WebM, a PDF of the scenes or animated SVG; held with plans/image-editor.md
 - image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
 - image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security

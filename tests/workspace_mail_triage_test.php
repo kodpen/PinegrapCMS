@@ -143,3 +143,14 @@ function test_workspace_mail_triage_takes_no_action()
 	pg_assert_contains('return false;', $run, 'a failure posts nothing');
 	pg_assert_contains("api('ws_mail_reply'", file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_mail.js'), 'the draft is sent only by the drawer\'s Send');
 }
+
+// The suggestion asks through pg_ai_chat(): a direct gateway call left a
+// licence refusal, a 429 or a 5xx unrecorded, so no hold was set and the
+// @ai queue and "Write with AI" kept calling a gateway that refused.
+function test_workspace_mail_triage_asks_through_pg_ai_chat()
+{
+	$body = workspace_mail_triage_source('ws_mail_triage_run');
+
+	pg_assert_contains('pg_ai_chat(ws_mail_triage_prompt(', $body, 'asked through pg_ai_chat()');
+	pg_assert_false(strpos($body, 'ws_ai_http(') !== false, 'no direct gateway call');
+}

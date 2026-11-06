@@ -1,6 +1,6 @@
 ---
 name: storefront-api-missing-fields
-description: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) read missing or malformed request fields as empty and answer in JSON, never with a warning or a 500
+description: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) answer malformed fields in JSON, never a warning or a 500; get_product answers enabled products only
 ---
 
 ## Why does this matter for the public actions?
@@ -15,6 +15,10 @@ description: Public api.php storefront actions (get_cross_sell_items, get_produc
 - `get_product`: a missing, non-numeric or unknown `product[id]` answers `{"status":"error","message":lang('Product not found.')}`; `frontend.src.js` (and its `.min.js` twin) ignores an answer without `product`.
 - `get_installment_options`: under Iyzipay, a card under 6 digits or a non-numeric price answers `lang('Card number and price are required.')` before the gateway is called. `eo_get_installments` answers the same text; `get_cross_sell_for_product` without an id answers `lang('Product is required.')`.
 
-Test: `tests/api_public_missing_fields_test.php`.
+## Which products does get_product answer?
+- Only `products.enabled = 1`. A switched-off product, or one in the Recycle Bin (binning sets `enabled` to 0), answers the same "Product not found." as an unknown id; the `enabled` column is read for the check and left out of the answer. Every variant chooser (designer `catalog_item_view`, legacy catalog detail) lists enabled products only, so no chooser asks for one.
+- Before: any id was answered with texts, price, stock and photos, so a variant switched off before release, or deleted, could be read signed out by counting ids.
+
+Tests: `tests/api_public_missing_fields_test.php`, `tests/storefront_get_product_enabled_test.php`.
 
 Related: docs/memory/core/json-endpoint-rules.md, docs/memory/core/panel-action-table.md

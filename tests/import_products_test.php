@@ -321,3 +321,23 @@ function test_products_import_reads_headings_through_the_helper()
 
 	pg_assert_true(strpos($source, "pg_products_import_headings(\$columns, 'convert_column_name')") !== false, 'heading row read by position');
 }
+
+// Whether an update row's enabled cell disables the product, which drops its
+// tag cloud keywords: an empty cell leaves the product as it is (on PHP 7
+// '' == 0 held, so the keywords of an enabled product were deleted), and a
+// cell is read as the TINYINT column stores it.
+function test_products_import_enabled_cell_disables()
+{
+	pg_assert_same(false, pg_products_import_disables(''), 'empty cell');
+	pg_assert_same(false, pg_products_import_disables('  '), 'spaces');
+	pg_assert_same(false, pg_products_import_disables(null), 'no cell');
+	pg_assert_same(true, pg_products_import_disables('0'), 'zero');
+	pg_assert_same(true, pg_products_import_disables(' 0 '), 'zero with spaces');
+	pg_assert_same(true, pg_products_import_disables('no'), 'a word is stored as 0');
+	pg_assert_same(false, pg_products_import_disables('1'), 'one');
+	pg_assert_same(false, pg_products_import_disables('0.6'), 'rounded up to 1 by the column');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_products.php');
+	pg_assert_true(strpos($source, '&& pg_products_import_disables($enabled)') !== false, 'update path asks the reader');
+	pg_assert_true(strpos($source, '($enabled == 0)') === false, 'no loose comparison with an empty cell');
+}

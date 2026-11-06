@@ -684,3 +684,16 @@ function test_short_link_redirects_binned_destination_gets_no_location_and_expor
 	pg_assert_same('', pg_short_link_location($file, array(), '', 'https://example.com', '/'), 'no redirect to a parked file');
 	pg_assert_same('/sub/belge.pdf', pg_short_link_csv_target($file, '/sub/'), 'a file under its own name');
 }
+
+function test_short_link_redirects_destination_gone_when_its_row_is_deleted()
+{
+	pg_assert_true(pg_short_link_destination_gone(array('destination_type' => 'file', 'file_id' => 7, 'file_name' => null)), 'a deleted file');
+	pg_assert_true(pg_short_link_destination_gone(array('destination_type' => 'page', 'page_id' => 4, 'page_name' => null)), 'a deleted page');
+	pg_assert_true(pg_short_link_destination_gone(array('destination_type' => 'product', 'page_id' => 4, 'page_name' => null, 'product_address_name' => 'x')), 'the catalog page of a product deleted');
+	pg_assert_true(pg_short_link_destination_gone(array('destination_type' => 'product_group', 'page_id' => 0)), 'no page at all');
+	pg_assert_false(pg_short_link_destination_gone(array('destination_type' => 'file', 'file_id' => 7, 'file_name' => 'belge.pdf')), 'a live file');
+	pg_assert_false(pg_short_link_destination_gone(array('destination_type' => 'file', 'file_id' => 7, 'file_name' => 'pgbin_7_belge.pdf')), 'a file in the Recycle Bin');
+	pg_assert_false(pg_short_link_destination_gone(array('destination_type' => 'page', 'page_id' => 4, 'page_name' => 'hakkimizda')), 'a live page');
+	pg_assert_false(pg_short_link_destination_gone(array('destination_type' => 'url', 'url' => '/x', 'page_name' => null)), 'an address');
+	pg_assert_false(pg_short_link_destination_gone(array('destination_type' => 'workspace_guest', 'page_name' => null)), 'a guest\'s way in');
+}

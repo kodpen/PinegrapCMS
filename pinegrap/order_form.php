@@ -453,7 +453,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         }
                         
                         $recurring_number_of_payments = $product['number_of_payments'];
-                        $recurring_start_date = date('Y-m-d', time() + (86400 * $product['start']));
+                        $recurring_start_date = date('Y-m-d', pg_calendar_days_later($product['start']));
                     }
                     
                     // update recurring fields for order item

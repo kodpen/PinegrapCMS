@@ -166,21 +166,9 @@ if (!$_POST) {
             $contact_id = mysqli_insert_id(db::$con);
             pg_audit_site_record('create', 'contacts', (int) $contact_id);
             
-            // check if registration contact group exists
-            $query = "SELECT id FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID  . "') AND " . pg_audience_hand_sql();
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-            
-            // if registration contact group exists, assign contact to contact group
-            if (mysqli_num_rows($result) > 0) {
-                $query =
-                    "INSERT INTO contacts_contact_groups_xref (
-                        contact_id,
-                        contact_group_id)
-                    VALUES (
-                        ?,
-                        ?)";
-                $result = db_q($query, array((string) $contact_id, (string) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
-            }
+            // assign contact to the registration contact group when it exists
+            // and is not filled by rules (pg_audience_hand_sql()), announcing the join
+            pg_audience_door_join($contact_id, (int) REGISTRATION_CONTACT_GROUP_ID);
         }
 
         $sql_timezone = "";

@@ -1853,20 +1853,43 @@ function ws_voice_watchdog()
     $now = time();
     $old = "status = 'queued' AND created_at < '" . ($now - WS_VOICE_QUEUE_TTL) . "'";
     $stale = "status = 'running' AND updated_at < '" . ($now - WS_VOICE_STALE) . "'";
+    $error = e(lang('It could not be sent to the transcription service within a day.'));
 
-    // The messages whose recording fails here still ask what their words
-    // ask (ws_voice_ask()).
-    $failing = (array) db_values("SELECT message_id FROM ws_voice WHERE (" . $old . ") OR (" . $stale . " AND attempts >= '" . WS_VOICE_ATTEMPTS . "')");
+    // Every kick runs this before the run lock, and every screen showing a
+    // waiting recording kicks, so two watchdogs often read the same rows.
+    // Each row is moved on its own under the condition it was read with:
+    // only the watchdog whose UPDATE moved it asks what its words ask
+    // (ws_voice_ask()), or the assistants are asked twice.
+    foreach ((array) db_items("SELECT id, message_id, status, attempts FROM ws_voice
+        WHERE (" . $old . ") OR (" . $stale . ") ORDER BY id LIMIT 500") as $row) {
+        $where = "id = '" . (int) $row['id'] . "' AND ";
 
-    db("UPDATE ws_voice SET status = 'failed', error = '" . e(lang('It could not be sent to the transcription service within a day.')) . "', updated_at = '" . $now . "'
-        WHERE " . $old);
+        if ((string) $row['status'] === 'queued') {
+            db("UPDATE ws_voice SET status = 'failed', error = '" . $error . "', updated_at = '" . $now . "' WHERE " . $where . $old);
+            $failed = ws_voice_changed();
+        } else {
+            $give_up = ((int) $row['attempts'] >= WS_VOICE_ATTEMPTS);
 
-    db("UPDATE ws_voice SET status = IF(attempts >= '" . WS_VOICE_ATTEMPTS . "', 'failed', 'queued'), updated_at = '" . $now . "'
-        WHERE " . $stale);
+            db("UPDATE ws_voice SET status = '" . ($give_up ? 'failed' : 'queued') . "', updated_at = '" . $now . "'
+                WHERE " . $where . $stale . " AND attempts = '" . (int) $row['attempts'] . "'");
+            $failed = $give_up && ws_voice_changed();
+        }
 
-    foreach ($failing as $message_id) {
-        ws_voice_ask((int) $message_id);
+        if ($failed) {
+            ws_voice_ask((int) $row['message_id']);
+        }
     }
+}
+
+/**
+ * Did the last UPDATE change a row? Tells the watchdog that moved a row
+ * from one that found it already moved.
+ *
+ * @return bool
+ */
+function ws_voice_changed()
+{
+    return mysqli_affected_rows(db::$con) > 0;
 }
 
 /**

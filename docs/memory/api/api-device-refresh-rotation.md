@@ -18,6 +18,10 @@ description: Refresh-token exchange (api_device_rotate_pair, devices and OAuth):
 - `refresh_rotated_at = IF(refresh_hash = <derived>, refresh_rotated_at, now)` keeps the first exchange time. It comes before `refresh_hash` in the SET list because single-table UPDATE assignments are evaluated left to right (placed after, it would see the new hash). Before, every replay reset the time: with a derived pair, a copied token replayed every < 60 s stayed alive and received the app's own pair, and the revocation never fired.
 - Do not check affected rows: MySQL counts a row whose values did not change as 0, and two writes in one second set identical values.
 
+## What does a narrower OAuth refresh scope do?
+- `pg_oauth_refresh_scopes()` (`oauth/rules.php`) turns the `scope` value into a narrower list, NULL (none sent, none known, or the whole consent) or `invalid_scope`. `api_device_rotate_pair()` writes it as `access_scopes` in the same conditional UPDATE (probed with `pg_schema_has()`, column from 11.0.71; devices pass NULL); `api_device_authenticate()` intersects it (`pg_oauth_access_scopes()`). `scopes`, the consent, never changes (#6999).
+- Concurrent refreshes with different `scope` values get the same derived access token; the row's last write decides its set, and a replay within grace sees that write.
+
 ## What are the trade-offs?
 - The next token is only as unpredictable as `ENCRYPTION_KEY` is secret: anyone with the key and an old refresh token of a device can compute the later ones. That person has already read `config.php`.
 - A token rotated by the earlier random-pair code within 60 s before the upgrade gets, on replay, a derived pair that is not on the row, so that app signs in once.

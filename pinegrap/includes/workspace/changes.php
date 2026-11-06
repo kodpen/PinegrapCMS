@@ -1948,6 +1948,7 @@ function ws_change_viewer_from_row($row)
         'manage_erp_readonly' => $row['manage_erp_readonly'] ?? 0,
         'manage_calendars'    => $row['user_manage_calendars'] ?? '',
         'manage_forms'        => $row['user_manage_forms'] ?? '',
+        'manage_emails'       => $row['user_manage_emails'] ?? '',
     ));
 }
 
@@ -2143,14 +2144,16 @@ function ws_change_check($viewer, $type, $action, $record, $values)
                 }
             }
 
-            // Another user signing in with the same address would make both
-            // accounts unreachable by it.
+            // A username and an e-mail address share one sign-in namespace
+            // (pg_user_write_problem()): an address that is another user's
+            // address or username would let one identifier match two
+            // accounts.
             if (array_key_exists('email', $values)) {
                 if ((string) $values['email'] === '') {
                     return lang('A user needs an e-mail address.');
                 }
 
-                if ((int) db_value("SELECT COUNT(*) FROM user WHERE user_email = '" . e($values['email']) . "' AND user_id <> '" . (int) $record['id'] . "'") > 0) {
+                if ((int) db_value("SELECT COUNT(*) FROM user WHERE ((user_email = '" . e($values['email']) . "') OR (user_username = '" . e($values['email']) . "')) AND user_id <> '" . (int) $record['id'] . "'") > 0) {
                     return lang('Another user already has this e-mail address.');
                 }
             }
@@ -3945,6 +3948,11 @@ function ws_change_write($viewer, $type, $action, $record, $values, $as_job = fa
         }
 
         $done = call_user_func('ws_change_write_' . $type, $viewer, $action, $record, $values);
+
+        // The page cache keeps no copy of what this changed on the site.
+        if (function_exists('pg_page_cache_ws_change_dirties') && pg_page_cache_ws_change_dirties($type, $done)) {
+            pg_page_cache_mark_dirty();
+        }
 
         $target = $audit ? ws_change_audit_target($type, $action, is_array($done) ? $done : array(), is_array($values) ? $values : array(), $record) : array();
         $record_id = ($action === 'create') ? (int) ($done['id'] ?? 0) : $id;

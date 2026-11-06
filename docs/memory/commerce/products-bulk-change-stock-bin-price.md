@@ -4,7 +4,7 @@ description: Change Selected (edit_products.php) and the Catalog Manager bulk ed
 ---
 
 ## How do the two bulk edits set the out-of-stock mark?
-- Through `pg_products_bulk_out_of_stock_sql($stored, $inventory, $new_quantity)` (`includes/explorer/handle_products_bulk.php`), which wraps `pg_product_out_of_stock_sql()`: tracked after the edit with a count of 0 is `out_of_stock = '1'`, stamped only when it was not marked yet; tracking off or a count above 0 is `'0'`. An edit that touches neither tracking nor the count writes no mark.
+- Through `pg_products_bulk_out_of_stock_sql($stored, $inventory, $new_quantity)` (`includes/explorer/handle_products_bulk.php`), which wraps `pg_product_out_of_stock_sql()`: tracked after the edit with a count of 0 is `out_of_stock = '1'`, stamped only when it was not marked yet; tracking off or a count above 0 is `'0'`. An edit that touches neither tracking nor the count writes no mark. A stock increase or decrease sets the mark after the write instead ([[bulk-stock-relative-write]]).
 - Tracking switched on for a product with 0 in stock is marked too, as the product screen does (`pg_pb_apply_stock_flag()`).
 - Symptom it fixed (#4214): both paths only ever cleared the mark, so a tracked product cut to 0 stayed out of the "Out of Stock" view until its next Edit Product save, stamped with that save's time.
 

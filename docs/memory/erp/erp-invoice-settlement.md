@@ -24,3 +24,6 @@ description: ERP invoice closing by settlement (erp_settlements): why it posts n
 - Ledger rows are inserted only by `erp_cash_post()` (`cash.php`) and `erp_account_post()` (`ledger.php`); when a balance looks wrong, read those two first.
 
 Related: docs/memory/erp/erp-receipt-corrections-and-gift-card.md
+
+## How are two allocations at once kept apart?
+`erp_settlement_allocate()` opens its transaction, locks the receipt's ledger row and then the invoice (`FOR UPDATE`, that fixed order) before any other read, and checks the amounts again with `erp_settlement_amount_refusal()`. Before (bug-hunt PR), both requests passed the unlocked check and over-allocated the invoice or the receipt. Still open: the allocation inside `erp_post_receipt()` (`cash.php`) reads the invoice without a lock. Test: `tests/erp_settlement_allocate_lock_test.php`.

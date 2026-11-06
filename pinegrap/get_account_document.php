@@ -29,9 +29,11 @@
 include('init.php');
 
 // Counted per address before anything is read, so numbers tried in a loop
-// run into the limit rather than into the database.
-if (function_exists('waf_rate_exceeded') && function_exists('waf_client_ip')
-    && waf_rate_exceeded(waf_client_ip(), 'erp_doc', 30, 60)) {
+// run into the limit rather than into the database. The subject is the
+// firewall's (the /64 for IPv6), or each address of one sender would have
+// its own allowance.
+if (function_exists('waf_rate_exceeded') && function_exists('waf_client_ip') && function_exists('waf_ip_subject')
+    && waf_rate_exceeded(waf_ip_subject(waf_client_ip()), 'erp_doc', 30, 60)) {
     header('Retry-After: 60');
     output_error(lang('Too many requests from your address. Please wait a moment and try again.'), 429);
 }

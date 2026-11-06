@@ -29,41 +29,45 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * switch off every other one: prices are kept in one base currency.
  * Announces currency.created or currency.updated.
  *
+ * An update leaves out the columns named in $kept (exchange_rate, base):
+ * a caller that did not change them keeps a rate refresh, or another
+ * currency made the base, that landed after it read the row.
+ *
  * @param int   $currency_id 0 to create
  * @param array $values      name, code, symbol (as stored: HTML the pages
  *                           print), exchange_rate (five decimals, 1 for the
  *                           base), base (0/1), checked by the caller
  * @param int   $user_id
+ * @param array $kept        update only: columns not written
  * @return int the currency's id, 0 when a query failed
  */
-function pg_store_currency_save($currency_id, $values, $user_id)
+function pg_store_currency_save($currency_id, $values, $user_id, $kept = array())
 {
     $currency_id = (int) $currency_id;
     $base = ((int) $values['base'] === 1) ? 1 : 0;
-    $row = array(
-        (string) $values['name'],
-        $base,
-        (string) $values['code'],
-        (string) $values['symbol'],
-        (string) $values['exchange_rate'],
-        (int) $user_id,
-    );
+    $kept = ($currency_id > 0) ? (array) $kept : array();
 
     if ($currency_id > 0) {
+        list($sets, $row) = pg_store_currency_update_sets($values, $kept);
+        $row[] = (int) $user_id;
         $row[] = $currency_id;
 
         $result = db_q("UPDATE currencies SET
-                name = ?,
-                base = ?,
-                code = ?,
-                symbol = ?,
-                exchange_rate = ?,
+                " . implode(",\n                ", $sets) . ",
                 last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?", $row);
         $created = false;
     } else {
-        $row[] = (int) $user_id;
+        $row = array(
+            (string) $values['name'],
+            $base,
+            (string) $values['code'],
+            (string) $values['symbol'],
+            (string) $values['exchange_rate'],
+            (int) $user_id,
+            (int) $user_id,
+        );
 
         $result = db_q("INSERT INTO currencies (name, base, code, symbol, exchange_rate, created_user_id, created_timestamp, last_modified_user_id, last_modified_timestamp)
             VALUES (?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), ?, UNIX_TIMESTAMP())", $row);
@@ -76,15 +80,57 @@ function pg_store_currency_save($currency_id, $values, $user_id)
         return 0;
     }
 
-    if ($base === 1) {
+    if (($base === 1) && !in_array('base', $kept, true)) {
         if (!db_q("UPDATE currencies SET base = 0 WHERE (base = 1) AND (id != ?)", array($currency_id))) {
             return 0;
         }
     }
 
-    pg_announce($created ? 'currency.created' : 'currency.updated', pg_store_currency_event((string) $values['code'], $currency_id, (string) $values['exchange_rate'], $base));
+    $rate = (string) $values['exchange_rate'];
+
+    // A kept column is announced as it stands now, not as it was read.
+    if ($kept) {
+        $stored = db_item("SELECT exchange_rate, base FROM currencies WHERE id = '" . $currency_id . "'");
+
+        if ($stored) {
+            $rate = (string) $stored['exchange_rate'];
+            $base = ((int) $stored['base'] === 1) ? 1 : 0;
+        }
+    }
+
+    pg_announce($created ? 'currency.created' : 'currency.updated', pg_store_currency_event((string) $values['code'], $currency_id, $rate, $base));
 
     return $currency_id;
+}
+
+/**
+ * The SET clauses and their values of a currency update, without the
+ * columns in $kept. Pure.
+ *
+ * @param array $values as pg_store_currency_save() takes them
+ * @param array $kept   columns not written (exchange_rate, base)
+ * @return array array(clauses, values)
+ */
+function pg_store_currency_update_sets($values, $kept)
+{
+    $columns = array(
+        'name' => (string) $values['name'],
+        'base' => ((int) $values['base'] === 1) ? 1 : 0,
+        'code' => (string) $values['code'],
+        'symbol' => (string) $values['symbol'],
+        'exchange_rate' => (string) $values['exchange_rate'],
+    );
+    $sets = array();
+    $row = array();
+
+    foreach ($columns as $column => $value) {
+        if (!in_array($column, (array) $kept, true)) {
+            $sets[] = $column . ' = ?';
+            $row[] = $value;
+        }
+    }
+
+    return array($sets, $row);
 }
 
 /**

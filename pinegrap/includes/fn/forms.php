@@ -1970,6 +1970,45 @@ function validate_time($time)
         return true;
     }
 }
+/**
+ * The error a product form value gets when the designer cart widget posts
+ * it (cart_action.php), as HTML; null when it passes. A date, a date and
+ * time, an e-mail address or a time must be one, as the classic cart and
+ * the express order hold them; a pick list, radio button or check box value
+ * must be of the field's option list (pg_cf_option_value_error()). An empty
+ * value passes: the required check is the checkout's.
+ *
+ * @param array $field         the field's row: type, label
+ * @param mixed $value         the posted value, a string or a list
+ * @param array $option_values the field's form_field_options values
+ * @return string|null
+ */
+function pg_product_form_value_error(array $field, $value, array $option_values)
+{
+    $type = isset($field['type']) ? (string) $field['type'] : '';
+    $label = h(isset($field['label']) ? (string) $field['label'] : '');
+    $text = is_array($value) ? '' : trim((string) $value);
+
+    if ($text !== '') {
+        if (($type === 'date') && !validate_date($text)) {
+            return lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'date and time') && !validate_date_and_time($text)) {
+            return lang(array('string' => 'Please enter a valid date &amp; time for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'email address') && !validate_email_address($text)) {
+            return lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'time') && !validate_time($text)) {
+            return lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => $label));
+        }
+    }
+
+    return pg_cf_option_value_error($field, $value, $option_values);
+}
 // A form processor's single-value fields, after liveform::add_fields_to_session().
 // A text box, a hidden field or a radio button posts one string, but a hand-made
 // request can post any of them as an array (name[]=x), and the escaping, string
@@ -5709,4 +5748,61 @@ function pg_stored_file_exists($value)
     }
 
     return (int) db_value("SELECT COUNT(*) FROM files WHERE name = '" . e((string) $value) . "'") > 0;
+}
+
+/**
+ * Count one E-mail a Friend attempt on the visitor's daily allowance and say
+ * whether it is over the limit (ten a day). Counting and testing are one
+ * atomic step (waf_rate_record() is a single INSERT ... ON DUPLICATE KEY
+ * UPDATE) taken before the mail goes, so parallel requests cannot all read
+ * room under the limit and all send. An IPv6 visitor is counted by the /64
+ * (waf_ip_subject()), so the addresses of one network share one allowance.
+ * A refused attempt is counted too. Fails open: a counter that cannot be
+ * written answers 0.
+ *
+ * @param string        $ip     The visitor's address (pg_auth_request_address())
+ * @param callable|null $record (subject, scope, window) => new total;
+ *                              waf_rate_record() when null
+ * @return bool True when this attempt is over the limit
+ */
+function pg_eaf_limit_take($ip, $record = null)
+{
+    $live = ($record === null);
+
+    if ($live) {
+        if (!function_exists('waf_rate_record')) {
+            return false;
+        }
+
+        $record = 'waf_rate_record';
+    }
+
+    $subject = function_exists('waf_ip_subject') ? waf_ip_subject((string) $ip) : (string) $ip;
+    $over = ((int) call_user_func($record, $subject, 'eaf', 86400) > 10);
+
+    // The firewall's sweep runs only while the firewall is on; this counter
+    // works without it, so it brings its own, as the form limits do.
+    if ($live && function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
+        waf_rate_sweep();
+    }
+
+    return $over;
+}
+
+/**
+ * Log a refusal by E-mail a Friend's daily limit in the firewall log and in
+ * data/firewall.log, so the limit never refuses silently.
+ *
+ * @param string $ip The visitor's address
+ * @return void
+ */
+function pg_eaf_limit_log($ip)
+{
+    if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
+        waf_log_event('rate', 'form-eaf', 'rate', 5, 'email_a_friend.php', '10/day');
+    }
+
+    if (function_exists('waf_text_log')) {
+        waf_text_log('DENY', (string) $ip, array('status' => 429, 'rule' => 'form-eaf'));
+    }
 }

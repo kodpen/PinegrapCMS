@@ -39,6 +39,10 @@ function test_csv_import_feedback_separator_from_header_line()
 	pg_assert_same(',', pg_csv_separator("email\n"), 'one column');
 	pg_assert_same(';', pg_csv_separator("\"Last, First\";email;city\n"), 'most wins');
 	pg_assert_same(',', pg_csv_separator(''), 'empty');
+	pg_assert_same(';', pg_csv_separator("\"Last, First, Middle\";email\n"), 'commas inside a quoted heading');
+	pg_assert_same(';', pg_csv_separator("\"Ad, Soyad\";\"E-posta\"\n"), 'quoted comma against one semicolon');
+	pg_assert_same(',', pg_csv_separator("\"a;b;c\",\"say \"\"x;y\"\"\",email\n"), 'semicolons inside quoted headings and doubled quotes');
+	pg_assert_same(',', pg_csv_separator("\"open, heading\n"), 'unclosed quote counts the line as written');
 }
 
 function test_csv_import_feedback_read_separator_keeps_first_row()

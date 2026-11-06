@@ -8,6 +8,7 @@ module: audience_doors
 - `includes/fn/audience_doors.php`. `pg_audience_hand_sql($column)` is the SQL test `(kind <> 'dynamic')` (`(1 = 1)` before the 11.0.155 step): put it on the door's "does the group exist" query so a dynamic group reads as absent.
 - `pg_audience_group_is_dynamic($id)` for one id; `pg_audience_hand_ids($ids, pg_audience_dynamic_group_ids())` splits a posted list into `hand` and `rule` (pure, tested); the dynamic ids are read once a request.
 - `pg_audience_door_message()` is the one staff text.
+- A storefront sign-up join goes through `pg_audience_door_join()` (`audiences-door-join.md`).
 
 ## Which doors refuse?
 - Staff: the contact card save (`pg_contact_form_all_groups()` leaves dynamic groups out, from the editor step), the bulk Organize on the contact list (`edit_contacts.php`: neither adds to nor removes from them, shows the message), contact and account imports (`import_contacts.php`, `import_users.php`: not offered, not written; an account may still be given a dynamic group to manage).

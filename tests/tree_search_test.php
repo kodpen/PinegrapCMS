@@ -129,3 +129,51 @@ function test_tree_search_screens_read_trees()
 	pg_assert_true(strpos($far, 'pg_tree_search_save_page(') !== false && strpos($far, 'pg_tree_search_save_component(') !== false, 'trees are written whole');
 	pg_assert_true(strpos($search, 'pg_tree_search_plain_text(json_decode($page_tree, true), pg_tree_search_components())') !== false, 'simple site search counts in the page tree and its components');
 }
+
+function tree_search_test_components()
+{
+	$text = function ($words) {
+		return array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => $words), 'children' => array());
+	};
+
+	return array(
+		7 => array('type' => 'root', 'props' => array(), 'children' => array($text('Call <b>us</b>'))),
+		8 => array('type' => 'root', 'props' => array(), 'children' => array(
+			$text('Office'),
+			array('type' => 'shared_ref', 'props' => array('sharedId' => 7), 'children' => array()),
+		)),
+		9 => array('type' => 'root', 'props' => array(), 'children' => array($text('Şehir ofisi'))),
+	);
+}
+
+function test_tree_search_matching_components()
+{
+	$components = tree_search_test_components();
+
+	pg_assert_same(array(7, 8), pg_tree_search_matching_components($components, 'CALL US'),
+		'a component holds the words, and so does one that places it');
+	pg_assert_same(array(9), pg_tree_search_matching_components($components, 'şehir'), 'letters beyond ASCII are folded to lower case');
+	pg_assert_same(array(), pg_tree_search_matching_components($components, 'nowhere'), 'no component holds the words');
+	pg_assert_same(array(), pg_tree_search_matching_components($components, ''), 'an empty term matches no component');
+}
+
+function test_tree_search_shared_ref_sql()
+{
+	pg_assert_same('', pg_tree_search_shared_ref_sql('tree', array()), 'no component, no condition');
+	pg_assert_same(
+		"(tree LIKE '%\"sharedId\":7,%' OR tree LIKE '%\"sharedId\":7}%' OR tree LIKE '%\"sharedId\":\"7\"%')",
+		pg_tree_search_shared_ref_sql('tree', array('7', 7, 0, -2)),
+		'a tree that places the component, its id as a number or a string, each id once'
+	);
+}
+
+function test_tree_search_widget_reads_trees_and_components()
+{
+	$widgets = file_get_contents(dirname(__DIR__) . '/pinegrap/includes/fn/widgets.php');
+	$start = strpos($widgets, 'function _pg_sw_search_collect_one(');
+	$body = substr($widgets, $start, strpos($widgets, 'function _pg_sw_search_merge_pages(') - $start);
+
+	pg_assert_true(strpos($body, 'pg_page_tree_sql_expr()') !== false, 'the Search Results widget reads the tree a page is drawn from');
+	pg_assert_true(strpos($body, 'pg_tree_search_matching_components(') !== false, 'pages whose words sit in a placed component are candidates');
+	pg_assert_true(strpos($body, 'pg_tree_search_plain_text($tree, $components)') !== false, 'the widget counts in the page tree and its components');
+}

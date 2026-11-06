@@ -318,6 +318,14 @@ function get_sitemap_info() {
                         WHERE page_id = '" . $form_list_view_page['id'] . "'
                         ORDER BY form_field_id ASC");
 
+                    // A list that compares a field with the viewer shows each
+                    // visitor other records; this kept sitemap is drawn by
+                    // whoever asks first (a signed-in save included) and served
+                    // to everyone, so it lists none of them.
+                    if (pg_sitemap_legacy_filters_compare_viewer($filters)) {
+                        continue;
+                    }
+
                     // Loop through all filters in order to prepare SQL.
                     foreach ($filters as $filter) {
                         // get operand 1
@@ -797,6 +805,13 @@ function get_sitemap_info() {
                     });
 
                     if (!$record_view || (isset($record_view['cfg']['access_control']) && !in_array($record_view['cfg']['access_control'], array('', 'public'), true))) {
+                        continue;
+                    }
+
+                    // Filters compared with the viewer read whoever draws this
+                    // kept sitemap (with nobody signed in, every record sent
+                    // while signed out), as the search index knows.
+                    if (pg_sw_filters_compare_viewer(pg_sw_merge_record_filters($cfg, $record_view['cfg']))) {
                         continue;
                     }
 

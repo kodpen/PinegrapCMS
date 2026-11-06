@@ -383,7 +383,7 @@ function api_webhooks_update($params) {
 
 	log_activity(lang(array(
 		'string' => 'API event subscription ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',
-		'vars'   => array($row['url'], $app['name'], $app['api_key'])
+		'vars'   => array(pg_ops_alert_mask_url($row['url']), $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
 	api_ok(api_webhook_present(api_webhook_owned($id)));
@@ -488,7 +488,7 @@ function api_webhooks_rotate_secret($params) {
 
 	log_activity(lang(array(
 		'string' => 'The signing secret of API event subscription ({var:1}) was renewed through the API by the application {var:2} (key {var:3}).',
-		'vars'   => array($row['url'], $app['name'], $app['api_key'])
+		'vars'   => array(pg_ops_alert_mask_url($row['url']), $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
 	$out = api_webhook_present(api_webhook_owned($id));
