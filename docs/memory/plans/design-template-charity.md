@@ -22,7 +22,7 @@ description: Plan for the Charity template (pinegrap-charity): causes, campaigns
 
 - 2 Done (#7483). Public pages: `pages_public.php`; places `home_campaigns`, `home_events`, `home_posts`, `reports`.
 
-- 3 Done (#PR). Donate: `_pg_tpl_product_kind()` (`'donation'` key); `mail.php`, `forms.php` (form-record builders), `donate.php`.
+- 3 Done (#7497). Donate: `_pg_tpl_product_kind()` (`'donation'` key); `mail.php`, `forms.php` (form-record builders), `donate.php`.
 
 - 4 Campaigns: `campaigns.php` (collection with samples, `campaign_new`, `campaigns` with cause filter, `campaign` page with progress and updates as comments, `home_campaigns`).
 
