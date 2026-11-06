@@ -8,7 +8,7 @@ description: Design of plans/design-template-music.md: what the Music template r
 - Shows are a collection: date kind written from today on opening (`$show_on()`, the Events way, [[design-template-events]]), city, country pick list, venue, doors time as words, a ticket state pick list (on sale, few left, sold out, free entry), `ticket_url` (hidden URL; tickets are sold elsewhere). The tour list shows dates from today on, past shows the rest ([[collection-lists]]).
 - A booking enquiry from a promoter or festival is a request record (the Hotel's booking way): event, city, date with `min_date` today, capacity, fee band; office-only status, messages on the record page's Comments widget, `submitter_only` view, My Enquiries, the staff list.
 - The press kit is page content plus files in a public `press` folder (the Charity reports way).
-- The mailing list is the standard newsletter form into the contact group `newsletter`.
+- The mailing list is the standard `newsletter` page (its form adds to the contact group `newsletter`); the parts link it as "Mailing List".
 - With the shop: merch products (shirt, hoodie, tote, poster, vinyl, cassette) shippable, and gift cards, in a Merch group. Only shop pages carry `requires => ecommerce`; shared parts and record pages never link them.
 - Not built (new behaviour): selling tickets or seat maps, audio players or streaming of tracks, digital downloads of music, embedded tour feeds from ticket services, fan clubs with paid tiers.
 

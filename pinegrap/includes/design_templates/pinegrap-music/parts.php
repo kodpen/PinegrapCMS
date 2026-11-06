@@ -647,7 +647,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $formats, 
                 $el('div', 'col-6 col-md-3 col-lg-2', lang('Fans'), array(
                     $heading('h2', lang('For Fans'), 'h6 text-uppercase small fw-bold mb-3'),
                     $list(array(
-                        $link(lang('Mailing List'), '{{page:mailing_list}}', $plain),
+                        $link(lang('Mailing List'), '{{page:newsletter}}', $plain),
                         $link(lang('Videos'), '{{page:videos}}', $plain),
                         $link(lang('News'), '{{page:blog}}', $plain),
                         $link(lang('FAQ'), '{{page:faq}}', $plain),
@@ -687,7 +687,7 @@ $list_band = function () use ($el, $heading, $para, $link, $container, $row, $co
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
-                        $link(lang('Join the Mailing List'), '{{page:mailing_list}}', 'btn btn-light btn-lg rounded-pill px-4'),
+                        $link(lang('Join the Mailing List'), '{{page:newsletter}}', 'btn btn-light btn-lg rounded-pill px-4'),
                         $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-outline-light btn-lg rounded-pill px-4'),
                     )),
                 ), '', '4'),

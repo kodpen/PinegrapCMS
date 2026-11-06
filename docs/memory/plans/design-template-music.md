@@ -13,7 +13,7 @@ description: Plan: the Music Artist design template (pinegrap-music): tour dates
 ## Steps (claim as `[plan:design-template-music] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7544): `parts.php` (builders; data: members, releases with tracks, shows dated by `$show_on()` (six to come, three played), ticket states, merch, gift cards, press quotes, videos; shared parts and cards); `tests/design_template_music_test.php`.
 
-- 2: `pages_public.php`: home (`home_shows`, `home_releases`, `home_posts`), `about` (story and members), `videos`, `faq`, `mailing_list` (the newsletter sign-up as its own page); `tests/design_template_music_public_test.php`.
+- 2 (done, #7573): `pages_public.php`: home (`home_shows`, `home_releases`, `home_posts`), `about` (story and members), `videos`, `faq` (the mailing list is the standard `newsletter` page of step 6); `tests/design_template_music_public_test.php`.
 
 - 3: `releases.php` and `shows.php`: the Releases collection (`discography` by `?format=`, the `release` page with the track list, credits, listening links and fans' words as comments, `release_new`) and the Shows collection (`tour` upcoming from today by `?country=`, `past_shows`, the `show` page with venue, doors, ticket link and state, `show_new`), `home_releases`, `home_shows`; test.
 
