@@ -11,7 +11,7 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-podcast-design]].
 
 ## Steps (claim as `[plan:design-template-podcast] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (builders; data: network, hosts, categories, podcasts, episodes dated back from today by `$aired_on()`, chapters, apps, audience, packages, tiers, pick lists; shared parts and cards); `tests/design_template_podcast_test.php`.
+- 1 (done, #7653): `parts.php` (builders, data, shared parts and cards; episodes dated back from today by `$aired_on()`; tokens `cover`, `category`, `hosted_by`, `schedule`, `aired`, `podcast`, `episode_number`, `length`, `chapters`, `audio`, `listen_url`); `tests/design_template_podcast_test.php`.
 
 - 2: `pages_public.php`: home (`home_episodes`, `home_podcasts`, `home_posts`), `about` (the network and its hosts), `hosts`, `listen` (apps and feeds), `faq`; `tests/design_template_podcast_public_test.php`.
 
@@ -25,7 +25,7 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
-- 8: the episode page's player bound to the episode's audio file, only after the architect's decision (step 1's PR names the issue); until then a Listen link. Skipped on a no.
+- 8: the episode page's player bound to the episode's audio file, only after the architect's decision (#7654); until then a Listen link. Skipped on a no.
 
 - 9: assembly: `pinegrap-podcast.php` (order, look, fonts, `ppd-` rules, folders `supporters` (membership) and `episodes`, groups, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-podcast.md`; the PR body names `[NEW] Added the Podcast Network design template`; this plan and its design file are deleted.
 
@@ -33,4 +33,4 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 - The next free step is the lowest one not marked done. Models: `pinegrap-music/` (collections, filters), `pinegrap-courses/` (membership folder, lesson video), `pinegrap-hotel/` (requests); [[design-templates-file-format]].
 
 ## Open questions
-- The episode player bound to the record's audio file (step 8): architect issue opened with step 1. Everything else reuses shipped features.
+- The episode player bound to the record's audio file (step 8): #7654. Everything else reuses shipped features.
