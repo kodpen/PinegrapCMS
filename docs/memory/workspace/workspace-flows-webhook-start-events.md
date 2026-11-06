@@ -20,8 +20,8 @@ description: Webhook events a flow can start on as well (reviews, returns, cart 
 - `inventory.changed` comes with every tracked line of every sale. Kept always, it would fill `ws_events_in` and hold the run's batch (`WS_EVENTS_BATCH`) back from the events flows do wait for.
 - `pg_event_workspace_on_demand()` lists it; `pg_event_record()` keeps it only when an active row of `ws_scheduled_actions` has an event rule naming it (`pg_event_workspace_awaited()`, one read per request and event).
 
-## Which path did not reach the Workspace before?
-- The API's stock write (`includes/api/resources/inventory.php`) queues `inventory.changed` and `stock.low` with `api_webhook_enqueue()`, past `pg_announce()`; it now calls `pg_event_record()` for both, so a stock change made through the API starts flows too.
+## Does the API's stock write reach the Workspace?
+- Yes, through `api_webhook_enqueue()` (`includes/api/resources/inventory.php`): it calls `pg_event_record()` itself unless `$recorded` says `pg_announce()` already did. A second `pg_event_record()` beside it kept `inventory.changed` and `stock.low` twice, so each waiting flow started twice; removed.
 
 ## What do the start box's outputs give?
 - Only single values the announcing code always sends: a return its order number, `return_id`, `reason` (a refund also `refund_method`); a subscription `customer_id`, `product_id`, `status`, `previous_status`, `order_id`, `retry_count`; a review `item_id`, `rating`, `status`; a stock change `product_id`, `quantity`. Amounts in minor units are not offered (`{{amount}}` reads the order).

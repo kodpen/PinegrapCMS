@@ -450,10 +450,9 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 		'out_of_stock' => ((int)$row['out_of_stock'] === 1)
 	) + pg_stock_event_location_fields($stock_location);
 
+	// api_webhook_enqueue() keeps it for the Workspace too, so its flows may
+	// start on it; a second pg_event_record() would start them twice.
 	api_webhook_enqueue('inventory.changed', $stock_event);
-
-	// The Workspace hears it as well: its flows may start on it.
-	pg_event_record('inventory.changed', $stock_event);
 
 	// The announcement above skips pg_announce(), whose listeners hear the
 	// site's other stock writers; a product back in stock is told here.
@@ -485,7 +484,6 @@ function api_inventory_apply($id, $sku, $op, $quantity, $write_log = true, $dry 
 		) + pg_stock_event_location_fields($stock_location);
 
 		api_webhook_enqueue('stock.low', $low_event);
-		pg_event_record('stock.low', $low_event);
 
 	}
 
