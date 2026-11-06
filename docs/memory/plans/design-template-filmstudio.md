@@ -11,7 +11,7 @@ description: Plan: the Film Studio design template (pinegrap-filmstudio): showre
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-filmstudio-design]].
 
 ## Steps (claim as `[plan:design-template-filmstudio] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the studio's data and pick lists, shared parts: account bar, notice, header, footer, enquiry band, staff bar; the showreel player, project, service, crew, facility, testimonial and job cards, project facts, credits, form fields, comment thread, blog parts); `tests/design_template_filmstudio_test.php`.
+- 1 (done, #7652): `parts.php` (node builders, the studio's data and pick lists, shared parts: account bar, notice, header, footer, enquiry band, staff bar; the showreel player, project, service, crew, facility, testimonial and job cards, project facts, credits, form fields, comment thread, blog parts); `tests/design_template_filmstudio_test.php`.
 
 - 2: `pages_public.php`: home (showreel, `home_projects`, `home_posts`), `services` and one `service_<key>` per service, `process`, `studio`, `crew`, `about`, `faq`; `tests/design_template_filmstudio_public_test.php`.
 
