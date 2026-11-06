@@ -139,7 +139,7 @@ function test_museum_exhibitions_form_and_samples()
 			if ($controls[$name]['tag'] === 'select') {
 				pg_assert_true(in_array($value, $controls[$name]['options'], true), "sample $n: $name '$value' is an answer");
 			}
-			pg_assert_false((bool)preg_match('/\b(19|20)[0-9]{2}\b/', $controls[$name]['tag'] === 'input' && strpos($name, 'photo_') === 0 ? '' : $value), "sample $n: $name names no year");
+			pg_assert_false((bool)preg_match('/\b(19|20)[0-9]{2}\b/', $value), "sample $n: $name names no year");
 		}
 		$key = array_keys($d['exhibitions'])[$n];
 		pg_assert_same(implode("\n", $d['exhibitions'][$key]['details']), $r['details'], "sample $n: its details, a line per item");
