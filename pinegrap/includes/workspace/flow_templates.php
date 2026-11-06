@@ -581,6 +581,52 @@ function ws_flow_templates($fill)
         'edges' => array(array('start', 'write', 'next'), array('write', 'review', 'done'), array('review', 'publish', 'approved'),
             array('review', 'told', 'rejected')));
 
+    // Goods received, started by hand when a delivery is due: the people
+    // asked approve with how many arrived (the approval box's number
+    // answer), and the count is told; a delivery not there is told too.
+    // The number can then go into a stock table with a row box, whose table
+    // and column only the person knows.
+    $out[] = array('key' => 'goods_received', 'category' => 'sales', 'icon' => 'bi-truck',
+        'title' => lang('Goods received'),
+        'help' => lang('Asks whether a delivery arrived and how many came; the count is told, and so is a delivery that has not arrived.'),
+        'boxes' => array(
+            'start' => array('kind' => 'manual', 'config' => array('subject' => '')),
+            'ask'   => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Did the delivery arrive?'),
+                'text' => lang('Approve with how many arrived, or reject when the delivery has not arrived.'),
+                'approvers' => array($me), 'rule' => 'any', 'closes_in' => 24, 'answer' => 'number', 'answer_label' => lang('How many arrived?')),
+                'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+            'got'   => $tell(lang('The delivery arrived: {{node.ask.answer_number}} received.')),
+            'none'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me), 'text' => lang('The delivery has not arrived.')),
+                'setting' => array('person', 'user_ids')),
+        ),
+        'edges' => array(array('start', 'ask', 'next'), array('ask', 'got', 'approved'), array('ask', 'none', 'rejected')));
+
+    // The cash in the till counted each evening: the count comes as the
+    // approval's number answer, Calculate takes the expected amount (a
+    // constants box the person sets) from it, and the manager is told when
+    // the difference is not zero, or when nobody counted.
+    if (function_exists('ws_flow_constants_normalize')) {
+        $out[] = array('key' => 'cash_count', 'category' => 'sales', 'icon' => 'bi-cash-coin',
+            'title' => lang('Daily cash count'),
+            'help' => lang('Each evening asks for the counted cash; you are told when it differs from the expected amount, set in the Constants box.'),
+            'boxes' => array(
+                'start'    => $start($today, '19:00', 'daily') + array('setting' => array('time', 'time')),
+                'ask'      => array('kind' => 'approval', 'config' => array('channel_id' => $channel, 'title' => lang('Today\'s cash count'),
+                    'text' => lang('Count the cash in the till and approve with the amount.'),
+                    'approvers' => array($me), 'rule' => 'any', 'closes_in' => 4, 'answer' => 'number', 'answer_label' => lang('Counted amount')),
+                    'settings' => array(array('channel', 'channel_id'), array('person', 'approvers'))),
+                'expected' => array('kind' => 'constants', 'config' => array('rows' => array(array('key' => 'expected', 'type' => 'number', 'value' => '0')))),
+                'diff'     => array('kind' => 'value', 'config' => array('rule' => 'calculate', 'a' => '{{node.ask.answer_number}} - {{node.expected.expected}}', 'places' => 2)),
+                'check'    => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.diff.value}}', 'op' => 'neq', 'value' => '0'))),
+                'off'      => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('The cash count is off by {{node.diff.value}}: {{node.ask.answer_number}} counted, {{node.expected.expected}} expected.')),
+                    'setting' => array('person', 'user_ids')),
+                'late'     => array('kind' => 'notify', 'config' => array('user_ids' => array($me), 'text' => lang('Nobody counted the cash today.')),
+                    'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'ask', 'next'), array('ask', 'check', 'approved'), array('check', 'off', 'yes'), array('ask', 'late', 'expired')));
+    }
+
     return array_map('ws_flow_template_build', $out);
 }
 

@@ -27,6 +27,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calc.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates.php');
@@ -838,3 +840,56 @@ function test_workspace_flow_template_threads_with_a_fallback()
 
 	pg_assert_same(array(array('from' => 'check', 'to' => 'hook', 'key' => 'text')), ws_flow_template_threads($graph));
 }
+
+// Goods received and the daily cash count: an approval that asks a number
+// with the approval, and what the flow does with the answer.
+function test_workspace_flow_templates_answer_a_number()
+{
+	$kinds = ws_flow_kinds();
+
+	foreach (array(0, 3) as $channel) {
+		$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => $channel))), null, 'key');
+
+		foreach (array('goods_received', 'cash_count') as $key) {
+			pg_assert_true(isset($by_key[$key]), $key . ' offered');
+
+			$nodes = array_column($by_key[$key]['graph']['nodes'], null, 'id');
+			$ask = ws_step_config_normalize('approval', $nodes['ask']['config']);
+
+			pg_assert_same('number', $ask['answer'], $key . ' asks a number');
+			pg_assert_true($ask['answer_label'] !== '', $key . ' asks a question');
+			pg_assert_true(in_array('channel', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for a channel');
+			pg_assert_true(in_array('person', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for people');
+			pg_assert_true($by_key[$key]['threads'] > 0, $key . ' reads the answer');
+
+			foreach ($by_key[$key]['graph']['edges'] as $edge) {
+				pg_assert_true(in_array($edge['on'], $kinds[$nodes[$edge['from']]['kind']]['outcomes'], true), $key . ': ' . $edge['from'] . ' on ' . $edge['on']);
+			}
+
+			pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($by_key[$key])), 'text'), $key . ' publishes');
+		}
+
+		// Goods received: started by hand when a delivery is due; the number
+		// that arrived is told, a delivery not there is told too.
+		$goods = array_column($by_key['goods_received']['graph']['nodes'], null, 'id');
+		pg_assert_same('manual', $by_key['goods_received']['start']);
+		pg_assert_true(strpos(json_encode($goods['got']['config']), '{{node.ask.answer_number}}') !== false, 'tells how many arrived');
+
+		// Cash count: each evening; the difference from the expected amount
+		// worked out by Calculate, told only when it is not zero.
+		$cash = array_column($by_key['cash_count']['graph']['nodes'], null, 'id');
+		pg_assert_same('schedule', $by_key['cash_count']['start']);
+		pg_assert_same('daily', $cash['start']['config']['repeat']);
+		pg_assert_same('constants', $cash['expected']['kind']);
+		pg_assert_same('calculate', $cash['diff']['config']['rule']);
+		pg_assert_same('{{node.ask.answer_number}} - {{node.expected.expected}}', $cash['diff']['config']['a']);
+		pg_assert_same(array('type' => 'value', 'ref' => '{{node.diff.value}}', 'op' => 'neq', 'value' => '0'),
+			array_intersect_key($cash['check']['config']['rule'], array('type' => 0, 'ref' => 0, 'op' => 0, 'value' => 0)));
+		pg_assert_same('notify', $cash['off']['kind'], 'the manager is told');
+	}
+
+	// The difference as the run works it out: 1250 counted, 1200 expected.
+	pg_assert_same('50', ws_flow_derived_calculate('{{node.ask.answer_number}} - {{node.expected.expected}}',
+		array('ask' => array('answer_number' => '1250'), 'expected' => array('expected' => '1200')), 2));
+}
+
