@@ -165,3 +165,22 @@ function test_dealership_account_blog_form_and_samples()
 	$text = json_encode($form['sample_records'], JSON_UNESCAPED_UNICODE) . json_encode($d['pages'], JSON_UNESCAPED_UNICODE);
 	pg_assert_false((bool)preg_match('/\b20[2-3]\d\b/', $text), 'no year');
 }
+
+// The cover feeds the post cards, the post page's picture and the share
+// image: its file field takes images only and says so (_cf kind image).
+function test_dealership_account_blog_cover_is_image_only()
+{
+	$d = _test_dl_acc_load();
+	$nodes = array();
+	_test_dl_acc_nodes($d['widgets']['blog_form']['tree'], $nodes);
+	$cover = null;
+	foreach ($nodes as $n) {
+		if (empty($n['props']['_attrs'])) continue;
+		foreach ($n['props']['_attrs'] as $a) if ($a['name'] === 'name' && $a['value'] === 'cover_image') $cover = $n;
+	}
+	pg_assert_true($cover !== null, 'blog form has the cover field');
+	$accept = null;
+	foreach ($cover['props']['_attrs'] as $a) if ($a['name'] === 'accept') $accept = $a['value'];
+	pg_assert_same('image/*', $accept, 'cover accepts images only');
+	pg_assert_same('image', isset($cover['props']['_cf']['kind']) ? $cover['props']['_cf']['kind'] : null, 'cover is an image field');
+}
