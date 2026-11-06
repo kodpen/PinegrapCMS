@@ -678,12 +678,21 @@ function pg_return_goods_left($has_tracking, $shipped_quantity, $ship_date, $tod
 /**
  * How many of a line may still be asked for.
  *
- * @param int $quantity the line's quantity
- * @param int $held     the quantity open returns already hold
+ * A gift card line has nothing to ask for: a shippable gift card product
+ * travels with a recipient like goods, but the card it issued stays
+ * spendable, so a refund of the line would pay its value out a second time.
+ *
+ * @param int  $quantity  the line's quantity
+ * @param int  $held      the quantity open returns already hold
+ * @param bool $gift_card the line is a gift card product
  * @return int
  */
-function pg_return_returnable($quantity, $held)
+function pg_return_returnable($quantity, $held, $gift_card = false)
 {
+    if ($gift_card) {
+        return 0;
+    }
+
     return max(0, (int) $quantity - (int) $held);
 }
 
@@ -695,7 +704,7 @@ function pg_return_returnable($quantity, $held)
  * of the delivery's, none above what is left on it.
  *
  * @param mixed $requested order item id => quantity
- * @param array $lines     order item id => name, returnable
+ * @param array $lines     order item id => name, returnable, gift_card
  * @return array ok, error, lines (order item id => quantity)
  */
 function pg_return_check_lines($requested, $lines)
@@ -738,12 +747,20 @@ function pg_return_check_lines($requested, $lines)
             return $refuse(lang('An item is not part of this delivery.'));
         }
 
+        $name = isset($lines[$id]['name']) ? (string) $lines[$id]['name'] : '#' . $id;
+
+        if (!empty($lines[$id]['gift_card'])) {
+            return $refuse(lang(array(
+                'string' => '{var:1} is a gift card and cannot be returned.',
+                'vars'   => array($name))));
+        }
+
         $returnable = isset($lines[$id]['returnable']) ? (int) $lines[$id]['returnable'] : 0;
 
         if ($count > $returnable) {
             return $refuse(lang(array(
                 'string' => '{var:1}: at most {var:2} can be returned.',
-                'vars'   => array(isset($lines[$id]['name']) ? (string) $lines[$id]['name'] : '#' . $id, $returnable))));
+                'vars'   => array($name, $returnable))));
         }
 
         $out[$id] = $count;
@@ -881,7 +898,8 @@ function pg_return_held($order_id)
  * @param int $order_id
  * @param int $ship_to_id one delivery only, or 0 for all
  * @return array order item id => id, ship_to_id, product_id, name, code,
- *               quantity, price, shipped_quantity, held, returnable
+ *               quantity, price, shipped_quantity, held, gift_card,
+ *               returnable (0 on a gift card line)
  */
 function pg_return_order_lines($order_id, $ship_to_id = 0)
 {
@@ -897,7 +915,8 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
             order_items.quantity,
             order_items.price,
             order_items.shipped_quantity,
-            products.short_description
+            products.short_description,
+            products.gift_card
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
         WHERE
@@ -914,6 +933,7 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
         $id = (int) $row['id'];
         $name = trim((string) $row['short_description']);
         $line_held = isset($held[$id]) ? $held[$id] : 0;
+        $gift_card = ((int) $row['gift_card'] === 1);
 
         $lines[$id] = array(
             'id'               => $id,
@@ -925,7 +945,8 @@ function pg_return_order_lines($order_id, $ship_to_id = 0)
             'price'            => (int) $row['price'],
             'shipped_quantity' => (int) $row['shipped_quantity'],
             'held'             => $line_held,
-            'returnable'       => pg_return_returnable($row['quantity'], $line_held),
+            'gift_card'        => $gift_card,
+            'returnable'       => pg_return_returnable($row['quantity'], $line_held, $gift_card),
         );
     }
 
