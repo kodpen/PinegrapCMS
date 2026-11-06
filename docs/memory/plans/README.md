@@ -38,7 +38,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-fn-2c.md: Module list of plans/bug-hunt.md, part 2c: includes/fn/ modules widgets_lists_menu to wishlist, one line each with its state
 - bug-hunt-modules-fn-2d.md: Module list of plans/bug-hunt.md, part 2d: the includes/fn/ modules widgets_cart and widgets_catalog (moved out of part 2b for size) and the booking modules, one line each with its state
 - bug-hunt-modules-migrations.md: Module list of plans/bug-hunt.md, migrations part: the open version's migration file and its runner helpers, one line each with its state
-- bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
+- bug-hunt.md: Plan, stopped 2026-11-06 (no module is taken): module-by-module bug hunt; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
 - design-template-charity.md: Plan for the Charity template (pinegrap-charity): causes, campaigns with progress, gifts as donation products, volunteers, events, news, transparency; parts in a folder; steps 1-9
