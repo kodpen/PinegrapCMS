@@ -566,6 +566,7 @@
     "gift card ({var:1}) was created because gift card product was ordered": "hediye kartı ({var:1}) oluşturuldu, çünkü hediye kartı ürünü sipariş edildi",
     "gift card ({var:1}) was deleted": "hediye kartı ({var:1}) silindi",
     "gift card ({var:1}) was modified": "hediye kartı ({var:1}) düzenlendi",
+    "gift card, gift, travel, holiday, tour": "hediye kartı, hediye, seyahat, tatil, tur",
     "gift card, points, reward, givex": "gift card, points, reward, givex, hediye karti, hediye kartı, puan, odul, ödül",
     "gift card, voucher, present": "hediye kartı, hediye çeki, hediye",
     "gift voucher, gift, hotel stay, spa, dinner": "hediye çeki, hediye, otel konaklaması, spa, akşam yemeği",
