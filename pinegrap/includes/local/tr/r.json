@@ -32,6 +32,7 @@
     "Raise a sales invoice from an order that has been paid for but not yet invoiced.": "Bedeli tahsil edilmiş ancak henüz faturalanmamış bir siparişten satış faturası kesin.",
     "Raised": "Toplanan",
     "Raised from an order: the order took the goods out of stock, so this document does not move it.": "Siparişten kesildi: malı sipariş stoktan düştü, bu belge stoğu değiştirmez.",
+    "Raised so far": "Şu ana kadar toplanan",
     "Raising funds": "Bağış toplama",
     "Raleigh": "Raleigh",
     "Ran": "Çalıştı",
