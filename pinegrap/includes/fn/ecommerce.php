@@ -3652,6 +3652,41 @@ function pg_import_contact_value($column_name, $value, $max_length = 0, $heading
 }
 
 /**
+ * An imported affiliate code, left empty when another contact already holds
+ * it: checkout and the commission screens find the affiliate by the code, so
+ * a second contact with it would take the first one's orders. The contact
+ * form refuses such a code the same way (pg_contact_form_affiliate_code()).
+ *
+ * @param string   $code    The cell as pg_import_contact_value() read it
+ * @param string   $heading The file's heading, named in the problem
+ * @param callable $taken   Whether a stored contact holds the code (tests stub it)
+ * @return array array('value' => string, 'problem' => string)
+ */
+function pg_import_affiliate_code($code, $heading, $taken = 'pg_import_affiliate_code_taken')
+{
+    $code = (string) $code;
+
+    if (($code === '') || !$taken($code)) {
+        return array('value' => $code, 'problem' => '');
+    }
+
+    return array('value' => '', 'problem' => lang(array('string' => 'Column {var:1}: the affiliate code "{var:2}" belongs to another contact, so it was left empty.', 'vars' => array($heading, $code))));
+}
+
+/**
+ * Whether a stored contact holds the affiliate code, compared as checkout
+ * compares it (the column's collation). Rows an import wrote earlier count,
+ * so a file that repeats a code keeps it on its first row only.
+ *
+ * @param string $code
+ * @return bool
+ */
+function pg_import_affiliate_code_taken($code)
+{
+    return (bool) db_value("SELECT id FROM contacts WHERE affiliate_code = '" . escape((string) $code) . "' LIMIT 1");
+}
+
+/**
  * The character lengths of a table's text columns from SHOW COLUMNS rows:
  * varchar(n) and char(n) give n; other types are left out.
  *
