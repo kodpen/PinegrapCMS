@@ -576,6 +576,7 @@
     "A key is being set up": "Bir anahtar kuruluyor",
     "A key is stored": "Bir anahtar kayıtlı",
     "A kitchen window at breakfast, a shop window at night, a train window on a long trip: any window counts. Add the tag windows to your post so we can find it.": "Kahvaltıda bir mutfak penceresi, gece bir vitrin, uzun bir yolculukta bir tren penceresi: her pencere sayılır. Bulabilmemiz için gönderinize windows etiketini ekleyin.",
+    "A label is being created for this address. Wait a moment, then open the order again.": "Bu adres için bir etiket oluşturuluyor. Biraz bekleyin, sonra siparişi yeniden açın.",
     "A label is cancelled on the order's screen.": "Etiket siparişin ekranında iptal edilir.",
     "A label is created only for a completed order.": "Etiket yalnızca tamamlanmış bir sipariş için oluşturulur.",
     "A label of this pickup is not a valid label at Sendcloud (cancelled or never made).": "Bu kurye çağrısındaki bir etiket Sendcloud'da geçerli değil (iptal edilmiş ya da hiç oluşturulmamış).",
