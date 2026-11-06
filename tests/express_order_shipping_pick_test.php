@@ -32,3 +32,17 @@ function test_express_order_shipping_pick_updates_posted_total()
 	pg_assert_true(strpos($js, "input[name=\"total\"]") !== false, 'the hidden total is written');
 	pg_assert_true(strpos($js, "input[name=\"total_with_surcharge\"]") !== false, 'the hidden total with surcharge is written');
 }
+
+function test_express_order_address_change_listener_follows_the_moving_state_name()
+{
+	$js = _eo_render_widget_js(7, 'eo_form', true, array(array('id' => 3)), '/', array(
+		'shipping_drawn' => 0,
+		'shipping'       => 0,
+		'total'          => 2700,
+	));
+
+	// The state name moves between the text box and the pick list when the
+	// country changes, so the listener sits on the form and reads the name.
+	pg_assert_false(strpos($js, "'_' + f + '\"]:not([disabled])')") !== false, 'no listener bound to the control named at load');
+	pg_assert_true(strpos($js, "addrNames.indexOf(e.target.name) !== -1") !== false, 'a delegated change listener tests the field name');
+}
