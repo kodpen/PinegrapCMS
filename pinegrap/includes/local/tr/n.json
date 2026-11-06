@@ -67,6 +67,7 @@
     "Name the row by its id or by one value, such as {{trigger.row_id}}.": "Satırı kimliğiyle ya da {{trigger.row_id}} gibi tek bir değerle belirtin.",
     "Name the treatment in your booking request and we keep the hour for you.": "Bakımı rezervasyon isteğinizde belirtin, saatini sizin için ayıralım.",
     "Name the visitor types (name)": "Ziyaretçinin yazdığı isim (name)",
+    "Name the voucher's code in the notes of your booking request. A voucher is valid for a year from the order and may be spent on any package.": "Çekin kodunu rezervasyon talebinizin notlarına yazın. Bir hediye çeki siparişten itibaren bir yıl geçerlidir ve herhangi bir pakette kullanılabilir.",
     "Name the voucher's code in the wishes of your booking request or tell it at the reception. A voucher is valid for a year from the order and may be spent on the room, the restaurant and the spa.": "Çekin kodunu rezervasyon talebinizin isteklerine yazın ya da resepsiyonda söyleyin. Bir hediye çeki siparişten itibaren bir yıl geçerlidir; oda, restoran ve spada kullanılabilir.",
     "Name to greet by (full name, else the user name)": "Karşılama adı (tam ad, yoksa kullanıcı adı)",
     "Name what you would like to add in your booking request; we add it to the price when we confirm.": "Eklemek istediklerinizi rezervasyon talebinize yazın; onaylarken fiyata ekleriz.",
