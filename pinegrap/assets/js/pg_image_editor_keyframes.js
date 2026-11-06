@@ -35,7 +35,9 @@
         return X.decimal(ms / 1000) + ' ' + t('motionSecondsUnit');
     }
 
-    function pct(ms, end) {
+    // Where ms sits on a lane of end ms, as a CSS left (X.pct, the
+    // panel's percentage label, is another function).
+    function lanePos(ms, end) {
         return (100 * Math.max(0, Math.min(end, ms)) / end) + '%';
     }
 
@@ -190,15 +192,16 @@
         return l.id + ':' + ((i >= 0) ? 'k' + keys[i].t : 'n' + Math.round(now / 100));
     };
 
-    // The playhead moved: the Path tab follows it, except while playing
-    // and while the scrub in the sheet (a phone) is held, which a new panel
-    // would take from under the finger.
+    // The playhead moved: the Path tab follows it, except while playing or
+    // recording (pg_image_editor_record.js) and while the scrub in the
+    // sheet (a phone) is held, which a new panel would take from under the
+    // finger.
     Editor.prototype.keyFollow = function () {
         var l = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, a = document.activeElement;
 
         this.drawKeyPath();
 
-        if (!l || this.playing || (this.tool !== 'motion') || (this.motionTab !== 'keys') || (a && a.classList && a.classList.contains('pgie-mscrub') && this.panel && this.panel.contains(a))) {
+        if (!l || this.playing || this.recording || (this.tool !== 'motion') || (this.motionTab !== 'keys') || (a && a.classList && a.classList.contains('pgie-mscrub') && this.panel && this.panel.contains(a))) {
             return;
         }
 
@@ -307,7 +310,7 @@
 
         M.keyList(l).forEach(function (k) {
             var label = t('keysDiamond').replace('{time}', seconds(k.t));
-            var d = el('button', { type: 'button', class: 'pgie-trkey' + (on ? ' on' : ''), style: 'left: ' + pct(k.t, end), title: label, 'aria-label': label });
+            var d = el('button', { type: 'button', class: 'pgie-trkey' + (on ? ' on' : ''), style: 'left: ' + lanePos(k.t, end), title: label, 'aria-label': label });
 
             d.addEventListener('pointerdown', function (e) {
                 e.stopPropagation();
@@ -359,7 +362,7 @@
             }
 
             to = Math.max(0, Math.min(end, Math.round((k.t + (ev.clientX - x0) / width * end) / step) * step));
-            d.style.left = pct(to, end);
+            d.style.left = lanePos(to, end);
             d.title = t('keysDiamond').replace('{time}', seconds(to));
             self.seek(self.motionStart() + to);
         };

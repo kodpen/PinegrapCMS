@@ -3962,11 +3962,12 @@
     // keys inside the recorded span replaced by the thinned samples (size,
     // turn and opacity from the old keys where not recorded), the rest
     // kept; the end lengthened past the last sample, up to MOTION_MAX.
-    // { keys, end }.
-    function recordApply(l, samples, end) {
+    // px is the place tolerance in document units (a screen pixel at the
+    // zoom the drag was made at; default 1). { keys, end }.
+    function recordApply(l, samples, end, px) {
         var old = keyList(l), kept = recordThin((Array.isArray(samples) ? samples : []).filter(function (s) {
             return s && (Number(s.t) <= MOTION_MAX);
-        })), from, to, keys;
+        }), px), from, to, keys;
 
         end = Math.max(0, Number(end) || 0);
 

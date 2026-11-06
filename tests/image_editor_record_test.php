@@ -34,7 +34,8 @@ function test_image_editor_record_thin()
 		. 'kept.forEach(function (k) { onTimes = onTimes && !!times[k.t]; });' . "\n"
 		. 'console.log(JSON.stringify({ n: kept.length, worst: worst <= 1.05, onTimes: onTimes, first: [kept[0].t, kept[0].x], last: [kept[kept.length - 1].t, r(kept[kept.length - 1].x)],' . "\n"
 		. ' ease: kept.every(function (k) { return k.ease === "linear"; }), line: M.recordThin([{ t: 0, x: 0, y: 0 }, { t: 500, x: 50, y: 0 }, { t: 1000, x: 100, y: 0 }]).length,' . "\n"
-		. ' speed: M.recordThin([{ t: 0, x: 0, y: 0 }, { t: 100, x: 90, y: 0 }, { t: 1000, x: 100, y: 0 }]).length, empty: M.recordThin([]).length }));'
+		. ' speed: M.recordThin([{ t: 0, x: 0, y: 0 }, { t: 100, x: 90, y: 0 }, { t: 1000, x: 100, y: 0 }]).length, empty: M.recordThin([]).length,' . "\n"
+		. ' coarse: M.recordApply({ x: 0, y: 0, w: 10, h: 10 }, samples, 5000, 4).keys.length < kept.length }));'
 	);
 
 	if ($r === null) {
@@ -51,6 +52,7 @@ function test_image_editor_record_thin()
 	pg_assert_same(2, $r['line'], 'an even straight move is its two ends');
 	pg_assert_same(3, $r['speed'], 'a change of speed on a straight line is kept');
 	pg_assert_same(0, $r['empty'], 'nothing recorded, no keys');
+	pg_assert_true($r['coarse'], 'a coarser tolerance (a screen pixel when zoomed out) keeps fewer keys');
 }
 
 // The recorded span's keys are replaced, the ones before and after stay,

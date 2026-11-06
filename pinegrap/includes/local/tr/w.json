@@ -1140,6 +1140,7 @@
     "While this is off the site has no Fediverse address.": "Bu kapalıyken sitenin Fediverse adresi yoktur.",
     "While this is on, a member account (User role) with two-step verification may ask for a code to its contact's mobile phone number instead of the code from its app. Staff accounts are never offered it.": "Bu açıkken, iki adımlı doğrulaması olan bir üye hesabı (Kullanıcı rolü), uygulamasındaki kod yerine kişi kartındaki cep telefonu numarasına kod isteyebilir. Personel hesaplarına bu hiç sunulmaz.",
     "While this is on, an order paid by offline payment (not one put on account) is placed only with the code texted to its billing phone number, which must be a mobile number.": "Bu açıkken, çevrimdışı ödemeli bir sipariş (cari hesaba yazılan hariç) yalnızca fatura telefon numarasına SMS ile gönderilen kodla verilir; bu numara bir cep telefonu olmalıdır.",
+    "While you drag the layer the time runs; letting go stops the recording and its path becomes keyframes with its speed. The keyframes inside the recorded span are replaced.": "Katmanı sürüklerken zaman ilerler; bıraktığınızda kayıt durur ve yol, hızıyla birlikte anahtar karelere dönüşür. Kaydın kapladığı aradaki anahtar kareler yenilenir.",
     "While you were away": "Siz yokken",
     "While you were away: {var:1}.": "Siz yokken: {var:1}.",
     "White": "Beyaz",

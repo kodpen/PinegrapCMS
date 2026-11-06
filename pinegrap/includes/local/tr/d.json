@@ -966,6 +966,7 @@
     "Drag pictures here": "Görselleri buraya sürükleyin",
     "Drag points and handles. Double-click the path: add a point. Delete: remove the point. Esc: done.": "Noktaları ve tutamaçları sürükleyin. Yola çift tıklayın: nokta ekleyin. Delete: noktayı silin. Esc: bitir.",
     "Drag the edges and corners: the artwork stays, the canvas slides over it. Shift keeps the ratio, Alt sizes from the center.": "Kenar ve köşelerden sürükleyin: içerik yerinde kalır, tuval üzerinden kayar. Shift oranı korur, Alt ortadan boyutlandırır.",
+    "Drag the layer; letting go stops the recording.": "Katmanı sürükleyin; bıraktığınızda kayıt durur.",
     "Drag the mesh points on the picture to shape it.": "Biçim vermek için resim üzerindeki ağ noktalarını sürükleyin.",
     "Drag the repeated template here (card, col, heading\\2026)": "Yinelenen şablonu buraya sürükleyin (card, col, heading\\2026)",
     "Drag the repeated template here (tr, td…)": "Yinelenen şablonu buraya sürükleyin (tr, td…)",
