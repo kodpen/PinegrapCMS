@@ -10,7 +10,7 @@ description: Signature evidence receipt, the ^^field^^ token output, the h() amp
 
 ## Which checks must a screen that prints an integrity verdict run?
 - All three: seal (`pg_signature_verify()`), document (`pg_signature_document_matches()`), drawing (`pg_signature_image_matches()`). The seal covers the file id, not its bytes, so seal + document alone call a swapped PNG "Record intact · Document unchanged".
-- Submitted-form views print `pg_signature_verdicts()` through `pg_signature_display()`; until #PR_NUMBER the display skipped the drawing check and only the receipt caught a swapped file.
+- Submitted-form views print `pg_signature_verdicts()` through `pg_signature_display()`; until #7192 the display skipped the drawing check and only the receipt caught a swapped file.
 - ERP: the quote screen reads seal && drawing as "intact"; `erp_signature_document_block()` prints no signature in the PDF unless document, seal and drawing all match (same PR). The external API's `seal_valid` is the seal alone.
 
 ## How does a `^^field_name^^` token render a signature?
