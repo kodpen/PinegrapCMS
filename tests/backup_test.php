@@ -304,3 +304,26 @@ function test_backup_s3_archive_rows()
 	pg_assert_same(array('manual.zip', 'auto_backup_2026-11-44.zip', 'auto_backup_2026-10-41.zip'), array_column($rows, 'name'));
 	pg_assert_same(array('name' => 'manual.zip', 'size' => 30, 'modified' => 300, 'etag' => 'd'), $rows[0]);
 }
+
+// An empty FTP password box keeps the stored password only for the server it
+// was given for: a new host or port, or a connection that drops TLS, would
+// otherwise send it to a server the person who typed it never named.
+function test_backup_ftp_password_kept_only_for_the_same_server()
+{
+	$stored = pg_backup_remote_normalize('ftp', array('host' => 'ftp.example.com', 'port' => 21, 'user' => 'site', 'password' => 's3cret', 'tls' => true));
+
+	$posted = function ($changes) use ($stored) {
+		return pg_backup_remote_normalize('ftp', array_merge($stored, array('password' => ''), $changes));
+	};
+
+	pg_assert_same('s3cret', pg_backup_ftp_password_kept($posted(array()), $stored), 'same server');
+	pg_assert_same('s3cret', pg_backup_ftp_password_kept($posted(array('host' => 'FTP.Example.com')), $stored), 'host case');
+	pg_assert_same('s3cret', pg_backup_ftp_password_kept($posted(array('user' => 'other', 'path' => '/b')), $stored), 'user and path');
+	pg_assert_same('', pg_backup_ftp_password_kept($posted(array('host' => 'ftp.attacker.example')), $stored), 'another host');
+	pg_assert_same('', pg_backup_ftp_password_kept($posted(array('port' => 2121)), $stored), 'another port');
+	pg_assert_same('', pg_backup_ftp_password_kept($posted(array('tls' => false)), $stored), 'TLS dropped');
+	pg_assert_same('typed', pg_backup_ftp_password_kept($posted(array('host' => 'ftp.other.example', 'password' => 'typed')), $stored), 'a typed password');
+
+	$plain = array_merge($stored, array('tls' => false));
+	pg_assert_same('s3cret', pg_backup_ftp_password_kept($posted(array('tls' => true)), $plain), 'TLS turned on');
+}

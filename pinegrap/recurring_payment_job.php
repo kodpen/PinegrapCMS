@@ -60,8 +60,9 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
     // get current date
     $current_date = date('Y-m-d');
     
-    // get previous date
-    $previous_date = date('Y-m-d', time() - 86400);
+    // The calendar day before: 24 hours back is still today late on the
+    // 25-hour day of a clock change, and that date would not end the membership.
+    $previous_date = date('Y-m-d', strtotime('-1 day', strtotime($current_date)));
     
     // get enabled recurring profiles, so we can check if recurring profiles are still enabled
     $query =

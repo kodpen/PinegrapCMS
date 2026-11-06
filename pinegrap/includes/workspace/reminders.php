@@ -579,12 +579,16 @@ function ws_task_reminder_people($task)
 }
 
 /**
- * The mail of one reminder: subject and plain text.
+ * The mail of one reminder: subject and plain text. The channel is named
+ * only when the caller passes its name: a person on a task in a private
+ * channel they are not in sees the task, not the channel (ws_task_detail()).
  *
- * @param array $task
+ * @param array  $task
+ * @param string $channel_name the task's channel as this recipient may read
+ *                             it, '' for none
  * @return array subject, body
  */
-function ws_task_reminder_mail($task)
+function ws_task_reminder_mail($task, $channel_name = '')
 {
     $title = (string) $task['title'];
     $due = ws_task_due_at($task);
@@ -595,12 +599,8 @@ function ws_task_reminder_mail($task)
         ws_task_number($task['id']) . ' · ' . lang(array('string' => 'Due: {var:1}', 'vars' => $when)),
     );
 
-    if ((int) $task['channel_id'] > 0) {
-        $channel = ws_channel($task['channel_id']);
-
-        if ($channel) {
-            $lines[] = lang(array('string' => 'Channel: {var:1}', 'vars' => '#' . $channel['name']));
-        }
+    if ((string) $channel_name !== '') {
+        $lines[] = lang(array('string' => 'Channel: {var:1}', 'vars' => '#' . $channel_name));
     }
 
     if (in_array((string) $task['priority'], array('high', 'urgent'), true)) {
@@ -672,10 +672,12 @@ function ws_task_reminders_run($limit = WS_TASK_REMIND_BATCH)
         }
 
         $people = ws_task_reminder_people($task);
-        $mail = ws_task_reminder_mail($task);
+        $channel = ((int) $task['channel_id'] > 0) ? ws_channel($task['channel_id']) : null;
         $sent = 0;
 
         foreach ($people as $person) {
+            $readable = $channel && ws_can_read_channel(ws_rights_for_id($person['user_id']), $channel);
+            $mail = ws_task_reminder_mail($task, $readable ? (string) $channel['name'] : '');
             $ok = email(array(
                 'to'                 => $person['email'],
                 'from_name'          => defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '',

@@ -1210,6 +1210,10 @@ $liveform->remove_form('edit_file');
             pg_audit_record('update', 'files', (int) $file_id, $audit_before);
         }
 
+        // A new name or the design flag may have made a stored file one that
+        // has to be on the disk.
+        pg_file_storage_bring_home(array((int) $file_id));
+
             log_activity(lang(array('string'=>'file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');
 

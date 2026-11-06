@@ -896,6 +896,34 @@ function pg_backup_remote_normalize($type, $values)
 
 
 /**
+ * The FTP password a save stores when the password box was left empty.
+ *
+ * The box is never drawn back into the form, so an empty one keeps the
+ * stored password -- but only for the server it was typed for. FTP sends the
+ * password as it is at sign-in, so keeping it for a new host or port, or for
+ * a connection that no longer asks for TLS, would hand it to a server (or a
+ * network path) the person who typed it never chose; "Save and test" sends it
+ * at once. The user and the folder may change.
+ *
+ * @param array $posted pg_backup_remote_normalize('ftp', ...) of the form
+ * @param array $stored pg_backup_remote_normalize('ftp', ...) of the stored settings
+ * @return string the password to store; '' when it has to be typed again
+ */
+function pg_backup_ftp_password_kept(array $posted, array $stored)
+{
+    if ((string) $posted['password'] !== '') {
+        return (string) $posted['password'];
+    }
+
+    $same_server = (strtolower((string) $posted['host']) === strtolower((string) $stored['host']))
+        && ((int) $posted['port'] === (int) $stored['port'])
+        && (!empty($posted['tls']) || empty($stored['tls']));
+
+    return $same_server ? (string) $stored['password'] : '';
+}
+
+
+/**
  * Encrypt the remote settings for config.backup_remote_settings.
  *
  * @param array $values remote type => that destination's settings
