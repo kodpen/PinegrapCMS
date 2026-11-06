@@ -1368,6 +1368,7 @@
     "Everyone in the team can find it, read it and join it.": "Ekipteki herkes bulabilir, okuyabilir ve katılabilir.",
     "Everyone is in today.": "Bugün herkes burada.",
     "Everyone keeps the Community Guidelines. Moderators may hide a post or a comment that breaks them and close an account that keeps breaking them.": "Herkes Topluluk Kurallarına uyar. Moderatörler kurallara aykırı bir gönderiyi ya da yorumu gizleyebilir ve kuralları çiğnemeyi sürdüren bir hesabı kapatabilir.",
+    "Everyone on our sites goes home safe, and every building we hand over is built to last.": "Şantiyelerimizdeki herkes evine sağ salim döner, teslim ettiğimiz her bina uzun ömürlü yapılır.",
     "Everyone sees the counts; nobody sees who voted for what.": "Herkes oy sayılarını görür; kimin neye oy verdiğini kimse görmez.",
     "Everyone who joined a beta, newest first. Send the invitation from TestFlight or the Play Console, then set the status.": "Bir betaya katılan herkes, en yenisi önce. Daveti TestFlight'tan ya da Play Console'dan gönderin, sonra durumu belirleyin.",
     "Everyone who joined us, from small teams to large enterprises.": "Küçük ekiplerden büyük kurumlara, aramıza katılanlar.",
@@ -1885,5 +1886,6 @@
     "explore": "kesfet",
     "export": "dışa aktarma",
     "export, markdown, attachments": "dışa aktarma, markdown, ekler",
+    "extra cost, variation, change, fixed price": "ek maliyet, değişiklik, sabit fiyat",
     "extra test, add, package": "ek tetkik, ekleme, paket"
 }
