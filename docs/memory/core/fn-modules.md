@@ -18,7 +18,7 @@ description: Generated from the module field of the memory files: each includes/
 - `ai_prompts`: [[ai-prompt-version]]
 - `ai_visibility`: [[ai-visibility-figures]]
 - `arrival_date_list_edit`: [[list-table-quick-edit-arrival-dates]]
-- `audience_doors`: [[audiences-doors]]
+- `audience_doors`: [[audiences-door-join]], [[audiences-doors]]
 - `audiences`: [[audiences-overview]], [[audiences-recompute]], [[audiences-rules]], [[contact-group-rules]]
 - `audit`: [[audit-trail-diff]], [[audit-trail-file-content]], [[consent-log-and-audit-trail]]
 - `audit_list`: [[audit-log-paging]]

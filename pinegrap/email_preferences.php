@@ -243,21 +243,9 @@ if (!$_POST) {
             // contact record has one now.
             pg_announce_contact_created($contact_id);
             
-            // check if registration contact group exists
-            $query = "SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql();
-            $result = db_q($query, array((string) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
-            
-            // if registration contact group exists, assign contact to contact group
-            if (mysqli_num_rows($result) > 0) {
-                $query =
-                    "INSERT INTO contacts_contact_groups_xref (
-                        contact_id,
-                        contact_group_id)
-                    VALUES (
-                        ?,
-                        ?)";
-                $result = db_q($query, array((string) $contact_id, (string) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
-            }
+            // assign contact to the registration contact group when it exists
+            // and is not filled by rules (pg_audience_hand_sql()), announcing the join
+            pg_audience_door_join($contact_id, (int) REGISTRATION_CONTACT_GROUP_ID);
         }
         
         // if e-mail address has changed and user's current e-mail address is the same as the user's current username,
@@ -456,27 +444,9 @@ if (!$_POST) {
             }
             // if user opted-in to this group
             if ($liveform->get_field_value('contact_group_' . $contact_group['id'])) {
-                // check to see if contact is already in contact group
-                $query =
-                    "SELECT contact_id
-                    FROM contacts_contact_groups_xref
-                    WHERE
-                        (contact_id = ?)
-                        AND (contact_group_id = ?)";
-                $result = db_q($query, array((string) $contact['id'], (string) $contact_group['id'])) or output_error('Query failed.');
-                
-                // if contact is not already in contact group, then add contact to contact group
-                // (a group filled by rules keeps only the opt-in choice)
-                if ((mysqli_num_rows($result) == 0) && !pg_audience_group_is_dynamic($contact_group['id'])) {
-                    $query =
-                        "INSERT INTO contacts_contact_groups_xref (
-                            contact_id,
-                            contact_group_id)
-                        VALUES (
-                            ?,
-                            ?)";
-                    $result = db_q($query, array((string) $contact['id'], (string) $contact_group['id'])) or output_error('Query failed.');
-                }
+                // add contact to contact group unless already in it, announcing
+                // the join (a group filled by rules keeps only the opt-in choice)
+                pg_audience_door_join((int) $contact['id'], (int) $contact_group['id']);
             }
             
             // check to see if there is already an opt-in record

@@ -638,10 +638,8 @@ function pg_member_register($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) REGISTRATION_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
-        db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
-            VALUES ('" . $contact_id . "', '" . $group_id . "')");
-    }
+    // Skips a group filled by rules (pg_audience_hand_sql()) and announces the join.
+    pg_audience_door_join($contact_id, $group_id);
 
     // The account. create_member_user() writes the modern hash and returns
     // the id; contact, start page and hint travel as data.
@@ -919,15 +917,9 @@ function pg_member_activate($form, $opts = array())
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
         : (int) MEMBERSHIP_CONTACT_GROUP_ID;
-    if ($group_id > 0 && db_value("SELECT id FROM contact_groups WHERE (id = '" . $group_id . "') AND " . pg_audience_hand_sql())) {
-        $in_group = db_value(
-            "SELECT contact_id FROM contacts_contact_groups_xref
-            WHERE contact_id = '" . $contact_id . "' AND contact_group_id = '" . $group_id . "'");
-        if (!$in_group) {
-            db("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
-                VALUES ('" . $contact_id . "', '" . $group_id . "')");
-        }
-    }
+    // Skips a group filled by rules (pg_audience_hand_sql()) or one the
+    // contact is already in, and announces the join.
+    pg_audience_door_join($contact_id, $group_id);
 
     $create = array(
         'username'      => $username,
