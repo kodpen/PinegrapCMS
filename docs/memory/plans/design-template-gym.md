@@ -15,7 +15,7 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 
 - 2 (done, #7487): `pages_public.php`: home, `classes`, `timetable`, `plans`, `facilities`, `about`, `faq`, `location`; `tests/design_template_gym_public_test.php`.
 
-- 3: `trainers.php`: the Trainers collection (`trainers`, `trainer`, `trainer_new`) and `book_online` (booking widget starter, privacy link); test.
+- 3 (done, #7546): `trainers.php`: the Trainers collection (`trainers`, `trainer`, `trainer_new`) and `book_online` (booking widget starter, privacy link); test.
 
 - 4: `mail.php` (the e-mail builders) and `classes.php`: class booking requests (`class_booking`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`) and the join request (`join`, `join_view`, `staff_joins`); test.
 
@@ -26,6 +26,10 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-gym.php` (order, search sections, look, fonts, `pgy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-gym.md`; the PR body names the `[NEW]` line; this plan is deleted.
+
+## Where does the next session start?
+- Step 4. `parts.php` already has the class booking and join pick lists (`$class_names`, `$day_titles`, `$time_choices`, `$join_choices`, `$goal_choices`, `$experience_choices`, `$booking_statuses`, `$join_statuses`), the form builders and `$comment_thread`; copy `mail.php` and the request pattern from `pinegrap-hotel/mail.php` and `bookings.php`. The page `privacy` must be named `lang('privacy-policy')` ([[booking-templates]]).
+- PHP 7.1 traps met so far: no trailing comma after a call's last argument (step 2 failed CI on it). Commit with committer `Erdal Güral`, or the branch guard fails.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
