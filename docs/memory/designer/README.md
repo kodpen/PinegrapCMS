@@ -336,7 +336,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - palette-lists-keyboard.md: Palette lists from the keyboard: focusable rows Enter/Space insert, header toggle buttons with aria-expanded, named search boxes, reachable bulk box, tip card on focus
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
-- photo-gallery-widget.md: Photo Gallery widget and classic page: the folder setting and its fallback, ?folder_id= and the Recycle Bin, image types, alt text, rows, tokens, flags, Where used, what is left out.
+- photo-gallery-widget.md: Photo Gallery widget and classic page: folder setting, ?folder_id= and the Recycle Bin, photos and alt, tokens, flags, Where used, what is left out.
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter
