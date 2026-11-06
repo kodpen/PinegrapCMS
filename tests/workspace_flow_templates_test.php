@@ -48,7 +48,7 @@ function ws_flow_templates_test_fill($overrides = array())
 		'join'     => true,
 		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided',
 			'order.delivered', 'order.return.requested', 'booking.cancelled', 'order.cancelled', 'booking.confirmed', 'workspace.flow.run.failed',
-			'erp.invoice.overdue'),
+			'erp.invoice.overdue', 'product.review.created', 'subscription.failed'),
 	);
 }
 
@@ -891,5 +891,47 @@ function test_workspace_flow_templates_answer_a_number()
 	// The difference as the run works it out: 1250 counted, 1200 expected.
 	pg_assert_same('50', ws_flow_derived_calculate('{{node.ask.answer_number}} - {{node.expected.expected}}',
 		array('ask' => array('answer_number' => '1250'), 'expected' => array('expected' => '1200')), 2));
+}
+
+// A low review and a failed subscription payment: offered with their
+// events, a review read by its rating, the person told and a task.
+function test_workspace_flow_templates_low_review_and_failed_subscription()
+{
+	$kinds = ws_flow_kinds();
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+	$events = array('low_review' => 'product.review.created', 'subscription_failed' => 'subscription.failed');
+
+	foreach ($events as $key => $event) {
+		$graph = $by_key[$key]['graph'];
+		$nodes = array_column($graph['nodes'], null, 'id');
+
+		pg_assert_same($event, $graph['nodes'][0]['config']['event'], $key . ' event');
+
+		foreach ($graph['edges'] as $edge) {
+			pg_assert_true(in_array($edge['on'], $kinds[$nodes[$edge['from']]['kind']]['outcomes'], true), $key . ': ' . $edge['from'] . ' on ' . $edge['on']);
+		}
+
+		pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($by_key[$key])), 'text'), $key . ' publishes');
+
+		$left = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('events' => array_values(array_diff(ws_flow_templates_test_fill()['events'], array($event)))))), null, 'key');
+		pg_assert_false(isset($left[$key]), $key . ' needs its event');
+	}
+
+	$review = array_column($by_key['low_review']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('type' => 'value', 'ref' => '{{trigger.rating}}', 'op' => 'lte', 'value' => '2'),
+		array_intersect_key($review['low']['config']['rule'], array('type' => 0, 'ref' => 0, 'op' => 0, 'value' => 0)));
+	pg_assert_same('task_open', $review['answer']['kind']);
+	pg_assert_same('post', $review['tell']['kind']);
+
+	// Two stars holds, four does not, a review without stars never.
+	$rule = ws_flow_condition_normalize($review['low']['config'])['rule'];
+	pg_assert_true(ws_flow_condition_value_holds($rule, array(WS_STEP_TRIGGER => array('rating' => 2)))['holds']);
+	pg_assert_false(ws_flow_condition_value_holds($rule, array(WS_STEP_TRIGGER => array('rating' => 4)))['holds']);
+	pg_assert_false(ws_flow_condition_value_holds($rule, array(WS_STEP_TRIGGER => array('rating' => null)))['holds'], 'no stars');
+
+	$failed = array_column($by_key['subscription_failed']['graph']['nodes'], null, 'id');
+	pg_assert_same('notify', $failed['told']['kind']);
+	pg_assert_same('task_open', $failed['contact']['kind']);
+	pg_assert_same('high', $failed['contact']['config']['priority']);
 }
 
