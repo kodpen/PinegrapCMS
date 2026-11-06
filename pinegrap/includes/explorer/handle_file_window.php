@@ -55,8 +55,12 @@ function pg_explorer_handle_file_get($type, $request, $user)
     // The signing key is shown as a file with no preview: its
     // content never leaves the server (pg_file_withheld()).
     $payload['editable'] = in_array($extension, pg_explorer_editable_formats(), true);
+    // A team chat attachment is listed, its text is not
+    // (pg_file_panel_content_verdict()); the folder edit check above
+    // already covers a form attachment.
     $payload['viewable'] = in_array($extension, pg_explorer_viewable_formats(), true)
-        && (pg_file_withheld($file['name']) == false);
+        && (pg_file_withheld($file['name']) == false)
+        && pg_file_panel_content_verdict($file['attachment'], true, $user['id'], $user['role'], pg_file_chat_conversations($file['id']));
     $payload['editor_language'] = pg_explorer_editor_language($extension);
     $payload['content'] = null;
     $payload['content_too_large'] = false;
