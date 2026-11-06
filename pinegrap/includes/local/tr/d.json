@@ -1194,6 +1194,7 @@
     "delivered on {var:1}": "{var:1} tarihinde teslim edildi",
     "delivery time, how long, turnaround": "teslim süresi, ne kadar sürer, hazırlanma süresi",
     "delivery, delivery cost, outside the city": "teslimat, teslimat ücreti, şehir dışı",
+    "delivery, gallery, download, proofs, edited, how long": "teslim, galeri, indirme, ön izleme, düzenleme, ne kadar sürer",
     "delivery, shipping, how long": "teslimat, kargo, ne kadar sürer",
     "delivery, shipping, tracking, packaging": "teslimat, kargo, takip, ambalaj",
     "deposit, balance, refund, cancellation policy, terms": "kapora, kalan tutar, iade, iptal koşulları, şartlar",
