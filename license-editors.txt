@@ -1,0 +1,114 @@
+Pinegrap Editors Licence
+
+Copyright (c) 2026 Erdal Güral. All rights reserved.
+
+This licence covers the files listed under "Covered files" below (the
+"Editors"): the Pinegrap visual editor and the Pinegrap image editor.
+
+1. Use. You may use the Editors free of charge with any distribution of
+   Pinegrap CMS: install, run, update and back them up, copy them together
+   with Pinegrap CMS, and pass them on unmodified as part of it.
+
+2. Restrictions. Without the prior written permission of the copyright
+   holder you may not:
+   (a) copy the Editors or any part of them out of Pinegrap CMS;
+   (b) modify, adapt, translate or make derivative works of the Editors;
+   (c) use the Editors, or any part of them, in other software, products or
+       services;
+   (d) distribute, sublicense, sell, rent or lend the Editors as separate
+       software or apart from Pinegrap CMS;
+   (e) remove or change this notice or the copyright notices in the files.
+
+3. Contributions. Changes to the Editors are accepted only from authors who
+   assign their copyright in those changes to the copyright holder in
+   writing.
+
+4. Termination. Any use outside these terms ends the permission given in
+   section 1.
+
+5. No warranty. THE EDITORS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+   KIND, EXPRESS OR IMPLIED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+   LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING FROM, OUT OF OR
+   IN CONNECTION WITH THE EDITORS OR THEIR USE.
+
+6. Law. This licence is governed by the laws of the Republic of Türkiye.
+   Where the English and Turkish texts differ, the English text prevails.
+
+Covered files (paths from the repository root):
+
+  The visual editor
+  pinegrap/assets/css/designer_home.css
+  pinegrap/assets/css/style_designer.css
+  pinegrap/assets/js/designer_ai.js
+  pinegrap/assets/js/designer_home.js
+  pinegrap/assets/js/style_designer.min.js
+  pinegrap/assets/js/style_designer.src.js
+  pinegrap/designer_import.php
+  pinegrap/includes/designer_access.php
+  pinegrap/includes/designer_ai.php
+  pinegrap/includes/designer_collab.php
+  pinegrap/includes/designer_import.php
+  pinegrap/includes/designer_region_import.php
+  pinegrap/includes/designer_screen.php
+  pinegrap/includes/fn/designer.php
+  pinegrap/includes/fn/designer_fx.php
+  pinegrap/includes/fn/designer_theme_vars.php
+  pinegrap/includes/fn/designer_vocab.php
+  pinegrap/includes/fn/legacy_to_designer.php
+  pinegrap/includes/fn/legacy_to_designer_plan.php
+  pinegrap/includes/fn/legacy_to_designer_run.php
+  pinegrap/includes/panel/designer.php
+  pinegrap/legacy_to_designer.php
+  pinegrap/view_system_styles.php
+
+  The image editor
+  pinegrap/assets/css/pg_image_editor.min.css
+  pinegrap/assets/css/pg_image_editor.src.css
+  pinegrap/assets/js/pg_google_fonts.js
+  pinegrap/assets/js/pg_image_editor*.js (every file whose name begins so)
+  pinegrap/image_editor_api.php
+  pinegrap/image_editor_edit.php
+  pinegrap/includes/fn/image_editor.php
+
+--------------------------------------------------------------------------
+
+Pinegrap Editörler Lisansı (Türkçe çeviri)
+
+Telif hakkı (c) 2026 Erdal Güral. Tüm hakları saklıdır.
+
+Bu lisans, yukarıda "Covered files" başlığı altında sayılan dosyaları
+("Editörler") kapsar: Pinegrap görsel editörü ve Pinegrap görsel
+düzenleyicisi.
+
+1. Kullanım. Editörleri her Pinegrap CMS dağıtımıyla ücretsiz
+   kullanabilirsiniz: kurabilir, çalıştırabilir, güncelleyebilir,
+   yedekleyebilir, Pinegrap CMS ile birlikte kopyalayabilir ve onun parçası
+   olarak, değiştirmeden aktarabilirsiniz.
+
+2. Kısıtlamalar. Telif hakkı sahibinin önceden yazılı izni olmadan:
+   (a) Editörleri ya da herhangi bir parçasını Pinegrap CMS dışına
+       kopyalayamazsınız;
+   (b) Editörleri değiştiremez, uyarlayamaz, çeviremez ya da onlardan türev
+       eser oluşturamazsınız;
+   (c) Editörleri ya da herhangi bir parçasını başka yazılım, ürün ya da
+       hizmetlerde kullanamazsınız;
+   (d) Editörleri ayrı bir yazılım olarak ya da Pinegrap CMS'ten ayrı
+       dağıtamaz, alt lisanslayamaz, satamaz, kiralayamaz ya da ödünç
+       veremezsiniz;
+   (e) Bu bildirimi ya da dosyalardaki telif hakkı bildirimlerini kaldıramaz
+       ya da değiştiremezsiniz.
+
+3. Katkılar. Editörlerdeki değişiklikler yalnız, bu değişikliklerdeki telif
+   haklarını telif hakkı sahibine yazılı olarak devreden yazarlardan kabul
+   edilir.
+
+4. Sona erme. Bu koşulların dışındaki her kullanım, 1. maddede verilen izni
+   sona erdirir.
+
+5. Garanti yoktur. EDİTÖRLER, AÇIK YA DA ZIMNİ HİÇBİR GARANTİ OLMAKSIZIN
+   "OLDUĞU GİBİ" SUNULUR. TELİF HAKKI SAHİBİ, EDİTÖRLERDEN, ONLARIN
+   KULLANIMINDAN YA DA BUNLARLA BAĞLANTILI OLARAK DOĞAN HİÇBİR TALEP, ZARAR
+   YA DA BAŞKA YÜKÜMLÜLÜKTEN HİÇBİR DURUMDA SORUMLU DEĞİLDİR.
+
+6. Hukuk. Bu lisans Türkiye Cumhuriyeti hukukuna tabidir. İngilizce ve
+   Türkçe metinler arasında fark olursa İngilizce metin esas alınır.

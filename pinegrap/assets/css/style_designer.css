@@ -1,3 +1,14 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The visual editor's styles.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
+ */
+
 /* Panel rules sit in Bootstrap 6's custom layer: above its components,
    below its helpers and utilities, which win as they did with !important. */
 @layer custom {
