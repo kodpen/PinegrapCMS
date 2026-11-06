@@ -175,6 +175,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
 - short-link-csv.md: Short links as a CSV file (2026.11.0): the list's export (from,to,code), import_short_links.php and its line rules, the reader's encodings, separators and heading, the formula guard.
+- short-link-gone-destination.md: A short link whose page or file was deleted answers its address as no link had it (404 or a pattern), not with the home page; pg_short_link_destination_gone() in router.php
 - short-link-names.md: Short link names (2026.11.0): the name rule, a pasted old address as a name, how a request finds its link (as it came, then in the stored form), IIS name recovery, how two names compare.
 - short-link-redirects.md: Redirects are short link options (2026.11.0, 11.0.12): answer 0/301/302, * patterns tried only at 404, loop checks on every entry point; names in short-link-names.md.
 - site-icon.md: The site icon (favicon sizes, apple-touch-icon, site.webmanifest): setting in config_text, sizes drawn by the image engine, router addresses, head links.
