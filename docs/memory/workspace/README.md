@@ -75,6 +75,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-app-commands.md: An application's own / commands (ws_app_commands, 11.0.87, PR #2213): register/delete routes, workspace:commands, never posted, workspace.app.command to that app alone
 - workspace-app-handles.md: How an application tag <@app:N> is drawn (Claude's link @Claude, Pinegrap AI's @ai, any other app a handle from its own name) and which apps the @ picker offers per channel
 - workspace-app-mentioned-webhook.md: workspace.app.mentioned (PR #809): an app mentioned with <@app:N> is told through its own subscriptions only, where it may read the channel; self, assistants, expired keys, privacy, payload
+- workspace-approval-decide-checks.md: What ws_approval_decide_check() refuses before a team member's answer to an approval request, shared by the panel, the external API and its dry run
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, following
 - workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
