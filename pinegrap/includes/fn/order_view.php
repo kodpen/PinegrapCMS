@@ -9,8 +9,8 @@
  * at the checkout, the text of the contact link, the printed order's
  * shipping card (print_order.php), the totals rows of the customer's printed
  * invoice (order_invoice_print.php), and the shipping input the screen and
- * update_order() check (ship and delivery dates, shipped quantity), and the
- * column of cards the screen stacks.
+ * update_order() check (ship and delivery dates, shipped quantity), the
+ * column of cards the screen stacks, and the order lines under them.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -72,6 +72,82 @@ function pg_order_view_card_column($cards)
     $html = implode("\n", array_filter(array_map('trim', array_map('strval', (array) $cards)), 'strlen'));
 
     return preg_replace('/^<div class="card mt-5"/', '<div class="card"', $html, 1);
+}
+
+/**
+ * One fact of an order line (quantity, price, a custom product field...):
+ * the caption above, the value under it, in the line's grid of facts.
+ * Nothing when the value is empty, as pg_order_view_row().
+ *
+ * @param string $label      the caption, ready to print
+ * @param string $value_html the value: escaped text, or markup the caller built
+ * @param string $for        the id of the field the value holds, so the
+ *                           caption names it (the shipped quantity)
+ * @param bool   $strong     the line's total, set off from the other facts
+ * @return string
+ */
+function pg_order_view_line_fact($label, $value_html, $for = '', $strong = false)
+{
+    $value_html = trim((string) $value_html);
+
+    if ($value_html === '') {
+        return '';
+    }
+
+    $caption = ($for !== '')
+        ? '<label class="d-block small fg-secondary" for="' . h($for) . '">' . $label . '</label>'
+        : '<div class="small fg-secondary">' . $label . '</div>';
+
+    return '<div class="order-line-fact">' . $caption . '<div class="text-break' . ($strong ? ' fw-semibold' : '') . '">' . $value_html . '</div></div>';
+}
+
+/**
+ * A box under an order line for one of its gift cards or product forms: a
+ * caption and what it holds.
+ *
+ * @param string $legend_html  the caption ("Gift Card (1 of 2)"), escaped
+ * @param string $content_html the facts or the form's table
+ * @return string
+ */
+function pg_order_view_line_part($legend_html, $content_html)
+{
+    return '<div class="card order-line-part mt-4">
+                                <div class="card-header bg-reset border-0 pb-0 small text-uppercase fw-bold fg-secondary">' . $legend_html . '</div>
+                                <div class="card-body">' . $content_html . '</div>
+                            </div>';
+}
+
+/**
+ * One line of the order's list of products: the thumbnail, the name and the
+ * short description, then a grid of facts (quantity, shipped quantity,
+ * price, total, the payment plan, the custom product fields) and the gift
+ * cards and forms bought with it. The facts flow into as many columns as
+ * the form column allows, instead of the boxes of uneven width that wrapped
+ * one under another.
+ *
+ * @param string $name_html        the product name, escaped or a link
+ * @param string $image_html       the thumbnail, '' for none
+ * @param string $description_html the short description, escaped
+ * @param string $facts_html       pg_order_view_line_fact() cells, joined
+ * @param string $parts_html       pg_order_view_line_part() boxes, joined
+ * @return string
+ */
+function pg_order_view_line($name_html, $image_html, $description_html, $facts_html, $parts_html = '')
+{
+    $image_html = trim((string) $image_html);
+    $description_html = trim((string) $description_html);
+
+    return '<div class="list-group-item order-line">
+                        <div class="d-flex gap-4">
+                            ' . ($image_html !== '' ? '<div class="flex-shrink-0 pg-print-none">' . $image_html . '</div>' : '') . '
+                            <div class="flex-grow-1 min-w-0">
+                                <div class="fw-semibold text-break">' . $name_html . '</div>
+                                ' . ($description_html !== '' ? '<div class="fg-secondary text-break">' . $description_html . '</div>' : '') . '
+                                <div class="order-line-facts mt-3">' . $facts_html . '</div>
+                                ' . $parts_html . '
+                            </div>
+                        </div>
+                    </div>';
 }
 
 /**

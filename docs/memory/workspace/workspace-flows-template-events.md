@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-template-events
-description: The flow templates started by a site event that wait, ask for approval or follow up (plan flows-next T1-T5, T10-T12): their boxes, what each is offered with, how they are tested
+description: The flow templates started by a site event that wait, ask for approval or follow up (T1-T5, T10-T13): their boxes, what each is offered with, how they are tested
 ---
 
 ## Which are they?
@@ -25,4 +25,4 @@ description: The flow templates started by a site event that wait, ask for appro
 - `test_workspace_flow_templates_reminder_failed_runs_overdue`: T10-T12's arrows, settings and the configs above.
 - `test_workspace_flow_templates_event_follow_ups`: each arrow on an outcome of its box, the filled graph passes `ws_flow_graph_check()`, a person setting (and a channel for the approval), the line to the channel open or the person. The default test fill offers their events, so the shape, settings and text tests cover them too.
 
-Related: workspace-flows-template-format.md, plans/flows-next-templates.md
+Related: workspace-flows-template-format.md, workspace-flows-template-adding.md

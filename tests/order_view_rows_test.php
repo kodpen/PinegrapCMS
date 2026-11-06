@@ -127,3 +127,43 @@ function test_order_view_card_column_first_card_flush()
 
 	pg_assert_same('', pg_order_view_card_column(array('', '')), 'no cards, nothing');
 }
+
+function test_order_view_line_fact_caption_and_value()
+{
+	pg_assert_same('', pg_order_view_line_fact('Price', ''), 'no value, no fact');
+	pg_assert_same('', pg_order_view_line_fact('Price', '  '), 'blank value, no fact');
+
+	$html = pg_order_view_line_fact('Price', '$5.00');
+	pg_assert_contains('<div class="small fg-secondary">Price</div>', $html, 'the caption above');
+	pg_assert_contains('<div class="text-break">$5.00</div>', $html, 'the value under it');
+
+	pg_assert_contains('<div class="text-break fw-semibold">$10.00</div>', pg_order_view_line_fact('Total', '$10.00', '', true), 'the total is set off');
+
+	$field = pg_order_view_line_fact('Shipped Qty', '<input id="order_item_id_4_shipped_quantity">', 'order_item_id_4_shipped_quantity');
+	pg_assert_contains('<label class="d-block small fg-secondary" for="order_item_id_4_shipped_quantity">Shipped Qty</label>', $field, 'the caption names the field');
+}
+
+function test_order_view_line_layout()
+{
+	$html = pg_order_view_line('Product ID / SKU: Mug', '<img class="order-line-image" src="mug.jpg" alt=""/>', 'A blue mug', '<div class="order-line-fact">f</div>', '<div class="card order-line-part">g</div>');
+
+	pg_assert_contains('<div class="list-group-item order-line">', $html, 'one list item');
+	pg_assert_contains('<div class="flex-shrink-0 pg-print-none"><img class="order-line-image"', $html, 'the thumbnail, left out of print');
+	pg_assert_contains('<div class="fw-semibold text-break">Product ID / SKU: Mug</div>', $html, 'the name');
+	pg_assert_contains('<div class="fg-secondary text-break">A blue mug</div>', $html, 'the description under it');
+	pg_assert_contains('<div class="order-line-facts mt-3"><div class="order-line-fact">f</div></div>', $html, 'the facts grid');
+	pg_assert_contains('<div class="card order-line-part">g</div>', $html, 'the gift cards and forms');
+
+	$bare = pg_order_view_line('Mug', '', '', '');
+	pg_assert_false(strpos($bare, 'flex-shrink-0') !== false, 'no image, no thumbnail column');
+	pg_assert_false(strpos($bare, 'fg-secondary text-break') !== false, 'no description, no line for it');
+}
+
+function test_order_view_line_part_caption()
+{
+	$html = pg_order_view_line_part('Gift Card (1 of 2)', '<table></table>');
+
+	pg_assert_contains('<div class="card order-line-part mt-4">', $html, 'a box under the line');
+	pg_assert_contains('fg-secondary">Gift Card (1 of 2)</div>', $html, 'its caption');
+	pg_assert_contains('<div class="card-body"><table></table></div>', $html, 'what it holds');
+}
