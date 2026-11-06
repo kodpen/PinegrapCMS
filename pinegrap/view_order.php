@@ -984,7 +984,7 @@ if (!$_POST) {
                 // An incomplete order takes no shipment, so its card shows no
                 // empty ship date, delivery date or tracking number labels.
                 $output_tracking_numbers_caption = ($status != 'incomplete')
-                    ? '<span class="col fg-secondary mt-5">' . lang('Tracking Numbers') . ':</span>'
+                    ? '<span class="form-label d-block">' . lang('Tracking Numbers') . '</span>'
                     : '';
                 
                 // If the order is complete, then output ship date and shipping tracking numbers.
@@ -1168,9 +1168,9 @@ if (!$_POST) {
 
                     if ($output_shipment_labels !== '') {
                         $output_shipment_labels =
-                            '<div class="row mb-3">
-                                <span class="col-12 fg-secondary mt-3">' . lang('Shipping Labels') . ':</span>
-                                <div class="col-12 mt-2">' . $output_shipment_labels . '</div>
+                            '<div class="form-field mb-5">
+                                <span class="form-label d-block">' . lang('Shipping Labels') . '</span>
+                                ' . $output_shipment_labels . '
                             </div>';
                     }
 
@@ -1197,7 +1197,7 @@ if (!$_POST) {
 
                 // A label, not an aria-label: the chips box takes its name
                 // from the hidden input's <label>.
-                $output_tracking_numbers_caption = '<label class="col fg-secondary mt-5" for="' . h($shipment_numbers_field) . '">' . lang('Tracking Numbers') . ':</label>';
+                $output_tracking_numbers_caption = '<label class="form-label" for="' . h($shipment_numbers_field) . '">' . lang('Tracking Numbers') . '</label>';
                   }
                     
                 }
@@ -1258,17 +1258,25 @@ if (!$_POST) {
                 
                 $output_ship_dates_row = '';
 
+                // Labelled boxes side by side; a cancelled order shows its
+                // dates as text, so their captions name no field.
                 if ($status != 'incomplete') {
-                    $output_ship_dates_row =
-                        '<div class="row pt-1 mb-5 justify-content-center">
-                            <div class="col-auto">
-                                <label class="form-label">' . lang('Ship Date') . ':</label>
-                                ' . $output_ship_date_field . '
-                            </div>
-                            <div class="col-auto ">
-                                <label class="form-label">' . lang('Delivery Date') . ':</label>
-                                ' . $output_delivery_date_field . '
-                            </div>
+                    $ship_dates_field_id = 'ship_to_id_' . (int) $ship_tos[$key]['ship_to_id'];
+                    $output_ship_dates_row = '<div class="row g-5 mt-0 mb-5">';
+
+                    foreach (array('ship_date' => array(lang('Ship Date'), $output_ship_date_field), 'delivery_date' => array(lang('Delivery Date'), $output_delivery_date_field)) as $date_column => $date_box) {
+                        $output_ship_dates_row .= '
+                            <div class="col-12 sm:col-6">
+                                <div class="form-field">
+                                    ' . (($status == 'cancelled')
+                                        ? '<span class="form-label d-block">' . $date_box[0] . '</span>'
+                                        : '<label class="form-label" for="' . $ship_dates_field_id . '_' . $date_column . '">' . $date_box[0] . '</label>') . '
+                                    ' . (($date_box[1] !== '') ? $date_box[1] : '<span class="form-control-plaintext p-0">&mdash;</span>') . '
+                                </div>
+                            </div>';
+                    }
+
+                    $output_ship_dates_row .= '
                         </div>';
                 }
 
@@ -1328,11 +1336,11 @@ if (!$_POST) {
                                             <span class="col fg-secondary">' . lang('Shipping Method') . ':</span>
                                             <span class="col text-end">' . $shipping_method . '</span>
                                         </div>
-                                        <div class="row">
+                                        ' . (($output_tracking_numbers_caption !== '') ? '<div class="form-field mb-5">
                                             ' . $output_tracking_numbers_caption . '
-                                            <span class="col-12 mt-3">' . $output_shipping_tracking_numbers . '
-                                            ' . $output_shipping_tracking_numbers_field . '</span>
-                                        </div>
+                                            ' . $output_shipping_tracking_numbers . '
+                                            ' . $output_shipping_tracking_numbers_field . '
+                                        </div>' : '') . '
                                         ' . $output_shipment_labels . '
                                         <div class="row my-3">
                                             <span class="col fg-secondary">' . lang('Shipping Cost') . ':</span>

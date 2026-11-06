@@ -14,4 +14,7 @@ module: order_view
 - A rule in `backend.src.css` cannot: Bootstrap 6's `utilities` layer comes after `custom`, so `.mt-5` beats any panel rule. Tested in `tests/order_view_rows_test.php`.
 
 ## What is left for the later parts?
-- The cards still use label/value `.row` lines and the order lines their old boxes; the shipping card's date and tracking fields are not `form-field` yet.
+- The cards still use label/value `.row` lines and the order lines their old boxes.
+
+## How are the shipping card's fields drawn?
+- Part 2: Ship Date and Delivery Date are labelled `form-field` boxes side by side from `sm` (`<label for>` naming each date field; before, the captions named no field). A cancelled order shows them as text under a plain caption, a dash when empty. Tracking Numbers (the parcel list and the chips field) and Shipping Labels each sit in a `form-field` with a `form-label` caption. Pinned by `tests/field_caption_links_test.php`.
