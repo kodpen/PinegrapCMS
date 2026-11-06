@@ -65,7 +65,7 @@ description: Generated from the module field of the memory files: each includes/
 - `cron`: [[job-script-claims]], [[scheduled-job-resume]]
 - `currency_list_edit`: [[list-table-quick-edit-currencies]]
 - `currency_rates`: [[exchange-rates-update]], [[visitor-currency-zero-rate]]
-- `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[custom-form-shown-when]], [[custom-form-upload-placement]], [[form-field-errors]], [[registration-gate-form-submitter]], [[sms-consent-custom-form]]
+- `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[custom-form-private-access-expiry]], [[custom-form-shown-when]], [[custom-form-upload-placement]], [[form-field-errors]], [[registration-gate-form-submitter]], [[sms-consent-custom-form]]
 - `custom_form_steps`: [[custom-form-steps]]
 - `design_file_list_edit`: [[list-table-quick-edit-design-files]]
 - `design_previews`: [[design-live-pictures]]

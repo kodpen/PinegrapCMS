@@ -2608,6 +2608,28 @@ function pg_cf_rules_json($rules, $type = '')
     return empty($rules) ? null : json_encode($rules, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
+/**
+ * The private access expiry date a custom form grants: $days calendar days
+ * after $today (Y-m-d). Counted on the date itself, not in 86400-second
+ * steps, so a 25-hour day at the autumn clock change does not end the access
+ * a day early.
+ *
+ * @param string $today Y-m-d
+ * @param int    $days  the form's private access length in days
+ * @return string Y-m-d, or '' for a bad date or no days
+ */
+function pg_cf_private_expiry_date($today, $days)
+{
+    $days = (int) $days;
+    if (($days <= 0) || !is_string($today)
+        || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $today, $m)
+        || !checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+        return '';
+    }
+
+    return gmdate('Y-m-d', gmmktime(0, 0, 0, (int) $m[2], (int) $m[3] + $days, (int) $m[1]));
+}
+
 // Today as Y-m-d in the site's time zone, the default init.php sets from
 // TIMEZONE.
 function pg_cf_rules_today()

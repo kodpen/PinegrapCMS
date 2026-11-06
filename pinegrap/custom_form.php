@@ -1455,11 +1455,8 @@ if ($liveform->check_form_errors() == false) {
 
             // If the private access is limited in length, then prepare new expiration date.
             if ($private_days) {
-                // Get current date.
-                $current_date = date('Y-m-d');
-
-                // Calculate the expiration date based on the number of days from today.
-                $calculated_expiration_date = date('Y-m-d', strtotime($current_date) + ($private_days * 86400));
+                // The expiration date is the number of calendar days from today.
+                $calculated_expiration_date = pg_cf_private_expiry_date(date('Y-m-d'), $private_days);
 
                 // If the calculated expiration is greater than the previous expiration date,
                 // then use the calculated expiration date.
