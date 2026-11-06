@@ -7,7 +7,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 - Claim one with a draft `[plan:flows-next] <step> — <topic>`. S under 400 product lines, M about 1,000. `free` steps run side by side when they touch different files; a step marked `after` waits for that step's merge or that decision. Tests in `tests/workspace_flow_*_test.php`, red first; texts through `tr_add.php`; `php tools/build_js.php` after workspace_flow.js.
 
 ## A: answers and formulas (decided; shapes in `workflow/decisions-made-product-33.md`, as B2-C4's)
-- A1 (free, M): the answer of an approval box (#7015): settings `answer` none/text/number and `answer_label`, the card's Approve asks, outputs `answer`, `answer_number`, `decided_by`; no schema. flow approval box, approvals.php, workspace_approvals.js.
+- A1 (done, PR #7446): the answer of an approval box (#7015): settings `answer` none/text/number and `answer_label`, the card's Approve asks, outputs `answer`, `answer_number`, `decided_by`; no schema. flow approval box, approvals.php, workspace_approvals.js.
 
 - A2 done (#7260): the Calculate rule, `workspace/workspace-flows-derived-calculate.md`.
 

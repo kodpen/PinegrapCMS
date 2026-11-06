@@ -3465,10 +3465,20 @@ function ws_flow_approval_recheck($step)
     }
 
     // An MCP box keeps the values it declares (no answer: the call was not
-    // made); an approval box its request and the request's message.
-    $data = $mcp
-        ? ws_step_result_data('mcp', $node['config'], array())
-        : array('approval_id' => $approval_id, 'message_id' => $approval ? (((int) $approval['message_id'] > 0) ? (int) $approval['message_id'] : null) : null);
+    // made); an approval box its request and the request's message, and
+    // when it asks for one, the last decider's answer
+    // (ws_approval_answer_values()).
+    if ($mcp) {
+        $data = ws_step_result_data('mcp', $node['config'], array());
+    } else {
+        $data = array('approval_id' => $approval_id, 'message_id' => $approval ? (((int) $approval['message_id'] > 0) ? (int) $approval['message_id'] : null) : null);
+        $config = ws_step_config_normalize('approval', $node ? (array) ($node['config'] ?? array()) : array());
+
+        if ($config['answer'] !== 'none') {
+            $answers = ($approval && function_exists('ws_approval_answer_values')) ? ws_approval_answer_values(ws_approval_people($approval_id)) : array();
+            $data = ws_step_result_data('approval', $config, $data + array('data' => $answers));
+        }
+    }
 
     return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, $data);
 }

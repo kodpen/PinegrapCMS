@@ -4796,6 +4796,13 @@
             });
         }
 
+        // An approval box that asks for an answer gives it (ws_step_outputs()).
+        if ((node.kind === 'approval') && ['text', 'number'].indexOf(node.config.answer) !== -1) {
+            add(prefix, { key: 'answer', type: 'text', label: t('fl_approval_answer_out') });
+            add(prefix, { key: 'answer_number', type: 'number', label: t('fl_approval_answer_number_out') });
+            add(prefix, { key: 'decided_by', type: 'number', label: t('fl_approval_decided_by') });
+        }
+
         // A box that reads a row gives each cell of its table
         // (ws_step_outputs()).
         if (node.kind === 'row_get') {
@@ -7023,6 +7030,30 @@
         });
         box.appendChild(field(t('fl_approval_rule'), rule));
         closesField(box, node);
+
+        // What Approve asks for (answer, answer_label): the box then gives
+        // the answer, its number and who gave it (ws_step_outputs()).
+        var answer = K.select([['none', t('fl_approval_answer_none')], ['text', t('fl_approval_answer_text')], ['number', t('fl_approval_answer_number')]], config.answer || 'none');
+
+        answer.addEventListener('change', function () {
+            config.answer = answer.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_approval_answer'), answer, t('fl_approval_answer_help')));
+
+        if ((config.answer || 'none') !== 'none') {
+            var question = el('input', 'form-control form-control-sm');
+
+            question.type = 'text';
+            question.maxLength = 120;
+            question.value = config.answer_label || '';
+            question.addEventListener('input', function () {
+                config.answer_label = question.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_approval_answer_label'), question));
+        }
     }
 
     // The hours an approval request stays open (closes_in, '' for no

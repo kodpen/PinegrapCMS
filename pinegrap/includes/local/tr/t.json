@@ -1228,6 +1228,7 @@
     "The answer could not be sent.": "Yanıt gönderilemedi.",
     "The answer did not reach the customer; the receiving server said:": "Yanıt müşteriye ulaşmadı; alıcı sunucunun söylediği:",
     "The answer goes to a different address than the one this application is identified by. Connect it only if you expected that.": "Yanıt, bu uygulamanın kimlik adresinden farklı bir adrese gidecek. Yalnız bunu bekliyorsanız bağlayın.",
+    "The answer has to be a number.": "Cevap bir sayı olmalı.",
     "The answer names another account: the site's address in General settings is not the one the request reached.": "Yanıt başka bir hesabı gösteriyor: Genel ayarlardaki site adresi, isteğin ulaştığı adres değil.",
     "The answer of Pinegrap AI could not be read as a form. Try again with the sentence put a little differently.": "Pinegrap AI'ın yanıtı forma çevrilemedi. Cümleyi biraz farklı yazıp yeniden deneyin.",
     "The answer to {var:1} is longer than the 10000 characters accepted.": "{var:1} alanının cevabı kabul edilen 10000 karakterden uzun.",
