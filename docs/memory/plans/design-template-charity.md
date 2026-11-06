@@ -20,7 +20,7 @@ description: Plan for the Charity template (pinegrap-charity): causes, campaigns
 ## Which steps are there?
 - 1 Done (#7468). Data and shared parts: `parts.php`; test `design_template_charity_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, about, our work, impact, transparency, FAQ); home places `home_campaigns`, `home_events`, `home_posts`.
+- 2 Done (#7483). Public pages: `pages_public.php`; places `home_campaigns`, `home_events`, `home_posts`, `reports`.
 
 - 3 Donate: `_pg_tpl_catalog()` `'donation'` key and test; `donate.php` (Donate group, `donate`, pledge form, `pledge_view`, product, cart, checkout, order, `email_order`, `cart_link`).
 

@@ -48,7 +48,7 @@ function ws_flow_templates_test_fill($overrides = array())
 		'join'     => true,
 		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided',
 			'order.delivered', 'order.return.requested', 'booking.cancelled', 'order.cancelled', 'booking.confirmed', 'workspace.flow.run.failed',
-			'erp.invoice.overdue', 'product.review.created', 'subscription.failed'),
+			'erp.invoice.overdue', 'product.review.created', 'subscription.failed', 'cart_quote.created'),
 	);
 }
 
@@ -225,7 +225,7 @@ function test_workspace_flow_templates_need_their_starts()
 	};
 	$started = array('welcome', 'order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event',
 		'review_request', 'restock_approval', 'return_task', 'booking_cancelled', 'order_cancelled', 'booking_reminder', 'failed_runs',
-		'invoice_overdue_follow_up');
+		'invoice_overdue_follow_up', 'cart_quote_follow_up');
 
 	pg_assert_same(array(), array_values(array_diff($started, $keys(array()))), 'offered with the join start and the events');
 	pg_assert_same(array(), array_values(array_intersect($started, $keys(array('join' => false, 'events' => array())))), 'left out without them');
@@ -935,3 +935,41 @@ function test_workspace_flow_templates_low_review_and_failed_subscription()
 	pg_assert_same('high', $failed['contact']['config']['priority']);
 }
 
+
+// A cart quote followed up: made, two days later read again, a task to call
+// only for one still open (not ordered, cancelled or past its last day).
+function test_workspace_flow_templates_cart_quote_follow_up()
+{
+	$kinds = ws_flow_kinds();
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+	$template = $by_key['cart_quote_follow_up'];
+	$graph = $template['graph'];
+	$nodes = array_column($graph['nodes'], null, 'id');
+
+	pg_assert_same('cart_quote.created', $graph['nodes'][0]['config']['event']);
+	pg_assert_same(array('amount' => 2, 'unit' => 'days'), array_intersect_key($nodes['wait']['config'], array('amount' => 0, 'unit' => 0)));
+	pg_assert_same(array('record' => 'cart_quote', 'id' => '{{trigger.record_id}}'), array_intersect_key($nodes['read']['config'], array('record' => 0, 'id' => 0)));
+	pg_assert_true(isset(ws_flow_record_get_fields()['cart_quote']['fields']['status']), 'the box gives the quote\'s state');
+	pg_assert_same('task_open', $nodes['call']['kind']);
+
+	foreach ($graph['edges'] as $edge) {
+		pg_assert_true(in_array($edge['on'], $kinds[$nodes[$edge['from']]['kind']]['outcomes'], true), $edge['from'] . ' on ' . $edge['on']);
+	}
+
+	pg_assert_same(array('wait:done', 'read:done', 'open:yes'), array_values(array_map(function ($edge) {
+		return $edge['from'] . ':' . $edge['on'];
+	}, array_slice($graph['edges'], 1))));
+	pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($template)), 'text'), 'it publishes');
+	pg_assert_same(array('person'), array_column($template['settings'], 'type'));
+
+	// Open holds; ordered, cancelled, expired or a quote not found do not.
+	$rule = ws_flow_condition_normalize($nodes['open']['config'])['rule'];
+	pg_assert_true(ws_flow_condition_value_holds($rule, array('read' => array('status' => 'open')))['holds']);
+
+	foreach (array('ordered', 'cancelled', 'expired', '') as $status) {
+		pg_assert_false(ws_flow_condition_value_holds($rule, array('read' => array('status' => $status)))['holds'], $status);
+	}
+
+	$left = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('events' => array('order.created')))), null, 'key');
+	pg_assert_false(isset($left['cart_quote_follow_up']), 'it needs its event');
+}

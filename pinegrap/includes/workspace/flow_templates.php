@@ -548,6 +548,23 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'told', 'next'), array('start', 'contact', 'next')));
     }
 
+    // A cart quote not ordered two days after it was made: a task to call
+    // the customer. The quote is read after the wait, so one ordered,
+    // cancelled or past its last day meanwhile opens no task.
+    if (in_array('cart_quote.created', $events, true)) {
+        $out[] = array('key' => 'cart_quote_follow_up', 'category' => 'sales', 'icon' => 'bi-cart3',
+            'title' => lang('Follow up a cart quote'),
+            'help' => lang('Two days after a cart quote is made, a task to call the customer when it is still open and not ordered.'),
+            'boxes' => array(
+                'start' => $on('cart_quote.created'),
+                'wait'  => array('kind' => 'delay', 'config' => array('amount' => 2, 'unit' => 'days')),
+                'read'  => array('kind' => 'record_get', 'config' => array('record' => 'cart_quote', 'id' => '{{trigger.record_id}}')),
+                'open'  => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.read.status}}', 'op' => 'eq', 'value' => 'open'))),
+                'call'  => $task(lang('Call the customer about {{record_title}}'), 'normal'),
+            ),
+            'edges' => array(array('start', 'wait', 'next'), array('wait', 'read', 'done'), array('read', 'open', 'done'), array('open', 'call', 'yes')));
+    }
+
     // The templates a scheduled action has no form for: tasks that wait for
     // each other, a wait between them, approvals and their outcomes.
 

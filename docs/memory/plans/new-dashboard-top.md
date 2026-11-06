@@ -16,7 +16,7 @@ description: New dashboard plan: the switch row on both dashboards, the greeting
 
 ## What is the System Status card? (N3, screen 01)
 - Owner (2026-11-01): its gauge is the current one, widget 2's `.pg-health` (the half arc in the score's colour band, the pixel matrix and its twinkle, the inner hairline, the glow layers, light and dark stop sets, the readout, the observer that pauses it off screen), not the design's dot half ring: three days of work went into it.
-- N3 moves the gauge's PHP (bands, gradient axis, cells, clip, markup, script) out of `widget_2.php` into one function both call; widget 2's output stays byte for byte the same (a test compares it). Its rules (`.pg-health*` in `backend.src.css`) are global and stay; lights off and `prefers-reduced-motion` use its own pause and reduced-motion rules.
+- The gauge's PHP (bands, gradient axis, cells, clip, markup, script) is `pg_health_gauge()` in `includes/fn/health_gauge.php` (N3, #4756), called by widget 2 and the card; widget 2's output stays byte for byte the same (a test compares it). Its rules (`.pg-health*` in `backend.src.css`) are global and stay; lights off and `prefers-reduced-motion` use its own pause and reduced-motion rules.
 - Under it the checks as chips (bad, warn, good) linking where widget 2's do (`ui/dashboard-keyboard.md`); "Details" opens what widget 2's header opens. Same score and checks on both dashboards (`get_system_status_checks()`). Role < 3, as widget 2.
 - Hideable: "Hide" in edit mode; while hidden, edit mode shows a dashed strip "System Status hidden · Show". When it is hidden or not allowed, the greeting card takes the whole row.
 
