@@ -326,18 +326,20 @@ $profile_widgets = array(
         )),
     ),
 
-    // Every member, filtered by the topic in the address, with a search.
+    // Every member once, with their newest profile, filtered by the topic
+    // in the address, with a search.
     'people_list' => array(
         'page'   => 'people',
         'slug'   => lang('form-list'),
         'config' => $profile_list_config(array(
-            'items_per_page' => 24,
-            'filters'        => array($profile_filter('interests', 'is equal to', '', 'topic')),
-            'search_enabled' => true,
-            'search_fields'  => array('display_name', 'city', 'interests', 'bio'),
-            'search_width'   => 'full',
-            'search_label'   => lang('Search the people: a name, a city, a topic...'),
-            'empty_message'  => lang('No member matches yet. Try another topic, or be the first: set up your profile.'),
+            'items_per_page'    => 24,
+            'one_per_submitter' => true,
+            'filters'           => array($profile_filter('interests', 'is equal to', '', 'topic')),
+            'search_enabled'    => true,
+            'search_fields'     => array('display_name', 'city', 'interests', 'bio'),
+            'search_width'      => 'full',
+            'search_label'      => lang('Search the people: a name, a city, a topic...'),
+            'empty_message'     => lang('No member matches yet. Try another topic, or be the first: set up your profile.'),
         )),
         'tree'   => $profile_grid('tom'),
     ),
@@ -385,18 +387,19 @@ $profile_widgets = array(
         )),
     ),
 
-    // The staff list: every profile with its author name and a link to the
-    // member's page, searchable.
+    // The staff list: every member's newest profile with its author name
+    // and a link to the member's page, searchable.
     'staff_members_list' => array(
         'page'   => 'staff_members',
         'slug'   => lang('form-list'),
         'config' => $profile_list_config(array(
-            'items_per_page' => 30,
-            'search_enabled' => true,
-            'search_fields'  => array('display_name', 'city', 'interests', 'bio', 'website'),
-            'search_width'   => 'half',
-            'search_label'   => lang('Search the profiles'),
-            'empty_message'  => lang('No member has sent a profile yet.'),
+            'items_per_page'    => 30,
+            'one_per_submitter' => true,
+            'search_enabled'    => true,
+            'search_fields'     => array('display_name', 'city', 'interests', 'bio', 'website'),
+            'search_width'      => 'half',
+            'search_label'      => lang('Search the profiles'),
+            'empty_message'     => lang('No member has sent a profile yet.'),
         )),
         'tree'   => $widget_root(array(
             $el('div', 'list-group', lang('Rows'), array($loop(array(
