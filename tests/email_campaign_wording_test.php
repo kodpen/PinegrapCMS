@@ -64,10 +64,23 @@ function test_email_campaign_profile_cell_and_notice_wording()
 	pg_assert_same(0, strpos(pg_email_campaign_profile_schedule_label(3, 'hours', 'after', 'action', '21:30'), '3 '), 'the schedule cell starts with the amount');
 	pg_assert_same('Kampanya profili çoğaltıldı ve şimdi kopyayı düzenliyorsunuz.', $map['The campaign profile has been duplicated, and you are now editing the duplicate.'] ?? null, 'duplicate notice');
 	pg_assert_contains("lang('The campaign profile has been duplicated, and you are now editing the duplicate.')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/duplicate_email_campaign_profile.php'), 'duplicate screen uses the notice');
+	pg_assert_same('Kopya devre dışıdır ve siz etkinleştirene kadar hiçbir şey göndermez.', $map['The copy is disabled and sends nothing until you enable it.'] ?? null, 'duplicate notice says the copy is disabled');
 
 	foreach (array('Modify the Campaign that is created automatically when a certain action is completed (e.g. Visitor reserves Calendar Event).', 'Setup a Campaign to be created automatically when a certain action is completed (e.g. Visitor reserves Calendar Event).') as $key) {
 		pg_assert_contains('(ör. bir ziyaretçi bir takvim etkinliği rezerve ettiğinde)', $map[$key] ?? '', $key);
 	}
+}
+
+// A duplicated campaign profile is stored disabled whatever the original holds,
+// so the copy never sends the same e-mail a second time on the same trigger.
+function test_duplicate_email_campaign_profile_stores_copy_disabled()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/duplicate_email_campaign_profile.php');
+	$insert = substr($source, (int) strpos($source, 'INSERT INTO email_campaign_profiles'));
+
+	pg_assert_same(false, strpos($source, "e(\$email_campaign_profile['enabled'])"), 'the copy does not take the original enabled value');
+	pg_assert_same(true, (bool) preg_match("/VALUES \\(\\s*'\" \\. e\\(\\\$email_campaign_profile\\['name'\\]\\) \\. \"',\\s*'0',/", $insert), 'enabled is stored as 0');
+	pg_assert_contains("lang('The copy is disabled and sends nothing until you enable it.')", $source, 'the notice says the copy is disabled');
 }
 
 function test_email_campaign_wording_opt_in_values()
