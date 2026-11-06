@@ -12,6 +12,8 @@ module: store_credit_refunds
 ## What does the bonus do?
 - Settings › Ecommerce › Gift Cards & Rewards: "Bonus on refunds given as store credit" (%), the `config_text` row `credit_refund_bonus` (`pg_credit_refund_parse_bonus()`: dot number, 2 decimals, capped at 100; '' = none, the default).
 - The card holds `pg_credit_refund_card_amount($amount, $percent)` = amount + `round(amount * percent / 100)`. The bonus is on the card only: the refunded amount, `order_refunds` and the ERP see the refund without it.
+- Only payment money earns the bonus (owner decision B, #7017): money gift cards or store credit paid comes back without it, or an order paid with credit, cancelled and refunded as credit grew each round. `pg_credit_refund_card_amount_on($amount, $bonus_base, $percent)` puts it on at most `$bonus_base`; `pg_credit_refund_issue()` takes that base as its fifth argument.
+- Cancelled order: `pg_credit_refund_cancel_card_amount($owed, $percent)`, base `owed['payment']`, used by `pg_credit_refund_cancelled_order()` and the dialog of `view_order.php` (the amount shown is the amount written). Return: base `min(amount, plan['remaining'])` (payment money not refunded yet; `orders.total` has the gift card part taken off already).
 
 ## What is written?
 - Return (`pg_return_refund()`, method `credit`, amount > 0): under the return lock, after the move to `refunded`, `pg_credit_refund_issue()` writes a card (kind `refund`, never expiring, reason naming the return and order, issued by the staff member); no card → back to `received`, code `credit`. Then as every refund: `orders.refunded_amount += amount`, `order_refunds` type `return_credit` with `transaction_id` = card id, `order_returns.refund_method = 'credit'`, `refund_reference` = card id, points taken back, audit line, `order.return.refunded` with `refund_method` `credit`. The ERP hand-off is the same as for any refund (a refund is a refund).
@@ -22,4 +24,4 @@ module: store_credit_refunds
 - Cancelled order: `pg_credit_refund_cancel_mail_body()`, the order number, the refund and the card amount.
 
 ## Tests?
-- `tests/store_credit_refunds_test.php`: bonus parser, card amount with and without the bonus (rounding, cap), reference, both mails.
+- `tests/store_credit_refunds_test.php`: bonus parser, card amount with and without the bonus (rounding, cap), the bonus base and the cancelled order's split, reference, both mails.
