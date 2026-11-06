@@ -11,7 +11,7 @@ description: Plan: the Travel Agency design template (pinegrap-travel): destinat
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-travel-design]].
 
 ## Steps (claim as `[plan:design-template-travel] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the agency's data: regions, destinations, travel styles, sample tours with itineraries and prices, inclusions, why-us points, figures, testimonials, pick lists; shared parts: account bar, notice, header, footer, trip band, staff bar; destination, tour and testimonial cards, tour facts, itinerary day, form fields, comment thread, blog parts); `tests/design_template_travel_test.php`.
+- 1 (done, #7473): `parts.php` (node builders, the agency's data: regions, destinations, travel styles, sample tours with itineraries and prices, the deposit, inclusions, deals, why-us points, gift cards, figures, testimonials, pick lists; shared parts: account bar, notice, header, footer, trip band, staff bar; destination, tour, deal and testimonial cards, tour facts, the itinerary as one line per day, form fields, comment thread, blog parts); `tests/design_template_travel_test.php`.
 
 - 2: `pages_public.php`: home (`home_tours`, `home_destinations`, `home_posts`), `about`, `travel_info`, `faq`, `deals`; `tests/design_template_travel_public_test.php`.
 
