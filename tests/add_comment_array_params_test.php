@@ -24,8 +24,8 @@ function test_add_comment_fields_are_single_values()
 	// The page id is checked before it names the form's session slot.
 	$request = "pg_request_single_values(array('page_id'));";
 	pg_assert_contains($request, $code, 'page id is one value');
-	pg_assert_contains("new liveform('add_comment', \$_POST['page_id'] ?? 0);", $code, 'a missing page id is no notice');
-	pg_assert_true(strpos($code, $request) < strpos($code, "new liveform('add_comment'"), 'before the form is opened');
+	pg_assert_contains("new liveform(\$form_names['state'], \$_POST['page_id'] ?? 0);", $code, 'a missing page id is no notice');
+	pg_assert_true(strpos($code, $request) < strpos($code, "new liveform(\$form_names['state']"), 'before the form is opened');
 
 	$list = "pg_liveform_single_values(\$liveform, array('send_to', 'page_id', 'item_id', 'item_type', 'name', 'name_type', 'message', 'watcher', 'parent_id', 'kind', 'rating', 'publish', 'publish_date_and_time', 'publish_cancel'));";
 	pg_assert_contains($list, $code, 'every field the handler reads is one value');
