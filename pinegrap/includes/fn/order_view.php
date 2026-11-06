@@ -9,7 +9,8 @@
  * at the checkout, the text of the contact link, the printed order's
  * shipping card (print_order.php), the totals rows of the customer's printed
  * invoice (order_invoice_print.php), and the shipping input the screen and
- * update_order() check (ship and delivery dates, shipped quantity).
+ * update_order() check (ship and delivery dates, shipped quantity), and the
+ * column of cards the screen stacks.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -51,6 +52,24 @@ function pg_order_view_row($label, $value_html, $wide = false)
                                         <span class="translateable col fg-secondary">' . $label . ':</span>
                                         <span class="col text-end">' . $value_html . '</span>
                                     </div>';
+}
+
+/**
+ * A column of the order screen's cards, joined. Each card is printed with
+ * mt-5 to keep its distance from the one above; the first card of the column
+ * loses it, so the column starts level with its neighbour whichever card the
+ * order has first (an order with no ship-to address starts with another one).
+ * A margin rule of the panel stylesheet cannot do it: Bootstrap 6 utilities
+ * sit in a later cascade layer than the panel's own rules.
+ *
+ * @param array $cards card markup in order; empty strings are skipped
+ * @return string
+ */
+function pg_order_view_card_column($cards)
+{
+    $html = implode("\n", array_filter(array_map('trim', array_map('strval', (array) $cards)), 'strlen'));
+
+    return preg_replace('/^<div class="card mt-5"/', '<div class="card"', $html, 1);
 }
 
 /**

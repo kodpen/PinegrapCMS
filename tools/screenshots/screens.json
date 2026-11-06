@@ -29,6 +29,7 @@
 		{"name": "add_email_campaign", "path": "add_email_campaign.php"},
 		{"name": "edit_email_campaign", "path": "edit_email_campaign.php?id={email_campaign_id}"},
 		{"name": "view_pages", "path": "view_pages.php"},
+		{"name": "view_order", "path": "view_order.php?id={order_id}"},
 		{"name": "signin", "path": "index.php", "signed_out": true},
 		{"name": "forgot_password", "path": "forgot_password.php", "signed_out": true},
 		{"name": "designer_home", "path": "view_system_styles.php"},
