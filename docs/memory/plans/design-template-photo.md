@@ -11,7 +11,7 @@ description: Plan: the Photography Studio design template (pinegrap-photo): gall
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-photo-design]].
 
 ## Steps (claim as `[plan:design-template-photo] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the studio's data: categories, sample galleries, packages with prices and what they include, add-ons, the shoot steps, why-us points, gift vouchers, figures, testimonials, pick lists; shared parts: account bar, notice, header, footer, booking band, staff bar; gallery, package and testimonial cards, the photo grid, form fields, comment thread, blog parts); `tests/design_template_photo_test.php`.
+- 1 (done, #7498): `parts.php` (node builders, the studio's data: categories, sample galleries, packages with prices and what they include, add-ons, the shoot steps, why-us points, gift vouchers, figures, testimonials, pick lists; shared parts: account bar, notice, header, footer, booking band, staff bar; gallery, package and testimonial cards, the photo grid, form fields, comment thread, blog parts); `tests/design_template_photo_test.php`.
 
 - 2: `pages_public.php`: home (`home_galleries`, `home_posts`), `packages`, `experience` (how a shoot works), `about`, `faq`; `tests/design_template_photo_public_test.php`.
 
