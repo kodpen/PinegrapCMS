@@ -223,7 +223,7 @@ function test_comment_parent_add_comment_wiring()
 
 	pg_assert_contains('$liveform->add_error(', $block, 'a form error');
 	pg_assert_contains("\$liveform->set_field('parent_id', array());", $block, 'the parent is dropped from the form state');
-	pg_assert_true(preg_match("/^.*Location:.*#software_add_comment'\\);\$/m", $block) === 1, 'back to the form, on one line');
+	pg_assert_true(preg_match('/^.*Location:.*\'#\' \. \$form_names\[\'anchor\'\]\);$/m', $block) === 1, 'back to the form, on one line');
 	pg_assert_contains('exit();', $block, 'and nothing after it');
 	pg_assert_false(strpos($block, 'output_error(') !== false, 'no error page: the typed text is kept');
 	pg_assert_false(strpos($block, 'remove_form(') !== false, 'the form state is kept');

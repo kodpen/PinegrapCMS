@@ -1299,7 +1299,7 @@ function test_comments_recent_wiring()
 		pg_assert_true(($branch !== false) && ($at !== false) && ($branch < $at), 'before ' . $later);
 	}
 	$drop = strpos($thread, "pg_comments_drop_mode_bindings(\$tree, 'thread');");
-	$inject = strpos($thread, "_pg_inject_messages_node(\$tree, 'add_comment');");
+	$inject = strpos($thread, "_pg_inject_messages_node(\$tree, \$form_names['state']);");
 	pg_assert_true(($drop !== false) && ($inject !== false) && ($drop < $inject), 'the thread drops the list\'s tokens before its Messages node');
 
 	$recent = comments_recent_test_php_body('_render_system_widget_comments_recent');

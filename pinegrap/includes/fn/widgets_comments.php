@@ -818,7 +818,7 @@ function pg_comments_quote_excerpt($text, $limit = 160)
  *   at #c-<id>: it opens the page that holds the comment, featured filter or
  *   not.
  * - __comment_reply_url: the current address with reply_to=<id>, ending at
- *   #software_add_comment (it works without the browser's script), when the
+ *   the widget's form, #software_add_comment by default (it works without the browser's script), when the
  *   visitor may answer the comment ($reply_ok), else ''.
  * - __comment_parent_id, __comment_parent_name (the stored 'Anonymous' or
  *   no name reads lang('Anonymous')), __comment_parent_url (its anchor when it is on
@@ -834,9 +834,11 @@ function pg_comments_quote_excerpt($text, $limit = 160)
  * @param mixed $path           the current address without its query
  * @param mixed $params         the query parameters (_pg_sw_query_params())
  * @param bool  $reply_ok       whether the visitor may answer the comment
+ * @param string $anchor        the id of the widget's form
+ *                              (pg_product_question_form_names())
  * @return array
  */
-function pg_comments_widget_link_values($entry, $parent, $parent_on_page, $path, $params, $reply_ok)
+function pg_comments_widget_link_values($entry, $parent, $parent_on_page, $path, $params, $reply_ok, $anchor = 'software_add_comment')
 {
     $entry = is_array($entry) ? $entry : array();
     $id = _pg_comments_row_int($entry, 'id');
@@ -848,7 +850,7 @@ function pg_comments_widget_link_values($entry, $parent, $parent_on_page, $path,
 
     $comment_links = array(
         '__comment_url' => $permalink($id),
-        '__comment_reply_url' => $reply_ok ? pg_comments_widget_page_url($path, $params, array('reply_to'), array('reply_to' => $id), 'software_add_comment') : '',
+        '__comment_reply_url' => $reply_ok ? pg_comments_widget_page_url($path, $params, array('reply_to'), array('reply_to' => $id), (string) $anchor) : '',
         '__comment_parent_id' => ($parent_id > 0) ? (string) $parent_id : '',
         '__comment_parent_name' => ($parent_id > 0) ? pg_comment_display_name($parent_name) : '',
         '__comment_parent_url' => ($parent_id > 0) ? ($parent_on_page ? '#c-' . $parent_id : $permalink($parent_id)) : '',
@@ -1893,7 +1895,7 @@ function _pg_comments_form_walk(&$node, $ctx, $in_form, &$wired, &$found, $shown
             }
 
             $wired++;
-            $child['props']['id'] = 'software_add_comment';
+            $child['props']['id'] = (isset($ctx['anchor']) && is_string($ctx['anchor']) && ($ctx['anchor'] !== '')) ? $ctx['anchor'] : 'software_add_comment';
             $add = array(
                 'action' => isset($ctx['action_url']) ? (string) $ctx['action_url'] : '',
                 'method' => 'post',
@@ -2646,10 +2648,11 @@ function pg_comments_apply_row_bindings(&$loop_tree, $ctx)
  * first in the tree's first container, else first in the tree. Otherwise a
  * refused comment's error would print nowhere and be removed unread.
  *
- * @param array $tree
+ * @param array  $tree
+ * @param string $name the comment form's state (pg_product_question_form_names())
  * @return void
  */
-function pg_comments_stamp_form_messages(&$tree)
+function pg_comments_stamp_form_messages(&$tree, $name = 'add_comment')
 {
     if (!is_array($tree)) {
         return;
@@ -2657,11 +2660,13 @@ function pg_comments_stamp_form_messages(&$tree)
 
     _pg_comments_stamp_walk($tree, '');
 
-    if (_pg_comments_has_messages($tree, 'add_comment') || empty($tree['children']) || !is_array($tree['children'])) {
+    $name = (is_string($name) && ($name !== '')) ? $name : 'add_comment';
+
+    if (_pg_comments_has_messages($tree, $name) || empty($tree['children']) || !is_array($tree['children'])) {
         return;
     }
 
-    $messages = array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => '', 'formName' => 'add_comment'), 'children' => array());
+    $messages = array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => '', 'formName' => $name), 'children' => array());
 
     if (isset($tree['children'][0]['type']) && ($tree['children'][0]['type'] === 'container')) {
         $kids = (isset($tree['children'][0]['children']) && is_array($tree['children'][0]['children'])) ? $tree['children'][0]['children'] : array();
@@ -3351,7 +3356,7 @@ function pg_comments_widget_draw($tree, $data)
         $rows_html .= $html;
     }
 
-    // The Messages node prints, and uses up, the add_comment form state here.
+    // The Messages node prints, and uses up, the comment form state here.
     $static = trim(_render_tree_node($static_tree, 0, 0));
     $static = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, pg_comments_widget_escape($thread_values) + $slots));
 
@@ -4777,18 +4782,21 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     $watching_on = ($settings['watcher_email_page_id'] > 0);
 
     // The form state is read before the draw: the Messages node uses the
-    // whole add_comment entry up when it prints an error, and the comment a
+    // whole comment form entry up when it prints an error, and the comment a
     // refused post answered decides what the form answers now.
     if (!class_exists('liveform')) {
         include_once(PG_FUNCTIONS_DIR . '/liveform.class.php');
     }
 
-    $lf = $audience['session'] ? new liveform('add_comment', $page_id) : null;
+    // The questions form keeps its own state, apart from the reviews form
+    // beside it on the product page.
+    $form_names = pg_product_question_form_names($questions ? 'question' : '');
+    $lf = $audience['session'] ? new liveform($form_names['state'], $page_id) : null;
     $field = function ($name) use ($lf) {
         $value = $lf ? $lf->get_field_value($name) : null;
         return is_scalar($value) ? (string) $value : '';
     };
-    $in_session = $lf && isset($_SESSION['software']['liveforms']['add_comment'][$page_id]);
+    $in_session = $lf && isset($_SESSION['software']['liveforms'][$form_names['state']][$page_id]);
     // The CSRF token of the forms; none in a render that is not the
     // visitor's own.
     $token = $audience['session'] ? get_token_field() : '';
@@ -4832,6 +4840,12 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     }
 
     $reply_parent = $can_reply ? pg_comment_reply_to($reply_value, $page_id, $post_type, $post_id, $viewer) : null;
+
+    // Questions and reviews share the product's thread: each form answers
+    // only the comments its own list shows.
+    if (($reply_parent !== null) && !pg_product_question_reply_fits($questions, pg_product_question_state($reply_parent['id'])['kind'])) {
+        $reply_parent = null;
+    }
 
     // Watching. The watch box, the count and the watcher list read the
     // thread the forms post to, as add_or_remove_watcher.php does.
@@ -4952,7 +4966,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
             'id' => $entry['id'],
             'flags' => $row_flags,
             'values' => pg_comments_widget_row_values($entry['row'], $row_flags, $env)
-                + pg_comments_widget_link_values($entry, $parent_row, isset($paged['ids'][$entry['parent_id']]), $path, $params, $reply_ok),
+                + pg_comments_widget_link_values($entry, $parent_row, isset($paged['ids'][$entry['parent_id']]), $path, $params, $reply_ok, $form_names['anchor']),
             'datetime' => ($settings['show_date'] && ($created > 0)) ? date('Y-m-d H:i:s', $created) : '',
             'depth' => $entry['depth'],
             'reply_ok' => $reply_ok,
@@ -5091,6 +5105,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     $form = array(
         'can_comment' => $can_comment,
         'action_url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_comment.php',
+        'anchor' => $form_names['anchor'],
         'hidden_html' => $can_comment
             ? pg_comments_form_hidden_html($token, get_request_uri(), $page_id, $post_type, $post_id, ($reply_parent !== null) ? (int) $reply_parent['id'] : 0, $questions ? 'question' : '')
             : '',
@@ -5116,7 +5131,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     $controls = array(
         'can_reply' => $can_reply,
         'replying' => $thread_flags['is_replying'],
-        'cancel_url' => pg_comments_widget_page_url($path, $params, array('reply_to'), array(), 'software_add_comment'),
+        'cancel_url' => pg_comments_widget_page_url($path, $params, array('reply_to'), array(), $form_names['anchor']),
         'share_copied' => lang('Link copied.'),
         'share_prompt' => lang('Copy the link to this comment:'),
         'can_watch' => $can_watch,
@@ -5135,11 +5150,11 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
 
     // A node bound to a token only a list of recent comments fills prints
     // nothing in a thread. The widget's Messages node prints only the
-    // add_comment form's errors; the ones in the small forms print their own
+    // comment form's errors; the ones in the small forms print their own
     // handler's.
     pg_comments_drop_mode_bindings($tree, 'thread');
-    _pg_inject_messages_node($tree, 'add_comment');
-    pg_comments_stamp_form_messages($tree);
+    _pg_inject_messages_node($tree, $form_names['state']);
+    pg_comments_stamp_form_messages($tree, $form_names['state']);
 
     $html = pg_comments_widget_draw($tree, array(
         'widget_id' => (int) $widget_id,

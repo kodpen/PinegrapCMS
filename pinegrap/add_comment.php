@@ -28,7 +28,10 @@ include_once('liveform.class.php');
 // an array (page_id[]=) there is an illegal offset that stops the request.
 pg_request_single_values(array('page_id'));
 
-$liveform = new liveform('add_comment', $_POST['page_id'] ?? 0);
+// A product question keeps its own form state and anchor: the reviews widget
+// on the same page has its own form.
+$form_names = pg_product_question_form_names($_POST['kind'] ?? '');
+$liveform = new liveform($form_names['state'], $_POST['page_id'] ?? 0);
 $liveform->add_fields_to_session();
 
 // Every field this handler reads holds one value. One posted as an array
@@ -216,7 +219,7 @@ if (
 
 // if an error exists, then send user back to previous screen
 if ($liveform->check_form_errors() == true) {
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#' . $form_names['anchor']);
     exit();
 }
 
@@ -287,7 +290,7 @@ if ($comment_thread['refusal'] === 'item_type') {
     $liveform->add_error(lang(array('string'=>'Sorry, the {var:1} was not added, because the item type was not valid for the page type.','vars'=>$output_comment_label_lowercase)));
     $liveform->set_field('item_type', array());
     $liveform->set_field('item_id', array());
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#' . $form_names['anchor']);
     exit();
 }
 
@@ -491,7 +494,7 @@ if (!$comment_parent_check['accept']) {
     log_activity(pg_log_lang(array('string' => 'access denied to submit a comment to page ({var:1}) because the comment it replies to could not be found or is not visible to the visitor', 'vars' => $page_name)), $_SESSION['sessionusername'] ?? '');
     $liveform->add_error(lang(array('string' => 'Sorry, the {var:1} was not added, because the one it replies to could not be found.', 'vars' => $output_comment_label_lowercase)));
     $liveform->set_field('parent_id', array());
-    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#software_add_comment');
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($liveform->get_field_value('send_to')) . '#' . $form_names['anchor']);
     exit();
 }
 
