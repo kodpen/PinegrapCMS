@@ -15,7 +15,7 @@ description: Plan: the Photography Studio design template (pinegrap-photo): gall
 
 - 2 (done, #7522): `pages_public.php`: home (`home_galleries`, `home_posts`), `packages`, `experience` (how a shoot works), `about`, `faq`; `tests/design_template_photo_public_test.php`.
 
-- 3: `galleries.php`: the Galleries collection (`galleries` by `?category=`, the `gallery` record page with its photos, `gallery_new`) and `book_online` (booking widget starter for studio mini sessions, privacy link); test.
+- 3 (done, #7545): `galleries.php`: the Galleries collection (`galleries` by `?category=`, the `gallery` record page with its photos, `gallery_new`) and `book_online` (booking widget starter for studio mini sessions, privacy link); test.
 
 - 4: `mail.php` (the e-mail builders) and `bookings.php`: shoot booking requests (`book` with `?package=` and `?category=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`); test.
 
