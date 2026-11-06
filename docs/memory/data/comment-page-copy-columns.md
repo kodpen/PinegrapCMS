@@ -9,7 +9,7 @@ module: reviews
 - `answer_of` names the copy of the question, mapped like `parent_id` (`pg_comment_copy_parent_id()`); an answer whose question was not copied gets 0. An unknown kind is written as `comment`.
 
 ## What did the copy do before?
-- It dropped those columns (PR #NNNN): a copied review lost its stars and the store's answer, a copied question or answer became a plain comment.
+- It dropped those columns (fixed in #7212): a copied review lost its stars and the store's answer, a copied question or answer became a plain comment.
 
 ## Why is `verified_order_id` not copied?
 - A product's rating counts published, verified reviews over every page (`pg_review_rating_sql()`), and the review gate counts reviews per order. A copy marked verified would count the same purchase twice, so the copy stays 0 (unverified).
