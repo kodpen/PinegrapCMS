@@ -959,6 +959,7 @@
     "Select field to used as Republic of Turkey identification number": "Türkiye Cumhuriyeti kimlik numarası olarak kullanılacak alanı seçin",
     "Select one layer to give it a path.": "Yol vermek için bir katman seçin.",
     "Select one or more {var:1}": "Bir veya daha fazla {var:1} seçin",
+    "Select one path, shape or outlined text to pin it.": "Pim koymak için bir yol, şekil veya anahata dönüştürülmüş metin seçin.",
     "Select one path, shape or outlined text to warp it.": "Bükmek için bir yol, şekil ya da anahatlara dönüştürülmüş metin seçin.",
     "Select recipient...": "Alıcı seçin...",
     "Select return request #{var:1}": "#{var:1} numaralı iade talebini seç",

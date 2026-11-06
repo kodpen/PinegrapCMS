@@ -17,5 +17,5 @@ module: image_editor
 
 ## What does the tool do?
 - With one unlocked warpable layer selected: a grid of the styles (None drops the warp), Bend and the two distortions for a preset (a preset picked keeps the bend it had), Columns, Rows (`meshResize()` keeps the shape) and Reset mesh for the mesh, whose points are dragged on the stage (`.pgie-wpt`, own drag kind `warpmesh`; a press elsewhere selects and moves as Select).
-- Expand (`warpExpand()`): the drawn points become corner knots of a path (other contours as `subs`), box refitted, angle and mirror kept; the warp and a shape's own fields go. One undo step.
+- Expand (`warpExpand()`): the drawn points become corner knots of a path (other contours as `subs`), box refitted, angle and mirror kept; the warp, the free deformation's pins (`image-editor-puppet.md`) and a shape's own fields go. One undo step.
 - A live text gets a note; where the text-to-outlines part is bundled (`convertToOutlines()`), its button too.

@@ -10,6 +10,9 @@ description: Panel team chat attachments open only for the conversation's sides 
 ## Which other doors ask it?
 - The image editor (`image_editor_api.php`): before any action, the files a request names (`file_id`, `to`, `target`, `file_name`; `pg_image_editor_request_files()`) are looked up with `pg_chat_attachment_conversations_by_file()` and refused with a JSON 403 by `pg_chat_attachment_files_refused()` (all three in `includes/authentication.php`). Symptom fixed: a manager or designer, who passes the folder edit check everywhere, opened a staff conversation's picture in the editor and saved a copy, a plain file in the public upload folder that anyone could fetch. Test: `tests/image_editor_chat_attachment_test.php`.
 
+## Do the file manager's readers ask it too?
+- Yes (#7038): `explorer_office_preview` and the file window's text (`explorer_file_get`) ask `pg_file_panel_content_verdict()` (`includes/fn/files.php`, conversations from `pg_file_chat_conversations()`), which also keeps a form attachment to edit rights on its folder (#1989). Before, the Office preview gave both to anyone who could view the folder, the file window a chat attachment's text to any manager. Tests: `tests/file_panel_content_test.php`.
+
 ## What does a refused request get?
 - Not signed in: `get_file_sign_in_redirect('index.php')`, so a sub-resource fetch gets 403 and a page opening the panel sign-in. Signed in but no side: a logged 403 with `Cache-Control: no-store`.
 
