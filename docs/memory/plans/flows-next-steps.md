@@ -18,7 +18,7 @@ description: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow 
 
 - B3 (done, #7411): text rules in the derived value box: replace, extract a number, extract an e-mail address, upper or lower case, trim and cut to N characters, split and take part N. As Zapier Formatter. flow_values.php.
 
-- B4 (free, S): Wait until: the delay box waits until a date and time read from a value (a booking's start, minus N hours); the cap rises to 90 days. flow_runs.php delay, the form.
+- B4 (done, #7421): Wait until: the delay box waits until a date and time read from a value (a booking's start, minus N hours); the cap rises to 90 days. flow_runs.php delay, the form.
 
 - B5 (done, PR #7408): add to a cell: a `row_set` cell may add to the number it holds in the same write (`+3`), so two runs never lose an addition (seen on dev: two shifts read one row, one addition was lost). wtable store, steps.php.
 
