@@ -3,11 +3,12 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the box of a flow that reads one record of the site (kind
- * record_get): an order, product, contact, booking, task or submitted form
- * named by its id or by one value of the run, read with the flow owner's
- * rights as they stand when the box runs. The kind is checked as the change
- * box checks it (ws_change_allowed()), a booking by the agenda's own rule;
- * each record again as it is read. It gives the boxes after it the record's
+ * record_get): an order, product, contact, booking, task, submitted form or
+ * cart quote named by its id or by one value of the run, read with the flow
+ * owner's rights as they stand when the box runs. The kind is checked as the
+ * change box checks it (ws_change_allowed()), a booking by the agenda's own
+ * rule, a cart quote by the ecommerce right of its screens; each record
+ * again as it is read. It gives the boxes after it the record's
  * id, whether it was found (1 or 0) and the record's fields as values. A
  * record that is not there, or one out of the owner's reach, is no failure:
  * the box is done, found is 0 and every field is empty, so a later
@@ -29,9 +30,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * given in units with two decimals), bool (1 or 0), time (a unix time,
  * given as Y-m-d H:i), day (a DATE column, the zero date as none), answers
  * (a submitted form's text answers, one "name: answer" a line). A column
- * starting with "__" is one ws_change_record() reads beside the row. A
+ * starting with "__" is one ws_change_record() or this box's reader
+ * (ws_step_record_get_read()) gives beside the row. A
  * card's digits, a booking's manage link and an address of a visitor's
- * machine are never fields. Pure but for lang().
+ * machine are never fields; nor is a cart quote's link, kept as a hash.
+ * Pure but for lang().
  *
  * @return array kind => label, fields
  */
@@ -122,6 +125,22 @@ function ws_flow_record_get_fields()
             'contact_id'     => array('number', 'contact_id', lang('Contact')),
             'submitted'      => array('time', 'submitted_timestamp', lang('Submitted')),
             'answers'        => array('answers', '__answers', lang('Answers')),
+        )),
+        // A cart quote's state as its list reads it now (an open quote past
+        // its last day is expired), and the contact's name as its tag shows
+        // it to the same right.
+        'cart_quote' => array('label' => lang('Cart quote'), 'fields' => array(
+            'status'      => array('text', '__state', lang('Status')),
+            'ordered'     => array('bool', '__ordered', lang('Order placed')),
+            'order_id'    => array('number', 'order_id', lang('Order')),
+            'lines'       => array('number', '__lines', lang('Products')),
+            'valid_until' => array('time', 'valid_until', lang('Valid until')),
+            'created_at'  => array('time', 'created_at', lang('Created')),
+            'created_by'  => array('number', 'created_by', lang('Created by')),
+            'contact_id'  => array('number', 'contact_id', lang('Contact')),
+            'first_name'  => array('text', '__first_name', lang('First name')),
+            'last_name'   => array('text', '__last_name', lang('Last name')),
+            'company'     => array('text', '__company', lang('Company')),
         )),
     );
 }
@@ -248,6 +267,13 @@ function ws_step_record_get_kind_allowed($viewer, $kind)
         return pg_booking_agenda_user_scope(array('id' => (int) $viewer['id'], 'role' => (int) $viewer['role'])) !== false;
     }
 
+    // No change kind: the cart quote screens' right, where e-commerce runs
+    // and the tables are there.
+    if ($kind === 'cart_quote') {
+        return !empty($viewer['ecommerce']) && defined('ECOMMERCE') && (ECOMMERCE === true)
+            && function_exists('pg_cart_quotes_ready') && pg_cart_quotes_ready();
+    }
+
     return ws_change_allowed($viewer, $kind);
 }
 
@@ -318,6 +344,23 @@ function ws_step_record_get_read($owner, $kind, $id)
         return (is_array($row) && pg_booking_agenda_scope_allows($scope, (int) $row['staff_id'])) ? $row : null;
     }
 
+    if ($kind === 'cart_quote') {
+        if (!ws_step_record_get_kind_allowed($owner, $kind)) {
+            return null;
+        }
+
+        // Named columns only: the link's hash and hint never leave the row.
+        $row = db_item("SELECT q.id, q.contact_id, q.valid_until, q.status, q.order_id, q.created_by, q.created_at,
+                c.first_name AS __first_name, c.last_name AS __last_name, c.company AS __company,
+                (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS __lines
+            FROM cart_quotes AS q
+            LEFT JOIN contacts AS c ON c.id = q.contact_id
+            WHERE q.id = '" . (int) $id . "'
+            LIMIT 1");
+
+        return is_array($row) ? ws_step_record_get_cart_quote_row($row, time()) : null;
+    }
+
     if (!ws_change_allowed($owner, $kind, (int) $id)) {
         return null;
     }
@@ -325,6 +368,23 @@ function ws_step_record_get_read($owner, $kind, $id)
     $row = ws_change_record($kind, (int) $id);
 
     return is_array($row) ? $row : null;
+}
+
+/**
+ * A cart quote's row as the box gives it: its state now
+ * (pg_cart_quote_state(), an open quote past valid_until expired) and
+ * whether it was ordered. Pure.
+ *
+ * @param array $row cart_quotes row
+ * @param int   $now
+ * @return array the row with __state and __ordered
+ */
+function ws_step_record_get_cart_quote_row($row, $now)
+{
+    $row['__state'] = pg_cart_quote_state($row, $now);
+    $row['__ordered'] = ($row['__state'] === 'ordered') ? 1 : 0;
+
+    return $row;
 }
 
 /**
