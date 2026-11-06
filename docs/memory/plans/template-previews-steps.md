@@ -22,7 +22,7 @@ description: Steps TP1-TP3 of plans/template-previews.md: the live picture and t
   - The designer script's addresses loaded in order (the bug, `template-previews-code.md`).
   - Memory: `platform/design-template-install-at-setup.md` updated.
 
-- TP3 (M) The panel's preview address. done (#PR).
+- TP3 (M) The panel's preview address. done (#7412).
   - New root file `design_preview.php`: GET only, `noindex`, `X-Frame-Options: SAMEORIGIN`, private cache 5 min. `PG_ANONYMOUS_RENDER` before `init.php`; the operator read from the session as `audit_run.php` does, admitted when `pg_designer_access()` is not none.
   - `?template=&page=&look=&palette=`: `pg_design_template_preview_html()` (custom templates too), its links back to this address; nothing to draw gives a plain placeholder page. `&tour=1`: the tour, whose button "Bu Şablonu Kullan" opens `add_system_style.php?start=template` with the look and palette.
   - `?page_id=`: a visual design page the operator may see (`pg_designer_page_access()` not hidden; drafts too) drawn through `pg_background_render()` as a first-time visitor: scripts removed, no consent banner, chat bubble or staff bar, no visit counted, the page cache neither read nor written; an ETag from the page's and the design's last change.
