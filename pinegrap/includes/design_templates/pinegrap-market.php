@@ -49,6 +49,7 @@
  *   {{folder:<key>}}                id of that template folder
  *   {{product_group:<key>}}         id of a group of the catalog ('root': the site's top group)
  *   {{product_group_path:<key>}}    address name of a group of the catalog
+ *   {{shop_group_url:<key>}}        a group's listing on the shop page, '' without the shop
  *   {{contact_group:<key>}}         id of a contact group below
  *   {{site_name}}, {{site_email}}, {{year}}
  * See includes/design_templates/hello-pinegrap.php for widgets, shared

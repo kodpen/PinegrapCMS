@@ -41,9 +41,10 @@ $seller_featured_answers = array('yes' => lang('Yes'), 'no' => lang('No'));
 
 // The address of a maker's product group on the shop page (the group
 // under "Shops" whose key is the maker's key in $sellers): the sample of
-// the record's shop address.
+// the record's shop address. Empty on a site without the shop, so the
+// shop button leaves the maker's page.
 $seller_shop_url = function ($key) {
-    return '{{page:shop}}/{{product_group_path:' . $key . '}}';
+    return '{{shop_group_url:' . $key . '}}';
 };
 
 // A filter row of a list's settings: the field, how it compares and the

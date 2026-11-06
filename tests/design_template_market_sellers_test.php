@@ -106,11 +106,26 @@ function test_market_sellers_form_and_samples()
 				pg_assert_true(in_array($value, $controls[$name]['options'], true), "sample $n: $name '$value' is an answer");
 			}
 		}
-		pg_assert_same(1, preg_match('/\\{\\{product_group_path:([a-z]+)\\}\\}$/', $r['shop_url'], $g), "sample $n: a group's address");
+		pg_assert_same(1, preg_match('/^\\{\\{shop_group_url:([a-z]+)\\}\\}$/', $r['shop_url'], $g), "sample $n: a group's address");
 		pg_assert_true(isset($d['sellers'][$g[1]]), "sample $n: the maker's own group");
 		if ($r['featured'] === lang('Yes')) $featured++;
 	}
 	pg_assert_same(3, $featured, 'three featured makers');
+}
+
+// A sample maker's shop address is the group's listing on the shop page,
+// and nothing on a site without the shop page or the group, so the shop
+// button's box leaves (pg-hide-if-empty) instead of linking to "#/".
+function test_market_sellers_shop_url_without_shop()
+{
+	$d = _test_market_sellers_load();
+	$url = $d['pages']['seller_new']['form']['sample_records'][0]['shop_url'];
+	$key = array_keys($d['sellers'])[0];
+	$with = array('pages' => array('shop' => '/shop'), 'product_group_paths' => array($key => 'clay & co'));
+	pg_assert_same('/shop/clay%20%26%20co', _pg_tpl_fill($url, $with), 'the group on the shop page');
+	pg_assert_same('', _pg_tpl_fill($url, array('pages' => array(), 'product_group_paths' => array())), 'no shop: empty');
+	pg_assert_same('', _pg_tpl_fill($url, array('pages' => array('shop' => '/shop'), 'product_group_paths' => array())), 'no group: empty');
+	pg_assert_same('', _pg_tpl_fill($url, array('pages' => array(), 'product_group_paths' => array($key => 'clay'))), 'no shop page: empty');
 }
 
 // The category tiles open the list with ?category=<title>; the list reads

@@ -14,7 +14,7 @@ description: Marketplace template (pinegrap-market): makers as a Sellers collect
 
 ## How does it work without new product behaviour?
 - The site owner sells everything: one cart, one checkout, one order. A maker is a record of the Sellers form, a collection ([[collection-fields]]): city and category pick lists (parts.php's words, so `?category=` / `?city=` filter by them), logo and cover (image kinds), `shop_url` (hidden), office `featured`. Reviews (with stars, threaded one level) are the maker page's Comments widget.
-- Catalog: a Marketplace group with a group per category, a Shops group with a group per maker; each product (SKU `MK-<SELLER>-<N>`) sits in both. `shop_url`'s sample is `{{page:shop}}/{{product_group_path:<maker key>}}`; its button is hidden while empty.
+- Catalog: a Marketplace group with a group per category, a Shops group with a group per maker; each product (SKU `MK-<SELLER>-<N>`) sits in both. `shop_url`'s sample is `{{shop_group_url:<maker key>}}`, '' without the shop (#7515), so its button hides.
 - Only the shop pages, `email_order` and `address_book` carry `requires => ecommerce`; home, categories, makers and requests stand without it.
 - Applications and help requests are records of their own forms as Real Estate's valuation ([[design-template-realestate]]): office-only status, messages on the record page's Comments widget (`application_messages`, `help_messages`), views `submitter_only`, staff lists, photos and receipts in the `private` folder. An approved maker is added by hand (`seller_new`).
 - Not built (new behaviour): seller accounts or dashboards, payouts, commissions, per-seller shipping, a product field naming a seller.

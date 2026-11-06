@@ -8023,7 +8023,9 @@ function pg_design_template_relink($value, $map)
 // {{folder:<key>}} the id of that template folder, {{product_group:root}}
 // the id of the site's top product group (or of a group of the template's
 // own catalog, by its key), {{product_group_path:<key>}} that group's
-// address on a catalog page, {{product_group_image:<key>}} its picture,
+// address on a catalog page, {{shop_group_url:<key>}} (a whole value) that
+// group's listing on the shop page or '' without either,
+// {{product_group_image:<key>}} its picture,
 // {{contact_group:<key>}} the id of a contact group the template made,
 // {{site_name}}, {{year}}.
 // {{tab:<key>}} may also be the page a link to another page opens
@@ -8050,6 +8052,14 @@ function _pg_tpl_fill($node, $vars)
     // A contact group too: a form's "add to contact group" setting.
     if (preg_match('/^\{\{contact_group:([a-z0-9_-]+)\}\}$/', $node, $cm)) {
         return isset($vars['contact_groups'][$cm[1]]) ? (int)$vars['contact_groups'][$cm[1]] : 0;
+    }
+    // A group's listing on the template's shop page (page key 'shop') as a
+    // whole value, or nothing on a site without that page or group, so a
+    // field that stores it stays empty rather than holding "#/".
+    if (preg_match('/^\{\{shop_group_url:([a-z0-9_-]+)\}\}$/', $node, $sm)) {
+        $shop = isset($vars['pages']['shop']) ? (string)$vars['pages']['shop'] : '';
+        $path = isset($vars['product_group_paths'][$sm[1]]) ? (string)$vars['product_group_paths'][$sm[1]] : '';
+        return ($shop !== '' && $path !== '') ? $shop . '/' . rawurlencode($path) : '';
     }
     // A product of the template's catalog by its key (a form's fee product):
     // its id as a number, 0 when the site has none (no shop).
