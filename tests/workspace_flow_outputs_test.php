@@ -116,6 +116,12 @@ function test_workspace_flow_outputs_written()
 		pg_assert_same($keys, array_keys($data), $name . ' writes every declared key');
 
 		foreach ($outputs as $output) {
+			// A number a Pinegrap AI box read may have decimals: kept as its text.
+			if (($kind === 'ai') && ($output['key'] === 'number')) {
+				pg_assert_true(is_string($data['number']) && is_numeric($data['number']), $name . ' number is a number kept as text');
+				continue;
+			}
+
 			pg_assert_true(($output['type'] === 'text') ? is_string($data[$output['key']]) : is_int($data[$output['key']]), $name . ' ' . $output['key'] . ' is its type');
 		}
 
@@ -163,6 +169,7 @@ function test_workspace_flow_outputs_answered()
 		'row_set'     => array('ws_step_row_do'),
 		'row_get'     => array('ws_step_row_get_data'),
 		'record_get'  => array('ws_step_record_get_data'),
+		'ai'          => array('ws_flow_ai_parse'),
 	);
 
 	$kinds = array_keys(ws_step_kinds());

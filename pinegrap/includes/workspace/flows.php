@@ -1031,6 +1031,21 @@ function ws_flow_graph_check($graph)
             }
         }
 
+        // A Pinegrap AI box leaves only on the outcomes its mode gives.
+        if (($node['kind'] === 'ai') && function_exists('ws_flow_ai_arrow_problems')) {
+            $ons = array();
+
+            foreach ($graph['edges'] as $edge) {
+                if ((string) $edge['from'] === (string) $id) {
+                    $ons[] = (string) $edge['on'];
+                }
+            }
+
+            foreach (ws_flow_ai_arrow_problems($node['config'], $name, $ons) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
         if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order'), true)) {
             foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);

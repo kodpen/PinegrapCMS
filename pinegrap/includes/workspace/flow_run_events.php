@@ -251,6 +251,8 @@ function ws_flow_run_waiting_for($step)
     } elseif (ws_flow_retry_key_until($key) > 0) {
         $out['for'] = 'retry';
         $out['until'] = ws_flow_time(ws_flow_retry_key_until($key));
+    } elseif (function_exists('ws_flow_ai_key_step') && (ws_flow_ai_key_step($key) > 0)) {
+        $out['for'] = 'ai';
     }
 
     return $out;

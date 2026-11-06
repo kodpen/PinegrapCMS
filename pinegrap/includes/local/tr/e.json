@@ -1538,6 +1538,7 @@
     "Extra shipping cost (with symbol)": "Ek kargo ücreti (simgeyle)",
     "Extra small": "Çok küçük",
     "Extra trains run all evening": "Akşam boyunca ek seferler var",
+    "Extract a number or a field": "Bir sayı veya alan çıkar",
     "Extract here": "Buraya çıkart",
     "Extracted the archive": "Arşiv açıldı",
     "Extracted under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.": "Yeni adla çıkartıldı: {var:1}. Dosyanın adı adresidir; kullanılan bir ada numara eklenir, adreste kullanılamayan harfler değiştirilir.",

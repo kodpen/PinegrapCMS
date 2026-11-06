@@ -1565,6 +1565,7 @@
     "Outbound HTTPS is verified against the server's own certificate store, which verified a connection on {var:1}.": "Giden HTTPS bağlantıları sunucunun kendi sertifika deposu ile doğrulanıyor; depo {var:1} tarihinde bir bağlantıyı doğruladı.",
     "Outbound HTTPS is verified against the server's own certificate store; the probe of {var:1} reached nothing ({var:2}), so nothing is known about it yet.": "Giden HTTPS bağlantıları sunucunun kendi sertifika deposu ile doğrulanıyor; {var:1} tarihli yoklama hiçbir yere ulaşamadı ({var:2}), bu yüzden depo hakkında henüz bir şey bilinmiyor.",
     "Outcome": "Sonuç",
+    "Outcome chosen": "Seçilen sonuç",
     "Outcome unknown": "Sonucu belirsiz",
     "Outdoors": "Doğa ve Açık Hava",
     "Outgoing Invoices": "Giden Faturalar",

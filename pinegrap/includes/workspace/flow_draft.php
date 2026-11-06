@@ -1200,6 +1200,10 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'row_set.cells' => array('hint' => 'a JSON object of column ids and values, as row_add\'s; a number or money cell written as "+3" or "+{{node.ID.answer_number}}" adds that amount (below zero takes away) to what the row holds when the box writes it, so runs at the same time never lose an addition'),
         'email.recipient' => array('hint' => 'typed writes to the addresses in to; record_person to the person of the record the run is about (the order\'s customer, the form\'s sender, the booking\'s guest, the e-mail\'s sender, the contact), read when the box runs: never write that address in to'),
         'email.purpose' => array('hint' => 'with recipient record_person: info for an answer or a reminder; marketing only goes to a person who agreed to marketing e-mail, with an unsubscribe link'),
+        'ai.prompt' => array('hint' => 'what Pinegrap AI is given: with mode write the instruction, else the text it works on, with the values it needs such as {{trigger.FIELD}}; only this text leaves the site'),
+        'ai.field' => array('hint' => 'with mode extract, what to take out of the text, as in "the order number" or "the amount"; the box gives it as answer, and number when it is one'),
+        'ai.choices' => array('hint' => 'with mode classify, two to ' . WS_FLOW_AI_CHOICES_MAX . ' short names; arrows leave on choice_1 for the first, choice_2 for the second and so on, and on other when none fits'),
+        'ai.closes_in' => array('hint' => 'hours it waits for the answer, ' . WS_FLOW_AI_CLOSES_DEFAULT . ' when left out; no answer by then leaves on failed'),
         'delay.mode' => array('hint' => 'for waits amount unit; until waits until the date in at, less amount unit when set; at most 90 days'),
         'delay.at' => array('hint' => 'with mode until, the date and time it waits until: one value such as {{trigger.FIELD}} or a date written as YYYY-MM-DD HH:MM; a date that has passed goes on at once'),
         'for_each.count' => array('hint' => 'with mode count, how many times the body repeats: a whole number from 1 to ' . WS_FLOW_LOOP_ITEMS_MAX . ' or one value; index and item are then 1 to the count, and list, path and fields are not read'),
@@ -1215,6 +1219,7 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
         'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
         'post'     => 'only says something in a channel; it never waits for an answer',
         'row_get'  => 'reads one row of a workflow table, named by its id or one value such as {{trigger.row_id}}; it gives found (1, or 0 when the row is not there) and cell_COLUMN_ID for each column',
+        'ai'       => 'asks Pinegrap AI once, on the site\'s quota, and waits for the answer: mode write, summarize, extract or classify; it gives answer, number (extract) and choice (classify); arrows leave on done, or with classify on choice_N and other, and on failed',
         'record_get' => 'reads one record (record: order, product, contact, booking, task or form, a submitted form) named by its id or one value such as {{trigger.record_id}}, with the owner\'s rights; it gives found (1, or 0 when the record is not there or out of reach) and the record\'s fields, such as email, status or total',
     );
 

@@ -152,6 +152,11 @@ function ws_step_kinds()
         // Its fields follow from the kind of record it reads (ws_step_outputs()).
         'record_get' => array('label' => lang('Read a record'), 'type' => 'record_get', 'texts' => array('id'), 'lines' => array('id'),
             'outputs' => array($number('record_id', lang('Record')), $number('found', lang('Record found (1 or 0)')))),
+        // Waits for its answer (flow_ai.php); a classifying box leaves on
+        // the outcome it names (choice_1 ...) or other.
+        'ai'        => array('label' => lang('Ask Pinegrap AI'), 'type' => 'ai', 'texts' => array('prompt'), 'lines' => array(),
+            'outputs' => array($text('answer', lang('Answer')), $number('number', lang('Number in the answer')), $text('choice', lang('Outcome chosen'))),
+            'outcomes' => function_exists('ws_flow_ai_outcomes') ? ws_flow_ai_outcomes() : array('done', 'failed')),
     );
 }
 
@@ -169,7 +174,8 @@ function ws_step_kinds()
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'record_get' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'record_get' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'),
+        'ai' => array('answer', 'number'));
 }
 
 /**
@@ -297,7 +303,7 @@ function ws_step_result_data($kind, $config, $done)
         if ((($kind === 'row_get') && (strpos($key, 'cell_') === 0))
             || (($kind === 'record_get') && !in_array($key, array('record_id', 'found'), true))) {
             $value = is_scalar($value) ? (string) $value : '';
-        } elseif (($kind === 'approval') && ($key === 'answer_number')) {
+        } elseif ((($kind === 'approval') && ($key === 'answer_number')) || (($kind === 'ai') && ($key === 'number'))) {
             // An answer's number may have decimals (ws_approval_answer_number()).
             $value = (is_scalar($value) && is_numeric($value)) ? (string) $value : null;
         } elseif ($output['type'] === 'number') {
@@ -373,6 +379,7 @@ function ws_step_outcomes()
  * record_get: record (a kind of ws_flow_record_get_fields(), '' for
  *            another), id (the record's id, or one value such as
  *            {{trigger.record_id}})
+ * ai:        mode, prompt, field, choices, closes_in (ws_flow_ai_normalize())
  *
  * @param string $kind
  * @param mixed  $config
@@ -606,6 +613,9 @@ function ws_step_config_normalize($kind, $config)
                 'record' => isset(ws_flow_record_get_fields()[$record]) ? $record : '',
                 'id'     => ws_flow_line(is_int($id) ? (string) $id : $id, 200),
             );
+
+        case 'ai':
+            return ws_flow_ai_normalize($config);
     }
 
     return array();
@@ -813,6 +823,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             }
 
             break;
+
+        case 'ai':
+            $problems = array_merge($problems, ws_flow_ai_problems($config, $name));
+            break;
     }
 
     return $problems;
@@ -872,6 +886,11 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 
     if ($kind === 'record_get') {
         return ws_step_record_get_check($viewer, ws_step_config_normalize('record_get', $config));
+    }
+
+    // Nor is a Pinegrap AI box: it waits for its call (flow_ai.php).
+    if ($kind === 'ai') {
+        return ws_step_ai_check($viewer, ws_step_config_normalize('ai', $config));
     }
 
     $check = ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
@@ -1917,6 +1936,13 @@ function ws_step_run($run, $step, $node, $graph, $owner)
 
     $action = ws_step_fill_action($kind, $check['action'], $values);
 
+    // A Pinegrap AI box keeps its filled prompt and waits for its call,
+    // made by the runner's look at waiting boxes (flow_ai.php).
+    if ($kind === 'ai') {
+        ws_flow_ai_wait($step, (string) $action['prompt'], ws_step_result_data('ai', $node['config'], array()));
+        return;
+    }
+
     // Marketing mail carries the campaigns' unsubscribe link and headers.
     if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person') && (($config['purpose'] ?? '') === 'marketing')) {
         $action['marketing'] = true;
@@ -2165,6 +2191,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_row_get_text($action);
         } elseif ($kind === 'record_get') {
             $said = ws_step_record_get_text($action);
+        } elseif ($kind === 'ai') {
+            $said = ws_step_ai_text($action);
         } else {
             $said = ws_scheduled_action_text($owner, $action);
         }
