@@ -64,7 +64,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-32.md: Decisions list, product part 32 (2026-11-05 night on): a Calculate rule in the value box; a refund by lines remembers its lines; the credit refund bonus on the payment part only
 - decisions-made-product-33.md: Decisions list, product part 33 (2026-11-05 night on): the flows-next questions (AI box, wait until a date, web address start, e-mail to the record's person, channel mention) and #7015
 - decisions-made-product-34.md: Decisions list, product part 34 (2026-11-05 night on): a review hides while its order is cancelled or its item refunded; folder access taken back on cancel; no private access in a bundle
-- decisions-made-product-35.md: Decisions list, product part 35 (2026-11-05 on): templates and designs shown as their real pages (live pictures), the installer's short design step and tour, its 1440 px width
+- decisions-made-product-35.md: Decisions list, product part 35 (2026-11-05 on): live pictures of templates and designs, the installer's design step and 1440 px width, the ACP Bearer credential, a shopper's MCP consent
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
