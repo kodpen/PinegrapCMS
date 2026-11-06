@@ -3702,6 +3702,7 @@ function pg_image_editor_strings_motion()
         'motionRemove'         => lang('Remove'),
         'motionWhole'          => lang('Whole animation'),
         'motionLength'         => lang('Length'),
+        'motionLongNote'       => lang('This moves for longer than 5 seconds. On a web page beside other content, visitors must be able to pause it (WCAG 2.2.2), and a GIF, APNG or WebP cannot be paused: shorten it, repeat it fewer times, or save it as a video.'),
         'motionRepeatCount'    => lang('Repeat'),
         'motionForever'        => lang('Forever'),
         'motionTimes'          => lang('{n} times'),
@@ -4433,6 +4434,12 @@ function pg_image_editor_strings_access()
         'touchPan'      => lang('Two fingers: move and zoom the view'),
         'touchFit'      => lang('Double tap: actual size or fit to screen'),
         'touchTwist'    => lang('Hold a layer and twist with a second finger: turn it'),
+        'keysTimeline'  => lang('Timeline'),
+        'keyPlay'       => lang('Play or pause'),
+        'keyFrame'      => lang('One frame back or forward'),
+        'keySecond'     => lang('One second back or forward'),
+        'keyStart'      => lang('Go to the start'),
+        'keyEnd'        => lang('Go to the end'),
     );
 }
 

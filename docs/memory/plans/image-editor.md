@@ -18,11 +18,11 @@ description: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal 
 - `image-editor-design.md`: parts, the call, the look, the document model.
 - `image-editor-server.md`: browser and server work, the save pipeline, versions, security.
 - `image-editor-steps.md` (E1-E10), `image-editor-steps-2.md` (E11-E20), `-steps-3.md` (E21-E25), `-steps-4.md` (E26-E29) and `-steps-5.md` (E23b, E30-E32); `image-editor-workers.md`: which steps run side by side, a step's files, the review.
-- `image-editor-animation.md` and `image-editor-video.md`: the plans held with this one.
+- `image-editor-video.md`: the plan held with this one. The animation plan is done (`ui/image-editor-animation.md`).
 
 ## Which decisions bind it?
 - Owner, 2026-10-31 (`workflow/decisions-made-product-14.md`; the table in `decisions-made-schema-7.md`, the five answers of 2026-10-31 in `decisions-made-product-15.md`): own code, no engine; core modal with full screen; callable with a tool subset; texts through `lang()`; work on the server where it is efficient, else in JS; a versions table; optimisation inside; ready-made shapes and corner rounding; artboard sizing; File Manager "New image" opens the canvas.
-- Owner, 2026-11-01 (`decisions-made-product-16.md`): layers animate and save as GIF or another animated format, with presentation and video where possible: `image-editor-animation.md`.
+- Owner, 2026-11-01 (`decisions-made-product-16.md`): layers animate and save as GIF or another animated format, with presentation and video where possible: done, `ui/image-editor-animation.md`.
 - Owner, 2026-11-03 (`decisions-made-product-24.md`): new tools (E21-E29: sticker change, outlines, scissors, warp, shape builder, deformation, selection, background removal with an own algorithm) and video editing inside the editor (`image-editor-video.md`).
 
 ## Where does it start?

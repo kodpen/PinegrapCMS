@@ -16,4 +16,4 @@ description: Decisions list, product part 16 (2026-11-01 on): design templates f
 
 ## Image editor: animation, video and presentation (2026-11-01)
 - Owner, 2026-11-01: the image editor gets animation, saved as GIF or another format, and presentation and video where possible. It widens the editor's decisions of 2026-10-31 (`decisions-made-product-14.md`, which had no video) and #4203's SVG animation (`decisions-made-product-15.md`, where a raster output kept the first frame).
-- Running sites change nothing until someone animates: a still save stays as it is. Plan: `plans/image-editor-animation.md`; its open questions (what a presentation is, sound) go through the architect.
+- Running sites change nothing until someone animates: a still save stays as it is. Built: `ui/image-editor-animation.md`; its open questions (what a presentation is, sound) go through the architect.
