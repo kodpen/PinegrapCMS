@@ -185,6 +185,7 @@ function test_music_press_booking_form()
 		'first_name', 'last_name', 'organisation', 'email', 'phone', 'contact_by', 'status', 'consent') as $name) {
 		pg_assert_true(isset($c[$name]), "the enquiry asks $name");
 	}
+	pg_assert_same('{{folder:private}}', $c['attachment']['cf']['upload_folder_id'] ?? '', 'a promoter\'s attachment is kept in the private folder, not the public press folder');
 	pg_assert_same('event', $c['event']['cf']['url_param'] ?? '', 'the kind of event starts from ?event=');
 	pg_assert_same($d['event_kinds'], $c['event']['options'], 'the kinds of event');
 	pg_assert_same($d['capacity_choices'], $c['capacity']['options'], 'the capacities');

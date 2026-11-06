@@ -604,7 +604,7 @@ $press_widgets = array(
                 lang('The fee you have in mind for the show, before travel and accommodation.')),
             $field('mu-bk-details', lang('About the event'), $textarea('mu-bk-details', 'details', 4), 'mb-3',
                 lang('The stage, the set length, the other acts, what you provide.')),
-            $field('mu-bk-attachment', lang('Attachment'), $file('mu-bk-attachment', 'attachment', 'press'), 'mb-3',
+            $field('mu-bk-attachment', lang('Attachment'), $file('mu-bk-attachment', 'attachment', 'private'), 'mb-3',
                 lang('A festival poster, a stage plan or an offer, if you have one.')),
             $form_step(2, lang('How to reach you')),
             $row(array(
