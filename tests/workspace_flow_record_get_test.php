@@ -57,7 +57,7 @@ function test_workspace_flow_record_get_kinds()
 {
 	$fields = ws_flow_record_get_fields();
 
-	pg_assert_same(array('order', 'product', 'contact', 'booking', 'task', 'form'), array_keys($fields));
+	pg_assert_same(array('order', 'product', 'contact', 'booking', 'task', 'form', 'cart_quote'), array_keys($fields));
 
 	foreach ($fields as $kind => $info) {
 		pg_assert_true($info['label'] !== '', $kind);
@@ -70,9 +70,9 @@ function test_workspace_flow_record_get_kinds()
 		}
 	}
 
-	// A card number, its code or a booking's manage link never leave the
-	// record.
-	foreach (array('card_number', 'card_verification_number', 'cardholder', 'manage_token', 'ip_address') as $column) {
+	// A card number, its code, a booking's manage link or a cart quote's
+	// link never leave the record.
+	foreach (array('card_number', 'card_verification_number', 'cardholder', 'manage_token', 'ip_address', 'token_hash', 'token_hint') as $column) {
 		foreach ($fields as $kind => $info) {
 			pg_assert_false(in_array($column, array_column($info['fields'], 1), true), $kind . ' gives ' . $column);
 		}
@@ -150,6 +150,26 @@ function test_workspace_flow_record_get_outputs()
 	pg_assert_same('0', $form['complete']);
 	pg_assert_same("Name: Ada\nNote: two lines", $form['answers'], 'one answer a line');
 
+	// A cart quote: its state now, an open one past its last day expired,
+	// and whether it was ordered; no last day is none.
+	$now = 1700000000;
+	$quote = ws_step_record_get_data('cart_quote', ws_step_record_get_cart_quote_row(array('id' => 12, 'status' => 'open', 'valid_until' => $now - 60, 'order_id' => 0, '__lines' => '3', '__first_name' => 'Ada'), $now));
+
+	pg_assert_same(12, $quote['record_id']);
+	pg_assert_same('expired', $quote['status']);
+	pg_assert_same('0', $quote['ordered']);
+	pg_assert_same('3', $quote['lines']);
+	pg_assert_same('Ada', $quote['first_name']);
+	pg_assert_same('', $quote['company'], 'a contact column it lacks is empty');
+
+	$quote = ws_step_record_get_data('cart_quote', ws_step_record_get_cart_quote_row(array('id' => 12, 'status' => 'ordered', 'valid_until' => 0, 'order_id' => 40), $now));
+
+	pg_assert_same('ordered', $quote['status']);
+	pg_assert_same('1', $quote['ordered']);
+	pg_assert_same('40', $quote['order_id']);
+	pg_assert_same('', $quote['valid_until'], 'no last day');
+	pg_assert_same('open', ws_step_record_get_data('cart_quote', ws_step_record_get_cart_quote_row(array('id' => 1, 'status' => 'open', 'valid_until' => $now + 60), $now))['status']);
+
 	$task = ws_step_record_get_data('task', array('id' => 2, 'title' => 'Call', 'due_date' => '0000-00-00'));
 
 	pg_assert_same('', $task['due_date'], 'the zero date is none');
@@ -203,6 +223,10 @@ function test_workspace_flow_record_get_reach_source()
 	pg_assert_contains('ws_change_allowed', $reach);
 	pg_assert_contains('ws_change_record', $reach);
 	pg_assert_contains('pg_booking_agenda_scope_allows', $reach);
+	pg_assert_contains("'ecommerce'", $allowed, 'a cart quote by its screens\' right');
+	pg_assert_contains('pg_cart_quotes_ready', $allowed);
+	pg_assert_contains('ws_step_record_get_cart_quote_row', $reach);
+	pg_assert_false(strpos($reach, 'q.*') !== false, 'a cart quote is read by named columns, its link\'s hash left out');
 
 	$run = workspace_flow_record_get_test_source('ws_step_run');
 
