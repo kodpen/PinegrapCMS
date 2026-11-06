@@ -109,7 +109,7 @@ function _test_tv_page_keys()
 	return array_merge(array(
 		'home', 'about', 'travel_info', 'faq', 'deals',
 		'destinations', 'destination', 'destination_new', 'tours', 'tour', 'tour_new',
-		'book', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy', 'email_reply',
+		'book', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy', 'email_reply', 'email_booking_new', 'email_booking_received',
 		'enquiry', 'enquiry_view', 'my_enquiries', 'staff_enquiries',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',

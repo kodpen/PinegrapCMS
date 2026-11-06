@@ -11,13 +11,13 @@ description: Plan: the Travel Agency design template (pinegrap-travel): destinat
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-travel-design]].
 
 ## Steps (claim as `[plan:design-template-travel] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7473): `parts.php` (node builders, the agency's data: regions, destinations, travel styles, sample tours with itineraries and prices, the deposit, inclusions, deals, why-us points, gift cards, figures, testimonials, pick lists; shared parts: account bar, notice, header, footer, trip band, staff bar; destination, tour, deal and testimonial cards, tour facts, the itinerary as one line per day, form fields, comment thread, blog parts); `tests/design_template_travel_test.php`.
+- 1 (done, #7473): `parts.php` (builders, data, shared parts, cards, form fields, comment thread); `tests/design_template_travel_test.php`.
 
-- 2 (done, #7490): `pages_public.php`: home (`home_tours`, `home_destinations`, `home_posts`), `about`, `travel_info`, `faq`, `deals`; `tests/design_template_travel_public_test.php`.
+- 2 (done, #7490): `pages_public.php`: home, `about`, `travel_info`, `faq`, `deals`.
 
-- 3 (done, #7501): `tours.php`: the Destinations collection (`destinations` by `?region=`, `destination` with a link to its tours `?destination=`, `destination_new`) and the Tours collection (`tours` by `?destination=` and `?style=`, the `tour` page with the itinerary, highlights, inclusions, departures, price and reviews as rated comments, `tour_new`), `home_tours`, `home_destinations`; `tests/design_template_travel_tours_test.php`.
+- 3 (done, #7501): `tours.php`: the Destinations and Tours collections, their lists and record pages, `home_tours`, `home_destinations`.
 
-- 4: `mail.php` (the e-mail builders) and `bookings.php`: booking requests (`book` with `?tour=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`); test.
+- 4 (done, #7528): `mail.php` (the e-mail builders) and `bookings.php`: booking requests (`book` with `?tour=` and `?deal=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_booking_new`, `email_booking_received`, `email_reply`); `tests/design_template_travel_bookings_test.php`.
 
 - 5: `enquiries.php` (tailor-made enquiry: `enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`) and `shop.php` (`packages`, product, cart, checkout, order, `email_order`, the catalog with a deposit per tour and gift cards); test.
 
@@ -29,6 +29,7 @@ description: Plan: the Travel Agency design template (pinegrap-travel): destinat
 
 ## Where to start?
 - The next free step is the lowest one not marked done. The tour page's comments already name `{{tab:email_reply}}` (step 4 makes it); the booking form reads `?tour=` (tour page, deals table) and `?deal=` (deal cards) with `$booking_tour_choices` and `$deal_choices`. The tests share `_test_tv_page_keys()` and `_test_tv_shop_keys()` from `tests/design_template_travel_test.php`.
+- `bookings.php` has the e-mail pages of the booking form and `email_reply`; `mail.php` gives `$mail_page`, `$mail_heading`, `$mail_para`, `$mail_button`, `$mail_line`, `$mail_box`, `$mail_greeting`, `$mail_settings` and the shared `email_header`/`email_footer` trees. Some shared booking keys read "randevu" in Turkish ("We received your booking request", "Booking Card"): use keys that say "rezervasyon" (the bookings test checks it).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
