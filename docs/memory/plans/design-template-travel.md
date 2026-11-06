@@ -11,11 +11,11 @@ description: Plan: the Travel Agency design template (pinegrap-travel): destinat
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-travel-design]].
 
 ## Steps (claim as `[plan:design-template-travel] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7473): `parts.php` (node builders, the agency's data: regions, destinations, travel styles, sample tours with itineraries and prices, the deposit, inclusions, deals, why-us points, gift cards, figures, testimonials, pick lists; shared parts: account bar, notice, header, footer, trip band, staff bar; destination, tour, deal and testimonial cards, tour facts, the itinerary as one line per day, form fields, comment thread, blog parts); `tests/design_template_travel_test.php`.
+- 1 (done, #7473): `parts.php` (builders, data, shared parts, cards, form fields, comment thread); `tests/design_template_travel_test.php`.
 
-- 2 (done, #7490): `pages_public.php`: home (`home_tours`, `home_destinations`, `home_posts`), `about`, `travel_info`, `faq`, `deals`; `tests/design_template_travel_public_test.php`.
+- 2 (done, #7490): `pages_public.php`: home, `about`, `travel_info`, `faq`, `deals`.
 
-- 3 (done, #7501): `tours.php`: the Destinations collection (`destinations` by `?region=`, `destination` with a link to its tours `?destination=`, `destination_new`) and the Tours collection (`tours` by `?destination=` and `?style=`, the `tour` page with the itinerary, highlights, inclusions, departures, price and reviews as rated comments, `tour_new`), `home_tours`, `home_destinations`; `tests/design_template_travel_tours_test.php`.
+- 3 (done, #7501): `tours.php`: the Destinations and Tours collections, their lists and record pages, `home_tours`, `home_destinations`.
 
 - 4 (done, #7528): `mail.php` (the e-mail builders) and `bookings.php`: booking requests (`book` with `?tour=` and `?deal=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_booking_new`, `email_booking_received`, `email_reply`); `tests/design_template_travel_bookings_test.php`.
 
