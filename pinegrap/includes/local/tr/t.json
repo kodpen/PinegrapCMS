@@ -1008,6 +1008,7 @@
     "The SMS provider could not be loaded.": "SMS sağlayıcısı yüklenemedi.",
     "The SMS provider may have taken a text message to +{var:1}; it is not sent again by itself: {var:2}": "SMS sağlayıcısı +{var:1} numarasına giden kısa mesajı almış olabilir; mesaj kendiliğinden yeniden gönderilmez: {var:2}",
     "The SMS queue is not available yet; run the upgrade.": "SMS kuyruğu henüz yok; yükseltmeyi çalıştırın.",
+    "The SMTP server or its port changed. Enter the password again.": "SMTP sunucusu ya da portu değişti. Parolayı yeniden girin.",
     "The SSL certificate is about to expire": "SSL sertifikasının süresi dolmak üzere",
     "The Search Index has been updated successfully!": "Arama Dizini başarıyla güncellendi!",
     "The Search Index has been updated successfully! You may {var:1} now.": "Arama Dizini başarıyla güncellendi! Şimdi {var:1}.",

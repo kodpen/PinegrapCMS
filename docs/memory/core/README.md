@@ -159,6 +159,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - sms-consent-box.md: The SMS marketing box beside the e-mail box (PR #3660, #3694 checkout, #3715 custom forms): when it is drawn, how it starts, the consent_log sms rows it writes
 - sms-consent-custom-form.md: The SMS marketing question on custom forms (PR #3715): the opt_in_sms binding, which is no contacts column, when it is drawn, how it starts, the sms:marketing row it writes
+- smtp-kept-password.md: SMTP Settings: an empty password box keeps the saved SMTP password only for the same host and port; a new server drops it and a save that would sign in there is refused
 - social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 - social-sign-in-buttons.md: Where the social sign-in buttons come from (pg_signin_buttons()), when a provider shows, the Settings and designer hints, starter layouts, and what an old browser does.
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it
