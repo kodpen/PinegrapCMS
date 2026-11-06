@@ -27,6 +27,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - affiliate-approval-and-commission-edit.md: approve_affiliate.php checks the contact's groups and does not approve twice; the commission and recurring profile edit screens print a summary of the record
 - affiliate-code-on-order.md: Which affiliate code an order is credited to: the visitor's session/cookie code, else the code the cart stored on the order; pg_order_submit_affiliate_code()
 - affiliate-link-offer-code.md: When an affiliate link (?a=) puts the affiliate's code into the session as the special offer code: only when its group offer runs today (pg_special_offer_code_running(), #4163, PR #4266)
+- affiliate-sign-up-email-change.md: The affiliate sign-up form also changes the member's account e-mail; which accounts the new address is checked against and what a changed address clears.
 - affiliate-welcome-mail-link.md: The affiliate welcome mail's link is built on the configured address (pg_affiliate_link()), never the request's Host header; what it fixed
 - api-bulk-inventory-quantity.md: How POST /products/inventory (batch) reads each item's quantity: the same whole-number rule and ±1000000 bound as the single-product endpoint, refused per item instead of rounded or clamped
 - api-bulk-price-bound.md: How POST /products/prices (batch) reads each item's price: whole minor units from 0 to 2147483647, the single-product routes' bound, refused per item instead of rounded or cut by the INT column
