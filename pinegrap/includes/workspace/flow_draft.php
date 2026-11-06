@@ -984,9 +984,15 @@ function ws_flow_draft_card_source($viewer, $change_id)
             return $fail(lang('The flow this draft was opened as is gone, or you may no longer see it.'));
         }
 
+        $graph = ws_flow_card_opened_graph($flow, ws_flow_version($flow['version_id']));
+
+        if ($graph === null) {
+            return $fail(lang('The flow this draft was opened as is gone, or you may no longer see it.'));
+        }
+
         $can_try = ws_flow_share_manager($viewer, $flow);
 
-        return array('ok' => true, 'error' => '', 'graph' => ws_flow_graph_of($flow), 'patch' => $patch,
+        return array('ok' => true, 'error' => '', 'graph' => $graph, 'patch' => $patch,
             'tries' => ws_flow_card_try_flow($viewer, 'opened', null, $flow, $can_try), 'flow_id' => (int) $flow['id'], 'can_try' => $can_try);
     }
 
@@ -1024,6 +1030,39 @@ function ws_flow_draft_card_source($viewer, $change_id)
     // a new flow's boxes are tried in memory for their third line.
     return array('ok' => true, 'error' => '', 'graph' => $graph, 'patch' => $patch,
         'tries' => ws_flow_card_try_flow($viewer, ($patch === null) ? 'new' : 'patch', $graph, null, false, $name), 'flow_id' => 0, 'can_try' => false);
+}
+
+/**
+ * The graph the card of a draft opened as a flow draws, as the Flows screen
+ * gives it to the person now (ws_flow_detail()): the draft to whoever may
+ * change the flow (and of a flow never published), else its live version,
+ * with the box settings whoever may not change it does not read masked
+ * (ws_flow_graph_present()). The settings stay arrays, as the card reads
+ * them. Pure.
+ *
+ * @param array      $flow ws_flow_for()
+ * @param array|null $version ws_flow_version() of its version_id
+ * @return array|null the graph, none when the live version cannot be read
+ */
+function ws_flow_card_opened_graph($flow, $version)
+{
+    $access = (string) ($flow['access'] ?? '');
+    $graph = ws_flow_draft_readable($access, (int) ($flow['version_id'] ?? 0))
+        ? ws_flow_graph_of($flow)
+        : (is_array($version) ? ws_flow_graph_of($version) : null);
+
+    if ($graph === null) {
+        return null;
+    }
+
+    $shown = ws_flow_graph_present($graph, $access === 'edit');
+    $shown['nodes'] = array_map(function ($node) {
+        $node['config'] = (array) $node['config'];
+
+        return $node;
+    }, $shown['nodes']);
+
+    return $shown;
 }
 
 /**
