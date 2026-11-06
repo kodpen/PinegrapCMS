@@ -7,6 +7,11 @@ description: Pitfalls of submitted-form tokens in system widgets: single escape,
 - **Once**, inside `pg_sw_apply_tokens()` (`prepare_form_data_for_output()`). Escaping during indexing turns `&` into `&amp;amp;`.
 - Truncating the comment preview and turning comment attachments into links happen **before** escape; truncating escaped text cuts `&amp;` in the middle (a bug of the classic screen).
 
+## What happens to a submitted value bound to a link's address?
+- A record value that **starts** an `href`, `src`, `action`, `formaction`, `poster`, `cite` or `background` (`href="^^website^^"`) keeps only `http(s)`, `mailto`, `tel` or a scheme-less path; any other scheme (`javascript:`, `data:`) prints an empty address and the link text stays (`pg_sw_token_starts_address()`, `pg_sw_address_value_safe()`). Tabs, line breaks and control characters are removed before the scheme is read, as browsers do.
+- A token after a scheme the designer wrote (`href="mailto:^^email^^"`) and renderer-built `$extra` values are not checked.
+- Why: an `<input type=url>` is stored as a text box (`_pg_cf_type_by_input()`), so the server never checked the scheme; a seller applicant's website on the Marketplace template printed `href="javascript:…"` for staff to click (#7516).
+
 ## How must replacement run?
 - **One pass per token** (`preg_replace(..., 1)`): the same name may appear with two different formats; a global replace would overwrite the second with the first's output.
 

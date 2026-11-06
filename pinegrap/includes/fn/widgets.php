@@ -501,6 +501,13 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
             }
         }
 
+        // A submitted value that starts an address is the whole address, so
+        // its scheme is the submitter's: one that runs script when clicked
+        // (javascript:, data:) prints no address; the text stays as it is.
+        if (pg_sw_token_starts_address($template, $whole_string) && !pg_sw_address_value_safe($data)) {
+            $data = '';
+        }
+
         // No format written after the token: the site's reading order in a
         // display shape ("13.09.2026 14:10"), not the classic screens' input
         // shape ("13/9/2026 2:10 PM").
@@ -549,6 +556,30 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
     }
 
     return $template;
+}
+
+// Whether the first $token in $template is the start of an attribute that
+// the browser follows as an address (href="^^website^^"). A token after a
+// scheme the designer wrote (href="mailto:^^email^^") or in any other
+// attribute is not.
+function pg_sw_token_starts_address($template, $token)
+{
+    $pos = strpos((string)$template, (string)$token);
+    if ($pos === false || $pos === 0) return false;
+    $from   = max(0, $pos - 64);
+    $before = substr($template, $from, $pos - $from);
+    return (bool)preg_match('~[\s"\'/](?:href|src|action|formaction|poster|cite|background|xlink:href)\s*=\s*["\']?$~i', $before);
+}
+
+// Whether a submitted value may stand as a whole address: a path of the
+// site, or a web, mail or phone address. Browsers drop tabs and line breaks
+// inside an address and control characters around it before reading its
+// scheme, so those are removed before the scheme is read.
+function pg_sw_address_value_safe($value)
+{
+    $value = preg_replace('/[\x00-\x20\x7f]+/', '', (string)$value);
+    if (!preg_match('~^([a-z][a-z0-9+.\-]*):~i', $value, $m)) return true;
+    return in_array(strtolower($m[1]), array('http', 'https', 'mailto', 'tel'), true);
 }
 
 // Make one loop row's element ids its own.
