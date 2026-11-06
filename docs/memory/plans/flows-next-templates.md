@@ -20,9 +20,9 @@ description: Template steps T1-T14 of plans/flows-next.md: ready flows people pi
 
 - T5 (done, #7116): a cancelled order (in place of an e-mail to answer, see `workspace-flows-template-events.md`): an order is cancelled → a line in the channel and a task to follow it up.
 
-- T6 (after A1): goods received: by hand or each morning → an approval "Did the delivery arrive, how many?" with a number answer → add it to a stock table row (B5 when it lands).
+- T6 (done, PR #7454): goods received: by hand or each morning → an approval "Did the delivery arrive, how many?" with a number answer → add it to a stock table row (B5 when it lands).
 
-- T7 (after A1, A2): daily cash count: each evening → an approval asking the counted amount → Calculate the difference from the expected amount → tell the manager when it is not zero.
+- T7 (done, PR #7454): daily cash count: each evening → an approval asking the counted amount → Calculate the difference from the expected amount → tell the manager when it is not zero.
 
 - T8 (after C1): a low review: a product review is written → rating 2 or less → a task to answer it and a line in the channel.
 

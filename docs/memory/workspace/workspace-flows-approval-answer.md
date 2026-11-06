@@ -21,3 +21,6 @@ description: The answer an approval box asks with Approve (#7015, PR #7446): set
 
 ## Tests?
 - `tests/workspace_flow_approval_answer_test.php`.
+
+## Which templates use it?
+- `goods_received` (by hand: how many arrived, told on approved; rejected told) and `cash_count` (every evening 19:00: the counted amount, Calculate minus a constants box `expected`, the person told when not 0 or when nobody counted), in `flow_templates.php`. A built-in template has no stock table step: a row box needs a table and column only the person knows.
