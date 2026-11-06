@@ -1,6 +1,6 @@
 ---
 name: membership-day-in-get-file
-description: Which calendar day decides a running membership or private access in get_file.php (site time zone, set before USER_MEMBER); the hours an ended membership still opened files
+description: Which calendar day ends a membership or private access in get_file.php (site zone set before USER_MEMBER) and in the recurring job (the calendar day before)
 ---
 
 ## Which day ends a membership?
@@ -11,3 +11,6 @@ description: Which calendar day decides a running membership or private access i
 
 ## What went wrong before?
 - get_file.php's initialize_user() decided USER_MEMBER on the server's zone. check_view_access() reads USER_MEMBER for comment attachments, form list/item view files and record files in membership folders, so on a site ahead of the server (Istanbul on a UTC server) a membership that ended yesterday still opened them until the server's day turned. Fixed by calling initialize_timezone() before the check; guarded by tests/get_file_member_timezone_test.php.
+
+## Which date ends a membership when a recurring profile stops?
+- `recurring_payment_job.php` writes the calendar day before today (`strtotime('-1 day', ...)`), #7060. `time() - 86400` was still today late on the 25-hour day of an autumn clock change, so the membership was not ended. Test: `tests/membership_site_date_test.php`.
