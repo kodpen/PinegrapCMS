@@ -118,6 +118,7 @@
     "Key Moment Box": "Önemli Gelişme Kutusu",
     "Key Moment Label": "Önemli Gelişme Etiketi",
     "Key Text": "Anahtar Metni",
+    "Key box for late returns": "Geç iadeler için anahtar kutusu",
     "Key code ({var:1}) was changed on the key code list: {var:2} from \"{var:3}\" to \"{var:4}\".": "Anahtar kodu ({var:1}) anahtar kodlar listesinde değiştirildi: {var:2} \"{var:3}\" iken \"{var:4}\" oldu.",
     "Key code ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Anahtar kod ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden değiştirildi.",
     "Key code ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Anahtar kod ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden oluşturuldu.",
