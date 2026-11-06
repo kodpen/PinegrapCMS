@@ -21,6 +21,9 @@
  * the lists, on its card and in its history; by hand and by a chain it
  * starts its flow as well, and the run's outcome is written back to the
  * action's run with its news (ws_flow_anchor_run_ended()).
+ * A mention box starts the flow when a person writes @ and its name in one
+ * channel: its rule (type mention) waits for workspace.flow.mentioned
+ * (flow_mention.php).
  * A box on customers who stopped ordering keeps an hourly rule; each run of
  * its anchor starts the flow once per customer (flow_no_order.php).
  *
@@ -47,6 +50,7 @@ function ws_flow_anchor_kinds()
         'event'    => array('label' => lang('When something happens'), 'rule' => 'event'),
         'join'     => array('label' => lang('When somebody joins a channel'), 'rule' => 'join'),
         'row'      => array('label' => lang('When a table row changes'), 'rule' => 'row'),
+        'mention'  => array('label' => lang('When the flow is mentioned in a channel'), 'rule' => 'mention'),
         'no_order' => array('label' => lang('When a customer stops ordering'), 'rule' => 'at'),
     );
 }
@@ -207,6 +211,10 @@ function ws_flow_trigger_outputs($kind, $config = array())
         return function_exists('ws_flow_web_outputs') ? ws_flow_web_outputs($config) : array();
     }
 
+    if ($kind === 'mention') {
+        return ws_flow_mention_outputs();
+    }
+
     if ($kind === 'join') {
         return array(
             $value('newcomer_id', 'number', lang('The person who joined')),
@@ -331,6 +339,7 @@ function ws_flow_event_outputs()
  *           counts only when it writes this column; 0 for any, and 0 for
  *           what is not updated)
  * no_order: days (1 to WS_FLOW_NO_ORDER_DAYS_MAX) since the last order
+ * mention:  channel_id (the channel a mention of the flow is written in)
  *
  * @param string $kind
  * @param mixed  $config
@@ -373,6 +382,7 @@ function ws_flow_anchor_normalize($kind, $config)
             );
 
         case 'join':
+        case 'mention':
             return array('channel_id' => $number($config['channel_id'] ?? 0));
 
         case 'row':
@@ -416,6 +426,10 @@ function ws_flow_anchor_problems($kind, $config, $name)
         return array(lang(array('string' => 'The box {var:1} needs the table.', 'vars' => $name)));
     }
 
+    if (($kind === 'mention') && ((int) $config['channel_id'] <= 0)) {
+        return array(lang(array('string' => 'The box {var:1} needs the channel.', 'vars' => $name)));
+    }
+
     return array();
 }
 
@@ -437,6 +451,10 @@ function ws_flow_anchor_rule($kind, $config)
             'table_id'  => (int) ($config['table_id'] ?? 0),
             'column_id' => (int) ($config['column_id'] ?? 0),
         );
+    }
+
+    if ($kind === 'mention') {
+        return ws_flow_mention_rule($config);
     }
 
     // A box on customers who stopped ordering looks for them every hour;
@@ -476,6 +494,10 @@ function ws_flow_anchor_check($viewer, $kind, $config)
 
     if ($kind === 'row') {
         return ws_flow_row_check($viewer, $config);
+    }
+
+    if ($kind === 'mention') {
+        return ws_flow_mention_check($viewer, $config);
     }
 
     if (($kind === 'no_order') && (ws_flow_no_order_refusal($viewer) !== '')) {
@@ -876,6 +898,16 @@ function ws_flow_anchor_start($viewer, $row, $fill)
 
         if ($refused !== '') {
             return $fail($refused);
+        }
+    }
+
+    // A mention box's channel is asked again as a mention starts the flow:
+    // the owner reads it still.
+    if ((string) $trigger['kind'] === 'mention') {
+        $checked = ws_flow_mention_check($viewer, ws_flow_anchor_normalize('mention', $trigger['config'] ?? array()));
+
+        if (!$checked['ok']) {
+            return $fail($checked['error']);
         }
     }
 

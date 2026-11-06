@@ -358,6 +358,7 @@ function ws_flow_config_normalize($kind, $config)
         case 'join':
         case 'row':
         case 'no_order':
+        case 'mention':
             return function_exists('ws_flow_anchor_normalize') ? ws_flow_anchor_normalize($kind, $config) : array();
     }
 
@@ -1039,7 +1040,7 @@ function ws_flow_graph_check($graph)
             }
         }
 
-        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order'), true)) {
+        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row', 'no_order', 'mention'), true)) {
             foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
@@ -1627,14 +1628,15 @@ function ws_flows_list_where($filters)
 
 /**
  * How a flow starts, by the kind of its start box: at a time, on an event
- * (a row of a workflow table written is one too, and a customer who stopped
- * ordering), when somebody joins a channel, or by hand.
+ * (a row of a workflow table written is one too, a customer who stopped
+ * ordering, and a mention of the flow in a channel), when somebody joins a
+ * channel, or by hand.
  *
  * @return array box kind => start
  */
 function ws_flow_start_names()
 {
-    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'join' => 'join', 'manual' => 'manual', 'web' => 'web');
+    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'no_order' => 'event', 'mention' => 'event', 'join' => 'join', 'manual' => 'manual', 'web' => 'web');
 }
 
 /**
@@ -1920,6 +1922,13 @@ function ws_flow_start_rule($graph, $readable, $table_text = null)
 
     if ($kind === 'no_order') {
         return array('text' => ws_flow_no_order_said($config), 'rule' => null);
+    }
+
+    // A mention box names its channel only to whoever reads it.
+    if ($kind === 'mention') {
+        $channel = (((int) $config['channel_id'] > 0) && call_user_func($readable, (int) $config['channel_id'])) ? ws_channel((int) $config['channel_id']) : null;
+
+        return array('text' => ws_flow_mention_said($channel ? (string) $channel['name'] : ''), 'rule' => null);
     }
 
     if (((int) ($config['channel_id'] ?? 0) > 0) && !call_user_func($readable, (int) $config['channel_id'])) {
@@ -3068,6 +3077,10 @@ function ws_flow_js_strings()
         'fl_event_any_channel' => lang('Any channel'),
         'fl_join_channel'     => lang('Channel joined'),
         'fl_join_any'         => lang('Any public channel'),
+        'fl_kind_mention'     => lang('When the flow is mentioned in a channel'),
+        'fl_mention_channel'  => lang('Channel'),
+        'fl_mention_pick'     => lang('Choose a channel'),
+        'fl_mention_help'     => lang('A person who writes @ and the flow\'s name in this channel starts a run, as the flow\'s owner, with the message, its author and the channel. Messages of flows, applications and assistants start nothing; one person starts at most one run this way a minute.'),
         'fl_kind_row'         => lang('When a table row changes'),
         'fl_kind_no_order'    => lang('When a customer stops ordering'),
         'fl_no_order_days'    => lang('Days since the last order'),

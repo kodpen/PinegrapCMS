@@ -115,8 +115,8 @@ function test_workspace_flow_row_events_reach_the_waiting_rules()
 	$start = pg_test_function_source('ws_events_start');
 	$awaited = pg_test_function_source('ws_events_awaited');
 
-	pg_assert_contains("array('event', 'row')", $start, 'ws_events_start() queues the row rules too');
-	pg_assert_contains("array('event', 'row')", $awaited, 'ws_events_awaited() reads the events the row rules wait for');
+	pg_assert_contains("array('event', 'row', 'mention')", $start, 'ws_events_start() queues the row rules too');
+	pg_assert_contains("array('event', 'row', 'mention')", $awaited, 'ws_events_awaited() reads the events the row rules wait for');
 	pg_assert_contains("'workspace.wtable.'", pg_test_function_source('ws_events_creator_sees'), 'the owner has to read the table when the row comes');
 	pg_assert_contains('ws_wtable_flow_check', pg_test_function_source('ws_events_creator_sees'));
 	pg_assert_contains("=== 'row'", pg_test_function_source('ws_flow_anchor_start'), 'the table is asked again as the run starts');

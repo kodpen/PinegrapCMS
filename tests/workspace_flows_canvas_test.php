@@ -363,7 +363,7 @@ JS
 	}
 
 	pg_assert_same(array('start', 'message', 'people', 'logic', 'system', 'end', 'values'), $result['order'], 'groups in the order a flow is built');
-	pg_assert_same(array('start:manual,schedule,event,join,row,no_order,web', 'message:post,email,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
+	pg_assert_same(array('start:manual,schedule,event,join,row,no_order,web,mention', 'message:post,email,notify,report'), $result['firstItems'], 'each group keeps the palette\'s order');
 	pg_assert_same(array('end:end', 'values:constants,value'), $result['endItems'], 'the End box has its own group, the value boxes come last');
 	pg_assert_same(array('start:schedule'), $result['search'], 'a search keeps the boxes whose name holds it, any case');
 	pg_assert_same(array('start:manual'), $result['words'], 'every word searched for');
@@ -1951,7 +1951,7 @@ JS
 function ws_flows_canvas_test_groups()
 {
 	return array(
-		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row', 'no_order', 'web')),
+		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row', 'no_order', 'web', 'mention')),
 		'values' => array('#e58fd0', array('constants', 'value')),
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
