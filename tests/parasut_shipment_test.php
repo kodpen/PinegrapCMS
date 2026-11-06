@@ -64,7 +64,7 @@ function test_parasut_shipment_stock_movement_names_product_warehouse_and_quanti
 // through the stock step's request (a path after the company prefix).
 function test_parasut_shipment_documents_send_stock_movements()
 {
-	foreach (array('parasut_ensure_product_stock_tracking', 'parasut_create_shipment') as $function) {
+	foreach (array('parasut_ensure_product_stock_tracking', '_parasut_create_shipment_claimed') as $function) {
 		$body = parasut_shipment_test_source($function);
 
 		pg_assert_true($body !== '', $function . '() is found');
@@ -81,7 +81,7 @@ function test_parasut_shipment_documents_send_stock_movements()
 // without one.
 function test_parasut_create_shipment_refuses_a_line_without_a_product()
 {
-	$body = parasut_shipment_test_source('parasut_create_shipment');
+	$body = parasut_shipment_test_source('_parasut_create_shipment_claimed');
 	$refusal = strpos($body, "if (\$item_parasut_product_id === '') {");
 	$post = strpos($body, "_parasut_request('POST'");
 
@@ -117,10 +117,10 @@ function test_parasut_stock_tracking_put_sends_inventory_tracking_only()
 // returned.
 function test_parasut_request_retries_once_after_429()
 {
-	$body = parasut_shipment_test_source('_parasut_request');
+	$body = parasut_shipment_test_source('_parasut_request_once');
 
-	pg_assert_contains('function _parasut_request($method, $url, $body = null, $token = null, $retry_429 = true)', $body);
+	pg_assert_contains('function _parasut_request_once($method, $url, $body = null, $token = null, $retry_429 = true)', $body);
 	pg_assert_contains("if ((\$http_code === 429) && \$retry_429) {", $body);
 	pg_assert_contains('sleep((int) ceil(PARASUT_RATE_WINDOW));', $body);
-	pg_assert_contains('return _parasut_request($method, $url, $body, $token, false);', $body);
+	pg_assert_contains('return _parasut_request_once($method, $url, $body, $token, false);', $body);
 }
