@@ -3631,9 +3631,9 @@
   stroke: var(--pgie-danger);
 }
 
+/* While recording every sample is a key: the line alone until letting go. */
 .pgie-recording .pgie-keydot {
-  fill: var(--pgie-danger);
-  r: 2.5px;
+  display: none;
 }
 
 .pgie-recpill,

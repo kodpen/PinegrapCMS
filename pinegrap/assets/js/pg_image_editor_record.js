@@ -549,7 +549,11 @@
                 el('span', { class: 'pgie-mclock' }, [el('strong'), el('span')]),
                 speed
             ]);
-            this.recPill.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+            // The pill's presses are its own: a pointerup reaching the stage
+            // would count two quick taps on the speed as a double tap (zoom).
+            ['pointerdown', 'pointerup', 'pointercancel', 'dblclick'].forEach(function (type) {
+                self.recPill.addEventListener(type, function (e) { e.stopPropagation(); });
+            });
             this.recHintEl = el('p', { class: 'pgie-rechint', 'aria-live': 'polite', text: t('recHintPhone') });
             this.stage.appendChild(this.recPill);
             this.stage.appendChild(this.recHintEl);

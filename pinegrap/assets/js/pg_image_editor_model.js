@@ -3915,13 +3915,17 @@
         Object.keys(byT).forEach(function (t) { list.push(byT[t]); });
         list.sort(function (a, b) { return a.t - b.t; });
 
-        // A twist or a corner that stopped part way holds its last value.
+        // A twist or a corner recorded part way: before it the first value
+        // it recorded (no jump when it begins), after it the last.
         ['rot', 'scale'].forEach(function (f) {
-            var last;
+            var first = list.filter(function (q) { return q[f] !== undefined; })[0], last;
 
-            if (list.some(function (q) { return q[f] !== undefined; })) {
-                list.forEach(function (q) { last = (q[f] !== undefined) ? q[f] : last; });
-                list.forEach(function (q) { last = (q[f] !== undefined) ? q[f] : last; q[f] = (last === undefined) ? ((f === 'rot') ? 0 : 1) : last; });
+            if (first) {
+                last = first[f];
+                list.forEach(function (q) {
+                    last = (q[f] !== undefined) ? q[f] : last;
+                    q[f] = last;
+                });
             }
         });
 

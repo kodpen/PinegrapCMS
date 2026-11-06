@@ -126,3 +126,26 @@ function test_image_editor_record_speed()
 	pg_assert_same(array(0.5, 1, 2), $r['rates'], 'the speeds offered');
 	pg_assert_same(1000, $r['odd'], 'an unknown speed runs at 1x');
 }
+
+// A turn or a size recorded part way: the samples before it take its
+// first value (no jump when it begins), the ones after hold its last.
+function test_image_editor_record_partial()
+{
+	$r = image_editor_motion_node(
+		'var s = [], i;' . "\n"
+		. 'for (i = 0; i <= 20; i++) { s.push({ t: i * 50, x: 0, y: 0 }); }' . "\n"
+		. 'for (i = 1; i <= 20; i++) { s.push({ t: 1000 + i * 50, x: 0, y: 0, rot: 3 * i, scale: 1 + i / 20 }); }' . "\n"
+		. 'for (i = 1; i <= 10; i++) { s.push({ t: 2000 + i * 50, x: 0, y: 0 }); }' . "\n"
+		. 'var k = M.recordThin(s);' . "\n"
+		. 'console.log(JSON.stringify({ rot: k.map(function (q) { return q.t + ":" + r(q.rot); }), first: [r(k[0].rot), r(k[0].scale)], last: [r(k[k.length - 1].rot), r(k[k.length - 1].scale)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(3, 1.05), $r['first'], 'before the turn and the size begin, their first values');
+	pg_assert_same(array(60, 2), $r['last'], 'after they end, their last values');
+	pg_assert_same(array('0:3', '1050:3', '2000:60', '2500:60'), $r['rot'], 'no jump: still until the turn begins, even through it, then held');
+}
