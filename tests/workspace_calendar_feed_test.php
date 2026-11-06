@@ -206,3 +206,12 @@ function test_workspace_calendar_feed_reader_name()
 	pg_assert_same('', ws_calendar_feed_reader_name('curl/8.5.0'), 'unknown');
 	pg_assert_same('', ws_calendar_feed_reader_name(''), 'none');
 }
+
+// A deleted account ends its address; a disabled one, or one out of the team, opens nothing.
+function test_workspace_calendar_feed_holder_disabled_refused()
+{
+	pg_assert_same('deleted', ws_calendar_feed_holder_state(null, false, true), 'deleted account');
+	pg_assert_same('refused', ws_calendar_feed_holder_state(array('id' => 5), true, true), 'disabled account, still a member');
+	pg_assert_same('refused', ws_calendar_feed_holder_state(array('id' => 5), false, false), 'out of the team');
+	pg_assert_same('open', ws_calendar_feed_holder_state(array('id' => 5), false, true), 'enabled member');
+}
