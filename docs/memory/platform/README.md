@@ -36,6 +36,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - activitypub-decisions.md: Why the Fediverse (ActivityPub) feature is shaped as it is: off by default, one actor, no library, what is published, remote replies as comments, WAF rules, the decided tables; where each part lives
 - activitypub-inbox.md: The ActivityPub inbox: the checks a delivery passes, what each activity does to ap_followers, ap_reactions and ap_outbox, the AP4 hooks, the log and the inbox's WAF bucket.
 - activitypub-moderation.md: Fediverse blocks (ap_blocks) by actor or domain: what a block removes, how values are stored, the comment screen's buttons, the erasure path shared with a Delete of the actor.
+- activitypub-outbox-collection.md: What the public ActivityPub outbox collection shows: each object's newest logged activity only, so withdrawn or rewritten content is not served.
 - activitypub-outbox.md: ActivityPub publishing: what counts as published, the general job's sweep that queues Create/Update/Delete into ap_outbox, the log and delivery rows, signing, retries, the outbox collection.
 - activitypub-reactions.md: Fediverse likes and boosts of a page or record shown by the Comments widget: its tokens, which objects a thread counts, page cache.
 - audit-rule-registry.md: Audit rule registry (includes/fn/audit_rules.php): per concept the SEO and a11y codes, WCAG criterion, severities, editor rule ids, document/browser flags; tools/check_audit_rules.php
