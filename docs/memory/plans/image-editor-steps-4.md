@@ -25,5 +25,5 @@ description: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free def
   - A downloadable model may come later as an option (owner); not in this step.
   - Tests: max-flow on small graphs; GrabCut on synthetic pictures (a disc on a plain and on a noisy background) reaching an overlap (IoU) over 0.9.
 
-- E29 (S) Access for E21-E28. The holder.
+- E29 (S) Access for E21-E28. The holder. Done (#7622, `ui/image-editor-access.md`).
   - Tool letters, names, the help sheet, touch sizes on a phone for the new handles and pins.

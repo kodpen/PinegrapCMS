@@ -4384,7 +4384,7 @@
     var KEY_TOOLS = {
         v: ['select'], c: ['crop'], a: ['adjust', 'arrow'], d: ['draw'], t: ['text'], r: ['redact'], u: ['rect'], s: ['sticker'],
         f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse'],
-        m: ['motion']
+        m: ['motion'], q: ['area'], x: ['scissors'], g: ['builder'], w: ['warp'], n: ['puppet']
     };
 
     function toolForKey(key, list) {
@@ -4452,11 +4452,42 @@
         return (a <= -180) ? a + 360 : (a === 0 ? 0 : a);
     }
 
+    // How near, in screen pixels, a press must come to a point or an edge
+    // a tool picks up (pointer: the PointerEvent's pointerType): a finger
+    // gets half of a 44 px target, a mouse or a pen the tool's own reach.
+    var TOUCH_REACH = 22;
+
+    function touchReach(pointer, px) {
+        return (pointer === 'touch') ? Math.max(TOUCH_REACH, Number(px) || 0) : (Number(px) || 0);
+    }
+
+    // The keys and touches of the tools that have their own, one group per
+    // tool of the call, titled with its name.
+    var KEY_MODES = {
+        area: [
+            { keys: ['Shift', 'Drag'], label: 'keyAreaAdd' },
+            { keys: ['Alt', 'Drag'], label: 'keyAreaSubtract' },
+            { keys: ['DoubleClick'], label: 'keyAreaClose' },
+            { keys: [], label: 'touchAreaClose' }
+        ],
+        builder: [
+            { keys: ['Alt', 'Drag'], label: 'keyBuilderRemove' }
+        ],
+        puppet: [
+            { keys: ['Click'], label: 'keyPinAdd' },
+            { keys: ['Alt', 'Click'], label: 'keyPinRemove' },
+            { keys: ['Delete'], label: 'keyPinDelete' },
+            { keys: ['Arrows'], label: 'keyPinNudge' },
+            { keys: ['Shift', 'Arrows'], label: 'keyPinNudgeMore' }
+        ]
+    };
+
     // The help sheet's groups for a call's tools: { title, rows: [{ keys,
     // label }] }, keys as tokens (Mod is Ctrl, or Cmd on a Mac; Space,
-    // Delete, Arrows and Drag are named by the sheet), title and label as
-    // label keys. Layer keys show only with a tool that makes layers, Enter
-    // only with Crop.
+    // Delete, Arrows, Drag, Click and DoubleClick are named by the sheet),
+    // title and label as label keys. Layer keys show only with a tool that
+    // makes layers, Enter only with Crop, a tool's own group (KEY_MODES)
+    // only with that tool.
     var KEY_NOLAYERS = ['crop', 'adjust', 'export'];
 
     function keyMap(list) {
@@ -4497,6 +4528,12 @@
                 { keys: ['Mod', 'A'], label: 'keySelectAll' }
             ] });
         }
+
+        list.forEach(function (id) {
+            if (KEY_MODES.hasOwnProperty(id)) {
+                groups.push({ title: 'tool_' + id, rows: KEY_MODES[id].slice() });
+            }
+        });
 
         if (list.indexOf('motion') >= 0) {
             groups.push({ title: 'keysTimeline', rows: [
@@ -4567,7 +4604,8 @@
         return (total > 0) && ((loop <= 0) || (total * loop > MOTION_PAUSE_MS));
     }
 
-    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap, TIMELINE_FPS: TIMELINE_FPS, timelineKey: timelineKey, motionLong: motionLong };
+    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap,
+        TOUCH_REACH: TOUCH_REACH, touchReach: touchReach, KEY_MODES: KEY_MODES, TIMELINE_FPS: TIMELINE_FPS, timelineKey: timelineKey, motionLong: motionLong };
 
     // -- The selection's commands (pg_image_editor_actions.js) --
 
@@ -4585,6 +4623,12 @@
 
         if (!s.layers && !s.picture && !s.area) {
             return out;
+        }
+
+        // A chosen deformation pin: its removal first, as a phone has
+        // neither Alt nor the Delete key; Delete still removes the layer.
+        if (s.pin && s.layers) {
+            add('removePin');
         }
 
         if (s.sheet) {
@@ -5341,9 +5385,24 @@
         return best;
     }
 
+    // Where pin i moves when the arrow keys nudge it by dx, dy document
+    // pixels: its drawn point as a share of the box, the layer's turn and
+    // mirror taken into account; null without that pin. Its rest stays.
+    function puppetNudge(l, i, dx, dy) {
+        var pin = (l && l.puppet && Array.isArray(l.puppet.pins)) ? l.puppet.pins[i] : null;
+
+        if (!pin || !pinValid(pin) || !(l.w > 0) || !(l.h > 0)) {
+            return null;
+        }
+
+        var a = drawnLocal(l, 0, 0), b = drawnLocal(l, dx, dy);
+
+        return [frac(pin.at[0] * l.w + b[0] - a[0], l.w), frac(pin.at[1] * l.h + b[1] - a[1], l.h)];
+    }
+
     var PUPPET = {
         PUPPET_MAX: PUPPET_MAX, puppetOn: puppetOn, puppetPins: puppetPins, mlsRigid: mlsRigid, puppetRest: puppetRest,
-        puppetAdd: puppetAdd, puppetHit: puppetHit
+        puppetAdd: puppetAdd, puppetHit: puppetHit, puppetNudge: puppetNudge
     };
 
     // -- scenes (pg_image_editor_scenes.js) --
