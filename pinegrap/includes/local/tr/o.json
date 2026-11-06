@@ -1387,6 +1387,7 @@
     "Orders placed on a working day usually ship the same day and arrive in one to three working days.": "İş günü verilen siparişler genellikle aynı gün kargoya verilir ve bir ile üç iş günü içinde ulaşır.",
     "Orders read up to {var:1}": "Siparişler {var:1} tarihine kadar okundu",
     "Orders retrieved successfully.": "Siparişler başarıyla getirildi.",
+    "Orders to invoice": "Faturalanacak siparişler",
     "Orders today": "Bugünkü siparişler",
     "Orders took numbers while this screen was open, so the Next Order Number was not changed; it is {var:1} now.": "Bu ekran açıkken siparişler numara aldı, bu yüzden Sonraki Sipariş Numarası değiştirilmedi; şu an {var:1}.",
     "Orders usually leave within three working days": "Siparişler genellikle üç iş günü içinde yola çıkar",
