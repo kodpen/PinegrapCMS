@@ -46,6 +46,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-construction.md: Plan: the Construction Firm design template (pinegrap-construction): projects portfolio, services, quote requests, team, careers, news; ~1,000-line steps
 - design-template-gym-design.md: Design of plans/design-template-gym.md: which shipped features the Gym template reuses for booking, trainers and membership, what it does not build, its look and Turkish words
 - design-template-gym.md: Plan: the Gym design template (pinegrap-gym), a fitness studio with classes, a timetable, trainers, membership plans, class booking and contact, built from existing features in ~1,000-line steps
+- design-template-museum.md: Plan: the Museum / Art Gallery design template (pinegrap-museum): exhibitions, collection highlights, visit info, timed tickets and membership in the shop, events, school visits; ~1,000-line steps
 - design-template-music-design.md: Design of plans/design-template-music.md: what the Music template reuses for shows, releases, merch, press kit and mailing list, what it does not build, its look and Turkish words
 - design-template-music.md: Plan: the Music Artist design template (pinegrap-music): tour dates, discography with tracks, merch shop, news, press kit, mailing list; parts in a folder; ~1,000-line steps
 - design-template-photo-design.md: Design of plans/design-template-photo.md: which shipped features the Photo template reuses for galleries, booking, proofing and downloads, what it does not build, its look and Turkish words
