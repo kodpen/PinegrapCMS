@@ -17,7 +17,7 @@ module: design_previews
 - The sandboxed page has an opaque origin: fonts served from the site without CORS would not load; the templates' icons come from jsDelivr (`pg_design_icons_url()`), which sends CORS.
 
 ## How is a preview address built?
-- `pg_design_preview_address('install'|'panel', $args)`: installer `?install_action=design_preview|design_tour&template=&look=&palette=&local=&page=`, panel `PATH/SOFTWARE_DIRECTORY/design_preview.php?template=&look=&palette=&tour=1&page=` (the file comes with TP3). Look and palette only when `pg_design_looks()`/`pg_design_palettes()` have them; template and page keys checked by pattern, a bad template gives ''. `page => '{page}'` stays literal for `pg_design_template_preview_html()`'s `$link`.
+- `pg_design_preview_address('install'|'panel', $args)`: installer `?install_action=design_preview|design_tour&template=&look=&palette=&local=&page=`, panel `PATH/SOFTWARE_DIRECTORY/design_preview.php?template=&look=&palette=&tour=1&page=` (`design-preview-address.md`). Look and palette only when `pg_design_looks()`/`pg_design_palettes()` have them; template and page keys checked by pattern, a bad template gives ''. `page => '{page}'` stays literal for `pg_design_template_preview_html()`'s `$link`.
 
 ## What is the tour?
 - `pg_design_tour_html($opts)`: a whole standalone document (own inline CSS and script, light/dark from the system, `noindex`): bar with the template's icon and name, "Template preview · look · palette · sample content", a page `<select>` with an E-mails `<optgroup>`, previous/next, "n / total", desktop/phone, the continue button; under it the page full size in a frame (`sandbox="allow-scripts"`, so its own links and Bootstrap scripts work).

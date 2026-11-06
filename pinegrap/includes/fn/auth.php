@@ -4242,7 +4242,8 @@ function validate_token_field()
 /**
  * Whether this request renders pages as a visitor who is not signed in,
  * whoever started it: a search index run (UPDATE_SEARCH_INDEX) or an audit
- * run from the panel (audit_run.php, PG_ANONYMOUS_RENDER). Such a request
+ * run from the panel (audit_run.php) or a design preview (design_preview.php),
+ * both PG_ANONYMOUS_RENDER. Such a request
  * loads no user from the session or the remember-me cookie; the script
  * checks its caller's role from the session itself.
  *
