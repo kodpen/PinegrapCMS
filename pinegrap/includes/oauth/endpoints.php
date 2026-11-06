@@ -485,24 +485,20 @@ function pg_oauth_token_from_refresh($client) {
 	$consented = is_array($consented) ? $consented : array();
 
 	// A refresh may ask for less than was granted, never more (RFC 6749 6).
-	// The connection keeps what the person agreed to; the narrower set is not
-	// stored, because the next refresh may ask for all of it again. Values the
-	// site has no scope of are passed over, as on the consent screen: a
-	// client sending its first request's scope string again, offline_access
-	// and all, asks for nothing new.
-	if (pg_oauth_form_value('scope') !== '') {
+	// The narrower set goes on the row for the new access token only; the
+	// consent stays as it was, so the next refresh may ask for all of it
+	// again. Values the site has no scope of are passed over, as on the
+	// consent screen: a client sending its first request's scope string
+	// again, offline_access and all, asks for nothing new.
+	$narrowed = pg_oauth_refresh_scopes(pg_oauth_form_value('scope'), api_scopes_all(), api_scopes_expand($consented));
 
-		$asked = array_intersect(pg_oauth_scope_parse(pg_oauth_form_value('scope')), api_scopes_all());
+	if ($narrowed === false) {
 
-		if (count(array_diff($asked, api_scopes_expand($consented))) > 0) {
-
-			pg_oauth_fail(400, 'invalid_scope', 'A refresh cannot ask for more than was granted.');
-
-		}
+		pg_oauth_fail(400, 'invalid_scope', 'A refresh cannot ask for more than was granted.');
 
 	}
 
-	$rotated = api_device_rotate_pair($token);
+	$rotated = api_device_rotate_pair($token, $narrowed);
 
 	if ($rotated['error'] !== '') {
 
@@ -528,7 +524,8 @@ function pg_oauth_token_from_refresh($client) {
 
 	pg_oauth_client_touch((int)$client['id']);
 
-	pg_oauth_token_answer($rotated, pg_oauth_effective_scopes($app, $owner, $consented));
+	pg_oauth_token_answer($rotated, pg_oauth_access_scopes(pg_oauth_effective_scopes($app, $owner, $consented),
+		is_array($narrowed) ? api_scopes_expand($narrowed) : null));
 
 }
 
