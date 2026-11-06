@@ -26,7 +26,7 @@ description: The Read a record box of flows (record_get): kinds and fields, the 
 - API: named in the `nodes` and `edges` descriptions of POST /workspace/flows; GET /workspace/flow-kinds and Pinegrap AI's catalogue read it from the kinds, with a hint in `ws_flow_ai_catalogue_hints()`.
 
 ## Why a cart quote?
-- To read a quote after a wait (T13), PR #PRNUM. The AI hint (flow_draft.php) and POST /workspace/flows' `nodes` text (api.php) still name six kinds.
+- To read a quote after a wait (T13), PR #7474. The AI hint (flow_draft.php) and POST /workspace/flows' `nodes` text (api.php) still name six kinds.
 
 ## What is unverified?
 - No run on a dev database and no browser look at the form; the pure parts and the wiring are under tests.
