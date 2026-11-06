@@ -484,6 +484,10 @@ function ws_approvals_map($message_ids, $viewer)
 
     $people = ws_people($user_ids);
     $refs = empty($tokens) ? array() : ws_refs_resolve($viewer, $tokens);
+    // What Approve asks for, of the open requests a flow's box waits on.
+    $asked = ws_approval_answers_asked(array_map(function ($row) {
+        return ((int) $row['closed_at'] === 0) ? (int) $row['id'] : 0;
+    }, $rows));
     $guest = ((int) ($viewer['guest_id'] ?? 0) > 0);
     $staff = !$guest && !empty($viewer['member']) && ((int) ($viewer['role'] ?? 3) <= 2);
     $rules = ws_approval_rules();
@@ -585,6 +589,8 @@ function ws_approvals_map($message_ids, $viewer)
             'can_close'   => $open && !$guest && ((int) $row['created_by'] !== (int) $viewer['id']) && ((int) ($viewer['role'] ?? 3) < 3)
                 && ($channel !== null) && ws_can_read_channel($viewer, $channel),
             'result_id'   => (int) $row['result_message_id'],
+            'answer'      => (string) ($asked[$approval_id]['answer'] ?? 'none'),
+            'answer_label' => (string) ($asked[$approval_id]['label'] ?? ''),
         );
     }
 
@@ -1330,6 +1336,9 @@ function ws_approvals_js_strings()
         'apv_reject'         => lang('Reject'),
         'apv_reject_note'    => lang('Why? (optional)'),
         'apv_reject_confirm' => lang('Reject this request? It is settled at once.'),
+        'apv_answer'         => lang('Your answer'),
+        'apv_answer_number'  => lang('Your answer (a number)'),
+        'apv_answer_confirm' => lang('Approve with this answer? It is given to the flow that asked.'),
         'apv_withdraw'       => lang('Take back'),
         'apv_withdraw_confirm' => lang('Take back the approval request? Nothing is decided and the channel is told.'),
         'apv_close'          => lang('Close'),
