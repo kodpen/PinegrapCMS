@@ -157,12 +157,16 @@ if ($liveform->check_form_errors()) {
 $username = db_value(
     "SELECT user_username FROM user WHERE user_id = '" . (int) $change_user_id . "'");
 
-// update password for user with a modern hash
+// update password for user with a modern hash. A pending reset or set
+// password link (user.token) dies with the old password: one mailed earlier
+// must not override the password the owner just chose.
 $query = 
     "UPDATE user 
     SET 
         user_password = '" . escape(pg_password_hash($liveform->get_field_value('new_password'))) . "',
-        user_password_algo = 2
+        user_password_algo = 2,
+        token = NULL,
+        token_timestamp = 0
         " . (pg_sw_posted_control($pg_controls, 'password_hint') ? ", user_password_hint = '" . escape($liveform->get_field_value('password_hint')) . "'" : '') . "
         " . pg_password_changed_sql() . "
     WHERE user_id = '" . (int) $change_user_id . "'";

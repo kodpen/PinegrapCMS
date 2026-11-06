@@ -126,3 +126,20 @@ function pg_order_touch_sql()
 {
     return 'last_modified_timestamp = UNIX_TIMESTAMP()';
 }
+
+/**
+ * The UPDATE an order export (view_orders.php, shipworks.php) runs to mark an
+ * order it wrote out as exported. It lands only while the order is still
+ * complete: the export reads the orders first and writes each one after
+ * building its rows, so a cancellation, or another export, between the read
+ * and the write leaves zero affected rows instead of moving a cancelled order
+ * to exported (or counting and auditing the move twice).
+ *
+ * @param int $order_id
+ * @return string
+ */
+function pg_order_export_mark_sql($order_id)
+{
+    return "UPDATE orders SET status = 'exported', " . pg_order_touch_sql()
+        . " WHERE id = '" . (int) $order_id . "' AND status = 'complete'";
+}

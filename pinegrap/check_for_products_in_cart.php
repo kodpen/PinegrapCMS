@@ -53,11 +53,16 @@ function check_for_products_in_cart($request) {
         $sql_recipient = "AND ship_to_id = '" . e($recipient['id']) . "'";
     }
 
-    // Get all items in the cart.
+    // Get the items the shopper put in the cart. A line an offer added
+    // (added_by_offer) is left out, as in pg_offer_cart_quantity(): a gift
+    // counted toward the rule that earns it kept its own offer alive once the
+    // shopper took the paid items back out ("buy 2 from X or Y, get Y free"
+    // stayed valid on one X and the free Y).
     $items = db_items("
         SELECT product_id, SUM(quantity) AS quantity FROM order_items
         WHERE
             order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'" . pg_order_item_active_sql() . "
+            AND (added_by_offer = '0')
             $sql_recipient
         GROUP BY product_id");
 

@@ -886,7 +886,53 @@ function pg_ap_outbox_run($limit = 25, $now = null)
 }
 
 /**
- * The last activities with a body, newest first, for the outbox collection.
+ * The activities the public outbox collection shows, newest first: of each
+ * object only its newest activity. An older Create or Update carries the
+ * content as it was then; once the object is deleted (taken off the site,
+ * moved to a closed folder or the recycle bin, filtered out of its record
+ * page) or rewritten, that content is no longer the site's to hand out, so
+ * only the Tombstone or the newest Article stays. An activity whose address
+ * this outbox did not write is kept as it is.
+ *
+ * @param array $activities decoded activities, newest first
+ * @param int   $limit
+ * @return array
+ */
+function pg_ap_outbox_visible($activities, $limit)
+{
+    $out = array();
+    $seen = array();
+    $limit = max(0, (int) $limit);
+
+    foreach ((array) $activities as $activity) {
+        if (count($out) >= $limit) {
+            break;
+        }
+
+        if (!is_array($activity)) {
+            continue;
+        }
+
+        $key = pg_ap_activity_key(isset($activity['id']) ? (string) $activity['id'] : '');
+
+        if ($key !== null) {
+            if (isset($seen[$key['object']])) {
+                continue;
+            }
+
+            $seen[$key['object']] = true;
+        }
+
+        $out[] = $activity;
+    }
+
+    return $out;
+}
+
+/**
+ * The last activities with a body, newest first, for the outbox collection
+ * (pg_ap_outbox_visible()). More log rows than shown are read: the
+ * superseded ones are left out.
  *
  * @param int $limit
  * @return array
@@ -897,16 +943,17 @@ function pg_ap_outbox_items($limit = 20)
         return array();
     }
 
-    $items = array();
+    $limit = max(1, (int) $limit);
+    $activities = array();
 
-    foreach ((array) db_items("SELECT body FROM ap_outbox WHERE inbox = '' AND body != '' ORDER BY id DESC LIMIT " . max(1, (int) $limit)) as $row) {
+    foreach ((array) db_items("SELECT body FROM ap_outbox WHERE inbox = '' AND body != '' ORDER BY id DESC LIMIT " . ($limit * 5)) as $row) {
         $activity = json_decode((string) $row['body'], true);
 
         if (is_array($activity)) {
             unset($activity['@context']);
-            $items[] = $activity;
+            $activities[] = $activity;
         }
     }
 
-    return $items;
+    return pg_ap_outbox_visible($activities, $limit);
 }

@@ -10,7 +10,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
   - The Animate panel and play bar (desktop and phone), the Save animation dialog with its progress, the scene strip and Present, as `plans/image-editor/26-*.jpg` to `32-*.jpg`.
 
 - AN1 (M) Motion and preview. Done (#4831).
-  - Part `motion` (an Animate tool in the photo and canvas rails), section `MOTION` with `M.motionAt()`; per layer in, loop and out presets with delay, duration, ease and direction; the document's duration, loop and base move; the play bar (play, pause, scrub, time); the `<g>` per layer in `renderLayers()` and the text, draw and vector states.
+  - Part `motion` (an Animate tool in the photo and canvas rails), section `MOTION` with `M.motionAt()`; per layer in, loop and out presets with delay, duration, ease and direction; the document's duration, loop and base move; the play bar; the `<g>` per layer in `renderLayers()`.
 
 - AN2 (M) Tracks. Done (#5062, part `tracks`, `ui/image-editor-tracks.md`).
   - A row per layer under the stage with its bar from the start of in to the end of out; drag the bar or an end; snapping to 0.1 s and to other ends; on a phone the panel's fields only.
@@ -43,5 +43,5 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN10 (M) SVG motion. Done (#6349, `ui/image-editor-svg-motion.md`).
   - E19's content (`image-editor-animation-output.md`): the presets as `@keyframes` in the saved SVG.
 
-- AN11 (S) Access and close-out. The holder.
+- AN11 (S) Access and close-out. The holder, after AN12 (`image-editor-animation-steps-2.md`).
   - Keys on the timeline (K, Home, End, arrows by frame, with Shift by second; Space pans the view), names, a warning for a loop longer than 5 s (WCAG 2.2.2); lasting decisions to topic files and these plan files deleted.

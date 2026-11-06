@@ -85,14 +85,14 @@ function test_api_subscriptions_list_filters()
 // GET /customers/{id}; an account without one gives null.
 function test_api_subscriptions_present_carries_the_customer()
 {
-	$out = api_subscription_present(api_subscriptions_test_row());
+	$out = api_subscription_present(api_subscriptions_test_row(), true);
 
 	pg_assert_same(12, $out['customer_id']);
 	pg_assert_same('Ayşe Kaya', $out['customer_name']);
 	pg_assert_same('ayse@example.com', $out['customer_email']);
 	pg_assert_same(array_keys(api_subscription_schema()), array_keys($out), 'every field declared, in order');
 
-	$out = api_subscription_present(api_subscriptions_test_row(array('customer_id' => '0', 'customer_name' => '', 'customer_email' => '')));
+	$out = api_subscription_present(api_subscriptions_test_row(array('customer_id' => '0', 'customer_name' => '', 'customer_email' => '')), true);
 
 	pg_assert_same(null, $out['customer_id'], 'an account that is no contact');
 	pg_assert_same(null, $out['customer_name']);
@@ -103,6 +103,33 @@ function test_api_subscriptions_present_carries_the_customer()
 	pg_assert_same('integer?', $schema['customer_id']);
 	pg_assert_same('string?', $schema['customer_name']);
 	pg_assert_same('string?', $schema['customer_email']);
+}
+
+// The buyer's name and e-mail come from the first order and the card digits
+// are payment data: customers:read alone never hands them out, the key must
+// hold orders:read as well (the panel's subscriptions screen is an e-commerce
+// screen).
+function test_api_subscription_order_data_needs_orders_read()
+{
+	pg_assert_same(false, api_subscription_order_data_shown(array('customers:read')), 'customers:read alone');
+	pg_assert_same(true, api_subscription_order_data_shown(array('customers:read', 'orders:read')), 'with orders:read');
+	pg_assert_same(false, api_subscription_order_data_shown(null), 'no scopes');
+
+	$out = api_subscription_present(api_subscriptions_test_row(), false);
+
+	pg_assert_same(12, $out['customer_id'], 'the customer record stays');
+	pg_assert_same(null, $out['customer_name'], 'no billing name');
+	pg_assert_same(null, $out['customer_email'], 'no billing e-mail');
+	pg_assert_same(null, $out['card_last4'], 'no card digits');
+	pg_assert_same(17688, $out['amount'], 'the subscription itself stays');
+	pg_assert_same(array_keys(api_subscription_schema()), array_keys($out), 'the same fields');
+
+	$out = api_subscription_present(api_subscriptions_test_row(), true);
+
+	pg_assert_same('Ayşe Kaya', $out['customer_name']);
+	pg_assert_same('4242', $out['card_last4']);
+
+	pg_assert_same('string?', api_subscription_schema()['card_last4']);
 }
 
 function test_api_subscriptions_select_reads_the_customer_but_never_the_card()

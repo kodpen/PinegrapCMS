@@ -1,11 +1,11 @@
 ---
 name: erp-list-edit-screen-pattern
-description: How ERP list and add/edit screens are built (table.chart, separate edit pages, liveform fields, menu highlight), which lists must not be DataTables and how they sort, list filters.
+description: How ERP list and add/edit screens are built (list table driver, separate edit pages, liveform fields, menu highlight), which lists stay plain tables and how they sort, list filters.
 ---
 
 ## How is an ERP list drawn?
-- Like a `view_*` screen: `<table class="chart table-hover table" style="width:100%;display:none;">`. `backend.src.js` sets up DataTables automatically (search, paging, column visibility, sorting; `fnInitComplete` removes `display:none`).
-- First column `<th class="noVis">Eylem</th>` with a pencil button to `edit_*.php?id=`.
+- On the list table driver, printed whole (`pg_list_table_printed()`, its name in `pg_list_table_printed_lists()`): the record's name opens it (`data-pg-open`), no Edit/View button; the screens and their notes: `ui/list-table-erp-lists.md`.
+- A list with the side drawer opens it from a Quick look button in an `actions` column (`erp_drawer_button()`); a row click selects.
 
 ## How are add/edit pages built?
 - Separate pages: `add_erp_account.php` / `edit_erp_account.php`, `add_erp_till.php` / `edit_erp_till.php`, `add_erp_invoice.php` / `edit_erp_invoice.php`, `add_erp_receipt.php`, `add_erp_transfer.php`.
@@ -14,8 +14,8 @@ description: How ERP list and add/edit screens are built (table.chart, separate 
 - Fields shared by two pages: `includes/erp/account_form.php`, `includes/erp/till_form.php`.
 - A new page must be added to the `$active_menu = 22` switch in `includes/fn/output.php`, or the menu highlight is lost.
 
-## Which lists are not DataTables?
-- Lists where order carries meaning: account statement, cash ledger, invoice lines. A running balance is only correct in date order and a line number is the document itself. Draw them as plain `table table-hover`.
+## Which lists stay plain tables?
+- Lists where order carries meaning: account statement, cash ledger, invoice lines, stock movements; a report with a totals row (aging). A running balance is only correct in date order and a line number is the document itself. Draw them as plain `table table-hover`.
 - Sorting by a heading on such a table: `table[data-pg-sort]` (`backend.src.js`; a third click restores the server's order, Shift+click adds a level, the choice is remembered per page and table). A cell sorts by `data-sort` (date as `Ymd`, amount in kurus), else `data-order`, else its text; a figure shown with separators or inside words needs `data-sort` (the stock movements' Stock cell carries the signed quantity, `−` for out), else `+1.250` sorts before `+900`. An opening or total row is `data-pg-sort-fixed` (`="top"` keeps it on top); a row that belongs to the one above is `data-pg-sort-with-prev`; a heading that must not sort is `data-pg-sort="none"`. Never on a form grid (the invoice editor's lines).
 
 ## How does a figure table name its figures?

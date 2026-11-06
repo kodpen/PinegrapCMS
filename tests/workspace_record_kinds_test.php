@@ -232,7 +232,7 @@ function workspace_record_kinds_test_lists()
 		'events' => array(
 			'where'  => 'an event of ws_events_catalog() in includes/workspace/watch.php',
 			'kinds'  => array_values(array_unique(workspace_record_kinds_test_events())),
-			'except' => array_fill_keys(array('product_group', 'offer', 'cart_quote', 'user_account', 'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote', 'calendar_event', 'file', 'page'),
+			'except' => array_fill_keys(array('product_group', 'offer', 'erp_account', 'waybill', 'file'),
 				'no event a scheduled action starts on is about it'),
 			'others' => array('task', 'channel', 'approval'),
 		),
@@ -443,10 +443,13 @@ function test_workspace_record_kinds_events_name_the_record_they_find()
 
 	pg_assert_true(isset($events['order.created'], $events['form.submitted'], $events['workspace.task.completed']), 'the catalogue was read');
 
-	$payload = array('id' => 7, 'product_id' => 7, 'channel_id' => 7);
+	// A review names its product by item_type and item_id; a subscription
+	// its renewal order, else the customer's contact; a bounce the contact
+	// of its address.
+	$payload = array('id' => 7, 'product_id' => 7, 'channel_id' => 7, 'item_type' => 'product', 'item_id' => 7, 'customer_id' => 7, 'contact_id' => 7);
 
 	foreach ($events as $event => $record) {
-		$found = ws_events_record_of($event, $payload);
+		$found = ws_events_record_of($event, $payload + (($record === 'order') ? array('order_id' => 7) : array()));
 
 		// An approval request is about the task it was asked for, or else
 		// its channel.

@@ -67,6 +67,11 @@ define('WS_STEP_MCP_ARGUMENTS_MAX', 20000);
 // The longest a table box's cells are, as JSON text, in characters.
 define('WS_STEP_ROW_CELLS_MAX', 20000);
 
+// How many times the change-row box reads its row and writes it while
+// somebody else changes the row in between; a cell that adds is added to
+// the row read on each try, so no addition is lost.
+define('WS_STEP_ROW_TRIES', 5);
+
 // A value a box's text reads: {{node.<id>.<field>}}, or {{trigger.<field>}}
 // (group 1 the box id, empty for the trigger; group 2 the field). Either
 // may end in "|" and what to write when the value is empty (group 3, the
@@ -144,6 +149,9 @@ function ws_step_kinds()
         // Its cells follow from the table's columns (ws_step_outputs()).
         'row_get'   => array('label' => lang('Read a row of a table'), 'type' => 'row_get', 'texts' => array('row'), 'lines' => array('row'),
             'outputs' => array($number('row_id', lang('Row')), $number('found', lang('Row found (1 or 0)')))),
+        // Its fields follow from the kind of record it reads (ws_step_outputs()).
+        'record_get' => array('label' => lang('Read a record'), 'type' => 'record_get', 'texts' => array('id'), 'lines' => array('id'),
+            'outputs' => array($number('record_id', lang('Record')), $number('found', lang('Record found (1 or 0)')))),
     );
 }
 
@@ -161,7 +169,7 @@ function ws_step_kinds()
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'record_get' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
 }
 
 /**
@@ -229,6 +237,11 @@ function ws_step_outputs($kind, $config, $labels = array())
         }
     }
 
+    // A box that reads a record gives the fields of its kind.
+    if (($kind === 'record_get') && function_exists('ws_flow_record_get_outputs')) {
+        $out = array_merge($out, ws_flow_record_get_outputs((string) ($config['record'] ?? '')));
+    }
+
     if ($kind !== 'report') {
         return $out;
     }
@@ -272,7 +285,9 @@ function ws_step_result_data($kind, $config, $done)
 
         // A cell read is kept as the text it fills in (ws_flow_row_cell_text()):
         // a number cell may have decimals.
-        if (($kind === 'row_get') && (strpos($key, 'cell_') === 0)) {
+        // So is a record's field: money has decimals.
+        if ((($kind === 'row_get') && (strpos($key, 'cell_') === 0))
+            || (($kind === 'record_get') && !in_array($key, array('record_id', 'found'), true))) {
             $value = is_scalar($value) ? (string) $value : '';
         } elseif ($output['type'] === 'number') {
             $value = (is_numeric($value) && !is_string($value)) ? (int) $value : null;
@@ -342,6 +357,9 @@ function ws_step_outcomes()
  * row_set:   table_id, row (the row's id, or one value such as
  *            {{trigger.row_id}}), cells
  * row_get:   table_id, row (as row_set's)
+ * record_get: record (a kind of ws_flow_record_get_fields(), '' for
+ *            another), id (the record's id, or one value such as
+ *            {{trigger.record_id}})
  *
  * @param string $kind
  * @param mixed  $config
@@ -372,14 +390,20 @@ function ws_step_config_normalize($kind, $config)
                 'body'       => ws_flow_lines($config['body'] ?? '', 4000),
             );
 
+        // The person of the run's record is read when the box runs, never
+        // typed (flow_mail_person.php); marketing only with their consent.
         case 'email':
             $to = $config['to'] ?? '';
+            $recipient = (string) ($config['recipient'] ?? '');
+            $purpose = (string) ($config['purpose'] ?? '');
 
             return array(
-                'to'      => ws_flow_lines(is_array($to) ? implode(', ', array_map('ws_flow_text', $to)) : $to, 2000),
-                'subject' => ws_flow_line($config['subject'] ?? '', 250),
-                'body'    => ws_flow_lines($config['body'] ?? '', 20000),
-                'page_id' => $number($config['page_id'] ?? 0),
+                'to'        => ws_flow_lines(is_array($to) ? implode(', ', array_map('ws_flow_text', $to)) : $to, 2000),
+                'subject'   => ws_flow_line($config['subject'] ?? '', 250),
+                'body'      => ws_flow_lines($config['body'] ?? '', 20000),
+                'page_id'   => $number($config['page_id'] ?? 0),
+                'recipient' => ($recipient === 'record_person') ? 'record_person' : 'typed',
+                'purpose'   => ($purpose === 'marketing') ? 'marketing' : 'info',
             );
 
         case 'notify':
@@ -557,6 +581,15 @@ function ws_step_config_normalize($kind, $config)
 
         case 'row_get':
             return array('table_id' => $number($config['table_id'] ?? 0), 'row' => ws_flow_line($config['row'] ?? '', 200));
+
+        case 'record_get':
+            $record = is_string($config['record'] ?? null) ? $config['record'] : '';
+            $id = $config['id'] ?? '';
+
+            return array(
+                'record' => isset(ws_flow_record_get_fields()[$record]) ? $record : '',
+                'id'     => ws_flow_line(is_int($id) ? (string) $id : $id, 200),
+            );
     }
 
     return array();
@@ -593,7 +626,7 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             break;
 
         case 'email':
-            if (trim($config['to']) === '') {
+            if ((($config['recipient'] ?? 'typed') !== 'record_person') && (trim($config['to']) === '')) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs an address to write to.', 'vars' => $name));
             }
 
@@ -749,6 +782,21 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             }
 
             break;
+
+        // A box that reads a record names its kind and the record as a row
+        // box names its row.
+        case 'record_get':
+            if ($config['record'] === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the kind of record it reads.', 'vars' => $name));
+            }
+
+            if (trim($config['id']) === '') {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the record it reads.', 'vars' => $name));
+            } elseif (!ws_step_row_names_row($config['id'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} names its record by its id or by one value, such as {{trigger.record_id}}.', 'vars' => $name));
+            }
+
+            break;
     }
 
     return $problems;
@@ -804,6 +852,10 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 
     if ($kind === 'row_get') {
         return ws_step_row_get_check($viewer, ws_step_config_normalize('row_get', $config));
+    }
+
+    if ($kind === 'record_get') {
+        return ws_step_record_get_check($viewer, ws_step_config_normalize('record_get', $config));
     }
 
     $check = ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
@@ -1191,6 +1243,7 @@ function ws_step_fill_target($kind, $action)
         case 'row_add':
         case 'row_set':
         case 'row_get':
+        case 'record_get':
             return 'json';
     }
 
@@ -1605,8 +1658,14 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get', 'record_get'), true) || ((string) $text === '')) {
         return (string) $text;
+    }
+
+    // The record may be one the reader does not reach: its kind and id
+    // stay back.
+    if ((string) $kind === 'record_get') {
+        return ((string) $outcome === 'done') ? lang('A record was read.') : lang('No record was read.');
     }
 
     if ((string) $kind === 'row_get') {
@@ -1783,7 +1842,24 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
-    $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
+    $config = $node['config'];
+
+    // An e-mail to the person of the run's record: their address read now
+    // with the owner's rights; marketing only with their consent, else the
+    // box is done with nothing sent and the reason in the run.
+    if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person')) {
+        $person = ws_flow_mail_person($owner, $run);
+        $refusal = ($person['error'] === '') && (($config['purpose'] ?? '') === 'marketing') ? ws_flow_mail_marketing_refusal($person['email']) : '';
+
+        if (($person['error'] !== '') || ($refusal !== '')) {
+            ws_flow_step_settle($step, 'running', 'done', 'done', ($person['error'] !== '') ? $person['error'] : $refusal, array('sent' => 0));
+            return;
+        }
+
+        $config['to'] = $person['email'];
+    }
+
+    $check = ws_step_check($owner, $kind, $config, ws_flow_starts_on_join($graph));
 
     if (!$check['ok']) {
         if (!empty($check['paused'])) {
@@ -1824,6 +1900,11 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $action = ws_step_fill_action($kind, $check['action'], $values);
+
+    // Marketing mail carries the campaigns' unsubscribe link and headers.
+    if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person') && (($config['purpose'] ?? '') === 'marketing')) {
+        $action['marketing'] = true;
+    }
 
     // A line in somebody's inbox names the flow it comes from: the notice
     // has no scheduled action to take its title from.
@@ -1877,6 +1958,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         $done = ws_step_row_do($owner, $action);
     } elseif ($kind === 'row_get') {
         $done = ws_step_row_get_do($owner, $action);
+    } elseif ($kind === 'record_get') {
+        $done = ws_step_record_get_do($owner, $action);
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
     }
@@ -2008,7 +2091,26 @@ function ws_flow_box_try($viewer, $flow, $data)
     );
 
     if (!empty(ws_flow_kinds()[$kind]['step'])) {
-        $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
+        $config = $node['config'];
+
+        // The person of the run's record, as the run reads them: only a
+        // chosen run has one; one it may not write to sends nothing.
+        if (($kind === 'email') && (($config['recipient'] ?? '') === 'record_person')) {
+            if ($run_id <= 0) {
+                return array('outcome' => 'done', 'said' => lang('Writes to the person of the record the run is about: choose a run to see who.')) + $answer;
+            }
+
+            $person = ws_flow_mail_person($owner, $run);
+            $refusal = ($person['error'] === '') && (($config['purpose'] ?? '') === 'marketing') ? ws_flow_mail_marketing_refusal($person['email']) : '';
+
+            if (($person['error'] !== '') || ($refusal !== '')) {
+                return array('outcome' => 'done', 'said' => ($person['error'] !== '') ? $person['error'] : $refusal) + $answer;
+            }
+
+            $config['to'] = $person['email'];
+        }
+
+        $check = ws_step_check($owner, $kind, $config, ws_flow_starts_on_join($graph));
 
         if (!$check['ok']) {
             return array('outcome' => 'failed', 'refusal' => (string) $check['error']) + $answer;
@@ -2045,6 +2147,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_row_text($action);
         } elseif ($kind === 'row_get') {
             $said = ws_step_row_get_text($action);
+        } elseif ($kind === 'record_get') {
+            $said = ws_step_record_get_text($action);
         } else {
             $said = ws_scheduled_action_text($owner, $action);
         }
@@ -2131,6 +2235,24 @@ function ws_flow_box_try($viewer, $flow, $data)
 
             if (!empty($problems)) {
                 return array('refusal' => (string) $problems[0]) + $answer;
+            }
+
+            $delay = ws_flow_delay_normalize($node['config']);
+
+            if ($delay['mode'] === 'until') {
+                $date = ws_flow_delay_until_date($delay, ws_flow_derived_fill($delay['at'], $values), time());
+
+                if ($date['until'] === 0) {
+                    return array('outcome' => 'failed', 'refusal' => $date['error']) + $answer;
+                }
+
+                return array(
+                    'outcome' => 'done',
+                    'said'    => ($date['until'] <= time())
+                        ? lang('The date has passed, so it would not wait.')
+                        : lang(array('string' => 'Waits until {var:1}, then the boxes after it start.', 'vars' => ws_scheduled_moment($date['until']))),
+                    'next'    => array(ws_scheduled_moment($date['until'])),
+                ) + $answer;
             }
 
             return array(
@@ -2934,6 +3056,84 @@ function ws_step_row_names_row($text)
 }
 
 /**
+ * The cells of a change-row box that add to the number the row holds: a
+ * number or money column whose value, as written in the settings, starts
+ * with "+" ("+3", "+{{node.answer.answer_number}}"). A text column keeps
+ * "+3" as its text, and a value that only fills in to "+3" sets. Pure.
+ *
+ * @param array $columns column id => column, ws_wtable_columns()
+ * @param array $cells   ws_step_row_cells(), not filled in
+ * @return string[] column ids
+ */
+function ws_step_row_adds($columns, $cells)
+{
+    $adds = array();
+
+    foreach ($cells as $id => $value) {
+        $type = (string) ($columns[(string) $id]['type'] ?? '');
+
+        if (in_array($type, array('number', 'money'), true) && is_string($value) && (substr(ltrim($value), 0, 1) === '+')) {
+            $adds[] = (string) $id;
+        }
+    }
+
+    return $adds;
+}
+
+/**
+ * The amount a cell that adds ("+3", "+-2") adds, checked as its column
+ * checks a value (ws_wtable_cell_check()): money in minor units, a number
+ * as a number. Nothing after the "+" is no number. Pure.
+ *
+ * @param array $column
+ * @param mixed $value
+ * @return array ok, value, error
+ */
+function ws_step_row_addend($column, $value)
+{
+    $amount = trim(substr(ltrim((string) $value), 1));
+
+    if ($amount === '') {
+        return array('ok' => false, 'value' => null, 'error' => 'not_number');
+    }
+
+    return ws_wtable_cell_check($column, $amount);
+}
+
+/**
+ * The cells a change-row box writes on the row read now: each cell that
+ * adds becomes the cell's number now plus its amount (an empty cell counts
+ * as 0), the others as given. The store rounds the sum to the column's
+ * decimals and keeps its range. Pure.
+ *
+ * @param array    $columns column id => column
+ * @param array    $cells   ws_step_row_cells(), filled in
+ * @param array    $now     the row's cells now, ws_wtable_cells_decode()
+ * @param string[] $adds    ws_step_row_adds() of the settings
+ * @return array ok, cells, column (the one refused), error (its code)
+ */
+function ws_step_row_cells_added($columns, $cells, $now, $adds)
+{
+    foreach (array_map('strval', (array) $adds) as $id) {
+        if (!isset($cells[$id], $columns[$id])) {
+            continue;
+        }
+
+        $amount = ws_step_row_addend($columns[$id], $cells[$id]);
+
+        if (!$amount['ok']) {
+            return array('ok' => false, 'cells' => array(), 'column' => $id, 'error' => (string) $amount['error']);
+        }
+
+        $held = (isset($now[$id]) && is_numeric($now[$id])) ? $now[$id] + 0 : 0;
+        $sum = $held + $amount['value'];
+        $cells[$id] = ((string) $columns[$id]['type'] === 'money') ? (int) round($sum) : (is_float($sum) ? round($sum, 6) : $sum);
+    }
+
+    return array('ok' => true, 'cells' => $cells, 'column' => '', 'error' => '');
+}
+
+/**
  * A cell's code (ws_wtable_cell_check()) in a box's words: as the tables
  * screen says it, but money in minor units and a record link as the object
  * the box writes. Pure but for lang().
@@ -2964,14 +3164,19 @@ function ws_step_row_cell_reason($code)
  * Why a table box may not write these cells into these columns, '' when it
  * may: each a column of the table that keeps cells (a formula's value is
  * worked out), and a value written as it is one its column takes. A value
- * read from the run is looked at once it is filled in. Pure but for lang().
+ * read from the run is looked at once it is filled in. A cell that adds
+ * ("+3", ws_step_row_adds()) is checked by its amount, and only the
+ * change-row box adds: a new row has nothing to add to. Pure but for lang().
  *
- * @param array $columns column id => column (name, type, options), ws_wtable_columns()
- * @param array $cells   ws_step_row_cells()
+ * @param array  $columns column id => column (name, type, options), ws_wtable_columns()
+ * @param array  $cells   ws_step_row_cells()
+ * @param string $kind    row_add | row_set
  * @return string
  */
-function ws_step_row_cells_refusal($columns, $cells)
+function ws_step_row_cells_refusal($columns, $cells, $kind = 'row_set')
 {
+    $adds = ws_step_row_adds($columns, $cells);
+
     foreach ($cells as $id => $value) {
         $column = $columns[(string) $id] ?? null;
 
@@ -2983,11 +3188,17 @@ function ws_step_row_cells_refusal($columns, $cells)
             return lang(array('string' => 'The column “{var:1}” is worked out from the others: it cannot be written.', 'vars' => (string) $column['name']));
         }
 
+        $adding = in_array((string) $id, $adds, true);
+
+        if ($adding && ((string) $kind !== 'row_set')) {
+            return lang(array('string' => 'The column “{var:1}” is added to only when a row is changed: a new row has nothing to add to.', 'vars' => (string) $column['name']));
+        }
+
         if (ws_step_row_value_in($value)) {
             continue;
         }
 
-        $check = ws_wtable_cell_check($column, $value);
+        $check = $adding ? ws_step_row_addend($column, $value) : ws_wtable_cell_check($column, $value);
 
         if (!$check['ok']) {
             return lang(array('string' => 'The column “{var:1}” does not take that value: {var:2}', 'vars' => array((string) $column['name'], ws_step_row_cell_reason($check['error']))));
@@ -3023,7 +3234,7 @@ function ws_step_row_write_refusal($written, $columns, $table)
             return lang(array('string' => 'The table “{var:1}” has {var:2} rows, the most a table may have.', 'vars' => array($table, ws_wtable_limits()['rows'])));
 
         case 'changed_meanwhile':
-            return lang(array('string' => 'Somebody changed the row in the table “{var:1}” while the box wrote it, twice; it was not changed.', 'vars' => $table));
+            return lang(array('string' => 'Somebody changed the row in the table “{var:1}” each time the box wrote it; it was not changed.', 'vars' => $table));
 
         case 'not_found':
             return lang(array('string' => 'The flow\'s owner may no longer change the table “{var:1}”.', 'vars' => $table));
@@ -3094,7 +3305,7 @@ function ws_step_row_check($viewer, $kind, $config)
     }
 
     $columns = ws_wtable_columns((int) $table['id']);
-    $refusal = ws_step_row_cells_refusal($columns, $cells);
+    $refusal = ws_step_row_cells_refusal($columns, $cells, $kind);
 
     if ($refusal !== '') {
         return $refuse($refusal);
@@ -3123,6 +3334,7 @@ function ws_step_row_check($viewer, $kind, $config)
         'row'        => $row,
         'cells'      => (string) $config['cells'],
         'columns'    => $names,
+        'adds'       => ($kind === 'row_set') ? ws_step_row_adds($columns, $cells) : array(),
     ));
 }
 
@@ -3132,9 +3344,11 @@ function ws_step_row_check($viewer, $kind, $config)
  * and its row event goes out as for any write: ws_wtable_row_create() adds
  * the row at the end, ws_wtable_row_update() lays the cells over the row
  * named, on the revision it has now. The run's values are filled in
- * already, inside the JSON strings (ws_step_fill_action()). A row somebody
- * changed in between is read again and written once more; a second change
- * in between leaves it as it is.
+ * already, inside the JSON strings (ws_step_fill_action()). A cell that
+ * adds ("+3", the action's adds) is added to the cell of the row read on
+ * that try. A row somebody changed in between is read again and written
+ * once more, up to WS_STEP_ROW_TRIES times; a row changed on every try is
+ * left as it is.
  *
  * @param array $owner  the flow's owner, checked (ws_step_row_check())
  * @param array $action ws_step_row_check(), filled
@@ -3171,14 +3385,20 @@ function ws_step_row_do($owner, $action)
             return $fail(lang(array('string' => 'The box has no row to change: “{var:1}” is not the id of a row.', 'vars' => (string) $action['row'])));
         }
 
-        for ($try = 0; $try < 2; $try++) {
+        for ($try = 0; $try < WS_STEP_ROW_TRIES; $try++) {
             $row = ws_wtable_row((int) $table['id'], $row_id);
 
             if (!$row) {
                 return $fail(lang(array('string' => 'The table “{var:1}” has no row with the id {var:2}.', 'vars' => array($name, $row_id))));
             }
 
-            $written = ws_wtable_row_update($owner, $table, $row, array('cells' => $cells, 'revision' => (int) $row['revision']));
+            $added = ws_step_row_cells_added($columns, $cells, ws_wtable_cells_decode($row['cells']), (array) ($action['adds'] ?? array()));
+
+            if (!$added['ok']) {
+                return $fail(ws_step_row_write_refusal(array('error' => 'cells_invalid', 'errors' => array($added['column'] => $added['error'])), $columns, $name));
+            }
+
+            $written = ws_wtable_row_update($owner, $table, $row, array('cells' => $added['cells'], 'revision' => (int) $row['revision']));
 
             if ((string) ($written['error'] ?? '') !== 'changed_meanwhile') {
                 break;

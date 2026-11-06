@@ -1711,6 +1711,11 @@ function initialize_user()
 
         // check_view_access() reads USER_MEMBER for membership folders; mirror the
         // active-member rule used by initialize_user() in includes/fn/auth.php.
+        // The day is the site's: this file never runs init.php, so without
+        // the site time zone a membership that ended yesterday on the site
+        // would still count as running while the server's day lags behind.
+        initialize_timezone();
+
         if ((USER_MEMBER_ID != '') && ((USER_EXPIRATION_DATE == '') || (USER_EXPIRATION_DATE == '0000-00-00') || (USER_EXPIRATION_DATE >= date('Y-m-d')))) {
             define('USER_MEMBER', true);
         } else {

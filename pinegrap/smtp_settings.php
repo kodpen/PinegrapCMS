@@ -94,6 +94,36 @@ function smtp_settings_connect_buttons($mail_providers, $mail_accounts) {
 // loaded with; the saved ones apply from the next request.
 function smtp_settings_save($liveform_settings) {
 
+    // An empty password box keeps the saved password only for the server it
+    // was typed for (pg_smtp_password_kept()). For a new server it is dropped,
+    // and a save that would still sign in there with it is refused before
+    // anything is written.
+    $smtp_kept_passwords = array();
+
+    foreach (array('system', 'campaign') as $kind) {
+        $prefix = strtoupper($kind) . '_SMTP_';
+        $posted = array();
+
+        foreach (array('hostname' => 'host', 'port' => 'port', 'password' => 'password', 'username' => 'user') as $field => $name) {
+            $posted[$name] = (isset($_POST[$kind . '_smtp_' . $field]) && is_string($_POST[$kind . '_smtp_' . $field])) ? trim(preg_replace('/[\x00-\x1F\x7F]/', '', $_POST[$kind . '_smtp_' . $field])) : '';
+        }
+
+        $stored = array(
+            'host' => defined($prefix . 'HOSTNAME') ? (string) constant($prefix . 'HOSTNAME') : '',
+            'port' => defined($prefix . 'PORT') ? (string) constant($prefix . 'PORT') : '',
+            'password' => defined($prefix . 'PASSWORD') ? (string) constant($prefix . 'PASSWORD') : '',
+        );
+
+        $smtp_kept_passwords[$prefix . 'PASSWORD'] = pg_smtp_password_kept($posted, $stored);
+
+        if (($posted['password'] === '') && ($stored['password'] !== '') && ($smtp_kept_passwords[$prefix . 'PASSWORD'] === '')
+            && ($posted['host'] !== '') && ($posted['user'] !== '')) {
+            $liveform_settings->mark_error($kind . '_smtp_password', lang('The SMTP server or its port changed. Enter the password again.'));
+
+            return false;
+        }
+    }
+
     // The sending service first: a field it marks leaves every setting as
     // it was.
     if (!pg_mail_transport_settings_save($_POST, USER_ID, $liveform_settings)) {
@@ -150,7 +180,7 @@ function smtp_settings_save($liveform_settings) {
         if ($key === 'EMAIL_CAMPAIGN_JOB') {
             $smtp_audit_after[$field] = ($value === 'true') ? 'true' : 'false';
         } elseif (($value === '') && (($key === 'SYSTEM_SMTP_PASSWORD') || ($key === 'CAMPAIGN_SMTP_PASSWORD'))) {
-            $smtp_audit_after[$field] = $smtp_audit_was;
+            $smtp_audit_after[$field] = $smtp_kept_passwords[$key];
         } else {
             $smtp_audit_after[$field] = $value;
         }
@@ -174,9 +204,11 @@ function smtp_settings_save($liveform_settings) {
 
         // A blank password box means "keep the saved value": the screen never
         // renders a stored secret back, so an empty box is not a request to
-        // clear it.
+        // clear it -- unless the server changed, and then it is removed.
         if ($value === '' && ($key === 'SYSTEM_SMTP_PASSWORD' || $key === 'CAMPAIGN_SMTP_PASSWORD')) {
-            continue;
+            if ($smtp_kept_passwords[$key] !== '') {
+                continue;
+            }
         }
 
         // The shared helpers confine every match to the key's own line. A

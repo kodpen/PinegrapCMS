@@ -180,3 +180,16 @@ function test_vat_express_order_tax_number_box_fitted_in_a_designed_tree()
 	pg_assert_same(pg_vat_tax_number_hint('FR'), $tree['children'][0]['children'][1]['props']['text'], 'the hint beside the box changes');
 	pg_assert_same('11 digits for a person, 10 for a company.', $tree['children'][1]['props']['text'], 'a text away from the box stays');
 }
+
+function test_tax_exempt_box_counts_only_where_the_store_offers_it()
+{
+	// The box is offered with tax on and exemption on; a posted value
+	// counts only then, so a hand-made post cannot drop the tax.
+	pg_assert_same(1, pg_tax_exempt_box('1', true, true));
+	pg_assert_same(1, pg_tax_exempt_box(1, true, true));
+	pg_assert_same(0, pg_tax_exempt_box('', true, true));
+	pg_assert_same(0, pg_tax_exempt_box(null, true, true));
+	pg_assert_same(0, pg_tax_exempt_box('1', true, false));
+	pg_assert_same(0, pg_tax_exempt_box('1', false, true));
+	pg_assert_same(0, pg_tax_exempt_box('1', false, false));
+}

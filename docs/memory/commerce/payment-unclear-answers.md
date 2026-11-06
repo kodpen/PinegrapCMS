@@ -21,7 +21,7 @@ description: The 'unclear' flag of a payment driver's answer, how the iyzico ref
 - Why booked: whichever way the check goes, the books are then right; left unbooked the order kept money "left" for a second refund.
 
 ## Who honours unclear?
-- Only `pg_return_refund()`. The order screen's refund (view_order.php) only shows the warning and offers the refund again. Stripe never returns `unclear`: a timeout there is still a refusal, and `/v1/refunds` has no Idempotency-Key. Both are follow-up work.
+- Only `pg_return_refund()`. The order screen's refund (view_order.php) only shows the warning and offers the refund again. Stripe's refund returns `unclear` when Stripe did not answer and sends an Idempotency-Key (`payment-driver-stripe.md`).
 
 ## What was the symptom? (#970)
 - A timeout or a 502 reopened the return to `received`; the next click sent a second AmountBaseRefund (three clicks, three requests, one log line).

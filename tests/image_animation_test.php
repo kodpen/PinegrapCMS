@@ -181,6 +181,30 @@ function test_image_animation_detects_apng_and_animated_webp()
 		pg_assert_true(pg_image_is_animated($folder . '/moving.gif'), 'animated GIF as before');
 		pg_assert_false(pg_image_is_animated($folder . '/still.gif'), 'still GIF');
 
+		// A global colour table puts its last entry, not a 00 byte, in front
+		// of the first frame's control block; that frame still counts.
+		$palette = 'GIF89a' . pack('v', 10) . pack('v', 10) . "\x80\x00\x00" . "\x00\x00\x00\xFF\xFF\xFF";
+
+		file_put_contents($folder . '/moving-palette.gif', $palette . $frame . $frame . "\x3B");
+		file_put_contents($folder . '/still-palette.gif', $palette . $frame . "\x3B");
+
+		pg_assert_true(pg_image_is_animated($folder . '/moving-palette.gif'), 'two frames after a global colour table');
+		pg_assert_false(pg_image_is_animated($folder . '/still-palette.gif'), 'one frame after a global colour table');
+
+		// Frames without a control block (GIF87a) are frames too.
+		$bare = substr($frame, 8);
+
+		file_put_contents($folder . '/moving-bare.gif', 'GIF87a' . pack('v', 10) . pack('v', 10) . "\x00\x00\x00" . $bare . $bare . "\x3B");
+
+		pg_assert_true(pg_image_is_animated($folder . '/moving-bare.gif'), 'two frames without control blocks');
+
+		// A control block's bytes inside the image data are not a frame.
+		$noisy = "\x2C\x00\x00\x00\x00\x01\x00\x01\x00\x00" . "\x02\x08\x00\x21\xF9\x04\x00\x21\xF9\x04\x00";
+
+		file_put_contents($folder . '/still-noisy.gif', 'GIF89a' . pack('v', 10) . pack('v', 10) . "\x00\x00\x00" . $noisy . "\x3B");
+
+		pg_assert_false(pg_image_is_animated($folder . '/still-noisy.gif'), 'marker bytes inside the image data');
+
 	} finally {
 		image_animation_test_remove($folder);
 	}

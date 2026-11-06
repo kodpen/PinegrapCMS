@@ -118,8 +118,16 @@ function pg_designer_page_access($page, $user)
     }
 
     // check_edit_access() answers true for every folder at role < 3, which is
-    // the manager rule the rest of the software already applies.
-    if (check_edit_access($folder_id)) return 'edit';
+    // the manager rule the rest of the software already applies. A request
+    // that signs nobody in (pg_auth_anonymous_run(): design_preview.php)
+    // asks for the operator it read from the session, by the row's own id
+    // and role.
+    if (function_exists('pg_auth_anonymous_run') && pg_auth_anonymous_run()) {
+        $may_edit = isset($user['id']) && pg_folder_edit_access($folder_id, (int)$user['id'], isset($user['role']) ? (int)$user['role'] : 3);
+    } else {
+        $may_edit = check_edit_access($folder_id);
+    }
+    if ($may_edit) return 'edit';
 
     // No edit rights. Whether the operator may even know the page is there
     // depends on how the folder is published.

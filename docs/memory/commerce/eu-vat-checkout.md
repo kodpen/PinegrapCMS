@@ -13,10 +13,11 @@ module: vat_checkout
 - VIES down (`unavailable`): the posted tax-exempt box decides as before (normally taxed), columns cleared, notice that VAT is charged. Never cached, so the next submit asks again.
 - Invalid, malformed or another member state's id: an error on the tax number box; the customer corrects it or clears the box to order with VAT.
 - Not applicable: columns cleared, box decides. The tax-exempt checkbox (ECOMMERCE_TAX_EXEMPT) still works as before: a failed check never clears it, so sites that use it keep working.
+- The posted box counts only with tax and exemption on (`pg_tax_exempt_box()`); a hand-made `tax_exempt=1` post used to drop the tax on a store without the box. VIES still sets the flag.
 
 ## Where does the customer see it?
-- Billing information page: the notice goes to the `order_preview` liveform, which keeps its notices until the order is placed, so an earlier VAT notice is removed before a new one is added (`pg_vat_checkout_notices()`).
-- Express order: on the same form. A submit whose answer changes the tax is sent back by submit_order.php's "the total has changed" check, so nobody pays a total not seen.
+- Billing information page: the notice goes to the `order_preview` liveform, which keeps notices until the order is placed, so an earlier VAT notice is removed first (`pg_vat_checkout_notices()`).
+- Express order: on the same form. A submit whose answer changes the tax is sent back by submit_order.php's "the total has changed" check.
 
 ## Where do the order screen, the printout, the API and the invoice show it?
 - `pg_vat_order_note($order)` (pure) gives the line: reverse charge, the id, the check time and the VIES consultation number; '' for an order without a confirmed id.
@@ -26,13 +27,12 @@ module: vat_checkout
 
 ## What about the tax number box?
 - The billing page's box is 20 wide (`pg_vat_tax_number_width()`), 11 on a Turkish store.
-- The express order form's box was drawn for Turkish ids (pattern `[0-9]{10,11}`). At render `_eo_fit_tax_number_field()` (`widgets_express_order.php`, called in `widgets_cart.php`) drops the pattern on a store outside Turkey, widens it to 20, makes it a text box and swaps the digits hint beside it for the VAT id hint (`pg_vat_tax_number_attrs_fit()`, `pg_vat_tax_number_hint()`).
+- The express order box was drawn for Turkish ids (pattern `[0-9]{10,11}`). At render `_eo_fit_tax_number_field()` (`widgets_express_order.php`) drops the pattern outside Turkey, widens it to 20, makes it a text box and swaps the hint for the VAT id hint (`pg_vat_tax_number_attrs_fit()`, `pg_vat_tax_number_hint()`).
 
 ## What else?
-- Migration step `upgrade_2026_11_0_order_vat_id()` adds the three columns (#5559).
+- Migration step `upgrade_2026_11_0_order_vat_id()` adds the three columns (#5559). The ERP account card's id: `eu-vat-check.md`.
 - No requester id is sent to VIES (no setting holds the site's own VAT id): `vat_request_id` stays empty.
-- The ERP account card's tax number is checked too (`eu-vat-check.md`).
 
 ## Which tests cover it?
-- `tests/vat_checkout_test.php`: when the check applies, every outcome's flag, columns, error and notice, column widths, the box width, the order note, the express box fit.
+- `tests/vat_checkout_test.php`: when the check applies, the box gate, every outcome's flag, columns, error and notice, column widths, the box width, the order note, the express box fit.
 - `tests/api_order_present_test.php`: the three API fields; `tests/erp_order_invoice_writer_test.php`: the invoice note.

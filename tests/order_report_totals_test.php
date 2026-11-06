@@ -141,3 +141,31 @@ function test_order_report_days_ago_takes_only_a_whole_number()
 	pg_assert_same(false, pg_order_report_days_ago_valid('2.5'), 'not a whole number');
 	pg_assert_same(false, pg_order_report_days_ago_valid('99999999999'), 'more than the column holds');
 }
+
+function test_order_report_cart_shipping_is_its_recipients_cost()
+{
+	// 3 units at 333 per unit (round(1000 / 3)) plus a 500 base rate,
+	// 20% off by a shipping offer: the recipient was charged 1200.
+	$carts = pg_order_report_carts(
+		array(array('id' => '9', 'subtotal' => '3000', 'tax' => '600')),
+		array(array('id' => '9', 'shipping' => '1200'))
+	);
+	$cart = pg_order_report_order(
+		order_report_test_row(array('id' => '9', 'status' => 'incomplete', 'order_number' => '0')),
+		$carts['9'] ?? null
+	);
+
+	pg_assert_same(1200, $cart['shipping'], 'the cart shipping is the recipients\' cost');
+	pg_assert_same(4800, $cart['total'], 'the cart total carries that shipping');
+}
+
+function test_order_report_cart_without_recipient_cost_or_lines()
+{
+	$carts = pg_order_report_carts(
+		array(array('id' => '4', 'subtotal' => '2000', 'tax' => '400')),
+		array(array('id' => '5', 'shipping' => '700'))
+	);
+
+	pg_assert_same(0, (int) $carts['4']['shipping'], 'no shipping step yet, no shipping');
+	pg_assert_same(false, isset($carts['5']), 'a cart with no active line is left out');
+}

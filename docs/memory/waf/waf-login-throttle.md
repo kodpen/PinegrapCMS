@@ -4,12 +4,13 @@ description: Sign-in throttle (pg_login_throttle_* in includes/fn/auth.php): add
 ---
 
 ## How are failed sign-ins counted?
-- In `waf_rate`, against two subjects (`pg_login_throttle_subjects()`): the address (`waf_ip_subject()`, so the /64 for IPv6; an unresolved infrastructure address is not counted) and the account name in lower case. The address may fail five times the account's allowance: one person mistyping must not close the whole office, and an unlock by hand (Unlock Sign-in) reaches only account counters.
+- In `waf_rate`, against two subjects (`pg_login_throttle_subjects()`): the address (`waf_ip_subject()`: the /64 for IPv6) and the account name (`pg_login_throttle_account_subject()`). The address may fail five times the account's allowance: one person mistyping must not close the whole office, and an unlock by hand (Unlock Sign-in) reaches only account counters.
 - `login_throttle_attempts` (10) per `login_throttle_minutes` (15); past that a separate lock bucket holds for `login_throttle_lockout` (60 min), so waiting for the window to roll does not give the allowance back.
+- Account subject: `WEIGHT_STRING()` of the typed name under `user.user_username`'s collation, so every spelling `validate_login()` takes for one account (case, accents, full-width) shares a counter; PHP folding when no database answers. Lower case alone let "ádmin", "ADMİN" each open a fresh counter (the account limit never closed). Unlock clears both forms.
 - A made-up user name counts like a real one (no account discovery). A success clears only the account's counters (`pg_login_throttle_pass()`): clearing the address would let one valid account reset the limit between guesses at others.
 
 ## Which endpoints must use it?
-- Every endpoint that accepts a password: `pg_login_throttle_guard($name)` before the check, `pg_login_record_failure($name)` after a miss, the same buckets as the sign-in screens. A door without it bypasses the lock. `grep -rn "pg_login_throttle_guard("` lists the doors today (sign-in screens, change password, `api.php` with a password in the body, the external API's device sign-in, MFA, ShipWorks, the install unlock form, the developer PIN of `developer_lock.php`).
+- Every endpoint that accepts a password: `pg_login_throttle_guard($name)` before the check, `pg_login_record_failure($name)` after a miss, the same buckets as the sign-in screens. A door without it bypasses the lock. `grep -rn "pg_login_throttle_guard("` lists the doors.
 - `developer_lock.php` counts a wrong `DEVELOPER_PIN` against the signed-in user's name and address (#5166): the PIN is a few digits, and before it every value could be tried in turn.
 - The sign-in question sits in front of the lock: docs/memory/waf/waf-login-captcha.md.
 - Not a prototype share link's password: it opens no account, so its wrong answers count on its own row; the address bucket would lock the visitor's office out of sign-in (docs/memory/designer/designer-prototype-share-links.md).

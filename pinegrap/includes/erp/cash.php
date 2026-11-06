@@ -949,6 +949,21 @@ function erp_receipt_cancel($cash_id, $reason, $created_by = 0)
         return $fail(lang('Could not start a database transaction.'));
     }
 
+    // Asked again under the receipt's row lock: the check above ran before
+    // the transaction, so two presses (two tabs, a resent form, two API
+    // calls) both passed it and each posted a reversal pair, moving the till
+    // and the account back twice. The second waits here for the first to
+    // commit, and the locking read sees the reversal it wrote.
+    db_item("SELECT id FROM erp_cash_transactions WHERE id = '" . $cash_id . "' LIMIT 1 FOR UPDATE");
+
+    if (is_array(db_item("SELECT id FROM erp_cash_transactions
+        WHERE doc_type = 'cancel' AND doc_id = '" . $cash_id . "' LIMIT 1 FOR UPDATE"))) {
+        erp_tx_rollback();
+        return $fail(((string) $receipt['direction'] === 'out')
+            ? lang('That payment has already been cancelled.')
+            : lang('That receipt has already been cancelled.'));
+    }
+
     // The allocations first: the invoices they closed have to ask for their
     // money again before the movement that paid them is turned around.
     $reopened = erp_txn_unsettle_all($ledger_id, $created_by);

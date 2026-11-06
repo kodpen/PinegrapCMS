@@ -126,7 +126,15 @@
 
     function api(action, data, done) {
         var payload = { action: action, token: config.token };
+        var lang = document.documentElement.getAttribute('data-pg-lang');
         var key;
+
+        // A plain XMLHttpRequest misses the jQuery prefilter that tells the
+        // software a translated page's language; api.php reads it from the
+        // body, so its answers come back in that language.
+        if (lang) {
+            payload.pg_lang = lang;
+        }
 
         for (key in (data || {})) {
             if (Object.prototype.hasOwnProperty.call(data, key)) {

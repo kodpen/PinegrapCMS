@@ -572,7 +572,7 @@ function api_customers_subscriptions($params) {
 
 	foreach ($rows as $row) {
 
-		$out[] = api_subscription_present($row);
+		$out[] = api_subscription_present($row, api_subscription_order_data_shown(api_current_scopes()));
 
 	}
 
@@ -614,7 +614,21 @@ function api_customer_subscriptions_sql($contact_id, $before, $rows) {
 
 }
 
-function api_subscription_present($row) {
+// Whether a subscription names its buyer and card: the name and e-mail are
+// the first order's billing data and the card digits payment data, so the key
+// must hold orders:read beside customers:read. The effective scopes already
+// carry the owner's ceiling (the e-commerce right, a store that is on).
+function api_subscription_order_data_shown($scopes) {
+
+	return api_has_scope($scopes, 'orders:read');
+
+}
+
+// $order_data: api_subscription_order_data_shown() for the calling key; false
+// leaves the buyer's name, e-mail and card digits out.
+function api_subscription_present($row, $order_data = false) {
+
+	$order_data = ($order_data === true);
 
 	return array(
 		'id'             => (int)$row['id'],
@@ -624,15 +638,15 @@ function api_subscription_present($row) {
 		// The contact record of the account, for GET /customers/{id}; null
 		// for an account that is no contact.
 		'customer_id'    => ((int)($row['customer_id'] ?? 0) > 0) ? (int)$row['customer_id'] : null,
-		'customer_name'  => ((string)($row['customer_name'] ?? '') !== '') ? (string)$row['customer_name'] : null,
-		'customer_email' => ((string)($row['customer_email'] ?? '') !== '') ? (string)$row['customer_email'] : null,
+		'customer_name'  => ($order_data && ((string)($row['customer_name'] ?? '') !== '')) ? (string)$row['customer_name'] : null,
+		'customer_email' => ($order_data && ((string)($row['customer_email'] ?? '') !== '')) ? (string)$row['customer_email'] : null,
 		'status'         => (string)$row['status'],
 		'period'         => (string)$row['period'],
 		'amount'         => (int)$row['amount'],
 		'currency'       => (string)$row['currency'],
 		'next_charge_at' => api_time($row['next_charge_at']),
 		'retry_count'    => (int)$row['retry_count'],
-		'card_last4'     => (string)$row['card_last4'],
+		'card_last4'     => $order_data ? (string)$row['card_last4'] : null,
 		'actions'        => array_values(array_diff(pg_subscription_customer_actions($row), array('update_card'))),
 		'created_at'     => api_time($row['created_at']),
 		'cancelled_at'   => api_time($row['cancelled_at']),
@@ -657,7 +671,7 @@ function api_subscription_schema() {
 		'currency'       => 'string',
 		'next_charge_at' => 'string?',
 		'retry_count'    => 'integer',
-		'card_last4'     => 'string',
+		'card_last4'     => 'string?',
 		'actions'        => 'string[]',
 		'created_at'     => 'string?',
 		'cancelled_at'   => 'string?',
@@ -755,7 +769,7 @@ function api_customer_subscription_move($row, $action) {
 
 	}
 
-	api_ok(api_subscription_present(api_row(api_customer_subscriptions_select_sql() . " WHERE s.id = '" . (int)$row['id'] . "' LIMIT 1")));
+	api_ok(api_subscription_present(api_row(api_customer_subscriptions_select_sql() . " WHERE s.id = '" . (int)$row['id'] . "' LIMIT 1"), api_subscription_order_data_shown(api_current_scopes())));
 
 }
 

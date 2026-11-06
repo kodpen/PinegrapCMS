@@ -568,7 +568,9 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
 
         case 'membership':
             $member = "COALESCE(contacts.member_id, '') <> ''";
-            $today = gmdate('Y-m-d', $now);
+            // expiration_date is a day in the site's zone, which init.php
+            // gives PHP: UTC's day is another one for hours each day.
+            $today = date('Y-m-d', $now);
 
             if ($op === 'member') {
                 return '(' . $member . ')';
@@ -591,7 +593,9 @@ function pg_audience_sql_condition(array $c, $now, array &$params)
             }
 
             $params[] = $today;
-            $params[] = gmdate('Y-m-d', $now + ($value * 86400));
+            // Calendar days: n times 86400 seconds from midnight ends a day
+            // short after the 25-hour day of a clock change.
+            $params[] = date('Y-m-d', strtotime($today . ' +' . (int) $value . ' days'));
 
             return "(" . $member . " AND contacts.expiration_date >= ? AND contacts.expiration_date <= ?)";
 

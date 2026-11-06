@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 require_once('edit_offer_f.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/offer_list_edit.php');
 
@@ -40,8 +41,21 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_offers');
 
-// Sorting and searching are done by the table itself in the browser, so the
-// query only fixes the initial order.
+// Every offer is printed: the list table driver sorts and searches them in
+// the browser (browser mode) and keeps a heading's sort in the session, so
+// the query only fixes the order before the kept sort is applied.
+$sort_columns = array(
+    'code'         => lang('Offer'),
+    'description'  => lang('Message'),
+    'require_code' => lang('How'),
+    'enabled'      => lang('Status'),
+    'start_date'   => lang('Start Date'),
+    'end_date'     => lang('End Date'),
+    'modified'     => lang('Last Modified'),
+);
+$sort_default = array('sort' => 'modified', 'order' => 'desc');
+$list_state = pg_list_state('view_offers', $sort_columns, $sort_default);
+
 $rows = db_items(
     "SELECT
         offers.*,
@@ -72,6 +86,19 @@ if ($rows) {
 // What an operator can change on the list without opening the offer.
 $quick_edit = pg_offer_edit_columns();
 
+$list_rows = array();
+foreach ($offers as $offer) {
+    $list_rows[] = pg_offer_list_row($offer, $quick_edit);
+}
+
+$list = pg_list_table_printed(array(
+    'list'    => 'view_offers',
+    'columns' => pg_offer_list_columns(),
+    'levels'  => $list_state['sorts'],
+    'rows'    => $list_rows,
+    'edit'    => array('url' => 'view_offers.php', 'columns' => $quick_edit),
+));
+
 $orphans = _pg_offer_orphans();
 $orphan_count = count($orphans['rules']) + count($orphans['actions']);
 
@@ -87,4 +114,4 @@ require('includes/templates/view_offers.php');
 // The notice has been shown; it must not survive into the next visit.
 $liveform->remove_form();
 
-echo output_footer();
+echo pg_js_bundle_tags('assets/js/pg_list_table.min.js') . output_footer();

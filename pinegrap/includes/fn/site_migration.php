@@ -126,7 +126,45 @@ function pg_migration_design_entry($entry)
         $files[$f['name']] = array('name' => $f['name'], 'content' => $f['content']);
     }
     $tpl['name'] = $name;
+    if (isset($tpl['assets']) && is_array($tpl['assets'])) {
+        foreach (array('css', 'js') as $k) {
+            if (isset($tpl['assets'][$k])) $tpl['assets'][$k] = pg_migration_design_asset_list($tpl['assets'][$k]);
+        }
+    }
     return array('name' => $name, 'template' => $tpl, 'files' => array_values($files));
+}
+
+/**
+ * A received template's CSS or JS asset list (a JSON list) without the
+ * entries the install would write to a wrong place. Installing a design
+ * writes every 'css', 'js' and 'json' entry whose name ends in one of those
+ * extensions into the files directory under that name
+ * (pg_designer_sync_asset_files()), so such a name has to be a managed
+ * design file name (no folder, no leading dot) and one the upload rule
+ * allows ("x.php.js" is refused). Inline entries without a file name and
+ * external ones are kept. A value that is not a JSON list becomes ''.
+ *
+ * @param mixed $json
+ * @return string
+ */
+function pg_migration_design_asset_list($json)
+{
+    if (!is_string($json) || $json === '') return '';
+    $list = json_decode($json, true);
+    if (!is_array($list)) return '';
+    $kept = array();
+    foreach ($list as $asset) {
+        if (is_array($asset) && isset($asset['type'], $asset['name'])
+            && in_array($asset['type'], array('css', 'js', 'json'), true)
+            && preg_match('/\.(css|js|json)$/i', (string)$asset['name'])
+            && (!pg_migration_design_file_name_valid($asset['name'])
+                || (function_exists('pg_upload_name_blocked') && pg_upload_name_blocked($asset['name'])))) {
+            continue;
+        }
+        $kept[] = $asset;
+    }
+    if (count($kept) === count($list)) return $json;
+    return json_encode($kept, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
 /**

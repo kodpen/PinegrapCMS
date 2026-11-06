@@ -1403,6 +1403,11 @@ function erp_bank_statement_suggestions($lines, $suggest = 'erp_bank_line_sugges
  * Record a line in the books: a collection or payment on an account, or an
  * expense paid from the bank.
  *
+ * The line is claimed under its row lock in the same transaction as the
+ * posting: two requests for one line (two tabs, or a line's own button while
+ * "Record the suggested lines" runs) both read it as new and each posted the
+ * money, so the till and the account counted it twice.
+ *
  * @param int   $line_id
  * @param array $what     kind (account | expense), account_id, invoice_id, category_id
  * @param int   $user_id
@@ -1418,6 +1423,45 @@ function erp_bank_line_record($line_id, $what, $user_id)
         return array('success' => false, 'error' => lang('That line has already been dealt with.'));
     }
 
+    if (!erp_tx_begin()) {
+        return array('success' => false, 'error' => lang('Could not start a database transaction.'));
+    }
+
+    $claimed = db_value("SELECT id FROM erp_bank_statement_lines
+        WHERE id = '" . (int) $line['id'] . "' AND status = 'new' LIMIT 1 FOR UPDATE");
+
+    if ((int) $claimed !== (int) $line['id']) {
+        erp_tx_rollback();
+        return array('success' => false, 'error' => lang('That line has already been dealt with.'));
+    }
+
+    $done = erp_bank_line_post($line, $what, $user_id);
+
+    if (!$done['success']) {
+        erp_tx_rollback();
+        return $done;
+    }
+
+    if ((db("UPDATE erp_bank_statement_lines SET status = 'recorded', cash_id = '" . (int) $done['cash_id'] . "' WHERE id = '" . (int) $line['id'] . "'") === false)
+        || !erp_tx_commit()) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return array('success' => false, 'error' => $error);
+    }
+
+    return array('success' => true, 'error' => '');
+}
+
+/**
+ * Post a claimed statement line, inside erp_bank_line_record()'s transaction.
+ *
+ * @param array $line     erp_bank_statement_lines row with till_currency
+ * @param array $what     as erp_bank_line_record()
+ * @param int   $user_id
+ * @return array ['success' => bool, 'cash_id' => int, 'error' => string]
+ */
+function erp_bank_line_post($line, $what, $user_id)
+{
     $amount = abs((int) $line['amount']);
     $base = erp_base_currency();
     $currency = erp_bank_line_currency((string) $line['till_currency']);
@@ -1490,9 +1534,7 @@ function erp_bank_line_record($line_id, $what, $user_id)
         $cash_id = (int) $posted['cash_id'];
     }
 
-    db("UPDATE erp_bank_statement_lines SET status = 'recorded', cash_id = '" . $cash_id . "' WHERE id = '" . (int) $line['id'] . "'");
-
-    return array('success' => true, 'error' => '');
+    return array('success' => true, 'cash_id' => $cash_id, 'error' => '');
 }
 
 /**

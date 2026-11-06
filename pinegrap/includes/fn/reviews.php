@@ -242,17 +242,97 @@ function pg_review_refusal_message($refusal)
 }
 
 /**
- * The SQL condition of the comments a product's rating counts: published,
- * from a verified purchase, with one to five stars.
+ * Are the returns tables there for pg_review_purchase_stands_sql() to read?
  *
+ * @return bool
+ */
+function pg_review_returns_ready()
+{
+    return function_exists('pg_returns_ready') && pg_returns_ready();
+}
+
+/**
+ * The SQL condition a comment meets while it is a verified review whose
+ * purchase still stands. Its order (comments.verified_order_id) is bought
+ * (pg_review_bought_sql()): a cancelled order hides the review until it is
+ * restored. A deleted order counts as bought, so deleting an order wipes no
+ * review history. With the returns tables, the reviewed item's lines on that
+ * order must also hold a quantity no refunded return took back: a return
+ * counts once its money went back (refunded_at > 0, which a refund the
+ * payment service refused clears, and a return closed after its refund
+ * keeps). An order with no line of the item left is not hidden for it. The
+ * row itself stays and Comment Moderation lists it.
+ *
+ * @param bool $returns whether the returns tables exist (pg_review_returns_ready())
  * @return string
  */
-function pg_review_rating_sql()
+function pg_review_purchase_stands_sql($returns)
 {
+    $refunded = "SELECT COALESCE(SUM(order_return_items.quantity), 0)
+                FROM order_return_items
+                JOIN order_returns ON order_returns.id = order_return_items.return_id
+                WHERE (order_return_items.order_item_id = order_items.id) AND (order_returns.refunded_at > 0)";
+
+    $lines = "(order_items.order_id = orders.id)
+                AND (order_items.saved_for_later = 0)
+                AND (((comments.item_type = 'product') AND (order_items.product_id = comments.item_id))
+                    OR ((comments.item_type = 'product_group') AND (order_items.product_id IN (SELECT products_groups_xref.product FROM products_groups_xref
+                        WHERE products_groups_xref.product_group = comments.item_id))))";
+
+    $kept = '';
+
+    if ($returns) {
+        $kept = "
+            AND (NOT EXISTS (SELECT 1 FROM order_items WHERE " . $lines . " AND (order_items.quantity > 0))
+                OR EXISTS (SELECT 1 FROM order_items WHERE " . $lines . "
+                    AND (order_items.quantity > (" . $refunded . "))))";
+    }
+
+    return "(comments.verified_order_id > 0)
+        AND (NOT EXISTS (SELECT 1 FROM orders WHERE orders.id = comments.verified_order_id)
+            OR EXISTS (SELECT 1 FROM orders WHERE (orders.id = comments.verified_order_id)
+                AND " . pg_review_bought_sql() . $kept . "))";
+}
+
+/**
+ * The SQL condition of the comments a product's rating counts: published,
+ * from a verified purchase that still stands, with one to five stars.
+ *
+ * @param bool|null $returns whether the returns tables exist; null asks
+ * @return string
+ */
+function pg_review_rating_sql($returns = null)
+{
+    if ($returns === null) {
+        $returns = pg_review_returns_ready();
+    }
+
     return "(comments.item_type = 'product')
         AND (comments.published = '1')
-        AND (comments.verified_order_id > 0)
+        AND " . pg_review_purchase_stands_sql($returns) . "
         AND (comments.rating BETWEEN 1 AND 5)";
+}
+
+/**
+ * After an order was cancelled or restored: the rating of every product on
+ * it, whose reviews of that order hide or come back.
+ *
+ * @param int $order_id
+ * @return void
+ */
+function pg_review_refresh_order($order_id)
+{
+    if (((int) $order_id <= 0) || !pg_reviews_ready()) {
+        return;
+    }
+
+    $ids = array();
+
+    foreach (db_items("SELECT DISTINCT product_id FROM order_items WHERE order_id = '" . (int) $order_id . "'") as $row) {
+        $ids[] = (int) $row['product_id'];
+    }
+
+    pg_review_refresh_products($ids);
 }
 
 /**
@@ -985,10 +1065,13 @@ function pg_review_created_event($comment_id, $item_type, $item_id, $rating, $ve
 /**
  * The SQL condition of Comment Moderation's verified filter.
  *
- * @param string $verified 'yes' (verified purchases), 'no' (everything else)
+ * @param string    $verified 'yes' (verified purchases whose purchase still
+ *                            stands, pg_review_purchase_stands_sql()), 'no'
+ *                            (comments that are no verified purchase)
+ * @param bool|null $returns  whether the returns tables exist; null asks
  * @return string '' for all comments, and for anything but the two choices
  */
-function pg_review_verified_filter_sql($verified)
+function pg_review_verified_filter_sql($verified, $returns = null)
 {
     if (!is_string($verified)) {
         return '';
@@ -996,10 +1079,54 @@ function pg_review_verified_filter_sql($verified)
 
     switch ($verified) {
         case 'yes':
-            return 'comments.verified_order_id > 0';
+            return pg_review_purchase_stands_sql(($returns === null) ? pg_review_returns_ready() : (bool) $returns);
         case 'no':
             return 'comments.verified_order_id = 0';
     }
 
     return '';
+}
+
+/**
+ * The columns past the classic list that a comment copied with its page
+ * (duplicate_page_f.php) keeps, as column => value. Pure.
+ *
+ * The store's answer under a review (once 11.0.14's reply columns are there)
+ * and the comment's kind with the question an answer answers (11.0.148),
+ * answer_of mapped to the copy of that question as parent_id is
+ * (pg_comment_copy_parent_id()). verified_order_id is left out on purpose:
+ * a product's rating counts verified reviews over every page
+ * (pg_review_rating_sql()), so a copy marked verified would count twice.
+ *
+ * @param mixed $comment         the original row (SELECT *)
+ * @param mixed $copied          array(original comment id => id of its copy)
+ * @param bool  $replies_ready   pg_review_replies_ready()
+ * @param bool  $questions_ready pg_product_questions_ready()
+ * @return array column => value (null for SQL NULL)
+ */
+function pg_comment_copy_columns($comment, $copied, $replies_ready, $questions_ready)
+{
+    if (!is_array($comment)) {
+        return array();
+    }
+
+    $columns = array();
+
+    if ($replies_ready) {
+        $reply = isset($comment['seller_reply']) && is_scalar($comment['seller_reply']) ? (string) $comment['seller_reply'] : null;
+
+        $columns['seller_reply'] = $reply;
+        $columns['seller_reply_at'] = isset($comment['seller_reply_at']) && is_scalar($comment['seller_reply_at']) ? max(0, (int) $comment['seller_reply_at']) : 0;
+    }
+
+    if ($questions_ready) {
+        $kind = isset($comment['kind']) && is_scalar($comment['kind']) ? (string) $comment['kind'] : '';
+
+        $columns['kind'] = in_array($kind, array('comment', 'question', 'answer'), true) ? $kind : 'comment';
+        $columns['answer_of'] = ($columns['kind'] === 'answer')
+            ? pg_comment_copy_parent_id(isset($comment['answer_of']) ? $comment['answer_of'] : 0, $copied)
+            : 0;
+    }
+
+    return $columns;
 }

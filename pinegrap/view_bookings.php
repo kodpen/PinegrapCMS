@@ -4,9 +4,9 @@
  *
  * The staff agenda of appointment bookings: a day, a week or a month's list
  * of bookings, narrowed to a staff member and to statuses, with a period
- * navigator. The day and week views draw a column per day; the list view is
- * paged and searched on the server (booking_list_rows,
- * includes/panel/lists.php). Roles 0-2 see every staff member; a role-3
+ * navigator. The day and week views draw a column per day; the list view
+ * prints the month's bookings on the list table driver, which sorts and
+ * searches them in the browser. Roles 0-2 see every staff member; a role-3
  * staff member sees their own bookings (includes/fn/booking_agenda.php).
  *
  * Reading only: bookings are made and changed on edit_booking.php.
@@ -75,9 +75,23 @@ foreach (array('day' => array(lang('Day'), 'bi-calendar-day'), 'week' => array(l
 
 $bookings_new_query = array_filter(array('staff_id' => $bookings_staff_id, 'date' => ($bookings_view === 'day') ? $bookings_period['date'] : ''));
 
+// The list view's sort: a heading click sorts in the browser and is kept
+// the way every printed list keeps it.
+$bookings_list_columns = pg_booking_agenda_list_columns();
+$bookings_sort_columns = pg_list_table_printed_sort_columns($bookings_list_columns);
+$bookings_sort_default = array('sort' => 'time', 'order' => 'asc');
+$bookings_search = '';
+$bookings_list_state = array('sorts' => array());
+
+if ($bookings_view === 'list') {
+    $bookings_list_state = pg_list_state('view_bookings', $bookings_sort_columns, $bookings_sort_default);
+    $bookings_search = pg_list_table_search_box('view_bookings');
+}
+
 $bookings_toolbar = pg_screen_toolbar(array(
     'primary' => array('label' => lang('New booking'), 'url' => 'edit_booking.php' . ($bookings_new_query ? '?' . http_build_query($bookings_new_query) : ''), 'icon' => 'bi-plus-lg'),
     'grow'    => $bookings_navigator,
+    'search'  => $bookings_search,
     'view'    => '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">' . $bookings_views . '</div>',
 ));
 
@@ -130,30 +144,24 @@ $bookings_filters = '
 
 if ($bookings_view === 'list') {
 
-    $bookings_params = array('filters' => array(
-        'start'  => $bookings_period['start'],
-        'end'    => $bookings_period['end'],
-        'staff'  => $bookings_staff_id,
-        'status' => $bookings_statuses,
+    // The month's bookings, printed whole: the list table driver sorts and
+    // searches them in the browser (browser mode).
+    $bookings_rows = array();
+
+    foreach (pg_booking_agenda_rows($bookings_period['start'], $bookings_period['end'], $bookings_staff_id, $bookings_statuses) as $bookings_row) {
+        $bookings_rows[] = pg_booking_agenda_list_row($bookings_row, $bookings_staff, pg_booking_deposit_badge($bookings_row));
+    }
+
+    $bookings_list = pg_list_table_printed(array(
+        'list'    => 'view_bookings',
+        'columns' => $bookings_list_columns,
+        'levels'  => $bookings_list_state['sorts'],
+        'rows'    => $bookings_rows,
     ));
 
     $bookings_body = '
             <div class="card mb-12">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table align-top" style="width:100%;display:none" data-pg-list-action="booking_list_rows" data-pg-list-params="' . h(encode_json($bookings_params)) . '">
-                        <thead>
-                            <tr>
-                                <th>' . h(lang('Time')) . '</th>
-                                <th>' . h(lang('Status')) . '</th>
-                                <th>' . h(lang('Customer')) . '</th>
-                                <th>' . h(lang('Contact')) . '</th>
-                                <th>' . h(lang('Service')) . '</th>
-                                <th>' . h(lang('Staff')) . '</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+                ' . pg_list_table_html($bookings_list['source'], $bookings_list['page'], lang('Bookings')) . '
             </div>';
 
 } else {
@@ -221,5 +229,6 @@ pg_page_shell(array(
     ' . $bookings_filters . '
     ' . $bookings_body . '
 </main>
+' . (($bookings_view === 'list') ? pg_js_bundle_tags('assets/js/pg_list_table.min.js') : '') . '
 ' .
 output_footer();

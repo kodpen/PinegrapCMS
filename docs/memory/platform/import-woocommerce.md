@@ -13,7 +13,10 @@ module: importers
 - Key `woo:product:<ID>`, else `woo:sku:<sku>`, else `woo:line:<n>`.
 
 ## Which cells go where?
-- SKU → `products.name` (empty: `woo-<ID>`; a variation: parent SKU + `-<ID>`), Name → `short_description`, Description → `full_description`, Short description → `details` (both through `pg_sanitize_rich_text()` staff and the editor's input prep), Tags → `keywords`, Published `1` → enabled, weight column (any unit, taken as written) → `weight`.
+- SKU → `products.name` (empty: `woo-<ID>`; a variation: parent SKU + `-<ID>`), Name → `short_description`, Description → `full_description`, Short description → `details` (both through `pg_sanitize_rich_text()` staff and the editor's input prep), Tags → `keywords`, Published `1` → enabled, the weight column → `weight` in pounds through `pg_import_woocommerce_weight()` (unit from the header: `Weight (kg)`, `(g)`, `(lbs)`, `(oz)`; none is kg; a decimal comma is read).
+
+## Why pounds?
+- `products.weight` is pounds (the product screen converts typed kilograms, `product-screen-units-and-commission.md`). Both readers stored the shop's figure as written: a 1 kg product became 1 lb (0.45 kg), 250 g in a gram shop 250 lb, so weight-based shipping and carrier labels were wrong. Tests: `test_import_woocommerce_weight_units`, `test_import_weight_pounds`, `test_import_shopify_weight`.
 - Prices through `pg_products_import_price_cents()`: a sale price is the price and a higher regular price the compare-at price; a cell that is not an amount fails the product, or leaves that variation out with a note. A variation without its own price takes the parent's.
 - Stock: a `Stock` figure tracks it (negative is 0); empty with `In stock?` 0 tracks 0; otherwise untracked.
 - Categories (`A > B, C`, `\,` a comma in a name) → browse groups found by name (short description or name) under their parent, else made with `pg_catalog_group_create()`, starting at the mapped `product_group` (else the top). A simple product is filed in each category's last group (none: the mapped group).

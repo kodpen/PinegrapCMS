@@ -572,7 +572,7 @@ if (!$_POST) {
 
         // A question goes with its answer.
         if ($comment_kind === 'question') {
-            db_q("DELETE FROM comments WHERE (answer_of = ?) AND (kind = 'answer')", array((string) (int) $comment_id));
+            pg_product_question_delete_answers($comment_id);
         }
 
         // A form record's comment count and newest comment, read by the form
