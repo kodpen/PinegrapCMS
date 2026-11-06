@@ -9084,7 +9084,8 @@
                 item(t('era_clear'), 'bi-eraser', function () { self.clearConversation(channel); });
             }
 
-            if (channel.can_manage) {
+            // A discussion is concluded, never archived or brought back.
+            if (channel.can_manage && (channel.kind !== 'thread')) {
                 item(channel.archived ? t('unarchive') : t('archive'), 'bi-archive', function () {
                     api('ws_channel_archive', { channel_id: channel.id, archive: channel.archived ? 0 : 1 }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                 });
