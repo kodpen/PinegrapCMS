@@ -4,7 +4,8 @@
  *
  * Tests for the image editor's access rules in the model
  * (assets/js/pg_image_editor_model.js, run under Node): the tool letters,
- * Tab kept inside a box, the two-finger twist and the help sheet's groups.
+ * Tab kept inside a box, the two-finger twist, the help sheet's groups,
+ * the timeline's keys and the long-motion warning.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -138,7 +139,7 @@ function test_image_editor_access_key_map()
 	}
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
-	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'keysView', 'keysTouch'), $r['photo'], 'photo groups');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'keysTimeline', 'keysView', 'keysTouch'), $r['photo'], 'photo groups, the timeline with the Animate tool');
 	pg_assert_same(array('keysTools', 'keysEdit', 'keysView', 'keysTouch'), $r['opt'], 'no layer keys for export only');
 	pg_assert_same(array('tool_select', 'tool_crop', 'tool_artboard', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_sticker', 'tool_frame', 'tool_vector', 'tool_motion'), $r['photoTools'], 'every photo tool has a letter, the photo canvas and the Animate tool included');
 	pg_assert_same(array('tool_arrow', 'tool_rect', 'tool_text', 'tool_pen', 'tool_redact'), $r['annTools'], 'every annotate tool has a letter');
@@ -148,4 +149,68 @@ function test_image_editor_access_key_map()
 	pg_assert_same(array('keysEdit', 'keysView', 'keysTouch'), $r['empty'], 'no tools, no tool group');
 	pg_assert_same(array('undo', 'redo', 'save', 'keyApply', 'keyEscape', 'keyHelp'), $r['photoEdit'], 'Enter applies the crop on a photo');
 	pg_assert_same(array('undo', 'redo', 'save', 'keyEscape', 'keyHelp'), $r['canvasEdit'], 'no crop row without Crop');
+}
+
+// The arrows step the playhead by a frame (Shift: a second) on the frame or
+// second grid, never past either end; Home and End jump to the ends.
+function test_image_editor_access_timeline_keys()
+{
+	$r = image_editor_access_node(
+		'function k(now, key, shift, end, fps) { return M.timelineKey(now, key, shift, end, fps); }' . "\n"
+		. 'var walk = [0], i; for (i = 0; i < 4; i++) { walk.push(k(walk[walk.length - 1], "ArrowRight", false, 5000)); }' . "\n"
+		. 'var back = [133], j; for (j = 0; j < 4; j++) { back.push(k(back[back.length - 1], "ArrowLeft", false, 5000)); }' . "\n"
+		. 'console.log(JSON.stringify({ fps: M.TIMELINE_FPS, walk: walk, back: back, between: k(50, "ArrowRight", false, 5000), betweenBack: k(50, "ArrowLeft", false, 5000),' . "\n"
+		. ' sec: k(1000, "ArrowRight", true, 5000), secMid: k(1250, "ArrowRight", true, 5000), secBack: k(1250, "ArrowLeft", true, 5000), secBackOn: k(2000, "ArrowLeft", true, 5000),' . "\n"
+		. ' atEnd: k(5000, "ArrowRight", false, 5000), nearEnd: k(4900, "ArrowRight", true, 5000), atStart: k(0, "ArrowLeft", true, 5000),' . "\n"
+		. ' home: k(2400, "Home", false, 5000), end: k(2400, "End", true, 5000), up: k(100, "ArrowUp", false, 5000), letter: k(100, "j", false, 5000),' . "\n"
+		. ' fps10: k(0, "ArrowRight", false, 5000, 10), past: k(9000, "ArrowLeft", false, 5000), nothing: k(null, "ArrowRight", false, 5000) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(30, $r['fps'], 'thirty frames a second');
+	pg_assert_same(array(0, 33, 67, 100, 133), $r['walk'], 'right steps one frame each, a rounded frame never repeats');
+	pg_assert_same(array(133, 100, 67, 33, 0), $r['back'], 'left steps back one frame each');
+	pg_assert_same(67, $r['between'], 'between frames, right goes to the next frame');
+	pg_assert_same(33, $r['betweenBack'], 'between frames, left goes to the previous frame');
+	pg_assert_same(2000, $r['sec'], 'Shift+right on a second goes to the next');
+	pg_assert_same(2000, $r['secMid'], 'Shift+right inside a second goes to its end');
+	pg_assert_same(1000, $r['secBack'], 'Shift+left inside a second goes to its start');
+	pg_assert_same(1000, $r['secBackOn'], 'Shift+left on a second goes to the one before');
+	pg_assert_same(5000, $r['atEnd'], 'not past the end');
+	pg_assert_same(5000, $r['nearEnd'], 'a second near the end stops there');
+	pg_assert_same(0, $r['atStart'], 'not before the start');
+	pg_assert_same(0, $r['home'], 'Home to the start');
+	pg_assert_same(5000, $r['end'], 'End to the end');
+	pg_assert_same(null, $r['up'], 'up is not a timeline key');
+	pg_assert_same(null, $r['letter'], 'a letter is not a timeline key');
+	pg_assert_same(100, $r['fps10'], 'another frame rate');
+	pg_assert_same(4967, $r['past'], 'a playhead past the end steps back from the end');
+	pg_assert_same(33, $r['nothing'], 'no playhead counts as the start');
+}
+
+// Longer than 5 seconds of motion, or a repeat forever, asks for a way to
+// pause it (WCAG 2.2.2); nothing to play asks nothing.
+function test_image_editor_access_motion_long()
+{
+	$r = image_editor_access_node(
+		'console.log(JSON.stringify({ forever: M.motionLong(3000, 0), once: M.motionLong(5000, 1), onceLong: M.motionLong(5100, 1),' . "\n"
+		. ' twice: M.motionLong(2500, 2), thrice: M.motionLong(2000, 3), empty: M.motionLong(0, 0), junk: M.motionLong("x", "y") }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true($r['forever'], 'a repeat forever is long');
+	pg_assert_false($r['once'], 'exactly 5 seconds once is not');
+	pg_assert_true($r['onceLong'], 'over 5 seconds once is');
+	pg_assert_false($r['twice'], 'twice 2.5 seconds is 5 seconds');
+	pg_assert_true($r['thrice'], 'three times 2 seconds is 6 seconds');
+	pg_assert_false($r['empty'], 'nothing to play');
+	pg_assert_false($r['junk'], 'no numbers, no warning');
 }
