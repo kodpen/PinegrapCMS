@@ -51,5 +51,12 @@ function test_shipment_label_busy_refusal_and_api_answer()
 
 	pg_assert_same('busy', $refusal['code']);
 	pg_assert_same('A label is being created for this address. Wait a moment, then open the order again.', $refusal['error']);
+	pg_assert_same(false, $refusal['ok']);
+	pg_assert_same(array('ok', 'error', 'code', 'unclear', 'id', 'number', 'row'), array_keys($refusal), 'the full shape of a create result');
+
+	// The locked-out create returns the refusal as it is: a "+" with an
+	// empty result on its left would keep the empty code and error.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/shipment_labels.php');
+	pg_assert_same(1, preg_match('/GET_LOCK[^\n]*\n\s*return pg_shipment_label_busy_refusal\(\);/', $source), 'the busy create returns the refusal unmixed');
 	pg_assert_same(array(409, 'label_busy', 'x'), api_order_label_refusal(array('code' => 'busy', 'error' => 'x')));
 }

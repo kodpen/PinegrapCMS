@@ -688,7 +688,7 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
     $lock = pg_shipment_label_lock_name($ship_to_id);
 
     if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 0)") !== 1) {
-        return array('ok' => false, 'error' => '', 'code' => '', 'unclear' => false, 'id' => 0, 'number' => '', 'row' => array()) + pg_shipment_label_busy_refusal();
+        return pg_shipment_label_busy_refusal();
     }
 
     $result = pg_shipment_label_create_locked($ship_to_id, $user_id, $return);
@@ -714,13 +714,21 @@ function pg_shipment_label_lock_name($ship_to_id)
 
 /**
  * The refusal of a create that finds another create of the same address
- * running. Pure.
+ * running, in the full shape of pg_shipment_label_create()'s result. Pure.
  *
- * @return array code, error
+ * @return array ok, error, code (busy), unclear, id, number, row
  */
 function pg_shipment_label_busy_refusal()
 {
-    return array('code' => 'busy', 'error' => lang('A label is being created for this address. Wait a moment, then open the order again.'));
+    return array(
+        'ok'      => false,
+        'error'   => lang('A label is being created for this address. Wait a moment, then open the order again.'),
+        'code'    => 'busy',
+        'unclear' => false,
+        'id'      => 0,
+        'number'  => '',
+        'row'     => array(),
+    );
 }
 
 /**
