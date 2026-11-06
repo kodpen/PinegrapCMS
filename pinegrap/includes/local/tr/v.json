@@ -265,6 +265,7 @@
     "Villa": "Villa",
     "Villa with a pool and a view of the bay": "Havuzlu ve koy manzaralı villa",
     "Village clinics, health workers and care for mothers and newborns.": "Köy klinikleri, sağlık çalışanları, anneler ve yenidoğanlar için bakım.",
+    "Villagers and a builder lining a well with stone": "Bir kuyuyu taşla ören köylüler ve bir usta",
     "Villas from $750,000; rents from $3,000 a month": "Villalar 750.000 $'dan; kiralar ayda 3.000 $'dan başlayan fiyatlarla",
     "Vis": "Vis",
     "Visa": "Visa",
@@ -380,6 +381,7 @@
     "Void": "Geçersiz kıl",
     "Volunteer": "Gönüllü Ol",
     "Volunteer observers log a record 40,000 meteor sightings": "Gönüllü gözlemciler 40.000 meteor gözlemiyle rekor kırdı",
+    "Volunteering and events": "Gönüllülük ve etkinlikler",
     "Volunteers are needed at every mile marker, and sign-ups are open on the race's website.": "Parkurun her kilometre noktasında gönüllülere ihtiyaç var; gönüllü kayıtları yarışın internet sitesinde açık.",
     "Volunteers carrying crates of pumpkins in a garden": "Bir bahçede kasalarla bal kabağı taşıyan gönüllüler",
     "Volunteers logged more than 40,000 meteor sightings this year, a record for the citizen-science project that collects them.": "Gönüllüler bu yıl 40.000'den fazla meteor gözlemi kaydetti; bu, gözlemleri toplayan yurttaş bilimi projesi için bir rekor.",
@@ -395,6 +397,7 @@
     "value-my-car": "aracimi-degerle",
     "values is an object of record id => new value, at most {var:1}.": "values, kayıt kimliği => yeni değer biçiminde bir nesnedir; en çok {var:1}.",
     "values, kindness, moderation, safety": "değerler, nezaket, moderasyon, güvenlik",
+    "values, principles, local, sustainable": "değerler, ilkeler, yerel, sürdürülebilir",
     "values, principles, quality, way of working": "değerler, ilkeler, kalite, çalışma biçimi",
     "values, sustainability, handmade, small makers": "değerler, sürdürülebilirlik, el yapımı, küçük üreticiler",
     "vegan, cruelty-free, hygiene, sterilised, products": "vegan, hayvan deneysiz, hijyen, sterilize, ürünler",
@@ -424,5 +427,6 @@
     "visitor's request was denied because the spam protection service reported that visitor's IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})": "spam koruma hizmeti, ziyaretçinin IP adresinin spam gönderenler tarafından kullanıldığını bildirdiği için ziyaretçinin isteği reddedildi. (güven: %{var:1}, sıklık: {var:2})",
     "visitor, analytics, tracking code, tracking, statistics, google analytics": "visitor, analytics, tracking code, tracking, statistics, google analytics, ziyaretci, ziyaretçi, analitik, takip kodu, istatistik",
     "visitors": "ziyaretçi",
+    "volunteer, help, time": "gönüllü, yardım, zaman",
     "volunteers who give their time": "gönüllü zamanını veriyor"
 }
