@@ -142,6 +142,7 @@
     "Call or write to the customers": "Müşterileri ara ya da yaz",
     "Call or write to us. We hold a car for a day while you decide, and a reserved car shows \"Reserved\" on its card.": "Bizi arayın ya da yazın. Siz karar verirken aracı bir gün tutarız; ayrılmış bir aracın kartında \"Rezerve\" yazar.",
     "Call the café and pick up on your way; at the Business District café the order waits on the counter.": "Kafeyi arayın, yolda uğrayıp alın; İş Merkezi şubesinde siparişiniz tezgâhta sizi bekler.",
+    "Call the customer about {{record_title}}": "{{record_title}} için müşteriyi ara",
     "Call the office": "Ofisi arayın",
     "Call the showroom": "Showroomu arayın",
     "Call the webhook {var:1}": "{var:1} webhook'unu çağır",
