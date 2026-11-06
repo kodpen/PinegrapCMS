@@ -164,7 +164,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - design-files-modify-dialog.md: Design files list Modify Selected is an in-page pgUI dialog (no popup); its fields belong to the list form, edit_files.php only takes the post
 - design-files-screens.md: All Design Files and Edit Design File: type read from the name, image editor script outside the table, Recycle Bin left out, POST branch, blocked rename, optimize way back
 - designer-region-shared-form.md: The designer region create and edit screens share includes/forms/designer_region_form.php: what it holds, the label fix, what stays in the screens
-- detail-screen-values.md: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; ERP quarter option wording
+- detail-screen-values.md: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; Visit Details' wide layout; ERP quarter option wording
 - details-panel-rule.md: The one structure rule of a list's details panel ("Ayrıntılar"): fixed section order, label/value lines with a fixed label column, empty values left out; how the table driver applies it
 - dialog-result-after-close.md: A Bootstrap 6 dialog or drawer hands its result to the page only once closed; the writing box's + menu windows put in nothing before that (#4196); the caret after a card
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
