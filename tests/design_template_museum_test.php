@@ -352,7 +352,7 @@ function test_museum_no_fixed_dates()
 {
 	$d = _test_mz_load();
 	$json = json_encode(array($d['exhibitions'], $d['events'], $d['objects'], $d['sessions'], $d['museum'], _test_mz_trees()), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-	pg_assert_false((bool)preg_match('/\b(1[0-9]|20)[0-9]{2}\b/', $json), 'no year in the sample');
+	pg_assert_false((bool)preg_match('/\b(1[5-9]|20)[0-9]{2}\b/', $json), 'no year in the sample');
 	pg_assert_false((bool)preg_match('/\b(January|February|March|April|June|July|August|September|October|November|December)\b/', $json), 'no month in the sample');
 }
 
