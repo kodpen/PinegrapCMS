@@ -253,7 +253,7 @@ $public_pages[] = array(
                     ), '', '6'),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
-        ), $searchable('gy-how-classes', lang('booking, first class, beginner, what to bring')))),
+        ), $searchable('gy-how-classes', lang('booking, first class, beginner, what to bring'))))
     )),
 );
 
