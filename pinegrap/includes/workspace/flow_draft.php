@@ -1213,6 +1213,7 @@ function ws_flow_ai_catalogue_hints($catalogue, $subjects)
     $kinds = array(
         'approval' => 'also any yes-or-no question put to people in a channel: title is the question, approved is yes and rejected is no',
         'post'     => 'only says something in a channel; it never waits for an answer',
+        'mention'  => 'starts the flow when a person writes @ and the flow\'s name in the channel channel_id (never a flow\'s, an application\'s or an assistant\'s message; one start per person a minute); it gives message_id, text, author_id, author_name, channel_id and channel_name',
         'row_get'  => 'reads one row of a workflow table, named by its id or one value such as {{trigger.row_id}}; it gives found (1, or 0 when the row is not there) and cell_COLUMN_ID for each column',
         'record_get' => 'reads one record (record: order, product, contact, booking, task or form, a submitted form) named by its id or one value such as {{trigger.record_id}}, with the owner\'s rights; it gives found (1, or 0 when the record is not there or out of reach) and the record\'s fields, such as email, status or total',
     );

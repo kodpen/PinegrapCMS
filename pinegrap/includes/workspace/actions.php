@@ -1760,6 +1760,11 @@ function ws_handle_action($action, $request)
             // without waiting for an answer.
             $asked = ws_message_ask_assistants($viewer, $channel, $result['message_id'], $body);
 
+            // A flow its words mention by name in this channel (flow_mention.php).
+            if (function_exists('ws_flow_mention_after_send')) {
+                ws_flow_mention_after_send($viewer, $channel, $result['message_id'], $body);
+            }
+
             return ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $asked['claude'], 'ai' => $asked['ai'], 'agent' => $asked['agent']));
 
         case 'ws_edit':

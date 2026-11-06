@@ -966,6 +966,8 @@ function ws_step_trigger_values($context, $sees, $names = array())
         }
     } elseif (($kind === 'no_order') && $sees) {
         $given = is_array($context['customer'] ?? null) ? $context['customer'] : array();
+    } elseif (($kind === 'mention') && $sees) {
+        $given = $payload;
     }
 
     $out = array();
@@ -1009,6 +1011,12 @@ function ws_step_trigger_values_for($owner, $context)
         $table_id = (int) ($payload['table_id'] ?? 0);
         $sees = ($table_id > 0) && (ws_wtable_flow_check($owner, $table_id, 'view') === '');
         $names['columns'] = $sees ? array_values(ws_wtable_columns($table_id)) : array();
+    }
+
+    // A mention: its channel still read by the owner.
+    if (($kind === 'mention') && function_exists('ws_events_creator_sees')) {
+        $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
+        $sees = ((int) ($payload['channel_id'] ?? 0) > 0) && ws_events_creator_sees((int) ($owner['id'] ?? 0), (string) ($context['event'] ?? ''), $payload);
     }
 
     // A customer who stopped ordering: orders and contacts still read by

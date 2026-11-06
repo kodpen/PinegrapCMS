@@ -282,6 +282,7 @@ function ws_events_own()
         'workspace.wtable.row.created',
         'workspace.wtable.row.updated',
         'workspace.wtable.row.deleted',
+        'workspace.flow.mentioned',
     );
 }
 
@@ -391,7 +392,7 @@ function ws_events_awaited($forget = false)
     if (function_exists('ws_scheduled_join_ready') && ws_scheduled_join_ready()) {
         foreach ((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%workspace.%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
-                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row'), true) && ws_events_is_own($rule['event'] ?? '')) {
+                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row', 'mention'), true) && ws_events_is_own($rule['event'] ?? '')) {
                     $awaited[] = (string) $rule['event'];
                 }
             }
@@ -602,7 +603,7 @@ function ws_events_record_of($event, $payload)
             : array('channel', (int) ($payload['channel_id'] ?? 0));
     }
 
-    if (($event === 'workspace.guest.message') || ($event === 'workspace.mail.received')) {
+    if (($event === 'workspace.guest.message') || ($event === 'workspace.mail.received') || ($event === 'workspace.flow.mentioned')) {
         return array('channel', (int) ($payload['channel_id'] ?? 0));
     }
 
@@ -687,16 +688,17 @@ function ws_events_watched($event)
  * ended (status; for a contact joining a group, the group's id), and the
  * channel the workspace's event happened in. A row
  * rule (a flow's row box) matches a row of its table, and a change only
- * when it wrote the rule's column, if it names one.
+ * when it wrote the rule's column, if it names one; a mention rule (a
+ * flow's mention box) a message of its channel.
  *
- * @param array  $rule    type event: event, page_id, status, channel_id; type row: event, table_id, column_id
+ * @param array  $rule    type event: event, page_id, status, channel_id; type row: event, table_id, column_id; type mention: event, channel_id
  * @param string $event
  * @param array  $payload
  * @return bool
  */
 function ws_events_rule_matches($rule, $event, $payload)
 {
-    if (!is_array($rule) || !in_array(($rule['type'] ?? ''), array('event', 'row'), true) || ((string) ($rule['event'] ?? '') !== (string) $event)) {
+    if (!is_array($rule) || !in_array(($rule['type'] ?? ''), array('event', 'row', 'mention'), true) || ((string) ($rule['event'] ?? '') !== (string) $event)) {
         return false;
     }
 
@@ -704,6 +706,10 @@ function ws_events_rule_matches($rule, $event, $payload)
 
     if ($rule['type'] === 'row') {
         return function_exists('ws_flow_row_rule_matches') && ws_flow_row_rule_matches($rule, $payload);
+    }
+
+    if ($rule['type'] === 'mention') {
+        return function_exists('ws_flow_mention_rule_matches') && ws_flow_mention_rule_matches($rule, $payload);
     }
 
     if (((string) ($rule['status'] ?? '') !== '') && (ws_events_filter_value($event, $payload) !== (string) $rule['status'])) {
@@ -907,7 +913,7 @@ function ws_events_start($event_id, $event, $payload)
 
         foreach ((array) db_items("SELECT id, rules, created_by" . $flow_column . " FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
-                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row'), true)) {
+                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row', 'mention'), true)) {
                     $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by'], 'flow_id' => (int) ($row['flow_id'] ?? 0));
                 }
             }
@@ -933,6 +939,11 @@ function ws_events_start($event_id, $event, $payload)
         }
 
         if (ws_events_own_failure($event, $payload, $item['flow_id'])) {
+            continue;
+        }
+
+        // A mention starts only the flow it names.
+        if (function_exists('ws_flow_mention_other_flow') && ws_flow_mention_other_flow($item['rule'], $payload, $item['flow_id'])) {
             continue;
         }
 

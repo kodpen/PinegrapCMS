@@ -126,6 +126,7 @@
         join: { name: 'fl_kind_join', group: 'start', into: false, out: ['next'] },
         row: { name: 'fl_kind_row', group: 'start', into: false, out: ['next'] },
         no_order: { name: 'fl_kind_no_order', group: 'start', into: false, out: ['next'] },
+        mention: { name: 'fl_kind_mention', group: 'start', into: false, out: ['next'] },
         task: { name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
         post: { name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
         email: { name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
@@ -189,6 +190,7 @@
         ['join', 'fl_kind_join'],
         ['row', 'fl_kind_row'],
         ['no_order', 'fl_kind_no_order'],
+        ['mention', 'fl_kind_mention'],
         ['task', 'fl_add_task'],
         ['condition', 'fl_kind_condition'],
         ['delay', 'fl_kind_delay'],
@@ -709,6 +711,12 @@
             var joined = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
 
             return joined ? t('fl_post_meta', joined.name) : t('fl_join_any');
+        }
+
+        if (node.kind === 'mention') {
+            var named = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            return named ? t('fl_post_meta', named.name) : t('fl_mention_pick');
         }
 
         if (node.kind === 'change') {
@@ -5816,6 +5824,10 @@
             channelField(box, node, t('fl_join_channel'), t('fl_join_any'));
         }
 
+        if (node.kind === 'mention') {
+            mentionFields(box, node);
+        }
+
         if (node.kind === 'row') {
             rowFields(box, node);
         }
@@ -6261,6 +6273,17 @@
             refreshNode(node);
         });
         box.appendChild(field(label, pick));
+    }
+
+    // The channel a mention of the flow by name starts it in, and what counts.
+    function mentionFields(box, node) {
+        var pick = channelPick(node.config, t('fl_mention_pick'));
+
+        pick.addEventListener('change', function () {
+            node.config.channel_id = parseInt(pick.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_mention_channel'), pick, t('fl_mention_help')));
     }
 
     // A tick whose state goes to config[key].
@@ -8814,7 +8837,7 @@
             config = { date: new Date().toISOString().slice(0, 10), time: '09:00', repeat: 'none', every: 1, days: [], until: '' };
         } else if (kind === 'event') {
             config = { event: '', page_id: 0, status: '', channel_id: 0 };
-        } else if (kind === 'join') {
+        } else if ((kind === 'join') || (kind === 'mention')) {
             config = { channel_id: 0 };
         } else if (kind === 'no_order') {
             config = { days: 30 };
