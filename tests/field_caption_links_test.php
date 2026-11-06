@@ -5,7 +5,8 @@
  * Tests that a field's visible caption reaches the field: the code fields of
  * Edit Theme CSS, Edit JavaScript, Edit File and Generate Layout, the Create
  * File name and type, the submitted form pick lists, file uploads and choice
- * groups, the calendar event "Up To" pair and the order tracking numbers.
+ * groups, the calendar event "Up To" pair, the order tracking numbers and
+ * the Duplicate Products options.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -74,4 +75,19 @@ function test_field_caption_order_ship_dates()
 
 	pg_assert_contains('<label class="form-label" for="\' . $ship_dates_field_id . \'_\' . $date_column . \'">', $source, 'each date caption is a label for its field');
 	pg_assert_contains("\$ship_dates_field_id = 'ship_to_id_' . (int) \$ship_tos[\$key]['ship_to_id'];", $source, 'the field ids the liveform fields use');
+}
+
+// Duplicate Products: each copy option sits in a labelled form-field box and
+// the letter count's help text is read with its field.
+function test_field_caption_duplicate_products_options()
+{
+	$source = pg_test_field_caption_source('duplicate_products.php');
+
+	foreach (array('lettertodelete', 'newletter', 'option_id') as $id) {
+		pg_assert_contains('<label class="form-label" for="' . $id . '">', $source, 'the ' . $id . ' caption points at its field');
+	}
+
+	pg_assert_contains('aria-describedby="lettertodelete_help"', $source, 'the letter count names its help text');
+	pg_assert_contains('<div class="form-text" id="lettertodelete_help">', $source, 'the help text carries the id');
+	pg_assert_same(3, substr_count($source, '<div class="form-field">'), 'the three options are form-field boxes');
 }
