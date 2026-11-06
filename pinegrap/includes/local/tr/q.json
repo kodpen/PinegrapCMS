@@ -73,8 +73,10 @@
     "Questions first?": "Önce sorularınız mı var?",
     "Questions from a visiting scientist": "Konuk bir bilim insanından sorular",
     "Questions from makers": "Üreticilerden gelen sorular",
+    "Questions from the audience": "Dinleyicilerden sorular",
     "Questions from {var:1}": "{var:1} soruları",
     "Questions or more documents? Write under your request.": "Sorularınız ya da başka belgeleriniz mi var? Talebinizin altına yazın.",
+    "Questions, plans or more photos? Write under your request.": "Sorularınız, planlarınız ya da başka fotoğraflarınız mı var? Talebinizin altına yazın.",
     "Questions? Read the FAQ": "Sorunuz mu var? SSS'yi okuyun",
     "Queue active": "Kuyruk etkin",
     "Queue inactive": "Kuyruk devre dışı",
@@ -120,6 +122,8 @@
     "Quote Date": "Teklif Tarihi",
     "Quote Figure": "Alıntı Çerçevesi",
     "Quote No": "Teklif No",
+    "Quote Request": "Teklif Talebi",
+    "Quote Request Received E-mail": "Teklif Talebi Alındı E-postası",
     "Quote Requests": "Teklif Talepleri",
     "Quote Row": "Alıntı Satırı",
     "Quote Source": "Alıntı Kaynağı",
@@ -131,6 +135,7 @@
     "Quote of the comment it answers (start of its text)": "Yanıtladığı yorumdan alıntı (metninin başı)",
     "Quote opened again": "Teklif yeniden açıldı",
     "Quote rejected": "Teklif reddedildi",
+    "Quote request not found": "Teklif talebi bulunamadı",
     "Quote sent": "Teklif gönderildi",
     "Quote signed": "Teklif imzalandı",
     "Quote templates": "Teklif şablonları",
@@ -155,5 +160,6 @@
     "question": "soru",
     "questions": "sorular",
     "quote, catering order, offer, event catering, request": "teklif, catering siparişi, fiyat teklifi, etkinlik catering, talep",
-    "quote, estimate, price, how long": "teklif, tahmini maliyet, fiyat, ne kadar sürer"
+    "quote, estimate, price, how long": "teklif, tahmini maliyet, fiyat, ne kadar sürer",
+    "quote-request": "teklif-talebi"
 }

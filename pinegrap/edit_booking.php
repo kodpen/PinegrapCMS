@@ -244,11 +244,18 @@ $booking_save_bar = function ($label) {
             </div>';
 };
 
-$booking_field = function ($name, $label, $type = 'text', $extra = array()) use ($liveform) {
+// One labelled form-field box; $help prints a form-text the field names
+// with aria-describedby ($extra may already name another one).
+$booking_field = function ($name, $label, $type = 'text', $extra = array(), $help = '') use ($liveform) {
+    if ($help !== '') {
+        $extra['aria-describedby'] = trim((isset($extra['aria-describedby']) ? $extra['aria-describedby'] . ' ' : '') . $name . '_help');
+    }
+
     return '
-                        <div class="mb-5">
-                            <label for="' . h($name) . '" class="form-label">' . h($label) . '</label>
+                        <div class="form-field mb-5">
+                            <label class="form-label" for="' . h($name) . '">' . h($label) . '</label>
                             ' . $liveform->output_field(array_merge(array('type' => $type, 'id' => $name, 'name' => $name, 'class' => 'form-control'), $extra)) . '
+                            ' . (($help !== '') ? '<div class="form-text" id="' . h($name) . '_help">' . h($help) . '</div>' : '') . '
                         </div>';
 };
 
@@ -300,18 +307,24 @@ if ($booking_id === 0) {
                 <form action="edit_booking.php" method="get" id="booking_choice" class="card mb-7">
                     <div class="card-header"><h2 class="h6 mb-0">' . h(lang('Service and time')) . '</h2></div>
                     <div class="card-body">
-                        <div class="row g-3 align-items-end">
+                        <div class="row g-5 align-items-end">
                             <div class="col-12 md:col-4">
-                                <label for="choice_staff" class="form-label">' . h(lang('Staff')) . '</label>
-                                <select class="form-control" id="choice_staff" name="staff_id"' . (($booking_scope !== null) ? ' disabled' : '') . '>' . $staff_options . '</select>
+                                <div class="form-field">
+                                    <label class="form-label" for="choice_staff">' . h(lang('Staff')) . '</label>
+                                    <select class="form-control" id="choice_staff" name="staff_id"' . (($booking_scope !== null) ? ' disabled' : '') . '>' . $staff_options . '</select>
+                                </div>
                             </div>
                             <div class="col-12 md:col-4">
-                                <label for="choice_service" class="form-label">' . h(lang('Service')) . '</label>
-                                <select class="form-control" id="choice_service" name="service_id">' . $service_options . '</select>
+                                <div class="form-field">
+                                    <label class="form-label" for="choice_service">' . h(lang('Service')) . '</label>
+                                    <select class="form-control" id="choice_service" name="service_id">' . $service_options . '</select>
+                                </div>
                             </div>
                             <div class="col-12 md:col-4">
-                                <label for="choice_date" class="form-label">' . h(lang('Date')) . '</label>
-                                <input type="text" class="form-control" id="choice_date" name="date" value="' . h(prepare_form_data_for_output($choice_day, 'date', false)) . '" autocomplete="off" data-pg-date>
+                                <div class="form-field">
+                                    <label class="form-label" for="choice_date">' . h(lang('Date')) . '</label>
+                                    <input type="text" class="form-control" id="choice_date" name="date" value="' . h(prepare_form_data_for_output($choice_day, 'date', false)) . '" autocomplete="off" data-pg-date>
+                                </div>
                             </div>
                         </div>
                         <noscript><button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 mt-5">' . h(lang('Show free times')) . '</button></noscript>
@@ -411,11 +424,11 @@ if ($booking_id === 0) {
                     <div class="card-body">
                         ' . $slot_field . '
                         ' . $booking_field('name', lang('Name'), 'text', array('maxlength' => '100', 'required' => 'required', 'autocomplete' => 'off')) . '
-                        <div class="row g-3">
-                            <div class="col-12 md:col-6">' . $booking_field('email', lang('E-mail'), 'email', array('maxlength' => '191', 'autocomplete' => 'off')) . '</div>
-                            <div class="col-12 md:col-6">' . $booking_field('phone', lang('Phone'), 'tel', array('maxlength' => '40', 'autocomplete' => 'off')) . '</div>
+                        <div class="row g-5">
+                            <div class="col-12 md:col-6">' . $booking_field('email', lang('E-mail'), 'email', array('maxlength' => '191', 'autocomplete' => 'off', 'aria-describedby' => 'booking_reach_help')) . '</div>
+                            <div class="col-12 md:col-6">' . $booking_field('phone', lang('Phone'), 'tel', array('maxlength' => '40', 'autocomplete' => 'off', 'aria-describedby' => 'booking_reach_help')) . '</div>
                         </div>
-                        <p class="form-text mb-5">' . h(lang('An e-mail address or a phone number is needed to reach the customer.')) . '</p>
+                        <div class="form-text mb-5" id="booking_reach_help">' . h(lang('An e-mail address or a phone number is needed to reach the customer.')) . '</div>
                         ' . $booking_field('notes', lang('Notes'), 'textarea', array('rows' => '3')) . '
                     </div>
                 </div>
@@ -502,7 +515,7 @@ foreach ($facts as $label => $value) {
 // The reason is kept only by a cancel, so it shows only while Cancelled is
 // the chosen status.
 $cancel_field = in_array('cancelled', $status_options, true) && ($booking['status'] !== 'cancelled')
-    ? '<div id="booking_cancel_reason"' . (($liveform->get_field_value('status') === 'cancelled') ? '' : ' hidden') . '>' . $booking_field('cancel_reason', lang('Reason for cancelling'), 'textarea', array('rows' => '2', 'aria-describedby' => 'cancel_reason_help')) . '<p class="small fg-secondary mb-0" id="cancel_reason_help">' . h(lang('Kept in the notes when the status becomes Cancelled.')) . '</p></div>
+    ? '<div id="booking_cancel_reason"' . (($liveform->get_field_value('status') === 'cancelled') ? '' : ' hidden') . '>' . $booking_field('cancel_reason', lang('Reason for cancelling'), 'textarea', array('rows' => '2'), lang('Kept in the notes when the status becomes Cancelled.')) . '</div>
                             <script>
                                 document.getElementById("status").addEventListener("change", function () {
                                     document.getElementById("booking_cancel_reason").hidden = (this.value !== "cancelled");
@@ -540,11 +553,11 @@ pg_page_shell(array(
                     <div class="card-header d-flex justify-content-between align-items-center"><h2 class="h6 mb-0">' . h(lang('Customer')) . '</h2>' . $contact_link . '</div>
                     <div class="card-body">
                         ' . $booking_field('name', lang('Name'), 'text', array('maxlength' => '100', 'required' => 'required', 'autocomplete' => 'off')) . '
-                        <div class="row g-3">
-                            <div class="col-12 md:col-6">' . $booking_field('email', lang('E-mail'), 'email', array('maxlength' => '191', 'autocomplete' => 'off')) . '</div>
-                            <div class="col-12 md:col-6">' . $booking_field('phone', lang('Phone'), 'tel', array('maxlength' => '40', 'autocomplete' => 'off')) . '</div>
+                        <div class="row g-5">
+                            <div class="col-12 md:col-6">' . $booking_field('email', lang('E-mail'), 'email', array('maxlength' => '191', 'autocomplete' => 'off', 'aria-describedby' => 'booking_reach_help')) . '</div>
+                            <div class="col-12 md:col-6">' . $booking_field('phone', lang('Phone'), 'tel', array('maxlength' => '40', 'autocomplete' => 'off', 'aria-describedby' => 'booking_reach_help')) . '</div>
                         </div>
-                        <p class="form-text mb-5">' . h(lang('An e-mail address or a phone number is needed to reach the customer.')) . '</p>
+                        <div class="form-text mb-5" id="booking_reach_help">' . h(lang('An e-mail address or a phone number is needed to reach the customer.')) . '</div>
                         ' . $booking_field('notes', lang('Notes'), 'textarea', array('rows' => '4')) . '
                     </div>
                 </div>
