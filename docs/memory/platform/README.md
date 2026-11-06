@@ -118,6 +118,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - import-wordpress.md: WordPress WXR reader of the import framework: streaming walk, what each item becomes, skipped internals, comment threads, dates, shortcodes, cursor, mapping rows
 - indexnow-ping-result.md: The IndexNow ping in update_sitemap_and_ping() logs success only for HTTP 200/202; a refusal (400, 403, 422, 429) logs 'IndexNow ping failed: HTTP <code>'
 - install-command-line.md: php install/index.php install (PR #621): a starter site from PG_INSTALL_* variables without the screen; what it refuses, output and exit status, how the screen's code runs
+- install-design-step.md: The installer's Site Design screen: live-picture tiles, the chosen template's block and tour, pickers set to the template's theme, 1440 px width, designer scripts loaded in order
 - iys-client.md: İYS client (PR #1895): account in connect_apps iys, dry run, daily push of e-mail consent answers and pull of refusals, contacts.iys_email_status, campaign filter
 - iys-settings-card.md: The İYS card of Settings › Communication (includes/iys/settings.php): fields, save decision, brand check, cursor keys kept, iys_job switched on, what was not verified
 - iys-sms-channel.md: İYS MESAJ channel (PR #3806): contacts.iys_sms_status (11.0.136), the SMS consent rows pushed for a mobile number, İYS's SMS changes pulled and matched to the contacts' numbers
