@@ -281,7 +281,7 @@ function erp_vat_report($from, $to)
     }
 
     if (function_exists('erp_expenses_ready') && erp_expenses_ready()) {
-        foreach (array_reverse(erp_expenses_list(array('from' => $from, 'to' => $to, 'status' => 'all', 'limit' => 5000))) as $expense) {
+        foreach (erp_expenses_period($from, $to) as $expense) {
             $cancelled = ((string) $expense['status'] === 'cancelled');
             $deductible = ((int) $expense['tax_deductible'] === 1);
             $month = substr((string) $expense['expense_date'], 0, 7);

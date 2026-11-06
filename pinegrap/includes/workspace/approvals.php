@@ -634,6 +634,12 @@ function ws_approval_decide_check($viewer, $approval, $decision)
         return array('ok' => false, 'error' => lang('That approval request could not be found.'), 'expired' => false);
     }
 
+    // An earlier version of a conversation is kept as it was (eras.php);
+    // checked here so the panel, the external API and its dry run agree.
+    if (function_exists('ws_message_in_past') && ws_message_in_past($message)) {
+        return array('ok' => false, 'error' => lang('This message is in an earlier version of the conversation, which is kept as it was.'), 'expired' => false);
+    }
+
     if (!ws_can_post_channel($viewer, ws_channel($approval['channel_id']))) {
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'expired' => false);
     }

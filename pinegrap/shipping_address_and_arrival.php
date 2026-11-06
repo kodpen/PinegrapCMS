@@ -140,7 +140,7 @@ if ($form == 1) {
 // get the number of active arrival dates in order to figure out if the requested arrival date field should be required
 $query = "SELECT count(*)
          FROM arrival_dates
-         WHERE (status = 'enabled') AND (start_date <= CURRENT_DATE()) AND (concat(end_date, ' " . ECOMMERCE_END_OF_DAY_TIME . "') > NOW())";
+         WHERE " . pg_arrival_dates_offered_sql(ECOMMERCE_END_OF_DAY_TIME);
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 
@@ -152,6 +152,7 @@ if ($row[0] > 0) {
 // Written to the ship_tos row below even when no arrival date was submitted.
 $arrival_date = '';
 $arrival_date_code = '';
+$arrival_date_id = (string) $liveform->get_field_value('arrival_date');
 
 // if arrival date was submitted (arrival_date[]= was emptied above and counts as not submitted)
 if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
@@ -163,9 +164,19 @@ if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
             code,
             custom,
             custom_maximum_arrival_date
-        FROM arrival_dates WHERE id = ?";
+        FROM arrival_dates
+        WHERE id = ?
+        AND " . pg_arrival_dates_offered_sql(ECOMMERCE_END_OF_DAY_TIME);
     $result = db_q($query, array((string) ($liveform->get_field_value('arrival_date')))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
+
+    // The id comes from the post: one the list did not offer (disabled, not
+    // yet started, ended or deleted) is refused, not saved on the recipient.
+    if (!$row) {
+        $liveform->mark_error('arrival_date', lang('The selected arrival date is not available. Please select another one.'));
+        $arrival_date_id = '';
+        $row = array('name' => '', 'arrival_date' => '', 'code' => '', 'custom' => 0, 'custom_maximum_arrival_date' => '0000-00-00');
+    }
     $arrival_date_name = $row['name'];
     $arrival_date = $row['arrival_date'];
     $arrival_date_code = $row['code'];
@@ -464,7 +475,7 @@ $query = "UPDATE ship_tos SET
             arrival_date = ?,
             complete = '0'
          WHERE id = ?";
-$result = db_q($query, array((string) ($liveform->get_field_value('salutation')), (string) ($liveform->get_field_value('first_name')), (string) ($liveform->get_field_value('last_name')), (string) ($liveform->get_field_value('company')), (string) ($liveform->get_field_value('address_1')), (string) ($liveform->get_field_value('address_2')), (string) ($liveform->get_field_value('city')), (string) ($liveform->get_field_value('state')), (string) ($liveform->get_field_value('zip_code')), (string) ($liveform->get_field_value('country')), (string) ($liveform->get_field_value('address_type')), (string) $address_verified, (string) ($liveform->get_field_value('phone_number')), (string) ($liveform->get_field_value('arrival_date')), (string) $arrival_date_code, (string) $arrival_date, (string) ($_POST['ship_to_id'] ?? ''))) or output_error('Query failed.');
+$result = db_q($query, array((string) ($liveform->get_field_value('salutation')), (string) ($liveform->get_field_value('first_name')), (string) ($liveform->get_field_value('last_name')), (string) ($liveform->get_field_value('company')), (string) ($liveform->get_field_value('address_1')), (string) ($liveform->get_field_value('address_2')), (string) ($liveform->get_field_value('city')), (string) ($liveform->get_field_value('state')), (string) ($liveform->get_field_value('zip_code')), (string) ($liveform->get_field_value('country')), (string) ($liveform->get_field_value('address_type')), (string) $address_verified, (string) ($liveform->get_field_value('phone_number')), (string) $arrival_date_id, (string) $arrival_date_code, (string) $arrival_date, (string) ($_POST['ship_to_id'] ?? ''))) or output_error('Query failed.');
 
 // The optional district, written apart: the value is free text and the
 // query above binds its values by placeholder.

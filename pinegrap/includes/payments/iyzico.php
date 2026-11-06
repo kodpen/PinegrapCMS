@@ -431,10 +431,12 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
 
         $installment_info = \Iyzipay\Model\InstallmentInfo::retrieve($installment_request, $options);
         $data = json_decode((string) $installment_info->getRawResult(), true);
+        $quoted = false;
 
-        if (isset($data['installmentDetails'][0]['installmentPrices'])) {
+        if (isset($data['installmentDetails'][0]['installmentPrices']) && is_array($data['installmentDetails'][0]['installmentPrices'])) {
             foreach ($data['installmentDetails'][0]['installmentPrices'] as $price) {
-                if ((int) $price['installmentNumber'] === $installment) {
+                if (is_array($price) && isset($price['installmentNumber'], $price['totalPrice']) && ((int) $price['installmentNumber'] === $installment)) {
+                    $quoted = true;
                     $installment_cents = (int) round((float) $price['totalPrice'] * 100);
 
                     if ($installment_cents > $total) {
@@ -458,6 +460,13 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
                     break;
                 }
             }
+        }
+
+        // A count with no quoted price (not offered for this card, a posted
+        // count off the list, a failed quote) would be taken in instalments
+        // with no charge, the store paying the instalment cost.
+        if (($installment >= 2) && !$quoted) {
+            return pg_payment_failure(lang('The selected number of installments is not offered for this card. Please choose another number of installments.'));
         }
     }
 

@@ -322,17 +322,41 @@ function erp_quote_link_issue($quote_id, $user_id, $replace = true)
 }
 
 /**
+ * Whether the quote the page showed is the quote as it stands now: the page
+ * posts back the signature hash of what it printed, and a line, a price or
+ * a date changed on the panel since then makes them differ. Pure but for
+ * erp_signature_document_hash_quote().
+ *
+ * @param mixed $shown_hash  The posted hash
+ * @param array $quote       From erp_quote()
+ * @return bool
+ */
+function erp_quote_link_shown_matches($shown_hash, array $quote)
+{
+    if (!is_string($shown_hash) || (preg_match('/^[0-9a-f]{64}$/', $shown_hash) !== 1)) {
+        return false;
+    }
+
+    return hash_equals(erp_signature_document_hash_quote($quote), $shown_hash);
+}
+
+/**
  * The customer accepts through a link: the link is claimed (used_at) so a
  * second submit does nothing, the drawing is kept with its evidence, and the
  * quote is accepted by the panel's writer. A refused step releases the
  * claim.
  *
+ * The signature binds the quote the page showed: when it was changed on the
+ * panel after the page was opened, the customer is sent back to read it
+ * again instead of signing figures they never saw.
+ *
  * @param string $token
  * @param string $png          From pg_signature_png_from_data_url()
  * @param string $signer_name
+ * @param string $shown_hash   erp_signature_document_hash_quote() of the quote the page printed
  * @return array ['success' => bool, 'error' => string]
  */
-function erp_quote_link_accept($token, $png, $signer_name)
+function erp_quote_link_accept($token, $png, $signer_name, $shown_hash)
 {
     $fail = function ($message) {
         return array('success' => false, 'error' => $message);
@@ -349,6 +373,10 @@ function erp_quote_link_accept($token, $png, $signer_name)
 
     if ($refusal !== '') {
         return $fail($refusal);
+    }
+
+    if (!erp_quote_link_shown_matches($shown_hash, $quote)) {
+        return $fail(lang('The quote was changed after this page was opened. Read it again before signing.'));
     }
 
     if (!is_string($png) || ($png === '')) {

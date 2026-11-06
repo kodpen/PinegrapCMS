@@ -21,12 +21,12 @@ function erp_waybill_back_arrow_source($file)
 	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 }
 
-function test_erp_waybill_list_view_button_passes_send_to()
+function test_erp_waybill_list_link_passes_send_to()
 {
 	$source = erp_waybill_back_arrow_source('erp_waybills.php');
 
-	pg_assert_contains("h(escape_javascript('edit_erp_waybill.php?id=' . \$id . '&send_to=' . urlencode(REQUEST_URL)))", $source, 'the View button carries the filtered list');
-	pg_assert_false(strpos($source, "edit_erp_waybill.php?id=' . \$id . '\\'") !== false, 'no View button without send_to');
+	pg_assert_contains("h('edit_erp_waybill.php?id=' . \$id . '&send_to=' . urlencode(REQUEST_URL))", $source, 'the number link carries the filtered list');
+	pg_assert_false(strpos($source, "edit_erp_waybill.php?id=' . \$id . '\\'") !== false, 'no link without send_to');
 }
 
 function test_erp_waybill_note_keeps_send_to()

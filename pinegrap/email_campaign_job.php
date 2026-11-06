@@ -490,17 +490,9 @@ if (!pg_email_retry_ready()) {
     $count = 0;
     $suppressed = 0;
 
-    // Claims that a run left behind - it died, or was killed, between taking
-    // its recipients and finishing with them - are released after fifteen
-    // minutes, far longer than a run takes, and those recipients go back to
-    // the pool.
-    db(
-        "UPDATE email_recipients
-        SET claimed_at = 0, claim_token = ''
-        WHERE
-            (complete = '0')
-            AND (claimed_at > 0)
-            AND (claimed_at < (UNIX_TIMESTAMP() - 900))");
+    // Claims that a run left behind are released after fifteen minutes and
+    // those recipients go back to the pool.
+    db(pg_email_campaign_stale_claim_query());
 
     // Recipients that are due: not claimed by a run, and not waiting out the
     // pause after a failed attempt.
@@ -524,30 +516,16 @@ if (!pg_email_retry_ready()) {
 
     if ($candidate_ids) {
 
-        if (function_exists('random_bytes')) {
-            $run = bin2hex(random_bytes(16));
-        } else {
-            $run = bin2hex(openssl_random_pseudo_bytes(16));
-        }
+        $run = pg_email_campaign_claim_token();
 
         $sql_candidate_ids = implode(',', $candidate_ids);
 
-        // Claim the recipients with one UPDATE, conditional on nobody having
-        // claimed them since the SELECT above. A single statement is atomic
-        // even on MyISAM, which locks the whole table for it: when two runs
-        // overlap, each row is taken by whichever statement reaches it first,
-        // and the other statement no longer matches it. The token says which
-        // rows this run won. No table is locked while a message is sent, so a
-        // slow SMTP server no longer holds every other reader of
-        // email_recipients, contacts and log for the length of the batch.
-        db(
-            "UPDATE email_recipients
-            SET claimed_at = UNIX_TIMESTAMP(), claim_token = '" . e($run) . "'
-            WHERE
-                (id IN (" . $sql_candidate_ids . "))
-                AND (complete = '0')
-                AND (claimed_at = 0)
-                AND (next_attempt_at <= UNIX_TIMESTAMP())");
+        // Claim the recipients with one conditional UPDATE: when runs overlap
+        // (another job run or Send now), each row goes to one of them, and
+        // the token says which rows this run won. No table is locked while a
+        // message is sent, so a slow SMTP server no longer holds every other
+        // reader of email_recipients, contacts and log for the batch.
+        db(pg_email_campaign_claim_query($candidate_ids, $run));
 
         // Read what was won, by primary key. The campaign conditions are asked
         // again: a campaign cancelled in the meantime sends nothing more.
@@ -684,8 +662,11 @@ foreach ($email_campaigns as $email_campaign_id) {
             pg_announce('campaign.sent', pg_campaign_sent_event('email', $email_campaign['id'], $email_campaign['type']));
         }
 
-        // If this is an automatic campaign, then check if auto campaigns need to be created.
-        if ($email_campaign['type'] == 'automatic') {
+        // If this is an automatic campaign, then check if auto campaigns need
+        // to be created: only by the run that finished it, so a run that
+        // found it already complete (finished by an overlapping run or by
+        // Send now) does not queue the follow-ups a second time.
+        if ($became_complete && $email_campaign && ($email_campaign['type'] == 'automatic')) {
             // Get contact id from the campaign that was just sent so it can be used for new auto campaigns if necessary.
             $contact_id = db_value("SELECT contact_id FROM email_recipients WHERE email_campaign_id = '" . $email_campaign['id'] . "'");
 

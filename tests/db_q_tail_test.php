@@ -4,7 +4,8 @@
  *
  * Static checks on the installer, the designer panel actions, the
  * TinyMCE image and link upload pickers, the Flows INSERTs whose duplicate
- * key is an answer and init.php's config path UPDATE: their queries with values run
+ * key is an answer, init.php's config path UPDATE and the new dashboard's
+ * layout rows and recent orders: their queries with values run
  * through db_q() placeholders, not escape() / e() concatenated into the SQL
  * text, every db_q() call passes one value per '?', and the raw
  * mysqli_query() calls left (none of them with a value) do not grow in
@@ -35,6 +36,8 @@ function db_q_tail_test_files()
 		'includes/workspace/flow_runs.php' => array(2, 0),
 		'includes/workspace/flow_anchors.php' => array(1, 0),
 		'init.php' => array(1, 1),
+		'includes/dashboard/v2/layout.php' => array(7, 1),
+		'includes/dashboard/widgets/widget_8.php' => array(1, 1),
 	);
 }
 
@@ -267,4 +270,13 @@ function test_db_q_tail_binds_as_before()
 	pg_assert_same(
 		"INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by) SELECT 7, 3, 'running', 2 FROM ws_flows WHERE id = 7 AND start_key = 'k\\'1'",
 		pg_db_bind("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by) SELECT ?, ?, 'running', ? FROM ws_flows WHERE id = ? AND start_key = ?", array(7, 3, 2, 7, "k'1"), $escape));
+	// The new dashboard's layout write: every column quoted as before, a
+	// null look written as ''.
+	pg_assert_same(
+		"INSERT INTO dashboard_layout (user_id, role, layout, look, updated_at, updated_by) VALUES ('5', 0, '[\\\"a?\\\"]', '', '9', '5')",
+		pg_db_bind("INSERT INTO dashboard_layout (user_id, role, layout, look, updated_at, updated_by) VALUES (?, 0, ?, ?, ?, ?)", array((string) 5, '["a?"]', (string) null, (string) 9, (string) 5), $escape));
+	// The recent orders card: the limit bare, as before.
+	pg_assert_same(
+		"SELECT id FROM orders LIMIT 10",
+		pg_db_bind("SELECT id FROM orders LIMIT ?", array((int) '10'), $escape));
 }

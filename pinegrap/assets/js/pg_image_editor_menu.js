@@ -172,7 +172,7 @@
         s.texts = (picked.length && this.convertToOutlines) ? this.selectedTexts().filter(function (l) {
             return !l.locked && String(l.text || '').trim();
         }).length : 0;
-        s.warp = !!(one && this.expandWarp && M.warpOn(one));
+        s.warp = !!(one && this.expandWarp && (M.warpOn(one) || M.puppetOn(one)));
         s.svg = !!(one && this.svgBreakApart && (one.type === 'svg') && one.imported);
         s.count = this.doc.layers.length;
         s.imports = !!this.importBtn;

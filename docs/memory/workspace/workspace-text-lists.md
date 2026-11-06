@@ -15,6 +15,7 @@ description: Lists and quotes in Workspace texts drawn by the server (#1725): wh
 
 ## What does plain text read?
 - `ws_plain_text()` (API `text`, assistants, e-mail): running text folds to one line as before; each item or quoted line its own line with the author's number. Lists are found before marks come off, so `**- x**` stays words.
+- A table the screen draws (header row, row of dashes, rows; not inside code) reads row by row (#7053): outer pipes dropped, cells joined by " · ", each later row led by "/ ", so the one-line excerpt (pin strip, forward preview, acks, board) reads "Time · Who / 09:00 · Mehmet" instead of "| Time | Who | | 09:00 |". Pipe lines without a row of dashes stay as written.
 - `ws_plain_line()` folds it all to one line: for a stored body (the poll result decision in interact.php), banners, `ws_plain_excerpt()`.
 - The approval mail (`ws_approval_guest_details_text()`) turns the blocks back into lines (`ws_html_blocks_text()`) and keeps one line break per break (nl2br's newline used to double them).
 - `ws_calc_plain()` works out an item's words (`ws_text_block_items()`): in "- 10 - 4 =" the bullet is no minus sign, as on screen.

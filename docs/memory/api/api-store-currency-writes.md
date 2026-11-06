@@ -17,6 +17,7 @@ module: store_currencies
 - `symbol` is plain text both ways: escaped with `htmlspecialchars()` into the stored HTML the pages print, read back by `api_currency_symbol_text()`; an entity a client sends stays text. The stored form must fit `varchar(10)` (422).
 - `exchange_rate` is read as a decimal, not through the screen's masked-amount parser (`pg_normalize_amount()` reads `.` as a thousands mark in Turkish). Above zero after rounding to five decimals, at most 99999.99999; the base is always 1.
 - The screen's refusals: blank name, code not three letters (422), the stored base switched off (422), a code another currency has (409 `code_taken`), deleting the base (409 `base_currency`).
+- An update writes `exchange_rate` and `base` only when they change: `api_store_currency_kept()` (pure) names the unchanged ones and `pg_store_currency_save()`'s optional `$kept` leaves them out of the UPDATE (`pg_store_currency_update_sets()`, pure); the other bases are cleared only when `base` is written, and the event carries the stored rate and base. Before, a rename wrote back the rate and base read at the start, so a rate refresh or another currency made the base landing in between was undone (a stale base switch also took the base off the new one). The screens and the list quick edit still post every column.
 - The rates route answers `requested`, `updated`, `failed`, `reached`, logs the Site Log line under the owner and counts as a run of the scheduled job.
 
 ## Tested?

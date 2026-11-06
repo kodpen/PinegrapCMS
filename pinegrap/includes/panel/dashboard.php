@@ -111,6 +111,11 @@ function pg_panel_get_widget_data($request, $action)
     // see includes/panel/actions.php.
     global $user;
 
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+
     $user = validate_user();
     // Release the session file lock immediately after authentication so that
     // concurrent widget AJAX requests are not serialized waiting for each other.
@@ -126,6 +131,11 @@ function pg_panel_get_widgets_data($request, $action)
     // Kept global for the same reason as get_widget_data above.
     global $user;
 
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+
     $user = validate_user();
     session_write_close();
 
@@ -138,6 +148,11 @@ function pg_panel_get_dashboard_brief($request, $action)
 {
     // Kept global: the brief reaches helpers that read `global $user`.
     global $user;
+
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
 
     $user = validate_user();
 
@@ -291,6 +306,11 @@ function pg_panel_dashboard_cards($request, $action)
 {
     // Kept global like get_widget_data: helpers read `global $user`.
     global $user;
+
+    // validate_user() could redirect the request to the sign-in page.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
 
     $user = validate_user();
     session_write_close();

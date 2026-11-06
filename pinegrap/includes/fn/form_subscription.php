@@ -485,6 +485,23 @@ function pg_fs_hold_submission($form_id, $contact_id, $group_id)
 }
 
 /**
+ * The contacts a confirmation put into the group, as
+ * pg_announce_contact_group_members() takes them: the contact when its
+ * membership insert wrote a row, none when it was there already (a second
+ * press), the write failed or there was no insert.
+ *
+ * @param int $contact_id
+ * @param int $inserted_rows  mysqli_affected_rows() of the membership insert
+ * @return int[]
+ */
+function pg_fs_confirm_joined($contact_id, $inserted_rows)
+{
+    $contact_id = (int) $contact_id;
+
+    return (($contact_id > 0) && ((int) $inserted_rows === 1)) ? array($contact_id) : array();
+}
+
+/**
  * The confirmation: adds the contact to the group, opts it in to the group,
  * and records the consent with this request's address and browser.
  *
@@ -531,12 +548,24 @@ function pg_fs_confirm($contact_id, $group_id, $email)
         "UPDATE contacts SET timestamp = UNIX_TIMESTAMP() WHERE id = '" . $contact_id . "'",
     ));
 
-    foreach ($writes as $query) {
+    $joined = array();
+
+    foreach ($writes as $index => $query) {
         // Not db(): a failed query there ends the request with an error page.
         if (@mysqli_query(db::$con, $query) === false) {
             error_log('Pinegrap: subscription confirmation failed: ' . mysqli_error(db::$con));
             return false;
         }
+
+        if ($member_write && ($index === 0)) {
+            $joined = pg_fs_confirm_joined($contact_id, mysqli_affected_rows(db::$con));
+        }
+    }
+
+    // The same seam every other door announces through, so a "joined a group"
+    // campaign profile or flow starts for a confirmed sign-up too.
+    if ($joined && function_exists('pg_announce_contact_group_members')) {
+        pg_announce_contact_group_members($group_id, $joined);
     }
 
     pg_consent_log_record(array(

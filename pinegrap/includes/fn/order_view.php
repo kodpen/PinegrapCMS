@@ -7,7 +7,8 @@
  * the panel names them, the district only when it differs from the city,
  * the requested arrival date as the customer chose it
  * at the checkout, the text of the contact link, the printed order's
- * shipping card (print_order.php), and the shipping input the screen and
+ * shipping card (print_order.php), the totals rows of the customer's printed
+ * invoice (order_invoice_print.php), and the shipping input the screen and
  * update_order() check (ship and delivery dates, shipped quantity).
  *
  * @author      Erdal Güral (Kodpen)
@@ -488,4 +489,50 @@ function pg_order_update_request_error(array $recipients, $order_id, array $ship
     }
 
     return '';
+}
+
+/**
+ * The totals rows of the customer's printed invoice (order_invoice_print.php),
+ * in print order: every figure that makes up orders.total, the total last.
+ * A gift card lowers the total and a bank's instalment difference raises it,
+ * neither with an order line of its own; without their rows the printed
+ * figures did not add up to the total under them. A zero figure has no row,
+ * the subtotal and the total always have one.
+ *
+ * @param array $order orders row (minor units); a missing column counts as 0
+ * @return array list of ['key', 'amount' (minor units, not negative),
+ *                       'negative' (taken off), 'grand' (the total)]
+ */
+function pg_order_print_totals(array $order)
+{
+    $figures = array(
+        'subtotal' => false,
+        'discount' => true,
+        'tax' => false,
+        'shipping' => false,
+        'surcharge' => false,
+        'gift_card_discount' => true,
+        'installment_charges' => false,
+    );
+
+    $rows = array();
+
+    foreach ($figures as $column => $negative) {
+        $amount = (int) ($order[$column] ?? 0);
+
+        if (($amount <= 0) && ($column !== 'subtotal')) {
+            continue;
+        }
+
+        $rows[] = array(
+            'key' => ($column === 'gift_card_discount') ? 'gift_card' : $column,
+            'amount' => $amount,
+            'negative' => $negative,
+            'grand' => false,
+        );
+    }
+
+    $rows[] = array('key' => 'total', 'amount' => (int) ($order['total'] ?? 0), 'negative' => false, 'grand' => true);
+
+    return $rows;
 }

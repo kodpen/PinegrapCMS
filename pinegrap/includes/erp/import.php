@@ -532,16 +532,22 @@ function erp_import_defaults($kind = 'customer')
  * Only mapped columns are read. is_person, when the file has no column for
  * it, follows the tax number: eleven digits is a person's TCKN, ten a
  * company's VKN. The 'mapped' entry lists the fields the file actually
- * supplied, so an update can leave the others alone.
+ * supplied a value for, so an update can leave the others alone: an empty
+ * cell supplies nothing, or the row's fallback (the default type, country
+ * and currency, Active, a Taxpayer guessed from the tax number) would
+ * replace what the account holds.
  *
  * @param array $cells
  * @param array $mapping   column index => field
  * @param array $defaults  From erp_import_defaults()
+ * @param array|null $fields  erp_import_fields(), read when null
  * @return array
  */
-function erp_import_normalize_row($cells, $mapping, $defaults)
+function erp_import_normalize_row($cells, $mapping, $defaults, $fields = null)
 {
-    $fields = erp_import_fields();
+    if ($fields === null) {
+        $fields = erp_import_fields();
+    }
 
     $account = array(
         'title' => '', 'kind' => $defaults['kind'], 'is_person' => null, 'tax_number' => '', 'tax_office' => '',
@@ -558,11 +564,12 @@ function erp_import_normalize_row($cells, $mapping, $defaults)
         }
 
         $value = trim((string) $cells[$index]);
-        $mapped[$field] = true;
 
         if ($value === '') {
             continue;
         }
+
+        $mapped[$field] = true;
 
         switch ($field) {
             case 'kind':

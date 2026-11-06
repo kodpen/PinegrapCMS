@@ -51,7 +51,7 @@ function ai_prompt_rules_test_builders()
 		'includes/workspace/mcp_ask.php'         => array('ws_mcp_ask_system_prompt', 'assistant'),
 		'includes/designer_ai.php'               => array('pg_design_ai_system_prompt', 'assistant'),
 		'includes/workspace/briefing.php'        => array('ws_recap_ask', 'writer'),
-		'includes/workspace/status.php'          => array('ws_status_ai_draft', 'writer'),
+		'includes/workspace/status.php'          => array('ws_status_ai_messages', 'writer'),
 		'includes/workspace/bulk.php'            => array('ws_bulk_generate', 'writer'),
 		'includes/workspace/scheduled_draft.php' => array('ws_scheduled_draft_messages', 'writer'),
 		'includes/translate/engine_ai.php'       => array('pg_tr_ai_instructions', 'writer'),

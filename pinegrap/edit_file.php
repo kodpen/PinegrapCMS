@@ -256,9 +256,9 @@ if (!isset($_POST['name'])) {
             
             
             // Output version check
+            // The ?v= stamp shows a changed picture; the screen itself goes out
+            // as every panel screen does (private, no-cache, pg_panel_cache_headers()).
             $data_src = OUTPUT_PATH . $file_name . '?v=' . @filemtime(FILE_DIRECTORY_PATH . '/' . $file_name);
-            header("Cache-Control: no-cache, must-revalidate");
-            header("Expires: 0");
         }
         // Set the maximum dimension size for the image.
         $max_dimension = 1920;
@@ -1076,7 +1076,12 @@ $liveform->remove_form('edit_file');
             // Save as a new file (copy)
             $new_name  = get_unique_name(array('name' => $new_name, 'type' => 'file'));
             $new_path  = FILE_DIRECTORY_PATH . '/' . $new_name;
-            file_put_contents($new_path, $image_bytes);
+
+            // No record for a file that is not whole on the disk.
+            if (!pg_file_write_whole($new_path, $image_bytes)) {
+                output_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($new_name))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
+
             $new_size  = filesize($new_path);
 
             db("INSERT INTO files (name, folder, description, type, size, " . $sql_design_1 . " user, timestamp)
@@ -1105,8 +1110,14 @@ $liveform->remove_form('edit_file');
                 output_error(lang(array('string' => '{var:1} already exists. Please choose a different file name.', 'vars' => array(h($new_name)))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
             }
             $new_path = FILE_DIRECTORY_PATH . '/' . $new_name;
-            file_put_contents($new_path, $image_bytes);
-            @unlink(FILE_DIRECTORY_PATH . '/' . $row['name']); // remove old SVG
+
+            // The SVG is removed only once the raster file is whole: a full
+            // disk or an unwritable folder used to lose both.
+            if (!pg_file_write_whole($new_path, $image_bytes)) {
+                output_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($new_name))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
+
+            @unlink(FILE_DIRECTORY_PATH . '/' . $row['name']);
             $new_size = filesize($new_path);
 
             db("UPDATE files SET
@@ -1165,9 +1176,19 @@ $liveform->remove_form('edit_file');
         }
 
         if (in_array($file_extension, $editable_formats) && isset($_POST['code'])) {
-            $handle = fopen($file_path, 'w');
-            fwrite($handle, $_POST['code']);
-            fclose($handle);
+            // Written as a whole beside the stored file and renamed over it,
+            // so a full disk keeps the old content instead of a cut-off or
+            // empty file. A file renamed above goes back under its stored
+            // name, which the record still holds.
+            if (!pg_file_write_whole($file_path, $_POST['code'])) {
+                if (($name !== $row['name']) && is_file($file_path)) {
+                    @rename($file_path, $old_file_path);
+                }
+
+                output_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($name))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            }
+
+            clearstatcache(true, $file_path);
             $sql_size = "size = '" . escape(filesize($file_path)) . "',";
         }
 
@@ -1188,6 +1209,10 @@ $liveform->remove_form('edit_file');
         } else {
             pg_audit_record('update', 'files', (int) $file_id, $audit_before);
         }
+
+        // A new name or the design flag may have made a stored file one that
+        // has to be on the disk.
+        pg_file_storage_bring_home(array((int) $file_id));
 
             log_activity(lang(array('string'=>'file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         include_once('liveform.class.php');

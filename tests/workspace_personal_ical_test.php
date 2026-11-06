@@ -348,3 +348,76 @@ function test_workspace_personal_ical_duration()
 	pg_assert_same(0, ws_ical_duration('P'), 'an empty duration gives nothing');
 	pg_assert_same(0, ws_ical_duration('soon'), 'not a duration');
 }
+
+function ws_personal_ical_test_grid($dates)
+{
+	$days = array();
+
+	foreach ($dates as $date) {
+		$days[$date] = array('date' => $date, 'events' => array());
+	}
+
+	return $days;
+}
+
+function ws_personal_ical_test_placed($days)
+{
+	$out = array();
+
+	foreach ($days as $date => $day) {
+		foreach ($day['events'] as $event) {
+			$out[] = trim($date . ' ' . $event['time']);
+		}
+	}
+
+	return $out;
+}
+
+// An event that ends at midnight stays on its own day: the end is the moment it stops.
+function test_workspace_personal_ical_midnight_end()
+{
+	$previous = date_default_timezone_get();
+	date_default_timezone_set('Europe/Istanbul');
+	$grid = ws_personal_ical_test_grid(array('2026-11-09', '2026-11-10'));
+	$event = function ($starts, $ends) {
+		return array('title' => 'Dinner', 'starts_at' => strtotime($starts), 'ends_at' => strtotime($ends), 'all_day' => false);
+	};
+
+	pg_assert_same(array('2026-11-09 22:00'), ws_personal_ical_test_placed(ws_personal_ical_place($grid, array($event('2026-11-09 22:00:00', '2026-11-10 00:00:00')))), 'no 00:00 line on the next day');
+	pg_assert_same(array('2026-11-09 22:00', '2026-11-10 00:00'), ws_personal_ical_test_placed(ws_personal_ical_place($grid, array($event('2026-11-09 22:00:00', '2026-11-10 01:00:00')))), 'past midnight it is on both days');
+	pg_assert_same(array('2026-11-10 00:00'), ws_personal_ical_test_placed(ws_personal_ical_place($grid, array($event('2026-11-10 00:00:00', '2026-11-10 00:00:00')))), 'a moment at midnight stays on its day');
+
+	$day_start = strtotime('2026-11-10 00:00:00');
+	$day_end = strtotime('2026-11-11 00:00:00');
+	pg_assert_false(ws_personal_ical_touches($event('2026-11-09 22:00:00', '2026-11-10 00:00:00'), $day_start, $day_end), 'the Today card leaves out yesterday\'s event ending at midnight');
+	pg_assert_true(ws_personal_ical_touches($event('2026-11-10 23:00:00', '2026-11-11 01:00:00'), $day_start, $day_end), 'and keeps tonight\'s');
+
+	date_default_timezone_set($previous);
+}
+
+// A repeating all-day event covers its calendar day also on the day the clock changes.
+function test_workspace_personal_ical_all_day_clock_change()
+{
+	$previous = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+	$text = implode("\r\n", array(
+		'BEGIN:VCALENDAR', 'VERSION:2.0',
+		'BEGIN:VEVENT', 'UID:walk', 'DTSTART;VALUE=DATE:20261018', 'DTEND;VALUE=DATE:20261019', 'RRULE:FREQ=WEEKLY;COUNT=2', 'SUMMARY:Walk', 'END:VEVENT',
+		'BEGIN:VEVENT', 'UID:run', 'DTSTART;VALUE=DATE:20270321', 'DTEND;VALUE=DATE:20270322', 'RRULE:FREQ=WEEKLY;COUNT=2', 'SUMMARY:Run', 'END:VEVENT',
+		'END:VCALENDAR',
+	));
+	$lines = array();
+
+	foreach (ws_personal_ical_events($text, strtotime('2026-10-01 00:00:00'), strtotime('2027-04-30 00:00:00')) as $event) {
+		$lines[] = date('Y-m-d H:i:s', $event['starts_at']) . ' -> ' . date('Y-m-d H:i:s', $event['ends_at']) . ' ' . $event['title'];
+	}
+
+	date_default_timezone_set($previous);
+
+	pg_assert_same(array(
+		'2026-10-18 00:00:00 -> 2026-10-18 23:59:59 Walk',
+		'2026-10-25 00:00:00 -> 2026-10-25 23:59:59 Walk',
+		'2027-03-21 00:00:00 -> 2027-03-21 23:59:59 Run',
+		'2027-03-28 00:00:00 -> 2027-03-28 23:59:59 Run',
+	), $lines, 'the 25-hour and 23-hour days end at their own midnight');
+}

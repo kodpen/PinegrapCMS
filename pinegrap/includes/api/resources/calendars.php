@@ -1516,18 +1516,28 @@ function api_calendar_event_visible_or_fail($id) {
 
 }
 
-// Whether the owner may read the customers behind the orders: the order
-// screens open to roles 0 to 2 or the e-commerce right (api_owner_scopes()).
+// Whether a reservation names its buyer: the name and e-mail are the order's
+// billing data, so the owner must open the order screens (roles 0 to 2 or the
+// e-commerce right, api_owner_scopes()) and the key must hold orders:read.
+// calendars:read alone never hands out order data.
+function api_calendar_reservation_customer_shown($owner, $scopes) {
+
+	$reads_orders = ((int)$owner['role'] < 3) || !empty($owner['manage_ecommerce']);
+
+	return $reads_orders && api_has_scope($scopes, 'orders:read');
+
+}
+
 function api_calendar_owner_reads_orders() {
 
 	$app = api_current_app();
 
-	return ((int)$app['owner']['role'] < 3) || !empty($app['owner']['manage_ecommerce']);
+	return api_calendar_reservation_customer_shown($app['owner'], api_current_scopes());
 
 }
 
 // The shape of a reservation on the wire: one order line that reserved the
-// event. customer is null for an owner who may not open orders.
+// event. customer is null unless api_calendar_reservation_customer_shown().
 function api_calendar_reservation_present($row, $with_customer) {
 
 	$customer = null;

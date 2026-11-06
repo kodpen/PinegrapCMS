@@ -131,7 +131,7 @@ function db_q_front_test_files()
 		'get_shopping_cart.php' => 13,
 		'get_form_item_view.php' => 13,
 		'get_view_order_screen_content.php' => 15,
-		'email_preferences.php' => 17,
+		'email_preferences.php' => 13,
 		'add_or_remove_watcher.php' => 15,
 		'affiliate_sign_up_form.php' => 13,
 	);

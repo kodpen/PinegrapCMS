@@ -120,6 +120,16 @@ $already_complete = ($status == 'complete');
 // the flow it had.
 $retry_ready = pg_email_retry_ready();
 
+// The campaign job sends the same recipients: with the retry columns this
+// window claims each batch as the job does and skips what a job run holds,
+// so an overlapping run and this window never both deliver to one recipient.
+// A claim left by a closed or crashed window is freed after fifteen minutes.
+$claim_token = null;
+
+if ($retry_ready && !$already_complete) {
+    db(pg_email_campaign_stale_claim_query($id));
+}
+
 // get next 10 e-mail recipients to send e-mail campaign to
 $query =
     "SELECT
@@ -131,6 +141,7 @@ $query =
      WHERE
         (email_campaign_id = ?)
         AND (complete = '0')" . ($retry_ready ? "
+        AND (claimed_at = 0)
         AND (next_attempt_at <= UNIX_TIMESTAMP())" : "") . "
      ORDER BY id
      LIMIT 10";
@@ -143,6 +154,24 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
     // loop through e-mail recipients
     while ($row = mysqli_fetch_assoc($result)) {
         $email_recipients[] = $row;
+    }
+
+    if ($retry_ready) {
+        $claim_token = pg_email_campaign_claim_token();
+        $claim_ids = array_map('intval', array_column($email_recipients, 'id'));
+
+        db(pg_email_campaign_claim_query($claim_ids, $claim_token));
+
+        // Keep only the rows this window won.
+        $won = array_flip(array_map('intval', db_values(
+            "SELECT id FROM email_recipients
+            WHERE
+                (id IN (" . implode(',', $claim_ids) . "))
+                AND (claim_token = '" . e($claim_token) . "')")));
+
+        $email_recipients = array_values(array_filter($email_recipients, function ($email_recipient) use ($won) {
+            return isset($won[(int) $email_recipient['id']]);
+        }));
     }
     
     foreach ($email_recipients as $email_recipient) {
@@ -184,7 +213,7 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
 
         // An address that bounced or complained gets nothing, whatever the
         // purpose (includes/fn/mail_bounces.php); the finish counts it.
-        if (pg_email_campaign_skip_suppressed($email_recipient['id'], $email_recipient['email_address'], $retry_ready)) {
+        if (pg_email_campaign_skip_suppressed($email_recipient['id'], $email_recipient['email_address'], $retry_ready, $claim_token)) {
             continue;
         }
 
@@ -426,7 +455,7 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
             $properties['notify_sender'] = (((int) $email_recipient['attempts'] + 1) >= pg_mail_max_attempts());
 
             if (!email($properties)) {
-                pg_email_campaign_record_failure($email_recipient['id'], $email_recipient['email_address'], $email_recipient['attempts'], null, $_SESSION['sessionusername']);
+                pg_email_campaign_record_failure($email_recipient['id'], $email_recipient['email_address'], $email_recipient['attempts'], $claim_token, $_SESSION['sessionusername']);
                 continue;
             }
 
@@ -434,14 +463,22 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
             email($properties);
         }
 
-        // mark e-mail recipient as complete and set reference code
+        // mark e-mail recipient as complete and set reference code, and
+        // release the claim
         $query = 
             "UPDATE email_recipients
             SET
                 complete = '1',
-                reference_code = ?
+                reference_code = ?" . ($retry_ready ? ",
+                claimed_at = 0,
+                claim_token = ''" : "") . "
             WHERE id = ?";
         $result = db_q($query, array((string) $email_recipient['reference_code'], (string) $email_recipient['id'])) or output_error('Query failed.');
+    }
+
+    // Whatever this batch claimed and did not finish goes straight back.
+    if ($claim_token !== null) {
+        db("UPDATE email_recipients SET claimed_at = 0, claim_token = '' WHERE (email_campaign_id = '" . $id . "') AND (claim_token = '" . e($claim_token) . "')");
     }
     
     // get total number of recipients
@@ -659,12 +696,15 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
 
     // Recipients waiting for another attempt keep the campaign open: the
     // job, or the next Send now, tries them again.
+    $became_complete = false;
+
     if ($summary['complete']) {
         $query = "UPDATE email_campaigns SET status = 'complete' WHERE id = ?";
         $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+        $became_complete = (mysqli_affected_rows(db::$con) === 1);
 
         // Announced once, by the run that finished it.
-        if (mysqli_affected_rows(db::$con) === 1) {
+        if ($became_complete) {
             pg_announce('campaign.sent', pg_campaign_sent_event('email', $id, (string) db_value("SELECT type FROM email_campaigns WHERE id = '" . (int) $id . "'")));
         }
     }
@@ -685,8 +725,10 @@ if (!$already_complete && (mysqli_num_rows($result) > 0)) {
         log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was delivered to {var:2} of {var:3} recipients; {var:4} could not be delivered','vars'=>array($subject_template . $log_page, pg_format_number($number_of_delivered_email_recipients, 0), pg_format_number($number_of_email_recipients, 0), pg_format_number($number_of_failed_email_recipients + $number_of_waiting_email_recipients, 0)))), $_SESSION['sessionusername']);
     }
 
-    // If this is an automatic campaign, then check if auto campaigns need to be created.
-    if (($type == 'automatic') && $summary['complete']) {
+    // If this is an automatic campaign, then check if auto campaigns need to
+    // be created: only by the run that finished it, so a job run that
+    // finished it at the same time does not see the follow-ups queued twice.
+    if (($type == 'automatic') && $became_complete) {
         // Get contact id from the campaign that was just sent so it can be used for new auto campaigns if necessary.
         $contact_id = db_value("SELECT contact_id FROM email_recipients WHERE email_campaign_id = '" . escape($_GET['id']) . "'");
 

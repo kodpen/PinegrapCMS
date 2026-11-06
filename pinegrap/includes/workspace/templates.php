@@ -852,29 +852,26 @@ function ws_template_assignees($viewer, $rule, $department_id)
 }
 
 /**
- * Applies a template to a channel: its tasks are made in the channel, its
- * notes are written as the person's own and shared there, the summary and
- * the pinned message fill what is empty, and a line in the channel says what
- * came in. Everything is checked before the first write.
+ * Every refusal of ws_template_apply(), asked before anything is written: the
+ * template and the channel, the template body, each task as ws_task_create()
+ * will take it, room for the notes and the twenty-a-minute message burst. The
+ * API runs it before its dry-run stop, so a rehearsal refuses what the real
+ * call refuses.
  *
  * @param array $viewer
  * @param array $channel
  * @param array $template ws_template()
- * @param array $options  new_channel (the channel was made from the template
- *                        a moment ago: the welcome is written), app_id (an API
- *                        application acting for $viewer writes the pinned
- *                        message)
- * @return array ok, error, message, warning, tasks, notes, unassigned (made
- *               with nobody on them), denied (of those, for want of the
- *               right), summary_kept, pinned_kept, links_skipped, task_ids,
- *               note_ids
+ * @param array $options  new_channel, app_id (as ws_template_apply())
+ * @return array ok, error, body (cleaned), planned (task data), unassigned,
+ *               denied, summary_kept, pinned_kept, write_summary, write_pin,
+ *               write_welcome
  */
-function ws_template_apply($viewer, $channel, $template, $options = array())
+function ws_template_apply_check($viewer, $channel, $template, $options = array())
 {
     $result = array(
-        'ok' => false, 'error' => '', 'message' => '', 'warning' => false,
-        'tasks' => 0, 'notes' => 0, 'unassigned' => 0, 'denied' => 0, 'summary_kept' => false, 'pinned_kept' => false,
-        'links_skipped' => 0, 'task_ids' => array(), 'note_ids' => array(),
+        'ok' => false, 'error' => '', 'body' => array(), 'planned' => array(),
+        'unassigned' => 0, 'denied' => 0, 'summary_kept' => false, 'pinned_kept' => false,
+        'write_summary' => false, 'write_pin' => false, 'write_welcome' => false,
     );
     $fail = function ($error) use ($result) {
         $result['error'] = $error;
@@ -957,23 +954,76 @@ function ws_template_apply($viewer, $channel, $template, $options = array())
     }
 
     $summary_empty = (trim((string) $channel['summary']) === '');
-    $write_summary = (trim($template['summary']) !== '') && $summary_empty;
+    $result['write_summary'] = (trim($template['summary']) !== '') && $summary_empty;
     $result['summary_kept'] = (trim($template['summary']) !== '') && !$summary_empty;
 
     $pin_free = ((int) ($channel['pinned_message_id'] ?? 0) === 0);
-    $write_pin = (trim($template['pinned']) !== '') && $pin_free && ws_can_pin($viewer, $channel);
+    $result['write_pin'] = (trim($template['pinned']) !== '') && $pin_free && ws_can_pin($viewer, $channel);
     $result['pinned_kept'] = (trim($template['pinned']) !== '') && !$pin_free;
 
-    $write_welcome = $new_channel && (trim($template['welcome']) !== '');
+    $result['write_welcome'] = $new_channel && (trim($template['welcome']) !== '');
 
     // The messages written in the person's name count against the limit of
     // twenty a minute (ws_rate_limited()); asked once, before anything is
     // written, so the channel is not left with half of them.
-    $messages = count($body['notes']) + ($write_welcome ? 1 : 0) + (($write_pin && ($app_id === 0)) ? 1 : 0);
+    $messages = count($body['notes']) + ($result['write_welcome'] ? 1 : 0) + (($result['write_pin'] && ($app_id === 0)) ? 1 : 0);
 
     if (($messages > 0) && ((int) db_value("SELECT COUNT(*) FROM ws_messages
         WHERE sender_kind = 'user' AND sender_id = '" . (int) $viewer['id'] . "' AND created_at > '" . (time() - 60) . "'") + $messages > 20)) {
         return $fail(lang('You are sending messages too quickly. Please wait a moment.'));
+    }
+
+    $result['ok'] = true;
+    $result['body'] = $body;
+    $result['planned'] = $planned;
+
+    return $result;
+}
+
+/**
+ * Applies a template to a channel: its tasks are made in the channel, its
+ * notes are written as the person's own and shared there, the summary and
+ * the pinned message fill what is empty, and a line in the channel says what
+ * came in. Everything is checked before the first write.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param array $template ws_template()
+ * @param array $options  new_channel (the channel was made from the template
+ *                        a moment ago: the welcome is written), app_id (an API
+ *                        application acting for $viewer writes the pinned
+ *                        message)
+ * @return array ok, error, message, warning, tasks, notes, unassigned (made
+ *               with nobody on them), denied (of those, for want of the
+ *               right), summary_kept, pinned_kept, links_skipped, task_ids,
+ *               note_ids
+ */
+function ws_template_apply($viewer, $channel, $template, $options = array())
+{
+    $result = array(
+        'ok' => false, 'error' => '', 'message' => '', 'warning' => false,
+        'tasks' => 0, 'notes' => 0, 'unassigned' => 0, 'denied' => 0, 'summary_kept' => false, 'pinned_kept' => false,
+        'links_skipped' => 0, 'task_ids' => array(), 'note_ids' => array(),
+    );
+
+    $checked = ws_template_apply_check($viewer, $channel, $template, $options);
+
+    if (!$checked['ok']) {
+        $result['error'] = $checked['error'];
+
+        return $result;
+    }
+
+    $new_channel = !empty($options['new_channel']);
+    $app_id = (int) ($options['app_id'] ?? 0);
+    $body = $checked['body'];
+    $planned = $checked['planned'];
+    $write_summary = $checked['write_summary'];
+    $write_pin = $checked['write_pin'];
+    $write_welcome = $checked['write_welcome'];
+
+    foreach (array('unassigned', 'denied', 'summary_kept', 'pinned_kept') as $key) {
+        $result[$key] = $checked[$key];
     }
 
     // Writing starts here. A channel made from the template a moment ago

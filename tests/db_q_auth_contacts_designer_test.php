@@ -7,8 +7,9 @@
  * queries with values run through db_q() placeholders, not escape()/e()
  * concatenated into the SQL text, and every db_q() call passes one value
  * per '?'. The raw queries left are those without values and, in
- * forms.php, those completed by $sql_where, $sql_collection, $sql_update,
- * the INSERT's $values or pg_catalog_bin_live_sql().
+ * forms.php, those completed by $sql_where or pg_catalog_bin_live_sql().
+ * The page type record write binds its collection, its page id and every
+ * property as values.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -118,7 +119,7 @@ function db_q_auth_contacts_designer_test_calls($path)
 // Clause variables a raw query may still be completed by.
 function db_q_auth_contacts_designer_test_built($text)
 {
-	return (bool) preg_match('/\$(sql_where|sql_collection|sql_update|values)\b|pg_catalog_bin_live_sql\(/', $text);
+	return (bool) preg_match('/\$sql_where\b|pg_catalog_bin_live_sql\(/', $text);
 }
 
 function test_db_q_auth_contacts_designer_value_queries_use_db_q()
@@ -127,7 +128,7 @@ function test_db_q_auth_contacts_designer_value_queries_use_db_q()
 		'includes/fn/auth.php' => 14,
 		'includes/fn/contacts.php' => 17,
 		'includes/fn/designer.php' => 3,
-		'includes/fn/forms.php' => 24,
+		'includes/fn/forms.php' => 27,
 	);
 
 	foreach ($expected as $path => $minimum) {
@@ -162,7 +163,7 @@ function test_db_q_auth_contacts_designer_clauses_hold_placeholders()
 {
 	foreach (array('includes/fn/auth.php', 'includes/fn/contacts.php', 'includes/fn/designer.php', 'includes/fn/forms.php') as $path) {
 		foreach (file(PG_FUNCTIONS_DIR . '/' . $path) as $number => $line) {
-			if (!preg_match('/\$(where|form_type_filter|\w+_where_statement|sql_columns_to_update)\s*\.?=/', $line)) {
+			if (!preg_match('/\$(where|form_type_filter|\w+_where_statement|sql_columns_to_update|sql_collection|sql_update|placeholders)\s*\.?=/', $line)) {
 				continue;
 			}
 
@@ -243,6 +244,14 @@ function test_db_q_auth_contacts_designer_binds_as_before()
 	pg_assert_same(
 		"DELETE FROM contacts  WHERE ((id = '4') OR (id = '9'))",
 		pg_db_bind('DELETE FROM contacts  WHERE ((id = ?) OR (id = ?))', array((string) 4, (string) 9), $escape));
+	// The page type record write quotes every property, '' for an unset one,
+	// and matches the collection after the page id.
+	pg_assert_same(
+		"INSERT INTO form_list_view_pages (page_id, collection, layout) VALUES ('5', 'a', '')",
+		pg_db_bind('INSERT INTO form_list_view_pages (page_id, collection, layout) VALUES (?, ?, ?)', array((string) 5, (string) 'a', (string) (isset($unset) ? $unset : '')), $escape));
+	pg_assert_same(
+		"UPDATE form_list_view_pages SET layout = 'o\\'neil' WHERE (page_id = '5') AND (collection = 'b')",
+		pg_db_bind('UPDATE form_list_view_pages SET layout = ? WHERE (page_id = ?) AND (collection = ?)', array((string) "o'neil", (string) 5, (string) 'b'), $escape));
 	// The designer asset row keeps its quoted size and user.
 	pg_assert_same(
 		"INSERT INTO files (name, folder, description, type, size, user, timestamp) VALUES ('site.css', '0', '', 'css', '120', '3', UNIX_TIMESTAMP())",

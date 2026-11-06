@@ -1789,7 +1789,8 @@ function pg_list_edit_parse($column, $raw)
  * @param array    $columns field => definition
  * @param callable $allowed function ($user): whether this user may change the list
  * @return array array('user' => the user, 'field' => field, 'id' => record number,
- *               'value' => the value pg_list_edit_parse() read)
+ *               'value' => the value pg_list_edit_parse() read,
+ *               'was' => the value the cell opened with, pg_list_edit_was())
  */
 function pg_list_edit_request($columns, $allowed)
 {
@@ -1828,7 +1829,22 @@ function pg_list_edit_request($columns, $allowed)
         pg_list_edit_reply(array('ok' => false, 'code' => 'invalid', 'message' => $parsed['error']), 422);
     }
 
-    return array('user' => $user, 'field' => $field, 'id' => $id, 'value' => $parsed['value']);
+    return array('user' => $user, 'field' => $field, 'id' => $id, 'value' => $parsed['value'], 'was' => pg_list_edit_was($_POST));
+}
+
+/**
+ * The value the edited cell opened with, as the list drew it (its
+ * data-pg-edit-value): a screen whose write must not overwrite a change
+ * made elsewhere since the list was drawn compares it with what is stored.
+ * Null when the request does not carry it (a page drawn by an older
+ * script). Pure.
+ *
+ * @param array $post the request's fields
+ * @return string|null
+ */
+function pg_list_edit_was(array $post)
+{
+    return (isset($post['was']) && is_string($post['was'])) ? $post['was'] : null;
 }
 
 /**
@@ -7373,6 +7389,9 @@ function pg_js_bundles()
         'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js', 'assets/js/pg_list_table_edit.js'),
         // The Prototype view's hotspot collector (window.PGProtoHotspots).
         'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
+        // Live pictures of designs and templates (window.PGLivePicture,
+        // includes/fn/design_previews.php).
+        'assets/js/pg_live_picture.min.js'         => array('assets/js/pg_live_picture.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
@@ -7389,7 +7408,7 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_area.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
             'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_tracks.js', 'assets/js/pg_image_editor_keyframes.js', 'assets/js/pg_image_editor_render.js', 'assets/js/pg_image_editor_scenes.js', 'assets/js/pg_image_editor_present.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
-            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
+            'assets/js/pg_image_editor_glyph.js', 'assets/js/pg_image_editor_warp.js', 'assets/js/pg_image_editor_puppet.js', 'assets/js/pg_image_editor_outline.js', 'assets/js/pg_image_editor_builder.js',
             'assets/js/pg_image_editor_actions.js', 'assets/js/pg_image_editor_menu.js'),
         // The image editor's animation encoder, started as a worker (or on the
         // page) by pg_image_editor_render.js.

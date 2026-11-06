@@ -21,6 +21,10 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
 if (!defined('PG_SHIPMENT_LOOKUP_LIMIT')) {
     define('PG_SHIPMENT_LOOKUP_LIMIT', 10);
 }

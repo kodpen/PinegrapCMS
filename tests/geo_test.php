@@ -227,3 +227,29 @@ function test_geo_city_needs_trusted_edge()
 {
 	pg_assert_same('', pg_geo_city(), 'no edge, no city');
 }
+
+// Which edge's location headers a peer may set. A trusted proxy that only
+// adds X-Forwarded-For passes the visitor's own CF-IPCountry through, so it
+// speaks for no edge; a Cloudflare edge sets Cloudflare's headers alone.
+function test_geo_edge_sources()
+{
+	$raw = '192.0.2.0/24,198.51.100.7 cf-connecting-ip,203.0.113.9 x-forwarded-for,203.0.113.10 true-client-ip';
+
+	// An entry saved before the header choice existed keeps both.
+	pg_assert_same(array('cloudflare', 'cloudfront'), pg_geo_edge_sources($raw, '192.0.2.44'));
+
+	// A Cloudflare Tunnel's cloudflared, listed with CF-Connecting-IP.
+	pg_assert_same(array('cloudflare'), pg_geo_edge_sources($raw, '198.51.100.7'));
+
+	// A load balancer or a vendor that sets another header: no edge.
+	pg_assert_same(array(), pg_geo_edge_sources($raw, '203.0.113.9'), 'x-forwarded-for proxy');
+	pg_assert_same(array(), pg_geo_edge_sources($raw, '203.0.113.10'), 'true-client-ip proxy');
+
+	// A peer that is not listed, or no address at all.
+	pg_assert_same(array(), pg_geo_edge_sources($raw, '198.51.100.8'));
+	pg_assert_same(array(), pg_geo_edge_sources($raw, ''));
+
+	// A Cloudflare edge sets its own headers, never CloudFront's.
+	pg_assert_same(array('cloudflare'), pg_geo_edge_sources('', '173.245.48.1'));
+	pg_assert_same(array('cloudflare'), pg_geo_edge_sources('', '2400:cb00::1'));
+}

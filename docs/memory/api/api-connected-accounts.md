@@ -14,15 +14,16 @@ description: The site as an OAuth client (connected accounts, includes/fn/connec
 
 ## How does a screen connect an account?
 - A form posting to `connect.php` with `pg_connect_start_fields($provider, $purpose, 'my_screen.php')` inside it. Connecting the same account again for another purpose merges the scopes into the same row (`connection_id`).
-- Tokens are sealed with `ENCRYPTION_KEY` (`pg_connect_can_seal()`); without it the screen switches connecting off. Before the tables exist (`pg_connect_schema_ready()`) every read answers "no account".
+- Tokens are sealed with `ENCRYPTION_KEY` (`pg_connect_can_seal()`); without it the screen switches connecting off. Before the tables exist (`pg_connect_schema_ready()`) reads answer "no account".
 
 ## How does code use an account?
-- Find it with `pg_connect_accounts(array('purpose' => ...))`, then call `pg_connect_api($id, 'POST', $url, $options, $scopes)` (a 401 renews the token once and repeats), or take only the token with `pg_connect_access_token($id, $scopes)`.
+- Find it with `pg_connect_accounts(array('purpose' => ...))`, then call `pg_connect_api($id, 'POST', $url, $options, $scopes)` (a 401 renews once and repeats), or take only the token with `pg_connect_access_token($id, $scopes)`.
 - Microsoft tokens are per resource: pass the call's scopes (e.g. `https://outlook.office.com/SMTP.Send`).
 - Never read a refresh token. Renewal is locked per connection (`GET_LOCK`), and `invalid_grant` marks the account `reauth`.
-- Tokens a server fetches for itself (Paraşüt, carriers' `client_credentials`): `pg_connect_service_get/put/delete($key)`, sealed in `connect_accounts` as provider `service`. Never a plain file or a `config` column.
+- Tokens a server fetches for itself (Paraşüt, carriers' `client_credentials`): `pg_connect_service_get/put/delete($key)`, sealed in `connect_accounts` as provider `service`, never a file or `config` column.
+- `pg_user_delete()` ends the person's rows via `pg_connect_forget_user()` (revoke, delete): a reused user id must not inherit them.
 - Worked examples (mail, backups, response headers): `api-connected-accounts-usage.md`.
 
 ## How are an application's options and the Google fallback kept?
-- An option may carry a `pattern` and an `invalid` text in its provider file (Microsoft `tenant`: `pg_connect_tenant_pattern()`). `connections.php` refuses a value that does not fit, and a stored one makes `pg_connect_app()` say `options_valid => false`, so `pg_connect_app_ready()` is false and the card names the problem; `pg_connect_endpoint()` answers `''` for it. An empty tenant is still `common`; a typo never is (issue #5987: a typo opened a directory-only application to every account).
-- Google without a `connect_apps` row uses the Sign in with Google application (`pg_signin_google_app()`). Its secret shows as stored on the form, and `pg_connect_app_save()` copies it into Google's first row when the client ID is the same and no secret is typed (#5988: saving the form unchanged stored an empty secret and stopped Gmail, Drive). "Use the Sign in with Google application" (`pg_connect_app_remove('google')`) deletes the row; accounts stay.
+- An option may carry a `pattern` and an `invalid` text in its provider file (Microsoft `tenant`: `pg_connect_tenant_pattern()`). `connections.php` refuses a value that does not fit, and a stored one makes `pg_connect_app()` say `options_valid => false`, so `pg_connect_app_ready()` is false and the card names the problem; `pg_connect_endpoint()` answers `''` for it. An empty tenant is still `common`; a typo never is (#5987: a typo opened a single-tenant app to every account).
+- Google without a `connect_apps` row uses the Sign in with Google application (`pg_signin_google_app()`). `pg_connect_app_save()` copies its secret into Google's first row when the client ID is the same and no secret is typed (#5988: an unchanged save stored an empty secret). "Use the Sign in with Google application" (`pg_connect_app_remove('google')`) deletes the row; accounts stay.

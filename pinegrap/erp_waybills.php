@@ -22,6 +22,7 @@ if (!validate_erp_access($user)) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/erp/drawer.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_waybills');
 
@@ -82,7 +83,9 @@ foreach ($open_orders as $order) {
     $output_order_options .= '<option value="' . (int) $order['id'] . '">' . h('#' . $order['order_number'] . ' - ' . $who) . '</option>';
 }
 
-$output_rows = '';
+// Every note of the view is printed: the list table driver sorts and
+// searches them in the browser (browser mode) and keeps a heading's sort.
+$list_rows = array();
 
 foreach ($waybills as $waybill) {
     $id = (int) $waybill['id'];
@@ -113,23 +116,47 @@ foreach ($waybills as $waybill) {
         $ship_to = trim((string) $waybill['ship_to_title']) . (($ship_to !== '') ? ', ' . $ship_to : '');
     }
 
-    $output_rows .=
-        '<tr' . erp_drawer_row_attributes($id) . ($is_cancelled ? ' class="fg-secondary"' : '') . '>
-            <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'' . h(escape_javascript('edit_erp_waybill.php?id=' . $id . '&send_to=' . urlencode(REQUEST_URL))) . '\'"><i class="bi bi-eye"></i></button>
-            </td>
-            <td class="align-middle text-nowrap chart_label" data-order="' . h($waybill['full_number']) . '">' . h($waybill['full_number']) . '</td>
-            <td class="align-middle text-nowrap" data-order="' . h($waybill['issue_date']) . '">' . h(prepare_form_data_for_output($waybill['issue_date'], 'date')) . '</td>
-            <td class="align-middle text-nowrap" data-order="' . h($waybill['ship_date']) . '">' . h(prepare_form_data_for_output($waybill['ship_date'], 'date')) . '</td>
-            <td style="max-width:240px" class="text-nowrap text-truncate align-middle">' . h($waybill['account_title']) . '</td>
-            <td style="max-width:220px" class="text-nowrap text-truncate align-middle">' . h($ship_to) . '</td>
-            <td style="max-width:160px" class="text-nowrap text-truncate align-middle">' . h($waybill['carrier_title']) . '</td>
-            <td class="align-middle text-end" data-order="' . (int) $waybill['line_count'] . '">' . (int) $waybill['line_count'] . '</td>
-            <td class="align-middle">' . $output_order . '</td>
-            <td class="align-middle">' . $output_invoice . '</td>
-            <td class="align-middle">' . $output_state . '</td>
-        </tr>';
+    $list_rows[] = array(
+        'id' => $id,
+        'class' => $is_cancelled ? 'fg-secondary' : '',
+        'cells' => array(
+            'number' => pg_list_cell('<a href="' . h('edit_erp_waybill.php?id=' . $id . '&send_to=' . urlencode(REQUEST_URL)) . '" class="pg-link-body-emphasis" data-pg-open>' . h($waybill['full_number']) . '</a>', 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $waybill['full_number'])),
+            'date' => pg_list_cell(h(prepare_form_data_for_output($waybill['issue_date'], 'date')), 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $waybill['issue_date'])),
+            'ship_date' => pg_list_cell(h(prepare_form_data_for_output($waybill['ship_date'], 'date')), 'align-middle text-nowrap', array('data-pg-sort-value' => (string) $waybill['ship_date'])),
+            'account' => pg_list_cell(h($waybill['account_title']), 'align-middle text-nowrap text-truncate'),
+            'ship_to' => pg_list_cell(h($ship_to), 'align-middle text-nowrap text-truncate'),
+            'carrier' => pg_list_cell(h($waybill['carrier_title']), 'align-middle text-nowrap text-truncate'),
+            'lines' => pg_list_cell((string) (int) $waybill['line_count'], 'align-middle', array('data-pg-sort-value' => (int) $waybill['line_count'])),
+            'order' => pg_list_cell($output_order),
+            'invoice' => pg_list_cell($output_invoice),
+            'status' => pg_list_cell($output_state),
+            'actions' => pg_list_cell(erp_drawer_button($id)),
+        ),
+    );
 }
+
+$columns = array(
+    'number' => array('heading' => lang('Document Number'), 'kind' => 'link'),
+    'date' => array('heading' => lang('Date'), 'kind' => 'date'),
+    'ship_date' => array('heading' => lang('Shipment Date'), 'kind' => 'date'),
+    'account' => array('heading' => lang('Account')),
+    'ship_to' => array('heading' => lang('Delivered to')),
+    'carrier' => array('heading' => lang('Carrier')),
+    'lines' => array('heading' => lang('Lines'), 'kind' => 'number'),
+    'order' => array('heading' => lang('Order')),
+    'invoice' => array('heading' => lang('Invoice')),
+    'status' => array('heading' => lang('Status'), 'kind' => 'badge'),
+    'actions' => array('heading' => lang('Action'), 'kind' => 'actions'),
+);
+$sort_columns = pg_list_table_printed_sort_columns($columns);
+$sort_default = array('sort' => 'date', 'order' => 'desc');
+$list_state = pg_list_state('erp_waybills', $sort_columns, $sort_default);
+$list = pg_list_table_printed(array(
+    'list' => 'erp_waybills',
+    'columns' => $columns,
+    'levels' => $list_state['sorts'],
+    'rows' => $list_rows,
+));
 
 echo
 pg_page_shell([
@@ -154,34 +181,17 @@ pg_page_shell([
                     <button type="submit" class="btn btn-sm btn-outline theme-secondary text-nowrap"><i class="bi bi-cart me-1"></i>' . lang('Open it') . '</button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
+                ' . pg_list_table_search_box('erp_waybills') . '
+                ' . pg_list_sort_menu('erp_waybills.php', $sort_columns, $list_state['sorts'], $sort_default, ($filter !== '') ? array('filter' => $filter) : array()) . '
                 ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_waybills.php')) . '
             </nav>
             <div class="card my-7">
-                <div class="card-body p-0 position-relative">
-                    <table class="chart table-hover table " style="width:100%;display:none;">
-                        <thead>
-                            <tr>
-                                <th class="noVis">' . lang(array('string' => 'Action')) . '</th>
-                                <th>' . lang('Document Number') . '</th>
-                                <th>' . lang('Date') . '</th>
-                                <th>' . lang('Shipment Date') . '</th>
-                                <th>' . lang('Account') . '</th>
-                                <th>' . lang('Delivered to') . '</th>
-                                <th>' . lang('Carrier') . '</th>
-                                <th class="text-end">' . lang('Lines') . '</th>
-                                <th>' . lang('Order') . '</th>
-                                <th>' . lang('Invoice') . '</th>
-                                <th>' . lang('Status') . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $output_rows . '</tbody>
-                    </table>
-                </div>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Delivery Notes')) . '
             </div>
         </div>
     </div>
 </main>
-' . erp_drawer_markup('waybill') .
+' . erp_drawer_markup('waybill') . pg_js_bundle_tags('assets/js/pg_list_table.min.js') .
 output_footer();
 
 $liveform->remove_form();

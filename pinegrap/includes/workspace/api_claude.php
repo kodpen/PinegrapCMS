@@ -182,7 +182,7 @@ function ws_claude_api_routes()
             'handler'     => 'ws_api_channel_context',
             'returns'     => 'WorkspaceChannelContext',
             'summary'     => 'What a channel is about, in one call',
-            'description' => 'The channel\'s summary, its latest decisions and notes, its latest messages (oldest first, tags spelled out) and its open tasks: what an assistant reads before it answers in the channel. For a discussion, thread holds the channel it was started in and the message it talks over (message is null when that was deleted); it is null for a channel. The application chosen for Claude also reads a channel or a discussion its owner is not in while a request to Claude asked there (or a run on one of its tasks) is open: as the person who asked reads it.',
+            'description' => 'The channel\'s summary, its latest decisions and notes, its latest messages (oldest first, tags spelled out) and its open tasks: what an assistant reads before it answers in the channel. The open tasks need tasks:read; without it open_tasks is empty and left_out names the scope. For a discussion, thread holds the channel it was started in and the message it talks over (message is null when that was deleted); it is null for a channel. The application chosen for Claude also reads a channel or a discussion its owner is not in while a request to Claude asked there (or a run on one of its tasks) is open: as the person who asked reads it.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
@@ -1155,9 +1155,47 @@ function ws_api_channel_context($params)
         );
     }
 
+    // Tasks need tasks:read, as every other Workspace read of tasks
+    // (GET /workspace/my-day, GET /workspace/search, the customer history):
+    // workspace:read alone opens the channel, not the tasks filed in it.
+    $tasks_read = api_has_scope(api_current_scopes(), 'tasks:read');
+    $tasks = ws_api_channel_context_tasks($tasks_read, function () use ($viewer, $channel) {
+        return ws_tasks_list($viewer, array('scope' => 'channel', 'channel_id' => (int) $channel['id'], 'status' => 'open', 'limit' => 30));
+    });
+
+    api_ok(array(
+        'channel'    => array(
+            'id'      => (int) $channel['id'],
+            'name'    => (string) $channel['name'],
+            'kind'    => (string) $channel['kind'],
+            'topic'   => (string) $channel['topic'],
+            'summary' => ws_plain_text($viewer, (string) $channel['summary'], $refs),
+        ),
+        'left_out'   => $tasks_read ? array() : array('tasks:read'),
+        'thread'     => $thread,
+        'decisions'  => $decisions,
+        'messages'   => $messages,
+        'open_tasks' => $tasks,
+    ));
+}
+
+/**
+ * The channel's open tasks as the context lists them: none, and none read,
+ * without tasks:read.
+ *
+ * @param bool     $tasks_read whether the key holds tasks:read
+ * @param callable $load       function (): array, the task briefs (ws_tasks_list())
+ * @return array[]
+ */
+function ws_api_channel_context_tasks($tasks_read, $load)
+{
+    if (!$tasks_read) {
+        return array();
+    }
+
     $tasks = array();
 
-    foreach (ws_tasks_list($viewer, array('scope' => 'channel', 'channel_id' => (int) $channel['id'], 'status' => 'open', 'limit' => 30)) as $brief) {
+    foreach ((array) call_user_func($load) as $brief) {
         $people = array();
 
         foreach ((array) $brief['assignees'] as $person) {
@@ -1174,19 +1212,7 @@ function ws_api_channel_context($params)
         );
     }
 
-    api_ok(array(
-        'channel'    => array(
-            'id'      => (int) $channel['id'],
-            'name'    => (string) $channel['name'],
-            'kind'    => (string) $channel['kind'],
-            'topic'   => (string) $channel['topic'],
-            'summary' => ws_plain_text($viewer, (string) $channel['summary'], $refs),
-        ),
-        'thread'     => $thread,
-        'decisions'  => $decisions,
-        'messages'   => $messages,
-        'open_tasks' => $tasks,
-    ));
+    return $tasks;
 }
 
 /**
@@ -1226,6 +1252,7 @@ function ws_api_channel_context_schema()
 {
     return array(
         'channel'    => array('id' => 'integer', 'name' => 'string', 'kind' => 'string', 'topic' => 'string', 'summary' => 'string'),
+        'left_out'   => array('string'),
         'thread'     => 'WorkspaceContextThread?',
         'decisions'  => array(array('id' => 'integer', 'kind' => 'string', 'author' => 'string', 'text' => 'string', 'created_at' => 'string')),
         'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'string')),

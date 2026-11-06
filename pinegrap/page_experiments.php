@@ -305,38 +305,49 @@ if (!$has_open) {
         $liveform->assign_field_value('weight_b', '50');
     }
 
+    // The form's submit button sits in the sticky save bar below the
+    // columns and reaches the form through its form attribute.
     $output_form = '
             <div class="card my-7">
-                <div class="card-header">' . h(lang('New experiment')) . '</div>
-                <div class="card-body">
-                    <form method="post" action="' . h($self) . '">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('New experiment')) . '</div>
+                <div class="card-body pt-0">
+                    <form method="post" action="' . h($self) . '" id="page_experiment_new">
                         ' . get_token_field() . '
                         <input type="hidden" name="action" value="create">
                         <div class="row g-5">
                             <div class="col-12 md:col-6">
-                                <label for="name" class="form-label">' . h(lang('Name')) . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'name' => 'name', 'id' => 'name', 'maxlength' => '100', 'class' => 'form-control', 'required' => 'required')) . '
+                                <div class="form-field">
+                                    <label for="name" class="form-label">' . h(lang('Name')) . '</label>
+                                    ' . $liveform->output_field(array('type' => 'text', 'name' => 'name', 'id' => 'name', 'maxlength' => '100', 'class' => 'form-control', 'required' => 'required')) . '
+                                </div>
                             </div>
                             <div class="col-12 md:col-6">
-                                <label for="draft_page_id" class="form-label">' . h(lang('Variant B')) . '</label>
-                                ' . $liveform->output_field(array('type' => 'select', 'name' => 'draft_page_id', 'id' => 'draft_page_id', 'options' => $draft_options, 'class' => 'form-control', 'aria-describedby' => 'draft_page_id_help')) . '
-                                <div id="draft_page_id_help" class="form-text">' . h(lang('A draft of the same design. A new copy is made in Drafts; edit it in the Visual Page Editor before you start.')) . '</div>
+                                <div class="form-field">
+                                    <label for="draft_page_id" class="form-label">' . h(lang('Variant B')) . '</label>
+                                    ' . $liveform->output_field(array('type' => 'select', 'name' => 'draft_page_id', 'id' => 'draft_page_id', 'options' => $draft_options, 'class' => 'form-control', 'aria-describedby' => 'draft_page_id_help')) . '
+                                    <div id="draft_page_id_help" class="form-text">' . h(lang('A draft of the same design. A new copy is made in Drafts; edit it in the Visual Page Editor before you start.')) . '</div>
+                                </div>
                             </div>
                             <div class="col-12 md:col-6">
-                                <label for="goal_kind" class="form-label">' . h(lang('Counts as a conversion')) . '</label>
-                                ' . $liveform->output_field(array('type' => 'select', 'name' => 'goal_kind', 'id' => 'goal_kind', 'options' => $goal_options, 'class' => 'form-control')) . '
+                                <div class="form-field">
+                                    <label for="goal_kind" class="form-label">' . h(lang('Counts as a conversion')) . '</label>
+                                    ' . $liveform->output_field(array('type' => 'select', 'name' => 'goal_kind', 'id' => 'goal_kind', 'options' => $goal_options, 'class' => 'form-control')) . '
+                                </div>
                             </div>
                             <div class="col-12 md:col-6" id="goal_target_field">
-                                <label for="goal_target" class="form-label"><span data-goal-kind="click">' . h(lang('Goal name')) . '</span><span data-goal-kind="page">' . h(lang('Goal page id')) . '</span></label>
-                                ' . $liveform->output_field(array('type' => 'text', 'name' => 'goal_target', 'id' => 'goal_target', 'maxlength' => '64', 'class' => 'form-control', 'aria-describedby' => 'goal_target_help')) . '
-                                <div id="goal_target_help" class="form-text"><span data-goal-kind="click">' . h(lang('The goal name set on the button or link.')) . '</span><span data-goal-kind="page">' . h(lang('The id of a page on the site, as in the pages list.')) . '</span></div>
+                                <div class="form-field">
+                                    <label for="goal_target" class="form-label"><span data-goal-kind="click">' . h(lang('Goal name')) . '</span><span data-goal-kind="page">' . h(lang('Goal page id')) . '</span></label>
+                                    ' . $liveform->output_field(array('type' => 'text', 'name' => 'goal_target', 'id' => 'goal_target', 'maxlength' => '64', 'class' => 'form-control', 'aria-describedby' => 'goal_target_help')) . '
+                                    <div id="goal_target_help" class="form-text"><span data-goal-kind="click">' . h(lang('The goal name set on the button or link.')) . '</span><span data-goal-kind="page">' . h(lang('The id of a page on the site, as in the pages list.')) . '</span></div>
+                                </div>
                             </div>
                             <div class="col-12 md:col-6">
-                                <label for="weight_b" class="form-label">' . h(lang('Share of visitors who see variant B (%)')) . '</label>
-                                ' . $liveform->output_field(array('type' => 'number', 'name' => 'weight_b', 'id' => 'weight_b', 'min' => '1', 'max' => '99', 'step' => '1', 'class' => 'form-control', 'required' => 'required')) . '
+                                <div class="form-field">
+                                    <label for="weight_b" class="form-label">' . h(lang('Share of visitors who see variant B (%)')) . '</label>
+                                    ' . $liveform->output_field(array('type' => 'number', 'name' => 'weight_b', 'id' => 'weight_b', 'min' => '1', 'max' => '99', 'step' => '1', 'class' => 'form-control', 'required' => 'required')) . '
+                                </div>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-solid theme-primary mt-7"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . h(lang('Set up the experiment')) . '</button>
                     </form>
                     <script>
                         // The goal target only means something for a click
@@ -370,12 +381,39 @@ if (!$has_open) {
             </div>';
 }
 
+// What the status column reads: the page and how many of its experiments
+// are in each state.
+$summary_total = count($experiments);
+$summary_running = 0;
+$summary_ended = 0;
+
+foreach ($experiments as $experiment) {
+    if ($experiment['status'] === 'running') {
+        $summary_running++;
+    } elseif ($experiment['status'] === 'ended') {
+        $summary_ended++;
+    }
+}
+
+// The save bar is drawn only with the New experiment form: while an
+// experiment is open the screen has nothing to save.
+$output_save_bar = ($output_form !== '') ? '
+        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                <div class="container">
+                    <div class="btn-group flex-wrap justify-content-center">
+                        <button type="submit" form="page_experiment_new" class="btn my-1 btn-solid theme-primary"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i><span class="pg-btn-label">' . h(lang('Set up the experiment')) . '</span></button>
+                    </div>
+                </div>
+            </nav>
+        </div>' : '';
+
 echo $shell() . '
 <main id="content" class="container-fluid">
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
     <div class="row">
-        <div class="col-12">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->output_notices() . '
+        <div class="col-12 lg:col-8 2xl:col-9 order-1">
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_page_edit_url_by_id($live['page_id'])) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit the live page')) . '</a>
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . encode_url_path($live['page_name'])) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View the page')) . '</a>
@@ -384,6 +422,27 @@ echo $shell() . '
             </nav>
             ' . $output_form . $output_experiments . '
         </div>
+        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+            <div class="position-sticky my-7" style="top:3.3rem;">
+                <div class="card">
+                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('Summary')) . '</div>
+                    <div class="card-body pt-0">
+                        <div class="fw-semibold text-break mb-5">' . h($live['page_name']) . '</div>
+                        <dl class="row small mb-0">
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Experiments')) . '</dt>
+                            <dd class="col-4 text-end mb-2">' . pg_format_number($summary_total, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Running')) . '</dt>
+                            <dd class="col-4 text-end mb-2' . ($summary_running ? ' fg-success fw-semibold' : '') . '">' . pg_format_number($summary_running, 0) . '</dd>
+                            <dt class="col-8 fw-normal fg-secondary">' . h(lang('Ended')) . '</dt>
+                            <dd class="col-4 text-end mb-0">' . pg_format_number($summary_ended, 0) . '</dd>
+                        </dl>
+                        <div class="form-text mt-5">' . h($has_open
+                            ? lang('A page has one open experiment at a time; end or delete it to set up the next one.')
+                            : lang('Search engines and signed-in staff always see the live page.')) . '</div>
+                    </div>
+                </div>
+            </div>
+        </div>' . $output_save_bar . '
     </div>
 </main>
 ' . output_footer();

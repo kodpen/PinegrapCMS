@@ -256,7 +256,9 @@ function pg_sms_campaign_queue($campaign, $audience, $now, $enqueue = 'pg_sms_en
     $counts = array('queued' => 0, 'refused' => 0);
 
     foreach ($audience as $number => $contact_id) {
-        $result = call_user_func($enqueue, (string) $number, (string) $campaign['body'], 'marketing', array(
+        // With its plus: the layer reads the number again, and bare digits
+        // would refuse a foreign number or take one for a Turkish mobile.
+        $result = call_user_func($enqueue, pg_sms_dial((string) $number), (string) $campaign['body'], 'marketing', array(
             'reference'  => pg_sms_campaign_reference($campaign['id'], $contact_id),
             'expires_at' => (int) $now + pg_sms_campaign_expiry(),
         ));
