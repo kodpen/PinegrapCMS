@@ -18,6 +18,76 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * The UPDATE that claims campaign recipients for one run, Send now or the
+ * job. One statement, conditional on nobody having claimed or finished the
+ * rows since they were read: it is atomic even on MyISAM, so when two runs
+ * overlap each row goes to whichever statement reaches it first, and the
+ * token says which rows a run won. Without it Send now and a job run that
+ * read the same recipients both delivered to them. '' when there is no id.
+ * Pure.
+ *
+ * @param array  $ids    email_recipients.id values
+ * @param string $token  the run's claim token
+ * @return string
+ */
+function pg_email_campaign_claim_query($ids, $token)
+{
+    $ids = array_values(array_unique(array_filter(array_map('intval', (array) $ids), function ($id) {
+        return $id > 0;
+    })));
+
+    if (!$ids) {
+        return '';
+    }
+
+    return "UPDATE email_recipients
+        SET claimed_at = UNIX_TIMESTAMP(), claim_token = '" . e((string) $token) . "'
+        WHERE
+            (id IN (" . implode(',', $ids) . "))
+            AND (complete = '0')
+            AND (claimed_at = 0)
+            AND (next_attempt_at <= UNIX_TIMESTAMP())";
+}
+
+/**
+ * The UPDATE that gives back claims a run left behind (it died, or was
+ * killed, between claiming its recipients and finishing with them) after
+ * fifteen minutes, far longer than a run takes. With a campaign id only that
+ * campaign's recipients: Send now frees its own campaign, so a claim left by
+ * a crashed window does not hold a recipient forever while the job is off.
+ * Pure.
+ *
+ * @param int $campaign_id  0 for every campaign
+ * @return string
+ */
+function pg_email_campaign_stale_claim_query($campaign_id = 0)
+{
+    $campaign_id = (int) $campaign_id;
+
+    return "UPDATE email_recipients
+        SET claimed_at = 0, claim_token = ''
+        WHERE
+            (complete = '0')
+            AND (claimed_at > 0)
+            AND (claimed_at < (UNIX_TIMESTAMP() - 900))" . (($campaign_id > 0) ? "
+            AND (email_campaign_id = '" . $campaign_id . "')" : "");
+}
+
+/**
+ * A new claim token: 32 hex characters.
+ *
+ * @return string
+ */
+function pg_email_campaign_claim_token()
+{
+    if (function_exists('random_bytes')) {
+        return bin2hex(random_bytes(16));
+    }
+
+    return bin2hex(openssl_random_pseudo_bytes(16));
+}
+
+/**
  * The email() properties of one campaign message. The purpose travels with
  * them: email() adds List-Unsubscribe and List-Unsubscribe-Post (RFC 8058)
  * only to a campaign whose purpose is commercial. The caller adds
@@ -94,13 +164,13 @@ function pg_email_campaign_failure($attempts_before, $error)
  * Stores a refused delivery on its email_recipients row (needs the retry
  * columns, pg_email_retry_ready()). A recipient given up is complete as far
  * as the campaign is concerned and marked failed; any other waits for
- * next_attempt_at. The job passes its claim token: the row is written only
+ * next_attempt_at. A run passes its claim token: the row is written only
  * while it holds the claim, and the claim is released.
  *
  * @param int         $recipient_id
  * @param string      $email_address    for the activity log line
  * @param int         $attempts_before  attempts stored before this one
- * @param string|null $claim_token      the job's claim, null for Send now
+ * @param string|null $claim_token      the run's claim, null without the retry columns
  * @param string      $user             the activity log user
  * @return bool true when the recipient was given up
  */
@@ -157,7 +227,7 @@ function pg_email_campaign_suppressed_set()
  * @param int         $id           email_recipients.id
  * @param string      $address      the recipient's address
  * @param bool        $retry_ready  pg_email_retry_ready()
- * @param string|null $claim_token  the job's claim, released with the mark
+ * @param string|null $claim_token  the run's claim, released with the mark
  * @return bool  whether the recipient was skipped
  */
 function pg_email_campaign_skip_suppressed($id, $address, $retry_ready, $claim_token = null)
