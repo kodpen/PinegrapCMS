@@ -11,4 +11,4 @@ module: gift_card_recipients
 
 ## What was the symptom?
 - The designer cart (`cart_action.php`) saves only the recipient fields posted. Raising a gift card line's quantity and pressing Proceed to Checkout in the same post left the new units without a row; a visitor could also open the checkout without the legacy cart's Checkout button. The order then completed and `pg_order_complete_line_gift_cards()` read a null row: the card had no recipient (the e-mail campaign went to an empty address) and, with `ECOMMERCE_GIFT_CARD_VALIDITY_DAYS` set, `pg_order_gift_card_expiration(null, …)` gave `1971-01-01`, so the bought card was expired at once.
-- `pg_order_gift_card_expiration()` itself still treats only `'0000-00-00'` as "sent at once"; an empty or null date is no longer reached through the order preview.
+- `pg_order_gift_card_expiration()` now also counts a null, empty or invalid date from today (#7133, `commerce/gift-card-order-expiry.md`).

@@ -118,6 +118,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - gift-card-code-in-site-log.md: Site Log lines name a gift card by its last four characters (pg_gift_card_log_code()), never the full spendable code.
 - gift-card-email-variables.md: The product screen's Email Gift Card variable buttons (^^code^^, ^^amount^^ …): where the list lives, how it stays in step with the sender (#4449), what ^^amount^^ prints, the starter dumps' texts
 - gift-card-line-quantity-limit.md: A gift card line holds at most 100 units; every door that writes a line quantity refuses more with one translated error (#6806, #6820)
+- gift-card-order-expiry.md: How a gift card bought in an order gets its expiration date (validity days on the calendar from the delivery date or today), and the 1971-01-01 fault it fixed
 - gift-card-recipient-check.md: The order preview refuses an order while a gift card unit has no recipient row with a valid e-mail; why a card used to be issued with no recipient and a 1971 end date
 - gift-card-screens-store-credit.md: Gift card screens: store credit shown with its owner and kind, credit balance edits audited, code search without dashes, amount and quantity box sizes
 - givex-gift-card.md: How Givex gift card replies are read (pg_givex_parse_response), what an unreadable reply does at apply, at the submit check and at redemption, and how to test Givex without the real service.

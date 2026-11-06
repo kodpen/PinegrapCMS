@@ -2054,13 +2054,16 @@ function pg_order_gift_card_lines_over_limit($order_id)
 }
 
 /**
- * The day a gift card ends: the validity days counted from its delivery
- * date, or from today when it is sent at once ('0000-00-00'); '' when the
- * store sets no validity days. Pure.
+ * The day a gift card ends: the validity days counted on the calendar from
+ * its delivery date, or from today in the site time zone when it is sent at
+ * once ('0000-00-00') or the date is missing or not a real one (no
+ * recipient row gives NULL); '' when the store sets no validity days. A
+ * missing date used to reach strtotime() as false, so the days were counted
+ * from 1970 and the card was issued already expired (1971-01-01 for 365).
  *
- * @param string $delivery_date Y-m-d or '0000-00-00'
- * @param int    $validity_days ECOMMERCE_GIFT_CARD_VALIDITY_DAYS
- * @param int    $now           the current Unix time
+ * @param string|null $delivery_date Y-m-d or '0000-00-00'
+ * @param int         $validity_days ECOMMERCE_GIFT_CARD_VALIDITY_DAYS
+ * @param int         $now           the current Unix time
  * @return string Y-m-d or ''
  */
 function pg_order_gift_card_expiration($delivery_date, $validity_days, $now)
@@ -2069,9 +2072,13 @@ function pg_order_gift_card_expiration($delivery_date, $validity_days, $now)
         return '';
     }
 
-    $start = ($delivery_date == '0000-00-00') ? $now : strtotime($delivery_date, $now);
+    $start = pg_return_date($delivery_date);
 
-    return date('Y-m-d', strtotime('+' . (int) $validity_days . ' day', $start));
+    if ($start === '') {
+        $start = date('Y-m-d', (int) $now);
+    }
+
+    return pg_return_add_days($start, (int) $validity_days);
 }
 
 /**
