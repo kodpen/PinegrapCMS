@@ -684,6 +684,7 @@
     "Per-request runtime metrics recorded after each response is flushed to the client.": "Her isteğin çalışma süresi ve kaynak kullanımı, yanıt istemciye iletildikten sonra kaydedilir.",
     "Percent": "Yüzde",
     "Percent Cached": "Önbellek Oranı",
+    "Percent raised": "Toplanan yüzde",
     "Percentage": "Yüzde",
     "Perform action(s) if profile is disabled": "Profil devre dışıysa eylemleri gerçekleştirin",
     "Performance": "Performans",
