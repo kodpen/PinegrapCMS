@@ -60,7 +60,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-29.md: Decisions list, product part 29 (2026-11-04 evening on): the external API does not delete a store credit card; a gift card line takes at most 100 units
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-30.md: Decisions list, product part 30 (2026-11-05 on): a loop in one flow (Read a row, Repeat N times, date words in a value box); the image editor's eraser on shapes and touch corners
-- decisions-made-product-31.md: Decisions list, product part 31 (2026-11-05 evening on): the image editor's move recorded by dragging, sound in an animation's video
+- decisions-made-product-31.md: Decisions list, product part 31 (2026-11-05 evening on): the image editor's move recorded by dragging, sound in an animation's video, the hole a cut leaves
 - decisions-made-product-32.md: Decisions list, product part 32 (2026-11-05 night on): a Calculate rule in the value box; a refund by lines remembers its lines; the credit refund bonus on the payment part only
 - decisions-made-product-33.md: Decisions list, product part 33 (2026-11-05 night on): the flows-next questions (AI box, wait until a date, web address start, e-mail to the record's person, channel mention) and #7015
 - decisions-made-product-34.md: Decisions list, product part 34 (2026-11-05 night on): a review hides while its order is cancelled or its item refunded; folder access taken back on cancel; no private access in a bundle
