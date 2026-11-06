@@ -70,7 +70,7 @@ if (!$_POST) {
                                 ' . lang('File Format') . '
                             </h2>
                             <div class="card-body pt-0">
-                                <p class="my-3">' . lang('The first line names the columns: name, enabled, action, action_item_id, subject, format, body, page_id, from_name, from_email_address, reply_email_address, bcc_email_address, schedule_length, schedule_unit, schedule_period, schedule_base, schedule_time, purpose (the headings of the export). Only name is required. Separate cells with a comma, semicolon or tab.') . '</p>
+                                <p class="my-3">' . lang('The first line names the columns: name, enabled, action, action_item_id, subject, format, body, page_id, from_name, from_email_address, reply_email_address, bcc_email_address, schedule_length, schedule_unit, schedule_period, schedule_base, schedule_time, purpose (the headings of the export). Every row needs a name; a new profile also needs subject and from_name. Separate cells with a comma, semicolon or tab.') . '</p>
                                 <p class="mb-3">' . lang('The export\'s reading columns (action_item, page_name, created, last_modified and their user names) are skipped, so an exported file can be imported again.') . '</p>
                             </div>
                         </div>
