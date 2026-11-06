@@ -77,3 +77,14 @@ function test_workspace_flow_mail_person_unsubscribe_footer()
 	pg_assert_true(strpos($html, '</a></p></body>') !== false, 'before the body ends');
 	pg_assert_same('<p>Hi</p>', ws_flow_mail_unsubscribe_footer('<p>Hi</p>', 'html', ''), 'no link without a key to sign it');
 }
+
+// The marketing check loads the İYS client itself: the flow run path does not,
+// and a guarded call would skip an İYS refusal without a word.
+function test_workspace_flow_mail_person_iys_refusal_is_reached()
+{
+	$source = pg_test_function_source('ws_flow_mail_marketing_refusal');
+
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');", $source, 'the İYS client is loaded');
+	pg_assert_contains('if (pg_iys_email_refused($email)) {', $source, 'the refusal is asked every time');
+	pg_assert_false(strpos($source, "function_exists('pg_iys_email_refused')") !== false, 'no guard that turns the check off');
+}

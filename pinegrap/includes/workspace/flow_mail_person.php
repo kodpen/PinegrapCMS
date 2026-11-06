@@ -158,11 +158,15 @@ function ws_flow_mail_person($owner, $run)
  */
 function ws_flow_mail_marketing_refusal($email)
 {
+    // The İYS check lives in the İYS client, which the flow run path does not
+    // load on its own; without it the refusal would be skipped silently.
+    require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
+
     if (!(bool) db_value("SELECT id FROM contacts WHERE email_address = '" . e((string) $email) . "' AND opt_in = '1' LIMIT 1")) {
         return lang('The person has not agreed to marketing e-mail, so none was sent.');
     }
 
-    if (function_exists('pg_iys_email_refused') && pg_iys_email_refused($email)) {
+    if (pg_iys_email_refused($email)) {
         return lang('The person refused marketing e-mail in İYS, so none was sent.');
     }
 
