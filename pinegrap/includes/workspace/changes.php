@@ -1948,6 +1948,7 @@ function ws_change_viewer_from_row($row)
         'manage_erp_readonly' => $row['manage_erp_readonly'] ?? 0,
         'manage_calendars'    => $row['user_manage_calendars'] ?? '',
         'manage_forms'        => $row['user_manage_forms'] ?? '',
+        'manage_emails'       => $row['user_manage_emails'] ?? '',
     ));
 }
 

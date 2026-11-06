@@ -59,6 +59,7 @@
     "Mail queue": "Posta kuyruğu",
     "Mail queue worked: {var:1} sent, {var:2} not sent.": "E-posta kuyruğu çalıştı: {var:1} gönderildi, {var:2} gönderilemedi.",
     "Mail service": "Posta hizmeti",
+    "Mail to it is stopped": "Bu adrese posta durduruldu",
     "MailChimp": "MailChimp",
     "MailChimp Error": "MailChimp Hatası",
     "MailChimp Settings": "MailChimp Ayarları",

@@ -286,7 +286,49 @@ function pg_event_workspace_events()
         'subscription.cancelled',
         'form.paid',
         'inventory.changed',
+        'user.created',
+        'customer.consent_changed',
+        'mail.bounced',
+        'campaign.sent',
+        'page.created',
+        'page.updated',
+        'calendar_event.reserved',
+        'credit.issued',
+        'credit.expired',
     );
+}
+
+// The payload as the workspace keeps it: what a flow's start box reads must
+// be a single value (ws_flow_event_outputs()), so a consent's nested answer
+// is laid out flat, a bounce's yes/no becomes 0/1 and a bounce names the
+// contact of its address ($contact_of: address => contact id, 0 for none).
+// The webhook's own body is left as it is. Pure but for $contact_of.
+function pg_event_workspace_payload($event, $payload, $contact_of = 'pg_event_contact_of_address')
+{
+    $payload = (array) $payload;
+
+    if ((string) $event === 'customer.consent_changed') {
+        $consent = is_array($payload['consent'] ?? null) ? $payload['consent'] : array();
+
+        foreach (array('channel', 'purpose', 'status', 'source') as $key) {
+            $payload['consent_' . $key] = (string) ($consent[$key] ?? '');
+        }
+    }
+
+    if ((string) $event === 'mail.bounced') {
+        $payload['suppressed'] = empty($payload['suppressed']) ? 0 : 1;
+        $payload['contact_id'] = (int) call_user_func($contact_of, (string) ($payload['address'] ?? ''));
+    }
+
+    return $payload;
+}
+
+// The contact an e-mail address belongs to, the oldest of them, 0 for none.
+function pg_event_contact_of_address($address)
+{
+    $address = trim((string) $address);
+
+    return ($address === '') ? 0 : (int) db_value("SELECT id FROM contacts WHERE email_address = '" . e($address) . "' ORDER BY id LIMIT 1");
 }
 
 // The site's events kept only while an active scheduled action or flow
@@ -362,7 +404,7 @@ function pg_event_record($event, $payload = array())
         return;
     }
 
-    $json = json_encode(pg_event_payload_depth((array) $payload), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+    $json = json_encode(pg_event_payload_depth(pg_event_workspace_payload($event, (array) $payload)), JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
     db("INSERT INTO ws_events_in (event, payload, created_at, taken_at)
         VALUES ('" . e((string) $event) . "', '" . e(($json === false) ? '{}' : $json) . "', UNIX_TIMESTAMP(), 0)");

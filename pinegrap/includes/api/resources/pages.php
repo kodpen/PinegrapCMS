@@ -625,7 +625,10 @@ function api_pages_update($params) {
 		'vars'   => array($existing['page_name'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
 
+	// Queued past pg_announce(): the Workspace is told on its own, so a
+	// page changed through the API starts flows too.
 	api_webhook_enqueue('page.updated', array('id' => $id, 'name' => $existing['page_name']));
+	pg_event_record('page.updated', array('id' => $id, 'name' => $existing['page_name']));
 
 	$row = api_row(api_page_select() . " WHERE page.page_id = '" . $id . "' LIMIT 1");
 

@@ -173,6 +173,17 @@ function ws_events_catalog()
             );
         }
 
+        // Spots of a calendar event taken by a placed order.
+        $catalog['calendar_event.reserved'] = array('label' => lang('A calendar event is reserved'), 'when' => lang('When an order reserves a calendar event'), 'record' => 'calendar_event', 'right' => 'calendars', 'filter' => '');
+
+        // Store credit, about the customer's contact.
+        if (function_exists('pg_credit_ready') && pg_credit_ready()) {
+            $catalog += array(
+                'credit.issued'  => array('label' => lang('Store credit is issued'), 'when' => lang('When store credit is issued'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+                'credit.expired' => array('label' => lang('Store credit expires'), 'when' => lang('When store credit expires with money left'), 'record' => 'contact', 'right' => 'ecommerce', 'filter' => ''),
+            );
+        }
+
         // The fee of a designed form's record, narrowed to one form like a
         // submission.
         if (function_exists('pg_form_payment_ready') && pg_form_payment_ready()) {
@@ -185,6 +196,14 @@ function ws_events_catalog()
         'customer.updated' => array('label' => lang('A contact is changed'), 'when' => lang('When a contact is changed'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
         'form.submitted'   => array('label' => lang('A form is submitted'), 'when' => lang('When a form is submitted'), 'record' => 'form', 'right' => 'forms', 'filter' => 'page'),
         'contact_group.joined' => array('label' => lang('A contact joins a contact group'), 'when' => lang('When a contact joins a contact group'), 'record' => 'contact', 'right' => 'contacts', 'filter' => 'group'),
+        'customer.consent_changed' => array('label' => lang('A contact\'s consent changes'), 'when' => lang('When a contact gives or withdraws a consent'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
+        'mail.bounced'     => array('label' => lang('An e-mail bounces'), 'when' => lang('When an e-mail to an address bounces'), 'record' => 'contact', 'right' => 'contacts', 'filter' => ''),
+        'campaign.sent'    => array('label' => lang('A campaign is sent'), 'when' => lang('When an e-mail campaign finishes sending or an SMS campaign is queued'), 'record' => '', 'right' => 'emails', 'filter' => ''),
+        'user.created'     => array('label' => lang('A user account is made'), 'when' => lang('When a user account is made through the API'), 'record' => 'user_account', 'right' => 'users', 'filter' => ''),
+        // A page: checked against the pages the creator's tag resolves
+        // (ws_events_creator_sees()).
+        'page.created'     => array('label' => lang('A page is made'), 'when' => lang('When a page is made'), 'record' => 'page', 'right' => 'member', 'filter' => ''),
+        'page.updated'     => array('label' => lang('A page is changed'), 'when' => lang('When a page is changed in the designer or through the API'), 'record' => 'page', 'right' => 'member', 'filter' => ''),
     );
 
     // The staff agenda's (pg_booking_changed()): every member may wait for
@@ -289,7 +308,7 @@ function ws_events_own_failure($event, $payload, $flow_id)
  */
 function ws_events_checks_creator($event)
 {
-    return ws_events_is_own($event) || (strpos((string) $event, 'booking.') === 0);
+    return ws_events_is_own($event) || (strpos((string) $event, 'booking.') === 0) || (strpos((string) $event, 'page.') === 0);
 }
 
 /**
@@ -452,6 +471,14 @@ function ws_events_creator_sees($user_id, $event, $payload)
             && pg_booking_agenda_scope_allows(pg_booking_agenda_user_scope(array('id' => $user_id, 'role' => (int) ($viewer['role'] ?? 3))), (int) $staff_id);
     }
 
+    // A page: the creator's tag of it resolves (the folders they reach).
+    if (strpos((string) $event, 'page.') === 0) {
+        $id = (int) ($payload['id'] ?? 0);
+        $ref = ($id > 0) ? (ws_refs_resolve($viewer, array(array('sigil' => '#', 'type' => 'page', 'id' => $id)))['page:' . $id] ?? null) : null;
+
+        return is_array($ref) && !empty($ref['known']);
+    }
+
     if (strpos((string) $event, 'workspace.task.') === 0) {
         $task = ws_task((int) ($payload['id'] ?? 0));
 
@@ -569,7 +596,28 @@ function ws_events_record_of($event, $payload)
         return ((int) ($payload['channel_id'] ?? 0) > 0) ? array('channel', (int) $payload['channel_id']) : array('', 0);
     }
 
+    // A bounce: the contact of its address (pg_event_workspace_payload());
+    // store credit: the customer's contact.
+    if (($event === 'mail.bounced') || (strpos($event, 'credit.') === 0)) {
+        $contact_id = (int) ($payload[($event === 'mail.bounced') ? 'contact_id' : 'customer_id'] ?? 0);
+
+        return ($contact_id > 0) ? array('contact', $contact_id) : array('', 0);
+    }
+
     switch ($event) {
+        case 'user.created':
+            return array('user_account', (int) ($payload['id'] ?? 0));
+
+        case 'page.created':
+        case 'page.updated':
+            return array('page', (int) ($payload['id'] ?? 0));
+
+        case 'calendar_event.reserved':
+            return array('calendar_event', (int) ($payload['id'] ?? 0));
+
+        case 'customer.consent_changed':
+            return array('contact', (int) ($payload['id'] ?? 0));
+
         case 'stock.low':
         case 'inventory.changed':
         case 'product.updated':
