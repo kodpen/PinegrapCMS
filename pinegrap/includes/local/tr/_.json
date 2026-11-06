@@ -179,6 +179,7 @@
     "%1$d. %2$s — %3$s": "%1$d. %2$s — %3$s",
     "%1$s is an independent iOS and Android developer. %2$s": "%1$s bağımsız bir iOS ve Android geliştiricisidir. %2$s",
     "%1$s to %2$s": "%1$s ile %2$s arası",
+    "%1$s to %2$s a month": "Aylık %1$s - %2$s",
     "%1$s to %2$s in all": "Toplam %1$s ile %2$s arası",
     "%1$s to %2$s per traveller": "Kişi başı %1$s - %2$s",
     "%1$s · %2$s · %3$d min": "%1$s · %2$s · %3$d dk",
