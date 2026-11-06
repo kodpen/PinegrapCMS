@@ -88,6 +88,7 @@ function _test_charity_page_keys()
 		'email_volunteer_new', 'email_volunteer_received', 'email_pledge_new', 'email_pledge_received',
 		'events', 'event_view', 'event_new', 'report_new',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	);

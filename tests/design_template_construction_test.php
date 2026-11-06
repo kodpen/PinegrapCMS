@@ -115,6 +115,7 @@ function _test_cn_page_keys()
 		'projects', 'project', 'project_new',
 		'quote', 'quote_view', 'my_quotes', 'staff_quotes', 'privacy', 'email_reply',
 		'careers', 'job', 'job_new', 'application', 'application_view', 'my_applications', 'staff_applications',
+		'email_quote_new', 'email_quote_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
