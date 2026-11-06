@@ -3645,35 +3645,35 @@ function submit_order($type) {
                 if ($product['recurring_start_date'] <= date('Y-m-d')) {
                     switch ($product['recurring_payment_period']) {
                         case 'Monthly':
-                            $start_date = date($start_date_format, time() + 86400 * 30);
+                            $start_date = date($start_date_format, pg_calendar_days_later(30));
                             break;
 
                         case 'Weekly':
-                            $start_date = date($start_date_format, time() + 86400 * 7);
+                            $start_date = date($start_date_format, pg_calendar_days_later(7));
                             break;
 
                         case 'Every Two Weeks':
-                            $start_date = date($start_date_format, time() + 86400 * 14);
+                            $start_date = date($start_date_format, pg_calendar_days_later(14));
                             break;
 
                         case 'Twice every Month':
-                            $start_date = date($start_date_format, time() + 86400 * 15);
+                            $start_date = date($start_date_format, pg_calendar_days_later(15));
                             break;
 
                         case 'Every Four Weeks':
-                            $start_date = date($start_date_format, time() + 86400 * 28);
+                            $start_date = date($start_date_format, pg_calendar_days_later(28));
                             break;
 
                         case 'Quarterly':
-                            $start_date = date($start_date_format, time() + 86400 * 90);
+                            $start_date = date($start_date_format, pg_calendar_days_later(90));
                             break;
 
                         case 'Twice every Year':
-                            $start_date = date($start_date_format, time() + 86400 * 180);
+                            $start_date = date($start_date_format, pg_calendar_days_later(180));
                             break;
 
                         case 'Yearly':
-                            $start_date = date($start_date_format, time() + 86400 * 365);
+                            $start_date = date($start_date_format, pg_calendar_days_later(365));
                             break;
                     }
                     

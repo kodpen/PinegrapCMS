@@ -2145,6 +2145,32 @@ function pg_timezone_offset_label($zone, $year = null)
     return sprintf('(UTC%s%02d:%02d)', ($offset < 0) ? '-' : '+', intdiv($minutes, 60), $minutes % 60);
 }
 
+/**
+ * $now moved by $days whole calendar days in the default time zone, at the
+ * same local time of day. Adding 86400 seconds per day is wrong across a
+ * daylight saving change, where a day lasts 23 or 25 hours: near midnight
+ * the result falls on the wrong date ("yesterday" two days back, a start
+ * date one day short). A local time the target day skips (spring) moves
+ * forward as mktime() does.
+ *
+ * @param int|string $days     negative for days back
+ * @param int|null   $now      Unix timestamp; the current time when null
+ * @return int
+ */
+function pg_calendar_days_later($days, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    return mktime(
+        (int) date('G', $now),
+        (int) date('i', $now),
+        (int) date('s', $now),
+        (int) date('n', $now),
+        (int) date('j', $now) + (int) $days,
+        (int) date('Y', $now)
+    );
+}
+
 // Create function that will allow us to get a time, like "5 days ago", from a timestamp.
 // Properties:
 // timestamp: The Unix timestamp for the time that you want to compare to now.
