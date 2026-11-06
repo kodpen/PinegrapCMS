@@ -1270,9 +1270,18 @@ function pg_csv_open($path)
 // comma, the semicolon and the tab, the one the line holds most; the comma
 // when it holds none (a file of one column). Excel saves a CSV file with the
 // list separator of the computer's region, a semicolon in Turkish.
+// Quoted headings are left out of the count: "Last, First";email is a
+// semicolon file. A doubled quote inside a heading closes and reopens the
+// quoted span, so it is left out as well; an unclosed quote stays counted.
 function pg_csv_separator($header_line)
 {
     $header_line = (string) $header_line;
+    $unquoted = preg_replace('/"[^"]*"/', '', $header_line);
+
+    if (is_string($unquoted)) {
+        $header_line = $unquoted;
+    }
+
     $best = ',';
     $most = substr_count($header_line, ',');
 
