@@ -851,11 +851,20 @@
     // A press inside a layer's box hits it unless test(l, p, slack), given
     // the point in the layer's own frame, says no: a line is thinner than
     // its box.
+    // A warped or pinned layer is tested on its drawn extent (see
+    // drawnExtent()), so a press on a part bent out of the box still hits.
     function hitLayer(doc, x, y, slack, test) {
         for (var i = doc.layers.length - 1; i >= 0; i--) {
-            var l = doc.layers[i], p = local(l, x, y);
+            var l = doc.layers[i], p, e;
 
-            if (!l.hidden && !l.locked && (p[0] >= -slack) && (p[1] >= -slack) && (p[0] <= l.w + slack) && (p[1] <= l.h + slack)
+            if (l.hidden || l.locked) {
+                continue;
+            }
+
+            p = local(l, x, y);
+            e = drawnExtent(l);
+
+            if ((p[0] >= e[0] - slack) && (p[1] >= e[1] - slack) && (p[0] <= e[2] + slack) && (p[1] <= e[3] + slack)
                     && (!test || test(l, p, slack))) {
                 return l;
             }
@@ -864,14 +873,51 @@
         return null;
     }
 
-    // The ids of the visible, unlocked layers whose turned box meets box
-    // { x, y, w, h } (a selection box dragged over the stage), bottom to top.
+    // [x0, y0, x1, y1] in the layer's own frame (as local() gives it, the
+    // mirror applied): its box, joined for a warped or pinned layer with the
+    // extent of the outline it draws, which can reach out of the box.
+    function drawnExtent(l) {
+        var e = [0, 0, l.w, l.h];
+
+        if (warpOn(l) || puppetOn(l)) {
+            warpContours(l).forEach(function (c) {
+                c.pts.forEach(function (q) {
+                    var u = l.mirror ? l.w - q[0] : q[0];
+
+                    e[0] = Math.min(e[0], u);
+                    e[1] = Math.min(e[1], q[1]);
+                    e[2] = Math.max(e[2], u);
+                    e[3] = Math.max(e[3], q[1]);
+                });
+            });
+        }
+
+        return e;
+    }
+
+    // The ids of the visible, unlocked layers whose turned box (its drawn
+    // extent when warped or pinned) meets box { x, y, w, h } (a selection
+    // box dragged over the stage), bottom to top.
     function layersInBox(doc, box) {
         return doc.layers.filter(function (l) {
-            var b = (!l.hidden && !l.locked) ? bounds([l]) : null;
+            var b = (!l.hidden && !l.locked) ? drawnBounds(l) : null;
 
             return !!b && (b.x <= box.x + box.w) && (b.x + b.w >= box.x) && (b.y <= box.y + box.h) && (b.y + b.h >= box.y);
         }).map(function (l) { return l.id; });
+    }
+
+    // The upright box around a layer's drawn extent in the rotated space.
+    function drawnBounds(l) {
+        if (!warpOn(l) && !puppetOn(l)) {
+            return bounds([l]);
+        }
+
+        var e = drawnExtent(l), m = mul(translate(l.x + l.w / 2, l.y + l.h / 2), mul(rotate(l.rot || 0), translate(-l.w / 2, -l.h / 2)));
+        var ps = [[e[0], e[1]], [e[2], e[1]], [e[2], e[3]], [e[0], e[3]]].map(function (p) { return apply(m, p[0], p[1]); });
+        var xs = ps.map(function (p) { return p[0]; }), ys = ps.map(function (p) { return p[1]; });
+        var x = Math.min.apply(null, xs), y = Math.min.apply(null, ys);
+
+        return { x: x, y: y, w: Math.max.apply(null, xs) - x, h: Math.max.apply(null, ys) - y };
     }
 
     // Whether x, y lies inside a layer's box by more than margin on every
@@ -6418,6 +6464,15 @@
     function layerRings(l) {
         if (!l || !isClosed(l) || (l.type === 'pen')) {
             return null;
+        }
+
+        // A warped or pinned layer: the contours it draws, not its knots.
+        if (warpOn(l) || puppetOn(l)) {
+            var bent = warpContours(l).filter(function (c) { return c.closed && (c.pts.length > 2); }).map(function (c) {
+                return c.pts.map(function (q) { return drawnPoint(l, q[0], q[1]); });
+            });
+
+            return bent.length ? bent : null;
         }
 
         var kc = (l.type === 'path') ? [{ knots: pathKnots(l), closed: true }].concat(subKnots(l)) : [shapeKnots(l)];

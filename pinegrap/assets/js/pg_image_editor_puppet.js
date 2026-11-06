@@ -145,6 +145,13 @@
     Editor.prototype.renderPuppet = function () {
         var l = (this.tool === 'puppet') && this.ready ? this.puppetTarget() : null, self = this;
 
+        // While pinning, the selection's resize, rotate and type handles
+        // are hidden: they would sit on the shape looking like pins, and a
+        // press there adds a pin anyway. Select keeps them.
+        if (this.tool === 'puppet') {
+            Array.prototype.forEach.call(this.selEl.querySelectorAll('.pgie-selbox'), function (d) { d.classList.add('pgie-pinning'); });
+        }
+
         if (!l || !l.puppet || !Array.isArray(l.puppet.pins)) {
             return;
         }

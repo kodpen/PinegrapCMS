@@ -191,3 +191,39 @@ function test_image_editor_puppet_layers_and_expand()
 	pg_assert_same(0, $r['onWarp'], 'pins move the warped outline');
 	pg_assert_true($r['same'], 'the baked path draws the bent outline');
 }
+
+// Selecting follows the bent shape: a rectangle lifted 250 px above its
+// box by one pin is hit, and caught by a selection box, where it is drawn,
+// not in the box it left; a pinned path's rings for the shape builder
+// follow its pins.
+function test_image_editor_puppet_hit_and_rings()
+{
+	$r = image_editor_puppet_node(
+		'var up = [{ rest: [0.5, 0.5], at: [0.5, -2] }];' . "\n"
+		. 'var l = rect(up); l.fill = "solid"; var doc = { layers: [l] };' . "\n"
+		. 'var shape = function (o, p, s) { return M.hitShape(o, p, s); };' . "\n"
+		. 'var hit = function (x, y) { var h = M.hitLayer(doc, x, y, 0, shape); return h ? h.id : null; };' . "\n"
+		. 'var mirrored = Object.assign({}, l, { mirror: true, puppet: { pins: [{ rest: [0.5, 0.5], at: [0.9, 0.5] }] } });' . "\n"
+		. 'var path = { id: "p", type: "path", x: 0, y: 0, w: 100, h: 100, closed: true, fill: "solid", knots: [[0, 0], [1, 0], [1, 1], [0, 1]].map(function (k) { return { x: k[0], y: k[1], ix: k[0], iy: k[1], ox: k[0], oy: k[1], s: false }; }) };' . "\n"
+		. 'var bare = M.layerRings(path)[0]; path.puppet = { pins: [{ rest: [0.5, 0.5], at: [0.7, 0.4] }] }; var bent = M.layerRings(path)[0];' . "\n"
+		// The bent ring is sampled more densely: compare where it reaches.
+		. 'var ext = function (r) { var xs = r.map(function (p) { return p[0]; }), ys = r.map(function (p) { return p[1]; }); return [Math.min.apply(null, xs), Math.min.apply(null, ys), Math.max.apply(null, xs), Math.max.apply(null, ys)].map(Math.round); };' . "\n"
+		. 'var moved = JSON.stringify(ext(bent)) === JSON.stringify(ext(bare).map(function (n, i) { return n + ((i % 2) ? -10 : 20); }));' . "\n"
+		. 'console.log(JSON.stringify({ above: hit(110, -180), inBox: hit(110, 70), nearBox: hit(110, 70 - 250 + 45),'
+		. ' marquee: M.layersInBox(doc, { x: 100, y: -200, w: 5, h: 5 }),'
+		. ' mirroredLeft: M.hitLayer({ layers: [mirrored] }, 5, 70, 0, shape) ? 1 : 0,'
+		. ' moved: moved }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same('r', $r['above'], 'a point on the shape above its box hits the layer');
+	pg_assert_same(null, $r['inBox'], 'a point in the box where nothing is drawn any more misses');
+	pg_assert_same('r', $r['nearBox'], 'the lifted shape hits inside its drawn edge');
+	pg_assert_same(array('r'), $r['marquee'], 'a selection box over the drawn shape catches it');
+	pg_assert_same(1, $r['mirroredLeft'], 'a mirrored layer bent out of its box hits where it is drawn');
+	pg_assert_true($r['moved'], 'a pinned path\'s rings follow its pins');
+}

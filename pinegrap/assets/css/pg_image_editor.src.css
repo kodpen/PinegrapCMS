@@ -2419,9 +2419,16 @@
   cursor: move;
 }
 
-/* Free deformation: the pins over the selected layer; the chosen one filled. */
+/* Free deformation: the pins over the selected layer; the chosen one filled,
+   with a white edge so it shows on a shape of the selection colour. */
 .pgie-sh.pgie-pin.on {
+  border-color: #ffffff;
   background: var(--pgie-sel);
+}
+
+/* While pinning, the selection box keeps its outline but not its handles. */
+.pgie-selbox.pgie-pinning > .pgie-sh {
+  display: none;
 }
 
 /* Small screens. Below 768 px wide or 500 px tall the dialog fills the
