@@ -6,6 +6,7 @@ module: design_previews
 
 ## What does design_preview.php draw?
 - `?template=&page=&look=&palette=`: one page of a template from its file (`pg_design_template_preview_html()`, custom templates too); no page: the first of `pg_design_template_preview_pages()` (the home page). Its links lead to the template's other pages at this address.
+- `&still=1`: the same page without scripts (`pg_design_preview_strip_scripts()`), for a live picture; not for a tour, whose frame runs the page's scripts. `pg_design_preview_address(..., 'still' => true)`.
 - `&tour=1`: `pg_design_tour_html()` with "Use This Template" leading to `add_system_style.php?start=template&template=&look=&palette=` (`pg_design_preview_use_href()`).
 - `?page_id=`: a visual design page (`pg_page_visual_design_sql()`, not in the recycle bin; drafts too) through `pg_seo_render_page()` → `pg_background_render()`.
 - Look and palette are taken literally: absent means none (plain Bootstrap), not the template's own. A caller that wants the template's theme passes `pg_design_template_theme()`'s keys.
@@ -18,7 +19,7 @@ module: design_previews
 
 ## How is a design page drawn as a first-time visitor?
 - `$_SESSION` and `$_COOKIE` emptied for the render. The background render leaves out the consent banner and the statistics tag and counts no returning visit (`pg_page_fact_background()`); the staff bar, the chat bubble, the visit record and the page cache belong to `get_page.php`, which is not used.
-- Every `<script>` is removed (`pg_design_preview_strip_scripts()`): the live picture's frame runs none anyway.
+- Every `<script>` element and `on…=` attribute is removed (`pg_design_preview_strip_scripts()`, tags only, quoted values read whole): the live picture's frame runs none, and each one it met logged a console error (images' `onerror` fallbacks).
 - A page type that needs a request behind it (`pg_seo_render_page()` gives NULL) or a render that throws gives the placeholder.
 
 ## What headers does it send?

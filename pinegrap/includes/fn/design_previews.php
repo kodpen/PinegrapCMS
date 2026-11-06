@@ -71,6 +71,8 @@ function pg_design_live_picture($src, $opts = array())
 //   look      a look key, dropped unless pg_design_looks() has it
 //   palette   a palette key, dropped unless pg_design_palettes() has it
 //   tour      true: the tour, starting on the page
+//   still     true: the page without its scripts, for a live picture,
+//             whose frame runs none (the panel only)
 //   local     the installer's language (the installer only)
 function pg_design_preview_address($where, $args = array())
 {
@@ -99,6 +101,7 @@ function pg_design_preview_address($where, $args = array())
     if ($palette !== '' && isset($palettes[$palette])) $query['palette'] = $palette;
 
     if ($where === 'panel' && !empty($args['tour'])) $query['tour'] = '1';
+    if ($where === 'panel' && !empty($args['still']) && empty($args['tour'])) $query['still'] = '1';
     $local = $arg('local');
     if ($where === 'install' && preg_match('/^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})?$/', $local)) $query['local'] = $local;
 
@@ -270,7 +273,8 @@ function _pg_design_tour_js()
 
 // What a request to design_preview.php asks for, from its query ($get:
 // $_GET). 'kind': 'page' (page_id), 'tour' (template and tour=1),
-// 'template' (template) or '' (nothing it can draw). Look and palette are
+// 'template' (template) or '' (nothing it can draw); 'still': a template
+// page asked for without its scripts (still=1). Look and palette are
 // kept only when pg_design_looks()/pg_design_palettes() know them; template
 // and page keys only when they match the patterns the addresses use.
 function pg_design_preview_request($get)
@@ -279,7 +283,7 @@ function pg_design_preview_request($get)
     $arg = function ($key) use ($get) {
         return (isset($get[$key]) && is_scalar($get[$key])) ? trim((string)$get[$key]) : '';
     };
-    $out = array('kind' => '', 'page_id' => 0, 'template' => '', 'page' => '', 'look' => '', 'palette' => '');
+    $out = array('kind' => '', 'page_id' => 0, 'template' => '', 'page' => '', 'look' => '', 'palette' => '', 'still' => false);
 
     $page_id = $arg('page_id');
     if ($page_id !== '') {
@@ -294,6 +298,7 @@ function pg_design_preview_request($get)
     if (!preg_match('/^[a-z0-9-]{1,64}$/', $template)) return $out;
     $out['template'] = $template;
     $out['kind'] = $arg('tour') === '1' ? 'tour' : 'template';
+    $out['still'] = ($out['kind'] === 'template' && $arg('still') === '1');
 
     $page = $arg('page');
     if (preg_match('/^[a-z0-9_-]{1,64}$/', $page)) $out['page'] = $page;
@@ -318,15 +323,22 @@ function pg_design_preview_use_href($template, $look = '', $palette = '')
 }
 
 // A page as a picture shows it: no script runs in a live picture's frame,
-// so none is sent (inline, linked, or a module), and nothing on it is
-// submitted or followed.
+// so none is sent: no script element (inline, linked, or a module) and no
+// event handler attribute (an image's onerror fallback, an onclick). Only
+// tags are touched, quoted values read whole, so text that reads like an
+// attribute stays.
 function pg_design_preview_strip_scripts($html)
 {
     $html = (string)$html;
     $out = preg_replace('~<script\b[^>]*>.*?</script\s*>~is', '', $html);
     if ($out === null) return $html;
     $out = preg_replace('~<script\b[^>]*/?>~i', '', $out);
-    return $out === null ? $html : $out;
+    if ($out === null) return $html;
+    $tags = preg_replace_callback('~<[a-zA-Z](?:"[^"]*"|\'[^\']*\'|[^\'">])*>~', function ($m) {
+        $tag = preg_replace('~\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $m[0]);
+        return $tag === null ? $m[0] : $tag;
+    }, $out);
+    return $tags === null ? $out : $tags;
 }
 
 // The ETag of a design page's picture: the page, its last change, its
