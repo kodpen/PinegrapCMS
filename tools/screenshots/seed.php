@@ -262,6 +262,8 @@ $product_id = (int) seed_value('SELECT id FROM products ORDER BY id LIMIT 1');
 $offer_id = (int) seed_value('SELECT id FROM offers ORDER BY id LIMIT 1');
 // A sub-group shows the parent picker and the delete button; the root group has neither.
 $product_group_id = (int) seed_value('SELECT id FROM product_groups ORDER BY (parent_id = 0), id LIMIT 1');
+// A placed order with lines and a ship-to address, so the order screen shows every column.
+$order_id = (int) seed_value("SELECT o.id FROM orders o WHERE o.status <> 'incomplete' AND EXISTS (SELECT 1 FROM order_items i WHERE i.order_id = o.id) AND EXISTS (SELECT 1 FROM ship_tos s WHERE s.order_id = o.id) ORDER BY o.id LIMIT 1");
 
 echo json_encode(array(
 	'user_id' => $user_id,
@@ -271,4 +273,5 @@ echo json_encode(array(
 	'product_group_id' => $product_group_id,
 	'contact_id' => $contact_id,
 	'email_campaign_id' => $email_campaign_id,
+	'order_id' => $order_id,
 )) . "\n";
