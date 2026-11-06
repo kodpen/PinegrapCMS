@@ -218,3 +218,33 @@ function test_erp_quote_screen_texts_and_phone_facts()
 
 	pg_assert_contains('table-responsive position-relative', (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_quotes.php'), 'the hidden Signed text stays inside the scroll box');
 }
+
+// The customer signs the quote the page showed, not the one that is stored
+// when the form comes back: a line or a price changed on the panel while the
+// page was open would otherwise be signed unread.
+function test_erp_quote_link_signs_only_the_quote_shown()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/signatures.php');
+
+	$quote = erp_quote_links_test_quote(array(
+		'line_data' => '[{"description":"Desk","quantity":1,"unit_price":10000}]',
+		'subtotal' => 10000, 'grand_total' => 12000, 'currency' => 'TRY', 'full_number' => 'PGFT2026000000007',
+	));
+	$shown = erp_signature_document_hash_quote($quote);
+
+	pg_assert_true(erp_quote_link_shown_matches($shown, $quote), 'unchanged quote');
+
+	$changed = array_merge($quote, array('line_data' => '[{"description":"Desk","quantity":1,"unit_price":20000}]', 'grand_total' => 24000));
+	pg_assert_false(erp_quote_link_shown_matches($shown, $changed), 'price changed after the page was opened');
+	pg_assert_false(erp_quote_link_shown_matches('', $quote), 'nothing posted');
+	pg_assert_false(erp_quote_link_shown_matches(array($shown), $quote), 'an array');
+	pg_assert_false(erp_quote_link_shown_matches(strtoupper($shown), $quote), 'not the stored shape');
+
+	$accept = pg_test_function_source('erp_quote_link_accept');
+	pg_assert_true(strpos($accept, 'erp_quote_link_shown_matches($shown_hash, $quote)') !== false
+		&& strpos($accept, 'erp_quote_link_shown_matches(') < strpos($accept, 'SET used_at = UNIX_TIMESTAMP()'), 'checked before the link is claimed');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_quote.php');
+	pg_assert_contains('name="d" value="\' . h(erp_signature_document_hash_quote($quote)) . \'"', $page, 'the form carries what it showed');
+	pg_assert_contains("erp_quote_link_accept(\$token, \$png, \$signer_name, \$shown_hash)", $page);
+}

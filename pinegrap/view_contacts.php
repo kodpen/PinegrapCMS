@@ -514,53 +514,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         pg_audit_record_many('delete', 'contacts', $audit_before);
     }
 
-    // prepare list of contact groups for log
-
-    $contact_group_list = '';
-
-    // if advanced filters are on
-    if ($advanced_filters == true) {
-        if (is_array(($_SESSION['software']['view_contacts']['contact_groups'] ?? array())) == true) {
-            foreach (($_SESSION['software']['view_contacts']['contact_groups'] ?? array()) as $contact_group) {
-                if ($contact_group_list) {
-                    $contact_group_list .= ', ';
-                }
-
-                // if this contact group is the [None] contact group
-                if ($contact_group == '[' . lang('None') . ']') {
-                    $contact_group_list .= '[' . lang('None') . ']';
-
-                // else this contact group is not the [None] contact group, so get contact group name
-                } else {
-                    $query = "SELECT name FROM contact_groups WHERE id = ?";
-                    $result = db_q($query, array((string) $contact_group)) or output_error('Query failed.');
-                    $row = mysqli_fetch_assoc($result);
-
-                    $contact_group_list .= $row['name'];
-                }
-            }
-        }
-
-    // else advanced filters are off
-    } else {
-        // if the [All] contact group was selected
-        if ($contact_groups_filter == '[' . lang('All') . ']') {
-            $contact_group_list = '[' . lang('All') . ']';
-
-        // else if the [None] contact group was selected
-        } elseif ($contact_groups_filter == '[' . lang('None') . ']') {
-            $contact_group_list = '[' . lang('None') . ']';
-
-        // else get group name
-        } else {
-            // get contact group name
-            $query = "SELECT name FROM contact_groups WHERE id = ?";
-            $result = db_q($query, array((string) $contact_groups_filter)) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
-
-            $contact_group_list = $row['name'];
-        }
-    }
+    // The groups the delete ran on, escaped for the notice.
+    $contact_group_list = pg_contact_list_deleted_groups_label($advanced_filters, ($_SESSION['software']['view_contacts']['contact_groups'] ?? array()), $contact_groups_filter, $contact_groups);
 
     $number_of_contacts -= count($delete_refusals);
 

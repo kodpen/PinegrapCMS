@@ -120,18 +120,23 @@ function pg_subscription_period_from_legacy($name)
  * @param int    $from   unix time of the charge the period starts at
  * @param string $period pg_subscription_periods() key
  * @param int    $anchor_day the day of month of the first charge; 0 takes $from's
- * @return int unix time, 0 for an unknown period or no start
+ * @param int    $steps  how many periods after $from: a series counted from
+ *                       its first charge keeps that charge's time of day, as
+ *                       a date the clocks skipped is not carried on
+ * @return int unix time, 0 for an unknown period, no start or no step
  */
-function pg_subscription_next_charge_at($from, $period, $anchor_day = 0)
+function pg_subscription_next_charge_at($from, $period, $anchor_day = 0, $steps = 1)
 {
     $from = (int) $from;
+    $steps = (int) $steps;
     $periods = pg_subscription_periods();
 
-    if (($from <= 0) || !isset($periods[(string) $period])) {
+    if (($from <= 0) || ($steps < 1) || !isset($periods[(string) $period])) {
         return 0;
     }
 
     list($unit, $count) = $periods[(string) $period];
+    $count *= $steps;
 
     $hour = (int) date('G', $from);
     $minute = (int) date('i', $from);

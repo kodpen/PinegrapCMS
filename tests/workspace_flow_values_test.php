@@ -146,9 +146,9 @@ function test_workspace_flow_derived_kind_and_config()
 
 	pg_assert_true(!empty($kind['pure']), 'a value box');
 	pg_assert_same(array(), $kind['outcomes'], 'no outcomes');
-	pg_assert_same(array('rule' => 'join', 'a' => '', 'b' => '', 'op' => 'eq', 'places' => 0, 'format' => 'Y-m-d'), ws_flow_config_normalize('value', array()), 'empty');
+	pg_assert_same(array('rule' => 'join', 'a' => '', 'b' => '', 'c' => '', 'op' => 'eq', 'places' => 0, 'format' => 'Y-m-d'), ws_flow_config_normalize('value', array()), 'empty');
 	pg_assert_same(
-		array('rule' => 'round', 'a' => '{{node.web_1.ms}} ms', 'b' => 'x', 'op' => 'eq', 'places' => 6, 'format' => 'Y-m-d'),
+		array('rule' => 'round', 'a' => '{{node.web_1.ms}} ms', 'b' => 'x', 'c' => '', 'op' => 'eq', 'places' => 6, 'format' => 'Y-m-d'),
 		ws_flow_config_normalize('value', array('rule' => 'round', 'a' => "{{node.web_1.ms}}\nms", 'b' => 'x', 'op' => 'like', 'places' => 9, 'format' => 'l')),
 		'kept within the lists'
 	);

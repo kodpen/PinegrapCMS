@@ -183,7 +183,7 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         if (!$owns) continue;
 
         // Resolve field type for proper storage of date / datetime / time.
-        $f_meta = db_item("SELECT type, multiple FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
+        $f_meta = db_item("SELECT type, label, multiple FROM form_fields WHERE id = '" . (int)$fid . "' LIMIT 1");
         $f_type = is_array($f_meta) ? (string)$f_meta['type'] : 'text box';
 
         // Collect raw value(s) from POST. Multi-select / checkbox arrays
@@ -192,6 +192,19 @@ if ((isset($_POST['submit_update_cart']) || $checkout) && $oid > 0) {
         // itself a list is dropped (pg_cf_posted_value()).
         $raw = isset($_POST[$key]) ? $_POST[$key] : '';
         $raw = pg_cf_posted_value($raw, array('type' => $f_type, 'multiple' => is_array($f_meta) ? $f_meta['multiple'] : 0));
+
+        // A date, an e-mail address or a time that is not one, or a choice
+        // outside the field's option list, is refused as the classic cart
+        // refuses it: the stored value stays and the error holds checkout.
+        $f_options = pg_cf_type_has_options($f_type)
+            ? (array) db_values("SELECT value FROM form_field_options WHERE form_field_id = '" . (int)$fid . "'")
+            : array();
+        $f_error = pg_product_form_value_error(array('type' => $f_type, 'label' => is_array($f_meta) ? (string)$f_meta['label'] : ''), $raw, $f_options);
+        if ($f_error !== null) {
+            $lf->mark_error($key, $f_error);
+            continue;
+        }
+
         if (is_array($raw)) {
             $raw = implode(', ', $raw);
         }

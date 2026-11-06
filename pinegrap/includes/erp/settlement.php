@@ -663,6 +663,51 @@ function erp_settlement_after_reopen($invoice_id, $currency, $created_by = 0)
 }
 
 /**
+ * Why an allocation of $amount from a receipt to an invoice cannot be
+ * written now, or '' when it can.
+ *
+ * Read under the locks erp_settlement_allocate() takes, so the figures are
+ * the committed ones: the invoice still open, never more than it is short
+ * of, never more than the receipt has left unallocated. The unique pair
+ * means an allocation to this invoice from this receipt replaces the earlier
+ * figure, so what it already holds counts as free on both sides.
+ *
+ * @param array $invoice     The invoice row, read with its lock
+ * @param int   $txn_id      The receipt's ledger row
+ * @param int   $amount      Kurus
+ * @param bool  $is_payment  A payment rather than a collection, for the wording
+ * @return string
+ */
+function erp_settlement_amount_refusal($invoice, $txn_id, $amount, $is_payment)
+{
+    $txn_id = (int) $txn_id;
+    $invoice_id = (int) $invoice['id'];
+
+    if (((string) $invoice['doc_type'] !== 'invoice') || !in_array((string) $invoice['status'], array('issued', 'partially_paid'), true)) {
+        return lang('That invoice is already closed.');
+    }
+
+    $held = (int) db_value("SELECT COALESCE(SUM(amount), 0) FROM erp_settlements
+        WHERE account_txn_id = '" . $txn_id . "' AND invoice_id = '" . $invoice_id . "'");
+
+    $open = erp_invoice_open_amount($invoice) + $held;
+
+    if ($open <= 0) {
+        return lang('That invoice is already closed.');
+    }
+
+    if ((int) $amount > $open) {
+        return lang('That amount is more than the invoice is short of.');
+    }
+
+    if ((int) $amount > erp_txn_unallocated($txn_id) + $held) {
+        return $is_payment ? lang('That amount is more than is unallocated on this payment.') : lang('That amount is more than is unallocated on this receipt.');
+    }
+
+    return '';
+}
+
+/**
  * Tie part of a receipt to an invoice, after the fact.
  *
  * Everything erp_post_receipt() checks when it allocates at recording time is
@@ -741,28 +786,29 @@ function erp_settlement_allocate($data)
         )));
     }
 
-    // The unique pair means an allocation to this invoice from this receipt
-    // replaces the earlier figure, so what it already holds counts as free
-    // on both sides: on the receipt and on the invoice.
-    $held = (int) db_value("SELECT COALESCE(SUM(amount), 0) FROM erp_settlements
-        WHERE account_txn_id = '" . $txn_id . "' AND invoice_id = '" . $invoice_id . "'");
-
-    $open = erp_invoice_open_amount($invoice) + $held;
-
-    if ($open <= 0) {
-        return $fail(lang('That invoice is already closed.'));
-    }
-
-    if ($amount > $open) {
-        return $fail(lang('That amount is more than the invoice is short of.'));
-    }
-
-    if ($amount > erp_txn_unallocated($txn_id) + $held) {
-        return $fail($is_payment ? lang('That amount is more than is unallocated on this payment.') : lang('That amount is more than is unallocated on this receipt.'));
-    }
-
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
+    }
+
+    // Two allocations at the same moment (two tabs, the receipt screen and
+    // the API) would both read the same open figures and together allocate
+    // more than the invoice is short of or the receipt holds. The receipt's
+    // ledger row and then the invoice are locked, in that fixed order (the
+    // order erp_post_receipt() writes them in), before anything else is read
+    // in the transaction, so the second request waits for the first and
+    // every figure below is read after its commit.
+    $locked_txn = db_item("SELECT id FROM erp_account_transactions WHERE id = '" . $txn_id . "' LIMIT 1 FOR UPDATE");
+    $invoice = db_item("SELECT id, account_id, direction, doc_type, currency, full_number, grand_total, grand_total_base, paid_total, status
+        FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1 FOR UPDATE");
+
+    if (!is_array($locked_txn) || !is_array($invoice)) {
+        erp_tx_rollback();
+        return $fail(is_array($invoice) ? lang('The receipt could not be found.') : lang('The invoice could not be found.'));
+    }
+
+    if (($refusal = erp_settlement_amount_refusal($invoice, $txn_id, $amount, $is_payment)) !== '') {
+        erp_tx_rollback();
+        return $fail($refusal);
     }
 
     $settled = erp_settle(array(

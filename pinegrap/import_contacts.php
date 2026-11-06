@@ -263,8 +263,18 @@ if (!$_POST) {
         foreach ($column_names as $key => $column) {
             $read = pg_import_contact_value($column, $row[$key] ?? '', $column_lengths[$column] ?? 0, trim((string) $columns[$key]));
 
+            // One contact per affiliate code, as the contact form keeps it.
             if ($read['problem'] !== '') {
                 $problems[] = array($line, $read['problem']);
+            }
+
+            // One contact per affiliate code, as the contact form keeps it.
+            if ($column === 'affiliate_code') {
+                $read = pg_import_affiliate_code($read['value'], trim((string) $columns[$key]));
+
+                if ($read['problem'] !== '') {
+                    $problems[] = array($line, $read['problem']);
+                }
             }
 
             $data_list .= "'" . escape($read['value']) . "', ";

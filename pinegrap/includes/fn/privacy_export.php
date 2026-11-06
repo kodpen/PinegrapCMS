@@ -590,7 +590,7 @@ function pg_privacy_export_summary_html(array $document)
             $html .= '<tr><td>' . h(($number !== '' && $number !== '0') ? $number : '#' . (int) ($row['id'] ?? 0)) . '</td>'
                 . '<td>' . h(_pg_privacy_export_time((int) ($row['order_date'] ?? 0))) . '</td>'
                 . '<td>' . h(isset($statuses[$status]) ? $statuses[$status] : $status) . '</td>'
-                . '<td class="num">' . h(_pg_privacy_export_money($row['total'] ?? 0, (string) ($row['currency_code'] ?? ''))) . '</td></tr>';
+                . '<td class="num">' . h(_pg_privacy_export_money($row['total'] ?? 0, _pg_privacy_export_order_currency($row, defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : ''))) . '</td></tr>';
         }
 
         $html .= '</table>';
@@ -1460,6 +1460,27 @@ function _pg_privacy_export_consent_answer($status)
     }
 
     return ($status === 'pending') ? lang('Waiting for confirmation') : lang('Refused');
+}
+
+/**
+ * The currency an order's stored total is in: the store's base currency, the
+ * one every payment driver charges. orders.currency_code is only the currency
+ * the visitor was shown prices in, except on a marketplace order, where it is
+ * the marketplace's own currency and the unit of the stored amounts.
+ *
+ * @param array  $row  orders row
+ * @param string $base base currency code
+ * @return string
+ */
+function _pg_privacy_export_order_currency($row, $base)
+{
+    $code = (string) ($row['currency_code'] ?? '');
+
+    if ((($row['type'] ?? '') === 'marketplace') && ($code !== '')) {
+        return $code;
+    }
+
+    return (string) $base;
 }
 
 /**

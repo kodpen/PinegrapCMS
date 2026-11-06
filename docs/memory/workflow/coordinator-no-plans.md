@@ -14,10 +14,13 @@ description: What a coordinator gives its workers when no plan step is free: ope
 
 ## How does the bug hunt run?
 - One worker per module: an `includes/fn/` module, an endpoint or one panel screen, never two workers on the same files.
-- The hunt is tracked in `plans/bug-hunt.md`: the first hunt worker creates it with the module list (`core/fn-modules.md`, the endpoints at the root); each worker marks its module with its PR number or "clean".
-- The worker reads `workflow/decisions-made.md` first, reads the module's code, runs its tests and looks for real faults: wrong results, unescaped output, missing CSRF or permission checks, SQL traps (`data/`), PHP 7.1–8.5 breakage. It fixes what it finds in small PRs (`[iş] Bug hunt: <module> — <fault>`), a failing test first.
+- The hunt is tracked in `plans/bug-hunt.md`: the first hunt worker creates it with the module list (`core/fn-modules.md`, the endpoints at the root); each worker marks its module with its issue numbers or "clean".
+- The worker reads `workflow/decisions-made.md` first, reads the module's code, runs its tests and looks for real faults: wrong results, unescaped output, missing CSRF or permission checks, SQL traps (`data/`), PHP 7.1–8.5 breakage.
+- It opens one `bug` issue per fault, written as `test-coordinator.md` asks (where, the code path or steps, expected, seen), and fixes nothing itself: the issues go to workers as free work (open issues come first, above). Its one PR is the docs-only draft that takes its modules in the plan file and closes them with the issue numbers or "clean" (`plans/bug-hunt.md`).
 - A finding that needs a product or schema decision goes to an `architect` issue; a large one becomes a plan.
-- While the merge line keeps half of a coordinator's workers waiting, 2 to 3 extra hunters run beside them (`coordinator-idle-bug-hunt.md`).
+
+## Why issues and not a PR per fault?
+- On 2026-11-05 a hunt opened a PR per fault, over a hundred, and sent them to CI together: the CI queue and the merge line were blocked for about 12 hours. An issue costs no CI run and no queue place; a worker takes it when a slot is free. No extra hunters run beside the workers any more.
 
 ## When is a new design template started?
 - When a slot is still free after the issues and the open bug-hunt modules, and no template plan is open.

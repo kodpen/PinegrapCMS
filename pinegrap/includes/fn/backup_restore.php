@@ -166,6 +166,91 @@ function pg_restore_content_path(array $state)
 
 
 /**
+ * The bytes of the regular files directly in a folder (no subfolders).
+ *
+ * @param string $path
+ * @return float|null null when the folder cannot be read
+ */
+function pg_restore_folder_bytes($path)
+{
+    $entries = is_dir($path) ? @scandir($path) : false;
+
+    if ($entries === false) {
+        return null;
+    }
+
+    $bytes = 0.0;
+
+    foreach ($entries as $entry) {
+        if (($entry !== '.') && ($entry !== '..') && is_file($path . '/' . $entry)) {
+            $bytes += (float) @filesize($path . '/' . $entry);
+        }
+    }
+
+    return $bytes;
+}
+
+
+/**
+ * Puts a backup's files/ or layouts/ in place of the site's folder.
+ *
+ * The site's files are deleted before the backup's are copied, so the disk
+ * must hold the backup's files once the site's are gone, with 16 MB to spare.
+ * When it cannot, nothing is touched: the site keeps its own files instead
+ * of losing them to a copy that stops half-way. A copy that fails anyway
+ * (pg_backup_copy_folder() checks every file's size) is named in 'failed',
+ * so the restore does not report a folder it only partly wrote as copied.
+ * Subfolders of either folder are left alone, as the restore takes only the
+ * files directly in them.
+ *
+ * @param string     $source the backup's folder
+ * @param string     $target the site's folder
+ * @param float|null $free   free bytes on the target's disk; null measures
+ * @return array ok, error (when nothing was touched), copied (files written),
+ *               failed (names that could not be written)
+ */
+function pg_restore_place_folder($source, $target, $free = null)
+{
+    $answer = array('ok' => false, 'error' => '', 'copied' => 0, 'failed' => array());
+
+    $need = pg_restore_folder_bytes($source);
+    $have = pg_restore_folder_bytes($target);
+
+    if (($need === null) || ($have === null)) {
+        $answer['error'] = lang(array('string' => 'The folder {var:1} could not be read, so the files of the site were kept.', 'vars' => array(pg_basename(($need === null) ? $source : $target))));
+        return $answer;
+    }
+
+    if ($free === null) {
+        $free = function_exists('disk_free_space') ? @disk_free_space($target) : false;
+    }
+
+    if (($free !== false) && (((float) $free + $have) < ($need + 16777216))) {
+        $answer['error'] = lang(array('string' => 'There is not enough free disk space to copy the files of the backup: {var:1} is needed, {var:2} is free. The files of the site were kept.', 'vars' => array(convert_bytes_to_string($need + 16777216, 1), convert_bytes_to_string((float) $free + $have, 1))));
+        return $answer;
+    }
+
+    foreach ((array) @scandir($target) as $entry) {
+        if (($entry !== '.') && ($entry !== '..') && is_file($target . '/' . $entry)) {
+            @unlink($target . '/' . $entry);
+        }
+    }
+
+    $answer['failed'] = pg_backup_copy_folder($source, $target);
+
+    foreach ((array) @scandir($source) as $entry) {
+        if (($entry !== '.') && ($entry !== '..') && is_file($source . '/' . $entry) && !in_array($entry, $answer['failed'], true)) {
+            $answer['copied']++;
+        }
+    }
+
+    $answer['ok'] = true;
+
+    return $answer;
+}
+
+
+/**
  * Deletes the working folders that archives were extracted into.
  *
  * @param string $id only this restore's folder; '' for every one

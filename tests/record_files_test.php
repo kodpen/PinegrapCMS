@@ -543,7 +543,7 @@ function test_record_files_sql_operation_matches_forms()
 		'contains', 'does not contain', 'is equal to', 'is not equal to', 'is less than',
 		'is less than or equal to', 'is greater than', 'is greater than or equal to', 'unknown',
 	);
-	$operands = array('Published', '5', '0', '2026-01-02', "O'Brien 50%_off", '', '1.5');
+	$operands = array('Published', '5', '0', '2026-01-02', "O'Brien 50%_off", '', '1.5', 'C:\\Docs\\a_b', 'tab\\%');
 	foreach ($operators as $operator) {
 		foreach ($operands as $operand) {
 			pg_assert_same(

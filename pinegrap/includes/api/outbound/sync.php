@@ -138,24 +138,23 @@ function mp_sync_send_batch($account, &$summary) {
 
 	$account_id = (int) $account['id'];
 
-	// The provider's ceiling is a thousand; this stays under it and under the
-	// weight of a single request the marketplace has to parse.
-	$rows = (array) db_items("SELECT marketplace_sync_queue.id, marketplace_sync_queue.product_id,
-			marketplace_sync_queue.attempts,
-			marketplace_product_map.remote_code, marketplace_product_map.remote_id
-		FROM marketplace_sync_queue
+	$join = "FROM marketplace_sync_queue
 		INNER JOIN marketplace_product_map
 			ON  (marketplace_product_map.account_id = marketplace_sync_queue.account_id)
 			AND (marketplace_product_map.product_id = marketplace_sync_queue.product_id)
 		WHERE (marketplace_sync_queue.account_id = '" . e($account_id) . "')
 		  AND (marketplace_sync_queue.status = 'waiting')
-		  AND (marketplace_sync_queue.run_after <= UNIX_TIMESTAMP())
 		  AND (marketplace_sync_queue.operation = 'stock_price')
-		  AND (marketplace_product_map.status = 'active')
-		ORDER BY marketplace_sync_queue.priority ASC, marketplace_sync_queue.id ASC
-		LIMIT 500");
+		  AND (marketplace_product_map.status = 'active')";
 
-	if (!$rows) {
+	// The provider's ceiling is a thousand; this stays under it and under the
+	// weight of a single request the marketplace has to parse.
+	$due = array_map('intval', (array) db_values("SELECT marketplace_sync_queue.id " . $join . "
+		  AND (marketplace_sync_queue.run_after <= UNIX_TIMESTAMP())
+		ORDER BY marketplace_sync_queue.priority ASC, marketplace_sync_queue.id ASC
+		LIMIT 500"));
+
+	if (!$due) {
 
 		// Either nothing is due, or what is due has no mapping any more. The
 		// second case has to be closed or the account is picked again on every
@@ -166,13 +165,52 @@ function mp_sync_send_batch($account, &$summary) {
 
 	}
 
+	// Leased before the products are read and before the network call. The
+	// update is the claim: a second cron overlapping this one finds run_after
+	// moved and leases none of these rows, so they are not sent twice. The
+	// rows stay 'waiting' (if this process dies the lease simply expires) and
+	// carry this pass's token, which tells mp_enqueue() that a change from now
+	// on is not in this batch and needs a row of its own.
+	$token = mp_sync_lease_token();
+
+	db("UPDATE marketplace_sync_queue
+		SET run_after = UNIX_TIMESTAMP() + 300, remote_task_id = '" . e($token) . "',
+			updated_timestamp = UNIX_TIMESTAMP()
+		WHERE id IN (" . implode(',', $due) . ")
+		  AND (status = 'waiting') AND (run_after <= UNIX_TIMESTAMP())");
+
+	$rows = (array) db_items("SELECT marketplace_sync_queue.id, marketplace_sync_queue.product_id,
+			marketplace_sync_queue.attempts,
+			marketplace_product_map.remote_code, marketplace_product_map.remote_id
+		" . $join . "
+		  AND (marketplace_sync_queue.remote_task_id = '" . e($token) . "')
+		ORDER BY marketplace_sync_queue.priority ASC, marketplace_sync_queue.id ASC");
+
+	if (!$rows) {
+
+		// Another pass leased them first.
+		return true;
+
+	}
+
 	$ids = array();
 
 	$payload = array();
 
+	$first = mp_sync_first_per_product($rows);
+
 	foreach ($rows as $row) {
 
 		$ids[] = (int) $row['id'];
+
+		// A second row of the same product (one left by a pass that died, one
+		// written for a later change) closes with the first; the product is
+		// read once, now, and sent once.
+		if (empty($first[(int)$row['id']])) {
+
+			continue;
+
+		}
 
 		$product = mp_product_row($account, $row);
 
@@ -188,17 +226,6 @@ function mp_sync_send_batch($account, &$summary) {
 		}
 
 		$payload[] = $product;
-
-	}
-
-	// Leased before the network call, so a second cron overlapping this one
-	// walks past these rows instead of sending them again. The rows stay
-	// 'waiting': if this process dies mid-call the lease simply expires.
-	if ($ids) {
-
-		db("UPDATE marketplace_sync_queue
-			SET run_after = UNIX_TIMESTAMP() + 300, updated_timestamp = UNIX_TIMESTAMP()
-			WHERE id IN (" . implode(',', $ids) . ")");
 
 	}
 
@@ -266,7 +293,8 @@ function mp_sync_send_batch($account, &$summary) {
 			? max(0, min(3600, (int)$result['data']['retry_after'])) : 0;
 
 		db("UPDATE marketplace_sync_queue
-			SET run_after = UNIX_TIMESTAMP() + " . (int)$delay . ", updated_timestamp = UNIX_TIMESTAMP()
+			SET run_after = UNIX_TIMESTAMP() + " . (int)$delay . ", remote_task_id = '',
+				updated_timestamp = UNIX_TIMESTAMP()
 			WHERE id IN (" . implode(',', $ids) . ") AND status = 'waiting'
 			  AND product_id IN (" . implode(',', $deferred) . ")");
 
@@ -306,7 +334,7 @@ function mp_sync_send_batch($account, &$summary) {
 			WHERE id IN (" . implode(',', $ids) . ") AND status = 'waiting'");
 
 		db("UPDATE marketplace_sync_queue
-			SET status = 'done', last_error = '', updated_timestamp = UNIX_TIMESTAMP()
+			SET status = 'done', last_error = '', remote_task_id = '', updated_timestamp = UNIX_TIMESTAMP()
 			WHERE id IN (" . implode(',', $ids) . ") AND status = 'waiting'");
 
 		$summary['done'] += $done;
@@ -330,6 +358,43 @@ function mp_sync_send_batch($account, &$summary) {
 	mp_account_outcome($account_id, true);
 
 	return true;
+
+}
+
+// A lease token for one pass's rows, kept in remote_task_id while they are
+// 'waiting'. The prefix keeps it apart from a marketplace's task id, which
+// the column holds once the rows are 'sent'.
+function mp_sync_lease_token() {
+
+	return 'lease:' . bin2hex(random_bytes(8));
+
+}
+
+function mp_sync_is_lease($value) {
+
+	return strpos((string)$value, 'lease:') === 0;
+
+}
+
+// Which rows of a batch read and send their product: the first row of each
+// product. Answers row id => true for those, false for the rest.
+function mp_sync_first_per_product($rows) {
+
+	$seen = array();
+
+	$first = array();
+
+	foreach ((array)$rows as $row) {
+
+		$product_id = (int) $row['product_id'];
+
+		$first[(int)$row['id']] = !isset($seen[$product_id]);
+
+		$seen[$product_id] = true;
+
+	}
+
+	return $first;
 
 }
 
@@ -363,8 +428,11 @@ function mp_sync_batch_failed($ids, $result, &$summary) {
 
 		}
 
+		// The lease is let go with the rows: they wait to be read again, so
+		// a change from now on can be folded into them (mp_enqueue_absorbs()).
 		db("UPDATE marketplace_sync_queue
 			SET attempts = attempts + 1,
+				remote_task_id = '',
 				last_error = '" . $error . "',
 				run_after = UNIX_TIMESTAMP() + " . $delay . ",
 				updated_timestamp = UNIX_TIMESTAMP()

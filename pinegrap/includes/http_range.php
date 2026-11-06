@@ -3,7 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Byte ranges (RFC 9110 14): which part of a file a request asks for, and
- * sending that part.
+ * sending that part; and whether a Cache-Control keeps a shared cache from
+ * storing an answer (RFC 9111 5.2.2).
  *
  * A media player asks for a sound or a video in parts: Safari plays nothing
  * that is not answered 206 Partial Content, and every player winds forward by
@@ -168,4 +169,27 @@ function pg_http_send_file_part($path, $first, $length)
     }
 
     fclose($handle);
+}
+
+/**
+ * Whether a Cache-Control value keeps every shared cache (a CDN, a proxy)
+ * from storing the answer: it carries no-store, or a bare private. no-cache
+ * or max-age=0 alone still let a shared cache store the body, and private
+ * with field names ("private=\"Set-Cookie\"") leaves the body shareable. An
+ * answer drawn for the signed-in person or the visitor needs this to be true.
+ *
+ * @param string $value the header's value, without "Cache-Control:"
+ * @return bool
+ */
+function pg_cache_control_shared_safe($value)
+{
+    foreach (explode(',', strtolower((string) $value)) as $directive) {
+        $directive = trim($directive);
+
+        if (($directive === 'no-store') || ($directive === 'private')) {
+            return true;
+        }
+    }
+
+    return false;
 }

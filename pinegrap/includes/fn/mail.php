@@ -1497,11 +1497,11 @@ function replace_variables($properties)
                 }
             }
         }
-        // Get all variables so they can be replaced with data.
-        preg_match_all('/\^\^(.*?)\^\^(%%(.*?)%%)?/i', $content, $variables, PREG_SET_ORDER);
-        // Loop through the variables in order to replace them with data
-        foreach ($variables as $variable) {
-            $whole_string = $variable[0];
+        // Replace every variable in one pass over the content, so a value
+        // already filled in (e.g. a customer-typed name holding ^^code^^) is
+        // never read again as a variable: it would take that field's data and
+        // leave the field's own place raw.
+        $content = preg_replace_callback('/\^\^(.*?)\^\^(%%(.*?)%%)?/i', function ($variable) use ($fields, $format, $prepare_for_html) {
             $field_name = $variable[1];
             $date_format = '';
             // If a date format was passed along with the variable, then store that.
@@ -1514,30 +1514,15 @@ function replace_variables($properties)
                     $date_format = unhtmlspecialchars($date_format);
                 }
             }
-            // Assume that the field name is not valid, until we find out otherwise.
-            $field_name_valid = false;
-            // Loop through the fields in order to determine if the field name is valid
-            // and store field data in $field variable for use below.
             foreach ($fields as $field) {
-                // If this field name matches the field name from the variable, then the field name from the variable is valid,
-                // so remember that and break out of the loop.
                 if ($field['name'] == $field_name) {
-                    $field_name_valid = true;
-                    break;
+                    // Update the data so that it is ready for output (e.g. convert dates to fiendly formats).
+                    return (string) prepare_form_data_for_output($field['data'], $field['type'] ?? '', $prepare_for_html, $date_format);
                 }
             }
-            // If the field name is valid, then continue to replace variable with data.
-            if ($field_name_valid == true) {
-                // Start data off with the field data.
-                $data = $field['data'];
-                // Update the data so that it is ready for output (e.g. convert dates to fiendly formats).
-                $data = prepare_form_data_for_output($data, $field['type'] ?? '', $prepare_for_html, $date_format);
-                // Replace the variable with the data.
-                // We can't use str_replace() for this because we need to limit the number of replacements to 1
-                // in order to prevent bugs where it will replace variables further below that might have date formats.
-                $content = preg_replace('/' . preg_quote($whole_string, '/') . '/', addcslashes($data, '\\$'), $content, 1);
-            }
-        }
+            // Not a field of this message: left as written.
+            return $variable[0];
+        }, $content);
     }
     return $content;
 }

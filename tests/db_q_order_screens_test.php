@@ -10,7 +10,7 @@
  * '?', and no '?' stands inside a quoted SQL literal. The raw queries left
  * are those without values and those completed by a clause built elsewhere
  * with escaped values, which may hold a '?' ($where, $sql_status,
- * $sql_type, $order_by, $sql_summarize_by_1..3, $disallowed_zones_sql_where,
+ * $sql_type, $order_by, $sql_summarize_by_1..3,
  * and the products INSERT of duplicate_products() with $compare_at_value /
  * $ai_fields_value); the product counts appending $live_products_sql hold
  * no value.
@@ -140,14 +140,14 @@ function db_q_order_screens_test_files()
 		'view_products.php' => 0,
 		'edit_product_group.php' => 14,
 		'includes/forms/product_group_form.php' => 1,
-		'duplicate_products.php' => 8,
+		'duplicate_products.php' => 10,
 	);
 }
 
 // Clause variables a raw query may still be completed by.
 function db_q_order_screens_test_built($text)
 {
-	return (bool) preg_match('/\$(where|sql_status|sql_type|order_by|sql_summarize_by_[123]|live_products_sql|disallowed_zones_sql_where|compare_at_value|ai_fields_value)\b/', $text);
+	return (bool) preg_match('/\$(where|sql_status|sql_type|order_by|sql_summarize_by_[123]|live_products_sql|compare_at_value|ai_fields_value|customs|extra)\b/', $text);
 }
 
 // The SQL text of a call's string literals, PHP code between them left out.
@@ -208,6 +208,12 @@ function test_db_q_order_screens_values_fit_placeholders()
 				(bool) preg_match('/\'\?|\?\'/', $literals),
 				$path . ' line ' . $call['line'] . ' quotes a placeholder');
 
+			// A clause built in a loop passes the list it built beside it,
+			// one value per '?' it added (the disallowed zones of a copy).
+			if (preg_match('/^\$\w+_values$/', trim($call['values']))) {
+				continue;
+			}
+
 			pg_assert_same(
 				0,
 				strpos($call['values'], 'array('),
@@ -251,6 +257,10 @@ function test_db_q_order_screens_binds_as_before()
 	pg_assert_same(
 		'INSERT INTO products_zones_xref (product_id, zone_id) VALUES (41, 7)',
 		pg_db_bind('INSERT INTO products_zones_xref (product_id, zone_id) VALUES (?, ?)', array((int) 41, (int) '7'), $escape));
+	// The disallowed zones of a copy keep one quoted id per allowed zone.
+	pg_assert_same(
+		"SELECT name FROM zones WHERE id != '3'AND id != '8'",
+		pg_db_bind('SELECT name FROM zones WHERE id != ?AND id != ?', array((string) 3, (string) 8), $escape));
 	// A missing posted group id is '' as escape(null) gave before.
 	$posted = array();
 	pg_assert_same(

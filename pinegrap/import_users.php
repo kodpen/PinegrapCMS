@@ -902,7 +902,14 @@ if (!$_POST) {
         foreach ($column_names as $key => $value) {
             // If this is not the username column, then add data for it.
             if ($value != 'username') {
-                $value = escape(pg_import_contact_cell($value, $import_cell($user_to_be_imported, $key)));
+                $cell = pg_import_contact_cell($value, $import_cell($user_to_be_imported, $key));
+
+                // One contact per affiliate code, as the contact form keeps it.
+                if ($value === 'affiliate_code') {
+                    $cell = pg_import_affiliate_code($cell, $value)['value'];
+                }
+
+                $value = escape($cell);
                 $contact_data_list .= "'$value', ";
             }
         }

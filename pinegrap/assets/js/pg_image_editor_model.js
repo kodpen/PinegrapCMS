@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'vector', 'scissors', 'warp', 'builder', 'frame', 'motion'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'puppet', 'builder', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'vector', 'scissors', 'warp', 'puppet', 'builder', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'builder', 'artboard', 'image', 'export', 'motion',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'area', 'sticker', 'frame', 'vector', 'scissors', 'warp', 'puppet', 'builder', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -190,7 +190,7 @@
     // at the top of its panel, in the switch's order.
     var RAIL_GROUPS = {
         photo: ['crop', 'adjust', 'redact', 'area', 'frame'],
-        vectors: ['vector', 'scissors', 'builder', 'warp']
+        vectors: ['vector', 'scissors', 'builder', 'warp', 'puppet']
     };
 
     // The group a tool belongs to, or ''.
@@ -851,11 +851,20 @@
     // A press inside a layer's box hits it unless test(l, p, slack), given
     // the point in the layer's own frame, says no: a line is thinner than
     // its box.
+    // A warped or pinned layer is tested on its drawn extent (see
+    // drawnExtent()), so a press on a part bent out of the box still hits.
     function hitLayer(doc, x, y, slack, test) {
         for (var i = doc.layers.length - 1; i >= 0; i--) {
-            var l = doc.layers[i], p = local(l, x, y);
+            var l = doc.layers[i], p, e;
 
-            if (!l.hidden && !l.locked && (p[0] >= -slack) && (p[1] >= -slack) && (p[0] <= l.w + slack) && (p[1] <= l.h + slack)
+            if (l.hidden || l.locked) {
+                continue;
+            }
+
+            p = local(l, x, y);
+            e = drawnExtent(l);
+
+            if ((p[0] >= e[0] - slack) && (p[1] >= e[1] - slack) && (p[0] <= e[2] + slack) && (p[1] <= e[3] + slack)
                     && (!test || test(l, p, slack))) {
                 return l;
             }
@@ -864,14 +873,51 @@
         return null;
     }
 
-    // The ids of the visible, unlocked layers whose turned box meets box
-    // { x, y, w, h } (a selection box dragged over the stage), bottom to top.
+    // [x0, y0, x1, y1] in the layer's own frame (as local() gives it, the
+    // mirror applied): its box, joined for a warped or pinned layer with the
+    // extent of the outline it draws, which can reach out of the box.
+    function drawnExtent(l) {
+        var e = [0, 0, l.w, l.h];
+
+        if (warpOn(l) || puppetOn(l)) {
+            warpContours(l).forEach(function (c) {
+                c.pts.forEach(function (q) {
+                    var u = l.mirror ? l.w - q[0] : q[0];
+
+                    e[0] = Math.min(e[0], u);
+                    e[1] = Math.min(e[1], q[1]);
+                    e[2] = Math.max(e[2], u);
+                    e[3] = Math.max(e[3], q[1]);
+                });
+            });
+        }
+
+        return e;
+    }
+
+    // The ids of the visible, unlocked layers whose turned box (its drawn
+    // extent when warped or pinned) meets box { x, y, w, h } (a selection
+    // box dragged over the stage), bottom to top.
     function layersInBox(doc, box) {
         return doc.layers.filter(function (l) {
-            var b = (!l.hidden && !l.locked) ? bounds([l]) : null;
+            var b = (!l.hidden && !l.locked) ? drawnBounds(l) : null;
 
             return !!b && (b.x <= box.x + box.w) && (b.x + b.w >= box.x) && (b.y <= box.y + box.h) && (b.y + b.h >= box.y);
         }).map(function (l) { return l.id; });
+    }
+
+    // The upright box around a layer's drawn extent in the rotated space.
+    function drawnBounds(l) {
+        if (!warpOn(l) && !puppetOn(l)) {
+            return bounds([l]);
+        }
+
+        var e = drawnExtent(l), m = mul(translate(l.x + l.w / 2, l.y + l.h / 2), mul(rotate(l.rot || 0), translate(-l.w / 2, -l.h / 2)));
+        var ps = [[e[0], e[1]], [e[2], e[1]], [e[2], e[3]], [e[0], e[3]]].map(function (p) { return apply(m, p[0], p[1]); });
+        var xs = ps.map(function (p) { return p[0]; }), ys = ps.map(function (p) { return p[1]; });
+        var x = Math.min.apply(null, xs), y = Math.min.apply(null, ys);
+
+        return { x: x, y: y, w: Math.max.apply(null, xs) - x, h: Math.max.apply(null, ys) - y };
     }
 
     // Whether x, y lies inside a layer's box by more than margin on every
@@ -1357,7 +1403,7 @@
     function shapePath(l) {
         var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, maxRadius(l)), d = '';
 
-        if (warpOn(l)) {
+        if (warpOn(l) || puppetOn(l)) {
             return warpShape(l);
         }
 
@@ -1387,7 +1433,7 @@
     function outline(l) {
         var w = l.w, h = l.h, out = [], i, n = 48;
 
-        if (warpOn(l)) {
+        if (warpOn(l) || puppetOn(l)) {
             return warpOutline(l);
         }
 
@@ -1444,7 +1490,13 @@
     // drawing: its outline within half its stroke and slack, or inside it
     // when it is filled.
     function hitShape(l, p, slack) {
-        var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, lines = outline(l), i, j;
+        return hitLines(l, outline(l), p, slack);
+    }
+
+    // hitShape() on the outline already drawn (lines), so a caller testing
+    // many points draws it once.
+    function hitLines(l, lines, p, slack) {
+        var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, i, j;
 
         // A path with more contours (outlined letters) is inside any of them.
         if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && (l.subs ? lines : [lines[0]]).some(function (line) { return inside(q, line); })) {
@@ -1492,16 +1544,18 @@
         };
     }
 
-    // A pen stroke after the eraser passed x, y with radius r: null when it
-    // was not touched, else the pieces left (none when all went), each a
-    // new box and trace that keeps the stroke's angle and mirror.
-    function eraseTrace(l, x, y, r) {
-        var c = drawnLocal(l, x, y), reach = r + (l.stroke || 1) / 2, runs = [], run = [], touched = false;
+    // A pen stroke after the eraser passed x, y with radius r (coming from
+    // from, a point of the document, so the points it swept over between
+    // two moves go too): null when it was not touched, else the pieces left
+    // (none when all went), each a new box and trace that keeps the stroke's
+    // angle and mirror.
+    function eraseTrace(l, x, y, r, from) {
+        var c = drawnLocal(l, x, y), c0 = from ? drawnLocal(l, from[0], from[1]) : c, reach = r + (l.stroke || 1) / 2, runs = [], run = [], touched = false;
 
         (l.trace || []).forEach(function (t) {
             var p = [t[0] * l.w, t[1] * l.h];
 
-            if (Math.hypot(p[0] - c[0], p[1] - c[1]) <= reach) {
+            if (segmentDistance(p, c0, c) <= reach) {
                 touched = true;
 
                 if (run.length) {
@@ -1533,6 +1587,117 @@
                 rot: l.rot || 0,
                 mirror: !!l.mirror,
                 trace: piece.trace
+            };
+        });
+    }
+
+    // -- the eraser on shapes and paths --
+
+    // A drawn shape or a path loses what the eraser passes over as a pen
+    // stroke does, but through a mask: the layer keeps its type, style and
+    // size. l.erase holds a stroke per drag over the layer, { w, h, r, pts }:
+    // the eraser's path in the layer's frame before the mirror, in pixels of
+    // the w x h box the layer had then (a later resize stretches the mask
+    // with the drawing), r its radius in those pixels.
+    var ERASE_POINTS = 4000;
+
+    // Whether the eraser masks l: a drawn shape (a pen stroke it cuts,
+    // eraseTrace()) or a path.
+    function erasable(l) {
+        return !!l && ((l.type === 'path') || ((DRAW_KINDS.indexOf(l.type) >= 0) && (l.type !== 'pen')));
+    }
+
+    function eraseValid(s) {
+        var num = function (n) { return (typeof n === 'number') && isFinite(n); };
+
+        return !!s && num(s.w) && num(s.h) && num(s.r) && (s.w > 0) && (s.h > 0) && (s.r > 0) && Array.isArray(s.pts) && (s.pts.length > 0)
+            && s.pts.every(function (p) { return Array.isArray(p) && (p.length === 2) && num(p[0]) && num(p[1]); });
+    }
+
+    // The mask's strokes a drawing may use: none on a layer the eraser does
+    // not mask, a broken one left out.
+    function eraseStrokes(l) {
+        return (erasable(l) && Array.isArray(l.erase)) ? l.erase.filter(eraseValid) : [];
+    }
+
+    function eraseOn(l) {
+        return eraseStrokes(l).length > 0;
+    }
+
+    // Whether an eraser of radius r moving from a to b (points of the
+    // document) touches l's drawing as hitShape() tests it, in steps of half
+    // the radius. A layer without a warp is passed over when the move stays
+    // away from its box.
+    function eraseTouches(l, a, b, r) {
+        var reach = r + (l.stroke || 1), pa = local(l, a[0], a[1]), pb = local(l, b[0], b[1]), lines, n, i;
+
+        if (!l.warp && !l.puppet && ((Math.max(pa[0], pb[0]) < -reach) || (Math.min(pa[0], pb[0]) > l.w + reach)
+                || (Math.max(pa[1], pb[1]) < -reach) || (Math.min(pa[1], pb[1]) > l.h + reach))) {
+            return false;
+        }
+
+        lines = outline(l);
+        n = Math.min(200, Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / Math.max(1, r / 2))));
+
+        for (i = 0; i <= n; i++) {
+            if (hitLines(l, lines, [pa[0] + (pb[0] - pa[0]) * i / n, pa[1] + (pb[1] - pa[1]) * i / n], r)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // The point x, y of the document in l's frame before the mirror.
+    function eraseLocal(l, x, y) {
+        var p = drawnLocal(l, x, y);
+
+        return [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10];
+    }
+
+    // l's mask after an eraser of radius r moved from a to b: b goes onto
+    // the stroke at index i (the drag's own) unless it lies within a quarter
+    // of the radius of its last point; without one, a new stroke from a to
+    // b. Answers { erase, i }, i the stroke the drag goes on with.
+    function eraseAdd(l, a, b, r, i) {
+        var list = Array.isArray(l.erase) ? l.erase.slice() : [], s = ((i !== null) && (i !== undefined) && eraseValid(list[i])) ? list[i] : null;
+        var p = eraseLocal(l, b[0], b[1]), last;
+
+        if (s) {
+            last = s.pts[s.pts.length - 1];
+
+            if (Math.hypot(p[0] - last[0], p[1] - last[1]) < s.r / 4) {
+                return { erase: list, i: i };
+            }
+
+            if (s.pts.length < ERASE_POINTS) {
+                list[i] = { w: s.w, h: s.h, r: s.r, pts: s.pts.concat([p]) };
+
+                return { erase: list, i: i };
+            }
+
+            list.push({ w: l.w, h: l.h, r: s.r, pts: [last, p] });
+
+            return { erase: list, i: list.length - 1 };
+        }
+
+        list.push({ w: l.w, h: l.h, r: Math.round(r * 10) / 10, pts: [eraseLocal(l, a[0], a[1]), p] });
+
+        return { erase: list, i: list.length - 1 };
+    }
+
+    // l's mask in a new box of the same angle and mirror (x0, y0, w, h in
+    // the old box's frame before the mirror, as refitPath() and warpExpand()
+    // fit one): the strokes stay where they were on the document.
+    function eraseShift(l, x0, y0, w, h) {
+        return eraseStrokes(l).map(function (s) {
+            var sx = l.w / s.w, sy = l.h / s.h;
+
+            return {
+                w: w,
+                h: h,
+                r: Math.round(s.r * Math.sqrt(sx * sy) * 10) / 10,
+                pts: s.pts.map(function (p) { return [Math.round((p[0] * sx - x0) * 10) / 10, Math.round((p[1] * sy - y0) * 10) / 10]; })
             };
         });
     }
@@ -1569,7 +1734,8 @@
         strokePreset: strokePreset, shapeBox: shapeBox, arrowHead: arrowHead, lineThickness: lineThickness, lineBox: lineBox,
         drawnPoint: drawnPoint, drawnLocal: drawnLocal, lineEnds: lineEnds, regularPoints: regularPoints, maxRadius: maxRadius,
         smoothTrace: smoothTrace, shapePath: shapePath, outline: outline, hitShape: hitShape, penLayer: penLayer,
-        eraseTrace: eraseTrace, dashFor: dashFor, fillFor: fillFor
+        eraseTrace: eraseTrace, dashFor: dashFor, fillFor: fillFor, ERASE_POINTS: ERASE_POINTS, erasable: erasable, eraseStrokes: eraseStrokes,
+        eraseOn: eraseOn, eraseTouches: eraseTouches, eraseAdd: eraseAdd, eraseShift: eraseShift
     };
 
     // -- text (pg_image_editor_text.js) --
@@ -2633,6 +2799,11 @@
 
         if (more.length) {
             out.subs = more.map(function (sub) { return { knots: moveKnots(sub.knots, part), closed: !!sub.closed }; });
+        }
+
+        // The eraser's mask stays where it was on the document.
+        if (eraseOn(l)) {
+            out.erase = eraseShift(l, x0, y0, w, h);
         }
 
         return out;
@@ -4218,7 +4389,15 @@
         return out;
     }
 
-    var ACTIONS = { actionList: actionList };
+    // Whether a corner keeps a layer's proportions while it resizes it
+    // (pointer: the PointerEvent's pointerType): with a finger or a pen
+    // always, a touch screen having no Shift; with the mouse when the type
+    // keeps them (ratio: a picture), Shift doing the other.
+    function keepRatio(pointer, shift, ratio) {
+        return (pointer === 'touch') || (pointer === 'pen') || (!!shift !== !!ratio);
+    }
+
+    var ACTIONS = { actionList: actionList, keepRatio: keepRatio };
 
     // -- The context menu (pg_image_editor_menu.js) --
 
@@ -4710,6 +4889,7 @@
         var bare = Object.assign({}, l), out;
 
         delete bare.warp;
+        delete bare.puppet;
 
         if (l.type !== 'path') {
             return [shapeKnots(bare)];
@@ -4725,9 +4905,10 @@
     }
 
     // The warped contours: [{ pts, closed }] in the box's frame; a closed
-    // one does not repeat its first point.
+    // one does not repeat its first point. The free deformation's pins
+    // (l.puppet) move the points after the warp.
     function warpContours(l) {
-        var w = l.w, h = l.h;
+        var w = l.w, h = l.h, warped = warpOn(l), pins = puppetOn(l) ? puppetPins(l) : null;
 
         return warpSource(l).map(function (c) {
             var pts = flattenKnots(c.knots, c.closed && (c.knots.length > 2)), closed = c.closed && (c.knots.length > 2);
@@ -4738,7 +4919,11 @@
 
             return {
                 closed: closed,
-                pts: pts.map(function (p) { return warpPoint(l.warp, w, h, w ? p[0] / w : 0, h ? p[1] / h : 0); })
+                pts: pts.map(function (p) {
+                    var q = warped ? warpPoint(l.warp, w, h, w ? p[0] / w : 0, h ? p[1] / h : 0) : [p[0], p[1]];
+
+                    return pins ? mlsRigid(pins, q) : q;
+                })
             };
         });
     }
@@ -4788,6 +4973,10 @@
             out.subs = cs.slice(1).map(function (o) { return { knots: part(o.pts), closed: o.closed }; });
         }
 
+        if (eraseOn(l)) {
+            out.erase = eraseShift(l, left, top, w, h);
+        }
+
         return out;
     }
 
@@ -4795,6 +4984,144 @@
         WARP_STYLES: WARP_STYLES, MESH_MIN: MESH_MIN, MESH_MAX: MESH_MAX, warpable: warpable, warpOn: warpOn, meshGrid: meshGrid,
         meshAt: meshAt, meshResize: meshResize, warpPoint: warpPoint, flattenKnots: flattenKnots, warpContours: warpContours,
         warpShape: warpShape, warpOutline: warpOutline, warpExpand: warpExpand
+    };
+
+    // ---- free deformation ----
+
+    // Pins on a path or a drawn shape, kept as l.puppet { pins: [{ rest,
+    // at }] } (each [u, v] as parts of the box, before the mirror): a pin
+    // dragged from rest to at bends the outline around the others by rigid
+    // moving least squares (Schaefer, McPhail, Warren 2006). It is drawn on
+    // the outline the warp gives, through warpContours().
+
+    var PUPPET_MAX = 32;
+
+    function pinValid(p) {
+        var ok = function (a) { return Array.isArray(a) && (a.length === 2) && isFinite(a[0]) && isFinite(a[1]); };
+
+        return !!p && ok(p.rest) && ok(p.at);
+    }
+
+    // Whether the layer's drawing goes through its pins.
+    function puppetOn(l) {
+        var pp = l && l.puppet;
+
+        return !!pp && warpable(l) && Array.isArray(pp.pins) && (pp.pins.length > 0) && (pp.pins.length <= PUPPET_MAX) && pp.pins.every(pinValid);
+    }
+
+    // The pins in the box's pixels: [{ p: rest, q: moved }].
+    function puppetPins(l) {
+        return l.puppet.pins.map(function (pin) {
+            return { p: [pin.rest[0] * l.w, pin.rest[1] * l.h], q: [pin.at[0] * l.w, pin.at[1] * l.h] };
+        });
+    }
+
+    // Where the pins take the point v: the rotation and shift that best
+    // carry the pins near v (weights 1 / distance squared) to their moved
+    // places. One pin shifts everything; on a pin, its moved place.
+    function mlsRigid(pins, v) {
+        var sw = 0, px = 0, py = 0, qx = 0, qy = 0, dot = 0, crs = 0, spread = 0, i, w, dx, dy, a, b, c, d;
+        var ws = [];
+
+        if (!pins.length) {
+            return [v[0], v[1]];
+        }
+
+        for (i = 0; i < pins.length; i++) {
+            dx = pins[i].p[0] - v[0];
+            dy = pins[i].p[1] - v[1];
+            w = dx * dx + dy * dy;
+
+            if (w < 1e-12) {
+                return [pins[i].q[0], pins[i].q[1]];
+            }
+
+            w = 1 / w;
+            ws.push(w);
+            sw += w;
+            px += w * pins[i].p[0];
+            py += w * pins[i].p[1];
+            qx += w * pins[i].q[0];
+            qy += w * pins[i].q[1];
+        }
+
+        px /= sw;
+        py /= sw;
+        qx /= sw;
+        qy /= sw;
+
+        for (i = 0; i < pins.length; i++) {
+            a = pins[i].p[0] - px;
+            b = pins[i].p[1] - py;
+            c = pins[i].q[0] - qx;
+            d = pins[i].q[1] - qy;
+            dot += ws[i] * (a * c + b * d);
+            crs += ws[i] * (a * d - b * c);
+            spread += ws[i] * (a * a + b * b);
+        }
+
+        // Pins on one spot (or one pin) give no turn, only the shift:
+        // rounding would otherwise pick a random angle.
+        var len = (spread / sw > 1e-8) ? Math.hypot(dot, crs) : 0, cos = len ? dot / len : 1, sin = len ? crs / len : 0;
+
+        dx = v[0] - px;
+        dy = v[1] - py;
+
+        return [cos * dx - sin * dy + qx, sin * dx + cos * dy + qy];
+    }
+
+    // The rest place (parts of the box) of the drawn point u, v of a w x h
+    // box under its pins: the deformation undone by a few fixed-point
+    // steps, so a pin added to a bent shape sits where it was pressed.
+    function puppetRest(l, u, v) {
+        var pins = puppetOn(l) ? puppetPins(l) : [], w = l.w || 1, h = l.h || 1, goal = [u * w, v * h], r = goal.slice(), i, f;
+
+        for (i = 0; pins.length && (i < 24); i++) {
+            f = mlsRigid(pins, r);
+            r = [r[0] + goal[0] - f[0], r[1] + goal[1] - f[1]];
+
+            if (Math.hypot(goal[0] - f[0], goal[1] - f[1]) < 0.01) {
+                break;
+            }
+        }
+
+        return [frac(r[0], w), frac(r[1], h)];
+    }
+
+    // The puppet with a pin added where the drawn point u, v is (nothing
+    // moves), or the same puppet when it holds the most pins.
+    function puppetAdd(l, u, v) {
+        var pp = (l.puppet && Array.isArray(l.puppet.pins)) ? clone(l.puppet) : { pins: [] };
+
+        if (pp.pins.length >= PUPPET_MAX) {
+            return pp;
+        }
+
+        pp.pins.push({ rest: puppetRest(l, u, v), at: [frac(u, 1), frac(v, 1)] });
+
+        return pp;
+    }
+
+    // The pin nearest to the drawn point x, y (the box's pixels) within
+    // slack pixels, or -1.
+    function puppetHit(l, x, y, slack) {
+        var best = -1, near = slack, pins = (l.puppet && Array.isArray(l.puppet.pins)) ? l.puppet.pins : [];
+
+        pins.forEach(function (pin, i) {
+            var dd = pinValid(pin) ? Math.hypot(pin.at[0] * l.w - x, pin.at[1] * l.h - y) : Infinity;
+
+            if (dd <= near) {
+                near = dd;
+                best = i;
+            }
+        });
+
+        return best;
+    }
+
+    var PUPPET = {
+        PUPPET_MAX: PUPPET_MAX, puppetOn: puppetOn, puppetPins: puppetPins, mlsRigid: mlsRigid, puppetRest: puppetRest,
+        puppetAdd: puppetAdd, puppetHit: puppetHit
     };
 
     // -- scenes (pg_image_editor_scenes.js) --
@@ -6137,6 +6464,15 @@
     function layerRings(l) {
         if (!l || !isClosed(l) || (l.type === 'pen')) {
             return null;
+        }
+
+        // A warped or pinned layer: the contours it draws, not its knots.
+        if (warpOn(l) || puppetOn(l)) {
+            var bent = warpContours(l).filter(function (c) { return c.closed && (c.pts.length > 2); }).map(function (c) {
+                return c.pts.map(function (q) { return drawnPoint(l, q[0], q[1]); });
+            });
+
+            return bent.length ? bent : null;
         }
 
         var kc = (l.type === 'path') ? [{ knots: pathKnots(l), closed: true }].concat(subKnots(l)) : [shapeKnots(l)];
@@ -7669,7 +8005,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, KEYS, TRACKS, RENDER, ANIMSAVE, SVGMOTION, ACCESS, GFONTS, GLYPH, WARP, PUPPET, SCENES, PRESENT, OUTLINE, BUILDER, SELECTION, ACTIONS, MENU].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

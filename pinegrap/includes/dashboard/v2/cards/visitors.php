@@ -181,7 +181,7 @@ function pg_dashboard_v2_card_visitors($user, $period, $compare)
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/tips.php');
 
     $tips = pg_dashboard_v2_tips($labels, $current['visits'], function ($n) {
-        return lang(array('string' => '{var:1} visit{suffix:1}', 'vars' => pg_format_number($n, 0)));
+        return lang(array('string' => '{var:1} visit{suffix:1}', 'vars' => pg_format_number($n, 0), 'suffix' => pg_dashboard_v2_plural_suffix($n)));
     }, $compare_line, ($compare_line === null) ? '' : $compare_names[$compare]);
 
     return array('status' => 'success', 'data' => array(

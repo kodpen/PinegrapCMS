@@ -29,6 +29,24 @@ if (!pg_cron_is_background_run()) {
     }
 }
 
+// One run at a time, whoever starts it: a crontab line and a request from the
+// panel take the job's lock in cron_runs as the general job's dispatcher does
+// (it has taken it already for a dispatched run, and releases it
+// itself). The month's pack is marked as sent only after the mail, so two
+// runs side by side both built a pack and mailed the accountant twice.
+// A request from the panel while a run is working goes to its screen.
+if (!defined('PG_CRON_DISPATCH')) {
+    if (!pg_cron_claim('erp_accountant_job')) {
+        if (!pg_cron_is_background_run()) {
+            go(PATH . SOFTWARE_DIRECTORY . '/erp_accountant.php');
+        }
+
+        exit();
+    }
+
+    register_shutdown_function('pg_cron_release', 'erp_accountant_job');
+}
+
 $result = array('ran' => false, 'reason' => 'off', 'id' => 0);
 
 if (defined('ERP_ENABLED') && ERP_ENABLED) {

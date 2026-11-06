@@ -1057,9 +1057,41 @@ function pg_file_storage_orphans(array $items, $referenced, $now)
 
 
 /**
- * Deletes the objects of deleted and replaced files: once a day, a listing
- * of files/ compared with the keys the rows hold, at most 200 deletions a
- * pass. Every delete door of the product removes only the row and the local
+ * Where the next sweep's listing starts: after the last orphan this pass
+ * handled when more orphans than $max were found (the rest are read again
+ * next time), after the window's last key when the store holds more keys,
+ * else from the top ('').
+ *
+ * @param array $items the window listed: key each, in listing order
+ * @param bool $truncated the store holds keys after the window
+ * @param array $orphans the window's orphan keys, in listing order
+ * @param int $max deletions a pass
+ * @return string a key below the configured prefix, or ''
+ */
+function pg_file_storage_sweep_cursor(array $items, $truncated, array $orphans, $max)
+{
+    $max = max(1, (int) $max);
+
+    if (count($orphans) > $max) {
+        return (string) $orphans[$max - 1];
+    }
+
+    if ($truncated && !empty($items)) {
+        $last = end($items);
+
+        return isset($last['key']) ? (string) $last['key'] : '';
+    }
+
+    return '';
+}
+
+
+/**
+ * Deletes the objects of deleted and replaced files: once a day, a window of
+ * 5000 keys of files/ compared with the keys the rows hold, at most 200
+ * deletions a pass. The next pass lists on from where this one stopped
+ * (config_text object_storage_orphan_sweep_after), so a store of more keys
+ * is covered window by window instead of its first keys every day. Every delete door of the product removes only the row and the local
  * bytes, so this one pass covers them all. Runs while a store is set up,
  * whether or not the switch is on, so files moved earlier are still cleaned.
  *
@@ -1081,7 +1113,8 @@ function pg_file_storage_orphan_sweep()
 
     pg_config_text_save('object_storage_orphan_sweep', (string) time());
 
-    $listing = pg_os_list($config, 'files/', array('limit' => 5000));
+    $after = pg_config_text('object_storage_orphan_sweep_after');
+    $listing = pg_os_list($config, 'files/', array('limit' => 5000, 'start_after' => $after));
 
     if (empty($listing['ok'])) {
         return 0;
@@ -1090,7 +1123,16 @@ function pg_file_storage_orphan_sweep()
     $deleted = 0;
     $referenced = pg_file_storage_referenced_keys();
 
-    foreach (array_slice(pg_file_storage_orphans($listing['items'], $referenced, time()), 0, 200) as $key) {
+    // Rows that cannot be read leave the window to be read again.
+    if (!is_array($referenced)) {
+        return 0;
+    }
+
+    $orphans = pg_file_storage_orphans($listing['items'], $referenced, time());
+    pg_config_text_save('object_storage_orphan_sweep_after',
+        pg_file_storage_sweep_cursor($listing['items'], !empty($listing['truncated']), $orphans, 200));
+
+    foreach (array_slice($orphans, 0, 200) as $key) {
         $done = pg_os_delete($config, $key);
 
         if (!empty($done['ok'])) {

@@ -294,7 +294,8 @@ function pg_credit_expire_card(array $card, $now)
  * The general job's store credit passes: the expiring notices whose moment
  * fell since the last pass, then the cards whose end has come. The pass
  * time is written before anything is sent, so a pass that dies loses its
- * notices rather than sending them twice.
+ * notices rather than sending them twice, and only while it still holds the
+ * time this pass read, so two overlapping runs never both send.
  *
  * @param int $now
  * @return array  notified, expired
@@ -308,9 +309,12 @@ function pg_credit_mails_run($now)
         return $out;
     }
 
-    $last = pg_credit_mail_window_start(pg_config_text('credit_mails_at'), $now);
+    $stored = pg_config_text('credit_mails_at');
+    $last = pg_credit_mail_window_start($stored, $now);
 
-    if (pg_config_text_save('credit_mails_at', (string) $now)) {
+    // Claimed against the value read: of two general job runs that read the
+    // same pass time, only the one whose write changed the row sends.
+    if (pg_config_text_claim('credit_mails_at', $stored, (string) $now)) {
         $days = PG_CREDIT_EXPIRING_DAYS * 86400;
         $rows = db_items(
             "SELECT id, balance, expires_at, created_timestamp FROM gift_cards

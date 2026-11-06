@@ -106,7 +106,7 @@ if (!$_POST) {
 
     // Determine whether to show product images based on config setting (default: show).
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
-    $output_image_header = $show_image ? '<th>' . lang('Image') . '</th>' : '';
+    $output_image_header = $show_image ? '<th data-pg-sort="none">' . lang('Image') . '</th>' : '';
 
     // get all product groups currently in this product group
     //
@@ -214,7 +214,7 @@ if (!$_POST) {
                 ' . $output_image_column . '
                 <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . (($item['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>
                 <td class="align-middle ' . $status_class . '">' . h($item['short_description']) . '</td>
-                <td class="align-middle text-end">' . $price . '</td>
+                <td class="align-middle text-end" data-sort="' . (($item['type'] == 'product') ? h((string) $item['price']) : '') . '">' . $price . '</td>
                 <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="5" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="65535" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" style="text-align: right;width:60px;" /></td>
                 <td></td>
             </tr>';

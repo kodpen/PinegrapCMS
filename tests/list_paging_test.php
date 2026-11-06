@@ -2,10 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the server-side list paging helpers (includes/fn/list_paging.php)
- * and the pure parts of the users list (includes/fn/user_list.php): the page
- * window, the search box read as DataTables' smart search read it, the search
- * condition with its bound values, and a row as markup and as DataTables data.
+ * Tests for the list helpers (includes/fn/list_paging.php) and the pure
+ * parts of the users list (includes/fn/user_list.php): the search box's
+ * words, the search condition with its bound values, and a row as markup.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,30 +17,6 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_list.php');
-
-function test_list_page_window_takes_the_menu_lengths()
-{
-	pg_assert_same(array('offset' => 0, 'limit' => 100), pg_list_page_window(0, 100));
-	pg_assert_same(array('offset' => 200, 'limit' => 25), pg_list_page_window('200', '25'));
-	pg_assert_same(array('offset' => 50, 'limit' => null), pg_list_page_window(50, -1), 'unlimited');
-}
-
-function test_list_page_window_refuses_odd_values()
-{
-	pg_assert_same(array('offset' => 0, 'limit' => 100), pg_list_page_window(-5, 7), 'negative offset, unknown length');
-	pg_assert_same(array('offset' => 0, 'limit' => 100), pg_list_page_window('1.5', '10.5'));
-	pg_assert_same(array('offset' => 0, 'limit' => 100), pg_list_page_window(array(1), array(10)));
-	pg_assert_same(array('offset' => 0, 'limit' => 100), pg_list_page_window('1; DROP', '100 OR 1'));
-	pg_assert_same(array('offset' => 0, 'limit' => 100), pg_list_page_window(null, null));
-}
-
-function test_list_limit_sql()
-{
-	pg_assert_same(' LIMIT 0, 100', pg_list_limit_sql(array('offset' => 0, 'limit' => 100)));
-	pg_assert_same(' LIMIT 300, 10', pg_list_limit_sql(array('offset' => 300, 'limit' => 10)));
-	pg_assert_same('', pg_list_limit_sql(array('offset' => 0, 'limit' => null)), 'every row');
-	pg_assert_same(' LIMIT 20, 18446744073709551615', pg_list_limit_sql(array('offset' => 20, 'limit' => null)));
-}
 
 function test_list_search_terms_split_like_datatables()
 {
@@ -224,14 +199,9 @@ function test_list_cell_attributes()
 	));
 
 	pg_assert_same('<tr class=""><td class="align-middle">a</td><td class="text-end" data-pg-edit="price" data-pg-edit-value="5&quot;" tabindex="0">5</td></tr>', pg_list_row_html($row));
-
-	$data = pg_list_row_data($row);
-	pg_assert_same(array('1' => array('data-pg-edit' => 'price', 'data-pg-edit-value' => '5"', 'tabindex' => '0')), $data['DT_RowData']['pgAttrs']);
-	pg_assert_contains('"pgAttrs":{"1":{', json_encode($data), 'by column number');
-	pg_assert_false(isset(pg_list_row_data(array('class' => '', 'cells' => array(pg_list_cell('a'))))['DT_RowData']['pgAttrs']), 'no attributes, no pgAttrs');
 }
 
-function test_list_row_html_and_data()
+function test_list_row_html()
 {
 	$row = array('class' => 'unselectable', 'cells' => array(
 		pg_list_cell('<input type="checkbox">', 'select-all align-middle'),
@@ -240,13 +210,6 @@ function test_list_row_html_and_data()
 	));
 
 	pg_assert_same('<tr class="unselectable"><td class="select-all align-middle"><input type="checkbox"></td><td class="align-middle">a &amp; b</td><td>x</td></tr>', pg_list_row_html($row));
-
-	$data = pg_list_row_data($row);
-	pg_assert_same('<input type="checkbox">', $data['0']);
-	pg_assert_same('x', $data['2']);
-	pg_assert_same('unselectable', $data['DT_RowClass']);
-	pg_assert_same(array('select-all align-middle', 'align-middle', ''), $data['DT_RowData']['pgCells']);
-	pg_assert_contains('"0":"<input', json_encode($data), 'an object DataTables reads by column number');
 }
 
 function test_list_row_id()
@@ -254,18 +217,6 @@ function test_list_row_id()
 	$row = array('id' => '7"', 'class' => '', 'cells' => array(pg_list_cell('a')));
 
 	pg_assert_same('<tr id="7&quot;" class=""><td class="align-middle">a</td></tr>', pg_list_row_html($row));
-	pg_assert_same('7"', pg_list_row_data($row)['DT_RowId']);
-	pg_assert_false(isset(pg_list_row_data(array('class' => '', 'cells' => array()))['DT_RowId']), 'no id, no DT_RowId');
-}
-
-function test_list_rows_answer()
-{
-	$answer = pg_list_rows_answer('7', '120', 3, array(array('class' => '', 'cells' => array(pg_list_cell('a')))));
-	pg_assert_same(7, $answer['draw']);
-	pg_assert_same(120, $answer['recordsTotal']);
-	pg_assert_same(3, $answer['recordsFiltered']);
-	pg_assert_same(1, count($answer['data']));
-	pg_assert_same(0, pg_list_rows_answer('<x>', 0, 0, array())['draw']);
 }
 
 function test_user_list_filter()

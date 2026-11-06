@@ -1970,6 +1970,45 @@ function validate_time($time)
         return true;
     }
 }
+/**
+ * The error a product form value gets when the designer cart widget posts
+ * it (cart_action.php), as HTML; null when it passes. A date, a date and
+ * time, an e-mail address or a time must be one, as the classic cart and
+ * the express order hold them; a pick list, radio button or check box value
+ * must be of the field's option list (pg_cf_option_value_error()). An empty
+ * value passes: the required check is the checkout's.
+ *
+ * @param array $field         the field's row: type, label
+ * @param mixed $value         the posted value, a string or a list
+ * @param array $option_values the field's form_field_options values
+ * @return string|null
+ */
+function pg_product_form_value_error(array $field, $value, array $option_values)
+{
+    $type = isset($field['type']) ? (string) $field['type'] : '';
+    $label = h(isset($field['label']) ? (string) $field['label'] : '');
+    $text = is_array($value) ? '' : trim((string) $value);
+
+    if ($text !== '') {
+        if (($type === 'date') && !validate_date($text)) {
+            return lang(array('string' => 'Please enter a valid date for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'date and time') && !validate_date_and_time($text)) {
+            return lang(array('string' => 'Please enter a valid date &amp; time for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'email address') && !validate_email_address($text)) {
+            return lang(array('string' => 'Please enter a valid e-mail address for {var:1}', 'vars' => $label));
+        }
+
+        if (($type === 'time') && !validate_time($text)) {
+            return lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => $label));
+        }
+    }
+
+    return pg_cf_option_value_error($field, $value, $option_values);
+}
 // A form processor's single-value fields, after liveform::add_fields_to_session().
 // A text box, a hidden field or a radio button posts one string, but a hand-made
 // request can post any of them as an array (name[]=x), and the escaping, string
@@ -3020,13 +3059,15 @@ function create_or_update_page_type_record($page_type, $properties)
 {
     $page_type_table_name = str_replace(' ', '_', $page_type) . '_pages';
     $sql_collection = "";
+    $collection_values = array();
     // If this is a form list or item view, then deal with the collection.
     if ($page_type == 'form list view' or $page_type == 'form item view') {
         // If the collection is not set, then set to default collection A.
         if (!$properties['collection']) {
             $properties['collection'] = 'a';
         }
-        $sql_collection = "AND (collection = '" . e($properties['collection']) . "')";
+        $sql_collection = "AND (collection = ?)";
+        $collection_values[] = (string) $properties['collection'];
     }
     // check to see if there is already a page type record
     $query = "SELECT COUNT(*)
@@ -3035,34 +3076,38 @@ function create_or_update_page_type_record($page_type, $properties)
 
         WHERE
 
-            (page_id = '" . e($properties['page_id']) . "')
+            (page_id = ?)
 
             $sql_collection";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+    $result = db_q($query, array_merge(array((string) $properties['page_id']), $collection_values)) or output_error(lang('Query failed.'));
     $row = mysqli_fetch_row($result);
     $number_of_records = $row[0];
     // if a record does not exist, create record
     if ($number_of_records == 0) {
         $count = 1;
         $columns = '';
-        $values = '';
+        $placeholders = '';
+        $insert_values = array();
         foreach ($properties as $field => $value) {
             $columns .= $field;
-            $values .= "'" . e(isset($value) ? $value : '') . "'";
+            $placeholders .= "?";
+            $insert_values[] = (string) (isset($value) ? $value : '');
             if ($count < count($properties)) {
                 $columns .= ', ';
-                $values .= ', ';
+                $placeholders .= ', ';
             }
             $count++;
         }
-        $query = "INSERT INTO $page_type_table_name ($columns) VALUES ($values)";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $query = "INSERT INTO $page_type_table_name ($columns) VALUES ($placeholders)";
+        $result = db_q($query, $insert_values) or output_error(lang('Query failed.'));
         // else a record exists, so update record
     } else {
         $count = 1;
         $sql_update = '';
+        $update_values = array();
         foreach ($properties as $field => $value) {
-            $sql_update .= "$field = '" . e($value) . "'";
+            $sql_update .= "$field = ?";
+            $update_values[] = (string) $value;
             if ($count < count($properties)) {
                 $sql_update .= ', ';
             }
@@ -3074,10 +3119,10 @@ function create_or_update_page_type_record($page_type, $properties)
 
             WHERE
 
-                (page_id = '" . e($properties['page_id']) . "')
+                (page_id = ?)
 
                 $sql_collection";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+        $result = db_q($query, array_merge($update_values, array((string) $properties['page_id']), $collection_values)) or output_error(lang('Query failed.'));
     }
 }
 /**
@@ -4173,6 +4218,23 @@ function get_standard_fields_for_view()
         );
     }
     return $standard_fields;
+}
+
+// The ORDER BY of a classic form list view's page, ending on the record id.
+// The page is read with LIMIT start, count; by the configured sort fields
+// alone, records sharing a value (one category, one submit second) have no
+// fixed order, so the server may return them in another order for the next
+// page and a record is shown twice while another is never shown. Without a
+// sort field the records come in the order they were submitted. Pure.
+function pg_form_list_view_order_sql($order_by)
+{
+    $order_by = trim((string) $order_by);
+
+    if ($order_by === '') {
+        return 'ORDER BY forms.id ASC';
+    }
+
+    return $order_by . ', forms.id ASC';
 }
 
 // Whether a field picked on the form list view screen (an order-by or a
@@ -5686,4 +5748,61 @@ function pg_stored_file_exists($value)
     }
 
     return (int) db_value("SELECT COUNT(*) FROM files WHERE name = '" . e((string) $value) . "'") > 0;
+}
+
+/**
+ * Count one E-mail a Friend attempt on the visitor's daily allowance and say
+ * whether it is over the limit (ten a day). Counting and testing are one
+ * atomic step (waf_rate_record() is a single INSERT ... ON DUPLICATE KEY
+ * UPDATE) taken before the mail goes, so parallel requests cannot all read
+ * room under the limit and all send. An IPv6 visitor is counted by the /64
+ * (waf_ip_subject()), so the addresses of one network share one allowance.
+ * A refused attempt is counted too. Fails open: a counter that cannot be
+ * written answers 0.
+ *
+ * @param string        $ip     The visitor's address (pg_auth_request_address())
+ * @param callable|null $record (subject, scope, window) => new total;
+ *                              waf_rate_record() when null
+ * @return bool True when this attempt is over the limit
+ */
+function pg_eaf_limit_take($ip, $record = null)
+{
+    $live = ($record === null);
+
+    if ($live) {
+        if (!function_exists('waf_rate_record')) {
+            return false;
+        }
+
+        $record = 'waf_rate_record';
+    }
+
+    $subject = function_exists('waf_ip_subject') ? waf_ip_subject((string) $ip) : (string) $ip;
+    $over = ((int) call_user_func($record, $subject, 'eaf', 86400) > 10);
+
+    // The firewall's sweep runs only while the firewall is on; this counter
+    // works without it, so it brings its own, as the form limits do.
+    if ($live && function_exists('waf_rate_sweep') && (mt_rand(1, 50) === 1)) {
+        waf_rate_sweep();
+    }
+
+    return $over;
+}
+
+/**
+ * Log a refusal by E-mail a Friend's daily limit in the firewall log and in
+ * data/firewall.log, so the limit never refuses silently.
+ *
+ * @param string $ip The visitor's address
+ * @return void
+ */
+function pg_eaf_limit_log($ip)
+{
+    if (function_exists('waf_log_event') && isset(db::$con) && db::$con) {
+        waf_log_event('rate', 'form-eaf', 'rate', 5, 'email_a_friend.php', '10/day');
+    }
+
+    if (function_exists('waf_text_log')) {
+        waf_text_log('DENY', (string) $ip, array('status' => 429, 'rule' => 'form-eaf'));
+    }
 }

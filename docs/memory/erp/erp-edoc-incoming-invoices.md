@@ -23,3 +23,6 @@ description: Incoming e-invoices (4.67): reading the provider's list into erp_ed
 - `erp_inbox.php` hides the read form; `erp_inbox_document.php`'s `$form()` returns nothing under `USER_ERP_READONLY`, so link, import, set aside, bring back and read again are all hidden; PDF, UBL and the draft or invoice link stay (#5753).
 - A refused read keeps the entered `from` / `to` (liveform values); both boxes have `max` = today and the 93-day limit is written beside the button (#5755).
 - A line's unit price is `erp_decimal_text()` (its own decimals, panel format), the VAT rate `erp_percent_text()` (#5754).
+
+## Which product is a line linked to?
+- `erp_edoc_inbox_line_product()`: the buyer's code as barcode or SKU, else the supplier's code as barcode only; never a product in the catalogue's Recycle Bin (`pg_catalog_product_binned()`), as the ERP product search leaves it out. Symptom it fixed (#7242): a binned product's SKU on a supplier invoice linked the draft line to it, and issuing the purchase moved stock into a product nobody sees.

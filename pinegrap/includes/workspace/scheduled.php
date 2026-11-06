@@ -4063,7 +4063,7 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
                 }
             }
 
-            $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format);
+            $sent = ws_scheduled_mail((array) $action['to'], $subject, $body, $format, !empty($action['marketing']));
 
             if ($sent === 0) {
                 return $fail(lang(array('string' => 'The e-mail to {var:1} could not be sent.', 'vars' => implode(', ', (array) $action['to'])))) + array('data' => array('sent' => 0));
@@ -4151,21 +4151,31 @@ function ws_scheduled_do($viewer, $row, $action, $context = array())
  * @param string   $subject
  * @param string   $body
  * @param string   $format plain_text | html
+ * @param bool     $marketing commercial mail: each with its preferences and
+ *                            unsubscribe link and List-Unsubscribe headers
  * @return int how many went out
  */
-function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text')
+function ws_scheduled_mail($to, $subject, $body, $format = 'plain_text', $marketing = false)
 {
     $sent = 0;
 
     foreach ((array) $to as $address) {
-        $ok = email(array(
+        $properties = array(
             'to'                 => $address,
             'from_name'          => defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '',
             'from_email_address' => defined('EMAIL_ADDRESS') ? EMAIL_ADDRESS : '',
             'subject'            => $subject,
             'format'             => $format,
             'body'               => $body,
-        ));
+        );
+
+        if ($marketing) {
+            $properties['type'] = 'campaign';
+            $properties['purpose'] = 'commercial';
+            $properties['body'] = ws_flow_mail_unsubscribe_footer($body, $format, pg_email_preferences_url($address));
+        }
+
+        $ok = email($properties);
 
         if ($ok !== false) {
             $sent++;

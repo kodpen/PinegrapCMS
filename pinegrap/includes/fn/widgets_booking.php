@@ -631,9 +631,29 @@ function pg_booking_widget_privacy_url()
    --------------------------------------------------------------------------- */
 
 /**
+ * The address the widget's script posts to. On a page drawn in another site
+ * language it carries pg_lang, as the jQuery requests of a translated page
+ * do (frontend.src.js): the script's fetch() adds nothing, and without it
+ * booking_slots.php answers its messages (the marked fields, the booked
+ * note, a time taken or run out) and draws the deposit step in the source
+ * language.
+ *
+ * @param string $language the page's language code, '' in the source language
+ * @return string
+ */
+function pg_booking_widget_endpoint($language)
+{
+    $url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/booking_slots.php';
+    $language = (string) $language;
+
+    return ($language !== '') ? $url . '?pg_lang=' . rawurlencode($language) : $url;
+}
+
+/**
  * The settings the widget's script reads from its data-pg-booking
  * attribute: the endpoint, the staff of each service, the policy's hold
- * minutes and the words it may show. The same for every visitor.
+ * minutes and the words it may show. The same for every visitor of the
+ * page in one language.
  *
  * @param array $services
  * @param array $staff
@@ -644,7 +664,7 @@ function pg_booking_widget_settings($services, $staff)
     $policy = pg_booking_widget_policy();
 
     return array(
-        'url'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/booking_slots.php',
+        'url'   => pg_booking_widget_endpoint((function_exists('pg_tr_active') && pg_tr_active()) ? pg_tr_language() : ''),
         'staff' => pg_booking_widget_staff_map($services, $staff),
         'zone'  => (string) $policy['zone'],
         'hold'  => (int) $policy['hold_minutes'],

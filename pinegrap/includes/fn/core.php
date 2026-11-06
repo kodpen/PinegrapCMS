@@ -1270,9 +1270,18 @@ function pg_csv_open($path)
 // comma, the semicolon and the tab, the one the line holds most; the comma
 // when it holds none (a file of one column). Excel saves a CSV file with the
 // list separator of the computer's region, a semicolon in Turkish.
+// Quoted headings are left out of the count: "Last, First";email is a
+// semicolon file. A doubled quote inside a heading closes and reopens the
+// quoted span, so it is left out as well; an unclosed quote stays counted.
 function pg_csv_separator($header_line)
 {
     $header_line = (string) $header_line;
+    $unquoted = preg_replace('/"[^"]*"/', '', $header_line);
+
+    if (is_string($unquoted)) {
+        $header_line = $unquoted;
+    }
+
     $best = ',';
     $most = substr_count($header_line, ',');
 
@@ -2136,6 +2145,32 @@ function pg_timezone_offset_label($zone, $year = null)
     return sprintf('(UTC%s%02d:%02d)', ($offset < 0) ? '-' : '+', intdiv($minutes, 60), $minutes % 60);
 }
 
+/**
+ * $now moved by $days whole calendar days in the default time zone, at the
+ * same local time of day. Adding 86400 seconds per day is wrong across a
+ * daylight saving change, where a day lasts 23 or 25 hours: near midnight
+ * the result falls on the wrong date ("yesterday" two days back, a start
+ * date one day short). A local time the target day skips (spring) moves
+ * forward as mktime() does.
+ *
+ * @param int|string $days     negative for days back
+ * @param int|null   $now      Unix timestamp; the current time when null
+ * @return int
+ */
+function pg_calendar_days_later($days, $now = null)
+{
+    $now = ($now === null) ? time() : (int) $now;
+
+    return mktime(
+        (int) date('G', $now),
+        (int) date('i', $now),
+        (int) date('s', $now),
+        (int) date('n', $now),
+        (int) date('j', $now) + (int) $days,
+        (int) date('Y', $now)
+    );
+}
+
 // Create function that will allow us to get a time, like "5 days ago", from a timestamp.
 // Properties:
 // timestamp: The Unix timestamp for the time that you want to compare to now.
@@ -2736,6 +2771,12 @@ function build_url($properties)
 
     if ($url_path == '' && ($url_query_string != '' || $url_fragment != '')) {
         $url_path = '/';
+    }
+
+    // Behind a host the path must start with a slash: "@evil.example/x" or
+    // ".evil.example/x" glued to the host changes where the address goes.
+    if (($url_hostname != '') && ($url_path != '') && ($url_path[0] !== '/')) {
+        $url_path = '/' . $url_path;
     }
 
     return $url_scheme . $url_hostname . $url_path . $url_query_string . $url_fragment;
@@ -3798,6 +3839,27 @@ function generate_gift_card_code()
 function output_gift_card_code($code)
 {
     return mb_substr($code, 0, 4) . '-' . mb_substr($code, 4, 4) . '-' . mb_substr($code, 8, 4) . '-' . mb_substr($code, 12, 4);
+}
+/**
+ * A gift card's code as a Site Log line names it: '****-****-****-WXYZ'.
+ *
+ * The code is the card's money; the log is read by the site_log:read API
+ * scope, the dashboard feed and the user screen, which open no gift card.
+ * The last four characters tell cards apart; the full code stays on the
+ * gift card's own screen. Pure.
+ *
+ * @param string $code
+ * @return string
+ */
+function pg_gift_card_log_code($code)
+{
+    $code = (string) $code;
+
+    if (mb_strlen($code) <= 4) {
+        return '****';
+    }
+
+    return '****-****-****-' . mb_substr($code, -4);
 }
 /**
  * The time zones of the pick lists (site settings, my account profile) and

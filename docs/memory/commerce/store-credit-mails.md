@@ -14,7 +14,7 @@ module: store_credit_mails
 - `credit_expiring`: once, `PG_CREDIT_EXPIRING_DAYS` (14, a module constant) before `expires_at`, from the general job (`pg_credit_mails_run()` in `job.php`, before the mail pass).
 
 ## How does the notice go once without a column?
-- No `notified` column: like booking reminders (`booking-messages.md`), the pass keeps its last time in `config_text` `credit_mails_at`, written before sending (a pass that dies loses notices, never doubles them); a first pass looks back 15 min, a pass after a long stop at most two days (`pg_credit_mail_window_start()`).
+- No `notified` column: like booking reminders (`booking-messages.md`), the pass keeps its last time in `config_text` `credit_mails_at`, claimed before sending (`platform/job-pass-time-claim.md`; a pass that dies loses notices, never doubles them); a first pass looks back 15 min, a pass after a long stop at most two days (`pg_credit_mail_window_start()`).
 - `pg_credit_expiring_due()` (pure): the moment (end − 14 days) fell in (last, now], the card has not ended, has a balance and was written before the moment (a card given with less than 14 days left gets no notice; its issued mail names the last day).
 
 ## What does the expiry pass do?

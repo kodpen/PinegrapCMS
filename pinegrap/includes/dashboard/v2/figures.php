@@ -497,7 +497,11 @@ function pg_dashboard_v2_chip_count($key, $user, $since)
         case 'subscribers':
             return (int) db_value("SELECT COUNT(*) FROM contacts WHERE opt_in = '1' AND email_address != '' AND timestamp >= " . $since);
         case 'files':
-            return (int) db_value("SELECT COUNT(*) FROM files WHERE timestamp >= " . $since);
+            // The files the person's Files card and file list show them.
+            require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_18.php');
+            $sql = pg_dashboard_v2_files_count_sql(pg_dashboard_files_where($user), $since);
+            return ($sql === null) ? 0 : (int) db_value($sql);
         case 'blocks':
             // SUM(hit_count): one row is a whole window of repeats.
             return (int) db_value("SELECT COALESCE(SUM(hit_count), 0) FROM waf_log WHERE action IN ('block', 'rate', 'ban') AND log_timestamp >= " . $since);
@@ -509,6 +513,25 @@ function pg_dashboard_v2_chip_count($key, $user, $since)
     }
 
     return 0;
+}
+
+/**
+ * The query counting files uploaded since a time under a files condition
+ * (pg_dashboard_files_where(): archived folders, design files and a
+ * contributor's folders left out). Pure.
+ *
+ * @param string|null $where SQL condition on files and folder; null when
+ *                           nothing is granted
+ * @param int         $since unix time
+ * @return string|null SQL; null when nothing is granted
+ */
+function pg_dashboard_v2_files_count_sql($where, $since)
+{
+    if ($where === null) {
+        return null;
+    }
+
+    return "SELECT COUNT(*) FROM files LEFT JOIN folder ON files.folder = folder.folder_id WHERE (" . $where . ") AND files.timestamp >= " . (int) $since;
 }
 
 /**

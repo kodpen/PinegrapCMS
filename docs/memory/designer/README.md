@@ -41,6 +41,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.
 - catalog-item-checkout-options-tab.md: The product page starter's Checkout Options tab (catalog_item_view) is bound to the store's switched-on payment methods, with real fees, or not drawn (#4556); saved trees untouched
+- catalog-listing-subtree-sort.md: Catalog listing widget's catalog-order sort while a search or filter spans the group subtree: the product's lowest sort order, not an arbitrary group row.
 - catalog-listing-system-widget.md: catalog_listing system widget defaults (PHP and designer JS), group card behaviour (browse/select), group scope rules, the subtree helper (no recursive SQL) and group price range rules.
 - catalog-rating-tokens.md: Product rating in the catalog widgets: __rating_avg / __rating_count tokens, has_rating / no_rating flags per card and on the product page, columns before 11.0.14, variant payload and switch
 - catalog-rss-structured-data.md: RSS feeds and JSON-LD for system widget pages: _pg_ bridge functions, integration points in get_page.php/get_page_content.php, channel/entity/review rules.
@@ -115,6 +116,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - data-binding-to-content.md: Bind data to content elements (span, h1-h6, p, a, img), never structural table tags; tooling, the text slot a binding fills inside markup, and the characters a bound field name keeps.
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
+- design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does
+- design-preview-address.md: design_preview.php, the panel's preview address: a template page, its tour, or a visual design page as a first-time visitor sees it; who may open it, what is left out, caching
 - design-template-appstudio.md: Mobile App Developer template (pinegrap-appstudio): apps and release notes as collections, support and project requests followed from the account, beta sign-up, pma- look, tests.
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
@@ -211,7 +214,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-gutter-overflow.md: Why wide row gutters (g-5) overflow inside .container on phones, the g-4 g-lg-5 rule, and how to measure responsive overflow of a block.
 - designer-hidden-page-endpoints.md: Editor endpoints asked by page id keep the hidden-page rule of the tab list: page_load, form_fields and notes_fetch refuse a page behind a folder the operator may not know about
 - designer-home-colours.md: Visual Page Editor home colours (#3267): neutral greys plus the panel's primary token, the previews keep theirs, token-class drawings, status as words and a shaped mark, tooltips
-- designer-home-screen.md: Visual Page Editor home (view_system_styles.php): one-accent colours, drawn start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
+- designer-home-pictures.md: The Visual Page Editor home's and Choose a Template's pictures: a design's real page, templates' home pages, the theme picker that redraws them, the drawings as the fallback
+- designer-home-screen.md: Visual Page Editor home (view_system_styles.php): one-accent colours, start cards, the site's design shown large, tiles, the right-click menu, rename (designer/design_rename)
 - designer-import-validation-theme.md: Designer HTML/ZIP import rules, SEO validation badges (client twin), theme as files row, canvas direct-child CSS rules, image placeholder and loop band.
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
 - designer-interactions-panel.md: Interactions section of the properties panel and on the canvas: nodes, rows, _sdFxSet(), undo, canvas binding, Play button, code view back to props._fx.
@@ -334,7 +338,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - palette-lists-keyboard.md: Palette lists from the keyboard: focusable rows Enter/Space insert, header toggle buttons with aria-expanded, named search boxes, reachable bulk box, tip card on focus
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
-- photo-gallery-widget.md: Photo Gallery widget and classic page: the folder setting and its fallback, ?folder_id= and the Recycle Bin, image types, alt text, rows, tokens, flags, Where used, what is left out.
+- photo-gallery-widget.md: Photo Gallery widget and classic page: folder setting, ?folder_id= and the Recycle Bin, photos and alt, tokens, flags, Where used, what is left out.
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
 - product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter

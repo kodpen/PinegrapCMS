@@ -104,7 +104,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // to the site's own hostname because that is the name the store is created
     // with and the screen has always offered it as the default.
     $mailchimp = $row['mailchimp'];
-    $mailchimp_key = $row['mailchimp_key'];
+    // Only whether a key is stored: the key itself is never printed.
+    $mailchimp_key_stored = ((string) $row['mailchimp_key'] !== '');
     $mailchimp_list_id = $row['mailchimp_list_id'];
     $mailchimp_store_id = ($row['mailchimp_store_id'] !== '') ? $row['mailchimp_store_id'] : HOSTNAME_SETTING;
     $mailchimp_sync_days = $row['mailchimp_sync_days'];
