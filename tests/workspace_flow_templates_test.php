@@ -45,7 +45,8 @@ function ws_flow_templates_test_fill($overrides = array())
 		'recap_ai' => false,
 		'join'     => true,
 		'events'   => array('order.created', 'form.submitted', 'stock.low', 'workspace.task.overdue', 'workspace.approval.decided',
-			'order.delivered', 'order.return.requested', 'booking.cancelled', 'order.cancelled'),
+			'order.delivered', 'order.return.requested', 'booking.cancelled', 'order.cancelled', 'booking.confirmed', 'workspace.flow.run.failed',
+			'erp.invoice.overdue'),
 	);
 }
 
@@ -221,7 +222,8 @@ function test_workspace_flow_templates_need_their_starts()
 		return array_column(ws_flow_templates(ws_flow_templates_test_fill($fill)), 'key');
 	};
 	$started = array('welcome', 'order_event', 'form_event', 'stock_event', 'overdue_event', 'approval_event',
-		'review_request', 'restock_approval', 'return_task', 'booking_cancelled', 'order_cancelled');
+		'review_request', 'restock_approval', 'return_task', 'booking_cancelled', 'order_cancelled', 'booking_reminder', 'failed_runs',
+		'invoice_overdue_follow_up');
 
 	pg_assert_same(array(), array_values(array_diff($started, $keys(array()))), 'offered with the join start and the events');
 	pg_assert_same(array(), array_values(array_intersect($started, $keys(array('join' => false, 'events' => array())))), 'left out without them');
@@ -314,6 +316,70 @@ function test_workspace_flow_templates_event_follow_ups()
 	foreach (array('return_task', 'booking_cancelled', 'order_cancelled') as $key) {
 		pg_assert_same('notify', array_column($alone[$key]['graph']['nodes'], null, 'id')['tell']['kind'], $key . ' alone');
 	}
+}
+
+// A booking reminder, failed runs to the team and an overdue invoice: each
+// arrow on an outcome of its box, and what each must hold.
+function test_workspace_flow_templates_reminder_failed_runs_overdue()
+{
+	$kinds = ws_flow_kinds();
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+	$on = function ($key) use ($by_key) {
+		return array_map(function ($edge) {
+			return $edge['from'] . ':' . $edge['on'];
+		}, $by_key[$key]['graph']['edges']);
+	};
+	$events = array('booking_reminder' => 'booking.confirmed', 'failed_runs' => 'workspace.flow.run.failed',
+		'invoice_overdue_follow_up' => 'erp.invoice.overdue');
+
+	foreach ($events as $key => $event) {
+		$graph = $by_key[$key]['graph'];
+		$node_kinds = array_column($graph['nodes'], 'kind', 'id');
+
+		pg_assert_same($event, $graph['nodes'][0]['config']['event'], $key . ' event');
+
+		foreach ($graph['edges'] as $edge) {
+			pg_assert_true(in_array($edge['on'], $kinds[$node_kinds[$edge['from']]]['outcomes'], true), $key . ': ' . $edge['from'] . ' on ' . $edge['on']);
+		}
+
+		pg_assert_same(array(), array_column(ws_flow_graph_check(ws_flow_templates_test_filled($by_key[$key])), 'text'), $key . ' publishes');
+	}
+
+	// Booking: read, wait until a day before its start, read again, and
+	// only a booking still confirmed tells the host and mails the guest.
+	$booking = array_column($by_key['booking_reminder']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('start:next', 'read:done', 'wait:done', 'again:done', 'still:yes', 'still:yes'), $on('booking_reminder'));
+	pg_assert_same(array('record' => 'booking', 'id' => '{{trigger.record_id}}'), array_intersect_key($booking['again']['config'], array('record' => 0, 'id' => 0)));
+	pg_assert_same(array('mode' => 'until', 'at' => '{{node.read.start}}', 'amount' => 1, 'unit' => 'days'),
+		array_intersect_key($booking['wait']['config'], array('mode' => 0, 'at' => 0, 'amount' => 0, 'unit' => 0)));
+	pg_assert_same('{{node.again.status}}', $booking['still']['config']['rule']['ref']);
+	pg_assert_same('confirmed', $booking['still']['config']['rule']['value']);
+	pg_assert_same('notify', $booking['host']['kind']);
+	pg_assert_same('email', $booking['guest']['kind']);
+	pg_assert_same(array('record_person', 'info'), array($booking['guest']['config']['recipient'], $booking['guest']['config']['purpose']), 'the guest, never typed, no marketing');
+	pg_assert_same(array('person'), array_column($by_key['booking_reminder']['settings'], 'type'));
+
+	// Failed runs: the start narrowed to the channel the line goes to, one
+	// setting for both.
+	$failed = array_column($by_key['failed_runs']['graph']['nodes'], null, 'id');
+	pg_assert_same('team', $by_key['failed_runs']['category']);
+	pg_assert_same(3, $failed['start']['config']['channel_id'], 'runs of the channel open');
+	pg_assert_same('post', $failed['tell']['kind']);
+	pg_assert_same(3, $failed['tell']['config']['channel_id']);
+	pg_assert_true(strpos($failed['tell']['config']['body'], '{{message}}') !== false, 'the box and its sentence');
+	pg_assert_same(array(array('type' => 'channel', 'targets' => array(array('start', 'channel_id'), array('tell', 'channel_id')))),
+		$by_key['failed_runs']['settings']);
+	$alone = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+	pg_assert_same('post', $alone['failed_runs']['graph']['nodes'][1]['kind'], 'a channel is asked, never the person alone');
+
+	// Overdue invoice: a task that waits a week, then the person is told.
+	$invoice = array_column($by_key['invoice_overdue_follow_up']['graph']['nodes'], null, 'id');
+	pg_assert_same(array('start:next', 'collect:timeout'), $on('invoice_overdue_follow_up'));
+	pg_assert_same('task', $invoice['collect']['kind']);
+	pg_assert_same(168, $invoice['collect']['config']['timeout']);
+	pg_assert_true(168 <= WS_FLOW_TIMEOUT_MAX, 'a week fits the task box');
+	pg_assert_true(strpos($invoice['collect']['config']['description'], '{{record_link}}') !== false, 'the task links the invoice');
+	pg_assert_same('notify', $invoice['late']['kind']);
 }
 
 // Where the texts go: the channel open when one is, else the person.

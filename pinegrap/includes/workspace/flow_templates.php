@@ -456,6 +456,67 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'tell', 'next'), array('start', 'ask', 'next')));
     }
 
+    // A day before a confirmed booking the host is told and the guest gets
+    // a reminder. The booking is read again after the wait: one cancelled
+    // or no longer confirmed meanwhile is not reminded, and the texts give
+    // the start it has then.
+    if (in_array('booking.confirmed', $events, true)) {
+        $read = function () {
+            return array('kind' => 'record_get', 'config' => array('record' => 'booking', 'id' => '{{trigger.record_id}}'));
+        };
+        $out[] = array('key' => 'booking_reminder', 'category' => 'sales', 'icon' => 'bi-calendar-check',
+            'title' => lang('Booking reminder'),
+            'help' => lang('A day before a confirmed booking, the person who hosts it is told and the guest gets a reminder e-mail.'),
+            'boxes' => array(
+                'start' => $on('booking.confirmed'),
+                'read'  => $read(),
+                'wait'  => array('kind' => 'delay', 'config' => array('mode' => 'until', 'at' => '{{node.read.start}}', 'amount' => 1, 'unit' => 'days')),
+                'again' => $read(),
+                'still' => array('kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.again.status}}', 'op' => 'eq', 'value' => 'confirmed'))),
+                'host'  => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('Tomorrow at {{node.again.start}}: {{record}}')), 'setting' => array('person', 'user_ids')),
+                'guest' => array('kind' => 'email', 'config' => array('to' => '', 'recipient' => 'record_person', 'purpose' => 'info', 'page_id' => 0,
+                    'subject' => lang('A reminder of your booking tomorrow'),
+                    'body' => lang('Hello {{node.again.name}},') . "\n\n" . lang('This is a reminder of your booking for {{node.again.service}} on {{node.again.start}}. We look forward to seeing you.'))),
+            ),
+            'edges' => array(array('start', 'read', 'next'), array('read', 'wait', 'done'), array('wait', 'again', 'done'), array('again', 'still', 'done'),
+                array('still', 'host', 'yes'), array('still', 'guest', 'yes')));
+    }
+
+    // A failed run of a flow of the team's channel, said in that channel
+    // with the flow, the box and what went wrong. The start is narrowed to
+    // the channel the line goes to, so a private channel's run is never
+    // told in another.
+    if (in_array('workspace.flow.run.failed', $events, true)) {
+        $out[] = array('key' => 'failed_runs', 'category' => 'team', 'icon' => 'bi-exclamation-octagon',
+            'title' => lang('Failed runs to the team'),
+            'help' => lang('When a run of one of the channel\'s flows fails, a line in the channel names the flow, the box and what went wrong.'),
+            'boxes' => array(
+                'start' => $on('workspace.flow.run.failed', array('channel_id' => $channel)) + array('setting' => array('channel', 'channel_id')),
+                'tell'  => array('kind' => 'post', 'config' => array('channel_id' => $channel,
+                    'body' => lang('A run of the flow {{record_title}} failed (run {{trigger.run_id}}). {{message}}')), 'setting' => array('channel', 'channel_id')),
+            ),
+            'edges' => array(array('start', 'tell', 'next')));
+    }
+
+    // An invoice past its due date: a task to collect it that waits seven
+    // days; still open by then, the person is told. No box reads an
+    // invoice, so the task is the payment's mark: done once it is paid.
+    if (in_array('erp.invoice.overdue', $events, true)) {
+        $out[] = array('key' => 'invoice_overdue_follow_up', 'category' => 'sales', 'icon' => 'bi-receipt',
+            'title' => lang('Follow up an overdue invoice'),
+            'help' => lang('When an invoice becomes overdue, a task to collect it; you are told if it is still not collected seven days later.'),
+            'boxes' => array(
+                'start'   => $on('erp.invoice.overdue'),
+                'collect' => array('kind' => 'task', 'config' => array('title' => lang('Collect the overdue invoice {{record_title}}'),
+                    'description' => '{{record}}' . "\n" . lang('Due on {{trigger.due_date}}, {{trigger.days_overdue}} days overdue.') . "\n" . '{{record_link}}',
+                    'assignees' => array($me), 'due_in' => 7, 'priority' => 'high', 'timeout' => 168), 'setting' => array('person', 'assignees')),
+                'late'    => array('kind' => 'notify', 'config' => array('user_ids' => array($me),
+                    'text' => lang('The overdue invoice {{record_title}} is still not collected after seven days.')), 'setting' => array('person', 'user_ids')),
+            ),
+            'edges' => array(array('start', 'collect', 'next'), array('collect', 'late', 'timeout')));
+    }
+
     // The templates a scheduled action has no form for: tasks that wait for
     // each other, a wait between them, approvals and their outcomes.
 
