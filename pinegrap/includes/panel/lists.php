@@ -14,11 +14,8 @@
  *                              (pg_list_table_definitions())
  *   list_table_sort            keeps the sort of a list the driver prints
  *                              whole (browser mode), set by a heading click
- *   booking_list_rows          a page of the bookings agenda's list view
- *                              (view_bookings.php?view=list)
  *
- * Each action answers DataTables' page request (includes/fn/list_paging.php)
- * behind the gate of the screen it pages.
+ * Each action answers behind the gate of the screen it pages.
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
  * for the contract.
@@ -139,47 +136,4 @@ function pg_panel_list_table_sort($request, $action)
     }
 
     return array('status' => 'success');
-}
-
-function pg_panel_booking_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen lets
-    // roles 0-2 see every staff member and a role-3 staff member their own
-    // bookings (pg_booking_agenda_user_scope()), answered here in JSON.
-    $user = validate_user();
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
-
-    if (!pg_booking_ready()) {
-        http_response_code(409);
-        respond(array('status' => 'error', 'message' => lang('The database has not been upgraded yet. Run the software update first.')));
-    }
-
-    $scope = pg_booking_agenda_user_scope($user);
-
-    if ($scope === false) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    $staff = pg_booking_agenda_staff();
-
-    $page = pg_booking_agenda_list_page(
-        pg_booking_agenda_list_filters($request['filters'] ?? array(), $scope, $staff),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
-        $staff);
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }

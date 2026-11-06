@@ -2,16 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Server-side paging for the panel's big DataTables lists.
- *
- * A list screen that names a panel action on its table.chart
- * (data-pg-list-action, backend.src.js) draws no rows itself: DataTables asks
- * the action for one page at a time with the page window, the search box and
- * a draw counter, and the action answers with the rows of that page and two
- * counts. The helpers here are the parts every such action shares: the page
- * window, the search box read the way DataTables' own smart search read it
- * (every word somewhere in the row), and a row written once as cells that
- * both the JSON answer and a printed table can use.
+ * The parts the panel's big lists share with the list table driver
+ * (includes/fn/list_table.php): the page number, the search box read as
+ * every word somewhere in the row, the sort state, and a row written once as
+ * cells.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,17 +15,6 @@
 
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
-}
-
-/**
- * The page lengths the list's length menu offers (backend.src.js); -1 is
- * "Unlimited".
- *
- * @return array
- */
-function pg_list_page_lengths()
-{
-    return array(10, 25, 50, 100, 1000, -1);
 }
 
 /**
@@ -59,27 +42,6 @@ function pg_list_filter_known($value, array $ids, $all = '[All]')
     }
 
     return $all;
-}
-
-/**
- * The rows one request may ask for. A length the menu does not offer falls
- * back to 100, the menu's default; -1 asks for every row from the offset on.
- * The offset is a whole number of 0 or more.
- *
- * @param mixed $start  the first row, counted from 0
- * @param mixed $length the number of rows
- * @return array array('offset' => int, 'limit' => int, or null for every row)
- */
-function pg_list_page_window($start, $length)
-{
-    $offset = (is_scalar($start) && is_numeric($start) && ($start > 0) && ($start == floor($start))) ? (int) $start : 0;
-    $length = (is_scalar($length) && is_numeric($length) && ($length == floor($length))) ? (int) $length : 100;
-
-    if (!in_array($length, pg_list_page_lengths(), true)) {
-        $length = 100;
-    }
-
-    return array('offset' => $offset, 'limit' => ($length === -1) ? null : $length);
 }
 
 /**
@@ -136,26 +98,7 @@ function pg_list_page_clamp($page, $total, $per_page)
 }
 
 /**
- * The SQL LIMIT clause of a page window, with a leading space, or '' when
- * every row is asked for from the first one on.
- *
- * @param array $window pg_list_page_window()'s answer
- * @return string
- */
-function pg_list_limit_sql($window)
-{
-    $offset = max(0, (int) ($window['offset'] ?? 0));
-
-    if (!isset($window['limit'])) {
-        // MySQL has no OFFSET without a LIMIT; this is its documented "every row".
-        return ($offset > 0) ? ' LIMIT ' . $offset . ', 18446744073709551615' : '';
-    }
-
-    return ' LIMIT ' . $offset . ', ' . max(0, (int) $window['limit']);
-}
-
-/**
- * The words of a search box, the way DataTables' smart search split them:
+ * The words of a search box:
  * at spaces, with a "quoted phrase" kept as one word. Empty words and
  * repeats are dropped; at most ten words of the first 200 characters count.
  *
@@ -524,61 +467,3 @@ function pg_list_row_html($row)
     return $output . '</tr>';
 }
 
-/**
- * A list row as DataTables takes it from the server: the cells' content by
- * column number, the row's classes in DT_RowClass, its id (when it has one)
- * in DT_RowId and the cells' classes in DT_RowData, which backend.src.js puts
- * back on the cells it draws; so are the cells' other attributes, by column
- * number, when a cell has any.
- *
- * @param array $row as pg_list_row_html() takes it
- * @return array
- */
-function pg_list_row_data($row)
-{
-    $data = array();
-    $classes = array();
-    $attributes = array();
-
-    foreach (array_values($row['cells']) as $number => $cell) {
-        $data[(string) $number] = $cell['html'];
-        $classes[] = $cell['class'];
-
-        if (!empty($cell['attributes'])) {
-            $attributes[(string) $number] = $cell['attributes'];
-        }
-    }
-
-    $data['DT_RowClass'] = (string) ($row['class'] ?? '');
-
-    if (isset($row['id'])) {
-        $data['DT_RowId'] = (string) $row['id'];
-    }
-    $data['DT_RowData'] = array('pgCells' => $classes);
-
-    if ($attributes) {
-        $data['DT_RowData']['pgAttrs'] = $attributes;
-    }
-
-    return $data;
-}
-
-/**
- * The answer to one DataTables page request.
- *
- * @param mixed $draw     the request's draw counter, handed back as a number
- * @param int   $total    rows of the list without the search
- * @param int   $filtered rows the search leaves
- * @param array $rows     the page's rows, as pg_list_row_html() takes them
- * @return array
- */
-function pg_list_rows_answer($draw, $total, $filtered, $rows)
-{
-    return array(
-        'status' => 'success',
-        'draw' => (is_scalar($draw) && is_numeric($draw)) ? (int) $draw : 0,
-        'recordsTotal' => (int) $total,
-        'recordsFiltered' => (int) $filtered,
-        'data' => array_map('pg_list_row_data', array_values($rows)),
-    );
-}

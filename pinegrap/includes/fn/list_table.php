@@ -1077,6 +1077,7 @@ function pg_list_table_printed_lists()
         'erp_account_sync_differ', 'erp_account_sync_provider_only', 'erp_account_sync_erp_only',
         'erp_account_sync_same', 'erp_account_sync_ignored',
         'view_offers', 'editor_select_page_or_file_page', 'editor_select_page_or_file_file', 'editor_select_page_or_file_short_link',
+        'view_bookings',
     );
 }
 
