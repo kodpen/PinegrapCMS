@@ -2978,6 +2978,7 @@ function ws_flow_js_strings()
         'fl_loop_collect_help' => lang('One value of a box inside the loop, gathered for every item into the list this box gives.'),
         'fl_loop_body'        => lang('Repeated for each item'),
         'fl_on_each'          => lang('For each item'),
+        'fl_on_other'         => lang('None of these'),
         'fl_digest_mode'      => lang('Which tasks'),
         'fl_digest_mine'      => lang('Each person their own open tasks'),
         'fl_digest_channel'   => lang('The open tasks of one channel'),
@@ -3137,6 +3138,30 @@ function ws_flow_js_strings()
         'fl_record_kind_help' => lang('The kinds of record the flow\'s owner may read; the box reads with their rights.'),
         'fl_record_id'        => lang('Record'),
         'fl_record_id_help'   => lang('The record\'s number, or one value, such as {{trigger.record_id}}. A record that is not there, or one the owner may not read, gives found 0 and empty fields.'),
+        'fl_kind_ai'          => lang('Ask Pinegrap AI'),
+        'fl_ai_mode'          => lang('What it does'),
+        'fl_ai_mode_write'    => lang('Write'),
+        'fl_ai_mode_summarize' => lang('Summarize'),
+        'fl_ai_mode_extract'  => lang('Find a value'),
+        'fl_ai_mode_classify' => lang('Sort into outcomes'),
+        'fl_ai_mode_help_write' => lang('Writes the text the prompt asks for, such as a reply or a description, in the site\'s language.'),
+        'fl_ai_mode_help_summarize' => lang('Sums up the text in a few sentences; the prompt may say how.'),
+        'fl_ai_mode_help_extract' => lang('Finds in the text the value the prompt names; gives it as an answer and as a number, and found 1 or 0.'),
+        'fl_ai_mode_help_classify' => lang('Chooses which of the outcomes below the text belongs to; each outcome is an arrow, and None of these is one too.'),
+        'fl_ai_prompt'        => lang('Prompt'),
+        'fl_ai_prompt_help'   => lang('What Pinegrap AI is to do. Only this prompt and the text below, with their values, are sent; the site\'s Pinegrap AI quota is used.'),
+        'fl_ai_prompt_help_extract' => lang('The value to find, such as the order number or the delivery date.'),
+        'fl_ai_text'          => lang('Text it reads'),
+        'fl_ai_text_help'     => lang('Usually one value, such as a message or a form answer; it is sent as data, never as an instruction.'),
+        'fl_ai_classes'       => lang('Outcomes'),
+        'fl_ai_classes_help'  => lang('Up to 8 names, such as Complaint or Question. Text that fits none leaves on None of these.'),
+        'fl_ai_class_add'     => lang('Add an outcome'),
+        'fl_ai_class_n'       => ws_js_template('Outcome {var:1}', 1),
+        'fl_ai_class_remove'  => ws_js_template('Remove the outcome {var:1}', 1),
+        'fl_ai_number'        => lang('Answer as a number'),
+        'fl_ai_found'         => lang('Found (1 or 0)'),
+        'fl_ai_closes'        => lang('Hours to wait for the answer'),
+        'fl_ai_closes_help'   => lang('1 to 720 hours. Pinegrap AI is asked again every hour until it answers; with no answer by then the box leaves on failed.'),
         'fl_rows_get_row_help' => lang('The row\'s number, or one value, such as {{trigger.row_id}}. A row that is not there gives found 0 and empty cells.'),
         'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
         'fl_rows_row'         => lang('Row'),
@@ -3640,6 +3665,9 @@ function ws_flow_js_config($viewer, $mode)
 
         // The kinds of record a read box may read, with the values each gives.
         $steps['reads'] = function_exists('ws_flow_record_get_kinds') ? ws_flow_record_get_kinds($viewer) : array();
+        // The Pinegrap AI box is offered while the site has it set up
+        // (ws_step_ai_check()).
+        $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
 
         // A box on customers who stopped ordering, to whoever reads orders
         // and contacts.

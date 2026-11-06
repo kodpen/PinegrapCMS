@@ -147,6 +147,9 @@
         row_set: { name: 'fl_kind_row_set', group: 'system', into: true, out: ['done', 'failed'] },
         row_get: { name: 'fl_kind_row_get', group: 'system', into: true, out: ['done', 'failed'] },
         record_get: { name: 'fl_kind_record_get', group: 'system', into: true, out: ['done', 'failed'] },
+        // A classifying Pinegrap AI box leaves on its named outcomes instead
+        // (kindOf(), ws_step_ai_arrow_outcomes()).
+        ai: { name: 'fl_kind_ai', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
@@ -173,6 +176,7 @@
         withdrawn: 'fl_on_withdrawn',
         timeout: 'fl_on_timeout',
         each: 'fl_on_each',
+        other: 'fl_on_other',
         always: 'fl_on_always'
     };
 
@@ -216,6 +220,7 @@
         ['row_set', 'fl_kind_row_set'],
         ['row_get', 'fl_kind_row_get'],
         ['record_get', 'fl_kind_record_get'],
+        ['ai', 'fl_kind_ai'],
         ['approval', 'fl_kind_approval'],
         ['end', 'fl_add_end'],
         ['constants', 'fl_kind_constants'],
@@ -360,7 +365,27 @@
     }
 
     function kindOf(node) {
-        return KINDS[node.kind] || { name: 'fl_box', into: true, out: [] };
+        var kind = KINDS[node.kind] || { name: 'fl_box', into: true, out: [] };
+
+        // A Pinegrap AI box that classifies leaves on each outcome it names,
+        // by its place, then on other (ws_step_ai_arrow_outcomes()).
+        if ((node.kind === 'ai') && node.config && (node.config.mode === 'classify')) {
+            return { name: kind.name, group: kind.group, into: true, out: aiClasses(node.config).map(function (name, index) { return 'class_' + (index + 1); }).concat(['other', 'failed']) };
+        }
+
+        return kind;
+    }
+
+    // What an arrow is taken on, in words: a classifying Pinegrap AI box's
+    // outcome by the name it gives it.
+    function outcomeText(node, on) {
+        var match = /^class_([1-9][0-9]?)$/.exec(on || '');
+
+        if (match) {
+            return aiClasses(node ? node.config : null)[parseInt(match[1], 10) - 1] || t('fl_ai_class_n', match[1]);
+        }
+
+        return t(OUTCOMES[on] || 'fl_on_done');
     }
 
     // The classes of a box (and of its outline entry) that give it its
@@ -553,6 +578,7 @@
             tables: steps.tables || [],
             reads: steps.reads || [],
             no_order: !!steps.no_order,
+            ai: !!steps.ai,
             mcp: steps.mcp || []
         };
     }
@@ -711,6 +737,10 @@
 
         if (node.kind === 'record_get') {
             return recordGetMeta(node);
+        }
+
+        if (node.kind === 'ai') {
+            return aiMeta(node);
         }
 
         if (node.kind === 'join') {
@@ -3056,13 +3086,13 @@
 
             // An arrow taken when a task is cancelled, or a step failed, says
             // so on itself.
-            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always') || (edge.on === 'each')) {
+            if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always') || (edge.on === 'each') || (edge.on === 'other') || /^class_/.test(edge.on)) {
                 var label = svgEl('text', 'pgc-edge-label');
 
                 label.setAttribute('x', String(path.mx));
                 label.setAttribute('y', String(path.my - 6));
                 label.setAttribute('text-anchor', 'middle');
-                label.textContent = t(OUTCOMES[edge.on]);
+                label.textContent = outcomeText(nodeById(edge.from), edge.on);
                 group.appendChild(label);
             }
         });
@@ -3089,6 +3119,7 @@
         row_set: [['row', 'fl_rows_row', 200]],
         row_get: [['row', 'fl_rows_row', 200]],
         record_get: [['id', 'fl_record_id', 200]],
+        ai: [['prompt', 'fl_ai_prompt', 4000], ['text', 'fl_ai_text', 20000]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
@@ -4019,6 +4050,7 @@
             return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && (((item[0] !== 'row') && (item[0] !== 'row_get')) || tables)
                 && ((item[0] !== 'no_order') || stepLists().no_order)
                 && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
+                && ((item[0] !== 'ai') || stepLists().ai)
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
     }
@@ -4829,6 +4861,13 @@
         // (ws_step_outputs()).
         if (node.kind === 'row_get') {
             rowCellValues(node.config).forEach(function (item) { add(prefix, item); });
+        }
+
+        // A Pinegrap AI box that extracts gives the value as a number and
+        // whether it found one (ws_step_ai_outputs()).
+        if ((node.kind === 'ai') && (node.config.mode === 'extract')) {
+            add(prefix, { key: 'number', type: 'number', label: t('fl_ai_number') });
+            add(prefix, { key: 'found', type: 'number', label: t('fl_ai_found') });
         }
 
         // A box that reads a record gives the fields of its kind.
@@ -5797,6 +5836,10 @@
 
         if (node.kind === 'record_get') {
             recordGetFields(box, node);
+        }
+
+        if (node.kind === 'ai') {
+            aiFields(box, node);
         }
 
         if (node.kind === 'condition') {
@@ -7760,6 +7803,130 @@
         }, false, t('fl_record_id_help')));
     }
 
+    // The outcomes a Pinegrap AI box names, as the server keeps them.
+    function aiClasses(config) {
+        return ((config && Array.isArray(config.classes)) ? config.classes : []).filter(function (name) { return typeof name === 'string'; });
+    }
+
+    // What a Pinegrap AI box may do: mode, its name, its help; an unknown
+    // mode is write, as the server keeps it.
+    var AI_MODES = [
+        ['write', 'fl_ai_mode_write', 'fl_ai_mode_help_write'],
+        ['summarize', 'fl_ai_mode_summarize', 'fl_ai_mode_help_summarize'],
+        ['extract', 'fl_ai_mode_extract', 'fl_ai_mode_help_extract'],
+        ['classify', 'fl_ai_mode_classify', 'fl_ai_mode_help_classify']
+    ];
+
+    function aiMode(mode) {
+        return AI_MODES.filter(function (item) { return item[0] === mode; })[0] || AI_MODES[0];
+    }
+
+    // Its mode, and for classify the outcomes it chooses from.
+    function aiMeta(node) {
+        var config = node.config;
+        var mode = t(aiMode(config.mode)[1]);
+        var names = aiClasses(config).filter(function (name) { return name.trim() !== ''; });
+
+        return ((config.mode === 'classify') && names.length) ? mode + ': ' + names.join(', ') : mode;
+    }
+
+    // A Pinegrap AI box (flow_ai_box.php): what it does, the prompt and the
+    // text it reads (both take values; only they are sent), the outcomes a
+    // classifying box chooses from, each an arrow of its own, and the hours
+    // it waits for the answer.
+    function aiFields(box, node) {
+        var config = node.config;
+        var mode = aiMode(config.mode);
+        var pick = K.select(AI_MODES.map(function (item) { return [item[0], t(item[1])]; }), mode[0]);
+
+        if (!Array.isArray(config.classes)) {
+            config.classes = [];
+        }
+
+        pick.setAttribute('data-refocus', 'ai-mode-' + node.id);
+        pick.addEventListener('change', function () {
+            config.mode = pick.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_ai_mode'), pick, t(mode[2])));
+        box.appendChild(valueField(node, t('fl_ai_prompt'), config.prompt || '', 4000, function (value) {
+            config.prompt = value;
+            refreshNode(node);
+        }, true, (config.mode === 'extract') ? t('fl_ai_prompt_help_extract') : t('fl_ai_prompt_help')));
+        box.appendChild(valueField(node, t('fl_ai_text'), config.text || '', 20000, function (value) {
+            config.text = value;
+            refreshNode(node);
+        }, true, t('fl_ai_text_help')));
+
+        if (config.mode === 'classify') {
+            var list = el('div', 'wsf-ai-classes mb-2');
+
+            config.classes.forEach(function (name, index) {
+                var line = el('div', 'input-group input-group-sm mb-1');
+                var input = textInput(name, 60, function (value) {
+                    config.classes[index] = value;
+                    refreshNode(node);
+                });
+                var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_ai_class_remove', name || String(index + 1)));
+
+                input.setAttribute('aria-label', t('fl_ai_class_n', String(index + 1)));
+                input.setAttribute('data-refocus', 'ai-class-' + node.id + '-' + index);
+                remove.disabled = !state.edit;
+                remove.addEventListener('click', function () {
+                    config.classes.splice(index, 1);
+                    // An arrow on a later outcome moves up with it; one on
+                    // the outcome taken away is taken away.
+                    state.graph.edges = state.graph.edges.filter(function (edge) {
+                        return !((edge.from === node.id) && (edge.on === 'class_' + (index + 1)));
+                    });
+                    state.graph.edges.forEach(function (edge) {
+                        var match = (edge.from === node.id) ? /^class_([1-9][0-9]?)$/.exec(edge.on) : null;
+
+                        if (match && (parseInt(match[1], 10) > index + 1)) {
+                            edge.on = 'class_' + (parseInt(match[1], 10) - 1);
+                        }
+                    });
+                    state.refocus = 'ai-class-add-' + node.id;
+                    changed(true);
+                    drawSettings();
+                });
+                line.appendChild(input);
+                line.appendChild(remove);
+                list.appendChild(line);
+            });
+
+            box.appendChild(el('div', 'form-label small fw-semibold', t('fl_ai_classes')));
+            box.appendChild(list);
+
+            var add = K.button('btn btn-sm btn-outline theme-secondary mb-2', t('fl_ai_class_add'), 'bi-plus-lg');
+
+            add.setAttribute('data-refocus', 'ai-class-add-' + node.id);
+            add.disabled = !state.edit || (config.classes.length >= 8);
+            add.addEventListener('click', function () {
+                config.classes.push('');
+                state.refocus = 'ai-class-' + node.id + '-' + (config.classes.length - 1);
+                refreshNode(node);
+                drawSettings();
+            });
+            box.appendChild(add);
+            box.appendChild(el('p', 'small fg-secondary', t('fl_ai_classes_help')));
+        }
+
+        var hours = el('input', 'form-control form-control-sm wsf-number');
+
+        hours.type = 'number';
+        hours.min = '1';
+        hours.max = '720';
+        hours.value = String(config.closes_in || 24);
+        hours.disabled = !state.edit;
+        hours.addEventListener('input', function () {
+            config.closes_in = clamp(parseInt(hours.value, 10) || 24, 1, 720);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_ai_closes'), hours, t('fl_ai_closes_help')));
+    }
+
     // A box that adds or changes a row: its table, the row a change names,
     // then a field per column. Cells the form cannot show (a table not
     // among those the person changes, or a text that is no JSON object)
@@ -8588,7 +8755,7 @@
 
     function outcomeSelect(edge) {
         var from = nodeById(edge.from);
-        var pick = K.select((from ? arrowOutcomes(from) : [edge.on]).map(function (on) { return [on, t(OUTCOMES[on] || 'fl_on_done')]; }), edge.on);
+        var pick = K.select((from ? arrowOutcomes(from) : [edge.on]).map(function (on) { return [on, outcomeText(from, on)]; }), edge.on);
 
         pick.className = 'form-control form-control-sm wsf-link-on';
         pick.setAttribute('aria-label', onLabel(from));
@@ -9035,6 +9202,8 @@
             config = { table_id: (readable.length === 1) ? readable[0].id : 0, row: '' };
         } else if (kind === 'record_get') {
             config = { record: '', id: '' };
+        } else if (kind === 'ai') {
+            config = { mode: 'write', prompt: '', text: '', classes: [], closes_in: 24 };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };
