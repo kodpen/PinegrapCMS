@@ -400,6 +400,7 @@
     "value(s) skipped: longer than the field allows.": "değer atlandı: alanın izin verdiğinden uzun.",
     "value-my-car": "aracimi-degerle",
     "values is an object of record id => new value, at most {var:1}.": "values, kayıt kimliği => yeni değer biçiminde bir nesnedir; en çok {var:1}.",
+    "values, coaching, community, beginners": "değerler, antrenörlük, topluluk, yeni başlayanlar",
     "values, kindness, moderation, safety": "değerler, nezaket, moderasyon, güvenlik",
     "values, principles, local, sustainable": "değerler, ilkeler, yerel, sürdürülebilir",
     "values, principles, quality, way of working": "değerler, ilkeler, kalite, çalışma biçimi",
