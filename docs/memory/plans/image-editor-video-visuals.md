@@ -4,7 +4,7 @@ description: Screens of plans/image-editor-video.md (V0), 35 to 42 in plans/imag
 ---
 
 ## How were they made and how are they read?
-- Over the real editor of development, with the parts not built yet drawn into it from its own classes and tokens; Turkish labels, 1280 × 800 and 390 × 844 like screens 01-34 (`image-editor-visuals.md`, `image-editor-animation-visuals.md`).
+- Over the real editor of development, with the parts not built yet drawn into it from its own classes and tokens; Turkish labels, 1280 × 800 and 390 × 844 like screens 01-34 (`image-editor-visuals.md` and the pictures in `image-editor/`).
 - They fix behaviour and layout; icons, words and spacing may be bettered in the step, said in its PR.
 - Canvas screens, light. The video frame is drawn as a picture; the clip rows, waveforms and panels are drawn over the real tracks (`ui/image-editor-tracks.md`). The scene strip (AN7) is left out to give the rows room.
 
