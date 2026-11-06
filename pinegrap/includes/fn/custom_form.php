@@ -5465,3 +5465,60 @@ function pg_cf_throttle_log($row)
         waf_text_log('DENY', waf_client_ip(), array('status' => 429, 'rule' => $rule));
     }
 }
+
+/**
+ * Copies a custom form's uploaded file to where it is kept.
+ *
+ * Only a whole upload is copied: an error code (a file over
+ * upload_max_filesize arrives with an empty tmp_name), an empty or missing
+ * temporary file and a copy that fails (a full disk, a folder the web server
+ * cannot write) answer false, and a partly written file is removed, so no
+ * files row is written for a file that is not there.
+ *
+ * @param mixed  $upload one $_FILES entry
+ * @param string $path   the full path to copy to
+ * @return bool
+ */
+function pg_cf_place_upload($upload, $path)
+{
+    if (
+        !is_array($upload)
+        || !isset($upload['error'], $upload['tmp_name'])
+        || is_array($upload['error'])
+        || is_array($upload['tmp_name'])
+        || ((int) $upload['error'] !== UPLOAD_ERR_OK)
+        || ((string) $upload['tmp_name'] === '')
+        || !is_file((string) $upload['tmp_name'])
+    ) {
+        return false;
+    }
+
+    if (@copy((string) $upload['tmp_name'], $path)) {
+        return true;
+    }
+
+    if (is_file($path)) {
+        @unlink($path);
+    }
+
+    return false;
+}
+
+/**
+ * Takes back the files a custom form submission placed before one of its
+ * uploads could not be copied: the files on disk and their files rows.
+ *
+ * @param array $placed list of array('id' => files.id, 'name' => files.name)
+ */
+function pg_cf_remove_placed_uploads($placed)
+{
+    foreach ($placed as $file) {
+        if ((string) $file['name'] !== '') {
+            @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
+        }
+
+        if ((int) $file['id'] > 0) {
+            db_q("DELETE FROM files WHERE id = ?", array((string) (int) $file['id']));
+        }
+    }
+}

@@ -64,6 +64,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus
 - curl-run-callers.md: Which outgoing calls use pg_curl_run(), what moving each changed (VERIFYHOST, proxy, http refused, TLS settings), which stay raw and why.
 - curl-run-wrapper.md: pg_curl_run() for fixed vendor hosts: what it sets, its answer, the opt-in address rule and allow_http, where its callers are listed.
+- custom-form-upload-placement.md: Custom form file uploads (custom_form.php): an upload error code is refused at validation; every file is copied and given its files row before the forms row, and a failed copy sends the form back.
 - design-template-install-at-setup.md: Install wizard step "Site Tasarımı": two-request template install, StyleDesigner.starterTree() API, home/staff keys, starter removal and preview lists.
 - disable-functions-rule.md: Shared hosts remove functions via disable_functions; in PHP 8 they throw Error, so guard with function_exists() and treat their output as optional.
 - dkim-key-in-file-manager.md: dkim.key never leaves the server through the panel (no view, archive, copy, rename, channel copy) and only staff may give a file that name; pg_file_withheld(), pg_file_name_reserved()
