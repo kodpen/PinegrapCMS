@@ -11,7 +11,7 @@ description: What a coordinator gives its workers when no plan step is free: a n
 - No, since 2026-11-06. Workers only build the project: a free plan step, else a new design template. No coordinator starts a bug hunt or gives a `bug` issue to a worker, and no worker claims one.
 - The open `bug` issues (the test coordinator's and those of the earlier hunts) wait for the owner (`test-coordinator.md`).
 - Why: the workers' quota goes to building the project. On 2026-11-06 seven new hunts started within five minutes, beside the fixes of the earlier rounds.
-- The hunt and fix PRs already open then were finished by their own sessions and landed as usual. Once they have landed, the `plans/bug-hunt*.md` files are deleted.
+- The hunt and fix PRs already open then were finished by their own sessions and landed as usual; the hunt's plan files (`plans/bug-hunt*.md`) were then deleted.
 
 ## When is a new design template started?
 - When a slot is still free and no template plan is open.
