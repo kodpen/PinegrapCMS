@@ -1375,6 +1375,7 @@
     "The balance and the movements are read as of this date; later postings are left out.": "Bakiye ve hareketler bu tarih itibarıyla okunur; sonraki kayıtlar dışarıda kalır.",
     "The balance is in the customer's favour": "Bakiye müşterinin lehine",
     "The balance is zero": "Bakiye sıfır",
+    "The balance of this gift card changed meanwhile. Read the card again and send the balance anew.": "Bu hediye kartının bakiyesi bu arada değişti. Kartı yeniden okuyun ve bakiyeyi yeniden gönderin.",
     "The balance of this gift card changed while the screen was open: it is now {var:1}. Check it and save again.": "Bu hediye kartının bakiyesi ekran açıkken değişti: şimdi {var:1}. Kontrol edip yeniden kaydedin.",
     "The ban on {var:1} has been released.": "{var:1} adresindeki yasak kaldırıldı.",
     "The bar across the top": "Üstteki çubuk",
