@@ -93,3 +93,27 @@ function test_order_folder_access_never_ending_stays_while_another_purchase_hold
 	pg_assert_false(pg_order_folder_access_still_held($lines, array(1 => array(10 => 1), 2 => array(20 => 2))), 'every unit returned');
 	pg_assert_false(pg_order_folder_access_still_held(array(), array()), 'no other purchase');
 }
+
+function test_order_folder_access_return_lines_count_the_order_s_other_lines_on_the_folder()
+{
+	// The order's lines with the units each still holds after the return.
+	$lines = array(
+		array('order_item_id' => 1, 'quantity' => 0, 'grant_private_access' => '1', 'private_folder' => '5', 'private_days' => '0'),
+		array('order_item_id' => 2, 'quantity' => 1, 'grant_private_access' => '1', 'private_folder' => '5', 'private_days' => '0'),
+		array('order_item_id' => 3, 'quantity' => 0, 'grant_private_access' => '1', 'private_folder' => '6', 'private_days' => '0'),
+		array('order_item_id' => 4, 'quantity' => 2, 'grant_private_access' => '1', 'private_folder' => '7', 'private_days' => '30'),
+	);
+
+	$back = pg_order_folder_access_return_lines($lines, array(1 => 1, 3 => 1));
+
+	pg_assert_same(2, count($back), 'only the returned lines');
+	pg_assert_same(1, $back[0]['quantity'], 'the units taken back');
+	pg_assert_same(1, $back[0]['held'], 'another line of the order still grants folder 5');
+	pg_assert_same('5', $back[0]['private_folder'], 'line fields kept');
+	pg_assert_same(0, $back[1]['held'], 'nothing else grants folder 6');
+
+	$back = pg_order_folder_access_return_lines($lines, array(4 => 1));
+
+	pg_assert_same(2, $back[0]['held'], 'a limited line counts its own held units');
+	pg_assert_same(array(), pg_order_folder_access_return_lines($lines, array(9 => 1)), 'no line of the order');
+}
