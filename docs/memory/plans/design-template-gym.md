@@ -21,14 +21,14 @@ description: Plan: the Gym design template (pinegrap-gym), a fitness studio with
 
 - 5 (done, #7629): `members.php`: shop pages (`memberships`, product, cart, checkout, order, `email_order`, catalog group `memberships`) and the members' area (`members`, `workouts`, folder `members`); test.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #7661): `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-gym.php` (order, search sections, look, fonts, `pgy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-gym.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 6: copy `pinegrap-hotel/standard.php` ([[design-templates-standard-pages]]); `email_reply` is already in `classes.php`, `cart_link` in `members.php`.
+- Step 7: copy `pinegrap-hotel/account.php`; the blog form (`blog_new`) is read by `home_posts`, `blog_list` and `blog_post` in `standard.php`; the help page is `search` (Member Help, FAQ id `gy-help-faq`).
 - Step 8: `mail.php` right after `parts.php`; folder `members` with access `membership`; `catalog` from `members.php`.
 - Translation trap: an existing key may carry another template's word (`First visit` reads "İlk muayene"): check it before reuse.
 - PHP 7.1: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.
