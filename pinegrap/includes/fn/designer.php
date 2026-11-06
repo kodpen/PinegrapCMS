@@ -8265,10 +8265,12 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id, $folders = array())
                 $label  = isset($p['title']) ? (string)$p['title'] : $sku;
                 $text   = isset($p['description']) ? (string)$p['description'] : '';
                 // A product nobody ships (a ticket, a download) says
-                // 'shippable' => false: no shipping step, no zones.
-                $ships  = !(array_key_exists('shippable', $p) && !$p['shippable']);
+                // 'shippable' => false: no shipping step, no zones. A gift
+                // says 'donation' => true (_pg_tpl_product_kind()).
+                $kind   = _pg_tpl_product_kind($p);
+                $ships  = $kind['shippable'] === '1';
                 $product = array(
-                    'name' => $sku, 'enabled' => '1', 'price' => (int)round((float)$price * 100), 'taxable' => '1', 'shippable' => $ships ? '1' : '0',
+                    'name' => $sku, 'enabled' => '1', 'price' => (int)round((float)$price * 100), 'taxable' => $kind['taxable'], 'shippable' => $kind['shippable'],
                     'free_shipping' => '0', 'title' => '', 'short_description' => mb_substr($label, 0, 255), 'meta_description' => mb_substr($text, 0, 255),
                     'brand' => '', 'gtin' => '', 'mpn' => '', 'keywords' => isset($p['keywords']) ? (string)$p['keywords'] : '',
                     'weight' => 0, 'length' => 0, 'width' => 0, 'height' => 0, 'inventory' => '0', 'inventory_quantity' => 0,
@@ -8277,6 +8279,7 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id, $folders = array())
                     'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
                     'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
                 );
+                if ($kind['selection_type'] !== '') $product['selection_type'] = $kind['selection_type'];
                 $product = array_merge($product, _pg_tpl_product_access($p, $folders));
                 $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
                 $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $ships ? $zone_ids : array(), 'attributes' => array(), 'submit_form' => array()));
@@ -8326,6 +8329,21 @@ function _pg_tpl_fee_product($p, $currency, $user_id)
         'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
         'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
     );
+}
+
+// What kind of product a template product is, as products columns.
+// 'donation' => true: a gift whose amount the visitor types in the cart
+// (selection type donation, the product's price the suggested amount); it
+// is neither taxed nor shipped. 'shippable' => false: a product nobody
+// ships (a ticket, a download). Otherwise a plain taxed product that ships.
+// selection_type '' leaves the column's own default.
+function _pg_tpl_product_kind($p)
+{
+    if (is_array($p) && !empty($p['donation'])) {
+        return array('selection_type' => 'donation', 'taxable' => '0', 'shippable' => '0');
+    }
+    $ships = !(is_array($p) && array_key_exists('shippable', $p) && !$p['shippable']);
+    return array('selection_type' => '', 'taxable' => '1', 'shippable' => $ships ? '1' : '0');
 }
 
 // The access a template product gives once its order is paid, as products
