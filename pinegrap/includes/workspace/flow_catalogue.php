@@ -42,6 +42,7 @@ function ws_flow_setting_overrides()
         'report.metrics'    => array('of' => 'object'),
         'for_each.fields'   => array('of' => 'text'),
         'ai.classes'        => array('of' => 'text'),
+        'web.fields'        => array('of' => 'object'),
     );
 }
 

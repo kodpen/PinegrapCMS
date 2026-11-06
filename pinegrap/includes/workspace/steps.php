@@ -969,6 +969,11 @@ function ws_step_trigger_values($context, $sees, $names = array())
     $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
     $config = array('event' => $event);
 
+    // A web address start: the fields the run kept, as they were declared.
+    if ($kind === 'web') {
+        return function_exists('ws_flow_web_context_values') ? ws_flow_web_context_values($context) : array();
+    }
+
     if ($kind === 'row') {
         $config = array('table_id' => (int) ($payload['table_id'] ?? 0));
 

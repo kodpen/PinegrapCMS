@@ -110,3 +110,20 @@ function test_order_view_contact_text_name_company_email_id()
 	pg_assert_same('#140', pg_order_view_contact_text('140', '', null, '', ''), 'then the id, marked as one');
 	pg_assert_same('O&#039;Neil &lt;x&gt;', pg_order_view_contact_text(1, "O'Neil", '<x>', '', ''), 'escaped');
 }
+
+// The first card of a column loses its top margin, whichever card it is;
+// the others keep theirs, and empty cards leave no gap.
+function test_order_view_card_column_first_card_flush()
+{
+	$ship = '<div class="card mt-5"><div class="card-body">Ship</div></div>';
+	$returns = '  <div class="card mt-5"><div class="card-body">Returns</div></div>';
+
+	$html = pg_order_view_card_column(array($ship, '', $returns));
+	pg_assert_same(0, strpos($html, '<div class="card"><div class="card-body">Ship'), 'first card flush');
+	pg_assert_same(1, substr_count($html, 'card mt-5'), 'the second card keeps its margin');
+
+	$html = pg_order_view_card_column(array('', '   ', $returns));
+	pg_assert_same(0, strpos($html, '<div class="card"><div class="card-body">Returns'), 'no ship-to: the next card is flush');
+
+	pg_assert_same('', pg_order_view_card_column(array('', '')), 'no cards, nothing');
+}
