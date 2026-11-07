@@ -85,7 +85,9 @@ function test_comment_links_view_switch_url()
 		array('/blog-post?x[]=1&x[y]=2&comments=all', '', '/blog-post?x%5B0%5D=1&x%5By%5D=2'),
 		array('/blog-post', '', '/blog-post'),
 		array('/blog-post?', 'all', '/blog-post?comments=all'),
-		array('//blog-post?a=1#top', 'all', '//blog-post?a=1&comments=all'),
+		array('//blog-post?a=1#top', 'all', '/blog-post?a=1&comments=all'),
+		array('//evil.example/x', '', '/evil.example/x'),
+		array('/\\evil.example/x?comments=all', '', '/evil.example/x'),
 		array(null, 'all', '?comments=all'),
 	);
 

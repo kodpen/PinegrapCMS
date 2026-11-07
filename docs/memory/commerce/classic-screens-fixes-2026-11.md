@@ -35,7 +35,9 @@ The "Show All" / "Show Featured" links rebuilt the query with
 `urlencode($value)` (TypeError on an array value) from
 `parse_url(...)['query']` (undefined without a query). Both now use
 `pg_comment_view_switch_url($request_uri, $view)` (includes/fn/comments.php):
-splits at the first `?`, `parse_str()`, removes `comments`, sets
+splits at the first `?`, writes a leading run of `/` or `\` as one `/`
+(a `//name` request must not give a link to the host `name`),
+`parse_str()`, removes `comments`, sets
 `comments=all` for `$view === 'all'`, `http_build_query()`; no `?` when the
 query is empty. The caller adds `#software_comments` and `h()`. Test:
 `test_comment_links_view_switch_url` (tests/comment_links_test.php).
