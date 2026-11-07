@@ -161,6 +161,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_contact_group_joined_campaigns(); // 11.0.170
 	upgrade_2026_11_0_credit_campaigns();         // 11.0.171
 	upgrade_2026_11_0_api_device_access_scopes(); // 11.0.71
+	upgrade_2026_11_0_workspace_note_groups();   // 11.0.119
 
 }
 
@@ -5338,5 +5339,79 @@ function upgrade_2026_11_0_api_device_access_scopes() {
 	install_add_column('api_devices', 'access_scopes', "TEXT NULL");
 
 	install_note('OAuth connections: a refresh that asks for fewer permissions now gives an access token limited to them. Existing connections keep working as before.');
+
+}
+
+// Workspace note groups and the notes lock (2026.11.0, 11.0.119;
+// includes/workspace/note_groups.php).
+//
+// ws_note_groups: a person's own folders in My Notes (color is a ws_palette()
+// place, 0 none). ws_note_places: which group a person keeps a note in, one
+// row per person and note; a group's notes are its rows, whoever put them
+// there. ws_note_group_shares: a group shared with a person (read or edit) or
+// in a channel, shaped as ws_note_shares. A group's share is written as
+// ordinary ws_note_shares rows whose via_group names the group, so every
+// reader of note shares works on them unchanged and taking the group back
+// deletes only its own rows. ws_note_locks: a person's notes PIN (hash), how
+// long an opened lock stays open (open_minutes: 0 every time, 65535 until
+// sign-out) and the wrong tries; ws_notes.locked and ws_note_groups.locked
+// mark what is behind it. Running sites change nothing until a person makes
+// a group or sets a PIN.
+function upgrade_2026_11_0_workspace_note_groups() {
+
+	install_create_table('ws_note_groups', "CREATE TABLE ws_note_groups (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		name       VARCHAR(100) NOT NULL DEFAULT '',
+		color      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		sort       INT UNSIGNED NOT NULL DEFAULT 0,
+		locked     TINYINT(1) NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id, sort)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_note_places', "CREATE TABLE ws_note_places (
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		note_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		group_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		sort       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, note_id),
+		KEY idx_group (group_id, sort)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_note_group_shares', "CREATE TABLE ws_note_group_shares (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		group_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		can_edit   TINYINT(1) NOT NULL DEFAULT 0,
+		message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		shared_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_group (group_id),
+		KEY idx_user (user_id, group_id),
+		KEY idx_channel (channel_id, group_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_note_locks', "CREATE TABLE ws_note_locks (
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		pin_hash     VARCHAR(255) NOT NULL DEFAULT '',
+		open_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 5,
+		fails        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		wait_until   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_notes', 'locked', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('ws_note_shares', 'via_group', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_note_shares', 'idx_via_group', "INDEX idx_via_group (via_group, user_id)");
+
+	install_note('Workspace: notes can be kept in groups, groups can be shared, and notes and groups can be locked with a PIN. Nothing changes until someone makes a group or sets a PIN.');
 
 }
