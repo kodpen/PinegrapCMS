@@ -13,7 +13,7 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 ## Steps (claim as `[plan:design-template-podcast] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7653): `parts.php` (builders, data, shared parts and cards; episodes dated back from today by `$aired_on()`; tokens `cover`, `category`, `hosted_by`, `schedule`, `aired`, `podcast`, `episode_number`, `length`, `chapters`, `audio`, `listen_url`); `tests/design_template_podcast_test.php`.
 
-- 2: `pages_public.php`: home (`home_episodes`, `home_podcasts`, `home_posts`), `about` (the network and its hosts), `hosts`, `listen` (apps and feeds), `faq`; `tests/design_template_podcast_public_test.php`.
+- 2 (done, #7812): `pages_public.php`: home (`home_episodes`, `home_podcasts`, `home_posts`), `about` (the network and its hosts), `hosts`, `listen` (apps and feeds), `faq`; `tests/design_template_podcast_public_test.php`.
 
 - 3: `podcasts.php` and `episodes.php`: the Podcasts collection (`podcasts` by `?category=`, the `podcast` page with its episodes by the reference, `podcast_new`) and the Episodes collection (`episodes` newest first by `?podcast=` and `?season=`, the `episode` page with the listen link, notes, chapters, guests, transcript and comments, `episode_new`), `home_episodes`, `home_podcasts`; list helpers `$pd_*` in `parts.php`; `tests/design_template_podcast_collections_test.php`.
 
@@ -25,7 +25,7 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
-- 8: the episode page's player bound to the episode's `audio` field (`_bindings.src`, decided A in #7654, `designer/bound-media-src.md`), once that binding has landed; the Listen link stays as the fallback.
+- 8: the episode page's player bound to the episode's `audio` field (`_bindings.src`, decided A in #7654, `designer/bound-media-src.md`) once that binding lands; the Listen link stays as fallback.
 
 - 9: assembly: `pinegrap-podcast.php` (order, look, fonts, `ppd-` rules, folders `supporters` (membership) and `episodes`, groups, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-podcast.md`; the PR body names `[NEW] Added the Podcast Network design template`; this plan and its design file are deleted.
 
