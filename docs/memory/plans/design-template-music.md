@@ -21,7 +21,7 @@ description: Plan: the Music Artist design template (pinegrap-music): tour dates
 
 - 5 (done, #7723): `merch.php`: shop pages (`merch`, product, cart, checkout, order, `email_order`, the catalog with merch products and a signed vinyl per release) and gift cards; test.
 
-- 6 (in progress): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #7761): `standard.php`: contact, inbox, conversation, newsletter, News, blog post, help search, error, their e-mails, `home_posts`; test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
