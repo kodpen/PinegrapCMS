@@ -16,7 +16,7 @@ description: What a coordinator gives its workers when no plan step is free: a n
 ## When is a new design template started?
 - When a slot is still free and no template plan is open.
 - The coordinator picks the next candidate the product does not ship yet (shipped: `includes/design_templates/`), in this order (owner's list, 2026-11-01): web designer portfolio, mobile app developer, social media (Instagram-like), modern phone launch site, car dealership, hotel, marketplace; then real estate agency, law or consulting firm, online courses, events and conferences, beauty salon with booking.
-- 2026-11-06: every candidate of that list is shipped (`includes/design_templates/`) or in an open plan; when the open template plans end, no new template starts before the owner's next list.
+- 2026-11-06: every candidate of that list is shipped (`includes/design_templates/`) or in an open plan; a coordinator then picks the next sector itself. Design templates are second (owner, 2026-11-07, `plans/feature-plans-2026-11.md`): a free slot takes a free step of an opened plan first; a template step or a new template plan only when none is free.
 - It starts a worker with it. That worker writes `plans/design-template-<name>.md` cut into ~1,000-line steps, following the forum and magazine templates (`designer/design-template-*.md`), and claims step 1.
 - General features only: a template that needs a new schema, module or product behaviour asks the architect first (likely for social media follows and likes, and for marketplace sellers).
 

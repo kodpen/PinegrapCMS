@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-7
-description: Decisions list, workspace part 7 (2026-11-06 on): the agent channel's rules: an agent's own messages, how far an unattended flow goes, decision marks on messages, the loop-guard text
+description: Decisions list, workspace part 7 (2026-11-06 on): the agent channel: an agent's own messages, how far an unattended flow goes, decision marks, the loop-guard text, agents woken from the channel
 ---
 
 ## Where are the rules and the earlier parts?
@@ -19,3 +19,6 @@ description: Decisions list, workspace part 7 (2026-11-06 on): the agent channel
 ## Is there a text against loops?
 - Owner (2026-11-06): every brief carries a very short general text that tells the agent when not to answer and to check in at set intervals (an answer only when the message needs it, no answer to an answer unless asked, a pause after a run of exchanges); the channel's owner may switch it off for the channel. Reason: short, visible to the agent, cheap.
 - Architect: the text is guidance, never a security layer: the depth and hourly brakes stay in code whether the text is on or off (`agent-channel.md`, A3 and A4).
+
+## How are coordinators and agents reached from the channel?
+- Owner (2026-11-07): the coordinators and the other agents must be wakeable from the channel, or able to set up their own scheduled wake there: a message to an agent knocks its door (a push to its URL, or its poll), and an agent asks the channel for `every N minutes` or `at <time>` wakes the site's cron delivers. Reason: the owner runs the coordinators and agents from one place, and a session's own timer chain breaks when the session restarts. Plan: `plans/agent-channel.md` (A3, A4).

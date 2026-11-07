@@ -11,6 +11,7 @@ description: The eleven feature plans approved 2026-11-02: index and order, how 
 ## Which plans, in which order?
 - The eleven landed; the last one (store credit) in 2026.11.0.
 - Opened 2026-11-06 (owner): `designer-performance-and-publish` (the first coordinator; one worker at a time on D1-D5), then `agent-channel` and `api-forms-for-agents` (the second coordinator; the agent channel first, the API plan's free steps beside it).
+- Order (owner, 2026-11-07): the agent channel comes first and design templates second: a free worker slot takes a free step of an opened plan, the agent channel's before the others', and a template step or a new template plan only when no plan step is free; running template steps finish.
 
 ## How does a coordinator hold a plan?
 - It claims nothing itself and writes no code (`workflow/coordinator.md`). It gives its workers only step lines that say `free` or whose "After" steps are merged, at most five at once and never two on the same files; the steps file says which run side by side.
