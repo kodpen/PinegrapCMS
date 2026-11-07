@@ -352,11 +352,11 @@ function test_podcast_sponsors_links_ids_and_classes()
 }
 
 // The e-mails are drawn in the sunset palette, each colour of a style with
-// its fallback inside var(); the footer names the sponsorship address.
+// its fallback inside var(); the footer names the network's address.
 function test_podcast_sponsors_mail_colours()
 {
 	$d = _test_ppds_load();
-	pg_assert_contains($d['network']['sponsorship'], json_encode($d['footer']), 'the e-mail footer names the sponsorship address');
+	pg_assert_contains($d['network']['hello'], json_encode($d['footer']), 'the e-mail footer names the network\'s address');
 	pg_assert_contains($d['network']['based'], json_encode($d['footer']), 'the e-mail footer says where the network records');
 	$mail = file_get_contents(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-podcast/mail.php');
 	preg_match_all('/#[0-9a-f]{6}\b/i', $mail, $colors);

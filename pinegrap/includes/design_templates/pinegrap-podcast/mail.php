@@ -143,7 +143,7 @@ $email_header_tree = function () use ($el, $link, $attr, $mail_style) {
 $email_footer_tree = function () use ($el, $para, $link, $attr, $mail_style, $network) {
     return $el('div', 'px-4 py-3 border-top small text-body-secondary', lang('E-mail Footer'), array(
         $para('© {{year}} {{site_name}}', 'mb-1', array('_attrs' => array($attr('style', 'margin:0 0 4px')))),
-        $para($network['based'] . ' · ' . $network['sponsorship'], 'mb-1', array('_attrs' => array($attr('style', 'margin:0 0 4px')))),
+        $para($network['based'] . ' · ' . $network['hello'], 'mb-1', array('_attrs' => array($attr('style', 'margin:0 0 4px')))),
         $link(lang('Visit our website'), '{{page:home}}', 'link-secondary', array($attr('style', 'color:#4b5563'))),
     ), $mail_style('padding:16px 24px;border-top:1px solid #fed7aa;font-size:13px;color:#4b5563'));
 };
