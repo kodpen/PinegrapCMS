@@ -284,6 +284,7 @@
     "Viewing confirmed": "Görme onaylandı",
     "Viewing not found": "Gezme talebi bulunamadı",
     "Viewing pages and files in private folders": "Özel klasörlerdeki sayfa ve dosyaları görüntüleme",
+    "Viewing requested": "Gösterim istendi",
     "Viewing {var:1} of {var:2} I can access. {var:3} Total": "Erişebileceğim {var:1} / {var:2} görüntüleniyor. Toplam {var:3}",
     "Viewing {var:1} of {var:2} Total": "Toplam {var:1} / {var:2} görüntüleniyor",
     "Viewings": "Gezme Talepleri",
