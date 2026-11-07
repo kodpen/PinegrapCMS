@@ -12,7 +12,7 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 
 ## Steps (claim as `[plan:design-template-florist] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7648): `parts.php` (builders, data, shared parts, cards, form fields, comment thread, blog parts); `tests/design_template_florist_test.php`.
-- 2: `pages_public.php`: home, `bouquets`, `occasions`, `subscriptions`, `events`, `delivery`, `care`, `about`, `faq`; test.
+- 2 (done, #7797): `pages_public.php`: home, `bouquets`, `occasions`, `subscriptions`, `events`, `delivery`, `care`, `about`, `faq`; test.
 - 3: `work.php`: the Our Work collection (`work`, `work_item`, `work_new`, the home's `home_work` widget); test.
 - 4: `mail.php` (the e-mail builders) and `orders.php`: bouquet order requests (`order_request` with `?bouquet=`, `?occasion=`, `request_view`, `my_requests`, `staff_requests`, `privacy`, `email_reply`, `email_request_new`, `email_request_received`); test.
 - 5: `enquiries.php`: event enquiries (`event_enquiry` with `?event=`, `event_enquiry_view`, `staff_events`), subscription requests (`subscribe` with `?plan=`, `subscription_view`), `consultation` (the booking widget's starter beside the event enquiry, [[booking-templates]]), their e-mails; test.
@@ -22,9 +22,9 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 - 9: assembly: `pinegrap-florist.php` (order, search sections, look, fonts, `pfl-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-florist.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where does the next session start?
-- Step 2. `parts.php` holds the data (`$occasions`, `$bouquets`, `$plans`, `$event_services`, `$zones`, `$slots`, `$seasons`, `$care`, `$works`, `$why_us`, `$figures`, `$testimonials`) and the cards (`$bouquet_card`, `$occasion_card` with anchor `fl-occasion-<key>`, `$plan_card`, `$event_card`, `$zone_card`, `$season_card`, `$work_card`, `$testimonial_card`); copy `pinegrap-wedding/pages_public.php` and its test.
-- The page shell's band is the shared `delivery_band`. Pick lists for steps 4-5: `$bouquet_choices`, `$occasion_choices`, `$size_titles`, `$slot_titles`, `$zone_titles`, `$card_choices`, `$plan_titles`, `$weekday_choices`, `$event_choices`, `$budget_choices`, `$request_statuses`, `$enquiry_statuses`.
-- Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", so the menu uses `Special Occasions`. Add keys with `tools/tr_add.php --from=<json>`.
+- Step 3. Copy `pinegrap-wedding/weddings.php` and its test: the Our Work form (title, `type` from `$event_titles`, `season` from `$season_titles`, `photo_1`-`photo_4`, summary, story, flowers as long text with `$work_flowers_text`, office `featured`), `work` filtered by `?type=` and `?season=` (the footer sends `?type=`), `work_item`, `work_new`, and the home's `home_work` widget (`$work_card`, featured only) (already placed on the home).
+- Pick lists for steps 4-5 are in `parts.php`: `$bouquet_choices` (its last answer is the bouquets page's custom one), `$occasion_choices`, `$size_titles`, `$slot_titles`, `$zone_titles`, `$card_choices`, `$plan_titles`, `$weekday_choices`, `$event_choices`, `$budget_choices`, `$request_statuses`, `$enquiry_statuses`.
+- Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", so the menu uses `Special Occasions`.
 - PHP 7.1: no trailing comma after a call's last argument.
 
 ## Open questions
