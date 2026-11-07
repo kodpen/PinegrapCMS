@@ -19,6 +19,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Files
 
+- agent-channel-experiment.md: Which doors wake a cloud session (A0, 2026-11-07): session webhook refused unsigned, routine /fire with an owner token, ws_wait.php poll; CI [ci]/[ready] lines; A3 door fields
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one architect issue each, a Türkçe özet block, then the session ends
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
@@ -66,6 +67,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-34.md: Decisions list, product part 34 (2026-11-05 night on): a review hides while its order is cancelled or its item refunded; folder access taken back on cancel; no private access in a bundle
 - decisions-made-product-35.md: Decisions list, product part 35 (2026-11-05 on): live pictures of templates and designs, the installer's design step and 1440 px width, the ACP Bearer credential, a shopper's MCP consent
 - decisions-made-product-36.md: Decisions list, product part 36 (2026-11-06 on): one card per submitter in a form list (the Social template's People list)
+- decisions-made-product-37.md: Decisions list, product part 37 (2026-11-07 on): design templates get their own look, sector sections as palette block families first, and every shipped template one polishing round
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
@@ -103,7 +105,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
-- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, an oversized PR alone and at the latest an hour after it became eligible
+- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, 2,000 lines in all, an oversized PR alone, at the latest an hour after it is eligible
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward); what it leaves to the merging session
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
 - merger-wake.md: How the merging session keeps waking: a 3-minute send_later chain and an hourly routine that re-arms it (2026-11-03); GitHub events are not relied on

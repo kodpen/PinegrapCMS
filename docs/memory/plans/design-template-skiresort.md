@@ -13,7 +13,7 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 ## Steps (claim as `[plan:design-template-skiresort] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7958): `parts.php`: node builders, the resort's data, pick lists, `$money`, `$query`, `$event_on`, page shell and helpers; `tests/design_template_skiresort_test.php`.
 
-- 2: `cards.php`: shared parts (account bar, notice, header, footer, snow band, staff bar), the record and data cards, form fields, the comment thread, newsletter and blog parts; `tests/design_template_skiresort_cards_test.php`.
+- 2 (done, #7986): `cards.php`: shared parts (account bar, notice, header, footer, snow band, staff bar), the record and data cards, form fields, the comment thread, newsletter and blog parts; `tests/design_template_skiresort_cards_test.php`.
 
 - 3: `pages_public.php`: home (`home_slopes`, `home_events`, `home_posts` placed as widgets), `conditions`, `passes`, `rental`, `ski_school`, `lodging`, `about`, `faq`; test.
 

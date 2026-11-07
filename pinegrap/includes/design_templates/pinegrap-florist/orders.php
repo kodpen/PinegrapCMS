@@ -143,7 +143,9 @@ $order_pages[] = array(
     ), false),
 );
 
-// My Requests: the sender's own requests (for the staff, everybody's).
+// My Requests: the sender's own order requests, event enquiries and
+// subscriptions (for the staff, everybody's); enquiries.php owns the last
+// two lists.
 $order_pages[] = array(
     'key'     => 'my_requests',
     'name'    => lang('my-requests'),
@@ -156,7 +158,13 @@ $order_pages[] = array(
         $el('section', 'py-5', lang('Content'), array(
             $container(array(
                 $row(array(
-                    $col(array($widget('my_requests_list')), '', '8'),
+                    $col(array(
+                        $widget('my_requests_list'),
+                        $heading('h2', lang('Event Enquiries'), 'h5 fw-semibold mt-5 mb-3'),
+                        $widget('my_events_list'),
+                        $heading('h2', lang('Subscriptions'), 'h5 fw-semibold mt-5 mb-3'),
+                        $widget('my_subscriptions_list'),
+                    ), '', '8'),
                     $col(array(
                         $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('New Request'), array(
                             $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
@@ -177,7 +185,8 @@ $order_pages[] = array(
     ), false),
 );
 
-// The staff's list of every request, newest first, with a search.
+// The staff's list of every order request, newest first, with a search,
+// then the subscription requests (enquiries.php owns that list).
 $order_pages[] = array(
     'key'     => 'staff_requests',
     'name'    => lang('all-flower-orders'),
@@ -186,9 +195,13 @@ $order_pages[] = array(
     'search'  => false,
     'sitemap' => false,
     'tree'    => $staff_page(array(
-        $page_header(lang('Flower Orders'), lang('Every order request, newest first: confirm the price, set the status and write to the sender under each.')),
+        $page_header(lang('Flower Orders'), lang('Every order request and subscription request, newest first: confirm the price, set the status and write to the sender under each.')),
         $el('section', 'py-5', lang('Content'), array(
-            $container(array($widget('staff_requests_list'))),
+            $container(array(
+                $widget('staff_requests_list'),
+                $heading('h2', lang('Subscription Requests'), 'h4 fw-semibold mt-5 mb-3'),
+                $widget('staff_subscriptions_list'),
+            )),
         )),
     )),
 );
