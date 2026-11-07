@@ -24,6 +24,10 @@
     // after the edges, so on a small box their touch targets lie on top.
     var BOX_HANDLES = ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw', 'rot'];
 
+    // A press stays a click while the pointer keeps within this many screen
+    // pixels of where it went down, as with Select area.
+    var CLICK_PX = 3;
+
     // What a layer's type adds (Editor.layerTypes, the list in
     // pg_image_editor.js); an empty object for a type no tool file knows.
     function kind(l) {
@@ -219,6 +223,8 @@
     // A press with the Select tool: a handle of the one selected layer
     // resizes or turns it; a layer is selected (Shift adds or removes it)
     // and moved with the rest of the selection; the empty stage clears it.
+    // A press that ends as a click outside the selected area also clears
+    // that (endDrag()).
     Editor.prototype.startDrag = function (e) {
         var p = this.toDoc(e.clientX, e.clientY), h = e.target.getAttribute && e.target.getAttribute('data-h');
         var one = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, hit = null;
@@ -249,7 +255,7 @@
                     this.select([]);
                 }
 
-                this.drag = { kind: 'box', at: p, to: p, base: this.sel.slice() };
+                this.drag = { kind: 'box', at: p, to: p, base: this.sel.slice(), click: this.pressClick(e) };
             } else {
                 if (e.shiftKey) {
                     this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
@@ -260,7 +266,7 @@
                     this.select([hit.id]);
                 }
 
-                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !fixed(l); }).map(M.clone) };
+                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !fixed(l); }).map(M.clone), click: this.pressClick(e) };
             }
         }
 
@@ -288,8 +294,26 @@
         return d.base.concat(M.layersInBox(doc, box).filter(function (id) { return (d.base.indexOf(id) < 0) && !kind(find(doc, id)).fixed; }));
     };
 
+    // Where a press without Shift, Alt, Ctrl or Cmd went down on the screen:
+    // it may end as a click (endDrag()). Null for a press with one of them.
+    Editor.prototype.pressClick = function (e) {
+        return (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) ? null : [e.clientX, e.clientY];
+    };
+
+    // The pointer at e: once further than CLICK_PX from the press, the press
+    // is a drag, even if it comes back.
+    Editor.prototype.dragAway = function (e) {
+        var d = this.drag;
+
+        if (d && d.click && (Math.hypot(e.clientX - d.click[0], e.clientY - d.click[1]) > CLICK_PX)) {
+            d.click = null;
+        }
+    };
+
     Editor.prototype.moveDrag = function (e) {
         var d = this.drag, p = this.toDoc(e.clientX, e.clientY), k = this.view.k;
+
+        this.dragAway(e);
 
         if (d.kind === 'box') {
             d.to = p;
@@ -369,13 +393,22 @@
         return true;
     };
 
-    Editor.prototype.endDrag = function () {
-        var d = this.drag;
+    // The end of a press; e is the pointer's release. Only a pointerup can
+    // make a click: a cancelled pointer, the second finger that starts a
+    // pan and a long press (the menu ends it with the press itself) do not,
+    // nor the context menu's own press (no event).
+    Editor.prototype.endDrag = function (e) {
+        var d = this.drag, click;
 
         if (!d) {
             return;
         }
 
+        if (e && (e.type === 'pointerup')) {
+            this.dragAway(e);
+        }
+
+        click = !!(e && (e.type === 'pointerup') && d.click);
         this.drag = null;
         this.guides = null;
         this.history.key = null;
@@ -384,10 +417,15 @@
         // the view, gives back the one before it.
         if (d.kind === 'box') {
             this.select((Object.keys(this.pointers).length > 1) ? d.base : this.boxSelection(d));
-            return;
+        } else {
+            this.render();
         }
 
-        this.render();
+        // With Select a click outside the selected area (Select area's
+        // marching ants) deselects it, whatever the click selected.
+        if (click && (this.tool === 'select') && this.areaClickOut) {
+            this.areaClickOut(d.at);
+        }
     };
 
     // Every layer selected: Ctrl+A, and Select all in the layers list (from
