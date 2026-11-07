@@ -25,7 +25,7 @@ description: Plan: the Museum / Art Gallery design template (pinegrap-museum): e
 
 - 7 (done, #7788): `shop.php`: `tickets`, `membership`, the shop pages, `email_order`, the catalog; test.
 
-- 8: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 8 (done, #7805): `standard.php`: contact, inbox, newsletter, News, help search, error, the message e-mails; test.
 
 - 9: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
