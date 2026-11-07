@@ -101,6 +101,7 @@ function test_design_template_collection_forms()
 		'pinegrap-hotel'      => array('blog_new', 'room_new', 'staff_entry'),
 		'pinegrap-market'     => array('blog_new', 'seller_new', 'staff_entry'),
 		'pinegrap-photo'      => array('blog_new', 'gallery_new', 'staff_entry'),
+		'pinegrap-charity'    => array('blog_new', 'campaign_new', 'event_new', 'report_new', 'staff_entry'),
 		'pinegrap-social'     => array('blog_new', 'my_profile', 'post_new', 'staff_entry'),
 	);
 	$templates = _test_tpl_coll_templates();
