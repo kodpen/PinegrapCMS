@@ -21,9 +21,9 @@ description: Plan: the Construction Firm design template (pinegrap-construction)
 
 - 5 (done, #7679): `careers.php`: the Jobs collection (`careers`, `job` with an apply link `?job=`, `job_new`) and applications (`application`, `application_view`, `my_applications`, `staff_applications`); test.
 
-- 6 (done, #7710): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]), `home_posts`, `google_reviews`; no newsletter band (the quote band sits above the footer); the reply e-mail stays quotes.php's; test.
+- 6 (done, #7710): `standard.php`: contact, inbox, conversation, newsletter (no band), News, blog post, help search, error, `home_posts`, `google_reviews`; test.
 
-- 7 (done, #7731): `account.php`: sign-in and My Account pages (quote requests and job applications first), `staff` (the newest ten quote requests, `staff_quotes_new` from `$quote_list`), `blog_new` (News, four sample posts), `staff_directory`, `staff_entry`, the e-mail pages; test (also checks the whole template: every link and placed widget resolves).
+- 7 (done, #7731): `account.php`: sign-in and My Account pages, `staff` (newest quote requests), `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-construction.php` (order, search sections, look, fonts, `pcn-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-construction.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
