@@ -25,7 +25,7 @@ description: Plan: the Music Artist design template (pinegrap-music): tour dates
 
 - 7 (done, #7773): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
-- 8: assembly: `pinegrap-music.php` (order, search sections, look, fonts, `pmu-` rules, folders incl. `press`, contact group, group `newsletter`, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-music.md`; the PR body names `[NEW] Added the Music Artist design template`; this plan and its design file are deleted.
+- 8 (in progress): assembly: `pinegrap-music.php` (order, search sections, look, fonts, `pmu-` rules, folders incl. `press`, contact group, group `newsletter`, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-music.md`; the PR body names `[NEW] Added the Music Artist design template`; this plan and its design file are deleted.
 
 ## Where to start?
 - The next free step is the lowest one not marked done. The tests share `_test_mu_page_keys()` and `_test_mu_shop_keys()` from `tests/design_template_music_test.php`; the show row binds `show_date`, `ticket_state`, `ticket_url` (step 3 names these fields so), the release card `cover`, `format`, `note`, `length`, the track list `tracks`. `pinegrap-travel/`, `pinegrap-gym/`, `pinegrap-events/` (dates from today), [[design-templates-file-format]], [[design-templates-catalog-and-look]].
