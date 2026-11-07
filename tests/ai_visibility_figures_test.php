@@ -169,3 +169,21 @@ function test_ai_visibility_keep_from()
 	pg_assert_same(date('Y-m-d', strtotime('-400 days', $now)), pg_ai_fetch_keep_from($now));
 	pg_assert_same('2025-09-28', pg_ai_fetch_keep_from($now));
 }
+
+// A top page whose page row is gone is labelled as deleted, without a link;
+// the home page (an existing page with an empty name) is still the home page.
+function test_ai_visibility_deleted_page_is_not_the_home_page()
+{
+	$rows = pg_visitor_label_content_rows(array(
+		array('page_id' => 7, 'page_name' => '', 'item_type' => '', 'item_id' => 0, 'views' => 3, 'deleted' => true),
+		array('page_id' => 1, 'page_name' => '', 'item_type' => '', 'item_id' => 0, 'views' => 5),
+		array('page_id' => 2, 'page_name' => 'about', 'item_type' => '', 'item_id' => 0, 'views' => 2),
+	));
+
+	pg_assert_same(lang('Deleted page'), $rows[0]['label']);
+	pg_assert_same('', $rows[0]['url']);
+	pg_assert_same(lang('Homepage'), $rows[1]['label']);
+	pg_assert_true($rows[1]['url'] !== '', 'the home page keeps its link');
+	pg_assert_same('about', $rows[2]['label']);
+	pg_assert_true(substr($rows[2]['url'], -6) === '/about', 'a page links to itself');
+}
