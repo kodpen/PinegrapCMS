@@ -757,7 +757,7 @@ function ws_api_claude_claim($params)
     api_dry_run_stop('claimed', 'workspace_claude_request', array('id' => (int) $row['id']));
 
     // One run wins when two reach for the same request.
-    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "'
+    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "', error = ''
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent')");
 
     if (mysqli_affected_rows(db::$con) < 1) {

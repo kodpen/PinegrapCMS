@@ -12,7 +12,8 @@ description: Claude's claim refuses a run that has not read the site's current i
 - `POST /workspace/claude/requests/{id}/claim` takes body `instructions` (string, optional so a missing one is a 409, not a 422). `ws_api_claude_instructions_check()` runs after the closed/claimed checks and before `api_dry_run_stop()`; `ws_claude_instructions_state()` gives none, other or current (case and spaces ignored, `hash_equals`).
 - other: a run that read an earlier text (an update landed mid-run): 409 only; it can put itself right.
 - none: a run on a prompt that never reads the site (the long prompt, or one edited by hand): 409, `ws_claude_note_version(null)` so the card shows the long-prompt warning, and once per request a system line in its channel (`ws_message_system()`), marked by `ws_ai_requests.error = 'instructions_outdated'` with a conditional UPDATE so two runs write one line. No column (Fixed rule 5). A dry run writes nothing.
-- The request stays queued for a run that has the instructions; the 24 h TTL cancels it otherwise.
+- The refused request keeps its status for a run that has the instructions. The fire that started the run had already moved it from `queued` to `sent`, so `ws_claude_watchdog()` fails it after `WS_CLAUDE_STALE` (15 min, "Claude did not answer in time") unless such a run claims it first; a request still `queued` waits for the next fire, cancelled after `WS_CLAUDE_QUEUE_TTL` (24 h).
+- A claim that goes through sets `error = ''` in the same UPDATE that sets `running`, so the mark does not outlive the refusal.
 
 ## What do people see?
 - The card's status column: "Version of the instructions the site gives the routine" with the version.

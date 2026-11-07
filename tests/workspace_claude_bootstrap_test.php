@@ -167,6 +167,7 @@ function test_workspace_claude_claim_checks_instructions()
 
 	pg_assert_true(strpos($body, 'ws_api_claude_instructions_check(') < strpos($body, 'api_dry_run_stop('), 'checked before the dry run stops');
 	pg_assert_contains("'instructions_outdated'", $source, 'the error code');
+	pg_assert_contains("status = 'running', claimed_at = '\" . time() . \"', error = ''", $body, 'a claim that goes through clears the refusal\'s mark');
 	pg_assert_contains("'instructions_version' => ws_claude_instructions_version()", $source, 'served with the instructions');
 	pg_assert_contains("'instructions_version' => 'string'", $source, 'and in the schema');
 }
