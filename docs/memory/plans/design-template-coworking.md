@@ -13,7 +13,7 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 ## Steps (claim as `[plan:design-template-coworking] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7660): `parts.php` (node builders, the space's data, shared parts and cards); `tests/design_template_coworking_test.php`.
 
-- 2: `pages_public.php`: home, `plans`, `amenities`, `about`, `faq`, `location`; `tests/design_template_coworking_public_test.php`.
+- 2 (done, #7856): `pages_public.php`: home, `plans`, `amenities`, `about`, `faq`, `location`; `tests/design_template_coworking_public_test.php`.
 
 - 3: `spaces.php`: the Spaces collection (`spaces` filtered by `?kind=`, `space`, `space_new`) and `book_online` (booking widget starter for meeting rooms, privacy link); test.
 
@@ -30,7 +30,7 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 - 9: assembly: `pinegrap-coworking.php` (order, search sections, look, fonts, `pcw-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-coworking.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 2. `parts.php` has the kinds, spaces, plans, amenities, figures and testimonials and their cards (`$kind_card`, `$space_card`, `$plan_card`, `$amenity_card`, `$testimonial_card`). `$events` carries `in_days` for step 5's sample dates; `$perks` is for the members' area (step 6).
+- Step 3. The home places `home_spaces` (step 3 defines it) and `home_events` (step 5); `$space_card` already binds the Spaces fields `photo`, `name`, `kind`, `summary`, `seats`, `floor`, `rate`. `$events` carries `in_days` for step 5's sample dates; `$perks` is for the members' area (step 6).
 - Translation trap: an existing key may carry another template's word (`Rooms` may read "Odalar" as a hotel's): check it before reuse.
 - PHP 7.1 traps: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.
 
