@@ -725,6 +725,7 @@
     "Messages about an admission application are written under the application itself.": "Ön kayıt başvurusuyla ilgili mesajlar başvurunun kendi sayfasında yazılır.",
     "Messages about an appointment are written under the appointment itself.": "Bir randevuyla ilgili mesajlar randevunun kendi sayfasında, altına yazılır.",
     "Messages about an article you sent to the desk are written under the article itself, in My Articles.": "Masaya gönderdiğiniz bir haberle ilgili mesajlar, Yazılarım sayfasında haberin kendi altına yazılır.",
+    "Messages about an event place or a school visit are written under the request itself.": "Bir etkinlik yeri ya da okul ziyareti hakkındaki mesajlar talebin kendi sayfasına yazılır.",
     "Messages are read in opening hours. For anything urgent, call us; in an emergency, call 112.": "Mesajlar çalışma saatlerinde okunur. Acil bir konu için bizi arayın; acil durumda 112'yi arayın.",
     "Messages are read in opening hours. Running late for a booking today? Call us instead.": "Mesajlar çalışma saatlerinde okunur. Bugünkü randevunuza geç mi kalıyorsunuz? Bizi arayın.",
     "Messages are sent by the Webhook delivery job, which has to be selected under Cron Jobs. The test button sends at once.": "Mesajları Webhook gönderimi görevi gönderir; bu görev Cron işleri altında seçili olmalıdır. Test düğmesi hemen gönderir.",

@@ -132,6 +132,7 @@ function _test_mz_page_keys()
 		'email_school_visit_new', 'email_school_visit_received', 'book_online',
 		'tickets', 'membership', 'product', 'cart', 'checkout', 'order', 'email_order',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	);
