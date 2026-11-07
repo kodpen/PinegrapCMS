@@ -122,7 +122,7 @@ function test_sportsclub_public_home_widgets()
 			if (isset($n['props']['templateWidget'])) $widgets[$key][] = $n['props']['templateWidget'];
 		}
 	}
-	pg_assert_same(array('home' => array('home_fixtures', 'home_results', 'google_reviews', 'home_posts')), $widgets, 'only the home places widgets');
+	pg_assert_same(array('home' => array('home_fixtures', 'home_results', 'home_events', 'google_reviews', 'home_posts')), $widgets, 'only the home places widgets');
 }
 
 // A team page opens its fixtures and results filtered on the team; an
