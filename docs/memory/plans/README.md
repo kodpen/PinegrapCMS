@@ -36,8 +36,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-music.md: Plan: the Music Artist design template (pinegrap-music): tour dates, discography with tracks, merch shop, news, press kit, mailing list; parts in a folder; ~1,000-line steps
 - design-template-school-design.md: Design of plans/design-template-school.md: which shipped features the School template reuses for programmes, events and admissions, what it does not build, its look and Turkish words
 - design-template-school.md: Plan: the Private School / Kindergarten design template (pinegrap-school): programmes and classes, staff, admission applications, events, news, parent contact; ~1,000-line steps
-- design-template-wedding-design.md: Design of plans/design-template-wedding.md: which shipped features the Wedding template reuses for packages, real weddings, enquiries and visits, what it does not build, its look and Turkish words
-- design-template-wedding.md: Plan: the Wedding Planner and Venue design template (pinegrap-wedding): services, packages, venue, real weddings, timeline, enquiries and visits; ~1,000-line steps
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
