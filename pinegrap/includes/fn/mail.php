@@ -99,12 +99,12 @@ function convert_html_to_text($html)
     $content = preg_replace('/&#149;/', '*', $content);
     $content = preg_replace('/&reg;/i', '(R)', $content);
     $content = preg_replace('/&bull;/i', '*', $content);
-    // Every other entity is decoded to its character (before strip_tags(),
-    // so a decoded tag is still removed); one PHP does not know is dropped.
-    $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $content = preg_replace('/&[a-z0-9#]+;/i', '', $content);
     // remove any remaining tags
     $content = strip_tags($content);
+    // Every other entity is decoded to its character after the tags are gone,
+    // so an escaped tag stays as text; one PHP does not know is dropped.
+    $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $content = preg_replace('/&[a-z0-9#]+;/i', '', $content);
     // do not allow more than 2 empty lines in a row
     $content = preg_replace("/\n\s+\n/", "\n", $content);
     $content = preg_replace("/[\n]{3,}/", "\n\n", $content);

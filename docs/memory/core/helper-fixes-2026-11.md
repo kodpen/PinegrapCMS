@@ -10,7 +10,7 @@ module: ecommerce, mail, image, short_link_redirects
 - `mb_strtolower('İptal')` gives `i̇ptal` (dotted i), which the `iptal` check does not match; left as it was.
 
 ## What does convert_html_to_text() do with entities?
-- The fixed list runs first (`&nbsp;` to a space, `&copy;` to `(c)`, `&#8217;` to `'`, ...); then every other entity is decoded with `html_entity_decode(..., ENT_QUOTES | ENT_HTML5, 'UTF-8')` before `strip_tags()`, so a decoded tag is still removed; an entity PHP does not know is dropped (`/&[a-z0-9#]+;/i`).
+- The fixed list runs first (`&nbsp;` to a space, `&copy;` to `(c)`, `&#8217;` to `'`, ...); then every other entity is decoded with `html_entity_decode(..., ENT_QUOTES | ENT_HTML5, 'UTF-8')` after `strip_tags()`, so an escaped tag such as `&#60;b&#62;` stays as text in the plain-text part; an entity PHP does not know is dropped (`/&[a-z0-9#]+;/i`). `&lt;`/`&gt;` are in the fixed list, decoded before `strip_tags()`, and still removed with the tag they spell, as before.
 - Symptom before (#7740): the drop pattern `/&[&;]+;/` never matched a real entity, so `&hellip;`, `&rsquo;`, `&euro;`, `&#8230;` stayed raw in the plain-text part of every HTML mail (`email()` sets `AltBody` from it). The `get_page.php` meta descriptions still call `html_entity_decode()` on the result; that is harmless. Tests: `tests/mail_html_to_text_test.php`.
 
 ## When does pg_img_responsive_html() leave a tag alone for its quotes?

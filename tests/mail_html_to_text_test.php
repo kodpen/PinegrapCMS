@@ -90,11 +90,12 @@ function test_mail_html_to_text_b_and_i_are_whole_tag_names()
 		'image before an italic word');
 }
 
-// Entities outside the fixed list are decoded, not left raw in the
-// plain-text part; one PHP does not know is dropped.
+// Entities outside the fixed list are decoded after the tags are stripped,
+// not left raw in the plain-text part; one PHP does not know is dropped.
 function test_mail_html_to_text_decodes_other_entities()
 {
 	pg_assert_same('a…b ’ … €', convert_html_to_text('a&hellip;b &rsquo; &#8230; &euro;'), 'named and numeric entities');
 	pg_assert_same("a\nb c & d", convert_html_to_text('a<br>b&nbsp;c &amp; d'), 'line break, no-break space and ampersand as before');
 	pg_assert_same('x y', convert_html_to_text('x &nosuchentity;y'), 'an unknown entity is dropped');
+	pg_assert_same('x <b> y', convert_html_to_text('x &#60;b&#62; y'), 'an escaped tag outside the fixed list stays as text');
 }
