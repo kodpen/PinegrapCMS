@@ -11,13 +11,13 @@ description: Plan: the Music Artist design template (pinegrap-music): tour dates
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-music-design]].
 
 ## Steps (claim as `[plan:design-template-music] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7544): `parts.php` (builders; data: members, releases with tracks, shows dated by `$show_on()` (six to come, three played), ticket states, merch, gift cards, press quotes, videos; shared parts and cards); `tests/design_template_music_test.php`.
+- 1 (done, #7544): `parts.php` (builders, the artist's data, shared parts and cards); `tests/design_template_music_test.php`.
 
 - 2 (done, #7573): `pages_public.php`: home (`home_shows`, `home_releases`, `home_posts`), `about` (story and members), `videos`, `faq` (the mailing list is the standard `newsletter` page of step 6); `tests/design_template_music_public_test.php`.
 
 - 3 (done, #7613): `releases.php` and `shows.php`: the Releases collection (`discography` by `?format=`, the `release` page with the track list, credits, listening links and fans' words as comments, `release_new`) and the Shows collection (`tour` upcoming from today by `?country=`, `past_shows`, the `show` page with venue, doors, ticket link and state, `show_new`), `home_releases`, `home_shows`; list helpers `$mu_*` in `parts.php`; page names `tour-dates`/`concert`, forms `Music Releases`/`Tour Shows`; `tests/design_template_music_collections_test.php`.
 
-- 4: `mail.php` (the e-mail builders) and `press.php`: the press kit (`press`: bio in three lengths, photos, logos, quotes, technical rider and stage plot from a public `press` folder) and booking enquiries for promoters (`booking`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`); test.
+- 4 (done, #7635): `mail.php` (the e-mail builders) and `press.php`: the press kit (`press`: bio in three lengths, photos, logos, quotes, technical rider and stage plot from a public `press` folder) and booking enquiries for promoters (`booking`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, the two `email_booking_*`; files: Press Files collection, `press_file_new`); test.
 
 - 5: `merch.php`: shop pages (`merch`, product, cart, checkout, order, `email_order`, the catalog with merch products and a signed vinyl per release) and gift cards; test.
 
