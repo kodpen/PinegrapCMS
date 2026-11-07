@@ -431,6 +431,7 @@
     "Leave empty to use the same code as here. On n11 this is the stock code (stockCode) of the listing.": "Buradakiyle aynı kodu kullanmak için boş bırakın. n11'de bu, ilanın stok kodudur (stockCode).",
     "Leave empty when the app is not on Android.": "Uygulama Android'de yoksa boş bırakın.",
     "Leave empty when the app is not on iOS.": "Uygulama iOS'ta yoksa boş bırakın.",
+    "Leave it empty for a course or an evening without a boat.": "Teknesiz bir kurs ya da akşam için boş bırakın.",
     "Leave it empty for no limit. Paging happens within this ceiling.": "Boş bırakılırsa sınır yoktur. Sayfalama bu üst sınırın içinden yapılır.",
     "Leave it empty for one day.": "Tek günse boş bırakın.",
     "Leave it empty if any day suits you.": "Her gün size uyuyorsa boş bırakın.",
