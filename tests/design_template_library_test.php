@@ -140,7 +140,8 @@ function _test_lb_page_keys()
 	$keys = array(
 		'home', 'visit', 'children', 'digital', 'spaces', 'about', 'faq',
 		'catalogue', 'item', 'item_new',
-		'events', 'event', 'event_new', 'event_booking', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy', 'email_reply',
+		'events', 'event', 'event_new', 'event_booking', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy',
+		'email_booking_new', 'email_booking_received', 'email_reply',
 		'join', 'membership_view', 'my_memberships', 'staff_memberships',
 		'reserve', 'reservation_view', 'my_reservations', 'staff_reservations',
 		'room_booking', 'room_booking_view', 'my_room_bookings', 'staff_room_bookings',
