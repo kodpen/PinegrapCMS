@@ -79,3 +79,18 @@ function test_site_fetch_language_inline_scripts_send_page_language()
 		pg_assert_contains('body.append("pg_lang", lang);', substr($parts[$i], 0, 400));
 	}
 }
+
+// pg_tr_define_from_request() lives in includes/fn/translate.php, which
+// init.php loads; api.php must hand it the JSON body after that include, or
+// the call is skipped and a JSON body's pg_lang is never applied.
+function test_site_fetch_language_api_php_applies_body_language_after_init()
+{
+	$api = site_fetch_language_test_read('api.php');
+	$init = strpos($api, "include('init.php');");
+	$call = strpos($api, 'pg_tr_define_from_request($request);');
+
+	pg_assert_true($init !== false);
+	pg_assert_true($call !== false);
+	pg_assert_true($call > $init);
+	pg_assert_same(false, strpos($api, "function_exists('pg_tr_define_from_request')"));
+}
