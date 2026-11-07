@@ -22,9 +22,9 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 - 9: assembly: `pinegrap-florist.php` (order, search sections, look, fonts, `pfl-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-florist.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where does the next session start?
-- Step 5. Copy `pinegrap-wedding/enquiries.php` (and the shape of `orders.php`, its test `tests/design_template_florist_orders_test.php`). `mail.php` already gives `$mail_page`, `$mail_box`, `$mail_line`, `$mail_button`, `$mail_greeting`, `$mail_settings`; `orders.php` owns `privacy` and `email_reply`, and defines `$detail`, `$bound`, `$mail_reference`, `$mail_new_account` (step 5 is included after it and may reuse them).
+- Step 5. Copy `pinegrap-wedding/enquiries.php` and the shape of `orders.php` and its test. `mail.php` already gives `$mail_page`, `$mail_box`, `$mail_line`, `$mail_button`, `$mail_greeting`, `$mail_settings`; `orders.php` owns `privacy`, `email_reply`, `$detail`, `$bound`, `$mail_reference`, `$mail_new_account`.
 - The event enquiry reads `?event=` (`$event_choices`; the work page sends the Kind answer) and the subscription request `?plan=` (`$plan_titles`), with `$weekday_choices`, `$budget_choices`, `$enquiry_statuses`. Add its e-mail page keys to `_test_fl_page_keys()` in `tests/design_template_florist_test.php`.
-- Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", `Occasion` "Vesile" (step 4 labels it `Special Occasion`, "Özel Gün"), `The work` "Eser", `The occasion` "Etkinlik".
+- Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", `Occasion` "Vesile" (step 4 labels it `Special Occasion`, "Özel Gün"), `The work` "Eser".
 - PHP 7.1: no trailing comma after a call's last argument.
 
 ## Open questions
