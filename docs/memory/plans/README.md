@@ -48,6 +48,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-library.md: Plan: the Public Library design template (pinegrap-library): catalogue and new arrivals, events and reading clubs, membership and room booking requests, branches and hours, news; ~1,000-line steps
 - design-template-marina-design.md: Design of plans/design-template-marina.md: which shipped features the Marina template reuses for berths, charters and requests, what it does not build, its look and Turkish words
 - design-template-marina.md: Plan: the Marina design template (pinegrap-marina): berths and rates as words, berth requests, Charter Boats, services, events; ~1,000-line steps
+- design-template-pharmacy-design.md: Design of plans/design-template-pharmacy.md: the shipped features it reuses, what it does not build, its look and Turkish words
+- design-template-pharmacy.md: Plan: the Pharmacy design template (pinegrap-pharmacy): services, prescription requests, vaccinations and health checks, on-duty info, health products shop, health advice, team; ~1,000-line steps
 - design-template-podcast-design.md: Design of plans/design-template-podcast.md: what the Podcast template reuses for podcasts, episodes, sponsorship and supporters, what it does not build, its look and Turkish words
 - design-template-podcast.md: Plan: the Podcast Network design template (pinegrap-podcast): podcasts and episodes as collections, hosts, sponsorship enquiries, supporters' membership with bonus episodes; ~1,000-line steps
 - design-template-recruitment-design.md: Design of plans/design-template-recruitment.md: which shipped features the Recruitment template reuses for jobs, applications and employer enquiries, what it does not build, its look and Turkish words
