@@ -4,8 +4,8 @@
  *
  * Design template "Campsite", the account and staff part: signing in, up and
  * out, My Account and its pages, the staff directory, the staff area (the
- * way to the booking requests and the event enquiries, the Hotel Journal's
- * article form with its first articles, the directory's form), the account
+ * way to the stay requests and the group enquiries, the News article
+ * form with its first articles, the directory's form), the account
  * e-mails, and the widgets that draw them (the account bar's login region
  * and My Account included). Included after parts.php and mail.php in the
  * same scope; returns array('pages' => ..., 'widgets' => ...).
@@ -68,7 +68,7 @@ $account_pages[] = $sign_page('email_preferences', lang('email-preferences'), la
 $account_pages[] = array_merge($sign_page('address_book', lang('address-book'), lang('Address Book'), 'address_book', 'registration'),
     array('requires' => 'ecommerce'));
 
-// The hotel's team as signed-in guests see it: the staff's own list, kept
+// The campsite's team as signed-in guests see it: the staff's own list, kept
 // from the staff area.
 $account_pages[] = array(
     'key'     => 'staff_directory',
@@ -78,7 +78,7 @@ $account_pages[] = array(
     'search'  => false,
     'sitemap' => false,
     'tree'    => $page(array(
-        $page_header(lang('Staff Directory'), lang('The people who look after your stay, your table and your celebration, and how to reach them.')),
+        $page_header(lang('Staff Directory'), lang('The people who look after your pitch, your cabin and your group, and how to reach them.')),
         $el('section', 'py-5', lang('Directory'), array(
             $container(array($widget('staff_directory'))),
         )),
@@ -87,8 +87,8 @@ $account_pages[] = array(
 
 // ── The staff area ──────────────────────────────────────────────────────
 
-// Behind the private folder: the welcome with the way to the booking
-// requests and the event enquiries, then the staff's shortcuts.
+// Behind the private folder: the welcome with the way to the stay
+// requests and the group enquiries, then the staff's shortcuts.
 $staff_shortcut = function ($icon_name, $title, $text, $href) use ($el, $heading, $para, $icon, $col) {
     return $col(array(
         $el('a', 'd-flex align-items-start gap-3 h-100 p-4 rounded-4 bg-body-tertiary text-decoration-none link-body-emphasis pcp-lift', $title, array(
@@ -115,10 +115,10 @@ $account_pages[] = array(
                     $col(array(
                         $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-semibold mb-3'),
-                        $para(lang('The booking requests, the event enquiries, the rooms, the conversations and the Hotel Journal are kept here. Open a request and press Change Status when you confirm it or need something from the guest; what you write under it reaches the guest by e-mail.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('The stay requests, the group enquiries, the pitches and cabins, the conversations and the News are kept here. Open a request and press Change Status when you confirm it or need something from the guest; what you write under it reaches the guest by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Booking Requests'), '{{page:staff_bookings}}', 'btn btn-primary rounded-pill px-4'),
-                            $link(lang('Event Enquiries'), '{{page:staff_enquiries}}', 'btn btn-outline-primary rounded-pill px-4'),
+                            $link(lang('Stay Requests'), '{{page:staff_requests}}', 'btn btn-primary rounded-pill px-4'),
+                            $link(lang('Group Enquiries'), '{{page:staff_enquiries}}', 'btn btn-outline-primary rounded-pill px-4'),
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-outline-secondary rounded-pill px-4'),
                         )),
                     ), '', '8'),
@@ -129,10 +129,10 @@ $account_pages[] = array(
             $container(array(
                 $section_header(lang('Staff'), lang('Shortcuts')),
                 $row(array(
-                    $staff_shortcut('bi-calendar-check', lang('Booking Requests'), lang('Every booking request, newest first. Open one to confirm it, ask the guest something or change its status.'), '{{page:staff_bookings}}'),
-                    $staff_shortcut('bi-balloon-heart', lang('Event Enquiries'), lang('Every wedding, meeting and dinner enquiry, newest first. Send the proposal and keep its status up to date.'), '{{page:staff_enquiries}}'),
-                    $staff_shortcut('bi-door-open', lang('New Room'), lang('Add a room with its photos, beds and rate; it appears in the room list at once.'), '{{page:room_new}}'),
-                    $staff_shortcut('bi-journal-text', lang('New Article'), lang('Write for the Hotel Journal; the article appears there as soon as you send it.'), '{{page:blog_new}}'),
+                    $staff_shortcut('bi-calendar-check', lang('Stay Requests'), lang('Every stay request, newest first. Open one to send an offer, ask the guest something or change its status.'), '{{page:staff_requests}}'),
+                    $staff_shortcut('bi-people', lang('Group Enquiries'), lang('Every school, club, rally and family enquiry, newest first. Send the offer and keep its status up to date.'), '{{page:staff_enquiries}}'),
+                    $staff_shortcut('bi-house-add', lang('New Pitch or Cabin'), lang('Add a pitch or a cabin with its photos, size and price; it appears in the list at once.'), '{{page:unit_new}}'),
+                    $staff_shortcut('bi-journal-text', lang('New Article'), lang('Write for the News; the article appears there as soon as you send it.'), '{{page:blog_new}}'),
                     $staff_shortcut('bi-chat-dots', lang('All Conversations'), lang('Every message from the contact page. Answer below each one.'), '{{page:inbox}}'),
                     $staff_shortcut('bi-person-plus', lang('Add to the Staff Directory'), lang('Add a colleague to the directory customers see.'), '{{page:staff_entry}}'),
                 ), '4'),
@@ -145,7 +145,7 @@ $account_pages[] = array(
     )),
 );
 
-// The Hotel Journal's first articles, written into its form when the form
+// The News's first articles, written into its form when the form
 // is made: the template carries them, so they are there on every site. Each
 // is edited or deleted like any other post. None names a date: the
 // article's date is the record's own.
@@ -154,48 +154,48 @@ $post_body = function ($paragraphs) {
 };
 $sample_posts = array(
     array(
-        'title'       => lang('Five quiet coves within a short walk of the hotel'),
-        'summary'     => lang('Pebbles, pine shade and clear water: the coves our guests come back to, and how to reach each one on foot.'),
+        'title'       => lang('A morning walk around the lake, from the jetty to the old mill'),
+        'summary'     => lang('An hour and a half on a flat path, with a heron or two, a bench at every bay and coffee at the café when you are back.'),
         'content'     => $post_body(array(
-            lang('The path below the garden follows the shore for an hour in each direction, and five small coves open off it along the way.'),
-            lang('The nearest is three minutes from the gate and has the hotel\'s loungers; the furthest has nothing but pines, flat rocks and the clearest water on the coast.'),
-            lang('Reception lends beach bags, towels and snorkels, and the kitchen packs a lunch if you ask the evening before.'),
+            lang('The path around the lake starts at our jetty and keeps to the shore all the way; it is flat enough for a pushchair and quiet enough to hear the birds.'),
+            lang('Halfway round stands the old mill, where the stream comes down from the forest. Herons fish below the weir early in the morning.'),
+            lang('Back at the park, the café opens at eight; the reception lends a map of the path and binoculars for the birds.'),
         )),
-        'cover_image' => $photo('journal-1', 1200, 675),
+        'cover_image' => $photo('news-1', 1200, 675),
     ),
     array(
-        'title'       => lang('What is on the breakfast table, and where it comes from'),
-        'summary'     => lang('Cheese from the village above the bay, honey from our neighbour and bread baked in the kitchen before sunrise.'),
+        'title'       => lang('The season opens: what is new on the pitches'),
+        'summary'     => lang('More hook-ups in the meadow, a new washing block by the lake and two more glamping tents at the forest edge.'),
         'content'     => $post_body(array(
-            lang('Breakfast is laid out on the terrace from half past seven, and almost everything on it is made in the house or within a few kilometres of it.'),
-            lang('The cheeses come from a family dairy in the hills, the honey from the hives at the end of our road, and the jams from the fruit of the garden.'),
-            lang('Tell us the evening before if you would like breakfast in your room or an early tray before a walk or a flight.'),
+            lang('Over the winter we added electric hook-ups to the last pitches in the meadow, so every touring pitch now has one.'),
+            lang('The washing block by the lake has been rebuilt, with family rooms, a baby room and a dishwashing area under cover.'),
+            lang('At the forest edge two new bell tents stand on their decks, each with a wood stove and a fire pit of its own.'),
         )),
-        'cover_image' => $photo('journal-2', 1200, 675),
+        'cover_image' => $photo('news-2', 1200, 675),
     ),
     array(
-        'title'       => lang('The olive harvest, and how to join it'),
-        'summary'     => lang('Each autumn the garden\'s old trees are picked by hand, and guests who stay that week are welcome to help.'),
+        'title'       => lang('Campfire evenings and how we keep them safe'),
+        'summary'     => lang('Where fires are allowed, where to get dry wood and the few rules that let everyone enjoy the evening.'),
         'content'     => $post_body(array(
-            lang('The olive trees in the garden are older than the house. When the fruit turns dark in autumn, the family and the staff pick them by hand over a few mornings.'),
-            lang('Guests are welcome to join for an hour or a whole morning; we give you gloves and a basket, and lunch under the trees afterwards.'),
-            lang('The oil is pressed at the village mill the same day, and a bottle of it goes home with everyone who helped.'),
+            lang('A fire in the evening is part of camping. Every glamping tent and many pitches have a fire pit of their own, and the campfire circle by the lake is open to everyone.'),
+            lang('Please light fires only in the pits, keep a bucket of water beside them and put them out completely before you go to bed.'),
+            lang('Dry firewood is sold by the bag at the shop; gathering wood in the forest is not allowed, as the dead wood is home to beetles and birds.'),
         )),
-        'cover_image' => $photo('journal-3', 1200, 675),
+        'cover_image' => $photo('news-3', 1200, 675),
     ),
     array(
-        'title'       => lang('A slow afternoon at the spa'),
-        'summary'     => lang('A steam room, a massage with the garden\'s own oil and an hour by the pool: how our guests like to spend a grey day.'),
+        'title'       => lang('Autumn in the cabins'),
+        'summary'     => lang('When the pitches close, the cabins stay open: quiet paths, golden forest and a warm terrace in the evening.'),
         'content'     => $post_body(array(
-            lang('Not every day by the sea is a beach day, and a grey afternoon is the best time for the spa.'),
-            lang('Start in the steam room, then a massage with warm oil from the garden\'s olives, then tea and a book on the loungers by the indoor pool.'),
-            lang('Treatments are booked at reception or by phone; ask for the afternoon slots, which are the quietest.'),
+            lang('Late in the season the park grows quiet. The tents are gone, the lake is still and the forest turns yellow and red.'),
+            lang('Our cabins stay open all year, with heating, a kitchen and a terrace with a barbecue for the mild evenings.'),
+            lang('It is the best time for long walks and for mushrooms; ask at the reception which paths are the most beautiful this week.'),
         )),
-        'cover_image' => $photo('journal-4', 1200, 675),
+        'cover_image' => $photo('news-4', 1200, 675),
     ),
 );
 
-// The staff's forms: the Hotel Journal and the staff directory.
+// The staff's forms: the News and the staff directory.
 $staff_form_page = function ($key, $name, $title, $lead, $widget_key, $form) use ($staff_page, $page_header, $el, $container, $row, $col, $widget) {
     return array(
         'key'     => $key,
@@ -221,14 +221,14 @@ $staff_form_page = function ($key, $name, $title, $lead, $widget_key, $form) use
     );
 };
 $account_pages[] = $staff_form_page('blog_new', lang('new-article'), lang('New Article'),
-    lang('Write the article; it appears in the Hotel Journal as soon as you send it.'), 'blog_form',
+    lang('Write the article; it appears in the News as soon as you send it.'), 'blog_form',
     array(
-        'form_name'            => lang('Hotel Journal'),
+        'form_name'            => lang('News'),
         'collection'           => 1,
         'confirmation_message' => lang('The article is published.'),
         'confirmation_page_id' => '{{tab:blog}}',
         // The template's sample articles are written in when the form is
-        // made, so the Hotel Journal and the home page do not open empty
+        // made, so the News and the home page do not open empty
         // (pg_cf_seed_sample_records()).
         'sample_records'       => $sample_posts,
         // The cover is the articles' share image (pg_cf_share_image_field_id()).
@@ -296,8 +296,8 @@ $account_link = function ($icon_name, $text, $href, $token = '', $flag = '') use
 
 // The guest's account menu: the requests first.
 $account_links = array(
-    $account_link('bi-calendar-check', lang('My Bookings'), '{{page:my_bookings}}'),
-    $account_link('bi-balloon-heart', lang('My Event Enquiries'), '{{page:my_enquiries}}'),
+    $account_link('bi-calendar-check', lang('My Stay Requests'), '{{page:my_requests}}'),
+    $account_link('bi-people', lang('My Group Enquiries'), '{{page:my_enquiries}}'),
     $account_link('bi-inbox', lang('Inbox'), '{{page:inbox}}'),
     $account_link('bi-person-vcard', lang('My Profile'), '#', '__profile_url'),
 );
@@ -363,8 +363,8 @@ $account_widgets = array(
                     )),
                     $login_divider(),
                     $login_item(lang('My Account'), '__my_account_url'),
-                    $login_page_item(lang('My Bookings'), '{{page:my_bookings}}'),
-                    $login_page_item(lang('My Event Enquiries'), '{{page:my_enquiries}}'),
+                    $login_page_item(lang('My Stay Requests'), '{{page:my_requests}}'),
+                    $login_page_item(lang('My Group Enquiries'), '{{page:my_enquiries}}'),
                     $login_page_item(lang('Inbox'), '{{page:inbox}}'),
                     $login_item(lang('Edit my profile'), '__profile_url'),
                     $login_item(lang('Staff area'), '__staff_url', 'is_staff'),
@@ -377,8 +377,8 @@ $account_widgets = array(
         )),
     ),
 
-    // My Account: the member's card and menu beside the bookings and event
-    // cards and the orders (drawn only for a member who has any).
+    // My Account: the member's card and menu beside the stay request and
+    // group enquiry cards.
     'my_account' => array(
         'page'   => 'my_account',
         'slug'   => lang('my-account'),
@@ -401,18 +401,16 @@ $account_widgets = array(
                         $el('nav', 'list-group', lang('Account Menu'), $account_links, array('_attrs' => array($attr('aria-label', lang('My Account'))))),
                     ), '', '4'),
                     $col(array(
-                        $request_card(lang('Booking Requests Card'), 'bi-calendar-check', lang('Your booking requests'),
+                        $request_card(lang('Stay Requests Card'), 'bi-calendar-check', lang('Your stay requests'),
                             lang('Follow each request until it is confirmed, answer our questions and tell us about your arrival.'), array(
-                                $link(lang('My Bookings'), '{{page:my_bookings}}', 'btn btn-primary rounded-pill px-4'),
-                                $link(lang('Ask for a Room'), '{{page:book}}', 'btn btn-outline-primary rounded-pill px-4'),
+                                $link(lang('My Stay Requests'), '{{page:my_requests}}', 'btn btn-primary rounded-pill px-4'),
+                                $link(lang('Request a Stay'), '{{page:book}}', 'btn btn-outline-primary rounded-pill px-4'),
                             ), 'p-4 rounded-4 border mb-4'),
-                        $request_card(lang('Events Card'), 'bi-balloon-heart', lang('Your event enquiries'),
-                            lang('A wedding, a meeting or a dinner: follow the proposal and plan the day with us in one place.'), array(
-                                $link(lang('My Event Enquiries'), '{{page:my_enquiries}}', 'btn btn-primary rounded-pill px-4'),
-                                $link(lang('Plan an event'), '{{page:event_enquiry}}', 'btn btn-outline-primary rounded-pill px-4'),
-                            ), 'p-4 rounded-4 border mb-4'),
-                        $heading('h2', lang('My Orders'), 'h5 fw-semibold mb-3', $show_when('has_orders')),
-                        $el('div', '', lang('Order History'), array(), array('_bindings' => array('section' => 'order_history'))),
+                        $request_card(lang('Groups Card'), 'bi-people', lang('Your group enquiries'),
+                            lang('A class, a club, a rally or the family: follow the offer and plan the stay with us in one place.'), array(
+                                $link(lang('My Group Enquiries'), '{{page:my_enquiries}}', 'btn btn-primary rounded-pill px-4'),
+                                $link(lang('Send a Group Enquiry'), '{{page:group_enquiry}}', 'btn btn-outline-primary rounded-pill px-4'),
+                            ), 'p-4 rounded-4 border mb-0'),
                     ), '', '8'),
                 ), '4', '', 'g-lg-5'),
                 $loop(array()),
@@ -523,7 +521,7 @@ $account_widgets = array(
         'tree'   => $widget_root(array(
             $mail_heading(lang('Welcome!')),
             $mail_account_greeting(),
-            $mail_para(lang('Your account is ready. Your booking requests, event enquiries and orders, and our messages about them, are all in one place.')),
+            $mail_para(lang('Your account is ready. Your stay requests and group enquiries, and our messages about them, are all in one place.')),
             $mail_button(lang('Go to my account'), '#', array('_bindings' => array('href' => '__my_account_url'))),
             $mail_para(lang('If you have any questions, we are here to help.'), 'small text-body-secondary mb-0', 'font-size:13px;color:#4b5563;margin:24px 0 0'),
         )),
@@ -541,7 +539,7 @@ $account_widgets = array(
         )),
     ),
 
-    // The staff's article form: a Hotel Journal article with its cover.
+    // The staff's article form: a News article with its cover.
     'blog_form' => array(
         'page'   => 'blog_new',
         'slug'   => 'form',
@@ -600,10 +598,10 @@ $account_widgets = array(
                             $portrait(lang('Selin Aras'), 128), lang('Photo')),
                         $el('div', 'min-w-0', lang('Details'), array(
                             $heading('h2', lang('Selin Aras'), 'h6 fw-semibold mb-0', $bind('full_name')),
-                            $para(lang('Guest Relations'), 'small text-primary fw-semibold mb-2', $bind('job_title')),
+                            $para(lang('Reception'), 'small text-primary fw-semibold mb-2', $bind('job_title')),
                             $el('p', 'pg-hide-if-empty small mb-1', lang('Department'), array(
                                 $icon('bi-diagram-3', 'text-primary me-1'),
-                                $span(lang('Reception'), 'pg-field-value', lang('Value'), $bind('department')),
+                                $span(lang('Front of House'), 'pg-field-value', lang('Value'), $bind('department')),
                             )),
                             $el('p', 'pg-hide-if-empty small mb-1 text-break', lang('Email'), array(
                                 $icon('bi-envelope', 'text-primary me-1'),
@@ -614,7 +612,7 @@ $account_widgets = array(
                                 $span('+90 555 000 00 00', 'pg-field-value', lang('Value'), $bind('phone')),
                             )),
                             $el('p', 'pg-hide-if-empty small text-body-secondary mt-2 mb-0', lang('A few words'), array(
-                                $span(lang('Ask me about a transfer from the airport, a table for dinner or a surprise in your room.'), 'pg-field-value', lang('Value'), $bind('bio')),
+                                $span(lang('Ask me about a quiet pitch, firewood for the evening or a canoe for the morning.'), 'pg-field-value', lang('Value'), $bind('bio')),
                             )),
                         )),
                     )),

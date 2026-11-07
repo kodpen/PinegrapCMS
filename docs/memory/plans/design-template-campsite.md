@@ -16,11 +16,11 @@ description: Plan: the Campsite / Holiday Park design template (pinegrap-campsit
 - 3 (done, #7842): `units.php`: the Pitches and Cabins collection (`units` by `?kind=`, the `unit` record page, `unit_new`), `home_units`; test.
 - 4 (done, #7853): `mail.php` and `stays.php`: stay requests (`book` with `?unit=`, `?kind=`, `?season=`; `request_view`, `my_requests`, `staff_requests`, `privacy`, `email_reply`) and group enquiries (`groups`, `group_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`); test.
 - 5 (done, #7874): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 6: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 6 (done, #7884): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 7: assembly: `pinegrap-campsite.php` (order, search sections, look, fonts, `pcp-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-campsite.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Step 4 builds the stay request: its unit list is `$request_unit_choices` and the unit page sends `?unit=` (the record's `title`) and `?kind=`. Model files: `pinegrap-construction/`, `pinegrap-school/`, `pinegrap-hotel/`. The stay request reads `?kind=` (stay-kind pages), `?unit=` (unit pages) and `?season=` (prices page); the unit list filters `?kind=`. Never use `?view=` (reserved, [[design-template-hotel]]). Later tests share `_test_cp_page_keys()` from `tests/design_template_campsite_test.php`.
+- The next free step is the lowest one not marked done: step 7, the assembly. Every part file is in the folder; the main file includes `parts.php`, `mail.php`, then `pages_public.php`, `units.php`, `stays.php`, `standard.php`, `account.php`, each return kept as `$…_part`. Model: `pinegrap-hotel.php`. Search sections: `cp-` ids (`cp-prices`, `cp-groups`, `cp-your-data` …). The part tests share `_test_cp_page_keys()` from `tests/design_template_campsite_test.php`. Never use `?view=` (reserved, [[design-template-hotel]]).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
