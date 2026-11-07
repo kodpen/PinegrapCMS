@@ -22,6 +22,6 @@ description: Which doors wake a cloud session (A0, 2026-11-07): session webhook 
 - Repository secrets the owner sets: `PG_WS_SITE`, `PG_WS_CHANNEL`, `PG_WS_CI_KEY`, `PG_WS_CI_SECRET`. A fork's PR gets no secrets and is skipped.
 
 ## What does this fix for A3's door fields?
-- Door kind `push`: URL only a routine `/fire` address (`ws_claude_url_valid()`'s pattern) and its sealed token; the body carries the site address and ids only. A session webhook (`webhook-triggers`) is refused: nothing can sign it.
+- Door kind `push`: a routine `/fire` address with its sealed token, or any webhook receiver that checks the site's own signature; the body carries the site address and ids only. A session webhook (`webhook-triggers`) is refused: nothing outside Anthropic can sign it. Which URLs A3 accepts is A3's call within the plan.
 - Door kind `poll`: no URL or secret; the card shows the last read (`last knock`) of `GET /workspace/agent-requests` or `/workspace/sync`.
 - A failed push stays queued for the next poll or claim, as the plan says; a session-bound routine dies with its session, so a coordinator's door is re-entered when its session changes.
