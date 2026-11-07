@@ -12,7 +12,7 @@ description: Plan: the Marina design template (pinegrap-marina): berths and rate
 
 ## Steps (claim as `[plan:design-template-marina] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7794): `parts.php` (node builders, the harbour's data and pick lists, shared parts, cards, rate table, form fields, comment thread, blog parts); `tests/design_template_marina_test.php`.
-- 2: `pages_public.php`: home (`home_charters`, `home_events`, `home_posts`), `berths` and one `berth_<key>` per kind, `rates`, `services`, `facilities`, `arriving`, `rules`, `about`, `faq`; test.
+- 2 (done, #7851): `pages_public.php`: home (`home_charters`, `home_events`, `home_posts`), `berths` and one `berth_<key>` per kind, `rates`, `services`, `facilities`, `arriving`, `rules`, `about`, `faq`; test.
 - 3: `charters.php`: the Charter Boats collection (`charters` by `?type=`, the `boat` record page, `boat_new`), `home_charters`; test.
 - 4: `mail.php` and `requests.php`: visitor berth requests (`berth_request` with `?kind=`, `?season=`; `request_view`, `my_requests`, `staff_requests`, `privacy`, `email_reply`) and charter enquiries (`charter_enquiry` with `?boat=`; `enquiry_view`, `my_enquiries`, `staff_enquiries`); test.
 - 5: `events.php`: the Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and entry requests (`event_entry` with `?event=`, `entry_view`, `my_entries`, `staff_entries`); test.
