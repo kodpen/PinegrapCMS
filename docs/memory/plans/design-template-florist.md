@@ -24,7 +24,7 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 ## Where does the next session start?
 - Step 3. Copy `pinegrap-wedding/weddings.php` and its test: the Our Work form (title, `type` from `$event_titles`, `season` from `$season_titles`, `photo_1`-`photo_4`, summary, story, flowers as long text with `$work_flowers_text`, office `featured`), `work` filtered by `?type=` and `?season=` (the footer sends `?type=`), `work_item`, `work_new`, and the home's `home_work` widget (`$work_card`, featured only) (already placed on the home).
 - Pick lists for steps 4-5 are in `parts.php`: `$bouquet_choices` (its last answer is the bouquets page's custom one), `$occasion_choices`, `$size_titles`, `$slot_titles`, `$zone_titles`, `$card_choices`, `$plan_titles`, `$weekday_choices`, `$event_choices`, `$budget_choices`, `$request_statuses`, `$enquiry_statuses`.
-- Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", so the menu uses `Special Occasions`. Add keys with `tools/tr_add.php --from=<json>`.
+- Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", so the menu uses `Special Occasions`.
 - PHP 7.1: no trailing comma after a call's last argument.
 
 ## Open questions
