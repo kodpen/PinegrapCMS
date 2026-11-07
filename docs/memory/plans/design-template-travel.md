@@ -25,7 +25,7 @@ description: Plan: the Travel Agency design template (pinegrap-travel): destinat
 
 - 7 (done, #7700): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
-- 8: assembly: `pinegrap-travel.php` (order, search sections, look, fonts, `ptv-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-travel.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
+- 8 (in progress): assembly: `pinegrap-travel.php` (order, search sections, look, fonts, `ptv-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-travel.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
 - The next free step is the lowest one not marked done. Step 7's `blog_new` form gives the fields `standard.php` reads (`title`, `summary`, `content`, `cover_image`) and the sample posts; the Hotel's `account.php` is the model. The tests share `_test_tv_page_keys()` and `_test_tv_shop_keys()` from `tests/design_template_travel_test.php`.
