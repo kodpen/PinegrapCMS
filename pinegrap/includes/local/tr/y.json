@@ -61,6 +61,7 @@
     "Yes, for talks, launches and workshops of up to eighty people. Ask the front desk for a free date.": "Evet; seksen kişiye kadar konuşma, lansman ve atölyeler için. Boş bir tarih için resepsiyona sorun.",
     "Yes, for your own use and without flash, except where a sign asks you not to.": "Evet, kişisel kullanım için ve flaşsız; bir tabelanın çekmemenizi istediği yerler dışında.",
     "Yes, free of charge up to three days before arrival. Write to us on your request and we change it.": "Evet, gelişten üç gün öncesine kadar ücretsiz. İsteğinizin üzerinden bize yazın, değiştirelim.",
+    "Yes, in every group, and the oldest girls train with the women's team once a month.": "Evet, her grupta; en büyük kızlar ayda bir kadın takımıyla antrenman yapar.",
     "Yes, in the fire pits and the fire bowls we lend. Firewood is sold at the shop.": "Evet, ateş çukurlarında ve ödünç verdiğimiz ateş kaplarında. Odun markette satılır.",
     "Yes, make it a draft": "Evet, taslağa al",
     "Yes, name it in your request. If it is taken we offer the nearest one like it.": "Evet, talebinizde adını yazın. Doluysa ona en yakın benzer yeri öneririz.",
@@ -113,6 +114,7 @@
     "Yes. The firm's lawyers and staff read it under professional secrecy, whether or not we take the matter.": "Evet. Büronun avukatları ve çalışanları, işi üstlenelim ya da üstlenmeyelim, yazdıklarınızı meslek sırrı kapsamında okur.",
     "Yes. The first 30 minutes are free and without obligation; we tell you whether we can help and what it would cost.": "Evet. İlk 30 dakika ücretsiz ve yükümlülüksüzdür; yardımcı olup olamayacağımızı ve maliyetini söyleriz.",
     "Yes. The lessons play in any modern browser on a phone, a tablet or a computer.": "Evet. Dersler telefon, tablet ya da bilgisayardaki her güncel tarayıcıda oynatılır.",
+    "Yes. The women's team, the veterans and the basketball section all welcome beginners; ask for a trial and say so.": "Evet. Kadın takımı, veteranlar ve basketbol şubesi yeni başlayanları bekliyor; seçme talep edin ve bunu belirtin.",
     "Yes. We meet at the studio, on a video call or on your site, listen to what you need and tell you honestly how we could help, with no obligation.": "Evet. Stüdyoda, görüntülü görüşmede ya da arazinizde buluşur, ihtiyacınızı dinler ve nasıl yardımcı olabileceğimizi dürüstçe, hiçbir yükümlülük olmadan anlatırız.",
     "Yes. We prepare the drawings and the application, and meet the planners and conservation officers with you.": "Evet. Çizimleri ve başvuruyu hazırlar, imar ve koruma kurulu yetkilileriyle sizinle birlikte görüşürüz.",
     "Yes. We serve beer only to adults of legal drinking age and may ask for an ID at the bar.": "Evet. Birayı yalnızca yasal içki yaşındaki yetişkinlere veririz ve barda kimlik isteyebiliriz.",
@@ -151,6 +153,7 @@
     "Yes: send an enrolment request, choose invoice as the payment and give the address in the notes. The course opens once the invoice is paid.": "Evet: bir kayıt talebi gönderin, ödeme olarak faturayı seçin ve adresi notlara yazın. Kurs fatura ödendiğinde açılır.",
     "Yes: sign them in at the front desk. A guest may stay for a meeting; one who works all day needs a day pass.": "Evet: resepsiyonda kaydını yapın. Misafir bir toplantı için kalabilir; bütün gün çalışan biri için günlük bilet gerekir.",
     "Yes: step-free entrances, lifts to every floor, wheelchair places in every hall and a quiet room. Tell us your needs on the registration form.": "Evet: basamaksız girişler, her kata asansör, her salonda tekerlekli sandalye yerleri ve bir sessiz oda. İhtiyaçlarınızı kayıt formunda belirtin.",
+    "Yes: step-free entry, places for wheelchair users beside the covered stand and an accessible toilet in the clubhouse.": "Evet: basamaksız giriş, kapalı tribünün yanında tekerlekli sandalye kullananlar için yerler ve kulüp binasında erişilebilir tuvalet.",
     "Yes: studio mini sessions can be booked straight away at a free time; other sessions start with a request so we can plan them with you.": "Evet: stüdyo mini çekimleri boş bir saate hemen ayırtılabilir; diğer çekimler, sizinle birlikte planlayabilmemiz için bir taleple başlar.",
     "Yes: tell us with your request and the kitchen prepares for it every day of your stay.": "Evet: isteğinizle birlikte bildirin, mutfak konaklamanızın her günü buna göre hazırlanır.",
     "Yes: the boatyard lifts boats out each autumn and keeps them on stands or cradles until spring.": "Evet: tekne bakım alanı her sonbahar tekneleri karaya çeker ve ilkbahara kadar sehpalarda ya da beşiklerde tutar.",
@@ -468,6 +471,7 @@
     "Young actors rehearsing on a bare stage": "Boş bir sahnede prova yapan genç oyuncular",
     "Young architects and designers join a project team from their first week and follow their projects onto site.": "Genç mimarlar ve tasarımcılar ilk haftalarından bir proje ekibine katılır ve projelerini şantiyeye kadar izler.",
     "Young people in the youth theatre": "Gençlik tiyatrosundaki genç",
+    "Young players dribbling around cones on the all-weather pitch": "Her havaya uygun sahada dubaların arasından top süren genç oyuncular",
     "Young reader's card (under 16)": "Genç okur kartı (16 yaş altı)",
     "Your Aras Kargo customer code. Needed to read where a parcel is.": "Aras Kargo müşteri kodunuz. Kargonun nerede olduğunu okumak için gerekir.",
     "Your CV": "Özgeçmişiniz",
@@ -1052,5 +1056,6 @@
     "you owe": "siz borçlusunuz",
     "your tasks": "görevlerin",
     "youth theatre, drama classes, kids, join": "gençlik tiyatrosu, drama dersleri, çocuklar, katılım",
-    "youth theatre, drama classes, schools, education, workshops, children": "gençlik tiyatrosu, drama dersleri, okullar, eğitim, atölyeler, çocuklar"
+    "youth theatre, drama classes, schools, education, workshops, children": "gençlik tiyatrosu, drama dersleri, okullar, eğitim, atölyeler, çocuklar",
+    "youth-academy": "altyapi"
 }

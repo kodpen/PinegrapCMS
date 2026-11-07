@@ -13,7 +13,7 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 ## Steps (claim as `[plan:design-template-sportsclub] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7727): `parts.php` (node builders, the club's data, pick lists, shared parts, cards, form fields, blog parts); `tests/design_template_sportsclub_test.php`.
 
-- 2: `pages_public.php`: home (`home_fixtures`, `home_results`, `home_posts` placed), `teams` and one `team_<key>` per team, `club` (history and honours), `ground`, `academy`, `sponsors`, `faq`; `tests/design_template_sportsclub_public_test.php`.
+- 2 (done, #7907): `pages_public.php`: home (`home_fixtures`, `home_results`, `home_posts` placed), `teams` and one `team_<key>` per team, `club` (history and honours), `ground`, `academy`, `sponsors`, `faq`; `tests/design_template_sportsclub_public_test.php`.
 
 - 3: `squad.php` (first: the list helpers `$sp_*`, as Music's `$mu_*`) and `matches.php`: the Players collection (`squad` by `?team=`, `player`, `player_new`) and the Matches collection (`fixtures` from today on and `results` before today, both by `?team=`, the `match` page, `match_new`, `home_fixtures`, `home_results`); test.
 
