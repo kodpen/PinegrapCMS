@@ -13,7 +13,7 @@ description: Plan: the Home Services design template (pinegrap-homeservices): se
 ## Steps (claim as `[plan:design-template-homeservices] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7717): `parts.php` (builders, the company's data and pick lists, shared parts, service, area, team and review cards, form fields, comment thread, staff and blog parts); `tests/design_template_homeservices_test.php`.
 
-- 2: `pages_public.php`: home, `about`, `areas` (each area with its visit days and call-out note, links to `book?area=`), `prices` (the price guide from the sample services), `faq`, `reviews` (testimonials, the `google_reviews` widget placed); test.
+- 2 (done, #7865): `pages_public.php`: home, `about`, `areas` (each area with its visit days and call-out note, links to `book?area=`), `prices` (the price guide from the sample services), `faq`, `reviews` (testimonials, the `google_reviews` widget placed); test.
 
 - 3: `services.php`: the Services collection (`services` by `?category=`, the `service` page with rated reviews, `service_new`, `home_services`) and the Team collection (`team`, `team_member`, `team_new`, `home_team`); test.
 
