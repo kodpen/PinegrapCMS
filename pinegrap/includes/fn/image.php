@@ -1313,6 +1313,36 @@ function pg_img_tag_attr($tag, $name)
 
 
 /**
+ * Whether every quoted attribute value of a tag is closed. Outside a value a
+ * " or ' opens one; inside it only the same quote closes it, so an
+ * apostrophe in a double-quoted alt (alt="Men's") is part of the value. A
+ * tag matched up to a > inside a value ends inside the quotes.
+ *
+ * @param string $tag
+ * @return bool
+ */
+function pg_img_tag_quotes_closed($tag)
+{
+    $open = '';
+    $length = strlen($tag);
+
+    for ($i = 0; $i < $length; $i++) {
+        $char = $tag[$i];
+
+        if ($open === '') {
+            if (($char === '"') || ($char === "'")) {
+                $open = $char;
+            }
+        } elseif ($char === $open) {
+            $open = '';
+        }
+    }
+
+    return $open === '';
+}
+
+
+/**
  * Give every <img> of a piece of HTML that shows a file of this site its
  * srcset and sizes, in the file's own format.
  *
@@ -1350,7 +1380,7 @@ function pg_img_responsive_html($html, $resolve = 'pg_img_responsive')
 
         // Already described, or a tag whose > sits inside an attribute value
         // (the match ended early): left as written.
-        if (preg_match('~\ssrcset\s*=~i', $tag) || (substr_count($tag, '"') % 2 !== 0) || (substr_count($tag, "'") % 2 !== 0)) {
+        if (preg_match('~\ssrcset\s*=~i', $tag) || !pg_img_tag_quotes_closed($tag)) {
             return $tag;
         }
 
