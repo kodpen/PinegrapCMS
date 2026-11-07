@@ -34,6 +34,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-florist.md: Plan: the Florist design template (pinegrap-florist): bouquets, occasions, delivery, subscriptions, wedding and event flowers; ~1,000-line steps
 - design-template-museum-design.md: Design of plans/design-template-museum.md: the shipped features the Museum template reuses, what it does not build, its look and Turkish words
 - design-template-museum.md: Plan: the Museum / Art Gallery design template (pinegrap-museum): exhibitions, highlights, visit, tickets and membership, events, school visits; ~1,000-line steps
+- design-template-podcast-design.md: Design of plans/design-template-podcast.md: what the Podcast template reuses for podcasts, episodes, sponsorship and supporters, what it does not build, its look and Turkish words
+- design-template-podcast.md: Plan: the Podcast Network design template (pinegrap-podcast): podcasts and episodes as collections, hosts, sponsorship enquiries, supporters' membership with bonus episodes; ~1,000-line steps
 - design-template-restaurant-design.md: Design of plans/design-template-restaurant.md: the shipped features the Restaurant template reuses, what it does not build, its look and Turkish words
 - design-template-restaurant.md: Plan: the Restaurant design template (pinegrap-restaurant), one chef-led restaurant with menu, reservations, chef's table, events, private dining and gift vouchers, in ~1,000-line steps
 - design-template-veterinary-design.md: Design of plans/design-template-veterinary.md: which shipped features the Veterinary template reuses for appointments, vets and health plans, what it does not build, its look and Turkish words
