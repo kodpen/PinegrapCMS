@@ -194,8 +194,8 @@ function merge_train_eligible_since(array $runs, $ready)
 
 // The train order of eligible PRs, each array('number', 'product_lines',
 // 'docs_only', optional 'eligible_since'): 'alone' the docs-only PRs,
-// 'train' the others smaller first up to MERGE_TRAIN_MAX_PRS within the size
-// limit, 'later' the rest. A PR over the limit rides only a train of its
+// 'train' the others within the size limit, longest-waiting first (equal
+// waits smaller first) up to MERGE_TRAIN_MAX_PRS, 'later' the rest. A PR over the limit rides only a train of its
 // own, so a red train is easy to blame: it is the train when no PR within
 // the limit waits, or, given $now, when it has been eligible for
 // MERGE_TRAIN_OVERSIZED_WAIT_SECONDS or more (the longest-waiting one, ahead
@@ -234,8 +234,30 @@ function merge_train_order(array $prs, $now = null)
 		return $out;
 	};
 
+	// Longest-waiting first: by size alone, small PRs that keep arriving
+	// would starve the larger ones under the limit. Equal waits fall back to
+	// the size order; an unknown wait goes after the known ones.
+	$by_wait = function ($a, $b) use ($by_size) {
+		$a_since = isset($a['eligible_since']) ? $a['eligible_since'] : null;
+		$b_since = isset($b['eligible_since']) ? $b['eligible_since'] : null;
+
+		if ($a_since !== $b_since) {
+			if ($a_since === null) {
+				return 1;
+			}
+
+			if ($b_since === null) {
+				return -1;
+			}
+
+			return ($a_since < $b_since) ? -1 : 1;
+		}
+
+		return $by_size($a, $b);
+	};
+
 	usort($alone, $by_size);
-	usort($small, $by_size);
+	usort($small, $by_wait);
 	usort($large, $by_size);
 
 	$overdue = array();

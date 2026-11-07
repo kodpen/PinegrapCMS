@@ -15,7 +15,7 @@ description: Working rule (2026-10-25) for the merging session: one merger, one 
 - A PR that changes only `docs/`, `CLAUDE.md` or `.github/` lands alone as soon as it is green, outside the windows: every new session reads the rules from `development`, so a rules PR behind a train means sessions working under old rules. It gets its own `--no-ff` merge commit `<PR title> (#n)` on `origin/development` (indexes regenerated with `php tools/memory_index.php`), pushed fast-forward. When a train is already waiting and both regenerate the same index, it rides that train instead, so `development` does not move under the train.
 
 ## Which PRs go into a train?
-- Open PRs whose CI is green on their head and that carry the `ready` label, or that have had no push for an hour while green; never one from a fork, which no session merges ([[merge-train-forks]]). Smaller first, up to about 12 a train. A PR over the size limit (`working-mode.md`) rides a train of its own, at the latest an hour after it became eligible ([[merge-train-order]]).
+- Open PRs whose CI is green on their head and that carry the `ready` label, or that have had no push for an hour while green; never one from a fork, which no session merges ([[merge-train-forks]]). Oldest first, up to 12 a train. A PR over the size limit (`working-mode.md`) rides a train of its own, at the latest an hour after it became eligible ([[merge-train-order]]).
 
 ## How is the train built?
 - `php tools/merge_train.php` does it ([[merge-train-tool]]); by hand when it stops.
