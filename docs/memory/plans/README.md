@@ -26,7 +26,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (owner, 2026-11-01)
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
-- design-template-charity.md: Plan for the Charity template (pinegrap-charity): causes, campaigns with progress, gifts as donation products, volunteers, events, news, transparency; parts in a folder; steps 1-9
 - design-template-construction-design.md: Design of plans/design-template-construction.md: which shipped features the Construction template reuses for projects, quotes and careers, what it does not build, its look and Turkish words
 - design-template-construction.md: Plan: the Construction Firm design template (pinegrap-construction): projects portfolio, services, quote requests, team, careers, news; ~1,000-line steps
 - design-template-gym-design.md: Design of plans/design-template-gym.md: which shipped features the Gym template reuses for booking, trainers and membership, what it does not build, its look and Turkish words
