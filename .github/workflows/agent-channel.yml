@@ -39,6 +39,7 @@ jobs:
 
       - name: Write the [ready] line (tools/ws_post.php)
         if: ${{ hashFiles('tools/ws_post.php') != '' }}
+        continue-on-error: true
         env:
           PG_WS_SITE: ${{ secrets.PG_WS_SITE }}
           PG_WS_CHANNEL: ${{ secrets.PG_WS_CHANNEL }}
