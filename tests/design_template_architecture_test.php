@@ -127,10 +127,13 @@ function _test_ai_page_keys()
 		'enquiry', 'enquiry_view', 'my_enquiries', 'staff_enquiries',
 		'consultation', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy', 'email_reply',
 		'email_enquiry_new', 'email_enquiry_received', 'email_consultation_new', 'email_consultation_received',
+		'email_application_new', 'email_application_received',
 		'careers', 'job', 'job_new', 'application', 'application_view', 'my_applications', 'staff_applications',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
+		'email_account_welcome', 'email_password_reset',
 	);
 	foreach (array('architecture', 'interiors', 'adaptive_reuse', 'masterplanning', 'landscape', 'furniture') as $key) $keys[] = 'service_' . $key;
 	return $keys;
