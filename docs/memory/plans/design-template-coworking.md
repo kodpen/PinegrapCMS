@@ -15,7 +15,7 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 
 - 2 (done, #7856): `pages_public.php`: home, `plans`, `amenities`, `about`, `faq`, `location`; `tests/design_template_coworking_public_test.php`.
 
-- 3: `spaces.php`: the Spaces collection (`spaces` filtered by `?kind=`, `space`, `space_new`) and `book_online` (booking widget starter for meeting rooms, privacy link); test.
+- 3 (done, #7868): `spaces.php`: the Spaces collection (`spaces` filtered by `?kind=`, `space`, `space_new`) and `book_online` (booking widget starter for meeting rooms, privacy link); test.
 
 - 4: `mail.php` (the e-mail builders) and `requests.php`: tour requests (`tour`, `tour_view`, `my_tours`, `staff_tours`, `privacy`, `email_reply`, `email_tour_new`, `email_tour_received`) and office enquiries (`office_enquiry`, `enquiry_view`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
 
@@ -30,9 +30,10 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 - 9: assembly: `pinegrap-coworking.php` (order, search sections, look, fonts, `pcw-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-coworking.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 3. The home places `home_spaces` (step 3 defines it) and `home_events` (step 5); `$space_card` already binds the Spaces fields `photo`, `name`, `kind`, `summary`, `seats`, `floor`, `rate`. `$events` carries `in_days` for step 5's sample dates; `$perks` is for the members' area (step 6).
-- Translation trap: an existing key may carry another template's word (`Rooms` may read "Odalar" as a hotel's): check it before reuse.
-- PHP 7.1 traps: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.
+- Step 4. Copy `pinegrap-gym/mail.php` and the request pattern of `pinegrap-gym/classes.php`. `parts.php` has `$tour_choices`, `$tour_times`, `$team_sizes`, `$start_choices`, `$work_choices`, `$tour_statuses`, `$enquiry_statuses`, `$contact_choices`; the tour form starts from `?plan=`. Step 4 also ships `privacy` and `email_reply`.
+- The home places `home_events` (step 5). `spaces.php` ships `book_online`; the space page links `tour` and `office_enquiry`.
+- Translation traps: `Space` reads "Boşluk" and `Seats` "Koltuklar"; use `Workspace` and `Number of Seats`.
+- PHP 7.1: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`. The Turkish shards conflict often: take development's side and re-add the keys with `tools/tr_add.php --from`.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
