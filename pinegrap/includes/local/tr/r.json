@@ -688,6 +688,7 @@
     "Refuses requests by the country they come from. Applied while the firewall is enabled; in Monitor mode a request that would be refused is only recorded in the firewall log.": "İstekleri geldikleri ülkeye göre reddeder. Güvenlik duvarı açıkken uygulanır; İzleme modunda reddedilecek istek yalnızca güvenlik duvarı günlüğüne yazılır.",
     "Regatta": "Yat Yarışı",
     "Regattas and events, news from the harbour and the season's notices, in one e-mail a month.": "Regatalar ve etkinlikler, limandan haberler ve sezonun duyuruları, ayda bir e-postada.",
+    "Regattas, courses and open days you have entered, with their status and our messages.": "Kaydolduğunuz regatalar, kurslar ve açık günler; durumları ve mesajlarımızla.",
     "Regattas, open days, sailing courses, evenings on the quay and the boat show at the marina, and how to take part.": "Marinada regatalar, açık günler, yelken kursları, rıhtım akşamları ve tekne fuarı, ve nasıl katılacağınız.",
     "Regenerate layout": "Düzeni yeniden oluştur",
     "Regex": "Regex",
