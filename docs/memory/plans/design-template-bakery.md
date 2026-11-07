@@ -31,7 +31,7 @@ description: Plan: the Bakery design template (pinegrap-bakery): daily bake, cak
 
 ## Where to start?
 - The next free step is the lowest one not marked done. Model files: `pinegrap-gym/` (requests, classes), `pinegrap-cafe.php` (menu words, `min_date`, `required_when`), `pinegrap-market/shop.php` (catalog groups). Later tests `require_once` `tests/design_template_bakery_test.php` for `_test_bk_page_keys()` / `_test_bk_shop_keys()`.
-- `classes.php` defines `$bk_filter`, `$bk_page_link` (record-value links) and `$bk_featured_choices`; later parts reuse them. The class page sends `?class=` (field `name`) to `class_booking`, so the place request's Class field takes `_cf.url_param` `class` with `$class_names` as answers.
+- `classes.php` defines `$bk_filter`, `$bk_page_link`, `$bk_featured_choices` for later parts; the class page sends `?class=` (`name`) to `class_booking`, whose Class field reads it (`$class_names`).
 - Check a shared key's Turkish before reuse (`Classes` reads "Sınıflar"). PHP 7.1: no trailing comma after a call's last argument.
 
 ## Open questions
