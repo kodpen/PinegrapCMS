@@ -11,7 +11,7 @@ description: Plan: the Driving School design template (pinegrap-drivingschool): 
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-drivingschool-design]].
 
 ## Steps (claim as `[plan:design-template-drivingschool] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (data and pick lists, shared parts, cards, form parts); `tests/design_template_drivingschool_test.php` with `_test_ds_page_keys()`.
+- 1 (done, #7847): `parts.php` (data and pick lists, shared parts, cards, form parts); `tests/design_template_drivingschool_test.php` with `_test_ds_page_keys()`.
 
 - 2: `pages_public.php`: home (`home_courses`, `home_stories`, `home_posts` slots), `licences` and one `licence_<key>` per class, `theory`, `practical_test`, `instructors`, `about`, `faq`; test.
 
