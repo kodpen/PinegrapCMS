@@ -118,3 +118,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
+- workspace-notes-groups-lock-design.md: Screens and words of plans/workspace-notes-groups-lock.md: My Notes with folders, tabs over a note, what a move asks, the lock set-up and lock pane, the e-mail, media blocks
+- workspace-notes-groups-lock-steps-2.md: Steps L1-L4, M1-M3 and N9 of plans/workspace-notes-groups-lock.md: PIN lock store, locking and its gate on every reader, lock screen, media previews in a note, close-out
+- workspace-notes-groups-lock-steps.md: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema, groups store and screen, drag and drop, tabs, shared groups, API; claim as [plan:workspace-notes-groups-lock] <step>
+- workspace-notes-groups-lock.md: Plan (owner 2026-11-07): Workspace notes in groups (personal, shared, drag and drop, tabs), a PIN lock on notes and groups, media previews in a note; parts G, L, M

@@ -13,9 +13,9 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 ## Steps (claim as `[plan:design-template-sportsclub] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7727): `parts.php` (node builders, the club's data, pick lists, shared parts, cards, form fields, blog parts); `tests/design_template_sportsclub_test.php`.
 
-- 2: `pages_public.php`: home (`home_fixtures`, `home_results`, `home_posts` placed), `teams` and one `team_<key>` per team, `club` (history and honours), `ground`, `academy`, `sponsors`, `faq`; `tests/design_template_sportsclub_public_test.php`.
+- 2 (done, #7907): `pages_public.php`: home (`home_fixtures`, `home_results`, `home_posts` placed), `teams` and one `team_<key>` per team, `club` (history and honours), `ground`, `academy`, `sponsors`, `faq`; `tests/design_template_sportsclub_public_test.php`.
 
-- 3: `squad.php` (first: the list helpers `$sp_*`, as Music's `$mu_*`) and `matches.php`: the Players collection (`squad` by `?team=`, `player`, `player_new`) and the Matches collection (`fixtures` from today on and `results` before today, both by `?team=`, the `match` page, `match_new`, `home_fixtures`, `home_results`); test.
+- 3 (done, #7920): `squad.php` (with the list helpers `$sp_*`) and `matches.php`: the Players collection (`squad` by `?team=`, `player`, `player_new`) and the Matches collection (`fixtures` from today on and `results` before today, both by `?team=`, the `match` page, `match_new`, `home_fixtures`, `home_results`); test.
 
 - 4: `mail.php` (the e-mail builders and `$comment_thread`, as Gym's parts) and `registrations.php`: academy registrations (`academy_register` with `?team=`, `registration_view`, `my_registrations`, `staff_registrations`), trial requests (`trial` with `?team=` and `?position=`, `trial_view`, `staff_trials`), `privacy`, `email_reply`; test.
 
@@ -30,8 +30,8 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 - 9: assembly: `pinegrap-sportsclub.php` (order, search sections, look, fonts, `psp-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-sportsclub.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-gym/`, `pinegrap-music/` (dated lists), `pinegrap-school/`. Later tests share `_test_sp_page_keys()` from `tests/design_template_sportsclub_test.php`.
-- PHP 7.1: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.
+- The next free step is the lowest one not marked done. Include `squad.php` right after `parts.php` (its `$sp_*` helpers). Models: `pinegrap-gym/`, `pinegrap-music/` (dated lists), `pinegrap-school/`. Later tests share `_test_sp_page_keys()` from `tests/design_template_sportsclub_test.php`.
+- PHP 7.1: no trailing comma after a call's last argument. Committer: `Erdal Güral` (branch guard).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).

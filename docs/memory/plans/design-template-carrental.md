@@ -12,7 +12,7 @@ description: Plan: the Car Rental design template (pinegrap-carrental), fleet co
 
 ## Steps (claim as `[plan:design-template-carrental] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7646): `parts.php` (node builders, the company's data, pick lists, shared parts, cards, form fields, comment thread, blog parts); `tests/design_template_carrental_test.php`.
-- 2: `pages_public.php`: home, `locations`, `extras`, `deals`, `terms`, `about`, `faq`; `tests/design_template_carrental_public_test.php`.
+- 2 (done, #7903): `pages_public.php`: home, `locations`, `extras`, `deals`, `terms`, `about`, `faq`; `tests/design_template_carrental_public_test.php`.
 - 3: `fleet.php`: the Fleet collection (`fleet`, `car`, `car_new`), lists filtered by `?class=`, `?gearbox=`, `?fuel=`; test.
 - 4: `mail.php` (the e-mail builders) and `bookings.php`: booking requests (`book`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, `email_booking_new`, `email_booking_received`); test.
 - 5: `business.php`: business and long-term rentals (`business`, `business_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
@@ -21,7 +21,7 @@ description: Plan: the Car Rental design template (pinegrap-carrental), fleet co
 - 8: assembly: `pinegrap-carrental.php` (order, search sections, look, fonts, `pcr-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-carrental.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 2. `parts.php` has `$company`, `$classes` (rate and deposit per currency, `$class_rate()`), `$cars` (`$car_title()`, `$car_rate()`), `$locations` (each card's anchor `cr-loc-<key>`), `$extras` (`$extra_price()`), `$deals`, `$terms`, `$business_plans`, `$team`, `$figures`, `$testimonials`; cards `$car_card`, `$class_tile`, `$location_card`, `$extra_card`, `$deal_card`, `$business_card`, `$testimonial_card`; the shared `$booking_band`. Copy the public pages from `pinegrap-dealership/pages_public.php`.
+- Step 3. Copy `pinegrap-dealership/vehicles.php` (collection form, lists, record page, staff page). The home places `$widget('home_cars')` (featured cars, three cards); `fleet.php` builds it. The Fleet form's fields are the tokens `$car_card` reads: `title`, `class`, `photo_1`, `rate_label`, `seats`, `bags`, `transmission`, `fuel` (plus `doors`, `deposit`, `min_age`, `photo_2`/`photo_3`, office fields `featured`, `available`).
 - The pick lists for steps 3-5 are ready: `$class_titles`, `$car_titles`, `$location_titles`, `$extra_titles`, `$deal_choices`, `$plan_choices`, `$time_choices`, `$age_choices`, `$fleet_size_choices`, `$rental_term_choices`, `$booking_statuses`, `$enquiry_statuses`.
 - Translation keys already reused with another template's word were avoided by new English (`Mid-size`, `Security deposit`, `Cancellation policy`, `Contact Us`, `Booking Requests`) (`Contact` reads Kişi, `Bookings` Randevular, `Deposit` Peşinat).
 - PHP 7.1 traps: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.

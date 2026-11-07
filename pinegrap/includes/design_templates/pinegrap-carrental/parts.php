@@ -766,7 +766,8 @@ $class_tile = function ($key) use ($el, $span, $icon, $col, $classes, $class_rat
 
 // A desk's card (the home and the locations page): the place, its kind,
 // the address, the hours, what it offers and the way to book a car there.
-// Its anchor is the one the footer links.
+// The locations page gives each desk its own section with the anchor the
+// footer links (#cr-loc-<key>).
 $location_card = function ($key) use ($el, $heading, $para, $link, $span, $col, $icon_tile, $hours, $check_list, $locations, $query) {
     $l = $locations[$key];
     return $col(array(
