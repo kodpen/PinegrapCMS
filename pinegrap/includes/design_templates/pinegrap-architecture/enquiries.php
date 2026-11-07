@@ -378,16 +378,16 @@ $row_item = function ($icon_name, $name, $sample, $token) use ($el, $icon, $span
 // A request in a list: the service and the status on top, the details
 // under them, linked to its page. The staff's row starts with the client's
 // name and adds the phone; the client's own adds the messages.
-$request_row = function ($staff, $service, $items, $status, $name) use ($el, $span, $bind, $client_name, $row_item) {
+$request_row = function ($staff, $service, $items, $status, $name, $field = 'service') use ($el, $span, $bind, $client_name, $row_item) {
     if ($staff) {
         $items[] = $row_item('bi-telephone', lang('Phone'), '+90 555 000 00 00', 'phone');
         $title = $el('span', 'fw-semibold', lang('Client'), array_merge($client_name(), array(
             $span(' · ', 'text-body-secondary', lang('Text')),
-            $span($service, 'text-body-secondary fw-normal', lang('Service'), $bind('service')),
+            $span($service, 'text-body-secondary fw-normal', lang('Service'), $bind($field)),
         )));
     } else {
         $items[] = $row_item('bi-chat-left-text', lang('Messages'), '0', 'number_of_comments');
-        $title = $span($service, 'fw-semibold', lang('Service'), $bind('service'));
+        $title = $span($service, 'fw-semibold', lang('Service'), $bind($field));
     }
     return $el('a', 'list-group-item list-group-item-action px-0 py-3', $name, array(
         $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-1', lang('Top Line'), array(
@@ -503,7 +503,9 @@ $request_list = function ($page_key, $form_key, $view_key, $staff, $empty, $sear
 
 // The record page's tree: the not-found note, the sent and new-account
 // notices, the card with the details, the client's words and a note on
-// the messages under it. $c carries the words and fields of one form.
+// the messages under it. $c carries the words and fields of one form;
+// the title binds $c['title_field'] and the words $c['words_field'] when
+// given (the service and the details otherwise).
 $record_tree = function ($c) use ($el, $heading, $para, $link, $span, $icon, $attr, $bind, $show_when, $container, $row, $col, $edit_button, $bound, $detail) {
     return array('type' => 'root', 'props' => array(), 'children' => array(
         $container(array(
@@ -543,7 +545,7 @@ $record_tree = function ($c) use ($el, $heading, $para, $link, $span, $icon, $at
                             $el('div', 'd-flex flex-wrap align-items-start justify-content-between gap-2 mb-3', lang('Title'), array(
                                 $el('div', '', lang('Words'), array(
                                     $para($c['eyebrow'], 'pai-eyebrow small text-uppercase fw-semibold text-body-secondary mb-1'),
-                                    $heading('h1', $c['service'], 'pai-display h3 mb-0', $bind('service')),
+                                    $heading('h1', $c['service'], 'pai-display h3 mb-0', $bind($c['title_field'] ?? 'service')),
                                 )),
                                 $span($c['status'], 'badge rounded-0 text-bg-dark fs-6', lang('Status'), $bind('status')),
                             )),
@@ -551,7 +553,7 @@ $record_tree = function ($c) use ($el, $heading, $para, $link, $span, $icon, $at
                         )),
                         $el('div', 'pg-hide-if-empty p-4 bg-body-tertiary mb-4', $c['words_label'], array(
                             $para($c['words_label'], 'small fw-semibold text-body-secondary mb-2'),
-                            $el('div', 'pg-field-value lh-lg', lang('Value'), array(), $bound($c['words'], 'details')),
+                            $el('div', 'pg-field-value lh-lg', lang('Value'), array(), $bound($c['words'], $c['words_field'] ?? 'details')),
                         )),
                         $el('div', 'd-flex gap-2 small text-body-secondary', lang('Note'), array(
                             $icon('bi-chat-left-text', 'mt-1'),
