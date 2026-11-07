@@ -18,9 +18,9 @@ description: Plan: the Architecture & Interiors Studio design template (pinegrap
 
 - 3 (done, #7777): `projects.php`: the Projects collection (`projects` by `?type=` and `?location=`, the `project` page with facts, the gallery, the brief, the credits and the client's words, `project_new`), `home_projects`; test.
 
-- 4 (done, #7790): `mail.php`, `enquiries.php` (enquiry and consultation pages, `privacy`, `email_reply`, four `email_enquiry_*`/`email_consultation_*` pages in `_test_ai_page_keys()`); test. Step 5 adds `email_application_new`/`_received` there.
+- 4 (done, #7790): `mail.php`, `enquiries.php` (enquiry and consultation pages, `privacy`, `email_reply`, their e-mail pages); test.
 
-- 5: `careers.php`: the Jobs collection (`careers`, `job` with an apply link `?job=`, `job_new`) and applications (`application`, `application_view`, `my_applications`, `staff_applications`); test.
+- 5 (done, #7802): `careers.php`: the Job Openings collection (`careers`, `job` with `?job=`, `job_new`) and applications (portfolio link and file, CV) with their pages and e-mails, reusing the record pieces of `enquiries.php`; test.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
