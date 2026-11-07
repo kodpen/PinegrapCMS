@@ -48,8 +48,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-gallery.md: Plan: the Art Gallery design template (pinegrap-gallery): artists, exhibitions, works, artwork and private-viewing enquiries, editions in the shop, the journal; small steps
 - design-template-homeservices-design.md: Design of plans/design-template-homeservices.md: shipped features it reuses for services, estimates, visits and areas, what it does not build, its look and Turkish words
 - design-template-homeservices.md: Plan: the Home Services design template (pinegrap-homeservices): services, price guide, estimates, visit bookings, service areas, team, reviews; ~1,000-line steps
-- design-template-library-design.md: Design of plans/design-template-library.md: which shipped features the Library template reuses for the catalogue, events, membership and rooms, what it does not build, its look and Turkish words
-- design-template-library.md: Plan: the Public Library design template (pinegrap-library): catalogue and new arrivals, events and reading clubs, membership and room booking requests, branches and hours, news; ~1,000-line steps
 - design-template-marina-design.md: Design of plans/design-template-marina.md: which shipped features the Marina template reuses for berths, charters and requests, what it does not build, its look and Turkish words
 - design-template-marina.md: Plan: the Marina design template (pinegrap-marina): berths and rates as words, berth requests, Charter Boats, services, events; ~1,000-line steps
 - design-template-pharmacy-design.md: Design of plans/design-template-pharmacy.md: the shipped features it reuses, what it does not build, its look and Turkish words

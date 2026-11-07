@@ -148,6 +148,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-hotel.md: Hotel template (pinegrap-hotel): rooms as a collection with rates, booking requests and event enquiries followed from the account, gift vouchers in the shop, pht- look, tests.
 - design-template-launch.md: Phone Launch Site template (pinegrap-launch): the Orbit in three models, specs and compare from one data file, a buy page that stands without the shop, trade-in and support requests, plx- look, tests.
 - design-template-law.md: Law Firm template (pinegrap-law): practice areas, lawyers, results, fees, a consultation request with a conflict check followed from the account, careers, no shop, plw- look, tests.
+- design-template-library.md: Public Library template (pinegrap-library): branches as data, catalogue and events as collections, card, reservation, place and room requests, no shop, plb- look, tests.
 - design-template-magazine-a11y.md: Magazine accessibility: ink focus rings on links, buttons, fields and the shelf, headings that never repeat, e-mail frames light in the dark theme, the core items left open.
 - design-template-magazine-issues.md: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, value links, plain names, launching one.
 - design-template-magazine-layout.md: Magazine look and shapes: pm- User Styles, fonts and serif body, color-mix() paper, rust accent, sticky pull quote, drop cap resets, vanishing bands, preview placeholders.
