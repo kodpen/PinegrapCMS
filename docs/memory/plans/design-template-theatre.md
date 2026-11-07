@@ -27,11 +27,12 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 
 - 8 (done, #7989): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
-- 9: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 9 (done, #8014): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 10: assembly: `pinegrap-theatre.php` (order, search sections, look, fonts, `pth-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-theatre.md`; the PR body names `[NEW] Added the Theatre design template`; this plan and its design file are deleted.
 
 ## Where to start?
+- Step 10 (assembly) is next: every part file exists and `tests/design_template_theatre_account_test.php` already checks that the parts together carry exactly `_test_th_page_keys()`. The shop's catalog adds a third group (`vouchers`, Gift Vouchers) beside Tickets and Friends; the staff area places `staff_hire_new` (hire.php's request list).
 - The next free step is the lowest one not marked done. Models: `pinegrap-museum/` (requests, exhibitions with a state), `pinegrap-music/` (dates from today, `$show_on`). Later tests share `_test_th_page_keys()` from `tests/design_template_theatre_test.php`; `hire.php` holds the request pieces `learning.php` reuses; the pick lists the lists filter on are `$production_status_titles` (`?status=`), `$genre_titles` (`?genre=`) and `$access_titles` (`?access=`); `?production=` takes a code (no link bar). The field names the cards bind: [[design-template-theatre-design]].
 
 ## Open questions
