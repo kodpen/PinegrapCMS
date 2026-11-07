@@ -451,6 +451,7 @@
     "Used when signing in.": "Oturum açarken kullanılır.",
     "Used while a value from the address, compared with is equal to, finds records. {value} stands for the value, e.g. Articles by {value}. Empty: the value alone.": "Adresten gelen bir değer eşittir ile karşılaştırılıp kayıt bulduğunda kullanılır. {value} değerin yerine geçer, ör. {value} yazıları. Boşsa yalnız değer.",
     "Used with Send at this Date & Time.": "Bu Tarih ve Saatte Gönder ile kullanılır.",
+    "Useful Numbers": "Faydalı Numaralar",
     "User": "Kullanıcı",
     "User ({var:1}) modified by custom app: {var:2} (API Key: {var:3}, User: {var:4})": "Kullanıcı ({var:1}), özel uygulama tarafından değiştirildi: {var:2} (API Anahtarı: {var:3}, Kullanıcı: {var:4})",
     "User ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "({var:1}) kullanıcısı API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından değiştirildi.",
