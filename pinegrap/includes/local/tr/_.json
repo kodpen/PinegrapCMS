@@ -177,6 +177,7 @@
     "%1$d to %2$d guests": "%1$d ile %2$d arası misafir",
     "%1$d tracks, %2$d min": "%1$d parça, %2$d dk",
     "%1$d. %2$s — %3$s": "%1$d. %2$s — %3$s",
+    "%1$s Our guest: %2$s.": "%1$s Konuk: %2$s.",
     "%1$s for %2$d deliveries over three months": "Üç ayda %2$d teslimat için %1$s",
     "%1$s is an independent iOS and Android developer. %2$s": "%1$s bağımsız bir iOS ve Android geliştiricisidir. %2$s",
     "%1$s on vinyl, signed by all four of us. %2$s": "Dördümüzün de imzaladığı plak: %1$s. %2$s",

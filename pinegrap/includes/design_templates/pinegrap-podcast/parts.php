@@ -712,22 +712,36 @@ $podcast_card = function ($sample_key = 'kitchen') use ($el, $para, $span, $link
     ), '6', '3');
 };
 
+// Bindings that print fields of the podcast an episode points at (its
+// Podcast field, a reference into the Podcasts form): $props maps an
+// element prop to the podcast's field, e.g. array('text' => 'title').
+$pd_podcast_ref = function ($props) {
+    $bindings = array();
+    $params = array();
+    foreach ($props as $prop => $show) {
+        $bindings[$prop] = '__ref';
+        $params[$prop] = array('field' => 'podcast', 'page_id' => '{{tab:podcast_new}}', 'show' => $show);
+    }
+    return array('_bindings' => $bindings, '_bindParams' => $params);
+};
+
 // An episode's row of the lists (the home, the episodes page and a
-// podcast's page): the cover of its podcast, the day it came out, the
-// podcast, the season and number, the title linking the episode's page,
-// its summary, its length and the way to listen. Every value is bound to
-// the Episodes form's field of the same name.
-$episode_row = function ($sample_key = 'kitchen-12') use ($el, $span, $para, $link, $image, $icon, $bind, $episodes, $podcasts, $aired_on, $episode_number_text, $length_text, $photo, $attr) {
+// podcast's page): the cover and the title of its podcast (read through
+// the reference), the day it came out, the season and number, the title
+// linking the episode's page, its summary, its length and the way to
+// listen. The rest is bound to the Episodes form's field of the same
+// name.
+$episode_row = function ($sample_key = 'kitchen-12') use ($el, $span, $para, $link, $image, $icon, $bind, $pd_podcast_ref, $episodes, $podcasts, $aired_on, $episode_number_text, $length_text, $photo, $attr) {
     $e = $episodes[$sample_key];
     return $el('article', 'd-flex flex-column flex-md-row gap-3 gap-md-4 py-4 border-bottom', lang('Episode Row'), array(
         $el('span', 'pg-field-value d-block flex-shrink-0 ppd-thumb rounded-3 overflow-hidden bg-body-tertiary', lang('Picture Frame'), array(
             $image($photo('cover-' . $e['podcast'], 240, 240), $podcasts[$e['podcast']]['title'], 'w-100 h-100 object-fit-cover',
-                array('_bindings' => array('src' => 'cover', 'alt' => 'title'), '_attrs' => array($attr('loading', 'lazy'), $attr('width', '120'), $attr('height', '120')))),
+                array_merge($pd_podcast_ref(array('src' => 'cover', 'alt' => 'title')), array('_attrs' => array($attr('loading', 'lazy'), $attr('width', '120'), $attr('height', '120'))))),
         )),
         $el('div', 'flex-grow-1', lang('Episode Details'), array(
             $el('p', 'd-flex flex-wrap gap-2 small text-body-secondary mb-1', lang('Episode Facts'), array(
                 $span($aired_on($e['days']), 'ppd-date fw-semibold text-primary', lang('Date'), $bind('aired')),
-                $span($podcasts[$e['podcast']]['title'], 'fw-semibold', lang('Podcast'), $bind('podcast')),
+                $span($podcasts[$e['podcast']]['title'], 'fw-semibold', lang('Podcast'), $pd_podcast_ref(array('text' => 'title'))),
                 $span($episode_number_text($sample_key), '', lang('Episode Number'), $bind('episode_number')),
             )),
             $el('h3', 'ppd-display h5 mb-2', lang('Episode Title'), array(
@@ -1256,6 +1270,11 @@ $pd_filter = function ($field, $operator, $value, $param = '') {
     $row = array('field' => $field, 'operator' => $operator, 'value' => $value, 'dynamic_value' => $param !== '' ? 'url parameter' : '');
     if ($param !== '') $row['dynamic_value_attribute'] = $param;
     return $row;
+};
+// A filter on the record the page shows: the episodes whose Podcast
+// field points at the podcast of the page.
+$pd_shown_filter = function ($field) {
+    return array('field' => $field, 'operator' => 'is equal to', 'value' => '', 'dynamic_value' => 'shown record', 'dynamic_value_attribute' => '');
 };
 // A date filter against today: the episodes already out (on or before
 // today), so one dated ahead waits for its day.
