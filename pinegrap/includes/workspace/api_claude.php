@@ -771,7 +771,7 @@ function ws_api_claude_claim($params)
 
 /**
  * Refuses a claim made by a run that has not read the instructions the site
- * serves now (409 instructions_outdated): the request stays queued for a run
+ * serves now (409 instructions_outdated): the request keeps its status for a run
  * that has. A run that sent no version at all runs a prompt that never reads
  * the site's instructions and cannot put itself right: the request's channel
  * is told once, by a system line marked on the request's error, and the
