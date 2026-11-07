@@ -2508,6 +2508,7 @@
     "politics": "politika",
     "pool, beach, parking, transfer, facilities, amenities": "havuz, plaj, otopark, transfer, olanaklar, imkânlar",
     "portfolio, gallery, pictures, examples": "portfolyo, galeri, fotoğraflar, örnekler",
+    "portfolio, gallery, wedding flowers, event flowers, inspiration, ideas": "portfolyo, galeri, düğün çiçekleri, etkinlik çiçekleri, ilham, fikirler",
     "post": "gonderi",
     "post_max_size is smaller than upload_max_filesize, so it decides the limit. Raise both.": "post_max_size, upload_max_filesize değerinden küçük olduğu için sınırı o belirliyor. İkisini birden yükseltin.",
     "practice-areas": "calisma-alanlari",
