@@ -34,8 +34,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-museum.md: Plan: the Museum / Art Gallery design template (pinegrap-museum): exhibitions, highlights, visit, tickets and membership, events, school visits; ~1,000-line steps
 - design-template-restaurant-design.md: Design of plans/design-template-restaurant.md: the shipped features the Restaurant template reuses, what it does not build, its look and Turkish words
 - design-template-restaurant.md: Plan: the Restaurant design template (pinegrap-restaurant), one chef-led restaurant with menu, reservations, chef's table, events, private dining and gift vouchers, in ~1,000-line steps
-- design-template-school-design.md: Design of plans/design-template-school.md: which shipped features the School template reuses for programmes, events and admissions, what it does not build, its look and Turkish words
-- design-template-school.md: Plan: the Private School / Kindergarten design template (pinegrap-school): programmes and classes, staff, admission applications, events, news, parent contact; ~1,000-line steps
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
