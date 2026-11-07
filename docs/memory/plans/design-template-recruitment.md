@@ -12,7 +12,7 @@ description: Plan: the Recruitment Agency design template (pinegrap-recruitment)
 
 ## Steps (claim as `[plan:design-template-recruitment] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7656): `parts.php` (node builders, the agency's data: sectors, cities, contract types, work modes, sample jobs with salary words, duties and requirements, candidate and employer steps, employer services, consultants, figures, testimonials, pick lists; shared parts: account bar, notice, header, footer, two-way call band, staff bar; job, sector, city, service, consultant and testimonial cards, job facts, form fields, comment thread, blog parts); `tests/design_template_recruitment_test.php`.
-- 2: `pages_public.php`: home (`home_jobs`, `home_posts`), `sectors` and one `sector_<key>` per sector, `cities`, `candidates`, `employers`, `about`, `team`, `faq`; test.
+- 2 (done, #7822): `pages_public.php`: home (`home_jobs`, `home_posts`), `sectors` and one `sector_<key>` per sector, `cities`, `candidates`, `employers`, `about`, `team`, `faq`; test.
 - 3: `jobs.php`: the Jobs collection (`jobs` by `?sector=`, `?city=` and `?type=`, the `job` page with facts, duties, requirements, the consultant and an apply link `?job=`, `job_new`), `home_jobs`; test.
 - 4: `mail.php` (the e-mail builders) and `applications.php`: applications (`apply` with `?job=`, open application without one, `application_view`, `my_applications`, `staff_applications`, `privacy`, `email_reply`); test.
 - 5: `employers.php`: employer enquiries (`hire` with `?sector=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`); test.
