@@ -17,15 +17,12 @@ description: Plan: the Wedding Planner and Venue design template (pinegrap-weddi
 - 4 (done, #7634): `mail.php` (the e-mail builders) and `enquiries.php`: consultation enquiries (`enquiry` with `?package=`, `?service=`, `?space=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`) and `book_visit` (the booking widget's starter beside the enquiry, [[booking-templates]]); test.
 - 5 (done, #7681): `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (a date-hold deposit per package, gift cards); test.
 - 6 (done, #7704): `standard.php`: contact, inbox, conversation, newsletter, blog (Wedding Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #7726): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 8: assembly: `pinegrap-wedding.php` (order, search sections, look, fonts, `pwd-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-wedding.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
-## Where to start (step 7)
-- Copy the shape of `pinegrap-hotel/account.php` (account pages, its two e-mails, staff pages, the `login_region` widget the account bar places).
-- `blog_new` is the post form `standard.php` (#7704) reads: `title`, `summary`, `content`, `cover_image` (image kind), with `sample_records` ([[design-templates-standard-pages]]).
-- My Account links My Enquiries and the inbox, never a shop page; the staff page links `staff_enquiries`, `wedding_new`, `blog_new`, `inbox`.
-- Add the new e-mail page keys to `_test_wd_page_keys()` in `tests/design_template_wedding_test.php`.
-- Turkish: add keys with `tools/tr_add.php --from=<json>`; when `development` moves, a conflict lands only in `tr/*.json`: take `development`'s shard and re-add the keys.
+## Where to start (step 8)
+- Copy the shape of `pinegrap-hotel.php` and its `…_assembly_test.php`: include `parts.php`, `mail.php`, then `pages_public`, `weddings`, `enquiries`, `shop`, `standard`, `account` in one scope; the shared parts are `account_bar`, `header`, `footer`, `notice`, `date_band`, `staff_bar`, `email_header`, `email_footer`.
+- `account.php` defines `login_region` (placed by the account bar); `shop.php` defines `cart_link`.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
