@@ -89,7 +89,6 @@ function _test_th_load()
 			'production_statuses'     => $production_statuses,
 			'genre_titles'            => $genre_titles,
 			'stage_titles'            => $stage_titles,
-			'production_titles'       => $production_titles,
 			'access_titles'           => $access_titles,
 			'ticket_state_titles'     => $ticket_state_titles,
 			'group_titles'            => $group_titles,
@@ -208,7 +207,7 @@ function test_theatre_data_hangs_together()
 		pg_assert_same('now', $d['productions'][$s['production']]['status'], "performance $key: of a production playing now");
 		pg_assert_true(isset($d['access_types'][$s['access']]), "performance $key: known access");
 		pg_assert_true(isset($d['ticket_states'][$s['state']]), "performance $key: known ticket state");
-		pg_assert_true(in_array($d['words']['performance'][$key], $d['lists']['production_titles'], true), "performance $key: its production is an answer of the list");
+		pg_assert_same($d['productions'][$s['production']]['title'], $d['words']['performance'][$key], "performance $key: names its production by title");
 		pg_assert_true(in_array($d['words']['access'][$key], $d['lists']['access_titles'], true), "performance $key: its access is an answer of the list");
 		pg_assert_true(in_array($d['words']['state'][$key], $d['lists']['ticket_state_titles'], true), "performance $key: its ticket state is an answer of the list");
 		pg_assert_true((bool)preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $s['time']), "performance $key: curtain time");
@@ -247,14 +246,12 @@ function test_theatre_data_hangs_together()
 	}
 	pg_assert_same(4, count($d['figures']), 'four figures');
 	pg_assert_same(3, count($d['testimonials']), 'three audience quotes');
-	// The pick lists: one answer per state, genre, stage, production,
-	// access kind, ticket state, group, workshop (plus "not sure") and
+	// The pick lists: one answer per state, genre, stage, access kind, ticket state, group, workshop (plus "not sure") and
 	// space (plus "not sure"), no answer twice.
 	$l = $d['lists'];
 	pg_assert_same(count($d['status_titles']), count($l['production_statuses']), 'an answer per state');
 	pg_assert_same(count($d['genres']), count($l['genre_titles']), 'an answer per genre');
 	pg_assert_same(count($d['stages']), count($l['stage_titles']), 'an answer per stage');
-	pg_assert_same(count($d['productions']), count($l['production_titles']), 'an answer per production');
 	pg_assert_same(count($d['access_types']), count($l['access_titles']), 'an answer per access kind');
 	pg_assert_same(count($d['ticket_states']), count($l['ticket_state_titles']), 'an answer per ticket state');
 	pg_assert_same(count($d['youth_groups']), count($l['group_titles']), 'an answer per group');
@@ -348,7 +345,12 @@ function _test_th_card_reads($card)
 	$texts = array();
 	foreach ($nodes as $node) {
 		if (!empty($node['props']['_bindings'])) {
-			foreach ($node['props']['_bindings'] as $token) $tokens[$token] = true;
+			// A field of the record a reference points at counts as a
+			// read of the referencing field (the performance's production).
+			foreach ($node['props']['_bindings'] as $prop => $token) {
+				if ($token === '__ref') $token = $node['props']['_bindParams'][$prop]['field'];
+				$tokens[$token] = true;
+			}
 		}
 		if (isset($node['props']['text'])) $texts[] = $node['props']['text'];
 	}

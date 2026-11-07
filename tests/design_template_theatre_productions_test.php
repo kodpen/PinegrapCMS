@@ -206,7 +206,7 @@ function test_theatre_productions_record_page()
 		foreach (array('text', 'src') as $k) if (isset($n['props']['_bindings'][$k])) $bound[] = $n['props']['_bindings'][$k];
 	}
 	pg_assert_same(array(
-		array('page_id' => '{{tab:whats_on}}', 'params' => array(array('name' => 'production', 'token' => 'title'))),
+		array('page_id' => '{{tab:whats_on}}', 'params' => array(array('name' => 'production', 'token' => 'reference_code'))),
 		array('page_id' => '{{tab:season}}', 'params' => array(array('name' => 'genre', 'token' => 'genre'))),
 	), $links, 'its performances and the season on its genre');
 	foreach (array('title', 'genre', 'status', 'stage', 'run', 'running_time', 'age_guidance', 'credits', 'summary', 'cast', 'photo_1', 'photo_2', 'photo_3') as $f) {

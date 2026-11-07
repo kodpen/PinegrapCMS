@@ -21,7 +21,7 @@ description: Plan: the Public Library design template (pinegrap-library): catalo
 
 - 5 (done, #7860): `membership.php` (library card requests from `join`, title reservations from `reserve` with `?title=`, their lists and e-mails); test.
 
-- 6: `rooms.php`: room booking requests (`room_booking` with `?room=`, `room_booking_view`, `my_room_bookings`, `staff_room_bookings`); test.
+- 6 (done, #7876): `rooms.php` (room booking requests from `room_booking` with `?room=`, their lists and e-mails); test.
 
 - 7: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
@@ -30,7 +30,7 @@ description: Plan: the Public Library design template (pinegrap-library): catalo
 - 9: assembly: `pinegrap-library.php` (order, search sections, look, fonts, `plb-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-library.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-school/`, `pinegrap-museum/`. `parts.php` names the catalogue `$catalogue_items`; `catalogue.php` defines `$lb_filter`, `$lb_page_link`, `$lb_yes_no` and `$lb_filter_bar` for the later lists, so the main file and their tests include it first (`plb-cover` needs a 2:3 ratio rule in the assembly). Later tests share `_test_lb_page_keys()` from `tests/design_template_library_test.php`; the pick lists the lists filter on are `$format_titles` (`?format=`), `$audience_titles` (`?audience=`) and `$event_kind_titles` (`?kind=`); the request forms read `?event=`, `?title=` and `?room=`.
+- The next free step is the lowest one not marked done. Models: `pinegrap-school/`, `pinegrap-museum/`. `parts.php` names the catalogue `$catalogue_items`; `catalogue.php` defines `$lb_filter`, `$lb_page_link`, `$lb_yes_no` and `$lb_filter_bar` for the later lists, so the main file and their tests include it first (`plb-cover` needs a 2:3 ratio rule in the assembly). Later tests share `_test_lb_page_keys()` from `tests/design_template_library_test.php`; the pick lists the lists filter on are `$format_titles` (`?format=`), `$audience_titles` (`?audience=`) and `$event_kind_titles` (`?kind=`); the request forms read `?event=`, `?title=` and `?room=`. Include order: parts, mail, pages_public, catalogue, events, membership, rooms; e-mail page keys of each request are in `_test_lb_page_keys()`; `email_reply` (events.php) serves every thread.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
