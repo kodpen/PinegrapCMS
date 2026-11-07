@@ -569,6 +569,7 @@
     "In use: the server's own certificate store failed the last probe.": "Kullanımda: sunucunun kendi sertifika deposu son yoklamada başarısız oldu.",
     "In words, for example %s.": "Yazıyla, örneğin %s.",
     "In words, for example %s. We answer with a time.": "Sözcüklerle, örneğin %s. Bir saatle yanıt veririz.",
+    "In words, for example 60 seconds.": "Yazıyla, örneğin 60 saniye.",
     "In words, for example New episodes every Tuesday.": "Sözcüklerle, örneğin Her salı yeni bölüm.",
     "In words, never a date, for example 22 months.": "Yazıyla, asla tarih olarak değil; örneğin 22 ay.",
     "In words, never a date, for example Best in spring and autumn.": "Tarih değil sözcüklerle, örneğin En güzel zamanı ilkbahar ve sonbahar.",
