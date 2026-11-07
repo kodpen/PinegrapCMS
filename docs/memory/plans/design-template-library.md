@@ -19,7 +19,7 @@ description: Plan: the Public Library design template (pinegrap-library): catalo
 
 - 4 (done, #7844): `mail.php` (the e-mail builders), `events.php` (the Events collection, place requests, `privacy`, the e-mails; its request pieces serve steps 5 and 6); test.
 
-- 5: `membership.php`: library card requests (`join`, `membership_view`, `my_memberships`, `staff_memberships`) and item reservation requests (`reserve` with `?title=`, `reservation_view`, `my_reservations`, `staff_reservations`); test.
+- 5 (done, #7860): `membership.php` (library card requests from `join`, title reservations from `reserve` with `?title=`, their lists and e-mails); test.
 
 - 6: `rooms.php`: room booking requests (`room_booking` with `?room=`, `room_booking_view`, `my_room_bookings`, `staff_room_bookings`); test.
 
