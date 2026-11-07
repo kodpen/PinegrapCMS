@@ -102,6 +102,67 @@ function designer_perf_probe_test_run(array $names, $script)
 	return json_decode(implode("\n", $out), true);
 }
 
+// Only `sd_perf=1` in the query string turns the probe on.
+function test_designer_perf_probe_is_behind_the_address()
+{
+	$got = designer_perf_probe_test_run(array('_sdProbeEnabled'),
+		'console.log(JSON.stringify(["?sd_perf=1", "?page=3&sd_perf=1", "", "?sd_perf=0", "?xsd_perf=1", "?sd_perf=10", "?sd_perf=1#x"].map(_sdProbeEnabled)));');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array(true, true, false, false, false, false, true), $got, 'sd_perf=1 and nothing else');
+}
+
+// Count, median and worst of a list of milliseconds.
+function test_designer_perf_probe_stats()
+{
+	$got = designer_perf_probe_test_run(array('_sdProbeStats'),
+		'console.log(JSON.stringify([_sdProbeStats([5, 1, 3]), _sdProbeStats([4, 1, 2, 3]), _sdProbeStats([])]));');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('n' => 3, 'median' => 3, 'worst' => 5),
+		array('n' => 4, 'median' => 2.5, 'worst' => 4),
+		array('n' => 0, 'median' => 0, 'worst' => 0),
+	), $got, 'an odd list, an even list, no samples');
+}
+
+// One console line per measure: its name, milliseconds to one decimal and
+// the page's node count.
+function test_designer_perf_probe_line()
+{
+	$got = designer_perf_probe_test_run(array('_sdProbeLine'),
+		'console.log(JSON.stringify([_sdProbeLine("first draw", 312.449, 1539), _sdProbeLine("edit", 4, 0)]));');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array('[sd-perf] first draw 312.4 ms (1539 nodes)', '[sd-perf] edit 4.0 ms (0 nodes)'), $got, 'the console line');
+}
+
+// The five measures are hooked, and the probe costs nothing when it is off.
+function test_designer_perf_probe_hooks()
+{
+	$source = designer_perf_probe_test_source();
+
+	pg_assert_contains("var _sdProbe = { on: _sdProbeEnabled(window.location.search),", $source, 'the probe reads the address once');
+	foreach (array("'open'", "'first draw'", "'edit'", "'tab switch'", "'save'") as $measure) {
+		pg_assert_contains('_sdProbeRecord(' . $measure, $source, $measure . ' is recorded');
+	}
+	pg_assert_contains("_pgTabsSwitch     = _sdProbeWrapTabSwitch(_pgTabsSwitch);", $source, 'the tab switch is timed');
+	pg_assert_contains("saveAjax          = _sdProbeWrapSave(saveAjax);", $source, 'the save is timed');
+	pg_assert_contains("badge.id = 'sd-perf-badge';", $source, 'the badge');
+
+	$record = designer_perf_probe_test_function('_sdProbeRecord');
+	pg_assert_true(strpos($record, 'if (!_sdProbe.on) return;') !== false, 'an off probe records nothing');
+}
+
 // The pure parts of render() on the big fixture page: every measure is a
 // number and the walk finds the last node.
 function test_designer_render_timing_on_big_fixture()
