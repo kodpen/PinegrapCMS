@@ -22,4 +22,7 @@ description: Who the shipping gate blocks on order cancel (customer only, by tra
 - `validate_user()` returns the PK under the key `id`, NOT `user_id`. (`user_id` is the raw column name; `api.php` and `includes/api/auth.php` of the external API use that name.)
 - Reading the wrong key wrote `cancelled_by = 0`, which reports read as "customer cancelled it themselves".
 
+## When does the order view widget offer the cancel form?
+- `can_cancel` mirrors `process_order_cancellation()`: cancel allowed by the site, not already cancelled, `pg_order_status_move($status, 'cancelled') !== 'refuse'` (a basket, `incomplete`, is refused), and for the customer no tracking code. The status check was missing, so an incomplete basket showed a form `cancel_order.php` refused.
+
 Related: docs/memory/commerce/order-cancellation-flow.md

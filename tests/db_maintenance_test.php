@@ -216,3 +216,18 @@ function test_db_maintenance_server_supported()
 	pg_assert_true(pg_db_server_supported(pg_db_server_version('unknown')), 'unreadable');
 	pg_assert_true(pg_db_server_supported(null), 'no server');
 }
+
+// "Check all tables" counts an error and a check that could not run as
+// issues, a repair as a repair, a healthy table as neither.
+function test_db_maintenance_check_summary()
+{
+	$report = array(
+		'a' => array('error'),
+		'b' => array('check_failed'),
+		'c' => array('repaired'),
+		'd' => array('healthy'),
+	);
+	pg_assert_same(array('issues' => 2, 'repaired' => 1), pg_db_check_summary($report), 'one of each');
+	pg_assert_same(array('issues' => 0, 'repaired' => 0), pg_db_check_summary(array('d' => array('healthy'))), 'all healthy');
+	pg_assert_same(array('issues' => 0, 'repaired' => 0), pg_db_check_summary(array()), 'nothing checked');
+}
