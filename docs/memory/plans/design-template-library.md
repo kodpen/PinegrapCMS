@@ -13,7 +13,7 @@ description: Plan: the Public Library design template (pinegrap-library): catalo
 ## Steps (claim as `[plan:design-template-library] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7770): `parts.php` (data, pick lists, shared parts, cards, form fields, comment thread, blog parts); `tests/design_template_library_test.php`.
 
-- 2: `pages_public.php`: home (`home_arrivals`, `home_events`, `home_posts` slots), `visit` and one `branch_<key>` per branch, `children`, `digital`, `spaces`, `about`, `faq`; test.
+- 2 (done, #7824): `pages_public.php`: home (`home_arrivals`, `home_events`, `home_posts` slots), `visit` and one `branch_<key>` per branch, `children`, `digital`, `spaces`, `about`, `faq`; test.
 
 - 3: `catalogue.php`: the Catalogue collection (`catalogue` by `?format=` and `?audience=`, the `item` page with author, format, shelf and branch, `item_new`), `home_arrivals` (office field `new_arrival`); test.
 
