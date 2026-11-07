@@ -3507,6 +3507,7 @@
     "change, cancel, dates, booking, refund": "değiştirme, iptal, tarihler, rezervasyon, iade",
     "change, cancel, dates, stay, refund": "değiştirme, iptal, tarihler, konaklama, iade",
     "change, day, booking, cancel, move": "değiştir, gün, rezervasyon, iptal, ertele",
+    "change, day, room, booking, cancel, move": "değiştir, gün, salon, oda, ayırtma, iptal, taşı",
     "change, edit, budget, deadline": "değiştir, düzenle, bütçe, teslim tarihi",
     "change, move, date, package, cancel": "değiştir, taşı, tarih, paket, iptal",
     "change, reschedule, cancel, test drive day": "değiştir, yeniden planla, iptal, test sürüşü günü",
