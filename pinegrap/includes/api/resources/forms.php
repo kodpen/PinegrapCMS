@@ -112,7 +112,7 @@ function api_form_value_out($data) {
 }
 
 // A form: the page, with how much has been filled in on it.
-function api_form_present($row, $fields = null) {
+function api_form_present($row, $fields = null, $facts = null) {
 
 	$form = array(
 		'id'      => (int)$row['page_id'],
@@ -132,7 +132,138 @@ function api_form_present($row, $fields = null) {
 
 	}
 
+	// What a client needs before it writes a record, carried by the
+	// single-form endpoint only (api_form_facts()).
+	if ($facts !== null) {
+
+		$form['framework']          = $facts['framework'];
+		$form['is_collection']      = $facts['is_collection'];
+		$form['record_url_pattern'] = $facts['record_url_pattern'];
+
+	}
+
 	return $form;
+
+}
+
+// The facts GET /forms/{id} adds about a form's page:
+//
+//   framework           the framework of the form page's design
+//                       (pg_design_frameworks(): bootstrap5 or custom). A page
+//                       without a design of its own takes its folder's, as the
+//                       page itself does. Rich text cannot carry classes: the
+//                       visitor profile removes them (html_allowed).
+//   is_collection       the form is marked as a collection
+//                       (custom_form_pages.collection, pg_coll_ready()).
+//   record_url_pattern  where a record of the form is read on the site, from
+//                       the first public page with a designed record view of
+//                       the form (pg_ap_record_page()), else the first public
+//                       classic form item view page; null when no public page
+//                       shows them.
+function api_form_facts($page_id, $page_folder, $page_style) {
+
+	$page_id = (int)$page_id;
+
+	$style_id = (int)$page_style;
+
+	if (($style_id <= 0) && function_exists('get_style')) {
+
+		$style_id = (int)get_style((int)$page_folder);
+
+	}
+
+	$framework = '';
+
+	if (($style_id > 0) && function_exists('pg_style_framework_ready') && pg_style_framework_ready()) {
+
+		$style = api_row("SELECT style_framework FROM style WHERE style_id = '" . $style_id . "'");
+
+		$framework = ($style !== null) ? (string)$style['style_framework'] : '';
+
+	}
+
+	$is_collection = false;
+
+	if (function_exists('pg_coll_ready') && pg_coll_ready()) {
+
+		$custom = api_row("SELECT collection FROM custom_form_pages WHERE page_id = '" . $page_id . "'");
+
+		$is_collection = ($custom !== null) && ((int)$custom['collection'] === 1);
+
+	}
+
+	$pattern = null;
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
+
+	$record_page = pg_ap_record_page($page_id);
+
+	if ($record_page === null) {
+
+		$record_page = api_form_classic_record_page($page_id);
+
+	}
+
+	if ($record_page !== null) {
+
+		$pattern = api_form_record_url_pattern(URL_SCHEME . HOSTNAME_SETTING . PATH, $record_page['page_name'], pg_sw_form_pretty_urls($page_id));
+
+	}
+
+	return array(
+		'framework'          => function_exists('pg_design_framework_key') ? pg_design_framework_key($framework) : 'bootstrap5',
+		'is_collection'      => $is_collection,
+		'record_url_pattern' => $pattern
+	);
+
+}
+
+// The first classic form item view page that shows a form's records to
+// everyone: in a public folder (not archived, not the drafts, not in the
+// bin) and not limited to the record's own submitter. The same rule
+// pg_ap_record_page() applies to a designed record view. Null when none.
+function api_form_classic_record_page($form_page_id) {
+
+	$binned = function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('page.page_folder') : '';
+
+	$pages = api_rows("SELECT DISTINCT page.page_id, page.page_name, page.page_folder
+		FROM form_item_view_pages
+		INNER JOIN page ON page.page_id = form_item_view_pages.page_id
+		INNER JOIN folder ON page.page_folder = folder.folder_id
+		WHERE form_item_view_pages.custom_form_page_id = '" . (int)$form_page_id . "'
+			AND form_item_view_pages.submitter_security = '0'
+			AND page.page_type = 'form item view'
+			AND folder.folder_archived = '0'" . $binned . "
+		ORDER BY page.page_id ASC");
+
+	foreach ($pages as $page) {
+
+		$folder = (int)$page['page_folder'];
+
+		if ((function_exists('pg_page_is_draft') && pg_page_is_draft($folder)) || (get_access_control_type($folder) !== 'public')) {
+
+			continue;
+
+		}
+
+		return array('page_id' => (int)$page['page_id'], 'page_name' => (string)$page['page_name']);
+
+	}
+
+	return null;
+
+}
+
+// A record's address on the page that shows it, with the record's part as a
+// placeholder: {address_name} when the form names its records in their
+// addresses, {reference_code} otherwise. The same shape pg_sw_record_url()
+// builds; a record with no address name is read at ?r={reference_code} even
+// on a form with pretty addresses. Pure.
+function api_form_record_url_pattern($base, $page_name, $pretty) {
+
+	$url = $base . encode_url_path((string)$page_name);
+
+	return $pretty ? $url . '/{address_name}' : $url . '?r={reference_code}';
 
 }
 
@@ -158,7 +289,67 @@ function api_form_field_present($row, $options = array()) {
 		'options'       => $options
 	);
 
+	// A text area drawn with the rich-text editor: its answer is HTML (stored
+	// with the form data type html), reduced on the way in to what
+	// pg_sanitize_rich_text() keeps. The other fields carry null.
+	$rich = api_form_field_is_rich_text($row);
+
+	$field['rich_text']    = $rich;
+	$field['html_allowed'] = $rich ? api_form_html_allowed(defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '') : null;
+	$field['max_length']   = $rich ? api_form_html_max_length() : null;
+
 	return $field;
+
+}
+
+// Whether a field row is a rich text area: a text area with the editor on.
+function api_form_field_is_rich_text($row) {
+
+	return ((string)$row['type'] === 'text area') && !empty($row['wysiwyg']);
+
+}
+
+// The longest HTML answer a rich text field takes, in characters. The column
+// (form_data.data) is a longtext; this is the ceiling the API holds a long
+// text body to elsewhere (a message, a campaign body).
+function api_form_html_max_length() {
+
+	return 200000;
+
+}
+
+// The HTML a rich text answer keeps, from the lists the sanitiser reads
+// (pg_rich_text_allow_list()), under the visitor profile the site prints with:
+// class is removed, style keeps the listed properties, an image must be on
+// one of image_hosts or relative, and a link's rel is set by the site.
+// Anything outside is removed (dropped_tags with their content) or unwrapped.
+// Pure: $host is the site's host name.
+function api_form_html_allowed($host) {
+
+	$rules = pg_rich_text_allow_list();
+
+	$attributes = $rules['attributes'];
+
+	unset($attributes['class']);
+
+	// rel is not listed: the site writes its own on every link.
+	$tag_attributes = array_map(function ($tag, $names) {
+
+		unset($names['rel']);
+
+		return array('tag' => (string)$tag, 'attributes' => array_map('strval', array_keys($names)));
+
+	}, array_keys($rules['tag_attributes']), array_values($rules['tag_attributes']));
+
+	return array(
+		'tags'             => array_map('strval', array_keys($rules['tags'])),
+		'attributes'       => array_map('strval', array_keys($attributes)),
+		'tag_attributes'   => $tag_attributes,
+		'style_properties' => array_map('strval', array_keys($rules['visitor_style_properties'])),
+		'url_schemes'      => array_map('strval', array_keys($rules['url_schemes'])),
+		'image_hosts'      => ((string)$host !== '') ? array((string)$host) : array(),
+		'dropped_tags'     => array_map('strval', array_keys($rules['dropped_tags']))
+	);
 
 }
 
@@ -310,12 +501,12 @@ function api_forms_get($params) {
 
 	$reach = api_form_owner_filter($app['owner'], 'form_fields.page_id');
 
-	$row = api_row("SELECT page.page_id, page.page_name, page.page_title,
+	$row = api_row("SELECT page.page_id, page.page_name, page.page_title, page.page_folder, page.page_style,
 			COUNT(form_fields.id) AS field_count
 		FROM form_fields
 		INNER JOIN page ON page.page_id = form_fields.page_id
 		WHERE form_fields.page_id = '" . $id . "'" . (($reach !== '') ? " AND " . $reach : '') . "
-		GROUP BY page.page_id, page.page_name, page.page_title");
+		GROUP BY page.page_id, page.page_name, page.page_title, page.page_folder, page.page_style");
 
 	if (($row === null) || ((int)$row['field_count'] === 0)) {
 
@@ -335,7 +526,7 @@ function api_forms_get($params) {
 
 	$fields = api_form_fields_present($id);
 
-	api_ok(api_form_present($row, $fields));
+	api_ok(api_form_present($row, $fields, api_form_facts($id, $row['page_folder'], $row['page_style'])));
 
 }
 
@@ -346,7 +537,7 @@ function api_form_fields_present($id) {
 	$id = (int)$id;
 
 	$field_rows = api_rows("SELECT id, name, label, type, required, sort_order, multiple,
-			office_use_only, contact_field, default_value
+			office_use_only, contact_field, default_value, wysiwyg
 		FROM form_fields
 		WHERE page_id = '" . $id . "'
 		ORDER BY sort_order ASC, id ASC");
@@ -1069,8 +1260,9 @@ function api_form_submission_delete($params) {
 
 }
 
-// What api_form_present() returns, declared for the OpenAPI document. fields is
-// carried by the single-form endpoint only. name is the page's name, a DEFAULT
+// What api_form_present() returns, declared for the OpenAPI document. fields,
+// framework, is_collection and record_url_pattern are carried by the
+// single-form endpoint only. name is the page's name, a DEFAULT
 // NULL column that every create path writes, so not nullable
 // (api_openapi_type_spec() says when a field is).
 function api_form_schema() {
@@ -1083,7 +1275,10 @@ function api_form_schema() {
 		'field_count'        => 'integer',
 		'submission_count'   => 'integer',
 		'last_submission_at' => 'string?',
-		'fields'             => 'FormField[]'
+		'fields'             => 'FormField[]',
+		'framework'          => 'string',
+		'is_collection'      => 'boolean',
+		'record_url_pattern' => 'string?'
 	);
 
 }
@@ -1107,7 +1302,28 @@ function api_form_field_schema() {
 			'label'    => 'string',
 			'value'    => 'string',
 			'selected' => 'boolean'
-		))
+		)),
+		'rich_text'       => 'boolean',
+		'html_allowed'    => 'FormHtmlAllowed?',
+		'max_length'      => 'integer?'
+	);
+
+}
+
+// What api_form_html_allowed() returns.
+function api_form_html_allowed_schema() {
+
+	return array(
+		'tags'             => 'string[]',
+		'attributes'       => 'string[]',
+		'tag_attributes'   => array(array(
+			'tag'        => 'string',
+			'attributes' => 'string[]'
+		)),
+		'style_properties' => 'string[]',
+		'url_schemes'      => 'string[]',
+		'image_hosts'      => 'string[]',
+		'dropped_tags'     => 'string[]'
 	);
 
 }

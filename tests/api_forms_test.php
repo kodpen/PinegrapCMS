@@ -238,3 +238,112 @@ function test_api_forms_field_takes_many()
 	pg_assert_false(api_form_field_takes_many(array('type' => 'pick list', 'multiple' => 0)), 'pick list');
 	pg_assert_false(api_form_field_takes_many(array('type' => 'radio button', 'multiple' => 1)), 'radio button');
 }
+
+// A field row as api_form_fields_present() reads it.
+function api_forms_test_field_row($type, $wysiwyg)
+{
+	return array(
+		'id' => 4, 'name' => 'body', 'label' => 'Body', 'type' => $type, 'required' => 1,
+		'sort_order' => 2, 'multiple' => 0, 'office_use_only' => 0, 'contact_field' => '',
+		'default_value' => '', 'wysiwyg' => $wysiwyg,
+	);
+}
+
+// Only a text area drawn with the rich-text editor takes HTML; the other
+// fields carry null for its facts and keep their options.
+function test_api_forms_rich_text_field_facts()
+{
+	pg_assert_true(api_form_field_is_rich_text(api_forms_test_field_row('text area', 1)), 'rich text area');
+	pg_assert_false(api_form_field_is_rich_text(api_forms_test_field_row('text area', 0)), 'plain text area');
+	pg_assert_false(api_form_field_is_rich_text(api_forms_test_field_row('text box', 1)), 'a text box is never rich');
+
+	$rich = api_form_field_present(api_forms_test_field_row('text area', 1));
+	pg_assert_true($rich['rich_text'], 'rich_text');
+	pg_assert_same(api_form_html_max_length(), $rich['max_length'], 'max_length');
+	pg_assert_true(is_array($rich['html_allowed']) && in_array('p', $rich['html_allowed']['tags'], true), 'html_allowed');
+
+	$options = array(array('id' => 1, 'label' => 'Yes', 'value' => 'yes', 'selected' => false));
+	$plain = api_form_field_present(api_forms_test_field_row('pick list', 0), $options);
+	pg_assert_false($plain['rich_text'], 'pick list is not rich');
+	pg_assert_same(null, $plain['html_allowed'], 'no html_allowed');
+	pg_assert_same(null, $plain['max_length'], 'no max_length');
+	pg_assert_same($options, $plain['options'], 'the choices stay');
+}
+
+// html_allowed is the sanitiser's own list under the visitor profile: class
+// and rel are not offered, an image must be on the site's host.
+function test_api_forms_html_allowed_follows_the_sanitiser()
+{
+	$rules = pg_rich_text_allow_list();
+	$allowed = api_form_html_allowed('www.example.com');
+
+	pg_assert_same(array_keys($rules['tags']), $allowed['tags'], 'tags');
+	pg_assert_same(array_keys($rules['url_schemes']), $allowed['url_schemes'], 'schemes');
+	pg_assert_same(array_keys($rules['visitor_style_properties']), $allowed['style_properties'], 'style properties');
+	pg_assert_same(array('www.example.com'), $allowed['image_hosts'], 'image hosts');
+	pg_assert_same(array(), api_form_html_allowed('')['image_hosts'], 'no host, no list');
+	pg_assert_false(in_array('class', $allowed['attributes'], true), 'class is removed for visitors');
+	pg_assert_true(in_array('script', $allowed['dropped_tags'], true), 'script is dropped');
+
+	$by_tag = array();
+	foreach ($allowed['tag_attributes'] as $entry) {
+		$by_tag[$entry['tag']] = $entry['attributes'];
+	}
+	pg_assert_same(array('href', 'target'), $by_tag['a'], 'a: rel is written by the site');
+	pg_assert_same(array('src'), $by_tag['img'], 'img');
+}
+
+// What the list promises is what the sanitiser keeps: every listed tag and
+// tag attribute survives, and an attribute off the list does not.
+function test_api_forms_html_allowed_is_what_the_sanitiser_keeps()
+{
+	$allowed = api_form_html_allowed('');
+
+	foreach ($allowed['tags'] as $tag) {
+		$void = in_array($tag, array('br', 'hr', 'img', 'col'), true);
+		$html = $void ? '<' . $tag . ' title="t">' : '<' . $tag . ' title="t">x</' . $tag . '>';
+		if ($tag === 'img') { $html = '<img src="/a.png" title="t">'; }
+		if (in_array($tag, array('li', 'dt', 'dd', 'tr', 'td', 'th', 'caption', 'thead', 'tbody', 'tfoot', 'colgroup', 'col'), true)) { continue; }
+		pg_assert_contains('<' . $tag . ' ', pg_sanitize_rich_text($html), 'kept: ' . $tag);
+	}
+
+	$link = pg_sanitize_rich_text('<a href="https://example.org/" target="_blank" onclick="x()" id="i">x</a>');
+	pg_assert_contains('href="https://example.org/"', $link, 'href');
+	pg_assert_contains('target="_blank"', $link, 'target');
+	pg_assert_false(strpos($link, 'onclick') !== false, 'event handler removed');
+	pg_assert_false(strpos($link, 'id="i"') !== false, 'id removed');
+
+	pg_assert_contains('type="a"', pg_sanitize_rich_text('<ol type="a"><li>x</li></ol>'), 'ol type');
+	pg_assert_false(strpos(pg_sanitize_rich_text('<a href="javascript:alert(1)">x</a>'), 'href') !== false, 'scheme off the list');
+	pg_assert_contains('href="tel:+1"', pg_sanitize_rich_text('<a href="tel:+1">x</a>'), 'tel on the list');
+}
+
+// A record is read at /<page>/{address_name} on a form with pretty
+// addresses, /<page>?r={reference_code} otherwise.
+function test_api_forms_record_url_pattern()
+{
+	pg_assert_same('https://example.com/blog-post/{address_name}', api_form_record_url_pattern('https://example.com/', 'blog-post', true), 'pretty');
+	pg_assert_same('https://example.com/blog-post?r={reference_code}', api_form_record_url_pattern('https://example.com/', 'blog-post', false), 'reference code');
+	pg_assert_same('/my%20post?r={reference_code}', api_form_record_url_pattern('/', 'my post', false), 'page name encoded');
+}
+
+// GET /forms/{id} carries the facts; the list does not run their queries.
+function test_api_forms_get_carries_the_form_facts()
+{
+	pg_assert_contains('api_form_facts(', api_forms_test_function_source('api_forms_get'), 'single form');
+	pg_assert_false(strpos(api_forms_test_function_source('api_forms_list'), 'api_form_facts(') !== false, 'not per row of the list');
+	pg_assert_contains('wysiwyg', api_forms_test_function_source('api_form_fields_present'), 'the rich-text flag is read');
+}
+
+// A form shown only on a classic form item view page still gets its record
+// address; a page limited to the record's submitter does not count.
+function test_api_forms_record_page_falls_back_to_classic_pages()
+{
+	$facts = api_forms_test_function_source('api_form_facts');
+	pg_assert_true(strpos($facts, 'pg_ap_record_page(') < strpos($facts, 'api_form_classic_record_page('), 'designed record view first, classic page after');
+
+	$classic = api_forms_test_function_source('api_form_classic_record_page');
+	pg_assert_contains("page.page_type = 'form item view'", $classic, 'classic record pages');
+	pg_assert_contains("submitter_security = '0'", $classic, 'not limited to the submitter');
+	pg_assert_contains("get_access_control_type(\$folder) !== 'public'", $classic, 'public folders only');
+}

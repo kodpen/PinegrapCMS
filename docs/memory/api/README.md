@@ -50,6 +50,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies
 - api-folder-access-widening.md: External API page and folder moves keep or narrow access: access type rank, and for private folders the aclfolder reader list (PR #1786); 409 access_widening_refused
+- api-form-facts.md: What GET /forms/{id} and /forms/{id}/fields tell a client before it writes a record: framework, is_collection, record_url_pattern; rich_text, html_allowed and max_length on a rich text area
 - api-form-submission-writes.md: POST /forms/{id}/submissions, its delete twins, GET /forms/{id}/fields: the create and delete path shared with the submitted form screens, answers, refusals, events
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
 - api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, GET /inventory?location=, POST /inventory/transfer, their scopes, refusals and dry run; what inventory.changed carries
