@@ -17,7 +17,7 @@ description: Plan: the Home Services design template (pinegrap-homeservices): se
 
 - 3 (done, #7881): `services.php`: the Services collection (`services` by `?category=`, the `service` page with rated reviews, `service_new`, `home_services`) and the Team collection (`team`, `team_member`, `team_new`, `home_team`); test.
 
-- 4: `mail.php` (the e-mail builders) and `visits.php`: `book` (with `?service=`, `?area=`), `visit_view`, `my_visits`, `staff_visits`, `privacy`, `email_reply`, the visit e-mails; test.
+- 4 (done, #7893): `mail.php` (the e-mail builders) and `visits.php`: `book` (with `?service=`, `?area=`), `visit_view`, `my_visits`, `staff_visits`, `privacy`, `email_reply`, the visit e-mails; test.
 
 - 5: `estimates.php` (`estimate` with `?service=`, `?area=`, photos; `estimate_view`, `my_estimates`, `staff_estimates`, the estimate e-mails) and `shop.php` (`plans`, product, cart, checkout, order, `email_order`; the Care Plans group: plans and gift cards, `shippable => false`); test.
 
