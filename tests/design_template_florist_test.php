@@ -130,6 +130,7 @@ function _test_fl_page_keys()
 		'work', 'work_item', 'work_new',
 		'order_request', 'request_view', 'my_requests', 'staff_requests', 'privacy', 'email_reply', 'email_request_new', 'email_request_received',
 		'event_enquiry', 'event_enquiry_view', 'staff_events', 'subscribe', 'subscription_view', 'consultation',
+		'email_event_new', 'email_event_received', 'email_subscription_new', 'email_subscription_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
