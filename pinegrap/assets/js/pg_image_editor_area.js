@@ -395,6 +395,18 @@
         }
     };
 
+    // A click with Select at p (the turned space, as the selection's
+    // rings): outside the selected area it deselects, as a click does in
+    // other editors (Select has no Deselect command of its own); inside it
+    // keeps the area for Select area's commands.
+    Editor.prototype.areaClickOut = function (p) {
+        var rings = this.areaRings();
+
+        if (rings.length && !M.insideRings(p, rings)) {
+            this.areaClear();
+        }
+    };
+
     Editor.prototype.areaInvert = function () {
         this.change(function (doc) {
             var sel = doc.selection || { ops: [], invert: false, feather: 0 };

@@ -15,7 +15,7 @@ description: Plan: the Marina design template (pinegrap-marina): berths and rate
 - 2 (done, #7851): `pages_public.php` (home places `home_charters`, `home_events`, `home_posts`); test.
 - 3 (done, #7863): `charters.php`; test.
 - 4 (done, #7880): `mail.php`, `requests.php` (berth requests, charter enquiries, `privacy`, `email_reply`); test.
-- 5: `events.php`: the Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and entry requests (`event_entry` with `?event=`, `entry_view`, `my_entries`, `staff_entries`); test.
+- 5 (done, #7943): `events.php` (Events collection, `home_events`, event entries with a text `event` field reading `?event=`); test `_test_mne_load()`.
 - 6: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 8: assembly: `pinegrap-marina.php` (order, search sections, look, fonts, `pmn-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-marina.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.

@@ -48,10 +48,10 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-gallery.md: Plan: the Art Gallery design template (pinegrap-gallery): artists, exhibitions, works, artwork and private-viewing enquiries, editions in the shop, the journal; small steps
 - design-template-homeservices-design.md: Design of plans/design-template-homeservices.md: shipped features it reuses for services, estimates, visits and areas, what it does not build, its look and Turkish words
 - design-template-homeservices.md: Plan: the Home Services design template (pinegrap-homeservices): services, price guide, estimates, visit bookings, service areas, team, reviews; ~1,000-line steps
-- design-template-library-design.md: Design of plans/design-template-library.md: which shipped features the Library template reuses for the catalogue, events, membership and rooms, what it does not build, its look and Turkish words
-- design-template-library.md: Plan: the Public Library design template (pinegrap-library): catalogue and new arrivals, events and reading clubs, membership and room booking requests, branches and hours, news; ~1,000-line steps
 - design-template-marina-design.md: Design of plans/design-template-marina.md: which shipped features the Marina template reuses for berths, charters and requests, what it does not build, its look and Turkish words
 - design-template-marina.md: Plan: the Marina design template (pinegrap-marina): berths and rates as words, berth requests, Charter Boats, services, events; ~1,000-line steps
+- design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, and where the open template plans (Skiresort, Gallery and the rest) take theirs
+- design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - design-template-pharmacy-design.md: Design of plans/design-template-pharmacy.md: the shipped features it reuses, what it does not build, its look and Turkish words
 - design-template-pharmacy.md: Plan: the Pharmacy design template (pinegrap-pharmacy): services, prescription requests, vaccinations and health checks, on-duty info, health products shop, health advice, team; ~1,000-line steps
 - design-template-podcast-design.md: Design of plans/design-template-podcast.md: what the Podcast template reuses for podcasts, episodes, sponsorship and supporters, what it does not build, its look and Turkish words
@@ -60,6 +60,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-recruitment.md: Plan: the Recruitment Agency design template (pinegrap-recruitment): jobs by sector and city, applications, employer enquiries, career advice; ~1,000-line steps
 - design-template-restaurant-design.md: Design of plans/design-template-restaurant.md: the shipped features the Restaurant template reuses, what it does not build, its look and Turkish words
 - design-template-restaurant.md: Plan: the Restaurant design template (pinegrap-restaurant), one chef-led restaurant with menu, reservations, chef's table, events, private dining and gift vouchers, in ~1,000-line steps
+- design-template-skiresort-design.md: Design of plans/design-template-skiresort.md: the shipped features the Ski Resort template reuses, what it does not build, its look and Turkish words
+- design-template-skiresort.md: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, lifts, conditions, passes and rental, lesson requests, lodging enquiries, dated events; small steps
 - design-template-sportsclub-design.md: Design of plans/design-template-sportsclub.md: shipped features it reuses for squads, fixtures, registrations, membership and kit, what it does not build, its look and words
 - design-template-sportsclub.md: Plan: the Sports Club design template (pinegrap-sportsclub): teams, squads, fixtures and results, academy and trials, membership, season tickets, kit and sponsors; ~1,000-line steps
 - design-template-theatre-design.md: Design of plans/design-template-theatre.md: the shipped features the Theatre template reuses, what it does not build, its look and Turkish words

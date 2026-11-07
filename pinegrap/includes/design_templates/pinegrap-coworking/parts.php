@@ -291,9 +291,11 @@ $event_topics = array(
     'social'   => lang('Meet the Community'),
 );
 
-// The community events: the records the Events form starts with (step 5
-// dates them from the day the template opens: 'in_days' after it);
-// 'space' is the space it is held in, 'free' whether members pay nothing.
+// The community events: the records the Events form starts with, dated
+// from the day the template opens: 'in_days' after it, moved on to
+// 'weekday' (ISO, 1 = Monday) when the title names a day, else past a
+// weekend (events.php); 'space' is the space it is held in, 'free'
+// whether guests come free too.
 $events = array(
     'breakfast' => array('title' => lang('Members\' Breakfast'), 'topic' => 'social', 'in_days' => 3, 'time' => '08:30', 'minutes' => 60, 'space' => 'floor', 'free' => true,
         'summary' => lang('Fresh bread, coffee and five minutes each to say what you are working on.')),
@@ -303,7 +305,7 @@ $events = array(
         'summary' => lang('A freelance designer shows how she sets her rates and says no to the wrong clients.')),
     'critique'  => array('title' => lang('Show and Tell Evening'), 'topic' => 'learn', 'in_days' => 12, 'time' => '18:30', 'minutes' => 120, 'space' => 'hall', 'free' => true,
         'summary' => lang('Five members show a project in five minutes each and the room asks questions.')),
-    'drinks'    => array('title' => lang('Friday Drinks on the Terrace'), 'topic' => 'social', 'in_days' => 10, 'time' => '17:30', 'minutes' => 120, 'space' => 'floor', 'free' => true,
+    'drinks'    => array('title' => lang('Friday Drinks on the Terrace'), 'topic' => 'social', 'in_days' => 10, 'weekday' => 5, 'time' => '17:30', 'minutes' => 120, 'space' => 'floor', 'free' => true,
         'summary' => lang('The week ends on the roof with drinks, music and the people from the other floors.')),
 );
 

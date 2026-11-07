@@ -78289,6 +78289,7 @@ const StyleDesigner = (function () {
     }
 
     function _sdPerfReport(command) {
+        if (command === 'probe') return _sdProbeReport();
         if (command === 'reset') {
             _sdPerf.surfaces = {}; _sdPerf.bursts = []; _sdPerf.marked = {};
             return 'sd-perf: counting again';
@@ -78359,6 +78360,137 @@ const StyleDesigner = (function () {
     updateCtxBar      = _sdPerfWrap('updateCtxBar',      updateCtxBar);
     applyIssueBadges  = _sdPerfWrap('applyIssueBadges',  applyIssueBadges);
     saveState         = _sdPerfWrap('saveState',         saveState);
+
+    // ── Timing probe (?sd_perf=1) ───────────────────────────────────────
+    //
+    // The milestones an operator feels, each as one number: the opening
+    // (navigation start to the end of the first draw), the first draw, every
+    // later draw (an edit), a tab switch and a save (the request until its
+    // answer). Each measure is written to the console and to a small badge
+    // in the corner. Only an address carrying sd_perf=1 turns it on; without
+    // it nothing is wrapped. StyleDesigner.perf('probe') prints count,
+    // median and worst per measure.
+    function _sdProbeEnabled(search) {
+        return /(?:^\?|&)sd_perf=1(?:&|#|$)/.test(String(search || ''));
+    }
+
+    var _sdProbe = { on: _sdProbeEnabled(window.location.search), samples: {}, last: {}, draws: 0, inSwitch: 0, badge: null };
+
+    // Count, median and worst of a list of milliseconds.
+    function _sdProbeStats(list) {
+        var s = list.slice().sort(function (a, b) { return a - b; });
+        var n = s.length;
+        if (!n) return { n: 0, median: 0, worst: 0 };
+        var mid = n >> 1;
+        return { n: n, median: (n % 2) ? s[mid] : (s[mid - 1] + s[mid]) / 2, worst: s[n - 1] };
+    }
+
+    function _sdProbeLine(name, ms, nodes) {
+        return '[sd-perf] ' + name + ' ' + (Math.floor(ms * 10) / 10).toFixed(1) + ' ms (' + nodes + ' nodes)';
+    }
+
+    function _sdProbeBadge() {
+        var badge = _sdProbe.badge;
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.id = 'sd-perf-badge';
+            badge.setAttribute('aria-hidden', 'true');
+            badge.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2147483000;padding:4px 8px;border-radius:4px;' +
+                'background:rgba(0,0,0,.78);color:#fff;font:11px/1.4 monospace;pointer-events:none;white-space:pre';
+            document.body.appendChild(badge);
+            _sdProbe.badge = badge;
+        }
+        var parts = [];
+        ['open', 'first draw', 'edit', 'tab switch', 'save'].forEach(function (k) {
+            if (!_sdProbe.samples[k]) return;
+            var st = _sdProbeStats(_sdProbe.samples[k]);
+            parts.push(k + ' ' + Math.round(_sdProbe.last[k]) + (st.n > 1 ? ' (med ' + Math.round(st.median) + ', n ' + st.n + ')' : ''));
+        });
+        badge.textContent = parts.join('\n');
+    }
+
+    function _sdProbeRecord(name, ms) {
+        if (!_sdProbe.on) return;
+        (_sdProbe.samples[name] || (_sdProbe.samples[name] = [])).push(ms);
+        _sdProbe.last[name] = ms;
+        if (window.console && console.log) console.log(_sdProbeLine(name, ms, _sdPerfTreeSize()));
+        if (document.body) _sdProbeBadge();
+    }
+
+    function _sdProbeReport() {
+        var rows = [];
+        for (var k in _sdProbe.samples) {
+            if (!Object.prototype.hasOwnProperty.call(_sdProbe.samples, k)) continue;
+            var st = _sdProbeStats(_sdProbe.samples[k]);
+            rows.push({ measure: k, count: st.n, 'median ms': +st.median.toFixed(1), 'worst ms': +st.worst.toFixed(1) });
+        }
+        if (window.console && console.table) console.table(rows);
+        return rows;
+    }
+
+    // The first outermost draw is the first draw (and closes the opening);
+    // every later one outside a tab switch is an edit.
+    function _sdProbeWrapRender(fn) {
+        if (!_sdProbe.on) return fn;
+        var depth = 0;
+        return function () {
+            var t0 = performance.now();
+            depth++;
+            try {
+                return fn.apply(this, arguments);
+            } finally {
+                depth--;
+                if (depth === 0) {
+                    var t1 = performance.now();
+                    _sdProbe.draws++;
+                    if (_sdProbe.draws === 1) {
+                        _sdProbeRecord('first draw', t1 - t0);
+                        _sdProbeRecord('open', t1);
+                    } else if (!_sdProbe.inSwitch) {
+                        _sdProbeRecord('edit', t1 - t0);
+                    }
+                }
+            }
+        };
+    }
+
+    function _sdProbeWrapTabSwitch(fn) {
+        if (!_sdProbe.on) return fn;
+        return function () {
+            var t0 = performance.now();
+            _sdProbe.inSwitch++;
+            try {
+                return fn.apply(this, arguments);
+            } finally {
+                _sdProbe.inSwitch--;
+                _sdProbeRecord('tab switch', performance.now() - t0);
+            }
+        };
+    }
+
+    // From the call to the answer of a save that went through. The options
+    // are copied, never changed; a save that calls itself again (after
+    // loading the shared components) carries the first start time along.
+    function _sdProbeWrapSave(fn) {
+        if (!_sdProbe.on) return fn;
+        return function (opts) {
+            if (!opts || typeof opts !== 'object' || opts._sdProbeT0) return fn.apply(this, arguments);
+            var o = {};
+            for (var k in opts) if (Object.prototype.hasOwnProperty.call(opts, k)) o[k] = opts[k];
+            var t0 = performance.now();
+            var done = opts.onSuccess;
+            o._sdProbeT0 = t0;
+            o.onSuccess = function () {
+                _sdProbeRecord('save', performance.now() - t0);
+                if (typeof done === 'function') return done.apply(this, arguments);
+            };
+            return fn.call(this, o);
+        };
+    }
+
+    render            = _sdProbeWrapRender(render);
+    _pgTabsSwitch     = _sdProbeWrapTabSwitch(_pgTabsSwitch);
+    saveAjax          = _sdProbeWrapSave(saveAjax);
 
 
     // What the assistant panel (assets/js/designer_ai.js) reads and does in
