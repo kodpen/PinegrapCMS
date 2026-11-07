@@ -225,7 +225,7 @@ function test_marina_public_turkish_words()
 {
 	$map = pg_test_language_map('tr');
 	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-marina/pages_public.php');
-	preg_match_all("/lang\('((?:[^'\\]|\\.)*)'\)/", $src, $m);
+	preg_match_all("/lang\\('((?:[^'\\\\]|\\\\.)*)'\\)/", $src, $m);
 	foreach (array_unique($m[1]) as $raw) {
 		$key = stripslashes($raw);
 		pg_assert_true(isset($map[$key]) && $map[$key] !== '', "Turkish for '$key'");
