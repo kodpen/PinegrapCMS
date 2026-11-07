@@ -21,7 +21,7 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 
 - 5 (done, #7961): `events.php`: the Club Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and the sponsorship enquiry (`sponsor_enquiry` with `?package=`, `staff_sponsors`); home places `home_events`; test.
 
-- 6: `shop.php`: `kit_shop`, `season_tickets`, `membership`, product, cart, checkout, order, `email_order`, the catalog (Kit, Season Tickets with `shippable => false`, Membership with `membership_days`), the members' area (`members`, folder `members` with access `membership`); test.
+- 6 (done, #7990): `shop.php`: `kit_shop`, `season_tickets`, `membership`, product, cart, checkout, order, `email_order`, the catalog (Kit, Season Tickets with `shippable => false`, Membership with `membership_days`), the members' area (`members`, folder `members` with access `membership`); test.
 
 - 7: `standard.php`: contact, inbox, conversation, newsletter, Club News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
