@@ -21,6 +21,7 @@ description: Plan: the Ferry design template (pinegrap-ferry): routes and ports,
 
 ## Where to start?
 - The next free step is the lowest one not marked done. Models: `pinegrap-marina/`, `pinegrap-campsite/`. The booking request reads `?route=` (route pages, timetables) and `?fare=` (fares page); the group enquiry reads `?route=`; the notice list filters `?route=`. Route keys are fixed data, so a link carries the route's key and the form's pick list shows its title; never a filter on another record's title without that page's own `?param=`. Never use `?view=` (reserved, [[design-template-hotel]]). Later tests share `_test_fy_page_keys()` from `tests/design_template_ferry_test.php`.
+- Step 4 starts from `pinegrap-marina/requests.php` and `mail.php`. `notices.php` already defines `$fy_filter`, `$fy_featured_choices`, `$fy_page_link` and `$fy_filter_bar`: include it before `bookings.php` in tests and reuse them. The notice page links `booking_request?route=<route>` with the notice's route, which may be "All Routes"; the booking form's route list then simply has nothing chosen. Booking statuses, journey, vehicle, cabin and group pick lists are in `parts.php` (`$booking_statuses`, `$group_statuses`, `$journey_choices`, `$vehicle_choices`, `$cabin_choices`, `$group_kind_choices`).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
