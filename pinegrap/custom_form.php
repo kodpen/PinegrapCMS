@@ -441,9 +441,9 @@ foreach ($fields as $field_key => $field) {
         // Anchored on both ends and matched against the WHOLE value, which is
         // what HTML's pattern means; an operator who writes `\d{4}` expects
         // four digits, not four digits somewhere. `u` for UTF-8, because a
-        // Turkish form's expressions contain Turkish letters. An expression
-        // that does not compile fails the check (quietly, no error page): a
-        // value that could not be checked is not stored.
+        // Turkish form's expressions contain Turkish letters. A malformed
+        // expression is ignored rather than fatal: a typo in a regex must not
+        // take the form down for everybody.
         if (
             isset($field['validation_regex'])
             && (trim((string)$field['validation_regex']) != '')
@@ -454,7 +454,7 @@ foreach ($fields as $field_key => $field) {
             $pattern = pg_cf_field_pattern_regex($field['validation_regex']);
             $matched = @preg_match($pattern, (string)$liveform->get_field_value($field['id']));
 
-            if ($matched !== 1) {
+            if ($matched === 0) {
                 $message = trim((string)$field['validation_message']);
 
                 // The message the designer wrote, in the visitor's language.

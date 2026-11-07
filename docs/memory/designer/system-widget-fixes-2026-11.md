@@ -11,7 +11,7 @@ description: Row id suffix skips data-id/data-for, form list search cut by chara
 
 ## How does the server check a custom form field's pattern?
 - `custom_form.php` builds the PCRE with `pg_cf_field_pattern_regex()` (`includes/fn/custom_form.php`): anchored `^(?:…)$`, `u`, only a bare `/` escaped, an escaped pair (`\/`, `\\`) kept. `str_replace('/', '\/')` turned an already escaped `\/` into `\\/`, the expression did not compile and the value passed.
-- A pattern that does not compile now fails the check (`preg_match() !== 1`): a value that could not be checked is not stored. Test: `custom_form_field_pattern_test.php`.
+- A pattern that still does not compile (an operator's typo) is ignored and the value passes (`$matched === 0` only marks the error): a typo in a pattern must not take the form down for everybody. Test: `custom_form_field_pattern_test.php`.
 
 ## What does "Check all tables" count as an issue?
 - `pg_db_check_summary()` (`includes/fn/db_maintenance.php`) over the `check_and_repair_database_tables(true)` report: `error` and `check_failed` are issues, `repaired` a repair. `database_engine.php` counted only `error`, so a table whose CHECK TABLE could not run gave the green "0 issue(s)" notice while the findings list showed it as a danger. Test: `test_db_maintenance_check_summary`.
