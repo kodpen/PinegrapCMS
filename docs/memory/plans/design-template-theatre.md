@@ -19,7 +19,7 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 
 - 4 (done, #7871): `performances.php`: the Performances collection (production a reference into Productions, #7872), `whats_on`, `past_performances`, `performance`, `performance_new`, `home_performances`, `production_performances`; test.
 
-- 5: `mail.php`, `hire.php`: venue hire spaces, hire enquiries (`hire`, `hire_view`, `my_hire`, `staff_hire`), `privacy`, `email_reply`; test.
+- 5 (done, #7897): `mail.php`, `hire.php`: venue hire spaces, hire enquiries (`hire`, `hire_view`, `my_hire`, `staff_hire`), `privacy`, `email_reply`; test.
 
 - 6: `learning.php`: `learning` (youth theatre groups and workshops by age), school group and youth theatre place requests; test.
 
