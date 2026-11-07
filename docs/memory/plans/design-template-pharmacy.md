@@ -11,11 +11,11 @@ description: Plan: the Pharmacy design template (pinegrap-pharmacy): services, p
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-pharmacy-design]].
 
 ## Steps (claim as `[plan:design-template-pharmacy] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7838): `parts.php` (node builders, the pharmacy's data and pick lists, shared parts and cards, form fields, comment thread, staff bar, blog parts); `tests/design_template_pharmacy_test.php`.
+- 1 (done, #7838): `parts.php`; test.
 
-- 2 (done, #7909): `pages_public.php`: home (`home_team`, `home_posts` as widgets), `services` and one `service_<key>` per service (home delivery is `service_delivery`), `health_checks`, `on_duty`, `about`, `faq`, `location`; test.
+- 2 (done, #7909): `pages_public.php` (home delivery is `service_delivery`); test.
 
-- 3 (done, #7928): `team.php`: the Pharmacists collection (`team` by `?service=`, `pharmacist`, `pharmacist_new`, `home_team`) and `book_online` ([[booking-templates]]); test.
+- 3 (done, #7928): `team.php` (Pharmacists collection, `book_online`); test.
 
 - 4: `mail.php` and `requests.php`: prescription requests (`prescription` with `?service=` and `?pharmacist=`; `prescription_view`, `my_prescriptions`, `staff_prescriptions`, `privacy`, `email_reply`, `email_prescription_new`, `email_prescription_received`) and questions to the pharmacist (`ask` with `?topic=`, `ask_view`, `my_questions`, `staff_questions`, their two e-mails); test.
 
