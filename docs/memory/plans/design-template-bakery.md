@@ -17,7 +17,7 @@ description: Plan: the Bakery design template (pinegrap-bakery): daily bake, cak
 
 - 3 (done, #7916): `classes.php`: the Baking Classes collection (`classes` by `?level=`, the `class` page, `class_new`, `home_classes`); test.
 
-- 4: `mail.php` (the e-mail builders) and `requests.php`: custom cake orders (`cake_order` with `?cake=`, `?occasion=`, `cake_order_view`, `my_cake_orders`, `staff_cake_orders`), class place requests (`class_booking` with `?class=`, `booking_view`, `my_bookings`, `staff_bookings`), `privacy`, `email_reply`, the request e-mails; test.
+- 4 (done, #7941): `mail.php` (e-mail builders) and `requests.php` (cake orders, class place requests, `privacy`, `email_reply`, the request e-mails; shared `$bk_…` page and list builders for step 5); test.
 
 - 5: `wholesale.php`: wholesale enquiries (`wholesale_enquiry` with `?range=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, the enquiry e-mails); test.
 
