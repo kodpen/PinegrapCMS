@@ -118,7 +118,7 @@ function _test_sh_page_keys()
 		'home', 'programmes', 'day', 'approach', 'campus', 'staff_team', 'about', 'fees', 'faq',
 		'events', 'event', 'event_new',
 		'apply', 'application_view', 'my_applications', 'staff_applications', 'privacy', 'email_reply',
-		'visit', 'staff_visits',
+		'visit', 'staff_visits', 'email_application_new', 'email_application_received', 'email_visit_new', 'email_visit_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
