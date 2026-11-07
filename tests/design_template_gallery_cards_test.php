@@ -93,7 +93,11 @@ function _test_glc_reads($tree)
 	$texts = array();
 	foreach ($nodes as $node) {
 		if (!empty($node['props']['_bindings'])) {
-			foreach ($node['props']['_bindings'] as $token) $tokens[$token] = true;
+			foreach ($node['props']['_bindings'] as $prop => $token) {
+				$tokens[$token] = true;
+				// A reference reads the field that holds the code.
+				if ($token === '__ref') $tokens[$node['props']['_bindParams'][$prop]['field']] = true;
+			}
 		}
 		if (isset($node['props']['text'])) $texts[] = $node['props']['text'];
 	}
