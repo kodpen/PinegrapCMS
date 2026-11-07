@@ -308,7 +308,7 @@ $request_pages[] = $mn_record_page('enquiry_view', lang('charter-enquiry-view'),
 
 $request_pages[] = $mn_mine_page('my_enquiries', lang('my-charter-enquiries'), lang('My Charter Enquiries'),
     lang('Your charter enquiries, their status and the charter desk\'s offers, newest first.'), 'my_enquiries_list',
-    $mn_new_card('bi-sailboat', lang('Another charter?'),
+    $mn_new_card('bi-water', lang('Another charter?'),
         lang('Ask about another boat or other dates; your details are filled in for you.'), lang('Send a Charter Enquiry'), 'charter_enquiry'));
 
 $request_pages[] = $mn_staff_page('staff_enquiries', lang('all-charter-enquiries'), lang('Charter Enquiries'),
