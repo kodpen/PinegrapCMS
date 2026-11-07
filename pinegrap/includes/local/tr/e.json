@@ -1362,6 +1362,7 @@
     "Every post in any status, the newest first, with a search.": "Her durumdaki her gönderi, en yenisi önce, aramayla.",
     "Every post members shared, in any status. Set a post to Hidden to take it off the site, or feature it on the home page.": "Üyelerin paylaştığı her gönderi, her durumda. Bir gönderiyi siteden kaldırmak için Gizli yapın ya da ana sayfada öne çıkarın.",
     "Every post takes comments. Sign in, say what you think, and follow a post to get its new comments by e-mail.": "Her yazı yorum alır. Giriş yapın, ne düşündüğünüzü söyleyin ve yeni yorumlarını e-postayla almak için bir yazıyı takip edin.",
+    "Every price includes": "Her fiyata dahil olanlar",
     "Every price includes the examination that comes with it": "Her fiyata beraberindeki muayene dahildir",
     "Every product group in the store is here, in the Catalog Manager panel of the main menu (on the left). Clicking one opens it now, where the old screen only expanded it. Right-click a group to publish or unpublish it, edit it, rename it or send it to the Recycle Bin, and drag one onto another to move it.": "Mağazadaki bütün ürün grupları burada, ana menünün Katalog Yöneticisi panelinde (solda). Artık bir gruba tıklayınca içine giriliyor; eski ekran yalnızca dalı açıyor, yayına alıp kaldırıyordu. Bir gruba sağ tıklayarak yayına alabilir, yayından kaldırabilir, düzenleyebilir, adını değiştirebilir ya da Geri Dönüşüm Kutusu'na gönderebilirsiniz; birini diğerinin üstüne sürüklemek onu taşır.",
     "Every product group in the store is here, in the Catalog Manager panel of the menu on the left. Clicking one opens it now, where the old screen only expanded it. Right-click a group to publish or unpublish it, edit it, rename it or send it to the Recycle Bin, and drag one onto another to move it.": "Mağazadaki bütün ürün grupları burada, soldaki menünün Katalog Yöneticisi panelinde. Artık bir gruba tıklayınca içine giriliyor; eski ekran yalnızca dalı açıyor, yayına alıp kaldırıyordu. Bir gruba sağ tıklayarak yayına alabilir, yayından kaldırabilir, düzenleyebilir, adını değiştirebilir ya da Geri Dönüşüm Kutusu'na gönderebilirsiniz; birini diğerinin üstüne sürüklemek onu taşır.",
@@ -1610,6 +1611,7 @@
     "Everything the user writes is saved on the phone first and sent when the connection is back.": "Kullanıcının yazdığı her şey önce telefona kaydedilir ve bağlantı geri geldiğinde gönderilir.",
     "Everything we offer, explained in plain words.": "Sunduğumuz her şey, sade bir dille.",
     "Everything you love, delivered to your door": "Sevdiğiniz her şey kapınızda",
+    "Everything you need for a stay outdoors, a short walk from every pitch.": "Açık havada konaklama için ihtiyacınız olan her şey, her yerden kısa bir yürüyüş mesafesinde.",
     "Everything you need to know before and after your visit, in one place.": "Ziyaretinizden önce ve sonra bilmeniz gereken her şey tek bir yerde.",
     "Everything you need to share, comment and find your people.": "Paylaşmak, yorum yazmak ve size benzeyenleri bulmak için gereken her şey.",
     "Everything you need to start": "Başlamak için gereken her şey",
@@ -1824,6 +1826,7 @@
     "Extracting the archive": "Arşiv açılıyor",
     "Extracting the archive: {var:1}": "Arşiv açılıyor: {var:1}",
     "Extraction failed. The web server may not have write permission for the software directory, or the disk may be full.": "Arşiv açılamadı. Web sunucusunun yazılım klasörüne yazma izni olmayabilir ya da disk dolu olabilir.",
+    "Extras": "Ekstralar",
     "Eye comfort mode for the evening": "Akşamlar için göz konforu modu",
     "Eyewear & Watches": "Gözlük & Saat",
     "e-Archive": "e-Arşiv",
@@ -1890,6 +1893,7 @@
     "editorial, independence, advertising policy": "yayın ilkeleri, bağımsızlık, reklam politikası",
     "editors, reporters, newsroom, staff": "editörler, muhabirler, haber merkezi, kadro",
     "editors, writers, contributors, masthead": "editörler, yazarlar, katkıda bulunanlar, künye",
+    "electric, hook-up, power, socket": "elektrik, bağlantı, güç, priz",
     "element(s) pasted.": "öğe yapıştırıldı.",
     "email-account-welcome": "e-posta-hesap-hosgeldin",
     "email-admission-application-received": "eposta-on-kayit-basvurusu-alindi",
@@ -2157,5 +2161,6 @@
     "export": "dışa aktarma",
     "export, markdown, attachments": "dışa aktarma, markdown, ekler",
     "extra cost, variation, change, fixed price": "ek maliyet, değişiklik, sabit fiyat",
+    "extra person, child, dog, pet, car, firewood, included": "ek kişi, çocuk, köpek, evcil hayvan, araba, odun, dahil",
     "extra test, add, package": "ek tetkik, ekleme, paket"
 }
