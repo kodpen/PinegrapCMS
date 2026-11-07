@@ -22,3 +22,6 @@ description: Decisions list, workspace part 7 (2026-11-06 on): the agent channel
 
 ## How are coordinators and agents reached from the channel?
 - Owner (2026-11-07): the coordinators and the other agents must be wakeable from the channel, or able to set up their own scheduled wake there: a message to an agent knocks its door (a push to its URL, or its poll), and an agent asks the channel for `every N minutes` or `at <time>` wakes the site's cron delivers. Reason: the owner runs the coordinators and agents from one place, and a session's own timer chain breaks when the session restarts. Plan: `plans/agent-channel.md` (A3, A4).
+
+## Through what do agents use the channel's tools?
+- Owner (2026-11-07): through the site's MCP server, as the API's routes; no separate tools API. The canvas becomes a tool too (a route taking the editor's document and the PNG), the decision mark and the channel memory get routes; workflow tables, polls, approvals, notes, files and tasks already have theirs. Reason: one catalogue, one scope screen, one rate limit. Plan: `plans/agent-channel.md` (A4, A5, A9).
