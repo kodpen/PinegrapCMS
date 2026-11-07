@@ -19,7 +19,7 @@ description: Plan: the Music Artist design template (pinegrap-music): tour dates
 
 - 4 (done, #7635): `mail.php` (the e-mail builders) and `press.php`: the press kit (`press`: bio in three lengths, photos, logos, quotes, technical rider and stage plot from a public `press` folder) and booking enquiries for promoters (`booking`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, the two `email_booking_*`; files: Press Files collection, `press_file_new`); test.
 
-- 5: `merch.php`: shop pages (`merch`, product, cart, checkout, order, `email_order`, the catalog with merch products and a signed vinyl per release) and gift cards; test.
+- 5 (done, #7723): `merch.php`: shop pages (`merch`, product, cart, checkout, order, `email_order`, the catalog with merch products and a signed vinyl per release) and gift cards; test.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
