@@ -17,7 +17,7 @@ description: Plan: the Private School / Kindergarten design template (pinegrap-s
 
 - 3 (done, #7645): `events.php`: the Events collection (`events` by `?programme=`, the `event` page with date as words, place and details, `event_new`), `home_events`; test.
 
-- 4: `mail.php` (the e-mail builders) and `admissions.php`: admission applications (`apply` with `?programme=`, `application_view`, `my_applications`, `staff_applications`, `privacy`, `email_reply`) and the visit request (`visit`, `staff_visits`); test.
+- 4 (done, #7702): `mail.php` (the e-mail builders) and `admissions.php`: admission applications (`apply` with `?programme=`, `application_view`, `my_applications`, `staff_applications`, `privacy`, `email_reply`) and the visit request (`visit`, `staff_visits`); test.
 
 - 5: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
