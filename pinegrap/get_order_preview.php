@@ -401,7 +401,7 @@ function get_order_preview($properties) {
                                     <table>
                                         <tr>
                                             <td>' . h(lang('Frequency')) . ':</td>
-                                            <td>' . $recurring_payment_period . '</td>
+                                            <td>' . h($recurring_payment_period) . '</td>
                                         </tr>
                                         <tr>
                                             <td>' . h(lang('Number of Payments')) . ':</td>
@@ -682,7 +682,7 @@ function get_order_preview($properties) {
                             '<tr class="products data row_' . ($row_count % 2) . '">
                                 <td class="mobile_left" style="vertical-align: top">' . h($name) . '</td>
                                 <td class="mobile_right mobile_width" style="vertical-align: top">' . $output_description . '</td>
-                                <td class="mobile_left" style="vertical-align: top">' . $recurring_payment_period . '</td>
+                                <td class="mobile_left" style="vertical-align: top">' . h($recurring_payment_period) . '</td>
                                 <td class="mobile_left" style="vertical-align: top; text-align: center">' . $output_quantity . '</td>
                                 <td class="mobile_right" style="vertical-align: top; text-align: right; white-space: nowrap; margin-left: .5em">' . $output_product_price . '</td>
                                 <td class="mobile_right" style="vertical-align: top; text-align: right">' . prepare_price_for_output($total_price * 100, FALSE, $discounted_price = '', 'html') . '</td>

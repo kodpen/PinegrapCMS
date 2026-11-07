@@ -1,46 +1,26 @@
 ---
 name: agent-channel
-description: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
+description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 ---
 
-## What is the status?
-- Draft (owner, 2026-10-29): no step is claimed and no PR is opened on it until the owner reopens it here; coordinators skip it. The full plan is kept by the owner outside the repository; this file holds what a later session needs.
-- The working mode stays: GitHub is the record, the timers stay; a channel is only an added wake source.
+## What is it for?
+- One channel from which the owner runs the coordinators and agents: a message wakes an agent, it works and answers there, or a schedule set in the channel wakes it. GitHub stays the record of work; the channel is the conversation and the wake source (owner, 2026-11-07).
 
 ## What is it?
-- A channel setting "Agent channel": applications as members, each with a wake rule (mentioned only, every message, prefixes such as `[ci]`, replies to its own) and a door (polling, webhook, routine trigger, Claude Code plugin). A matching message makes one `ws_ai_requests` row per agent (`app:<id>`), shown on the message. `GET /workspace/agent-requests` and a claim with 409 generalise Claude's routes; the brief is preamble + context + channel memory; an answer is a message with `parent_id`, reactions, tasks, approvals, proposals or memory entries, or "no answer needed". Depth and hourly brakes; the permission relay never.
-- Channel memory: entries (title, text, tags, author, pinned, expiry) with a Memory tab and a digest in every brief. Alternatives: decision/note messages, workflow tables.
-- Owner questions: approvals (a person decides) and polls opened to keys; the outcome as a decision line and in the brief.
-- Discussion following (workspace/workspace-discussion-follow.md) is the first wake rule, not Claude-only.
+- A channel setting "Agent channel": applications, Claude sessions and model assistants as members, each with a wake rule (mentioned only, every message, a prefix such as `[ci]`, replies to its own) and a door (below). A matching message makes one `ws_ai_requests` row per agent, shown on the message; `GET /workspace/agent-requests` and a claim with 409 generalise Claude's; the brief: preamble, context, channel memory, the loop-guard text; an answer: a message with `parent_id`, a reaction, a task, an approval, a proposal, a memory entry, or "no answer needed".
+- Channel memory: entries (title, text, tags, author, pinned, expiry), a Memory tab, a digest in every brief. Decision marks: any member marks a message as a decision, its line goes into the brief; the owner's own marked message is an owner decision (`decisions-made-workspace-7.md`, `architect.md`).
 
-## What was verified? (2026-10-28)
-- Claude Code channels run on the owner's machine with a stdio bridge (dev flag, org channelsEnabled, 4–6 s). Cloud sessions get no channel: their door is a background waiter polling `GET /workspace/sync` (ETag) that exits on a matching message; untested in the cloud.
-- The site already has app keys with handles, sync, body tokens, reactions, threads, preamble, approvals. Missing: `parent_id` on messages.create, app channel membership, presence, a loop brake, polls for keys.
+## How is an agent woken? (owner, 2026-11-07)
+- Doors: `push` (the site POSTs to the agent's URL with its secret when a request is made or a wake is due: a cloud session's inbound webhook, a claude.ai routine's `/fire` as `ws_claude_fire()` does today, any webhook receiver) and `poll` (the agent reads `GET /workspace/agent-requests`, or waits on `GET /workspace/sync` with ETag). A failed push is retried with backoff and shown on the card; the request stays queued for the next poll or claim: no door loses work.
+- Scheduled wakes: an agent, or a person for it, sets `every N minutes` or `at <time>` with a note, through the API or `/wake @agent …` in the channel; the site's general cron job makes the wake request at its time and knocks the door. The schedule sits on the agent's card. A coordinator moves its check-in chain here once A4 is proven (the site's cron is always on; a session's own chain breaks on restart).
+- A coordinator is a member like any agent (`@koordinator-a`, kind `claude`, door push or poll); the owner directs it from the channel.
+
+## Which tools do agents use? (owner, 2026-11-07)
+- The site's MCP server: every API route is a tool under the agent's scopes (`api/api-mcp-server.md`), no second catalogue. There already: messages, notes, files, tasks, polls, approvals, proposals, flows, workflow tables; A5 adds the decision mark and the memory entries, A9 the canvas. A question to people is a poll or an approval; the answer is marked as the decision.
 
 ## What holds before any step?
-- No schema until a behaviour is proven with existing parts; record writes stay proposals; irreversible kinds always a person; one action catalogue with risk tiers before any direct agent write; a prompt is never a security layer.
+- Schema only through a migration step, asked once per step (A3, A5): one agents table and one channel-agent row, never two registries. Record writes stay proposals until A7's tiers; irreversible kinds always a person unless the channel's manager allowed tier 3 to that agent; a prompt is never a security layer: the depth and hourly brakes are code from A3 on; the permission relay never runs unattended. A push carries only ids and the site address, never the brief: the agent reads it with its own key.
+- Answered 2026-11-06 (`decisions-made-workspace-7.md`): a key per agent; memory as entries; an agent edits only its own messages; unattended flows up to tier 3 where allowed; marks by any member; the loop-guard text per channel.
 
-## Slices (none claimable yet)
-0. Experiment without site change: per-agent application keys, a private channel on dev.pinegrap.com, `tools/ws_wait.php` and `tools/ws_post.php`, a GitHub Actions step posting `[ci]` and `[ready]`, a workflow memory note; measured for a week.
-
-1. Claude routine hardening: a claim refuses a run that has not read the current instructions (409 `instructions_outdated`, a system line), the last call's version on the card, a guide warning.
-
-2. `parent_id` on `workspace.messages.create`; "no answer needed" on Claude's answer route.
-
-3. Agent membership and wake rules (schema, architect); the general request queue and claim routes.
-
-4. Channel memory entries and tab (schema); approvals and polls as owner questions; decision lines in the brief.
-
-5. Risk tiers on `ws_change_types()`, an execution policy, an undo journal for agent changes; then flows: an "ask an agent" box, agent-started runs by permission.
-
-6. A chat box on the dashboard and the connector path on the same catalogue; the bridge as a Claude Code plugin (ACP considered).
-
-## Which questions are open?
-1. Agent identity: an application key per agent (recommended), a user account, or OAuth with a "via" badge.
-2. Memory model: an entries table (recommended) or workflow tables.
-3. May an agent edit or delete its own messages in an agent channel?
-4. The highest tier an unattended flow runs without a person; the chat box's model.
-5. Does the owner's answer in the Workspace count as the owner's (today only in the architect's window)?
-
-## Where to start?
-- Nowhere until the owner reopens the plan; then slice 0, which touches no product code.
+## Who holds it, where does it start?
+- One coordinator and its workers; the agent channel comes before design templates (`feature-plans-2026-11.md`). Claim as `[plan:agent-channel] A<n> — <topic>`. A0, A1 and A2 now, side by side; A3 after A0 and A2; the steps in `agent-channel-steps.md` and `agent-channel-steps-2.md` (also what the plan took over from `workspace-agent-handles` and `claude-code-channel`).

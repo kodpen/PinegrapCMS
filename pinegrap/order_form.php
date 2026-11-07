@@ -321,6 +321,14 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                         && ($product['recurring_schedule_editable_by_customer'] == 1)
                     ) {
                         $liveform->validate_required_field('recurring_payment_period_' . $product['id'], lang('Frequency is required.'));
+
+                        // Only a period from the fixed option list may be stored: the value
+                        // comes straight from the customer's POST and is later shown in the
+                        // cart and on the order. Anything else is refused here, before the
+                        // product is added, and the customer is asked to pick again.
+                        if (in_array((string) $liveform->get_field_value('recurring_payment_period_' . $product['id']), array_values(get_payment_period_options()), true) == false) {
+                            $liveform->mark_error('recurring_payment_period_' . $product['id'], lang('Frequency is required.'));
+                        }
                         
                         // if credit/debit card is enabled as a payment method and the payment gateway is set to ClearCommerce or First Data Global Gateway
                         // then require number of payments
@@ -429,7 +437,7 @@ if (($liveform->field_in_session('submit_add') == true) || ($liveform->field_in_
                     // if the customer can set the recurring schedule for this product then set values that customer entered
                     if ($product['recurring_schedule_editable_by_customer'] == 1) {
                         // set values that will be updated
-                        $recurring_payment_period = $liveform->get_field_value('recurring_payment_period_' . $product['id']);
+                        $recurring_payment_period = (string) $liveform->get_field_value('recurring_payment_period_' . $product['id']);
                         $recurring_number_of_payments = $liveform->get_field_value('recurring_number_of_payments_' . $product['id']);
                         
                         // if credit/debit card payment method is not enabled or the payment gateway is not ClearCommerce, then set start date to the value that the customer entered

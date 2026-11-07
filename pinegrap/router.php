@@ -1046,28 +1046,15 @@ function router_site_icon_set()
 
 function router_get_request_url()
 {
-    // the order of the conditionals below is important, because newer versions of IIS supply a REQUEST_URI value,
-    // but the value does not contain the original pretty URL and might also have other problems
-    
-    // if HTTP_X_REWRITE_URL is set (i.e. ISAPI_Rewrite is being used on IIS)
-    if (isset($_SERVER['HTTP_X_REWRITE_URL']) && $_SERVER['HTTP_X_REWRITE_URL']) {
-        return $_SERVER['HTTP_X_REWRITE_URL'];
-    
-    // else if REQUEST_URI is set (i.e. non IIS web server)
-    } elseif ($_SERVER['REQUEST_URI']) {
-        return $_SERVER['REQUEST_URI'];
-        
-    // else no REQUEST_URI or HTTP_X_REWRITE_URL can be found (i.e. IIS web server without ISAPI_Rewrite)
-    } else {
-        // if QUERY_STRING is set then return PHP_SELF and QUERY_STRING
-        if ($_SERVER['QUERY_STRING']) {
-            return $_SERVER['PHP_SELF'] . '?' . $_SERVER['QUERY_STRING'];
-            
-        // else QUERY_STRING is not set, so return just PHP_SELF
-        } else {
-            return $_SERVER['PHP_SELF'];
-        }
+    // The same choice as get_request_uri(): X-Rewrite-URL counts on IIS only,
+    // anywhere else it is a header the client made up.
+    if (!defined('PG_FUNCTIONS_DIR')) {
+        define('PG_FUNCTIONS_DIR', dirname(__FILE__));
     }
+
+    require_once(dirname(__FILE__) . '/includes/fn/request_scheme.php');
+
+    return pg_request_uri_from_server($_SERVER);
 }
 
 function router_output_error($error_message) {

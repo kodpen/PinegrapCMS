@@ -48,6 +48,14 @@ $pg_proto_frame = isset($_GET['frame']) && is_string($_GET['frame']) && ($_GET['
 define('PG_PROTOTYPE_ENTRY', true);
 require_once(dirname(__FILE__) . '/includes/fn/prototype_links.php');
 
+// pg_request_uri_from_server(), which pg_proto_link_request_uri() reads the
+// address with; functions.php loads the same file again without effect.
+if (!defined('PG_FUNCTIONS_DIR')) {
+    define('PG_FUNCTIONS_DIR', dirname(__FILE__));
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
+
 $pg_proto_link_mode = !$pg_proto_frame && (isset($_GET['link']) || isset($_GET['l']));
 
 if (isset($_GET['link'])) {
