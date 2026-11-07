@@ -1,10 +1,13 @@
 ---
 name: merge-train-order
-description: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs smaller first, an oversized PR alone and at the latest an hour after it became eligible
+description: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, an oversized PR alone and at the latest an hour after it became eligible
 ---
 
 ## Which PRs make the next train?
-- `merge_train_order()` in `tools/merge_train.php`, which `--list` prints and `--build` without numbers merges. Docs-only PRs land alone; PRs within 1,000 product lines (`working-mode.md`) form the train, smaller first, at most 12; the rest wait for a later train.
+- `merge_train_order()` in `tools/merge_train.php`, which `--list` prints and `--build` without numbers merges. Docs-only PRs land alone; PRs within 1,000 product lines (`working-mode.md`) form the train, longest-waiting first (`eligible_since`; equal waits smaller first, an unknown wait last), at most 12; the rest wait for a later train.
+
+## Why longest-waiting and not smaller first?
+- With smaller first each new small PR went to the top, and the trains of 2026-11-07 afternoon took only the first one to three (#7919, #7921, #7924, #7925). #7880 (979 lines, ready and green since 13:55 UTC), #7890 (818, since 14:26) and #7897 (804, since 14:53) starved while PRs ready at 16:46 landed within half an hour, though nothing but the order blocked them.
 
 ## When does a PR over the size limit ride?
 - Always in a train of its own, so a red train is easy to blame. It is the train when no small PR waits, or once it has been eligible for an hour or more (`MERGE_TRAIN_OVERSIZED_WAIT_SECONDS`): then it goes ahead of the small PRs, which take the next train, stacked with `--start --stack` ([[merger-wake]]) so no wall time is lost. Of several overdue ones the longest-waiting goes first, equal waits the smaller first.
