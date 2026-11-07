@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
 - The visitor path (`custom_form.php`) with its CAPTCHA and spam rules; file upload and signature fields stay unsendable; an API caller is staff (forms scope).
 
 ## What did the audit (F1) find?
-- 606 routes run on a sandbox (every GET, every `dry_run` write): no 500. `GET /campaigns/sms` 503 fixed in #7967. None of the gaps needs a product decision; each mirrors the panel's write path (`api/api-panel-coverage.md`):
+- 245 GET routes and 353 `dry_run` writes ran on a sandbox: no 500; the 8 writes without `dry_run` were not called. None of the gaps needs a product decision; screen and route of each in `api/api-panel-coverage.md`:
   - G1 no `GET /inventory/moves` (stock history, `includes/fn/stock_moves.php`).
   - G2 no route writes the staff answer to a product question.
   - G3 ContactGroup does not say it is filled by rules; no Refresh now.
