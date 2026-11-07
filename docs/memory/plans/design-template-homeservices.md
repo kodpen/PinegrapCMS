@@ -15,7 +15,7 @@ description: Plan: the Home Services design template (pinegrap-homeservices): se
 
 - 2 (done, #7865): `pages_public.php`: home, `about`, `areas` (each area with its visit days and call-out note, links to `book?area=`), `prices` (the price guide from the sample services), `faq`, `reviews` (testimonials, the `google_reviews` widget placed); test.
 
-- 3: `services.php`: the Services collection (`services` by `?category=`, the `service` page with rated reviews, `service_new`, `home_services`) and the Team collection (`team`, `team_member`, `team_new`, `home_team`); test.
+- 3 (done, #7881): `services.php`: the Services collection (`services` by `?category=`, the `service` page with rated reviews, `service_new`, `home_services`) and the Team collection (`team`, `team_member`, `team_new`, `home_team`); test.
 
 - 4: `mail.php` (the e-mail builders) and `visits.php`: `book` (with `?service=`, `?area=`), `visit_view`, `my_visits`, `staff_visits`, `privacy`, `email_reply`, the visit e-mails; test.
 
@@ -29,7 +29,8 @@ description: Plan: the Home Services design template (pinegrap-homeservices): se
 
 ## Where to start?
 - The next free step is the lowest one not marked done. Model files: `pinegrap-travel/` (collections, requests, enquiries, shop), `pinegrap-cafe.php` (`min_date`, `required_when`). Later tests share `_test_hs_page_keys()` and `_test_hs_shop_keys()` from `tests/design_template_homeservices_test.php`.
-- Check a shared key's Turkish before reuse ("Booking" reads "rezervasyon" in Travel keys; a visit is "ziyaret"). PHP 7.1: no trailing comma after a call's last argument.
+- Step 4's form reads `?service=` (`$service_choices`) and `?area=` (`$area_names`); reuse `$hs_page_link`, `$hs_toolbar`, `$hs_not_found` from `services.php`.
+- Check a shared key's Turkish before reuse (`Service`, `Services`, `Booking` and `Book this service` do not say "hizmet" or "ziyaret"). PHP 7.1: no trailing comma after a call's last argument.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
