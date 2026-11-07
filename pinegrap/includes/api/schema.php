@@ -3836,7 +3836,7 @@ function api_schema() {
 			'handler' => 'api_forms_get',
 			'returns' => 'Form',
 			'summary' => 'One form, with its fields',
-			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen. Beside the fields: framework, the page framework of the page\'s design (bootstrap5 or custom), which the classes in rich text may rely on; is_collection, whether the form is marked as a collection; record_url_pattern, where a record is read on the site ({address_name} or {reference_code} in place of the record), null when no public page shows the records. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
 			)
@@ -3904,7 +3904,7 @@ function api_schema() {
 			'handler' => 'api_form_fields',
 			'returns' => array('list' => 'FormField'),
 			'summary' => 'The fields of a form',
-			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. rich_text marks a text area drawn with the rich-text editor: its answer is HTML, html_allowed lists the tags, attributes, style properties, address schemes and image hosts it keeps (anything else is removed or unwrapped), and max_length is the longest answer in characters; both are null on other fields. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
 			)

@@ -717,6 +717,7 @@ function api_openapi_objects()
         'Seo'          => 'api_seo_schema',
         'Form'           => 'api_form_schema',
         'FormField'      => 'api_form_field_schema',
+        'FormHtmlAllowed' => 'api_form_html_allowed_schema',
         'FormSubmission' => 'api_form_submission_schema',
         'SeoIssue'       => 'api_seo_issue_schema',
         'SeoNotFound'    => 'api_seo_not_found_schema',
