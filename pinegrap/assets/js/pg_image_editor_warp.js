@@ -12,8 +12,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -231,6 +231,13 @@
         if (!l || !M.warpOn(l) || (l.warp.style !== 'mesh')) {
             return;
         }
+
+        // While the mesh shows, the selection's resize, rotate and radius
+        // handles are hidden as while pinning (the class Free deformation
+        // sets): the corner ones sat on the mesh's corner points, and with
+        // a finger's 44 px targets they covered each other. Select keeps
+        // them.
+        Array.prototype.forEach.call(this.selEl.querySelectorAll('.pgie-selbox'), function (b) { b.classList.add('pgie-pinning'); });
 
         var v = this.view, vr = this.viewRect(), k = v.k, wp = l.warp, i, d = '';
         var box = el('div', { class: 'pgie-wbox' });

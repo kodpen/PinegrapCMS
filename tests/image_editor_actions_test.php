@@ -162,3 +162,23 @@ function test_image_editor_actions_only_on_small_screens()
 	pg_assert_true(preg_match('/\.pgie-actwrap \{[^}]*display: none;/', $css) === 1, 'hidden by default');
 	pg_assert_true(preg_match('/@media \(max-width: 767\.98px\), \(max-height: 499\.98px\) \{\s*\.pgie-actwrap\.on \{\s*display: flex;/', $css) === 1, 'shown where the panel is a sheet');
 }
+
+// A chosen deformation pin puts Remove pin first, before Options; Delete
+// still removes the layer.
+function test_image_editor_actions_chosen_pin()
+{
+	$r = image_editor_actions_node(
+		'console.log(JSON.stringify({ pin: names({ layers: 1, free: 1, pin: true, sheet: true }), open: names({ layers: 1, free: 1, pin: true, sheet: false }),'
+		. ' noLayer: names({ layers: 0, free: 0, pin: true, sheet: true }) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('removePin', 'options', 'duplicate', 'remove'), $r['pin'], 'Remove pin first');
+	pg_assert_same(array('removePin', 'duplicate', 'remove'), $r['open'], 'with the sheet open');
+	pg_assert_same(array(), $r['noLayer'], 'no layer, no bar');
+}
+

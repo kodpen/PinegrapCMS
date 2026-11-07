@@ -27,8 +27,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -413,7 +413,7 @@
         if (kind === 'polygon') {
             var poly = this.areaPoly;
 
-            if (poly && (poly.pts.length > 2) && (Math.hypot(p[0] - poly.pts[0][0], p[1] - poly.pts[0][1]) * k < CLOSE_PX)) {
+            if (poly && (poly.pts.length > 2) && (Math.hypot(p[0] - poly.pts[0][0], p[1] - poly.pts[0][1]) * k < M.touchReach(e.pointerType, CLOSE_PX))) {
                 this.areaClosePolygon();
                 return;
             }
@@ -837,14 +837,20 @@
 
     };
 
-    // A press takes an area layer only inside its outline (M.areaHit()).
-    function hitArea(l, p) {
-        return M.areaHit(l, p);
+    // An erased or adjusted area is the picture's own (M.pictureArea()): a
+    // press on the stage never takes it, so a press in a see-through hole
+    // goes to the picture under it, and the Select tool neither moves nor
+    // resizes it (no box handles, fixed). It is chosen in the Layers list,
+    // deleted to bring the picture back, and moves with the picture.
+    function noPress() {
+        return false;
     }
 
     Editor.layerTypes.erase = {
         node: maskNode,
-        hit: hitArea,
+        hit: noPress,
+        box: false,
+        fixed: true,
         name: function () { return t('layer_erase'); },
         panel: function (body, layers) {
             if (layers.length === 1) {
@@ -855,7 +861,9 @@
 
     Editor.layerTypes.adjust = {
         node: maskNode,
-        hit: hitArea,
+        hit: noPress,
+        box: false,
+        fixed: true,
         name: function () { return t('layer_adjust'); },
         panel: function (body, layers) {
             if ((layers.length === 1) && this.doc.source) {

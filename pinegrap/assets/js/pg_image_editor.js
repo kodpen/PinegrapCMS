@@ -39,8 +39,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function () {
@@ -1067,13 +1067,20 @@
         var seg = el('div', { class: 'pgie-seg pgie-modes', role: 'group', 'aria-label': t('railMode') });
 
         item.modes.forEach(function (m) {
-            var on = (m === self.tool), label = t((strings['mode_' + m] !== undefined) ? 'mode_' + m : 'tool_' + m);
-
-            seg.appendChild(el('button', { type: 'button', class: on ? 'on' : '', 'aria-pressed': on ? 'true' : 'false', text: label, onclick: function () {
+            var on = (m === self.tool), label = t((strings['mode_' + m] !== undefined) ? 'mode_' + m : 'tool_' + m), key = M.toolKey(m, self.tools.list);
+            var b = el('button', { type: 'button', class: on ? 'on' : '', 'aria-pressed': on ? 'true' : 'false', text: label, onclick: function () {
                 if (m !== self.tool) {
                     self.pickTool(m);
                 }
-            } }));
+            } });
+
+            // The mode's letter, as a tool button carries its own.
+            if (key) {
+                b.title = label + ' (' + key + ')';
+                b.setAttribute('aria-keyshortcuts', key);
+            }
+
+            seg.appendChild(b);
         });
 
         return seg;

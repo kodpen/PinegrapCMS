@@ -12,8 +12,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -87,6 +87,26 @@
     Editor.prototype.removePin = function (l, i) {
         this.puppetPin = -1;
         this.setPins(l.id, function (pins) { return pins.filter(function (p, n) { return n !== i; }); });
+    };
+
+    // The layer and index of the chosen pin while Free deformation is on,
+    // or null.
+    Editor.prototype.chosenPin = function () {
+        var l = (this.tool === 'puppet') ? this.puppetTarget() : null;
+
+        if (!l || !(this.puppetPin >= 0) || !l.puppet || !Array.isArray(l.puppet.pins) || !(this.puppetPin < l.puppet.pins.length)) {
+            return null;
+        }
+
+        return { layer: l, i: this.puppetPin };
+    };
+
+    Editor.prototype.removeChosenPin = function () {
+        var c = this.chosenPin();
+
+        if (c) {
+            this.removePin(c.layer, c.i);
+        }
     };
 
     // ---- the panel ----
@@ -200,7 +220,7 @@
             p = this.toDoc(e.clientX, e.clientY);
             q = M.drawnLocal(l, p[0], p[1]);
 
-            if (!onShape(M.outline(l), q, EDGE / this.view.k) || ((l.puppet && l.puppet.pins.length) >= M.PUPPET_MAX)) {
+            if (!onShape(M.outline(l), q, M.touchReach(e.pointerType, EDGE) / this.view.k) || ((l.puppet && l.puppet.pins.length) >= M.PUPPET_MAX)) {
                 this.puppetPin = -1;
                 this.startDrag(e);
                 return;
@@ -250,16 +270,36 @@
         }, 'drag', true);
     };
 
-    // Delete or Backspace removes the chosen pin before the layer keys
-    // would delete the layer.
+    // With a pin chosen, Delete or Backspace removes it and the arrows
+    // move it (1 px, with Shift 10, in the document), before the layer keys
+    // would delete or move the layer. A run of presses is one undo step.
     Editor.prototype.puppetKey = function (e, mod, k) {
-        var l = (this.tool === 'puppet') ? this.puppetTarget() : null;
+        var c = this.chosenPin(), dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
 
-        if (!l || mod || ((k !== 'Delete') && (k !== 'Backspace')) || !(this.puppetPin >= 0) || !l.puppet || !(this.puppetPin < l.puppet.pins.length)) {
+        if (!c || mod || e.altKey) {
             return false;
         }
 
-        this.removePin(l, this.puppetPin);
+        if ((k === 'Delete') || (k === 'Backspace')) {
+            this.removePin(c.layer, c.i);
+            return true;
+        }
+
+        if (!dir) {
+            return false;
+        }
+
+        var step = e.shiftKey ? 10 : 1, at = M.puppetNudge(c.layer, c.i, dir[0] * step, dir[1] * step);
+
+        if (at) {
+            this.setPins(c.layer.id, function (pins) {
+                if (pins[c.i]) {
+                    pins[c.i].at = at;
+                }
+
+                return pins;
+            }, 'pin-nudge');
+        }
 
         return true;
     };
