@@ -668,6 +668,7 @@
     "Limited visibility, late reporting": "Sınırlı görünürlük, geç raporlama",
     "Linden": "Ihlamur",
     "Linden Street 12, Garden District": "Ihlamur Sokak 12, Bahçe Mahallesi",
+    "Linden Street 8, Market Square": "Ihlamur Sokak 8, Çarşı Meydanı",
     "Line": "Çizgi",
     "Line \"{var:1}\" could not be written to Paraşüt because of a database error: {var:2}. The invoice was not written; send again once the database error is put right.": "\"{var:1}\" satırı bir veritabanı hatası yüzünden Paraşüt'e yazılamadı: {var:2}. Fatura oluşturulmadı; veritabanı hatası giderildikten sonra yeniden gönderin.",
     "Line \"{var:1}\" has an amount below zero, and Paraşüt takes no such line: a line's price, discount and VAT must be zero or more. Nothing was sent to Paraşüt.": "\"{var:1}\" satırının tutarı sıfırın altında; Paraşüt eksi tutarlı satır kabul etmiyor: satırın fiyatı, indirimi ve KDV'si sıfır ya da daha büyük olmalı. Paraşüt'e hiçbir şey gönderilmedi.",

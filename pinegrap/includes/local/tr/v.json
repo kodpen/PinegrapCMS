@@ -423,6 +423,8 @@
     "Visual designer pages keep the HTML drawn when they were last saved. This draws every page again from what was saved, so pages published before responsive images, or before a format was switched on or off, get the current picture markup. Their content, modified date and author do not change.": "Görsel tasarımcı sayfaları son kaydedildiklerinde oluşturulan HTML'i saklar. Bu işlem her sayfayı kaydedilmiş hâlinden yeniden oluşturur; böylece duyarlı görsellerden ya da bir biçim açılıp kapatılmadan önce yayımlanan sayfalar güncel görsel işaretlemesini alır. Sayfaların içeriği, değiştirilme tarihi ve yazarı değişmez.",
     "Visual editor": "Görsel editör",
     "Visual editor: the page tabs can be put in any order and gathered into named, coloured groups that fold up.": "Görsel editör: sayfa sekmeleri istenen sıraya dizilebiliyor ve daraltılabilen, adlı ve renkli gruplarda toplanabiliyor.",
+    "Vitamin D, iron, omega-3 and the supplements we would take ourselves, with advice on what you need.": "D vitamini, demir, omega-3 ve kendimizin de kullanacağı takviyeler; neye ihtiyacınız olduğuna dair öneriyle.",
+    "Vitamins and Supplements": "Vitaminler ve Takviyeler",
     "Vivid": "Canlı",
     "Vocals and rhythm guitar": "Vokal ve ritim gitar",
     "Voice": "Ses",
