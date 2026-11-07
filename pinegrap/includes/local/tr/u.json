@@ -576,6 +576,7 @@
     "used at most {var:1} time(s) in total": "toplamda en çok {var:1} kez kullanılmışsa",
     "used {var:1} times": "{var:1} kez kullanıldı",
     "used-cars": "ikinci-el-araclar",
+    "useful-numbers": "faydali-numaralar",
     "user": "kullanıcı",
     "user ({var:1}) added their name to the address book": "kullanıcı ({var:1}) adını rehbere ekledi",
     "user ({var:1}) completed their address book details": "kullanıcı ({var:1}) rehber bilgilerini tamamladı",
