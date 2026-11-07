@@ -374,7 +374,9 @@ function pg_language_switcher_html($options, $rows)
         . '<button type="button" class="' . $button_class . '" data-bs-toggle="dropdown" aria-expanded="false"'
         . ' aria-label="' . h(lang(array('string' => 'Language: {var:1}', 'vars' => array($current['label'])))) . '">'
         . $icon . '<span lang="' . h($current['code']) . '" translate="no">' . h($label($current)) . '</span></button>'
-        . '<ul class="dropdown-menu' . (($options['align'] !== 'start') ? ' dropdown-menu-' . $options['align'] : '') . '" translate="no">' . $items . '</ul>'
+        // Above a sticky header, like the login region's menu beside it in an
+        // account bar (pg_sw_header_menu_z_index()).
+        . '<ul class="dropdown-menu' . (($options['align'] !== 'start') ? ' dropdown-menu-' . $options['align'] : '') . '" style="z-index:' . pg_sw_header_menu_z_index() . '" translate="no">' . $items . '</ul>'
         . '</div>';
 }
 

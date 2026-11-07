@@ -262,10 +262,11 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-prototype-share-link-frame.md: A prototype share link's frame: signed by link id (never the token), bound to the viewer's session; clicks go back through the viewer, new tabs by ?l=<id>; a failing page shows no reason
 - designer-prototype-share-links.md: Share links of a design's prototype (prototype_links, 11.0.35): makers, audiences, what anyone sees, the password lock, the token kept out of logs and the frame, uses, revoked with the design
 - designer-prototype-viewer.md: prototype.php plays a design's saved drafts (roles 0-2, or a share link): a session-less frame signed for one browser, link kinds, inert forms, no tracking, link_resolve.php
+- designer-publish-sheet.md: The visual designer's Publish sheet: which pages it lists and checks, what Publish selected writes, how an unchecked changed page is held out of the one save, and where the old publishing menu went
 - designer-records-site-search.md: How the search index finds records of visual-editor pages: qualifying lists, item fields and folder, no record page items, failure isolation (#1197)
 - designer-region-to-shared-component.md: A classic designer region made a designer-only shared component from the designer (R3): PHP blocks as custom_php nodes, placeholders as region nodes, nested refs
 - designer-regions-api-missing-fields.md: api.php get_designer_regions reads missing content and search fields as not sent, so the LiveSite migration's request gets clean JSON (#4722)
-- designer-save-shortcut.md: Ctrl+S in the visual editor: it presses the main Save/Publish button, its two listeners, which dialogs keep their own, and why a toolbar hint is changed only through _sdSetButtonTitle().
+- designer-save-shortcut.md: Ctrl+S in the visual editor: the one save of the whole design without the Publish sheet, its two listeners, the dialogs that keep their own, and toolbar hints via _sdSetButtonTitle()
 - designer-screen-messages.md: The visual designer screen shows liveform errors, warnings and notices as its own toasts, never as the panel's alert boxes (#4892)
 - designer-scroller-controls.md: Previous/next buttons of the scroller-cards block: the row marker, pg_scroller.js and where it is added (page, preview, canvas), one-card step, ends, reduced motion, RTL.
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
@@ -297,6 +298,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-list-viewer-filter.md: A form list's viewer filter (submitter, editor, watcher, ORed): who counts as which; watchers of the detail page, classic or designed with a record view of the list's form
 - frontend-conventions-layers.md: Palette component vs system widget layers and where each is documented, legacy pages as production and yardstick, no dead code in the widget layer, the invariant principles for system widget work.
 - google-reviews-widget.md: Google Reviews widget (kind google_reviews): Place Details with a Places API key, the settings card, the sealed state and short cache, tokens, attribution, nothing drawn when not set up
+- header-menu-stacking.md: The account menu (login region) and language list of a template's account bar come down over a sticky header: pg_sw_lift_header_menus(), the 1025 level, the covered first rows it fixed
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: The visual designer's "Edit image" on an image field: the field contract, replace versus copy, why the picture saves apart from the design
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
