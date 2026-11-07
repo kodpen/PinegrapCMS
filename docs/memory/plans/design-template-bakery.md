@@ -13,7 +13,7 @@ description: Plan: the Bakery design template (pinegrap-bakery): daily bake, cak
 ## Steps (claim as `[plan:design-template-bakery] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7651): `parts.php` (builders, the bakery's data and pick lists, shared parts, bake, cake, class and testimonial cards, form fields, comment thread, blog parts); `tests/design_template_bakery_test.php`.
 
-- 2: `pages_public.php`: home (`home_classes`, `home_posts` placed), `bakes` (the daily bake by category), `cakes`, `how_to_order` (pickup days and times as words), `wholesale`, `visit`, `about`, `faq`; `tests/design_template_bakery_public_test.php`.
+- 2 (done, #7895): `pages_public.php`: home (`home_classes`, `google_reviews`, `home_posts` placed), `bakes` (the daily bake by category), `cakes`, `how_to_order` (pickup days and times as words), `wholesale`, `visit`, `about`, `faq`; `tests/design_template_bakery_public_test.php`.
 
 - 3: `classes.php`: the Baking Classes collection (`classes` by `?level=`, the `class` page, `class_new`, `home_classes`); test.
 
