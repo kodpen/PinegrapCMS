@@ -17,7 +17,7 @@ description: Plan: the Museum / Art Gallery design template (pinegrap-museum): e
 
 - 3 (done, #7684): `exhibitions.php`: Exhibitions collection, `exhibitions` by `?status=`, `exhibition`, `exhibition_new`, `home_exhibitions`; test.
 
-- 4: `objects.php`: the Collection Highlights collection (`collection` by `?department=`, the `object` page, `object_new`); test.
+- 4 (done, #7713): `objects.php`: the Collection Highlights collection (`collection` by `?department=`, `object`, `object_new`); test.
 
 - 5: `mail.php` (the e-mail builders) and `events.php`: the Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and place requests (`event_booking` with `?event=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`); test.
 
