@@ -15,7 +15,7 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 
 - 2 (done, #7849): `pages_public.php`: home, `visit`, `support`, `about`, `faq`; test.
 
-- 3: `productions.php`: the Productions collection, `season` by `?genre=` and `?status=`, `production`, `production_new`, `home_productions`; test.
+- 3 (done, #7859): `productions.php`: the Productions collection, `season` by `?genre=` and `?status=`, `production`, `production_new`, `home_productions`; test.
 
 - 4: `performances.php`: the Performances collection (production as a pick list, `perf_date` from today as in Music's shows), `whats_on` by `?production=` and `?access=`, `past_performances`, `performance`, `performance_new`, `home_performances`; test.
 
