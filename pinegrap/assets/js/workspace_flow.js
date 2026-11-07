@@ -11870,6 +11870,9 @@
     //             the page's own has no flows
     //   strings   texts beside the page's own
     //   people    the team, for the boxes that name people
+    //   channels  the channels the person reads, for the boxes that name
+    //             one (a post, approval or check-in box)
+    //   departments the departments, for the boxes that assign to one
     //   onSelect  called with the box picked (embedNode()), null for none
     //   onClose   called once the drawing is gone
     // Returns { destroy(), fit(), select(id) }, null when it cannot draw.
@@ -11888,7 +11891,7 @@
         K = kit;
         CFG = K.cfg || {};
         FL = boot.config || CFG.flows || {};
-        BOOT = { people: boot.people || [] };
+        BOOT = { people: boot.people || [], channels: boot.channels || [], departments: boot.departments || [] };
         el = K.el;
         t = embedText(boot.strings);
 
