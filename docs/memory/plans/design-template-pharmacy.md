@@ -21,14 +21,16 @@ description: Plan: the Pharmacy design template (pinegrap-pharmacy): services, p
 
 - 5 (done, #8005): `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: the product ranges' health products); test.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, Health Advice (`blog`, filtered by `?topic=`), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #8025): `standard.php`: contact, inbox, conversation, newsletter, Health Advice (`blog`, filtered by `?topic=`), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-pharmacy.php` (order, search sections, look, fonts, `prx-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-pharmacy.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The lowest step not marked done. Model: `pinegrap-veterinary/` (same shape). The prescription request's lists: `?service=` `$request_choices`, `?pharmacist=` `$pharmacist_choices`; the question's `?topic=` `$topic_choices` (the blog post sends its topic). Step 4 adds to `prescription` a "Book a vaccination or check" box linking `book_online` and ships `privacy` (named `lang('privacy-policy')`); step 6's blog filters `?topic=`. `_test_rx_page_keys()` (step 1 test) lists every page key; later tests `require_once` it. The parts' data and helpers are in `parts.php` (`$tel`, `$service_action`, `$record_link` in `team.php`); Turkish keys only with `php tools/tr_add.php`, word rules (eczane, eczacı, reçete, nöbet, aşı) are checked by every part's test, page addresses excepted.
+- The lowest step not marked done. Model: `pinegrap-veterinary/` (same shape); Veterinary has no shop, standard or account part, so `shop.php` followed `pinegrap-market/`, `standard.php` `pinegrap-gym/`, and step 7 follows `pinegrap-gym/account.php`.
+- Step 7: the post form (`blog_new`) needs a `topic` select whose answers are `$topic_titles`: Health Advice's filter (`blog_list`, `?topic=`) and the article's eyebrow and "Ask a Pharmacist" link (`?topic=` from the record) read the field `topic` (#8025).
+- Step 8: `standard.php` also ships `email_new_message`, `email_message_received` and `email_welcome`, which `_test_rx_page_keys()` does not list yet; the shop's catalog is `shop.php`'s `catalog`. The prescription request's lists: `?service=` `$request_choices`, `?pharmacist=` `$pharmacist_choices`; the question's `?topic=` `$topic_choices` (the blog post sends its topic). Step 4 adds to `prescription` a "Book a vaccination or check" box linking `book_online` and ships `privacy` (named `lang('privacy-policy')`); step 6's blog filters `?topic=`. `_test_rx_page_keys()` (step 1 test) lists every page key; later tests `require_once` it. The parts' data and helpers are in `parts.php` (`$tel`, `$service_action`, `$record_link` in `team.php`); Turkish keys only with `php tools/tr_add.php`, word rules (eczane, eczacı, reçete, nöbet, aşı) are checked by every part's test, page addresses excepted.
 
 ## Open questions
 - None: all reuses shipped features; new behaviour goes to the architect (Working mode 10).
