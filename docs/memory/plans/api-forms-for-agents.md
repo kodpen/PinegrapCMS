@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
 - One coordinator; the steps are small and independent except as marked. Claim as `[plan:api-forms-for-agents] F<n> — <topic>`; a route as `api/api-endpoint-rules.md` says, the OpenAPI declarations checked by `php tools/check_api_schema.php`, memory in `api/`.
 
 ## Which steps?
-- F1 (S, docs and tests) Audit. `free`. Every GET route run on dev and every write route with `dry_run`, compared with the panel screens added since #5239; the gaps as a list in this file (one that needs product behaviour goes to the architect); a test that every route's documented example passes its validator.
+- F1 (S, docs and tests) Audit. Done (#7967): the gaps below; `tests/api_route_examples_test.php`.
 - F2 (S) Form and field facts. `free`. Form: `framework` (of the page's design), `is_collection`, the record's site address pattern; a FormField of type `html`: `html_allowed` (the tags and attributes `pg_sanitize_rich_text()` keeps) and `max_length`; the choice fields keep their `options`; `GET /forms/{id}`, `/fields`, `api_form_field_schema()`.
 - F3 (M) Rich text in. After F2. `html` answers on create and update through the visitor path's sanitiser (`pg_sanitize_rich_text()`), the site's own address folded back to `{path}`, the length limit the column takes instead of 10,000; `author_user_id` (staff, the key's owner by default); the Status field as sent with its choices checked; `form.submitted` as today; the FormSubmission answer carries the record's address.
 - F4 (S) MCP guidance. After F2. The tools' descriptions say to read `forms_fields` first and what an `html` field takes; a resource `pinegrap://forms/{id}/fields`; a prompt `blog_post` (the form, the framework, the allowed HTML, the picture flow) (`api/mcp-resources-prompts.md`).
@@ -21,5 +21,15 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
 ## What stays as it is?
 - The visitor path (`custom_form.php`) with its CAPTCHA and spam rules; file upload and signature fields stay unsendable; an API caller is staff (forms scope).
 
+## What did the audit (F1) find?
+- 606 routes run on a sandbox (every GET, every `dry_run` write): no 500. `GET /campaigns/sms` 503 fixed in #7967. None of the gaps needs a product decision; each mirrors the panel's write path (`api/api-panel-coverage.md`):
+  - G1 no `GET /inventory/moves` (stock history, `includes/fn/stock_moves.php`).
+  - G2 no route writes the staff answer to a product question.
+  - G3 ContactGroup does not say it is filled by rules; no Refresh now.
+  - G4 no read or restore of a collection item's revisions.
+  - G5 Customer has no bounce state; no Allow again.
+  - G6 experiments start/pause/end take no `dry_run`.
+  - G7 a dry-run page or file delete creates the Recycle Bin before its stop (`pg_recycle_folder_id(true)`), warning `sessionusername` on the API path.
+
 ## Where does it start?
-- F1 and F2 now, side by side.
+- F2 now; G1-G7 are free work outside the F steps.
