@@ -21,7 +21,7 @@ description: Plan: the Construction Firm design template (pinegrap-construction)
 
 - 5 (done, #7679): `careers.php`: the Jobs collection (`careers`, `job` with an apply link `?job=`, `job_new`) and applications (`application`, `application_view`, `my_applications`, `staff_applications`); test.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #7710): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]), `home_posts`, `google_reviews`; no newsletter band (the quote band sits above the footer); the reply e-mail stays quotes.php's; test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
