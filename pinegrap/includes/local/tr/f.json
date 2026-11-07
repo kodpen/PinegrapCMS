@@ -1803,6 +1803,8 @@
     "fitness, walking, hiking, difficulty, level": "kondisyon, yürüme, doğa yürüyüşü, zorluk, seviye",
     "fixed price, on time, project manager, safety, reliable": "sabit fiyat, zamanında, proje müdürü, güvenlik, güvenilir",
     "fixed price, payments, stages, warranty, guarantee, reports": "sabit fiyat, ödemeler, aşamalar, garanti, teminat, raporlar",
+    "fixtures": "fikstur",
+    "fixtures, next match, kick-off, schedule, calendar": "fikstür, sıradaki maç, başlama saati, program, takvim",
     "fixtures, results, kick-off, score, next match": "fikstür, sonuçlar, başlama saati, skor, sıradaki maç",
     "flights, airfare, plane, airport": "uçuş, uçak bileti, uçak, havalimanı",
     "flow run {var:1} failed": "akış çalışması {var:1} başarısız oldu",
