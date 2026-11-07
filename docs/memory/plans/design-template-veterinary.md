@@ -13,7 +13,7 @@ description: Plan: the Veterinary Practice design template (pinegrap-veterinary)
 ## Steps (claim as `[plan:design-template-veterinary] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7649): `parts.php` (node builders, the practice's data and pick lists, shared parts, service, species, vet, plan and testimonial cards, form fields, comment thread, blog parts); `tests/design_template_veterinary_test.php`.
 
-- 2: `pages_public.php`: home (`home_vets`, `home_posts` as widgets), `services` and one `service_<key>` per service, `pets`, `emergency`, `new_clients`, `health_plans`, `about`, `faq`, `location`; `tests/design_template_veterinary_public_test.php`.
+- 2 (done, #7800): `pages_public.php`: home (`home_vets`, `home_posts` as widgets), `services` and one `service_<key>` per service, `pets`, `emergency`, `new_clients`, `health_plans`, `about`, `faq`, `location`; `tests/design_template_veterinary_public_test.php`.
 
 - 3: `vets.php`: the Vets collection (`vets` by `?species=`, the `vet` page with its days and an appointment link `?vet=`, `vet_new`) and `book_online` (booking widget starter, privacy link, [[booking-templates]]); test.
 
