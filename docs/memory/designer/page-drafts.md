@@ -17,7 +17,7 @@ description: Drafts of visual-designer pages (2026.4.7): the private Drafts fold
 
 ## How does the editor show it?
 - A page the editor creates starts as a draft: a new path that creates a tab sets `page_draft: _pgNewPageDraft()` on it.
-- On a draft tab the main button is "Save", with `#sd-publish-page` "Publish" beside it (`_pgSetDraft([active key], false)`); a live tab has one button, "Publish". One save writes the whole design: Save on a draft also puts the pending changes of the live pages on the site, and the message says so.
+- On a draft tab the main button is "Save", with `#sd-publish-page` "Publish" beside it; a live tab has one button, "Publish". Both Publish buttons open the Publish sheet (`designer-publish-sheet.md`). Save on a draft writes the whole design: it also puts the pending changes of the live pages on the site, and the message says so.
 - `_pgSetDraft()` marks nothing while shared components load or in view mode: a mark left behind would show a state the site does not have.
 
 ## What do copies and pickers do?

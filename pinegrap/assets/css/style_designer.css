@@ -6302,26 +6302,17 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
    the same pill, solid rather than dashed; the time is its title. */
 .sd-tab-sched-badge { border-style: solid; padding: 0 .3rem; }
 .sd-tab-sched-badge .bi { font-size: .62rem; }
-.sd-publish-more { display: inline-flex; margin-left: -4px; }
-#sd-publish-more.sd-publish-more-btn {
-    width: 22px;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-left-color: rgba(255, 255, 255, .28);
-    font-size: .7rem;
-}
-#sd-ajax-save.sd-publish-btn:has(+ .sd-publish-more) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-/* The menu joins the button beside it: the main one on a page on the site,
-   the draft's Publish (which stands between them) on a draft. */
-#sd-ajax-save.sd-publish-btn:not(.sd-publish-solo):has(+ #sd-publish-page + .sd-publish-more),
-#sd-publish-page.sd-publish-btn:has(+ .sd-publish-more) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-#sd-ajax-save.sd-publish-draft,
-#sd-ajax-save.sd-publish-draft + .sd-publish-more #sd-publish-more { background: #373e47; border-color: #545d68; }
-#sd-ajax-save.sd-publish-draft:hover,
-#sd-ajax-save.sd-publish-draft + .sd-publish-more #sd-publish-more:hover { background: #444c56; }
-@media (max-width: 1023.98px) {
-    .sd-publish-more { margin-left: -2px; }
-}
+#sd-ajax-save.sd-publish-draft { background: #373e47; border-color: #545d68; }
+#sd-ajax-save.sd-publish-draft:hover { background: #444c56; }
+/* The Publish sheet (pg_designer_publish.js): one row per page, its state
+   as a pill at the end. */
+.sd-publish-row { cursor: pointer; border-color: #30363d; }
+.sd-publish-row:has(input:disabled) { cursor: default; opacity: .65; }
+.sd-publish-state { font-weight: 500; border: 1px solid currentColor; background: transparent; }
+.sd-publish-state-live { color: #3fb950; }
+.sd-publish-state-draft { color: #8b949e; }
+.sd-publish-state-scheduled { color: #d29922; }
+.sd-publish-state-held { color: #a371f7; }
 
 /* ── Palette hover card (_sdPalTipShow): what an item is, with a drawing
    of the grid and Bootstrap items. It never takes the pointer, so a drag
