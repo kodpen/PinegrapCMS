@@ -21,7 +21,7 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 
 - 5 (done, #7897): `mail.php`, `hire.php`: venue hire spaces, hire enquiries (`hire`, `hire_view`, `my_hire`, `staff_hire`), `privacy`, `email_reply`; test.
 
-- 6: `learning.php`: `learning` (youth theatre groups and workshops by age), school group and youth theatre place requests; test.
+- 6 (done, #7957): `learning.php`: `learning` (youth theatre groups and workshops by age), school group and youth theatre place requests; test.
 
 - 7: `shop.php`: `tickets`, `friends`, product, cart, checkout, order, `email_order`, the catalog (Tickets and Friends groups, `shippable => false`) and gift vouchers; test.
 
