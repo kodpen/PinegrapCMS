@@ -12,17 +12,16 @@ description: Plan: the Architecture & Interiors Studio design template (pinegrap
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-architecture-design]].
 
 ## Steps (claim as `[plan:design-template-architecture] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7639): `parts.php` (node builders, the studio's data and pick lists, shared parts, cards, project facts, credits, gallery, form fields, comment thread, blog parts); `tests/design_template_architecture_test.php`.
+- 1 (done, #7639): `parts.php` (builders, data, pick lists, shared parts, cards, form fields, comment thread, blog parts); test.
+- 2 (done, #7767): `pages_public.php` (home, services and `service_<key>`, studio, team, process, awards, faq); test.
 
-- 2 (done, #7767): `pages_public.php`: home (`home_projects`, `home_posts`), `services` and one `service_<key>` per service, `studio`, `team`, `process`, `awards` (awards and press), `faq`; `tests/design_template_architecture_public_test.php`.
-
-- 3 (done, #7777): `projects.php`: the Projects collection (`projects` by `?type=` and `?location=`, the `project` page with facts, the gallery, the brief, the credits and the client's words, `project_new`), `home_projects`; test.
+- 3 (done, #7777): `projects.php` (`projects` by `?type=`/`?location=`, `project`, `project_new`, `home_projects`); test.
 
 - 4 (done, #7790): `mail.php`, `enquiries.php` (enquiry and consultation pages, `privacy`, `email_reply`, their e-mail pages); test.
 
-- 5 (done, #7802): `careers.php`: the Job Openings collection (`careers`, `job` with `?job=`, `job_new`) and applications (portfolio link and file, CV) with their pages and e-mails, reusing the record pieces of `enquiries.php`; test.
+- 5 (done, #7802): `careers.php` (Job Openings collection, applications with portfolio and CV, their pages and e-mails); test.
 
-- 6 (done, #7814): `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`), blog post, help search, error, `email_new_message`, `email_message_received`, `email_welcome`, and the home page's `home_posts` and `google_reviews`; test.
+- 6 (done, #7814): `standard.php` (contact, inbox, conversation, newsletter, Journal, post, search, error, their e-mails, `home_posts`, `google_reviews`); test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
