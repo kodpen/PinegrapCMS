@@ -1134,13 +1134,6 @@ function get_order_receipt($properties) {
                 $applied_gift_cards[] = $row;
             }
             
-            $output_gift_card_label_plural_suffix = '';
-            
-            // if there is more than 1 applied gift card, then prepare to output gift card label plural suffix
-            if (count($applied_gift_cards) > 1) {
-                $output_gift_card_label_plural_suffix = 's';
-            }
-            
             // update the grand total
             $grand_total = $grand_total - $gift_card_discount;
             
@@ -1153,7 +1146,7 @@ function get_order_receipt($properties) {
             
             $output_gift_card_discount =
                 '<tr class="gift_card_discount">
-                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Gift Card')) . $output_gift_card_label_plural_suffix . ':</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h((count($applied_gift_cards) > 1) ? lang('Gift Cards') : lang('Gift Card')) . ':</td>
                     <td class="mobile_right" style="text-align: right; white-space: nowrap">-' . prepare_price_for_output($gift_card_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
@@ -1185,7 +1178,7 @@ function get_order_receipt($properties) {
             $output_installment_charges =
                 '<tr class="order_totals data">
                     <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Installment Charge')) . ':</td>
-                    <td class="mobile_right" style="text-align: right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($installment_charges * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
 
