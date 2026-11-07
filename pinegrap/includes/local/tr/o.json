@@ -42,6 +42,7 @@
     "October": "Ekim",
     "October 2026": "Ekim 2026",
     "Odd row (1 or empty)": "Tek numaralı satır (1 ya da boş)",
+    "Of course. A group camps on a field of its own near a washing block; we can add glamping tents or cabins for those who would rather sleep in a bed.": "Elbette. Grup, bir duş ve tuvalet binasına yakın, kendine ayrılmış bir alanda kamp yapar; yatakta uyumak isteyenler için glamping çadırları ya da kulübeler ekleyebiliriz.",
     "Of course. If your child needs to be seen as well, book a separate appointment so the doctor has time for both of you.": "Elbette. Çocuğunuzun da muayene olması gerekiyorsa ayrı bir randevu alın; hekim ikinize de zaman ayırabilsin.",
     "Of course. Most tables are kept for guests who walk in; a booking only makes sure there is one for you at a busy time.": "Elbette. Masaların çoğu doğrudan gelen misafirlere ayrılır; rezervasyon yalnızca yoğun saatlerde size bir masa ayrılmasını sağlar.",
     "Of course. Share a room with another traveller of the same group, or ask for a room of your own; some departures carry no single supplement.": "Elbette. Aynı gruptan bir yolcuyla oda paylaşın ya da kendinize ait bir oda isteyin; bazı kalkışlarda tek kişi farkı yoktur.",
@@ -1708,7 +1709,9 @@
     "Other channels": "Diğer kanallar",
     "Other dates or a question? Write to us on the request's page; everything about your stay stays there.": "Başka tarihler mi, bir sorunuz mu var? Talebin sayfasından bize yazın; konaklamanızla ilgili her şey orada kalır.",
     "Other dates that suit you": "Size uyan diğer tarihler",
+    "Other dates, a question about the offer or something to add? Write to us below; we answer here and by e-mail.": "Başka tarihler, teklifle ilgili bir soru ya da eklemek istediğiniz bir şey mi var? Aşağıdan bize yazın; burada ve e-postayla yanıt veririz.",
     "Other dates, a question about the price or something to add? Write to us below; we answer here and by e-mail.": "Başka tarihler, fiyatla ilgili bir soru ya da eklemek istediğiniz bir şey mi var? Aşağıdan bize yazın; burada ve e-postayla yanıtlarız.",
+    "Other dates, more people or a question? Write to us below; the offer comes here too, and every answer by e-mail.": "Başka tarihler, daha fazla kişi ya da bir soru mu var? Aşağıdan bize yazın; teklif de buraya gelir, her yanıt e-postayla da gönderilir.",
     "Other deliveries": "Diğer teslimler",
     "Other designs": "Başka tasarımlar",
     "Other help links": "Diğer yardım bağlantıları",
@@ -1930,6 +1933,8 @@
     "Outcomes": "Sonuçlar",
     "Outdoor sessions move to another day at no cost, or into the studio if you prefer.": "Dış çekimler ücretsiz olarak başka bir güne ya da isterseniz stüdyoya alınır.",
     "Outdoors": "Doğa ve Açık Hava",
+    "Outfit": "Çadır veya araç",
+    "Outfit length (m)": "Araç uzunluğu (m)",
     "Outgoing Invoices": "Giden Faturalar",
     "Outgoing addresses must be https.": "Dışarıya giden adresler https olmalı.",
     "Outlet": "Yayın",
@@ -2161,5 +2166,6 @@
     "overheads, costs, percentage": "genel giderler, maliyetler, yüzde",
     "owes you": "size borçlu",
     "own suppliers, vendors, photographer, florist, catering": "kendi tedarikçiler, firmalar, fotoğrafçı, çiçekçi, yemek",
+    "own tents, field, glamping, cabins": "kendi çadırı, alan, glamping, kulübeler",
     "ownership, rights, files, domain": "sahiplik, haklar, dosyalar, alan adı"
 }
