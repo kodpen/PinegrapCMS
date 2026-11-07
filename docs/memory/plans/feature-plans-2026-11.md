@@ -4,12 +4,14 @@ description: The eleven feature plans approved 2026-11-02: index and order, how 
 ---
 
 ## What was decided? (owner, 2026-11-02)
-- Eleven features from the November gap review become plans, one file pair each (the plan, its steps). The twelfth candidate (design variables and classes) was left out.
+- Eleven features from the November gap review become plans, one file pair each (the plan, its steps). The twelfth candidate (design variables and classes) was left out, and stays out: with Bootstrap on the site output it would not pay (owner, 2026-11-06).
 - Every plan is held by **one coordinator and its five workers**; two coordinators run, so two plans are in work at a time. A coordinator finishes its plan before taking the next one from the order below.
 - Pinegrap's audience is mixed (bloggers, shops, agencies, corporate sites) and global: nothing in these plans is built around one country, and products or invoices are never put first.
 
 ## Which plans, in which order?
-- None left open: the last one (store credit) landed in 2026.11.0.
+- The eleven landed; the last one (store credit) in 2026.11.0.
+- Opened 2026-11-06 (owner): `designer-performance-and-publish` (the first coordinator; one worker at a time on D1-D5), then `agent-channel` and `api-forms-for-agents` (the second coordinator; the agent channel first, the API plan's free steps beside it).
+- Order (owner, 2026-11-07): the agent channel comes first and design templates second: a free worker slot takes a free step of an opened plan, the agent channel's before the others', and a template step or a new template plan only when no plan step is free; running template steps finish.
 
 ## How does a coordinator hold a plan?
 - It claims nothing itself and writes no code (`workflow/coordinator.md`). It gives its workers only step lines that say `free` or whose "After" steps are merged, at most five at once and never two on the same files; the steps file says which run side by side.
