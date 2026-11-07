@@ -15,7 +15,7 @@ description: Plan: the Driving School design template (pinegrap-drivingschool): 
 
 - 4 (done, #7939): `mail.php` (the e-mail builders) and `enrolments.php`: course enrolment requests (`enrol` with `?course=`, `enrolment_view`, `my_enrolments`, `staff_enrolments`), `privacy`, `email_reply`; test.
 
-- 5: `lessons.php`: lesson requests (`lesson_request` with `?licence=` and `?instructor=`, `lesson_request_view`, `my_lesson_requests`, `staff_lesson_requests`) and `book_online`; test.
+- 5 (done, #7980): `lessons.php`: lesson requests (`lesson_request` with `?licence=` and `?instructor=`, `lesson_request_view`, `my_lesson_requests`, `staff_lesson_requests`) and `book_online`; test.
 
 - 6: `stories.php`: pass stories as a collection (`stories` by `?licence=`, `story`, `story_new`, `home_stories`); test.
 
