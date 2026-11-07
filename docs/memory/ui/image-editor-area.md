@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where does it live?
-- Tool `area` ("Select area"), in the photo profile after Redact (not the canvas: it works on the picture). Part `area` (`pg_image_editor_area.js`, bundled after the redact part), labels in `pg_image_editor_strings_area()`, maths in the model's SELECTION section, tests in `tests/image_editor_area_test.php`. Steps E27a (#6611) and E27b (#6678, `plans/image-editor-steps-4.md`); the engine's mask step is `ui/image-editor-area-pixels.md`.
+- Tool `area` ("Select area"), in the photo profile after Redact (not the canvas: it works on the picture). Part `area` (`pg_image_editor_area.js`, bundled after the redact part), labels in `pg_image_editor_strings_area()`, maths in the model's SELECTION section, tests in `tests/image_editor_area_test.php`. Steps E27a (#6611) and E27b (#6678); the engine's mask step is `ui/image-editor-area-pixels.md`.
 
 ## How is a selection kept?
 - `doc.selection = { ops, invert, feather }`, saved with the document (the server keeps the JSON as it is) and undone like any change. An op is `{ op: 'add'|'sub', kind, ring }` for rect, ellipse (96 points), lasso and polygon (rings in the turned space, 0.01 px), or `{ op, kind: 'wand', at, tolerance, contiguous }`: a wand keeps only its seed, its outline is worked out from the picture as it opens.
