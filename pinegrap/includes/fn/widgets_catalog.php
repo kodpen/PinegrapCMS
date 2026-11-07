@@ -1174,7 +1174,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                             ? $cfg['search_width'] : 'full';
     $search_width_cls = $search_width_map[$search_width_key];
     $search_label = (isset($cfg['search_label']) && is_string($cfg['search_label']) && $cfg['search_label'] !== '')
-                        ? substr($cfg['search_label'], 0, 100) : (string)lang('Search...');
+                        ? mb_substr($cfg['search_label'], 0, 100, 'UTF-8') : (string)lang('Search...');
 
     $empty_message = (isset($cfg['empty_message']) && is_string($cfg['empty_message']) && $cfg['empty_message'] !== '')
                         ? $cfg['empty_message'] : (string)lang('No products found.');

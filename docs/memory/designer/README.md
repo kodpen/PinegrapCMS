@@ -405,6 +405,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - submitted-form-token-pitfalls.md: Pitfalls of submitted-form tokens in system widgets: single escape, single-pass replace, truncate before escape, submitted_form_info counters per page and who refreshes them on designed pages.
 - system-widget-bindings.md: System widget data flow via _bindings.* (text, src, href, action, eo_field, value, section, eo_visible_if, show_if) and _bindFormats, action bindings, href-bound UI rule, HTML token previews.
 - system-widget-change-checklist.md: Checklist when changing system widgets (legacy comparison, subgroup test, PHP/JS twins, three places for defaults, node --check, logged-out live check) plus the escape-$ rule in heredocs.
+- system-widget-fixes-2026-11.md: Row id suffix skips data-id/data-for, form list search cut by characters, custom form pattern slashes on the server, Check all tables counts a check that could not run
 - system-widget-form-records.md: Form list and form detail widgets: one record address (pg_sw_record_url), how get_page.php answers it, layout_type is not the editor marker, list filters, the no-record layout, the record title.
 - system-widget-functional-classes.md: Which pg-eo-* / pg-qty-stepper classes and data-* attributes in system widget trees are functional (keep) versus decorative (deletable).
 - system-widget-page-types.md: Which classic page types have designer system widgets, which stay `system` nodes (#2436), confirmations as a widget setting, and what a converted page uses until a widget exists.
