@@ -23,7 +23,7 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 
 - 6 (done, #7957): `learning.php`: `learning` (youth theatre groups and workshops by age), school group and youth theatre place requests; test.
 
-- 7: `shop.php`: `tickets`, `friends`, product, cart, checkout, order, `email_order`, the catalog (Tickets and Friends groups, `shippable => false`) and gift vouchers; test.
+- 7 (done, #7962): `shop.php`: `tickets`, `friends`, product, cart, checkout, order, `email_order`, the catalog (Tickets, Friends and Gift Vouchers groups, `shippable => false`); test.
 
 - 8: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
