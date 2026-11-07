@@ -10,8 +10,8 @@
  * weeks on their weekday, vouchers with the template's SKU, the forms'
  * pick lists without an answer twice), a price is written as the shop
  * writes it, every page link of the shared parts names a page of the
- * finished template and none names a shop page, the footer opens the menu
- * filtered on each course, a dish card reads the Menu form's fields, the
+ * finished template and none names a shop page, the footer links the
+ * food pages, a dish card reads the Menu form's fields, the
  * tasting and room links make their choice in the request forms, the
  * classes are the template's own, the sample carries no fixed date and
  * every literal has its Turkish.
@@ -306,17 +306,14 @@ function _test_rt_query_links($tree, $page)
 	return $out;
 }
 
-// The footer's course links open the menu filtered on each course, in the
-// words the Course list uses.
-function test_restaurant_footer_filters_the_menu()
+// The footer links the menu, the tasting menus, the wine list and the
+// chef's table; no link carries a ?course= the menu's tabs would ignore.
+function test_restaurant_footer_links_the_food_pages()
 {
 	$d = _test_rt_load();
-	$seen = array();
-	foreach (_test_rt_query_links($d['footer'], 'menu') as $q) {
-		pg_assert_true(in_array($q['course'], $d['lists']['course_titles'], true), 'the link names a Course answer');
-		$seen[$q['course']] = true;
-	}
-	pg_assert_same(count($d['courses']), count($seen), 'a link per course');
+	$json = json_encode($d['footer']);
+	foreach (array('menu', 'tasting', 'wine', 'book_online') as $key) pg_assert_contains('{{page:' . $key . '}}', $json, "the footer links $key");
+	pg_assert_same(array(), _test_rt_query_links($d['footer'], 'menu'), 'no filtered menu link');
 }
 
 // A dish card and a dish line read every value from the Menu form's
@@ -362,7 +359,7 @@ function test_restaurant_links_choose_in_the_request_forms()
 		pg_assert_same(1, count($q), "room $key: one enquiry link");
 		pg_assert_true(in_array($q[0]['room'], $l['room_choices'], true), "room $key: a Room answer");
 	}
-	foreach (array('tasting', 'room', 'course') as $p) pg_assert_same($p, pg_sw_url_param_name($p), "?$p= is a usable name");
+	foreach (array('tasting', 'room') as $p) pg_assert_same($p, pg_sw_url_param_name($p), "?$p= is a usable name");
 }
 
 // Classes the template adds of its own start with prt-; another
