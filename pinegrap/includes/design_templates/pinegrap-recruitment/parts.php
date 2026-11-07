@@ -813,7 +813,8 @@ $service_card = function ($key) use ($el, $heading, $para, $col, $icon_tile, $ch
 
 // A consultant (the team page, the about page and a sector's page): the
 // portrait, the name, the role, a sentence and the sector's open jobs.
-$consultant_card = function ($n) use ($el, $heading, $para, $link, $image, $col, $attr, $portrait, $consultants, $sectors, $query) {
+// $md and $lg size its column; a sector's page gives it the whole side.
+$consultant_card = function ($n, $md = '6', $lg = '4') use ($el, $heading, $para, $link, $image, $col, $attr, $portrait, $consultants, $sectors, $query) {
     $c = $consultants[$n];
     return $col(array(
         $el('article', 'card h-100 border-0 shadow-sm rounded-4 text-center p-4', lang('Consultant'), array(
@@ -824,7 +825,7 @@ $consultant_card = function ($n) use ($el, $heading, $para, $link, $image, $col,
             $link(sprintf(lang('Jobs in %s'), $sectors[$c['sector']]['title']), '{{page:jobs}}?' . $query(array('sector' => $sectors[$c['sector']]['title'])),
                 'mt-auto small fw-semibold link-primary text-decoration-none'),
         )),
-    ), '6', '4');
+    ), $md, $lg);
 };
 
 // What a candidate or an employer says: the stars, the quote, the person
