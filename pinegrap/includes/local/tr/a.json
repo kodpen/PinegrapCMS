@@ -2040,6 +2040,7 @@
     "A report from the last nursery or school, if there is one": "Varsa önceki kreş ya da okuldan bir rapor",
     "A reporting tool such as Power BI or Tableau": "Power BI veya Tableau gibi bir raporlama aracı",
     "A request about a street, a service or a bill is answered faster as a citizen request.": "Bir sokak, bir hizmet ya da bir fatura hakkındaki talep, vatandaş talebi olarak daha hızlı yanıtlanır.",
+    "A request closed without an answer takes no text, tasks or changes.": "Cevapsız kapatılan bir istek metin, görev ya da değişiklik almaz.",
     "A request from a note is answered with text only: no tasks, no changes.": "Nottan gelen istek yalnız metinle yanıtlanır: görev de değişiklik de önerilmez.",
     "A request from the Visual Page Editor is answered with text only; the page change is proposed with POST /design/pages/{id}/proposals.": "Görsel Sayfa Düzenleyici'den gelen istek yalnız metinle yanıtlanır; sayfa değişikliği POST /design/pages/{id}/proposals ile önerilir.",
     "A request is not a credit check and costs nothing": "İstek bir kredi sorgusu değildir ve ücretsizdir",
