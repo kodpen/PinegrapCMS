@@ -120,6 +120,7 @@ function _test_ppd_page_keys()
 		'podcasts', 'podcast', 'podcast_new', 'episodes', 'episode', 'episode_new',
 		'sponsor', 'sponsor_enquiry', 'enquiry_view', 'my_enquiries', 'staff_enquiries',
 		'guest_pitch', 'pitch_view', 'staff_pitches', 'privacy', 'email_reply',
+		'email_enquiry_new', 'email_enquiry_received', 'email_pitch_new', 'email_pitch_received',
 		'support', 'supporters_home', 'bonus_outtakes', 'bonus_askus', 'bonus_live',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
