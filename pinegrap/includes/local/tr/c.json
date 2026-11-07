@@ -1784,6 +1784,7 @@
     "Claude can only reach a site with a public HTTPS address.": "Claude yalnız herkese açık HTTPS adresi olan bir siteye ulaşabilir.",
     "Claude cannot be asked in this channel. Somebody who manages the channel can allow it from the channel menu.": "Bu kanalda Claude çağrılamaz. Kanalı yöneten biri kanal menüsünden izin verebilir.",
     "Claude could not do it": "Claude yapamadı",
+    "Claude could not take this request: its routine does not read the instructions this site gives it. An administrator copies the prompt again from Claude in the channels in the Workspace Settings.": "Claude bu isteği alamadı: rutini bu sitenin verdiği talimatları okumuyor. Bir yönetici istemi Çalışma Alanı Ayarları'ndaki Kanallarda Claude kartından yeniden kopyalar.",
     "Claude did not answer in time.": "Claude zamanında yanıt vermedi.",
     "Claude in the channels": "Kanallarda Claude",
     "Claude is not connected yet.": "Claude henüz bağlı değil.",

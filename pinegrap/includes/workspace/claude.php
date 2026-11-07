@@ -1602,6 +1602,50 @@ function ws_claude_note_version($sent, $site = null)
 }
 
 /**
+ * The version of the instructions this site serves the routine: the first
+ * eight hex digits of a hash of their text, so it changes whenever the text
+ * does (an update, a new address) and needs no number raised by hand. The
+ * text names it in the claim step; a claim that does not send it back was
+ * made by a run that has not read these instructions
+ * (ws_claude_instructions_state()).
+ *
+ * @param string|null $base the Site API, this site's when left out
+ * @return string
+ */
+function ws_claude_instructions_version($base = null)
+{
+    static $versions = array();
+
+    $base = ($base !== null) ? (string) $base : ws_claude_api_base();
+
+    if (!isset($versions[$base])) {
+        $versions[$base] = substr(sha1(ws_claude_routine_text($base, '')), 0, 8);
+    }
+
+    return $versions[$base];
+}
+
+/**
+ * Where the instructions version a claim sends stands against the site's:
+ * none (nothing sent: a run on a prompt that never read the site's
+ * instructions), other (read before the site's text changed) or current.
+ *
+ * @param mixed  $sent    what the claim sent, null when nothing
+ * @param string $current ws_claude_instructions_version()
+ * @return string none | other | current
+ */
+function ws_claude_instructions_state($sent, $current)
+{
+    $sent = is_scalar($sent) ? strtolower(trim((string) $sent)) : '';
+
+    if ($sent === '') {
+        return 'none';
+    }
+
+    return hash_equals((string) $current, $sent) ? 'current' : 'other';
+}
+
+/**
  * The routine's instructions, with this site's address in it: what the
  * routine reads from GET /workspace/claude/instructions after the short
  * prompt pasted on claude.ai signed it in.
@@ -1612,6 +1656,21 @@ function ws_claude_note_version($sent, $site = null)
 function ws_claude_routine_prompt($base = null)
 {
     $base = ($base !== null) ? (string) $base : ws_claude_api_base();
+
+    return ws_claude_routine_text($base, ws_claude_instructions_version($base));
+}
+
+/**
+ * The text of the routine's instructions with the version the claim step
+ * sends back: empty while the version itself is worked out from the text.
+ *
+ * @param string $base         the Site API
+ * @param string $instructions ws_claude_instructions_version()
+ * @return string
+ */
+function ws_claude_routine_text($base, $instructions)
+{
+    $base = (string) $base;
     $version = WS_CLAUDE_BOOTSTRAP_VERSION;
 
     // The rules every prompt ends with (includes/fn/ai_prompts.php), before
@@ -1636,8 +1695,11 @@ Work through the queue:
 1. GET /workspace/claude/requests?version={$version} - the requests waiting for you,
    oldest first.
 2. For each request, in that order:
-   a. POST /workspace/claude/requests/{id}/claim. A 409 answer means another run has
-      it: skip it.
+   a. POST /workspace/claude/requests/{id}/claim with {"instructions": "{$instructions}"},
+      the version of these instructions. A 409 answer means another run has it: skip
+      it. A 409 instructions_outdated answer means these instructions changed since
+      you read them: read them again from the Site API, follow the new text and
+      start the queue again.
    b. GET /workspace/claude/requests/{id}/brief - its "text" is what the site tells
       its own assistant about the request: who asked, now, the note, the task or
       the channel it came from (a discussion with the message it talks over, the
@@ -2491,6 +2553,8 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
                                 <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . h(lang('Try the connection')) . '</button>
                                 <div class="form-text">' . h(lang('Starts the routine once; it counts as one of today\'s runs.')) . '</div>
                             </form>' : '') . '
+                            <div class="small mb-5"><span class="fg-secondary">' . h(lang('Version of the instructions the site gives the routine')) . ':</span> <span class="font-monospace">' . h(ws_claude_instructions_version()) . '</span>
+                                <div class="form-text">' . h(lang('It changes with every update that changes them. A run takes a request only with the version it read at its start.')) . '</div></div>
                             <div class="small fw-semibold mb-1">' . h(lang('The latest requests')) . '</div>
                             <ul class="list-unstyled ws-claude-recent">' . $recent . '</ul>
                         </div>

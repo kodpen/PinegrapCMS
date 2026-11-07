@@ -1205,6 +1205,7 @@
     "It cannot take that step from where it is now.": "Şu anki durumundan bu adıma geçemez.",
     "It changes things on the other service. Each call waits for the approval of the person who asked and runs with their own account.": "Diğer hizmette değişiklik yapar. Her çağrı soran kişinin onayını bekler ve onun kendi hesabıyla çalışır.",
     "It changes things on the other service. With one connection for everybody it stays off.": "Diğer hizmette değişiklik yapar. Herkes için tek bağlantı kullanıldığında kapalı kalır.",
+    "It changes with every update that changes them. A run takes a request only with the version it read at its start.": "Talimatları değiştiren her güncellemeyle değişir. Bir çalışma isteği yalnızca başında okuduğu sürümle alır.",
     "It could not be loaded.": "Yüklenemedi.",
     "It could not be published:": "Yayınlanamadı:",
     "It could not be saved:": "Kaydedilemedi:",

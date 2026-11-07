@@ -98,7 +98,7 @@ function test_workspace_discussion_context_endpoint()
 // runner does not have.
 function test_workspace_discussion_context_routine_prompt()
 {
-	$prompt = workspace_discussion_context_test_source('ws_claude_routine_prompt');
+	$prompt = workspace_discussion_context_test_source('ws_claude_routine_text');
 
 	$briefing = workspace_discussion_context_test_source('ws_ai_briefing');
 

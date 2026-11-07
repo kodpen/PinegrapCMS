@@ -128,3 +128,45 @@ function test_workspace_claude_bootstrap_sends_its_site()
 	pg_assert_true(WS_CLAUDE_BOOTSTRAP_VERSION >= 2, 'the bootstrap text changed, so its version was raised');
 	pg_assert_contains('current address', ws_claude_routine_prompt($base), 'the instructions name the current Site API');
 }
+
+// The instructions' version is a short hash of their text: the same text
+// gives the same version, another address another one, and the claim step
+// names it.
+function test_workspace_claude_instructions_version()
+{
+	$base = workspace_claude_bootstrap_test_base();
+	$version = ws_claude_instructions_version($base);
+
+	pg_assert_true((bool) preg_match('/^[0-9a-f]{8}$/', $version), 'eight hex digits');
+	pg_assert_same($version, ws_claude_instructions_version($base), 'the same text, the same version');
+	pg_assert_true($version !== ws_claude_instructions_version('https://other.example/integration.php'), 'another address, another text');
+	pg_assert_same(substr(sha1(ws_claude_routine_text($base, '')), 0, 8), $version, 'worked out from the text without it');
+	pg_assert_contains('/claim with {"instructions": "' . $version . '"}', ws_claude_routine_prompt($base), 'the claim step sends it back');
+	pg_assert_contains('409 instructions_outdated', ws_claude_routine_prompt($base), 'and says what a refusal means');
+}
+
+// What a claim sends against the site's version: nothing, another or the
+// current one.
+function test_workspace_claude_instructions_state()
+{
+	pg_assert_same('none', ws_claude_instructions_state(null, 'ab12cd34'), 'nothing sent');
+	pg_assert_same('none', ws_claude_instructions_state('  ', 'ab12cd34'), 'blank');
+	pg_assert_same('none', ws_claude_instructions_state(array('ab12cd34'), 'ab12cd34'), 'not a string');
+	pg_assert_same('other', ws_claude_instructions_state('ab12cd35', 'ab12cd34'), 'an earlier text');
+	pg_assert_same('other', ws_claude_instructions_state('2', 'ab12cd34'), 'the bootstrap version is not the instructions version');
+	pg_assert_same('current', ws_claude_instructions_state(' AB12CD34 ', 'ab12cd34'), 'case and spaces do not count');
+}
+
+// The claim route checks the version before the dry run stops and before
+// it writes; the instructions route hands the version out.
+function test_workspace_claude_claim_checks_instructions()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_claude.php');
+	$start = strpos($source, 'function ws_api_claude_claim(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_true(strpos($body, 'ws_api_claude_instructions_check(') < strpos($body, 'api_dry_run_stop('), 'checked before the dry run stops');
+	pg_assert_contains("'instructions_outdated'", $source, 'the error code');
+	pg_assert_contains("'instructions_version' => ws_claude_instructions_version()", $source, 'served with the instructions');
+	pg_assert_contains("'instructions_version' => 'string'", $source, 'and in the schema');
+}
