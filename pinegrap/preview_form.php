@@ -69,7 +69,7 @@ if ($form_name != '') {
     $output_legend = '<legend class="software_legend">' . h($form_name) . '</legend>';
 }
 
-$form_info = get_form_info(0, $_GET['product_id'], 0, 0, $form_label_column_width, $office_use_only = false, $liveform, 'backend');
+$form_info = get_form_info(0, $_GET['product_id'], 0, 0, $form_label_column_width, false, $liveform, 'backend');
 
 // assume that we don't need to output wywiwyg javascript until we find out otherwise
 $output_wysiwyg_javascript = '';

@@ -123,6 +123,7 @@ function _test_fm_page_keys()
 		'projects', 'project', 'project_new',
 		'enquiry', 'enquiry_view', 'my_enquiries', 'staff_enquiries',
 		'studio_hire', 'studio_hire_view', 'my_studio_hires', 'staff_studio_hires', 'privacy', 'email_reply',
+		'email_enquiry_new', 'email_enquiry_received', 'email_studio_hire_new', 'email_studio_hire_received',
 		'careers', 'job', 'job_new', 'application', 'application_view', 'my_applications', 'staff_applications',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',

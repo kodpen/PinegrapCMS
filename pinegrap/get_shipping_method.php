@@ -169,6 +169,8 @@ function get_shipping_method($properties) {
         $query = "SELECT name, custom FROM arrival_dates WHERE id = ?";
         $result = db_q($query, array((string) $arrival_date_id)) or output_error('Query failed.');
 
+        $output_requested_arrival_date = '';
+
         // if an arrival date was selected, prepare requested arrival date area
         if (mysqli_num_rows($result) > 0) {
             $row = mysqli_fetch_assoc($result);
@@ -190,6 +192,8 @@ function get_shipping_method($properties) {
                     </div>
                 </td>';
         }
+
+        $output_ship_to_header = '';
 
         // if recipient mode is multi-recipient, then add header with ship to label
         if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') {
@@ -243,6 +247,7 @@ function get_shipping_method($properties) {
         // so that we can determine if out of stock message should be show for an order item
         $inventory_quantities = array();
         $row_count = 1;
+        $output_products = '';
 
         foreach ($order_items as $key => $value) {
             $order_item_id = $order_items[$key]['id'];
@@ -572,6 +577,8 @@ function get_shipping_method($properties) {
             $form->assign_field_value('shipping_method', $row['shipping_method_id']);
         }
 
+        $output_submit_button = '';
+
         // if there is at least one valid shipping method
         if (count($shipping_methods) > 0) {
             // create another array for shipping methods so that we can eventually sort shipping methods by shipping cost
@@ -777,6 +784,7 @@ function get_shipping_method($properties) {
             }
 
             $row_count = 1;
+            $output_shipping_method_rows = '';
 
             // loop through all shipping methods to prepare list of shipping methods
             foreach ($shipping_methods_for_output as $key => $value) {

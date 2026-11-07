@@ -6,6 +6,7 @@ description: Form time values: validate_time() and prepare_form_data_for_input()
 ## Which time formats does a form value accept?
 - 12-hour with AM/PM (`5:00 PM`, seconds optional), as the panel and site forms print it, read exactly as before.
 - 24-hour `H:MM` or `HH:MM`, seconds optional, white space around it allowed (`17:00`, `00:15:00`): what `<input type="time">` posts. Hour 0-23, minute and second 0-59, two-digit minute; other text around it makes it invalid.
+- An ISO date with either time (`2026-10-26 5:00 PM` → `2026-10-26 17:00`, `12:00 AM` → `00:00`): `prepare_form_data_for_input()` takes the ISO time as it is only when a 24-hour time ends the text, else reads the time through `pg_form_input_time_parts()`; it had stored `05:00` (`test_forms_date_and_time_iso_twelve_hour`).
 - Helpers in `includes/fn/forms.php`: `pg_time_24_hour_parts()` (hour, minute, second or null), `pg_form_input_time_parts()` (the parts `prepare_form_data_for_input()` converts).
 
 ## Why was this added?
