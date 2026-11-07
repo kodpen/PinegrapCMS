@@ -11,17 +11,17 @@ description: Plan: the Ferry design template (pinegrap-ferry): routes and ports,
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-ferry-design]].
 
 ## Steps (claim as `[plan:design-template-ferry] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7873): `parts.php` (node builders, the line's data and pick lists: routes, ports, seasons, sailings, fare kinds and fares, onboard services, travel tips, figures, quotes; shared parts, cards, timetable and fare tables, form fields, comment thread, blog parts); `tests/design_template_ferry_test.php`.
-- 2 (done, #7937): `pages_public.php`: home (`home_notices`, `home_posts`), `routes` and one `route_<key>` per route, `ports`, `timetables`, `fares`, `onboard`, `travel`, `about`, `faq`; test.
-- 3 (done, #7978): `notices.php`: the Travel Notices collection (`notices` by `?route=`, the `notice` record page, `notice_new`), `home_notices`; test.
+- 1 (done, #7873): `parts.php` (data, pick lists, shared parts, cards, tables, form fields); test.
+- 2 (done, #7937): `pages_public.php`; test.
+- 3 (done, #7978): `notices.php` (the Travel Notices collection, `home_notices`); test.
 - 4: `mail.php` and `bookings.php`: booking requests (`booking_request` with `?route=` and `?fare=`; `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`) and group enquiries (`group_enquiry` with `?route=`; `group_view`, `my_groups`, `staff_groups`); test.
 - 5: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 6: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 7: assembly: `pinegrap-ferry.php` (order, search sections, look, fonts, `pfy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-ferry.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-marina/`, `pinegrap-campsite/`. The booking request reads `?route=` (route pages, timetables) and `?fare=` (fares page); the group enquiry reads `?route=`; the notice list filters `?route=`. Route keys are fixed data, so a link carries the route's key and the form's pick list shows its title; never a filter on another record's title without that page's own `?param=`. Never use `?view=` (reserved, [[design-template-hotel]]). Later tests share `_test_fy_page_keys()` from `tests/design_template_ferry_test.php`.
-- Step 4 starts from `pinegrap-marina/requests.php` and `mail.php`. `notices.php` already defines `$fy_filter`, `$fy_featured_choices`, `$fy_page_link` and `$fy_filter_bar`: include it before `bookings.php` in tests and reuse them. The notice page links `booking_request?route=<route>` with the notice's route, which may be "All Routes"; the booking form's route list then simply has nothing chosen. Booking statuses, journey, vehicle, cabin and group pick lists are in `parts.php` (`$booking_statuses`, `$group_statuses`, `$journey_choices`, `$vehicle_choices`, `$cabin_choices`, `$group_kind_choices`).
+- The next free step is the lowest one not marked done. Models: `pinegrap-marina/`, `pinegrap-campsite/`. The booking request reads `?route=` (route pages, timetables) and `?fare=` (fares page); the group enquiry reads `?route=`; the notice list filters `?route=`. Routes are fixed data: a link carries the route's title, an answer of the Route pick lists; never a filter on another record's title without that page's own `?param=`. Never use `?view=` (reserved, [[design-template-hotel]]). Later tests share `_test_fy_page_keys()` from `tests/design_template_ferry_test.php`.
+- Step 4: model `pinegrap-marina/requests.php` and `mail.php`; reuse `$fy_filter`, `$fy_page_link`, `$fy_filter_bar` from `notices.php` (include it first in tests) and the booking pick lists of `parts.php`. A notice links `booking_request?route=` with its route, possibly "All Routes" (nothing chosen then).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
