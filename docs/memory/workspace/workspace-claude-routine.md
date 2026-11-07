@@ -29,4 +29,4 @@ description: "@Claude" in Workspace channels through one site-wide claude.ai rou
 
 ## What was never tested with a real routine?
 - On dev (owner + Claude): two requests in one run, a prompt-injection attempt, the private channel gate, and waiting when the daily allowance runs out (HTTP 429). On 2026-09-23 these were only simulated on localhost.
-- A live Claude Code session as a second connection type is a shelved plan: docs/memory/plans/claude-code-channel.md
+- A live Claude Code session as a second connection type is a door of docs/memory/plans/agent-channel.md (step A8)
