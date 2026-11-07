@@ -5,7 +5,9 @@
  * Tests for the values the signature scan inspects (waf_collect_targets(),
  * waf.php): the request line, the user agent and the referrer are scanned
  * whatever number of parameters and cookies came with them, so padding a
- * request up to the value cap cannot hide a payload in the path.
+ * request up to the value cap cannot hide a payload in the path; and each of
+ * the query string, the body and the cookies has its own cap, so padding one
+ * cannot hide a payload in another.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -70,4 +72,37 @@ function test_waf_collect_targets_keeps_the_request_line_past_the_cap()
 	pg_assert_same('/x.php/../../etc/passwd', $targets['REQUEST_URI'] ?? null, 'the request line');
 	pg_assert_same('sqlmap/1.7', $targets['USER_AGENT'] ?? null, 'the user agent');
 	pg_assert_same('https://example.com/', $targets['REFERER'] ?? null, 'the referrer');
+}
+
+// Each source has its own value cap: query parameters padded past the cap
+// leave the body and the cookies to be scanned.
+function test_waf_collect_targets_budget_per_source()
+{
+	$saved = array($_GET, $_POST, $_COOKIE);
+
+	$_GET = array();
+
+	for ($i = 0; $i < 300; $i++) {
+		$_GET['aaa' . $i] = '1';
+	}
+
+	$_POST = array('comment' => '<script>alert(1)</script>');
+	$_COOKIE = array('theme' => 'dark-mode');
+
+	$targets = waf_collect_targets();
+
+	list($_GET, $_POST, $_COOKIE) = $saved;
+
+	pg_assert_same('<script>alert(1)</script>', $targets['BODY:comment'] ?? null, 'the body value past padded query parameters');
+	pg_assert_same('dark-mode', $targets['COOKIE:theme'] ?? null, 'the cookie past padded query parameters');
+
+	$args = 0;
+
+	foreach (array_keys($targets) as $name) {
+		if (strpos($name, 'ARGS:') === 0) {
+			$args++;
+		}
+	}
+
+	pg_assert_same(WAF_MAX_VALUES, $args, 'the query parameters still stop at the cap');
 }
