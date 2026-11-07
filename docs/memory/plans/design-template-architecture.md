@@ -16,7 +16,7 @@ description: Plan: the Architecture & Interiors Studio design template (pinegrap
 
 - 2 (done, #7767): `pages_public.php`: home (`home_projects`, `home_posts`), `services` and one `service_<key>` per service, `studio`, `team`, `process`, `awards` (awards and press), `faq`; `tests/design_template_architecture_public_test.php`.
 
-- 3: `projects.php`: the Projects collection (`projects` by `?type=` and `?location=`, the `project` page with facts, the gallery, the brief, the credits and the client's words, `project_new`), `home_projects`; test.
+- 3 (done, #7777): `projects.php`: the Projects collection (`projects` by `?type=` and `?location=`, the `project` page with facts, the gallery, the brief, the credits and the client's words, `project_new`), `home_projects`; test.
 
 - 4: `mail.php` (the e-mail builders) and `enquiries.php`: project enquiries (`enquiry` with `?service=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`), the consultation request (`consultation`, `consultation_view`, `my_consultations`, `staff_consultations`), `privacy`, `email_reply`; test.
 
@@ -29,7 +29,7 @@ description: Plan: the Architecture & Interiors Studio design template (pinegrap
 - 8: assembly: `pinegrap-architecture.php` (order, search sections, look, fonts, `pai-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-architecture.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-construction/`, `pinegrap-school/`. The enquiry reads `?service=` (`$enquiry_service_choices`), the consultation `?service=` too, the application `?job=` (`$application_job_choices`); the project list filters `?type=` and `?location=` in the words of `$type_titles` and `$location_titles`. Service pages are `service_<key>` under `$services`. `_test_ai_page_keys()` in the step 1 test lists every page key of the finished template and is shared by test files sorting after it.
+- The next free step is the lowest one not marked done. Models: `pinegrap-construction/`, `pinegrap-school/`. The enquiry reads `?service=` (`$enquiry_service_choices`), the consultation `?service=` too, the application `?job=` (`$application_job_choices`); the project list filters `?type=` and `?location=` in the words of `$type_titles` and `$location_titles`. Service pages are `service_<key>` under `$services`. `_test_ai_page_keys()` in the step 1 test lists every page key of the finished template.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
