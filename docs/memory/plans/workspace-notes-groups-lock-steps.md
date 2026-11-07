@@ -6,7 +6,7 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 ## Which steps are there?
 - S under 400 product lines, M about 1,000. Each step writes its tests and its topic file in `workspace/`, texts through `tr_add.php`, new actions also in `includes/panel/actions.php`. A new script joins the workspace bundle (`pg_js_bundles()`) and is hooked into `startNotes()` with a few lines.
 
-- N0 (S) Schema. `free`. One re-runnable sub-step of `2026.11.0.php` under the next free Workspace label, shapes in `workflow/decisions-made-schema-12.md`; `get_tables()`; `ws_note_groups_ready()`, `ws_note_lock_ready()`. Rerun twice on a dev DB.
+- N0 (S) Schema. Done (PR #N0PR). One re-runnable sub-step of `2026.11.0.php` under the next free Workspace label, shapes in `workflow/decisions-made-schema-12.md`; `get_tables()`; `ws_note_groups_ready()`, `ws_note_lock_ready()`. Rerun twice on a dev DB.
 
 - G1 (M) Groups store. After N0. New `includes/workspace/note_groups.php`: a person's groups with counts; create, rename, colour (`ws_palette()`), order, delete (notes back to no group, never deleted); a note placed in a group or none and ordered in it; `ws_notes_list()` answers the groups and each note's group for the viewer; actions `ws_note_group_*`; at most 200 groups, names of 100 characters.
 

@@ -146,6 +146,48 @@ function ws_note_sources_ready()
 }
 
 /**
+ * Has the database the note groups (2026.11.0, 11.0.119): the groups, each
+ * person's places of notes, group shares and the via_group column of note
+ * shares that a group's share writes?
+ *
+ * @return bool
+ */
+function ws_note_groups_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has')
+            && pg_schema_has('ws_note_groups')
+            && pg_schema_has('ws_note_places')
+            && pg_schema_has('ws_note_group_shares')
+            && pg_schema_has('ws_note_shares', 'via_group');
+    }
+
+    return $ready;
+}
+
+/**
+ * Has the database the notes lock (2026.11.0, 11.0.119): the PIN table and
+ * the locked marks of notes and groups?
+ *
+ * @return bool
+ */
+function ws_note_lock_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has')
+            && pg_schema_has('ws_note_locks')
+            && pg_schema_has('ws_notes', 'locked')
+            && pg_schema_has('ws_note_groups', 'locked');
+    }
+
+    return $ready;
+}
+
+/**
  * The note a file brought in before became, by the id it is known by in the
  * app it came from (ws_note_source_id()).
  *
