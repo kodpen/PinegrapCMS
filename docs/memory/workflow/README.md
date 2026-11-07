@@ -19,6 +19,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Files
 
+- agent-channel-experiment.md: Which doors wake a cloud session (A0, 2026-11-07): session webhook refused unsigned, routine /fire with an owner token, ws_wait.php poll; CI [ci]/[ready] lines; A3 door fields
 - architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one architect issue each, a Türkçe özet block, then the session ends
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
@@ -103,7 +104,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
-- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, an oversized PR alone and at the latest an hour after it became eligible
+- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, 2,000 lines in all, an oversized PR alone, at the latest an hour after it is eligible
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward); what it leaves to the merging session
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
 - merger-wake.md: How the merging session keeps waking: a 3-minute send_later chain and an hourly routine that re-arms it (2026-11-03); GitHub events are not relied on

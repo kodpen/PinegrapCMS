@@ -148,6 +148,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-hotel.md: Hotel template (pinegrap-hotel): rooms as a collection with rates, booking requests and event enquiries followed from the account, gift vouchers in the shop, pht- look, tests.
 - design-template-launch.md: Phone Launch Site template (pinegrap-launch): the Orbit in three models, specs and compare from one data file, a buy page that stands without the shop, trade-in and support requests, plx- look, tests.
 - design-template-law.md: Law Firm template (pinegrap-law): practice areas, lawyers, results, fees, a consultation request with a conflict check followed from the account, careers, no shop, plw- look, tests.
+- design-template-library.md: Public Library template (pinegrap-library): branches as data, catalogue and events as collections, card, reservation, place and room requests, no shop, plb- look, tests.
 - design-template-magazine-a11y.md: Magazine accessibility: ink focus rings on links, buttons, fields and the shelf, headings that never repeat, e-mail frames light in the dark theme, the core items left open.
 - design-template-magazine-issues.md: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, value links, plain names, launching one.
 - design-template-magazine-layout.md: Magazine look and shapes: pm- User Styles, fonts and serif body, color-mix() paper, rust accent, sticky pull quote, drop cap resets, vanishing bands, preview placeholders.
@@ -252,6 +253,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
+- designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
 - designer-preview-page-scripts.md: Platform scripts a designer page gets from its markup (theme switcher, tooltips/popovers, scroller buttons) on the page and in the Preview; one Bootstrap bundle; Preview link guard and dark view.
 - designer-preview-play.md: Links in the designer's Preview (#1867): a page link plays the open tab of that name, unsaved too; others open the site in a new tab; the Hotspots toggle
