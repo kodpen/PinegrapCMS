@@ -15,7 +15,7 @@ description: Plan: the Veterinary Practice design template (pinegrap-veterinary)
 
 - 2 (done, #7800): `pages_public.php`: home (`home_vets`, `home_posts` as widgets), `services` and one `service_<key>` per service, `pets`, `emergency`, `new_clients`, `health_plans`, `about`, `faq`, `location`; `tests/design_template_veterinary_public_test.php`.
 
-- 3: `vets.php`: the Vets collection (`vets` by `?species=`, the `vet` page with its days and an appointment link `?vet=`, `vet_new`) and `book_online` (booking widget starter, privacy link, [[booking-templates]]); test.
+- 3 (done, #7810): `vets.php`: the Vets collection (`vets` by `?species=`, `vet`, `vet_new`, `home_vets`) and `book_online` ([[booking-templates]]); test.
 
 - 4: `mail.php` (the e-mail builders) and `appointments.php`: appointment requests (`appointment` with `?service=`, `?vet=`, `?species=`; `appointment_view`, `my_appointments`, `staff_appointments`, `privacy`, `email_reply`, `email_appointment_new`, `email_appointment_received`) and the health plan sign-up (`plan_join` with `?plan=`, `plan_join_view`, `staff_plan_joins`, its two e-mails); test.
 
@@ -28,7 +28,7 @@ description: Plan: the Veterinary Practice design template (pinegrap-veterinary)
 - 8: assembly: `pinegrap-veterinary.php` (order, search sections, look, fonts, `pvt-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-veterinary.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-gym/`, `pinegrap-construction/`. The appointment reads `?service=` (`$service_titles`), `?vet=` (`$vet_names`) and `?species=` (`$species_titles`); the plan sign-up `?plan=` (`$plan_choices`). Service pages are `service_<key>` under `$services`. `_test_vt_page_keys()` in the step 1 test lists every page key of the finished template.
+- The lowest step not marked done. Model: `pinegrap-gym/`. The appointment's lists: `?service=` `$reason_choices`, `?vet=` `$vet_choices` (the vet page sends the record's name), `?species=` `$pet_choices`; the sign-up `?plan=` `$plan_choices`. Step 4 adds to `appointment` a "Pick a free time now" box linking `book_online` and ships `privacy` (named `lang('privacy-policy')`); step 6's blog filters `?species=` (the vet page sends it). `_test_vt_page_keys()` (step 1 test) lists every page key; later tests `require_once` it.
 
 ## Open questions
-- None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
+- None: all reuses shipped features; new behaviour goes to the architect (Working mode 10).
