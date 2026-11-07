@@ -11,7 +11,7 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-theatre-design]].
 
 ## Steps (claim as `[plan:design-template-theatre] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (builders, the theatre's data, pick lists, shared parts and cards); `tests/design_template_theatre_test.php`.
+- 1 (done, #7792): `parts.php` (builders, the theatre's data, pick lists, shared parts and cards); `tests/design_template_theatre_test.php`.
 
 - 2: `pages_public.php`: home, `visit`, `support`, `about`, `faq`; test.
 
@@ -32,7 +32,7 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 - 10: assembly: `pinegrap-theatre.php` (order, search sections, look, fonts, `pth-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-theatre.md`; the PR body names `[NEW] Added the Theatre design template`; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-museum/` (requests, exhibitions with a state), `pinegrap-music/` (dates from today, `$show_on`). Later tests share `_test_th_page_keys()` from `tests/design_template_theatre_test.php`; the pick lists the lists filter on are `$production_status_titles` (`?status=`), `$genre_titles` (`?genre=`), `$production_titles` (`?production=`) and `$access_titles` (`?access=`). The performance row binds `perf_date`, `perf_time`, `production`, `access`, `ticket_state`; the production card `photo_1`, `genre`, `status`, `run`, `summary`.
+- The next free step is the lowest one not marked done. Models: `pinegrap-museum/` (requests, exhibitions with a state), `pinegrap-music/` (dates from today, `$show_on`). Later tests share `_test_th_page_keys()` from `tests/design_template_theatre_test.php`; the pick lists the lists filter on are `$production_status_titles` (`?status=`), `$genre_titles` (`?genre=`), `$production_titles` (`?production=`) and `$access_titles` (`?access=`). The field names the cards bind: [[design-template-theatre-design]].
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
