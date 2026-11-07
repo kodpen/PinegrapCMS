@@ -148,15 +148,18 @@ function api_form_present($row, $fields = null, $facts = null) {
 
 // The facts GET /forms/{id} adds about a form's page:
 //
-//   framework           the framework of the page's design (pg_design_frameworks():
-//                       bootstrap5 or custom), which decides the classes rich
-//                       text may lean on. A page without a design of its own
-//                       takes its folder's, as the page itself does.
+//   framework           the framework of the form page's design
+//                       (pg_design_frameworks(): bootstrap5 or custom). A page
+//                       without a design of its own takes its folder's, as the
+//                       page itself does. Rich text cannot carry classes: the
+//                       visitor profile removes them (html_allowed).
 //   is_collection       the form is marked as a collection
 //                       (custom_form_pages.collection, pg_coll_ready()).
 //   record_url_pattern  where a record of the form is read on the site, from
-//                       the first public page with a record view of the form
-//                       (pg_ap_record_page()); null when no page shows them.
+//                       the first public page with a designed record view of
+//                       the form (pg_ap_record_page()), else the first public
+//                       classic form item view page; null when no public page
+//                       shows them.
 function api_form_facts($page_id, $page_folder, $page_style) {
 
 	$page_id = (int)$page_id;
@@ -195,6 +198,12 @@ function api_form_facts($page_id, $page_folder, $page_style) {
 
 	$record_page = pg_ap_record_page($page_id);
 
+	if ($record_page === null) {
+
+		$record_page = api_form_classic_record_page($page_id);
+
+	}
+
 	if ($record_page !== null) {
 
 		$pattern = api_form_record_url_pattern(URL_SCHEME . HOSTNAME_SETTING . PATH, $record_page['page_name'], pg_sw_form_pretty_urls($page_id));
@@ -206,6 +215,42 @@ function api_form_facts($page_id, $page_folder, $page_style) {
 		'is_collection'      => $is_collection,
 		'record_url_pattern' => $pattern
 	);
+
+}
+
+// The first classic form item view page that shows a form's records to
+// everyone: in a public folder (not archived, not the drafts, not in the
+// bin) and not limited to the record's own submitter. The same rule
+// pg_ap_record_page() applies to a designed record view. Null when none.
+function api_form_classic_record_page($form_page_id) {
+
+	$binned = function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('page.page_folder') : '';
+
+	$pages = api_rows("SELECT DISTINCT page.page_id, page.page_name, page.page_folder
+		FROM form_item_view_pages
+		INNER JOIN page ON page.page_id = form_item_view_pages.page_id
+		INNER JOIN folder ON page.page_folder = folder.folder_id
+		WHERE form_item_view_pages.custom_form_page_id = '" . (int)$form_page_id . "'
+			AND form_item_view_pages.submitter_security = '0'
+			AND page.page_type = 'form item view'
+			AND folder.folder_archived = '0'" . $binned . "
+		ORDER BY page.page_id ASC");
+
+	foreach ($pages as $page) {
+
+		$folder = (int)$page['page_folder'];
+
+		if ((function_exists('pg_page_is_draft') && pg_page_is_draft($folder)) || (get_access_control_type($folder) !== 'public')) {
+
+			continue;
+
+		}
+
+		return array('page_id' => (int)$page['page_id'], 'page_name' => (string)$page['page_name']);
+
+	}
+
+	return null;
 
 }
 

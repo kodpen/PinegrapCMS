@@ -334,3 +334,16 @@ function test_api_forms_get_carries_the_form_facts()
 	pg_assert_false(strpos(api_forms_test_function_source('api_forms_list'), 'api_form_facts(') !== false, 'not per row of the list');
 	pg_assert_contains('wysiwyg', api_forms_test_function_source('api_form_fields_present'), 'the rich-text flag is read');
 }
+
+// A form shown only on a classic form item view page still gets its record
+// address; a page limited to the record's submitter does not count.
+function test_api_forms_record_page_falls_back_to_classic_pages()
+{
+	$facts = api_forms_test_function_source('api_form_facts');
+	pg_assert_true(strpos($facts, 'pg_ap_record_page(') < strpos($facts, 'api_form_classic_record_page('), 'designed record view first, classic page after');
+
+	$classic = api_forms_test_function_source('api_form_classic_record_page');
+	pg_assert_contains("page.page_type = 'form item view'", $classic, 'classic record pages');
+	pg_assert_contains("submitter_security = '0'", $classic, 'not limited to the submitter');
+	pg_assert_contains("get_access_control_type(\$folder) !== 'public'", $classic, 'public folders only');
+}
