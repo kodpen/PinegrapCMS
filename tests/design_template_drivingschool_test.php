@@ -113,7 +113,7 @@ function _test_ds_page_keys()
 		'home', 'licences', 'theory', 'practical_test', 'instructors', 'about', 'faq',
 		'courses', 'course', 'course_new',
 		'enrol', 'enrolment_view', 'my_enrolments', 'staff_enrolments', 'privacy', 'email_reply',
-		'email_enrolment_new', 'email_enrolment_received',
+		'email_enrolment_new', 'email_enrolment_received', 'email_lesson_new', 'email_lesson_received',
 		'lesson_request', 'lesson_request_view', 'my_lesson_requests', 'staff_lesson_requests', 'book_online',
 		'stories', 'story', 'story_new',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
