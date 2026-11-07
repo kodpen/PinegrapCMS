@@ -23,7 +23,7 @@ description: Plan: the Museum / Art Gallery design template (pinegrap-museum): e
 
 - 6: `learning.php`: `learning` (sessions by age), school visit requests (`school_visit` with `?session=`, `school_visit_view`, `my_school_visits`, `staff_school_visits`) and `book_online` (booking widget starter for timed entry, [[booking-templates]]); test.
 
-- 7: `shop.php`: `tickets`, `membership`, product, cart, checkout, order, `email_order`, the catalog (Admission and Membership groups, `shippable => false`); test.
+- 7 (done, #7788): `shop.php`: `tickets`, `membership`, the shop pages, `email_order`, the catalog; test.
 
 - 8: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 

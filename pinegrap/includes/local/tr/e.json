@@ -1207,6 +1207,7 @@
     "Every marketing SMS ends with the sender identity and the type label below, as İYS and BTK rules require. A marketing SMS goes only to a number whose owner consented to marketing SMS on the site and refused it neither here nor in İYS, and none goes while both identity fields are empty. Order, shipping, code and reminder messages never carry them.": "İYS ve BTK kurallarının istediği gibi her pazarlama SMS'i aşağıdaki gönderici kimliği ve tür etiketiyle biter. Pazarlama SMS'i yalnızca sahibi sitede pazarlama SMS'ine onay vermiş, ne burada ne İYS'de reddetmiş numaraya gider; iki kimlik alanı da boşken hiçbiri gitmez. Sipariş, kargo, kod ve hatırlatma mesajları bunları hiç taşımaz.",
     "Every matter has one lawyer you can reach, with a partner who reviews the work.": "Her dosyada ulaşabileceğiniz bir avukat ve işi gözden geçiren bir ortak vardır.",
     "Every matter is different; past results do not promise the outcome of another case.": "Her dosya farklıdır; geçmiş sonuçlar başka bir davanın sonucunu garanti etmez.",
+    "Every member": "Her üye",
     "Every member's public profile: their name, their picture and the words about them.": "Her üyenin herkese açık profili: adı, fotoğrafı ve kendisi hakkındaki sözleri.",
     "Every message": "Her mesaj",
     "Every message from the contact page becomes a conversation. This is how we keep the answers quick and personal.": "İletişim sayfasından gelen her mesaj bir görüşmeye dönüşür. Yanıtları hızlı ve kişisel tutmamızın yolu bu.",
