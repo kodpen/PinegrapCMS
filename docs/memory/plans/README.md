@@ -28,8 +28,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
 - design-template-architecture-design.md: Design of plans/design-template-architecture.md: which shipped features the Architecture template reuses for projects, enquiries and careers, what it does not build, its look and Turkish words
 - design-template-architecture.md: Plan: the Architecture & Interiors Studio design template (pinegrap-architecture): projects by type and place, studio, services, awards, journal, enquiries, careers
-- design-template-construction-design.md: Design of plans/design-template-construction.md: which shipped features the Construction template reuses for projects, quotes and careers, what it does not build, its look and Turkish words
-- design-template-construction.md: Plan: the Construction Firm design template (pinegrap-construction): projects portfolio, services, quote requests, team, careers, news; ~1,000-line steps
 - design-template-gym-design.md: Design of plans/design-template-gym.md: which shipped features the Gym template reuses for booking, trainers and membership, what it does not build, its look and Turkish words
 - design-template-gym.md: Plan: the Gym design template (pinegrap-gym), a fitness studio with classes, a timetable, trainers, membership plans, class booking and contact, built from existing features in ~1,000-line steps
 - design-template-museum-design.md: Design of plans/design-template-museum.md: the shipped features the Museum template reuses, what it does not build, its look and Turkish words
