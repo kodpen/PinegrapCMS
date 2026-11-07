@@ -126,6 +126,7 @@ function _test_ai_page_keys()
 		'projects', 'project', 'project_new',
 		'enquiry', 'enquiry_view', 'my_enquiries', 'staff_enquiries',
 		'consultation', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy', 'email_reply',
+		'email_enquiry_new', 'email_enquiry_received', 'email_consultation_new', 'email_consultation_received',
 		'careers', 'job', 'job_new', 'application', 'application_view', 'my_applications', 'staff_applications',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
