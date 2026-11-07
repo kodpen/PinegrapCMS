@@ -175,6 +175,7 @@
     "Neon": "Neon",
     "Neon Outline": "Neon Çerçeve",
     "Neon on the Water": "Suda Neon",
+    "Nervous pets get time to settle; we can also start with a short, friendly visit and no treatment at all.": "Ürkek evcil hayvanlara alışmaları için zaman tanınır; hiç tedavi yapmadan kısa, dostça bir ziyaretle de başlayabiliriz.",
     "Nested interactive element": "İç içe etkileşimli öğe",
     "Net": "KDV Hariç",
     "Net ({var:1})": "Net ({var:1})",
@@ -1673,6 +1674,7 @@
     "No, I need them too": "Hayır, onlara da ihtiyacım var",
     "No, thanks": "Hayır, teşekkürler",
     "No-show": "Gelmedi",
+    "No. A plan spreads the cost of planned care such as checks and vaccinations; insurance pays for accidents and illness. Many owners have both.": "Hayır. Plan, kontrol ve aşı gibi planlı bakımın maliyetini zamana yayar; sigorta ise kaza ve hastalıkları öder. Birçok hayvan sahibinde ikisi de vardır.",
     "No. Each show on the tour page links to the venue or the ticket service that sells it, and shows whether tickets are on sale, nearly gone or sold out.": "Hayır. Turne sayfasındaki her konser, biletini satan mekâna ya da bilet hizmetine bağlanır ve biletlerin satışta mı, azalmış mı, tükenmiş mi olduğunu gösterir.",
     "No. Plans run a month at a time with no joining fee; stop before the next month starts.": "Hayır. Planlar giriş ücreti olmadan aylık işler; bir sonraki ay başlamadan bırakabilirsiniz.",
     "No. The club is free; you only buy the book, with 10% off as a member.": "Hayır. Kulüp ücretsiz; yalnızca kitabı alırsınız, üye olarak %10 indirimle.",
@@ -1931,6 +1933,7 @@
     "Not sure of the date yet? Choose a season and we tell you what is free.": "Tarihten henüz emin değil misiniz? Bir mevsim seçin, hangi tarihlerin boş olduğunu söyleyelim.",
     "Not sure what to choose?": "Ne seçeceğinize karar veremediniz mi?",
     "Not sure what to give? Give a gift card.": "Ne alacağınızdan emin değil misiniz? Hediye kartı verin.",
+    "Not sure what your pet needs?": "Evcil hayvanınızın neye ihtiyacı olduğundan emin değil misiniz?",
     "Not sure where to start?": "Nereden başlayacağınızdan emin değil misiniz?",
     "Not sure which doctor or test you need? Send us a request and we will find the right time together.": "Hangi doktora veya teste ihtiyacınız olduğundan emin değil misiniz? Bize talep gönderin; doğru saati birlikte bulalım.",
     "Not sure which one fits?": "Hangisinin uyduğundan emin değil misiniz?",
@@ -2366,6 +2369,7 @@
     "new-blog-post": "yeni-blog-yazisi",
     "new-campaign": "yeni-kampanya",
     "new-cars": "sifir-araclar",
+    "new-clients": "yeni-gelenler",
     "new-community-news-post": "yeni-topluluk-haberi",
     "new-destination": "yeni-destinasyon",
     "new-dish": "yeni-yemek",
@@ -2403,6 +2407,8 @@
     "nginx": "nginx",
     "nginx sample": "nginx örneği",
     "night mode, low light, astro, dark": "gece modu, düşük ışık, astro, karanlık",
+    "night, weekend, Sunday, holiday, fee": "gece, hafta sonu, pazar, tatil, ücret",
+    "night, weekend, out of hours, urgent": "gece, hafta sonu, mesai dışı, acil",
     "nightly job analyzed the HTML structure of {var:1} record{suffix:1}": "gecelik iş {var:1} kaydın HTML yapısını inceledi",
     "nightly job recalculated the SEO score of {var:1} record{suffix:1}": "gecelik iş {var:1} kaydın SEO skorunu yeniden hesapladı",
     "no": "hayır",
@@ -2469,5 +2475,6 @@
     "number of visitors": "ziyaretçi sayısı",
     "numerical": "sayısal",
     "nursery": "yuva",
-    "nursery, preschool, kindergarten, primary, after-school, summer camp": "yuva, kreş, okul öncesi, anaokulu, ilkokul, okul sonrası, yaz kampı"
+    "nursery, preschool, kindergarten, primary, after-school, summer camp": "yuva, kreş, okul öncesi, anaokulu, ilkokul, okul sonrası, yaz kampı",
+    "nutrition-and-weight": "beslenme-ve-kilo"
 }
