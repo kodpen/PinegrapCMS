@@ -69,6 +69,37 @@ function test_comment_links_return_url()
 	}
 }
 
+// The classic comments block's "Show All" / "Show Featured" link: the page's
+// own query with comments=all set or removed; array parameters and an absent
+// query must not break it.
+function test_comment_links_view_switch_url()
+{
+	$rows = array(
+		array('/blog-post?x[]=1', 'all', '/blog-post?x%5B0%5D=1&comments=all'),
+		array('/blog-post', 'all', '/blog-post?comments=all'),
+		array('/blog-post?comments=all&a=1', 'all', '/blog-post?a=1&comments=all'),
+		array('/blog-post?comments=featured', 'all', '/blog-post?comments=all'),
+		array('/p?q=a+b&w=%C3%BC', 'all', '/p?q=a+b&w=%C3%BC&comments=all'),
+		array('/blog-post?comments=all', '', '/blog-post'),
+		array('/blog-post?a=1&comments=all', '', '/blog-post?a=1'),
+		array('/blog-post?x[]=1&x[y]=2&comments=all', '', '/blog-post?x%5B0%5D=1&x%5By%5D=2'),
+		array('/blog-post', '', '/blog-post'),
+		array('/blog-post?', 'all', '/blog-post?comments=all'),
+		array('//blog-post?a=1#top', 'all', '/blog-post?a=1&comments=all'),
+		array('//evil.example/x', '', '/evil.example/x'),
+		array('/\\evil.example/x?comments=all', '', '/evil.example/x'),
+		array(null, 'all', '?comments=all'),
+	);
+
+	foreach ($rows as $row) {
+		pg_assert_same($row[2], pg_comment_view_switch_url($row[0], $row[1]), json_encode($row[0]) . ', ' . $row[1]);
+	}
+
+	$source = comment_links_test_source('get_page_content.php');
+	pg_assert_same(2, substr_count($source, 'pg_comment_view_switch_url(get_request_uri(), '), 'get_page_content.php: both switch links use the helper');
+	pg_assert_true(strpos($source, "parse_str(\$url_parts['query']") === false, 'get_page_content.php: no unguarded query read');
+}
+
 // add_comment.php sends the writer back through pg_comment_return_url() and
 // mails the administrators a link that names the comment; the comment's
 // three mail links still name the configured host.

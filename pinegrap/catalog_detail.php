@@ -149,20 +149,14 @@ if ($liveform->get_field_value('quantity') != '') {
 if ($selection_type == 'donation') {
     $quantity = 1;
     
-    // If a quantity field was displayed to the user, and the quantity is valid,
-    // then use that for the quantity.
-    if (
-        ($liveform->get_field_value('quantity') != '')
-        && (preg_match('/^\d+$/', $liveform->get_field_value('quantity')) == 1)
-    ) {
-        $actual_quantity = $liveform->get_field_value('quantity');
-        
-    // Otherwise a quantity field was not displayed to the user, or the quantity is invalid,
-    // so use default quantity.
-    } else {
-        $actual_quantity = $default_quantity;
+    // A posted whole number of at least one is the quantity; a missing,
+    // invalid or zero quantity falls back to the default quantity.
+    $actual_quantity = pg_order_form_posted_quantity($liveform->get_field_value('quantity'));
+
+    if ($actual_quantity < 1) {
+        $actual_quantity = pg_product_default_quantity($default_quantity);
     }
-    
+
     $donation_amount = $price * $actual_quantity;
     
 // else product is not a donation, so just prepare quantity

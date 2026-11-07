@@ -1162,7 +1162,7 @@ function get_shopping_cart($properties) {
                             }
                             
                             // get form info (form content, wysiwyg fields, file upload)
-                            $form_info = get_form_info(0, $product_id, $order_item_id, $quantity_number, $form_label_column_width, $office_use_only = false, $form, 'frontend', $editable = FALSE, $device_type, $folder_id_for_default_value, $reference_code_field_id);
+                            $form_info = get_form_info(0, $product_id, $order_item_id, $quantity_number, $form_label_column_width, false, $form, 'frontend', false, $device_type, $folder_id_for_default_value, $reference_code_field_id);
                             
                             // store wysiwyg fields in array
                             $wysiwyg_fields = array_merge($wysiwyg_fields, $form_info['wysiwyg_fields']);
@@ -2140,6 +2140,18 @@ function get_shopping_cart($properties) {
                 or (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')
             ) {
                 $start_date = true;
+            }
+
+            // ClearCommerce and First Data Global Gateway need the number of payments,
+            // and shopping_cart.php refuses an empty field for them.
+            if (
+                ECOMMERCE_CREDIT_DEBIT_CARD
+                and (
+                    (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce')
+                    or (ECOMMERCE_PAYMENT_GATEWAY == 'First Data Global Gateway')
+                )
+            ) {
+                $number_of_payments_required = true;
             }
             
             // create array for storing inventory quantity for products,
