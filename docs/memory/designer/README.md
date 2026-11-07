@@ -23,6 +23,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Draw output that depends on the request as a placeholder in `pg_tr_finalize()`, never into the saved page body (`language-switcher-component.md`).
 - Keep site output (palette components, widget and starter markup, design templates, the canvas) on Bootstrap 5.3.8; only the editor's own chrome and dialogs are Bootstrap 6 like the panel, and the `.claude/skills/bootstrap-*` skills never apply to site output (`ui/bootstrap-6.md`).
 - Mark a new style_designer.js member that writes page markup or draws the canvas with `/* @pg-site-output */` on the line above it, or `bs6_migrate.php` and `check_bs6.php` read its classes as panel code (`ui/bootstrap-6-editor-markers.md`).
+- Build a design template's missing sector sections first as a palette block family, then give its home and signature pages their own composition and `_fx` motion where it fits; never copy another template's builders or band sequence (`design-template-own-look.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -160,6 +161,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-news-publishing.md: News template publishing: who may submit, the three-row live rule, scheduling and search, where a draft could leak, search noise, structured data and feeds, author HTML, signed-in tips, e-mails.
 - design-template-news.md: News Portal template (pinegrap-news): what it ships, the Articles form contract, the look, ?r= addresses, sample dates, preview, platform limits.
 - design-template-newsroom-comments.md: News and magazine templates (1.1.0) on the Comments widget: post_comments, conversation_replies, desk_messages, the e-mail card on both comment e-mails, why explicit trees, older sites
+- design-template-own-look.md: Rule (owner, 2026-11-07): a design template's sector sections are first a palette block family, its home and signature pages have their own composition and motion, and its plan says what sets it apart
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
