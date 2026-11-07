@@ -1031,9 +1031,12 @@ function protect_credit_card_number($card_number)
  * Classify a raw `orders.status` value into a lifecycle stage key.
  *
  * The status column is a free-ish enum that has picked up Turkish values over
- * the years, so matching is substring-based in both languages. Order matters:
+ * the years. The values the software writes are matched exactly first; any
+ * other value is matched by substring in both languages. Order matters:
  * 'cancelled' is checked first because a cancelled order may still carry
- * words from an earlier stage in some installs.
+ * words from an earlier stage in some installs, and a negated word
+ * ('incomplete', 'unpaid', 'tamamlanmadı') is checked before the positive
+ * word it contains.
  *
  * @param string $status Raw orders.status
  * @return string        One of: cancelled|complete|shipped|pending|refunded|default
@@ -1042,14 +1045,16 @@ function _pg_order_status_stage($status)
 {
     $s = mb_strtolower(trim((string)$status), 'UTF-8');
     if ($s === '') return 'default';
+    $stored = array('incomplete' => 'pending', 'complete' => 'complete', 'exported' => 'complete', 'cancelled' => 'cancelled', 'canceled' => 'cancelled');
+    if (isset($stored[$s])) return $stored[$s];
     if (strpos($s, 'cancel')   !== false || strpos($s, 'iptal')   !== false) return 'cancelled';
     if (strpos($s, 'refund')   !== false || strpos($s, 'iade')    !== false) return 'refunded';
     if (strpos($s, 'ship')     !== false || strpos($s, 'kargo')   !== false) return 'shipped';
+    if (strpos($s, 'incomplete') !== false || strpos($s, 'unpaid') !== false || strpos($s, 'tamamlanmad') !== false) return 'pending';
     if (strpos($s, 'complete') !== false || strpos($s, 'tamam')   !== false) return 'complete';
     if (strpos($s, 'export')   !== false)                                    return 'complete';
     if (strpos($s, 'paid')     !== false || strpos($s, 'ödend')   !== false) return 'complete';
     if (strpos($s, 'pend')     !== false || strpos($s, 'beklem')  !== false) return 'pending';
-    if (strpos($s, 'incomplete') !== false)                                  return 'pending';
     return 'default';
 }
 
