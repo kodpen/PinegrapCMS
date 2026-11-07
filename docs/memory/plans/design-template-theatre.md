@@ -13,7 +13,7 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 ## Steps (claim as `[plan:design-template-theatre] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7792): `parts.php` (builders, the theatre's data, pick lists, shared parts and cards); `tests/design_template_theatre_test.php`.
 
-- 2: `pages_public.php`: home, `visit`, `support`, `about`, `faq`; test.
+- 2 (done, #7849): `pages_public.php`: home, `visit`, `support`, `about`, `faq`; test.
 
 - 3: `productions.php`: the Productions collection, `season` by `?genre=` and `?status=`, `production`, `production_new`, `home_productions`; test.
 
