@@ -112,6 +112,7 @@ function _test_mu_page_keys()
 		'press', 'press_file_new', 'booking', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy', 'email_reply',
 		'email_booking_new', 'email_booking_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	), _test_mu_shop_keys());
