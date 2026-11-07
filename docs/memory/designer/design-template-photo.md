@@ -1,6 +1,6 @@
 ---
 name: design-template-photo
-description: Photography Studio template (pinegrap-photo): galleries as a collection, shoot booking requests, private proofing folders with proof selections, deposits and gift vouchers in the shop, pph- look, tests.
+description: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
 ---
 
 ## What does it ship?
