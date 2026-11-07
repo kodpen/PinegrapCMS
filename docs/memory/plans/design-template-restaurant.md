@@ -12,10 +12,10 @@ description: Plan: the Restaurant design template (pinegrap-restaurant), one che
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-restaurant-design]].
 
 ## Steps (claim as `[plan:design-template-restaurant] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7647): `parts.php` (builders, the restaurant's data and pick lists, shared parts, cards, form fields, comment thread, blog parts); test.
-- 2 (done, #7780): `pages_public.php`: home, `tasting`, `wine`, `about`, `faq`, `location`; test.
-- 3 (done, #7793): `menu.php`: the Menu collection (`menu` with a tab per course, `dish`, `dish_new`), the Events form (`events`, `event`, `event_new`), `home_dishes`, `home_events`; test.
-- 4 (done, #7883): `mail.php` (the e-mail builders) and `reservations.php`: table reservation requests (`reserve`, `reservation_view`, `my_reservations`, `staff_reservations`, `privacy`, `email_reply`, `email_reservation_new`, `email_reservation_received`) and `book_online` (the chef's table on the booking widget's starter); test.
+- 1 (done, #7647): `parts.php`; test.
+- 2 (done, #7780): `pages_public.php`; test.
+- 3 (done, #7793): `menu.php` (Menu and Events collections, `home_dishes`, `home_events`); test.
+- 4 (done, #7883): `mail.php`, `reservations.php` (reservation request pages and e-mails, `book_online`, `privacy`, `email_reply`); test.
 - 5: `private.php` (`private_dining`, `private_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`) and `shop.php` (`vouchers` with the voucher card, product, cart, checkout, order, `email_order`, the Gift Vouchers catalog); test.
 - 6: `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
