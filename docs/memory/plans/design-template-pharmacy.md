@@ -13,7 +13,7 @@ description: Plan: the Pharmacy design template (pinegrap-pharmacy): services, p
 ## Steps (claim as `[plan:design-template-pharmacy] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7838): `parts.php` (node builders, the pharmacy's data and pick lists, shared parts and cards, form fields, comment thread, staff bar, blog parts); `tests/design_template_pharmacy_test.php`.
 
-- 2: `pages_public.php`: home (`home_team`, `home_posts` as widgets), `services` and one `service_<key>` per service (home delivery is `service_delivery`), `health_checks`, `on_duty`, `about`, `faq`, `location`; test.
+- 2 (done, #7909): `pages_public.php`: home (`home_team`, `home_posts` as widgets), `services` and one `service_<key>` per service (home delivery is `service_delivery`), `health_checks`, `on_duty`, `about`, `faq`, `location`; test.
 
 - 3: `team.php`: the Pharmacists collection (`team` by `?service=`, `pharmacist`, `pharmacist_new`, `home_team`) and `book_online` ([[booking-templates]]); test.
 
