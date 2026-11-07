@@ -221,7 +221,8 @@ $icon_tile = function ($name, $class = '') use ($el, $icon) {
 // name; the sample fills the canvas. Artists: photo, name, medium, based,
 // summary. Exhibitions: photo_1, title, status, dates, opening, summary.
 // Works: photo, title, artist (a reference to the Artists form, printed by
-// its label), technique, size, price, availability.
+// the artist's name through the reference), technique, size, price,
+// availability.
 
 // An artist's card (the home and the artists page): the portrait, the
 // medium, the name linking the artist's page, where the studio is and the
@@ -274,12 +275,24 @@ $exhibition_card = function ($sample_key = 'after_hours') use ($el, $para, $span
     ), '6', '4');
 };
 
+// A work's artist: the field holds the artist's code, so a row prints the
+// artist's name through the reference into the Artists form.
+$artist_ref = function ($props = array('text' => 'name')) {
+    $bindings = array();
+    $params = array();
+    foreach ($props as $prop => $show) {
+        $bindings[$prop] = '__ref';
+        $params[$prop] = array('field' => 'artist', 'page_id' => '{{tab:artist_new}}', 'show' => $show);
+    }
+    return array('_bindings' => $bindings, '_bindParams' => $params);
+};
+
 // A work's caption, the way a label beside it on the wall reads: the
 // artist, the title, the technique and the size.
-$work_caption = function ($sample_key = 'last_table') use ($el, $span, $bind, $works, $artists) {
+$work_caption = function ($sample_key = 'last_table') use ($el, $span, $artist_ref, $bind, $works, $artists) {
     $w = $works[$sample_key];
     return $el('div', 'pgl-caption small', lang('Caption'), array(
-        $span($artists[$w['artist']]['name'], 'd-block fw-semibold', lang('Artist'), $bind('artist')),
+        $span($artists[$w['artist']]['name'], 'd-block fw-semibold', lang('Artist'), $artist_ref()),
         $span($w['technique'], 'd-block text-body-secondary', lang('Technique'), $bind('technique')),
         $span($w['size'], 'd-block text-body-secondary', lang('Size'), $bind('size')),
     ));

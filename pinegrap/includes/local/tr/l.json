@@ -416,6 +416,7 @@
     "Leave empty and the tax zone of the delivery address decides.": "Boş bırakırsanız teslimat adresinin vergi bölgesi belirler.",
     "Leave empty for Amazon S3 in the region below.": "Aşağıdaki bölgedeki Amazon S3 için boş bırakın.",
     "Leave empty for VAT. Write the name your invoices use instead, for example Sales tax or GST; it is printed as written.": "KDV için boş bırakın. Faturalarınız başka bir ad kullanıyorsa onu yazın, örneğin Sales tax ya da GST; yazıldığı gibi basılır.",
+    "Leave empty for a work shown only on the artist's page.": "Yalnızca sanatçının sayfasında gösterilen bir eser için boş bırakın.",
     "Leave empty for access with no end date.": "Süresiz erişim için boş bırakın.",
     "Leave empty for compatibility.": "Uyumluluk için boş bırakın.",
     "Leave empty for the account's payment term, or the store default.": "Boş bırakılırsa carinin vadesi, yoksa mağaza varsayılanı uygulanır.",
