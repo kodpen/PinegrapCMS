@@ -11,7 +11,7 @@ description: Plan: the Marina design template (pinegrap-marina): berths and rate
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-marina-design]].
 
 ## Steps (claim as `[plan:design-template-marina] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the harbour's data and pick lists, shared parts, cards, rate table, form fields, comment thread, blog parts); `tests/design_template_marina_test.php`.
+- 1 (done, #7794): `parts.php` (node builders, the harbour's data and pick lists, shared parts, cards, rate table, form fields, comment thread, blog parts); `tests/design_template_marina_test.php`.
 - 2: `pages_public.php`: home (`home_charters`, `home_events`, `home_posts`), `berths` and one `berth_<key>` per kind, `rates`, `services`, `facilities`, `arriving`, `rules`, `about`, `faq`; test.
 - 3: `charters.php`: the Charter Boats collection (`charters` by `?type=`, the `boat` record page, `boat_new`), `home_charters`; test.
 - 4: `mail.php` and `requests.php`: visitor berth requests (`berth_request` with `?kind=`, `?season=`; `request_view`, `my_requests`, `staff_requests`, `privacy`, `email_reply`) and charter enquiries (`charter_enquiry` with `?boat=`; `enquiry_view`, `my_enquiries`, `staff_enquiries`); test.
