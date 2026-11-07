@@ -786,6 +786,7 @@
     "Only a public or a private channel goes into a group.": "Gruba yalnız herkese açık ya da özel bir kanal taşınır.",
     "Only a published flow that is live can be run.": "Yalnız yayımlanmış ve yayında olan bir akış çalıştırılabilir.",
     "Only a repeat written as paid takes money from a till.": "Yalnız ödenmiş olarak yazılan bir tekrar bir hesaptan para çıkarır.",
+    "Only a request asked in a channel, a discussion or the daily summary can be closed without an answer.": "Yalnızca bir kanalda, bir tartışmada sorulan istek ya da günlük özet cevapsız kapatılabilir.",
     "Only a return whose goods are back can be refunded.": "Yalnız ürünleri geri gelmiş bir iadenin ücreti iade edilebilir.",
     "Only a sales invoice can repeat.": "Yalnız satış faturası tekrarlanabilir.",
     "Only a style edited as code can be opened in the visual designer.": "Görsel tasarımcıda yalnızca kodla düzenlenen bir stil açılabilir.",
