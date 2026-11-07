@@ -1086,6 +1086,7 @@ $staff_bar = function () use ($el, $link, $span) {
                 $item('show_new', lang('New Show')),
                 $item('release_new', lang('New Release')),
                 $item('staff_bookings', lang('Booking Enquiries')),
+                $item('press_file_new', lang('New Press File')),
                 $item('blog_new', lang('New Article')),
                 $item('inbox', lang('Inbox')),
             ), array('smartActive' => true)),
