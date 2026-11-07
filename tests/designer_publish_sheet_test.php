@@ -106,3 +106,27 @@ function test_designer_publish_sheet_plan_choices()
 	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => false), $got[1], 'nothing checked: nothing to do');
 	pg_assert_same(array('publish' => array(), 'hold' => array('b'), 'save' => true), $got[2], 'an unchanged live page checked saves the design');
 }
+
+// The editor's side: Publish opens the sheet, a held page is sent as
+// unchanged and keeps its changes after the save, Ctrl+S still saves.
+function test_designer_publish_sheet_editor_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains('publish: _pgPublishClick,', $js, 'StyleDesigner.publish');
+	pg_assert_contains("if (_pgActiveIsDraft()) { saveAjax(opts); return; }", $js, 'a draft tab\'s main button saves');
+	pg_assert_contains("pubPage.addEventListener('click', function () { _pgPublishSheet({ button: pubPage }); });", $js, 'the draft\'s Publish opens the sheet');
+	pg_assert_contains("if ((_pgSaveHold[p.key] && p.page_id > 0 && !p.pickedPending) || _pgPageUnchanged(p, t, vr)) rec.unchanged = 1;", $js, 'a held page goes as unchanged');
+	pg_assert_true(substr_count($js, 'if (_pgSaveHold[p.key]) return;') === 2, 'a held page keeps its name and baseline after the save');
+	pg_assert_contains("if (keys.length) _pgSetDraft(keys, false, hold);", $js, 'the chosen drafts go on the site with the hold');
+	pg_assert_contains("if (b && !b.disabled) saveAjax({ button: b });", $js, 'Ctrl+S saves without the sheet');
+	pg_assert_false(strpos($js, 'data-sd-status') !== false, 'the publishing menu is gone from the editor');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_contains('StyleDesigner.publish({ button: _saveBtn });', $screen, 'the main button goes through publish');
+	pg_assert_contains('id="sdPublishSheet"', $screen, 'the sheet markup');
+	pg_assert_false(strpos($screen, 'data-sd-status') !== false, 'the publishing menu is gone from the toolbar');
+	foreach (array('page-draft', 'all-draft', 'publish', 'all') as $act) {
+		pg_assert_contains('data-sdp-act="' . $act . '"', $screen, 'the sheet action ' . $act);
+	}
+}

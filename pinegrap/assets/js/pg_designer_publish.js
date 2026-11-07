@@ -67,6 +67,7 @@ var PgDesignerPublish = (function () {
     }
 
     var bridge = null;
+    var current = [];   // the rows read when the sheet opened
     var checked = {};
 
     function el() { return document.getElementById('sdPublishSheet'); }
@@ -118,7 +119,7 @@ var PgDesignerPublish = (function () {
     function sync() {
         var root = el();
         if (!root || !bridge) return;
-        var rows = bridge.rows();
+        var rows = current;
         var p = plan(rows, Object.keys(checked));
         var go = root.querySelector('[data-sdp-act="publish"]');
         if (go) go.disabled = !p.save;
@@ -139,7 +140,7 @@ var PgDesignerPublish = (function () {
         var list = root ? root.querySelector('[data-sdp-list]') : null;
         if (!list) return;
         list.textContent = '';
-        bridge.rows().forEach(function (r) { list.appendChild(rowEl(r)); });
+        current.forEach(function (r) { list.appendChild(rowEl(r)); });
         sync();
     }
 
@@ -158,7 +159,7 @@ var PgDesignerPublish = (function () {
             var b = e.target.closest('[data-sdp-act]');
             if (!b || b.disabled || !bridge) return;
             var act = b.getAttribute('data-sdp-act');
-            var rows = bridge.rows();
+            var rows = current;
             if (act === 'all') {
                 var all = rows.filter(selectable).map(function (r) { return r.key; });
                 var every = all.every(function (k) { return checked[k]; });
@@ -182,8 +183,9 @@ var PgDesignerPublish = (function () {
         var root = el();
         if (!root || !b) return false;
         bridge = b;
+        current = bridge.rows() || [];
         checked = {};
-        defaults(bridge.rows()).forEach(function (k) { checked[k] = true; });
+        defaults(current).forEach(function (k) { checked[k] = true; });
         bind(root);
         draw();
         if (window.pgUI) pgUI.dialog.show(root);
