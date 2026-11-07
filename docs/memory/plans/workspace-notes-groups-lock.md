@@ -16,7 +16,7 @@ description: Plan (owner 2026-11-07): Workspace notes in groups (personal, share
 ## How does it hold together?
 - `ws_note_places` (user_id, note_id → group_id, sort) says who keeps which note where; a group's notes are its rows, whoever put them there. A reader sees each note once: in their own place, else in the shared group that brought it.
 - A group's share writes `ws_note_shares` rows with `via_group` = the group, one per note and person or channel. Every reader of note shares (access, files, the list, sync, deletions) works on them unchanged; taking a group's share back deletes only its own rows, so a direct share stays.
-- Lock: `ws_notes.locked` (the owner's), `ws_note_groups.locked`, `ws_note_locks` (PIN hash, minutes, wrong tries). A note is behind a person's lock when it is their locked note or sits in their locked group (`ws_note_behind_lock()`); while the lock is closed, its text, files and versions are given to nobody and nothing. The open lock lives in the session.
+- Lock: `ws_notes.locked` (the owner's), `ws_note_groups.locked`, `ws_note_locks` (PIN hash, minutes, wrong tries). A note is behind a person's lock when it is their locked note or sits in their locked group (`ws_note_behind_lock()`); while that lock is closed, nothing acting as the person (screen, API, MCP, assistants, search, export) gets its text, files or versions. The open lock lives in the session.
 - Media: no format change. `[name](url)` of a file of this site alone on a line becomes a block in `ws_render_body(…, $note = true)` and in the writing box; export, import and the API keep the link, and old notes get previews as they are.
 
 ## What is left out?
