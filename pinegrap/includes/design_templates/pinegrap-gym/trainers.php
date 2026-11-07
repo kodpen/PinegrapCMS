@@ -138,7 +138,10 @@ $trainer_pages[] = array(
                         $el('div', 'p-4 rounded-3 bg-body-tertiary mb-4', lang('Group Classes'), array(
                             $heading('h2', lang('Rather train in a group?'), 'h5 fw-semibold mb-2'),
                             $para(lang('Pick a class on the timetable and ask for your place; the front desk confirms it the same day.'), 'small text-body-secondary mb-3'),
-                            $link(lang('See the timetable'), '{{page:timetable}}', 'btn btn-sm btn-outline-primary px-3'),
+                            $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
+                                $link(lang('See the timetable'), '{{page:timetable}}', 'btn btn-sm btn-outline-primary px-3'),
+                                $link(lang('Book a Class'), '{{page:class_booking}}', 'btn btn-sm btn-outline-primary px-3'),
+                            )),
                         )),
                         $el('div', 'p-4 rounded-3 border', lang('Opening hours'), array(
                             $heading('h2', lang('Opening hours'), 'h5 fw-semibold mb-3'),

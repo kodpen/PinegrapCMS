@@ -525,6 +525,7 @@
     "Book a favourite": "Bir favoriyi seçin",
     "Book a free time of a staff member for a customer. Times are in the site's time zone ({var:1}).": "Bir müşteri için personelin boş bir saatine randevu verin. Saatler sitenin saat dilimindedir ({var:1}).",
     "Book a personal training session online: choose the session, a coach and one of the free times.": "İnternetten kişisel antrenman seansı ayırtın: seansı, bir antrenörü ve boş saatlerden birini seçin.",
+    "Book a personal training session with a coach at one of the free times.": "Boş saatlerden birinde bir antrenörle kişisel antrenman seansı ayırtın.",
     "Book a session": "Seans ayırtın",
     "Book a session with a trainer at a free time, or bring a friend on a free trial pass.": "Bir antrenörle boş bir saate seans ayırtın ya da bir arkadaşınızı ücretsiz deneme girişiyle getirin.",
     "Book a session with a trainer at a free time.": "Boş bir saatte bir antrenörle seans ayarlayın.",
