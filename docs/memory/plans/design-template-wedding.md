@@ -21,9 +21,9 @@ description: Plan: the Wedding Planner and Venue design template (pinegrap-weddi
 - 8: assembly: `pinegrap-wedding.php` (order, search sections, look, fonts, `pwd-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-wedding.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start (step 7)
-- Copy the shape of `pinegrap-hotel/account.php`: login, register, set_password, logout, forgot_password, my_account, profile, change_password, email_preferences, address_book, `email_account_welcome`, `email_password_reset`, `staff`, `blog_new`, `staff_directory`, `staff_entry`, and the `login_region` widget the account bar places; prefix `wd-` for ids, `pwd-` for classes.
-- `blog_new` is the post form the lists of `standard.php` (#7704) read: fields `title`, `summary`, `content`, `cover_image` (an image kind, `pg_cf_with_role(..., 'media')`), and `sample_records` with the Wedding Journal's sample posts ([[design-templates-standard-pages]]); the blog page's search reads `title`, `summary`, `content`.
-- My Account links My Enquiries, the inbox and (with the shop) nothing of the shop: only shop pages carry `requires => ecommerce`. The staff page links `staff_enquiries`, `wedding_new`, `blog_new`, `inbox`.
+- Copy the shape of `pinegrap-hotel/account.php` (account pages, its two e-mails, staff pages, the `login_region` widget the account bar places).
+- `blog_new` is the post form `standard.php` (#7704) reads: `title`, `summary`, `content`, `cover_image` (image kind), with `sample_records` ([[design-templates-standard-pages]]).
+- My Account links My Enquiries and the inbox, never a shop page; the staff page links `staff_enquiries`, `wedding_new`, `blog_new`, `inbox`.
 - Add the new e-mail page keys to `_test_wd_page_keys()` in `tests/design_template_wedding_test.php`.
 - Turkish: add keys with `tools/tr_add.php --from=<json>`; when `development` moves, a conflict lands only in `tr/*.json`: take `development`'s shard and re-add the keys.
 
