@@ -356,7 +356,7 @@ $production_widgets['production_detail'] = array(
                                 // Opens the performances of this production
                                 // (?production=).
                                 $link(lang('See the Dates'), '#', 'btn btn-primary w-100 mb-2', array(),
-                                    $th_page_link('whats_on', array('production' => 'title'))),
+                                    $th_page_link('whats_on', array('production' => 'reference_code'))),
                                 $link(lang('Plan Your Visit'), '{{page:visit}}', 'btn btn-outline-secondary w-100 mb-2'),
                                 // Opens the season on this production's
                                 // genre (?genre=).
