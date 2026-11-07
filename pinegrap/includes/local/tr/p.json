@@ -1746,6 +1746,7 @@
     "Prices for {var:1}": "{var:1} fiyatları",
     "Prices for {var:1} of {var:2} products were changed through the API by the application {var:3} (key {var:4}).": "{var:2} üründen {var:1} tanesinin fiyatı API üzerinden {var:3} uygulaması (anahtar {var:4}) tarafından değiştirildi.",
     "Prices include VAT. Ask at the counter for the allergens in every dish.": "Fiyatlara KDV dahildir. Her ürünün alerjen bilgisini tezgâhta sorabilirsiniz.",
+    "Prices include VAT. The menu changes with the market; your waiter has tonight's.": "Fiyatlara KDV dahildir. Menü pazara göre değişir; bu akşamkini garsonunuz bilir.",
     "Prices include VAT. The menu changes with the seasons; the counter has today's.": "Fiyatlara KDV dahildir. Menü mevsimle değişir; günün menüsü tezgâhtadır.",
     "Prices move street by street. For what your own home is worth, ask an agent.": "Fiyatlar sokaktan sokağa değişir. Kendi evinizin ne ettiği için bir danışmana sorun.",
     "Prices on the till": "Kasada fiyatlar",
