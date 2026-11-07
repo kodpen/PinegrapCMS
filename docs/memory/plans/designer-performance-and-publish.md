@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-06): the visual designer stops rebuilding every
 
 ## Which steps?
 - D1 (S) Measure. Done (#7987). A timing probe behind `?sd_perf=1` (open, first draw, one edit, tab switch, save; to the console and a small badge), a big fixture page under `tests/fixtures/designer/`, a Node test timing the pure parts of `render()`; the numbers in `designer/designer-performance.md`. No behaviour change.
-- D2 (M) Incremental canvas. After D1. A text, property or style edit redraws only the edited node's element (`buildNodeEl()` of that subtree swapped in place; ids, selection and scroll kept); the full rebuild stays for structure changes (add, move, delete, undo, tab switch, shared component edits). The toggleable open state and the editor-state classes survive as today.
+- D2 (M) Incremental canvas. After D1 and own-looks B0. A text, property or style edit redraws only the edited node's element (`buildNodeEl()` of that subtree swapped in place; ids, selection and scroll kept); the full rebuild stays for structure changes (add, move, delete, undo, tab switch, shared component edits). The toggleable open state and the editor-state classes survive as today.
 - D3 (M) Panels on demand. After D2. Only the visible panel redraws; the Layers tree updates the changed row and its ancestors; in-place typing debounces the panels and the validation while the canvas text stays live.
 - D4 (S) Lazy dirty checks. After D3. The page baseline and the shared snapshots are compared on tab switch and at save, not after every render; `_pgPageUnchanged()` keeps its rules (`multi-page-designer-editor.md`).
 - D5 (M, several PRs) Parts. After D4. The file is cut into parts bundled in order by `tools/build_js.php` (as `pg_image_editor_<part>.js`, `ui/image-editor-parts.md`); the parts not needed to open a page (AI, code view, theme panel, Google fonts browser, interactions, import) load on first use through one loader; D1's probe shows the opening before and after. One PR per part.
@@ -24,4 +24,4 @@ description: Plan (owner 2026-11-06): the visual designer stops rebuilding every
 - The save path and its checks (`pg_designer_save_page()`), the lock on the save path, the drafts model (`page-drafts.md`), the canvas's Bootstrap 5.3.8 output, the three-place rule for widget layouts. A new question goes to the architect.
 
 ## Where does it start?
-- D1 and D6 now, side by side; then D2.
+- D1 (#7987) and D6 (#8009) are done. D2 waits for B0 of `plans/design-template-own-looks.md` (#8022): B0 also edits `style_designer.src.js` and takes its turn between D1 and D2. Claim D2 once B0 has merged; D7 (after D6) is free beside it.
