@@ -83,7 +83,7 @@ var PgDesignerPublish = (function () {
         item.setAttribute('data-key', r.key);
         var box = document.createElement('input');
         box.type = 'checkbox';
-        box.className = 'form-check-input m-0 flex-shrink-0';
+        box.className = 'check m-0 flex-shrink-0';
         box.checked = !!checked[r.key];
         box.disabled = !selectable(r);
         box.addEventListener('change', function () {
