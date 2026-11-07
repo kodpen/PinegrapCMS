@@ -173,6 +173,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-construction' => array('cn-qt-consent', 'cn-app-consent'),
 		'pinegrap-school' => array('sh-ap-consent', 'sh-vs-consent'),
 		'pinegrap-gym' => array('gy-cb-consent', 'gy-jn-consent'),
+		'pinegrap-museum' => array('mz-eb-consent', 'mz-sv-consent'),
 		'pinegrap-music' => array('mu-bk-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
