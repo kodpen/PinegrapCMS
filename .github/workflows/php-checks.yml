@@ -189,3 +189,57 @@ jobs:
       - name: Unit tests (tests/*_test.php)
         if: ${{ hashFiles('tools/test.php') != '' }}
         run: php -d memory_limit=-1 tools/test.php
+
+  # Tells the agent channel how the checks of a ready pull request ended: one
+  # "[ci] …" line written with the CI application's own key
+  # (tools/ws_post.php). Agents waiting with tools/ws_wait.php --prefix=[ci]
+  # wake on it. Skipped in silence while the repository has no
+  # PG_WS_SITE / PG_WS_CHANNEL / PG_WS_CI_KEY / PG_WS_CI_SECRET secrets, and
+  # it never fails the run: the channel is a convenience, not a gate.
+  channel:
+    name: report to the agent channel
+    needs: [checks, guards, php71]
+    if: ${{ always() && github.event_name == 'pull_request' && github.base_ref == 'development' && !github.event.pull_request.draft && needs.checks.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        if: ${{ hashFiles('tools/ws_post.php') != '' }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: curl
+          coverage: none
+          tools: none
+
+      - name: Write the [ci] line (tools/ws_post.php)
+        if: ${{ hashFiles('tools/ws_post.php') != '' }}
+        env:
+          PG_WS_SITE: ${{ secrets.PG_WS_SITE }}
+          PG_WS_CHANNEL: ${{ secrets.PG_WS_CHANNEL }}
+          PG_WS_KEY: ${{ secrets.PG_WS_CI_KEY }}
+          PG_WS_SECRET: ${{ secrets.PG_WS_CI_SECRET }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CHECKS: ${{ needs.checks.result }}
+          GUARDS: ${{ needs.guards.result }}
+          PHP71: ${{ needs.php71.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          RUN_KEY: ci-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          state=green
+          for result in "$CHECKS" "$GUARDS" "$PHP71"; do
+            if [ "$result" != success ] && [ "$result" != skipped ]; then
+              state=red
+            fi
+          done
+          php tools/ws_post.php --skip-missing "--idempotency-key=$RUN_KEY" -- \
+            "[ci] $state #$PR_NUMBER $HEAD_REF ${HEAD_SHA:0:7} checks=$CHECKS guards=$GUARDS php71=$PHP71 $RUN_URL $PR_TITLE"
