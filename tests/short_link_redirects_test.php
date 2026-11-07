@@ -57,6 +57,15 @@ function test_short_link_redirects_name_from_address_strips_the_base_path_of_ful
 	pg_assert_same('siteler/x', pg_short_link_name_from_address('/siteler/x', '/site/'), 'a longer first segment');
 }
 
+// Spaces or a tab pasted in front of a path or an address do not keep the
+// base path on the name.
+function test_short_link_redirects_name_from_address_strips_the_base_path_after_leading_spaces()
+{
+	pg_assert_same('blog', pg_short_link_name_from_address('/site/blog', '/site/'), 'no spaces');
+	pg_assert_same('blog', pg_short_link_name_from_address(' /site/blog', '/site/'), 'a space before a path');
+	pg_assert_same('blog', pg_short_link_name_from_address(" \thttps://example.com/site/blog", '/site/'), 'a space and a tab before a full address');
+}
+
 function test_short_link_redirects_name_rule()
 {
 	pg_assert_same('', pg_short_link_name_problem('ürün/eski-sayfa.html'), 'Turkish letters and a file name');
