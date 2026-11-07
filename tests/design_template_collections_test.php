@@ -110,6 +110,7 @@ function test_design_template_collection_forms()
 		'pinegrap-gym'        => array('blog_new', 'staff_entry', 'trainer_new'),
 		'pinegrap-museum'     => array('blog_new', 'event_new', 'exhibition_new', 'object_new', 'staff_entry'),
 		'pinegrap-music'      => array('blog_new', 'press_file_new', 'release_new', 'show_new', 'staff_entry'),
+		'pinegrap-architecture' => array('blog_new', 'job_new', 'project_new', 'staff_entry'),
 	);
 	$templates = _test_tpl_coll_templates();
 	foreach ($expected as $id => $keys) {
