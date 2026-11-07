@@ -15,7 +15,7 @@ description: Plan: the Public Library design template (pinegrap-library): catalo
 
 - 2 (done, #7824): `pages_public.php`: home (`home_arrivals`, `home_events`, `home_posts` slots), `visit` and one `branch_<key>` per branch, `children`, `digital`, `spaces`, `about`, `faq`; test.
 
-- 3: `catalogue.php`: the Catalogue collection (`catalogue` by `?format=` and `?audience=`, the `item` page with author, format, shelf and branch, `item_new`), `home_arrivals` (office field `new_arrival`); test.
+- 3 (done, #7835): `catalogue.php`: the Catalogue collection (`catalogue` by `?format=` and `?audience=`, the `item` page with author, format, shelf and branch, `item_new`), `home_arrivals` (office field `new_arrival`); test.
 
 - 4: `mail.php` (the e-mail builders) and `events.php`: the Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and place requests (`event_booking` with `?event=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`); test.
 
