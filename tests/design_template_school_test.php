@@ -120,7 +120,7 @@ function _test_sh_page_keys()
 		'apply', 'application_view', 'my_applications', 'staff_applications', 'privacy', 'email_reply',
 		'visit', 'staff_visits', 'email_application_new', 'email_application_received', 'email_visit_new', 'email_visit_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
-		'email_new_message', 'email_message_received', 'email_welcome',
+		'email_new_message', 'email_message_received', 'email_welcome', 'email_account_welcome', 'email_password_reset',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	);
