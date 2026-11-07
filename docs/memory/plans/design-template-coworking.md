@@ -21,7 +21,7 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 
 - 5 (done, #7971): `events.php`: Events collection (`events` from today on, ?topic=, `event`, `event_new`, samples dated from today on a weekday) and the sign-up (`event_signup` ?event=, `signup_view`, `my_signups`, `staff_signups`, two e-mails); test.
 
-- 6 (done, #PRNUM): `members.php`: shop pages (`memberships` with Memberships and Day Passes groups, product, cart, checkout, order, `email_order`) and the members' area (`members` with perks, `house_guide`); test.
+- 6 (done, #8002): `members.php`: shop pages (`memberships` with Memberships and Day Passes groups, product, cart, checkout, order, `email_order`) and the members' area (`members` with perks, `house_guide`); test.
 
 - 7: `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
 
