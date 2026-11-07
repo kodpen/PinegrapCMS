@@ -13,7 +13,7 @@ description: Plan: the Ferry design template (pinegrap-ferry): routes and ports,
 ## Steps (claim as `[plan:design-template-ferry] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7873): `parts.php` (node builders, the line's data and pick lists: routes, ports, seasons, sailings, fare kinds and fares, onboard services, travel tips, figures, quotes; shared parts, cards, timetable and fare tables, form fields, comment thread, blog parts); `tests/design_template_ferry_test.php`.
 - 2 (done, #7937): `pages_public.php`: home (`home_notices`, `home_posts`), `routes` and one `route_<key>` per route, `ports`, `timetables`, `fares`, `onboard`, `travel`, `about`, `faq`; test.
-- 3: `notices.php`: the Travel Notices collection (`notices` by `?route=`, the `notice` record page, `notice_new`), `home_notices`; test.
+- 3 (done, #7978): `notices.php`: the Travel Notices collection (`notices` by `?route=`, the `notice` record page, `notice_new`), `home_notices`; test.
 - 4: `mail.php` and `bookings.php`: booking requests (`booking_request` with `?route=` and `?fare=`; `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`) and group enquiries (`group_enquiry` with `?route=`; `group_view`, `my_groups`, `staff_groups`); test.
 - 5: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 6: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
