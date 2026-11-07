@@ -16,13 +16,15 @@ description: Plan: the Wedding Planner and Venue design template (pinegrap-weddi
 - 3 (done, #7616): `weddings.php` (`weddings`, `wedding`, `wedding_new`, `home_weddings`); test.
 - 4 (done, #7634): `mail.php` (the e-mail builders) and `enquiries.php`: consultation enquiries (`enquiry` with `?package=`, `?service=`, `?space=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`) and `book_visit` (the booking widget's starter beside the enquiry, [[booking-templates]]); test.
 - 5 (done, #7681): `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (a date-hold deposit per package, gift cards); test.
-- 6 (in progress): `standard.php`: contact, inbox, conversation, newsletter, blog (Wedding Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #7704): `standard.php`: contact, inbox, conversation, newsletter, blog (Wedding Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 8: assembly: `pinegrap-wedding.php` (order, search sections, look, fonts, `pwd-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-wedding.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
-## Where to start (step 6)
-- `pinegrap-wedding/shop.php` (#7681) returns `catalog` (group `wedding_shop`: a date-hold deposit per package, the gift cards) and the widget `cart_link` the account bar places; step 8 adds the catalog to the template file.
-- Copy the shape of `pinegrap-hotel/standard.php` ([[design-templates-standard-pages]]): `contact`, `inbox`, `conversation`, `newsletter`, `blog` (Wedding Journal), `blog_post`, `search`, `error`; `email_reply` is already in `enquiries.php`, so its text names conversations and Wedding Journal posts. The blog parts (`$post_card`, `$ai_summary`, `$newsletter_line`, `$newsletter_consent`) are in `parts.php`.
+## Where to start (step 7)
+- Copy the shape of `pinegrap-hotel/account.php`: login, register, set_password, logout, forgot_password, my_account, profile, change_password, email_preferences, address_book, `email_account_welcome`, `email_password_reset`, `staff`, `blog_new`, `staff_directory`, `staff_entry`, and the `login_region` widget the account bar places; prefix `wd-` for ids, `pwd-` for classes.
+- `blog_new` is the post form the lists of `standard.php` (#7704) read: fields `title`, `summary`, `content`, `cover_image` (an image kind, `pg_cf_with_role(..., 'media')`), and `sample_records` with the Wedding Journal's sample posts ([[design-templates-standard-pages]]); the blog page's search reads `title`, `summary`, `content`.
+- My Account links My Enquiries, the inbox and (with the shop) nothing of the shop: only shop pages carry `requires => ecommerce`. The staff page links `staff_enquiries`, `wedding_new`, `blog_new`, `inbox`.
+- Add the new e-mail page keys to `_test_wd_page_keys()` in `tests/design_template_wedding_test.php`.
 - Turkish: add keys with `tools/tr_add.php --from=<json>`; when `development` moves, a conflict lands only in `tr/*.json`: take `development`'s shard and re-add the keys.
 
 ## Open questions
