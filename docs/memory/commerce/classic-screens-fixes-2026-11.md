@@ -47,12 +47,13 @@ to `lang('Gift Card')` for several cards. They now print
 preview and the plain-text receipt do.
 
 ## Why was the receipt's Installment Charge in the base currency? (#7737)
-The system layout of `get_order_receipt.php` used `pg_format_money(...,
-BASE_CURRENCY_SYMBOL)`; it now uses `prepare_price_for_output(
-$installment_charges * 100, ...)` like the other totals rows and the custom
-layout (`$installment_charges` is the stored minor units / 100).
-`get_view_order_screen_content.php` (My Account order view) still uses
-`pg_format_money()` for that row.
+The system layouts of `get_order_receipt.php` and
+`get_view_order_screen_content.php` (My Account order view) used
+`pg_format_money(..., BASE_CURRENCY_SYMBOL)`; both now use
+`prepare_price_for_output($installment_charges * 100, ...)` like the other
+totals rows and their custom layouts (`$installment_charges` is the stored
+minor units / 100). Panel screens (`view_order.php`, `print_order.php`) keep
+the base currency.
 
 ## How was it checked?
 `php -l` on every file, `php tools/test.php` (all green), `check_lang`.
