@@ -840,6 +840,7 @@
     "Discover, design, build and launch: the four steps of a website project, how long each takes and what I need from you.": "Keşif, tasarım, yapım ve yayın: bir web sitesi projesinin dört adımı, her birinin ne kadar sürdüğü ve sizden neye ihtiyacım olduğu.",
     "Discoveries, space and the natural world.": "Keşifler, uzay ve doğa.",
     "Discovery address": "Keşif adresi",
+    "Discreet": "Gizlilik",
     "Discussion": "Tartışma",
     "Discussion: {var:1}": "Tartışma: {var:1}",
     "Discussions": "Tartışmalar",
@@ -907,6 +908,7 @@
     "Do I need a visa or insurance?": "Vize ya da sigorta gerekir mi?",
     "Do I need an account to order?": "Sipariş vermek için hesap gerekir mi?",
     "Do I need an account to post?": "Yazmak için hesap gerekir mi?",
+    "Do I need an appointment for a vaccination?": "Aşı için randevu gerekli mi?",
     "Do I need experience for a baking class?": "Fırın atölyesi için deneyim gerekir mi?",
     "Do I need experience?": "Deneyim gerekli mi?",
     "Do I need to be at home?": "Evde olmam gerekir mi?",
@@ -1393,6 +1395,7 @@
     "delivery, courier, shipping": "teslimat, kurye, kargo",
     "delivery, delivery cost, outside the city": "teslimat, teslimat ücreti, şehir dışı",
     "delivery, gallery, download, proofs, edited, how long": "teslim, galeri, indirme, ön izleme, düzenleme, ne kadar sürer",
+    "delivery, home, bring, courier": "teslimat, ev, getirme, kurye",
     "delivery, minimum order, invoice, account, samples": "teslimat, en az sipariş, fatura, hesap, numune",
     "delivery, shipping, how long": "teslimat, kargo, ne kadar sürer",
     "delivery, shipping, tracking, packaging": "teslimat, kargo, takip, ambalaj",
@@ -1515,5 +1518,6 @@
     "duplicate topics, search before posting": "tekrarlanan konular, yazmadan önce arama",
     "duration, length, time": "süre, uzunluk, zaman",
     "duration, time, how long": "süre, zaman, ne kadar sürer",
+    "duty pharmacy, night, Sunday, holiday, open now, late": "nöbetçi eczane, gece, pazar, tatil, şimdi açık, geç saat",
     "dynamic region": "dinamik bölge"
 }

@@ -117,7 +117,7 @@ function _test_rx_page_keys()
 	$services = array();
 	foreach (array_keys(_test_rx_load()['services']) as $key) $services[] = 'service_' . $key;
 	return array_merge(array(
-		'home', 'services', 'health_checks', 'on_duty', 'delivery', 'about', 'faq', 'location',
+		'home', 'services', 'health_checks', 'on_duty', 'about', 'faq', 'location',
 		'team', 'pharmacist', 'pharmacist_new', 'book_online',
 		'prescription', 'prescription_view', 'my_prescriptions', 'staff_prescriptions', 'privacy', 'email_reply',
 		'email_prescription_new', 'email_prescription_received',
