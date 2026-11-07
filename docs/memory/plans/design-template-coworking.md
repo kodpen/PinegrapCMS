@@ -23,7 +23,7 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 
 - 6 (done, #8002): `members.php`: shop pages (`memberships` with Memberships and Day Passes groups, product, cart, checkout, order, `email_order`) and the members' area (`members` with perks, `house_guide`); test.
 
-- 7 (done, #PRNUM): `standard.php`: contact, inbox, conversation, newsletter, blog ("Blog"), blog post, help search ("Help Center"), error, `email_new_message`, `email_message_received`, `email_welcome`; test.
+- 7 (done, #8024): `standard.php`: contact, inbox, conversation, newsletter, blog ("Blog"), blog post, help search ("Help Center"), error, `email_new_message`, `email_message_received`, `email_welcome`; test.
 
 - 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
