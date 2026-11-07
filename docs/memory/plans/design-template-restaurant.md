@@ -18,14 +18,14 @@ description: Plan: the Restaurant design template (pinegrap-restaurant), one che
 - 4 (done, #7883): `mail.php`, `reservations.php` (reservation request pages and e-mails, `book_online`, `privacy`, `email_reply`); test.
 - 5 (done, #7972): `private.php` (`private_dining`, `private_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`) and `shop.php` (`vouchers` with the voucher card, product, cart, checkout, order, `email_order`, the Gift Vouchers catalog); test.
 - 6 (done, #7998): `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #8018): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 8: assembly: `pinegrap-restaurant.php` (order, search sections, look, fonts, `prt-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates, url-params), `designer/design-template-restaurant.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where does the next session start?
-- Step 7. Copy `pinegrap-hotel/account.php`; `blog_new` is the Kitchen Journal's post form (fields `title`, `summary`, `content`, `cover_image`, read by `home_posts`, `blog_list` and `blog_post` of `standard.php`); My Account links My Reservations, My Enquiries and the inbox.
-- Helpers in scope: see the earlier part files (`reservations.php` request and e-mail pieces, `menu.php` `$not_found`, `$record_toolbar`). The template file (step 8) includes parts, mail, menu, reservations, private, shop, standard, then account.
-- Avoid keys whose shared Turkish is wrong here (tests list them): `Starters`, `Course`, `Glass`, `Dish`, `Find Us`, `Choose a course…`; a time label is `Hour` ("Saat"), `Time` reads "Zaman".
-- Test helper prefixes taken: `_test_rt_`, `_test_rtp_` (public), `_test_rtm_`, `_test_rtr_`, `_test_rtpd_` (private and shop), `_test_rts_` (standard). `_test_rt_page_keys()` lists every page key; add step 7's e-mail pages there.
+- Step 8, the assembly. Copy `pinegrap-hotel.php`: include parts, mail, then pages_public, menu, reservations, private, shop, standard, account in one scope, each return kept as `$…_part`; `shop.php` also returns `catalog`.
+- Traps: `parts.php` keeps `$rooms`, `$events`, `$vouchers`, `$dishes`, `$tastings`; a part's return under those names would overwrite them. The My Account card is `$account_card`.
+- `tests/design_template_restaurant_account_test.php` already checks that the eight parts make exactly `_test_rt_page_keys()` with each page and widget once; the assembly test adds order, search sections, `prt-` rules and the shared lists.
+- Contact group `newsletter` (Restaurant Newsletter); look, fonts, order and icon in [[design-template-restaurant-design]].
 - PHP 7.1: no trailing comma after a call's last argument. Committer `Erdal Güral`.
 
 ## Open questions
