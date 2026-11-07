@@ -17,7 +17,7 @@ description: Plan: the Pharmacy design template (pinegrap-pharmacy): services, p
 
 - 3 (done, #7928): `team.php` (Pharmacists collection, `book_online`); test.
 
-- 4: `mail.php` and `requests.php`: prescription requests (`prescription` with `?service=` and `?pharmacist=`; `prescription_view`, `my_prescriptions`, `staff_prescriptions`, `privacy`, `email_reply`, `email_prescription_new`, `email_prescription_received`) and questions to the pharmacist (`ask` with `?topic=`, `ask_view`, `my_questions`, `staff_questions`, their two e-mails); test.
+- 4 (done, #7984): `mail.php` and `requests.php`: prescription requests (`prescription` with `?service=` and `?pharmacist=`; `prescription_view`, `my_prescriptions`, `staff_prescriptions`, `privacy`, `email_reply`, `email_prescription_new`, `email_prescription_received`) and questions to the pharmacist (`ask` with `?topic=`, `ask_view`, `my_questions`, `staff_questions`, their two e-mails); test.
 
 - 5: `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: the product ranges' health products); test.
 
