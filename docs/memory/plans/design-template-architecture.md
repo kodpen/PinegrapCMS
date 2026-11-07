@@ -16,7 +16,7 @@ description: Plan: the Architecture & Interiors Studio design template (pinegrap
 
 - 2 (done, #7767): `pages_public.php`: home (`home_projects`, `home_posts`), `services` and one `service_<key>` per service, `studio`, `team`, `process`, `awards` (awards and press), `faq`; `tests/design_template_architecture_public_test.php`.
 
-- 3 (claimed): `projects.php`: the Projects collection (`projects` by `?type=` and `?location=`, the `project` page with facts, the gallery, the brief, the credits and the client's words, `project_new`), `home_projects`; test.
+- 3 (done, #7777): `projects.php`: the Projects collection (`projects` by `?type=` and `?location=`, the `project` page with facts, the gallery, the brief, the credits and the client's words, `project_new`), `home_projects`; test.
 
 - 4: `mail.php` (the e-mail builders) and `enquiries.php`: project enquiries (`enquiry` with `?service=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`), the consultation request (`consultation`, `consultation_view`, `my_consultations`, `staff_consultations`), `privacy`, `email_reply`; test.
 
