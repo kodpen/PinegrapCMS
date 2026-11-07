@@ -112,6 +112,7 @@
     "Variation {var:1} is left out: it has no price.": "{var:1} varyasyonu dışarıda bırakıldı: fiyatı yok.",
     "Variation {var:1} is left out: product {var:2} holds its SKU already.": "{var:1} varyasyonu dışarıda bırakıldı: stok kodu zaten {var:2} numaralı üründe.",
     "Variation {var:1} is left out: {var:2}": "{var:1} varyasyonu dışarıda bırakıldı: {var:2}",
+    "Vases and care included": "Vazolar ve bakım dahil",
     "Vector": "Vektör",
     "Vector path": "Vektör yol",
     "Vegan": "Vegan",

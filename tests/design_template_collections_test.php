@@ -106,7 +106,9 @@ function test_design_template_collection_forms()
 		'pinegrap-travel'     => array('blog_new', 'destination_new', 'staff_entry', 'tour_new'),
 		'pinegrap-wedding'    => array('blog_new', 'staff_entry', 'wedding_new'),
 		'pinegrap-construction' => array('blog_new', 'job_new', 'project_new', 'staff_entry'),
+		'pinegrap-school'     => array('blog_new', 'event_new', 'staff_entry'),
 		'pinegrap-gym'        => array('blog_new', 'staff_entry', 'trainer_new'),
+		'pinegrap-music'      => array('blog_new', 'press_file_new', 'release_new', 'show_new', 'staff_entry'),
 	);
 	$templates = _test_tpl_coll_templates();
 	foreach ($expected as $id => $keys) {

@@ -28,14 +28,12 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
 - design-template-architecture-design.md: Design of plans/design-template-architecture.md: which shipped features the Architecture template reuses for projects, enquiries and careers, what it does not build, its look and Turkish words
 - design-template-architecture.md: Plan: the Architecture & Interiors Studio design template (pinegrap-architecture): projects by type and place, studio, services, awards, journal, enquiries, careers
+- design-template-florist-design.md: Design of plans/design-template-florist.md: shipped features reused for bouquets, delivery dates, subscriptions and enquiries, what is not built, look and Turkish words
+- design-template-florist.md: Plan: the Florist design template (pinegrap-florist): bouquets, occasions, delivery, subscriptions, wedding and event flowers; ~1,000-line steps
 - design-template-museum-design.md: Design of plans/design-template-museum.md: the shipped features the Museum template reuses, what it does not build, its look and Turkish words
 - design-template-museum.md: Plan: the Museum / Art Gallery design template (pinegrap-museum): exhibitions, highlights, visit, tickets and membership, events, school visits; ~1,000-line steps
-- design-template-music-design.md: Design of plans/design-template-music.md: what the Music template reuses for shows, releases, merch, press kit and mailing list, what it does not build, its look and Turkish words
-- design-template-music.md: Plan: the Music Artist design template (pinegrap-music): tour dates, discography with tracks, merch shop, news, press kit, mailing list; parts in a folder; ~1,000-line steps
 - design-template-restaurant-design.md: Design of plans/design-template-restaurant.md: the shipped features the Restaurant template reuses, what it does not build, its look and Turkish words
 - design-template-restaurant.md: Plan: the Restaurant design template (pinegrap-restaurant), one chef-led restaurant with menu, reservations, chef's table, events, private dining and gift vouchers, in ~1,000-line steps
-- design-template-school-design.md: Design of plans/design-template-school.md: which shipped features the School template reuses for programmes, events and admissions, what it does not build, its look and Turkish words
-- design-template-school.md: Plan: the Private School / Kindergarten design template (pinegrap-school): programmes and classes, staff, admission applications, events, news, parent contact; ~1,000-line steps
 - design-template-theatre-design.md: Design of plans/design-template-theatre.md: the shipped features the Theatre template reuses, what it does not build, its look and Turkish words
 - design-template-theatre.md: Plan: the Theatre design template (pinegrap-theatre): season of productions, performance dates, tickets, friends membership, learning, venue hire, news; ~1,000-line steps
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
