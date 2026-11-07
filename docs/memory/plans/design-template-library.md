@@ -10,7 +10,7 @@ description: Plan: the Public Library design template (pinegrap-library): catalo
 ## Design
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-library-design]].
 
-## Steps (claim as `[plan:design-template-library] <n> — <topic>`; each waits for the one before it, Working mode 1)
+## Steps (each waits for the one before it)
 - 1 (done, #7770): `parts.php` (data, shared parts, cards, form parts); `tests/design_template_library_test.php`.
 
 - 2 (done, #7824): `pages_public.php`: home (`home_arrivals`, `home_events`, `home_posts` slots), `visit` and one `branch_<key>` per branch, `children`, `digital`, `spaces`, `about`, `faq`; test.
@@ -23,7 +23,7 @@ description: Plan: the Public Library design template (pinegrap-library): catalo
 
 - 6 (done, #7876): `rooms.php` (room booking requests from `room_booking` with `?room=`, their lists and e-mails); test.
 
-- 7: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 7 (done, #7890): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
