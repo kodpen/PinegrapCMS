@@ -11,23 +11,23 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-theatre-design]].
 
 ## Steps (claim as `[plan:design-template-theatre] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7792): `parts.php` (builders, the theatre's data, pick lists, shared parts and cards); `tests/design_template_theatre_test.php`.
+- 1 (done, #7792): `parts.php`, `tests/design_template_theatre_test.php`.
 
-- 2 (done, #7849): `pages_public.php`: home, `visit`, `support`, `about`, `faq`; test.
+- 2 (done, #7849): `pages_public.php`.
 
-- 3 (done, #7859): `productions.php`: the Productions collection, `season` by `?genre=` and `?status=`, `production`, `production_new`, `home_productions`; test.
+- 3 (done, #7859): `productions.php`.
 
-- 4 (done, #7871): `performances.php`: the Performances collection (production a reference into Productions, #7872), `whats_on`, `past_performances`, `performance`, `performance_new`, `home_performances`, `production_performances`; test.
+- 4 (done, #7871): `performances.php`.
 
-- 5 (done, #7897): `mail.php`, `hire.php`: venue hire spaces, hire enquiries (`hire`, `hire_view`, `my_hire`, `staff_hire`), `privacy`, `email_reply`; test.
+- 5 (done, #7897): `mail.php`, `hire.php`.
 
-- 6 (done, #7957): `learning.php`: `learning` (youth theatre groups and workshops by age), school group and youth theatre place requests; test.
+- 6 (done, #7957): `learning.php`.
 
-- 7 (done, #7962): `shop.php`: `tickets`, `friends`, product, cart, checkout, order, `email_order`, the catalog (Tickets, Friends and Gift Vouchers groups, `shippable => false`); test.
+- 7 (done, #7962): `shop.php`.
 
-- 8 (done, #7989): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 8 (done, #7989): `standard.php`.
 
-- 9 (done, #8014): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 9 (done, #8014): `account.php`.
 
 - 10: assembly: `pinegrap-theatre.php` (order, search sections, look, fonts, `pth-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-theatre.md`; the PR body names `[NEW] Added the Theatre design template`; this plan and its design file are deleted.
 
