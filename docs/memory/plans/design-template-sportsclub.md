@@ -31,7 +31,7 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 
 ## Where to start?
 - The next free step is the lowest one not marked done. Include `squad.php` right after `parts.php` (its `$sp_*` helpers). Models: `pinegrap-gym/`, `pinegrap-music/` (dated lists), `pinegrap-school/`. Later tests share `_test_sp_page_keys()` from `tests/design_template_sportsclub_test.php`.
-- PHP 7.1: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`, or the branch guard fails.
+- PHP 7.1: no trailing comma after a call's last argument. Committer: `Erdal Güral` (branch guard).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
