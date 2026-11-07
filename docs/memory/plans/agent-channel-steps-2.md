@@ -1,6 +1,6 @@
 ---
 name: agent-channel-steps-2
-description: Steps A5-A9 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, the further doors (Claude Code plugin, per-person sessions, the chat box), the canvas as an agent tool
+description: Steps A5-A9 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, further doors (Claude Code plugin, per-person sessions, chat box), the canvas as an agent tool
 ---
 
 ## Which steps are there?

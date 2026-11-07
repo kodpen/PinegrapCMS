@@ -16,7 +16,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- agent-channel-steps-2.md: Steps A5-A8 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, the further doors (Claude Code plugin, per-person sessions, the chat box)
+- agent-channel-steps-2.md: Steps A5-A9 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, further doors (Claude Code plugin, per-person sessions, chat box), the canvas as an agent tool
 - agent-channel-steps.md: Steps A0-A4 of plans/agent-channel.md: the door experiment, routine hardening, parent_id, the agent registry with doors and wake rules, the request queue with push and scheduled wakes
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
 - api-forms-for-agents.md: Plan (owner 2026-11-06): the external API and MCP let Claude Desktop and other clients send designed forms and collection records (a blog post with rich text) completely; steps F1-F5
