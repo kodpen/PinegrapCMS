@@ -22,14 +22,14 @@ description: Plan: the Architecture & Interiors Studio design template (pinegrap
 
 - 5 (done, #7802): `careers.php`: the Job Openings collection (`careers`, `job` with `?job=`, `job_new`) and applications (portfolio link and file, CV) with their pages and e-mails, reusing the record pieces of `enquiries.php`; test.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #7814): `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`), blog post, help search, error, `email_new_message`, `email_message_received`, `email_welcome`, and the home page's `home_posts` and `google_reviews`; test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-architecture.php` (order, search sections, look, fonts, `pai-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-architecture.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-construction/`, `pinegrap-school/`. The enquiry reads `?service=` (`$enquiry_service_choices`), the consultation `?service=` too, the application `?job=` (`$application_job_choices`); the project list filters `?type=` and `?location=` in the words of `$type_titles` and `$location_titles`. Service pages are `service_<key>` under `$services`. `_test_ai_page_keys()` in the step 1 test lists every page key of the finished template.
+- The next free step is the lowest one not marked done. Step 7 follows `pinegrap-construction/account.php`; the e-mail pieces are in `mail.php` and `enquiries.php` (`$mail_new_account`, `$mail_reference`), and its two e-mail pages (`email_account_welcome`, `email_password_reset`) still go into `_test_ai_page_keys()`. Models: `pinegrap-construction/`, `pinegrap-school/`. The enquiry reads `?service=` (`$enquiry_service_choices`), the consultation `?service=` too, the application `?job=` (`$application_job_choices`); the project list filters `?type=` and `?location=` in the words of `$type_titles` and `$location_titles`. Service pages are `service_<key>` under `$services`. `_test_ai_page_keys()` in the step 1 test lists every page key of the finished template.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
