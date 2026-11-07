@@ -1,0 +1,30 @@
+---
+name: design-template-restaurant
+description: Plan: the Restaurant design template (pinegrap-restaurant), one chef-led restaurant with menu, reservations, chef's table, events, private dining and gift vouchers, in ~1,000-line steps
+---
+
+## What is it?
+- A design template `pinegrap-restaurant` for a single chef-led restaurant: home, the menu (dishes as a collection), tasting menus, the wine list, about and the team, table reservation requests the guest follows from the account, the chef's table booked at a free time, events (wine dinners, cooking classes), private dining with enquiries, gift vouchers sold in the shop, FAQ, location, contact, a blog (Kitchen Journal), sign-in and a staff area.
+- Not the Café: that is a café chain with catering and no shop ([[design-template-cafe]]).
+- Built like Hotel and Gym: `pinegrap-restaurant.php` plus the folder `pinegrap-restaurant/`, each page file returning `pages` and `widgets`, kept as `$…_part` in the main file ([[design-template-hotel]]).
+
+## Design
+- What it reuses, what it does not build, the look and the Turkish words: [[design-template-restaurant-design]].
+
+## Steps (claim as `[plan:design-template-restaurant] <n> — <topic>`; each waits for the one before it, Working mode 1)
+- 1 (done, #7647): `parts.php` (node builders, the restaurant's data: courses, sample dishes, diets, tasting menus, wines, team, opening hours and services, private dining rooms, events, gift vouchers, testimonials, pick lists; shared parts: account bar, notice, header, footer, reserve band, staff bar; dish card and line, tasting, wine group, room, team and testimonial cards, form fields, comment thread, blog parts); `tests/design_template_restaurant_test.php`.
+- 2: `pages_public.php`: home, `tasting`, `wine`, `about`, `faq`, `location`; `tests/design_template_restaurant_public_test.php`.
+- 3: `menu.php`: the Menu collection (`menu` with a tab per course, `dish`, `dish_new`) and the Events form (`events`, `event`, `event_new`); test.
+- 4: `mail.php` (the e-mail builders) and `reservations.php`: table reservation requests (`reserve`, `reservation_view`, `my_reservations`, `staff_reservations`, `privacy`, `email_reply`, `email_reservation_new`, `email_reservation_received`) and `book_online` (the chef's table on the booking widget's starter); test.
+- 5: `private.php` (`private_dining`, `private_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`) and `shop.php` (`vouchers` with the voucher card, product, cart, checkout, order, `email_order`, the Gift Vouchers catalog); test.
+- 6: `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 8: assembly: `pinegrap-restaurant.php` (order, search sections, look, fonts, `prt-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates, url-params), `designer/design-template-restaurant.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
+
+## Where does the next session start?
+- Step 2. `parts.php` has `$restaurant`, `$tastings`, `$wine_groups`/`$wines` (`$wine_group($group)` draws a kind), `$team`, `$figures`, `$testimonials`, `$sittings`, `$opening_hours`, the `$faq()` builder; the home's favourites use `$dish_card()` (bound to step 3's Menu form).
+- Keys whose shared Turkish is wrong here (test-enforced): `Starters`, `Course`, `Glass`, `Dish`, `Room Card`, `Find Us`; use `Appetisers`, `Menu Course`, `By the Glass`, `Menu Dish`, `Private Room Card`, `Getting Here`.
+- PHP 7.1: no trailing comma after a call's last argument. Committer `Erdal Güral`.
+
+## Open questions
+- None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
