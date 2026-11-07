@@ -19,7 +19,7 @@ description: Plan: the Driving School design template (pinegrap-drivingschool): 
 
 - 6 (done, #7997): `stories.php`: pass stories as a collection (`stories` by `?licence=`, `story`, `story_new`, `home_stories`); test.
 
-- 7 (done, #8019): `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 7 (done, #8019): `standard.php`: contact, inbox, newsletter, News, help search, error; test.
 
 - 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
