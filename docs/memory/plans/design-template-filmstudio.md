@@ -15,7 +15,7 @@ description: Plan: the Film Studio design template (pinegrap-filmstudio): showre
 
 - 2 (done, #7808): `pages_public.php`: home (showreel, `home_projects`, `home_posts`), `services` and one `service_<key>` per service, `process`, `studio`, `crew`, `about`, `faq`; `tests/design_template_filmstudio_public_test.php`.
 
-- 3: `projects.php`: the Projects collection (`projects` by `?industry=` and `?service=`, the `project` page with the film's link, stills, facts, the brief, the credits and the client's words, `project_new`), `home_projects`; test.
+- 3 (done, #7879): `projects.php`: the Projects collection (`projects` by `?industry=` and `?service=`, the `project` page with the film's link, stills, facts, the credits and the client's words, `project_new`), `home_projects`; test.
 
 - 4: `mail.php` (the e-mail builders) and `enquiries.php`: project enquiries (`enquiry` with `?service=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`), studio hire requests (`studio_hire` with `?space=`, `studio_hire_view`, `my_studio_hires`, `staff_studio_hires`), `privacy`, `email_reply`; test.
 
