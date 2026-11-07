@@ -69959,7 +69959,7 @@ const StyleDesigner = (function () {
         // prepareFormData() runs the same validation + serialisation pipeline
         // as the legacy submit handler. A `false` return means a hard error
         // already surfaced its own toast — bail out quietly.
-        var _abandon = function () { if (typeof opts.onError === 'function') opts.onError(); };
+        var _abandon = function () { _pgSaveHold = {}; if (typeof opts.onError === 'function') opts.onError(); };
         _sdLgCancel(true);
         // Saving a draft is not publishing it, and the reply says which it
         // was. Read before the save serialises and flushes: one save writes
@@ -69974,6 +69974,10 @@ const StyleDesigner = (function () {
                             return !p.page_draft && p.access !== 'locked' && _pgPageDirty(p);
                         }) || (_styleBaseline !== null && _pgStyleJSON() !== _styleBaseline)
                            || Object.keys(_sharedDirty).length > 0);
+        // Pages left out of this save (the Publish sheet): sent as unchanged,
+        // so the server keeps their stored rows, and still unsaved after it.
+        _pgSaveHold = {};
+        (Array.isArray(opts.hold) ? opts.hold : []).forEach(function (k) { _pgSaveHold[k] = true; });
         if (prepareFormData() === false) { _abandon(); return; }
 
         // Disable the button for the duration of the request to prevent
@@ -70033,6 +70037,7 @@ const StyleDesigner = (function () {
                 // New tabs learn their page ids, every baseline resets, the
                 // dirty dots clear.
                 _pgTabsAfterSave(res.data);
+                _pgSaveHold = {};
                 var _warnings = Array.isArray(res.data.warnings) ? res.data.warnings : [];
                 var _notes = Array.isArray(res.data.notes) ? res.data.notes : [];
                 // Server may request a redirect (used by add_system_style after creating
@@ -70075,6 +70080,9 @@ const StyleDesigner = (function () {
     // stacks and id counter on the outgoing page object and pulls the
     // incoming page's set in, so nothing else in the file has to know that
     // more than one page exists.
+
+    // Keys of the pages the save in flight leaves out (_saveAjaxImpl()).
+    var _pgSaveHold = {};
 
     var _PG_PAGE_FIELDS = [
         'page_name', 'page_folder', 'page_title', 'page_meta_description',
@@ -70662,31 +70670,12 @@ const StyleDesigner = (function () {
                 _pgTabsAddNew();
             });
         }
-        // The draft's Publish button: this page goes on the site with the
-        // save it makes.
+        // The draft's Publish button opens the Publish sheet.
         var pubPage = document.getElementById('sd-publish-page');
         if (pubPage && !pubPage._pgBound) {
             pubPage._pgBound = true;
-            pubPage.addEventListener('click', function () {
-                var a = _pgActivePage();
-                if (a) _pgSetDraft([a.key], false);
-            });
+            pubPage.addEventListener('click', function () { _pgPublishSheet({ button: pubPage }); });
         }
-        // The publishing menu beside the main button: this page or every
-        // page of the design, kept off the site or put on it.
-        document.querySelectorAll('[data-sd-status]').forEach(function (b) {
-            if (b._pgBound) return;
-            b._pgBound = true;
-            b.addEventListener('click', function () {
-                var what = b.getAttribute('data-sd-status');
-                var a = _pgActivePage();
-                var all = _pages.map(function (p) { return p.key; });
-                if (what === 'page-draft' && a)        _pgSetDraft([a.key], true);
-                else if (what === 'page-publish' && a) _pgSetDraft([a.key], false);
-                else if (what === 'all-draft')         _pgSetDraft(all, true);
-                else if (what === 'all-publish')       _pgSetDraft(all, false);
-            });
-        });
         // The switch in Page Settings changes the tab at once; it is applied
         // with the next publish, like the other page settings.
         var draftBox = document.getElementById('pg_page_draft');
@@ -73613,7 +73602,9 @@ const StyleDesigner = (function () {
             // row instead of writing, scoring, translating and logging every
             // page of the design on every save. Its tree, its settings and
             // the shared components it shows all count as touching it.
-            if (_pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
+            // A page held out of this save goes the same way: the site
+            // keeps its stored version, the editor keeps the changes.
+            if ((_pgSaveHold[p.key] && p.page_id > 0 && !p.pickedPending) || _pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
             else rec.tree_json = JSON.stringify(t);
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
@@ -73719,10 +73710,14 @@ const StyleDesigner = (function () {
         _pgSyncDraftBox(_pgActivePage());
         // A rename changes the page's address; a return address that pointed
         // at the old one (the site's "Edit page" link sends it) follows it.
+        // A page held out of the save keeps its changes unsaved: its name,
+        // its baseline and its dirty dot stay as they were.
         _pages.forEach(function (p) {
+            if (_pgSaveHold[p.key]) return;
             if (p.page_id > 0 && p.savedName && p.savedName !== p.page_name) _pgFollowRename(p.savedName, p.page_name);
         });
         _pages.forEach(function (p) {
+            if (_pgSaveHold[p.key]) return;
             p.baseline = _pgBaselineOf(p);
             if (p.page_id > 0) p.savedName = p.page_name;
             // The redirect choice was for the rename just saved; the next
@@ -74078,7 +74073,9 @@ const StyleDesigner = (function () {
     function _pgNewPageDraft()    { return _pgDraftsCanChange() ? 1 : 0; }
     function _pgActiveIsDraft()   { var a = _pgActivePage(); return _pgDraftsReady() && !!(a && a.page_draft); }
 
-    function _pgSetDraft(keys, on) {
+    // hold: keys of changed pages on the site to leave out of the save (the
+    // Publish sheet's unchecked rows, _pgPublishRows()).
+    function _pgSetDraft(keys, on, hold) {
         if (!_pgDraftsCanChange()) return;
         // The state reaches the server with a save. When no save can run
         // now, nothing is marked: a mark left behind would show a state the
@@ -74145,6 +74142,7 @@ const StyleDesigner = (function () {
                 _pgTabsRender();
             };
             saveAjax({
+                hold: hold || [],
                 successMessage: function (data) {
                     var n = applied(data).length;
                     if (!n) return '';
@@ -74344,12 +74342,12 @@ const StyleDesigner = (function () {
     // The keys of the editor's save, as the panel writes a shortcut.
     var _SD_SAVE_KEYS = 'Ctrl+S | \u2318+S';
 
-    // Ctrl+S / Cmd+S: what the main button does - Save on a draft, Publish
-    // on a page on the site - or nothing while it cannot.
+    // Ctrl+S / Cmd+S: the one save of the whole design (the main button's
+    // Publish without the sheet), or nothing while it cannot.
     function _sdSaveShortcut() {
         if (_sdCodeSaveShortcut()) return;
         var b = document.getElementById('sd-ajax-save');
-        if (b && !b.disabled) b.click();
+        if (b && !b.disabled) saveAjax({ button: b });
     }
 
     // A toolbar button's hint. The panel gives every titled element a hover
@@ -74401,21 +74399,59 @@ const StyleDesigner = (function () {
         if (pub) {
             var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending && !_pgExperimentHeld(a);
             pub.classList.toggle('d-none', !both);
-            btn.classList.toggle('sd-publish-solo', both);
         }
         _pgExperimentSync(a);
-        var more = document.querySelector('.sd-publish-more');
-        if (!more) return;
-        var anyDraft = _pages.some(function (p) { return !!p.page_draft; });
-        var anyLive  = _pages.some(function (p) { return !p.page_draft && !p.page_home; });
-        var show = function (what, on) {
-            var b = more.querySelector('[data-sd-status="' + what + '"]');
-            if (b && b.parentNode) b.parentNode.classList.toggle('d-none', !on);
-        };
-        show('page-draft',   !!a && !draft && !a.page_home && !a.pickedPending);
-        show('page-publish', draft && !_pgExperimentHeld(a));
-        show('all-draft',    anyLive);
-        show('all-publish',  anyDraft);
+    }
+
+    // ── Publish sheet ─────────────────────────────────────────────────────
+    // The pages as the sheet lists them (assets/js/pg_designer_publish.js):
+    // state, whether the next save would write them, and whether this user
+    // may change them.
+    function _pgPublishRows() {
+        _pgTabsPersistActive();
+        return _pages.map(function (p) {
+            var state = !p.page_draft ? 'live'
+                      : (_pgExperimentHeld(p) ? 'held' : (_pgScheduleAhead(p.page_publish_at) ? 'scheduled' : 'draft'));
+            var t = _pgTreeOf(p);
+            return {
+                key: p.key,
+                name: p.page_name || _sdT('New Page'),
+                state: state,
+                changed: !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null),
+                locked: p.access === 'locked',
+                home: !!p.page_home,
+                active: p.key === _activeKey
+            };
+        });
+    }
+
+    // Publish: the sheet where the design can have drafts; a plain save
+    // where it cannot (a shared component, a site without drafts, a user
+    // who cannot change states, or the sheet's script missing).
+    function _pgPublishSheet(opts) {
+        opts = opts || {};
+        var sheet = (typeof window.PgDesignerPublish !== 'undefined') && document.getElementById('sdPublishSheet');
+        if (!sheet || _sdComponentOnly() || !_pgDraftsReady() || !_pgDraftsCanChange()) { saveAjax(opts); return; }
+        if (_sharedLoadInFlight > 0) {
+            sdToast(_sdT('The shared components are still loading — wait a second.'), 'info', 2400);
+            return;
+        }
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        window.PgDesignerPublish.open({
+            rows: _pgPublishRows,
+            publish: function (keys, hold) {
+                if (keys.length) _pgSetDraft(keys, false, hold);
+                else saveAjax({ hold: hold });
+            },
+            takeOff: function (keys) { _pgSetDraft(keys, true); }
+        });
+    }
+
+    // The main button: Save on a draft (it stays off the site), the Publish
+    // sheet on a page on the site.
+    function _pgPublishClick(opts) {
+        if (_pgActiveIsDraft()) { saveAjax(opts); return; }
+        _pgPublishSheet(opts);
     }
 
     // What a save put on the site, in one sentence.
@@ -78597,6 +78633,7 @@ const StyleDesigner = (function () {
         undo: undo,
         redo: redo,
         saveAjax: saveAjax,
+        publish: _pgPublishClick,
         aiBridge: _sdAiBridge,
         perf: _sdPerfReport,
         // The layout a system widget of this kind opens with, the same one the
