@@ -18,9 +18,9 @@ description: Construction Firm template (pinegrap-construction): services, a pro
 - Not built: a cost calculator, client project tracking (stages, site diary), a subcontractor portal, tender documents behind a login.
 
 ## What is the pcn- look?
-- `pcn-brand`, `pcn-display`, `pcn-eyebrow`, `pcn-hero`, `pcn-lift`, `pcn-stat`; Archivo headings, Inter body. Field ids `cn-`.
+- `pcn-brand`, `pcn-display`, `pcn-eyebrow`, `pcn-hero` (a primary bar along its top), `pcn-lift`, `pcn-quote`, `pcn-stat`; Archivo headings, Inter body. Field ids `cn-`.
 - Turkish: "proje", "hizmet", "teklif talebi", "keşif", "iş ilanı", "başvuru" (shown as "Job Application(s)": a bare "Application" reads as software), "Haberler". Shared keys reading as a law office ("Büro") are not reused.
 
 ## Which tests cover it?
-- `design_template_construction_test.php` (data, shared parts, `_test_cn_page_keys()`) and `…_public_`, `…_projects_`, `…_quotes_`, `…_careers_`, `…_standard_`, `…_account_test.php`; `…_assembly_test.php` the main file.
-- In the shared lists of the collection-form, account-email, submitter-name, consent-privacy and faded-text tests.
+- `design_template_construction_test.php` (data, shared parts, `_test_cn_page_keys()`) and `…_public_`, `…_projects_`, `…_quotes_`, `…_careers_`, `…_standard_`, `…_account_test.php` (with every part loaded: every link and placed widget resolves); `…_assembly_test.php`: offered without the shop and with no catalog, pages in order, widgets once and placed, placeholders, only `address_book` needs the shop, contact search sections, `pcn-` rules, four comment widgets and the reply e-mail card, samples kept, Google reviews.
+- In the shared lists of the collection-form (`blog_new`, `job_new`, `project_new`, `staff_entry`), account-email, submitter-name, consent-privacy (`cn-qt-consent`, `cn-app-consent`) and faded-text tests.

@@ -104,6 +104,7 @@ function test_design_template_collection_forms()
 		'pinegrap-charity'    => array('blog_new', 'campaign_new', 'event_new', 'report_new', 'staff_entry'),
 		'pinegrap-social'     => array('blog_new', 'my_profile', 'post_new', 'staff_entry'),
 		'pinegrap-travel'     => array('blog_new', 'destination_new', 'staff_entry', 'tour_new'),
+		'pinegrap-construction' => array('blog_new', 'job_new', 'project_new', 'staff_entry'),
 	);
 	$templates = _test_tpl_coll_templates();
 	foreach ($expected as $id => $keys) {
