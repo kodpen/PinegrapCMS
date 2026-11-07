@@ -1,6 +1,7 @@
 {
     "I Have Read and Accept": "Okudum, Kabul Ediyorum",
     "I agree that my details are kept to arrange this appointment.": "Bu randevuyu düzenlemek için bilgilerimin saklanmasını kabul ediyorum.",
+    "I agree that the agency keeps my application and CV to find me a job and sends my CV to an employer only after asking me, as its privacy notice explains.": "Ajansın, gizlilik bildiriminde açıklandığı gibi, bana iş bulmak için başvurumu ve özgeçmişimi saklamasını ve özgeçmişimi bir işverene yalnızca bana sorduktan sonra göndermesini kabul ediyorum.",
     "I agree that the agency keeps these details to answer my request and arrange my journey, as its privacy notice explains.": "Acentenin, gizlilik bildiriminde açıklandığı gibi, talebimi yanıtlamak ve seyahatimi düzenlemek için bu bilgileri saklamasını kabul ediyorum.",
     "I agree that the agency keeps these details to arrange the viewing and answer me, as its privacy notice explains.": "Gezmeyi ayarlamak ve bana yanıt vermek için emlak ofisinin bu bilgileri, gizlilik bildiriminde açıklandığı gibi saklamasını kabul ediyorum.",
     "I agree that the agency keeps these details to value my home and answer me, as its privacy notice explains.": "Evimi değerlemek ve bana yanıt vermek için emlak ofisinin bu bilgileri, gizlilik bildiriminde açıklandığı gibi saklamasını kabul ediyorum.",
@@ -113,6 +114,7 @@
     "I have saved them": "Kaydettim",
     "I have saved them, continue": "Kaydettim, devam et",
     "I have sent it": "Kargoya verdim",
+    "I have six years of building web services, the last three on a payments platform, and I am looking for a team where I can lead the design of new features.": "Altı yıldır web servisleri geliştiriyorum, son üç yılım bir ödeme platformunda geçti; yeni özelliklerin tasarımına liderlik edebileceğim bir ekip arıyorum.",
     "I have three years on residential sites as an assistant site engineer and would like to run the setting out and quality checks on a larger project.": "Konut şantiyelerinde üç yıldır yardımcı şantiye mühendisi olarak çalışıyorum; daha büyük bir projede aplikasyon ve kalite kontrollerini yürütmek istiyorum.",
     "I have tried every bakery in town. This is the loaf my family asks for, and it is still good on Wednesday.": "Şehirdeki bütün fırınları denedim. Ailemin istediği ekmek bu ve çarşamba günü bile hâlâ güzel.",
     "I have your message": "Mesajınızı aldım",
@@ -1143,6 +1145,7 @@
     "It came from the viewing form. Confirm the time with the client and the owner, then set the status on the request's page; what you write under it reaches the client by e-mail.": "Gezme formundan geldi. Saati müşteriyle ve mülk sahibiyle netleştirin, sonra talebin sayfasında durumu ayarlayın; altına yazdıklarınız müşteriye e-postayla ulaşır.",
     "It came from the visit form. Call the family to agree the day, then set the status in the list of visit requests.": "Ziyaret formundan geldi. Günü belirlemek için aileyi arayın, sonra ziyaret talepleri listesinde durumu güncelleyin.",
     "It came from the volunteer page. Call the volunteer to talk about where they could help, then set the status on the offer's page; what you write under it reaches the volunteer by e-mail.": "Gönüllü sayfasından geldi. Nerede yardım edebileceğini konuşmak için gönüllüyü arayın, ardından başvurunun sayfasında durumu ayarlayın; altına yazdıklarınız gönüllüye e-postayla ulaşır.",
+    "It came from the website. Read the CV, then set the status on the application's page; what you write under it reaches the candidate by e-mail.": "Web sitesinden geldi. Özgeçmişi okuyun, ardından başvurunun sayfasında durumu belirleyin; altına yazdıklarınız adaya e-postayla ulaşır.",
     "It can be turned on only while the page is closed to search engines.": "Yalnız sayfa arama motorlarına kapalıyken açılabilir.",
     "It can only be dropped inside an <strong>Express Order (Checkout)</strong> system widget, at most one per widget. Design the address and shipping-method fields inside it.": "Sadece <strong>Hızlı Sipariş (Checkout)</strong> sistem widget içine bırakılabilir. Widget başına en fazla 1 adet. Adres + kargo yöntemi alanlarını içeride tasarlayın.",
     "It can only be dropped inside an <strong>Express Order</strong> system widget, at most one per widget. Design the address and delivery fields inside it; the server repeats it for every recipient.": "Yalnız bir <strong>Hızlı Sipariş</strong> sistem widget'ının içine, widget başına en fazla bir tane bırakılabilir. Adres ve teslimat alanlarını içinde tasarlayın; sunucu bunu her alıcı için tekrarlar.",
