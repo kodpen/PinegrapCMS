@@ -11,7 +11,7 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-sportsclub-design]].
 
 ## Steps (claim as `[plan:design-template-sportsclub] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the club's data, pick lists, shared parts, cards, form fields, blog parts); `tests/design_template_sportsclub_test.php`.
+- 1 (done, #7727): `parts.php` (node builders, the club's data, pick lists, shared parts, cards, form fields, blog parts); `tests/design_template_sportsclub_test.php`.
 
 - 2: `pages_public.php`: home (`home_fixtures`, `home_results`, `home_posts` placed), `teams` and one `team_<key>` per team, `club` (history and honours), `ground`, `academy`, `sponsors`, `faq`; `tests/design_template_sportsclub_public_test.php`.
 
