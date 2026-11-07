@@ -1,0 +1,39 @@
+---
+name: design-template-gallery
+description: Plan: the Art Gallery design template (pinegrap-gallery): artists, exhibitions, works, artwork and private-viewing enquiries, editions in the shop, the journal; small steps
+---
+
+## What is it?
+- A design template `pinegrap-gallery` for a contemporary art gallery: home, the represented artists (a page per artist with their works), exhibitions (current, upcoming, past; a page per exhibition with its works and its opening night), the works, an enquiry about a work (`?artwork=`), a private viewing request (`?exhibition=`), art advisory, visit, about, FAQ, the Journal (the blog), newsletter, contact, sign-in and a staff area. With the shop: signed editions, small works and exhibition catalogues.
+- Built like Pharmacy and Museum: `pinegrap-gallery.php` plus the folder `pinegrap-gallery/` (`parts.php`, `cards.php`, `pages_public.php`, `artists.php`, `exhibitions.php`, `mail.php`, `requests.php`, `shop.php`, `standard.php`, `account.php`), each page file returns `pages` and `widgets`, kept as `$…_part` in the main file ([[design-template-museum]]).
+- Parts are cut in two steps (data, then `cards.php`) to keep steps small.
+
+## Design
+- What it reuses, what it does not build, the look and the Turkish words: [[design-template-gallery-design]].
+
+## Steps (claim as `[plan:design-template-gallery] <n> — <topic>`; each waits for the one before it, Working mode 1)
+- 1: `parts.php`: node builders, the gallery's data (artists, exhibitions, works, mediums, topics, advisory, figures, voices), pick lists, `$money`, `$query`, page shell and small helpers; `tests/design_template_gallery_test.php` with `_test_gl_page_keys()`.
+
+- 2: `cards.php`: account bar, notice, header, footer, viewing band, the artist, exhibition, work, advisory and voice cards, form fields, the comment thread, staff bar, newsletter and blog parts; `tests/design_template_gallery_cards_test.php`.
+
+- 3: `pages_public.php`: home (`home_artists`, `home_posts` as widgets), `about`, `visit`, `advisory`, `faq`; test.
+
+- 4: `artists.php`: the Artists collection (`artists` by `?medium=`, `artist` with the artist's works, `artist_new`) and the Works collection (`works` by `?artist=` and `?medium=`, `work` with the enquiry link, `work_new`); test.
+
+- 5: `exhibitions.php`: the Exhibitions collection (`exhibitions` by `?status=`, `exhibition` with its works and the opening night, `exhibition_new`, `home_exhibitions`); test.
+
+- 6: `mail.php` and `requests.php`: artwork enquiries (`enquire` with `?artwork=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`, `email_enquiry_new`, `email_enquiry_received`) and private viewings (`viewing` with `?exhibition=`, `viewing_view`, `my_viewings`, `staff_viewings`, their two e-mails); test.
+
+- 7: `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: editions, small works, catalogues); test.
+
+- 8: `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`, filtered by `?topic=`), blog post, help search, error; test.
+
+- 9: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+
+- 10: assembly: `pinegrap-gallery.php` (order, search sections, look, fonts, `pgl-` rules, folders), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, custom-form-rules), `designer/design-template-gallery.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
+
+## Where to start?
+- The lowest step not marked done. Model: `pinegrap-pharmacy/` and `pinegrap-museum/` (same shape). The enquiry's lists: `?artwork=` `$work_choices`, `?kind=` `$enquiry_choices`; the viewing's `?exhibition=` `$exhibition_choices`. `_test_gl_page_keys()` (step 1 test) lists every page key; later tests `require_once` it.
+
+## Open questions
+- None: all reuses shipped features; new behaviour goes to the architect (Working mode 10).
