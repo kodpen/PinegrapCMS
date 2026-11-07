@@ -11,13 +11,13 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-sportsclub-design]].
 
 ## Steps (claim as `[plan:design-template-sportsclub] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php` (node builders, the club's data, pick lists, shared parts, cards, list helpers, form fields, comment thread, blog parts); `tests/design_template_sportsclub_test.php`.
+- 1: `parts.php` (node builders, the club's data, pick lists, shared parts, cards, form fields, blog parts); `tests/design_template_sportsclub_test.php`.
 
 - 2: `pages_public.php`: home (`home_fixtures`, `home_results`, `home_posts` placed), `teams` and one `team_<key>` per team, `club` (history and honours), `ground`, `academy`, `sponsors`, `faq`; `tests/design_template_sportsclub_public_test.php`.
 
-- 3: `squad.php` and `matches.php`: the Players collection (`squad` by `?team=`, `player`, `player_new`) and the Matches collection (`fixtures` from today on and `results` before today, both by `?team=`, the `match` page, `match_new`, `home_fixtures`, `home_results`); test.
+- 3: `squad.php` (first: the list helpers `$sp_*`, as Music's `$mu_*`) and `matches.php`: the Players collection (`squad` by `?team=`, `player`, `player_new`) and the Matches collection (`fixtures` from today on and `results` before today, both by `?team=`, the `match` page, `match_new`, `home_fixtures`, `home_results`); test.
 
-- 4: `mail.php` (the e-mail builders) and `registrations.php`: academy registrations (`academy_register` with `?team=`, `registration_view`, `my_registrations`, `staff_registrations`), trial requests (`trial` with `?team=` and `?position=`, `trial_view`, `staff_trials`), `privacy`, `email_reply`; test.
+- 4: `mail.php` (the e-mail builders and `$comment_thread`, as Gym's parts) and `registrations.php`: academy registrations (`academy_register` with `?team=`, `registration_view`, `my_registrations`, `staff_registrations`), trial requests (`trial` with `?team=` and `?position=`, `trial_view`, `staff_trials`), `privacy`, `email_reply`; test.
 
 - 5: `events.php`: the Club Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and the sponsorship enquiry (`sponsor_enquiry` with `?package=`, `staff_sponsors`); test.
 
