@@ -1413,7 +1413,14 @@
         }
     };
 
+    // After a tool's own state, the question and a crop, Escape clears what
+    // is selected, what shows first: layers the tool outlines, then the
+    // selected area's marching ants (shown with every tool), then layers
+    // the tool holds without outlining them. Then it leaves full screen,
+    // then closes.
     Editor.prototype.onEscape = function () {
+        var outlined;
+
         if (this.saving) {
             return;
         }
@@ -1424,10 +1431,16 @@
             }
         }
 
+        outlined = (Editor.selectTools.indexOf(this.tool) >= 0) && (this.sel.length > 0);
+
         if (this.confirmBox) {
             this.closeConfirm();
         } else if (this.cropping()) {
             this.cancelCrop();
+        } else if (outlined) {
+            this.select([]);
+        } else if (this.areaSelected && this.areaSelected()) {
+            this.areaClear();
         } else if (this.sel.length) {
             this.select([]);
         } else if (this.full) {
