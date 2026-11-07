@@ -406,8 +406,8 @@ function test_campsite_turkish_words()
 		pg_assert_true(isset($map[$key]) && $map[$key] !== '', "Turkish for '$key'");
 		if (!isset($map[$key])) continue;
 		$tr = $map[$key];
-		if (preg_match('/\bStay Requests?\b/i', $key)) pg_assert_true(mb_stripos($tr, 'konaklama talep', 0, 'UTF-8') !== false, "'$key' says konaklama talebi");
-		if (preg_match('/\bGroup Enquir(y|ies)\b/i', $key)) pg_assert_true(mb_stripos($tr, 'grup talep', 0, 'UTF-8') !== false, "'$key' says grup talebi");
+		if (preg_match('/\bStay Requests?\b/i', $key)) pg_assert_true(mb_stripos($tr, 'konaklama tale', 0, 'UTF-8') !== false, "'$key' says konaklama talebi");
+		if (preg_match('/\bGroup Enquir(y|ies)\b/i', $key)) pg_assert_true(mb_stripos($tr, 'grup tale', 0, 'UTF-8') !== false, "'$key' says grup talebi");
 		if (preg_match('/\bSeason\b/', $key)) pg_assert_true(mb_stripos($tr, 'sezon', 0, 'UTF-8') !== false, "'$key' says sezon");
 		if (preg_match('/\bPitch(es)?\b/', $key)) pg_assert_true(mb_stripos($tr, 'yer', 0, 'UTF-8') !== false, "'$key' says yer");
 		if (preg_match('/\bCabins?\b/', $key)) pg_assert_true(mb_stripos($tr, 'kulübe', 0, 'UTF-8') !== false, "'$key' says kulübe");
