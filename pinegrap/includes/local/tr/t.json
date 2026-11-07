@@ -2380,6 +2380,7 @@
     "The chat is not available on this screen.": "Sohbet bu ekranda kullanılamıyor.",
     "The check digits of this number do not match; it is probably mistyped. GİB refuses a document that carries it.": "Bu numaranın kontrol haneleri tutmuyor; büyük olasılıkla yanlış yazıldı. GİB bu numarayı taşıyan belgeyi reddeder.",
     "The check reached the last page: {var:1} pages were checked in this run, {var:2} could not be rendered.": "Denetim son sayfaya ulaştı: bu çalışmada {var:1} sayfa denetlendi, {var:2} sayfa oluşturulamadı.",
+    "The checked pages go on the site with one save. Drafts left unchecked are saved and stay off the site.": "İşaretli sayfalar tek kayıtla sitede yayınlanır. İşaretlenmeyen taslaklar kaydedilir ve sitede görünmez.",
     "The checking server is a host name such as mx.google.com.": "Denetleyen sunucu, mx.google.com gibi bir sunucu adıdır.",
     "The checking server was set to {var:1}, the name the newest e-mail was checked under.": "Denetleyen sunucu, en yeni e-postanın denetlendiği ad olan {var:1} olarak ayarlandı.",
     "The checklist in the channel becomes this task's list ({var:1} items). Ticked in the channel or here, the progress of the task follows.": "Kanaldaki kontrol listesi bu görevin listesi olur ({var:1} madde). Kanalda ya da burada işaretlendikçe görevin ilerlemesi güncellenir.",
