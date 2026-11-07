@@ -1,6 +1,6 @@
 ---
 name: design-template-own-look
-description: Rule (owner, 2026-11-07): a design template's sector sections are first a palette block family, its home and signature pages have their own composition and motion, and its plan says what sets it apart
+description: Rule (owner, 2026-11-07): sector sections first as palette blocks, reused not duplicated, general ones in general groups; own composition and motion on home and signature pages
 ---
 
 ## Why this rule?
@@ -10,7 +10,11 @@ description: Rule (owner, 2026-11-07): a design template's sector sections are f
 ## What does a template build first?
 - The sector sections it needs that the palette lacks, as a palette block family: its own `componentType` prefix and palette group, built to `palette-component-rules.md`, `designer-palette-tabs-and-blocks.md` and the `designer-block-*.md` files (markup, style, theme colours and surfaces, sample content, forms, motion). Its own step, before the pages; the family lives in its own source file (`plans/design-template-own-looks.md`, B0).
 - The template's pages then place those blocks: the PHP tree draws the block's structure and classes, and its CSS comes through `pg_designer_block_css()` (the JS rules are the only copy), as the news template does with `pg-marquee`.
-- Placing another family's block is fine where it fits the sector; copying another template's builders is not.
+
+## When is a block reused instead of added?
+- No duplicate blocks (owner, 2026-11-07). Before adding one, a step searches the palette and the families already added for a block of the same structure; if only the content differs, it places that block with its own content, or extends it with an option, never a copy.
+- A template's family holds only what is truly sector-specific; a block several sectors can use goes into a general group (Marketing, Creative, Content Lists, Services & Booking, Social Proof…) under a neutral name, so the next template finds it.
+- Each step's PR body names the blocks it reused and the ones it added. Copying another template's builders is never reuse.
 
 ## What makes its pages its own?
 - The home and the signature pages (the sector's own: a launch's features and compare, a resort's conditions) have a composition of their own: no other template's builders and no stock band sequence (story band, figures row, testimonials, ask band, FAQ accordion on every page).
