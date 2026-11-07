@@ -503,7 +503,8 @@ function test_prototype_links_secure_mode_redirect_keeps_the_token()
 	// The address as get_request_uri() reads it, before the token is written
 	// out of it.
 	pg_assert_same('/pinegrap/prototype.php?link=' . $token . '&page=3', pg_proto_link_request_uri(array('REQUEST_URI' => '/pinegrap/prototype.php?link=' . $token . '&page=3')));
-	pg_assert_same('/x.php?link=a', pg_proto_link_request_uri(array('HTTP_X_REWRITE_URL' => '/x.php?link=a', 'REQUEST_URI' => '/y.php')), 'IIS rewrite first');
+	pg_assert_same('/x.php?link=a', pg_proto_link_request_uri(array('HTTP_X_REWRITE_URL' => '/x.php?link=a', 'REQUEST_URI' => '/y.php', 'SERVER_SOFTWARE' => 'Microsoft-IIS/10.0')), 'IIS rewrite first');
+	pg_assert_same('/y.php', pg_proto_link_request_uri(array('HTTP_X_REWRITE_URL' => '/x.php?link=a', 'REQUEST_URI' => '/y.php', 'SERVER_SOFTWARE' => 'Apache')), 'a client header elsewhere');
 	pg_assert_same('/p.php?link=a', pg_proto_link_request_uri(array('PHP_SELF' => '/p.php', 'QUERY_STRING' => 'link=a')));
 	pg_assert_same('/p.php', pg_proto_link_request_uri(array('PHP_SELF' => '/p.php', 'QUERY_STRING' => '')));
 
