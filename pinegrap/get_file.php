@@ -1639,6 +1639,15 @@ function log_activity($description, $user)
 // create function to set user information if user is logged in
 function initialize_user()
 {
+    // One request may reach this twice: a workspace channel's file reads the
+    // visitor first, and a folder that is not public asks again. The
+    // constants are set by then. Defining one again is a warning (an error
+    // from PHP 9), and where errors are shown the warnings went out ahead of
+    // the file's bytes, which broke the picture.
+    if (defined('USER_LOGGED_IN')) {
+        return;
+    }
+
     // check if remember me is on
     $query = "SELECT remember_me FROM config";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
