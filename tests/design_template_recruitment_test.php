@@ -119,6 +119,7 @@ function _test_rc_page_keys()
 		'home', 'sectors', 'cities', 'candidates', 'employers', 'about', 'team', 'faq',
 		'jobs', 'job', 'job_new',
 		'apply', 'application_view', 'my_applications', 'staff_applications', 'privacy', 'email_reply',
+		'email_application_new', 'email_application_received',
 		'hire', 'enquiry_view', 'my_enquiries', 'staff_enquiries',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',

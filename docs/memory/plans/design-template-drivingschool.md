@@ -11,13 +11,9 @@ description: Plan: the Driving School design template (pinegrap-drivingschool): 
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-drivingschool-design]].
 
 ## Steps (claim as `[plan:design-template-drivingschool] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7847): `parts.php`; test.
+- 1–3 (done, #7847, #7910, #7923): `parts.php`, `pages_public.php`, `courses.php`.
 
-- 2 (done, #7910): `pages_public.php` (home, licences, `licence_<key>`, theory, practical test, instructors, about, faq); test.
-
-- 3 (done, #7923): `courses.php` (`courses` by `?licence=` and `?format=`, `course`, `course_new`, `home_courses`); test.
-
-- 4: `mail.php` (the e-mail builders) and `enrolments.php`: course enrolment requests (`enrol` with `?course=`, `enrolment_view`, `my_enrolments`, `staff_enrolments`), `privacy`, `email_reply`; test.
+- 4 (done, #7939): `mail.php` (the e-mail builders) and `enrolments.php`: course enrolment requests (`enrol` with `?course=`, `enrolment_view`, `my_enrolments`, `staff_enrolments`), `privacy`, `email_reply`; test.
 
 - 5: `lessons.php`: lesson requests (`lesson_request` with `?licence=` and `?instructor=`, `lesson_request_view`, `my_lesson_requests`, `staff_lesson_requests`) and `book_online`; test.
 
@@ -30,7 +26,7 @@ description: Plan: the Driving School design template (pinegrap-drivingschool): 
 - 9: assembly: `pinegrap-drivingschool.php` (order, search sections, look, fonts, `pdr-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params, booking-templates), `designer/design-template-drivingschool.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-gym/`, `pinegrap-veterinary/` (`book_online`), `pinegrap-filmstudio/parts.php` (`$money`). The lists filter `?licence=` (`$licence_titles`) and `?format=` (`$format_titles`); the enrolment reads `?course=` (`$enrolment_course_choices`), the lesson request `?licence=` and `?instructor=` (`$instructor_choices`). Licence pages are `licence_<key>` under `$licences`. `_test_ds_page_keys()`, `_test_ds_nodes()` and `_test_ds_filter_links()` (step 1 test) serve the later tests through `require_once`. `courses.php` defines `$ds_filter`, `$ds_page_link`, `$ds_featured_choices` and `$ds_filter_bar($page, $groups)` for the later lists (`stories` by `?licence=`), so the main file and those tests include it first; the course page sends `enrol?course=` with the record's name.
+- The next free step is the lowest one not marked done. Models: `pinegrap-gym/`, `pinegrap-veterinary/` (`book_online`), `pinegrap-filmstudio/parts.php` (`$money`). The lists filter `?licence=` (`$licence_titles`) and `?format=` (`$format_titles`); the enrolment reads `?course=` (`$enrolment_course_choices`), the lesson request `?licence=` and `?instructor=` (`$instructor_choices`). Licence pages are `licence_<key>` under `$licences`. `_test_ds_page_keys()`, `_test_ds_nodes()` and `_test_ds_filter_links()` (step 1 test) serve the later tests through `require_once`. `lessons.php` reuses the record pieces of `enrolments.php` (`$ds_ask_page`, `$ds_record_tree`, `$ds_record_list`, …). `courses.php` defines `$ds_filter`, `$ds_page_link`, `$ds_featured_choices` and `$ds_filter_bar($page, $groups)` for the later lists (`stories` by `?licence=`), so the main file and those tests include it first; the course page sends `enrol?course=` with the record's name.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).

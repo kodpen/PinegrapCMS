@@ -16,7 +16,7 @@ description: Decisions list, workspace part: a typed @username in /task, a flow 
 - Owner decision (2026-10-27, «toplu ürün önerin kabul», questions 2 and 4 of the catalogue create plan, done and deleted): a card the person reads before applying stays short enough to check; a subscriber hears each new product the same way whichever door made it.
 
 ## Are model assistants licence-gated?
-- No: model assistants with the site's own key (`plans/workspace-agent-handles.md`, step 3) run on every site; Pinegrap AI stays Premium-only, separately.
+- No: model assistants with the site's own key (`plans/agent-channel.md`, step A6) run on every site; Pinegrap AI stays Premium-only, separately.
 - Owner decision (2026-10-27, #2418): the key and its cost are the site's own, nothing of Kodpen's is used.
 
 ## Where does the Workspace list of channels and places sit?

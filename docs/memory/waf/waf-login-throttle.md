@@ -17,7 +17,7 @@ description: Sign-in throttle (pg_login_throttle_* in includes/fn/auth.php): add
 
 ## Does it depend on the firewall?
 - No. Own switch `login_throttle` (default on, columns from 2026.4.4; `pg_login_throttle_ready()` hides it on a database without them). The firewall ships in Monitor mode and may be switched off to chase a false positive; neither may open the password door.
-- Its counters are swept on failures (1 in 50 calls `waf_rate_sweep()`), not by `waf_sweep()`, which never runs with the firewall off.
+- Swept on failures (1 in 50 calls `waf_rate_sweep()`) and by `waf_sweep()`; both keep a bucket max(1 h, lockout, window) (`waf_rate_retention()`, `waf-bug-fixes-2026-11.md`).
 
 ## What does a locked visitor get?
 - 429 with `Retry-After` (`pg_login_throttle_deny()`), one message whichever subject closed and whether the account exists; JSON when `API_USERNAME` is set, `api_fail()` inside the external API.
