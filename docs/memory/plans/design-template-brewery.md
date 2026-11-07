@@ -13,7 +13,7 @@ description: Plan: the Craft Brewery design template (pinegrap-brewery): beers, 
 ## Steps (claim as `[plan:design-template-brewery] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7650): `parts.php` (data, shared parts, cards, list helpers `$bw_*`); `tests/design_template_brewery_test.php`.
 
-- 2: `pages_public.php`: home (`home_beers`, `home_events`, `home_posts`), `taproom` (hours, food, tap list as page content, getting there), `about` (story, the brewhouse, the team), `faq`; `tests/design_template_brewery_public_test.php`.
+- 2 (done, #7905): `pages_public.php`: home (`home_beers`, `home_events`, `home_posts`), `taproom` (hours, food, tap list as page content, getting there), `about` (story, the brewhouse, the team), `faq`; `tests/design_template_brewery_public_test.php`.
 
 - 3: `beers.php` and `events.php`: the Beers collection (`beers` by `?style=`, the `beer` page with ABV, bitterness, tasting notes, food pairing and drinkers' notes as comments with stars, `beer_new`) and the Taproom Events collection (`events` from today by `?kind=`, `past_events`, the `event` page, `event_new`), `home_beers`, `home_events`; forms `Brewery Beers`/`Taproom Events`; test.
 
