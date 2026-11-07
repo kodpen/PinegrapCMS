@@ -32,6 +32,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-campsite.md: Plan: the Campsite / Holiday Park design template (pinegrap-campsite): pitches and cabins collection, facilities, activities, stay requests, seasonal prices as words; ~1,000-line steps
 - design-template-cityhall-design.md: Design of plans/design-template-cityhall.md: which shipped features the City Hall template reuses for services, notices, events and citizen requests, what it does not build, its look and Turkish words
 - design-template-cityhall.md: Plan: the Municipality / City Hall design template (pinegrap-cityhall): services directory, notices and tenders collection, events, council and departments, citizen requests; ~1,000-line steps
+- design-template-drivingschool-design.md: Design of plans/design-template-drivingschool.md: what the Driving School template reuses, what it does not build, its look and Turkish words
+- design-template-drivingschool.md: Plan: the Driving School design template (pinegrap-drivingschool): licences, priced courses, instructors, lesson requests, pass stories; ~1,000-line steps
 - design-template-filmstudio-design.md: Design of plans/design-template-filmstudio.md: which shipped features the Film Studio template reuses, what it does not build, its look and Turkish words
 - design-template-filmstudio.md: Plan: the Film Studio design template (pinegrap-filmstudio): showreel, projects by industry and service, services, the studio's stages for hire, crew, project enquiries, crew calls
 - design-template-florist-design.md: Design of plans/design-template-florist.md: shipped features reused for bouquets, delivery dates, subscriptions and enquiries, what is not built, look and Turkish words
