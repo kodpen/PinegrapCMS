@@ -11,7 +11,7 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-skiresort-design]].
 
 ## Steps (claim as `[plan:design-template-skiresort] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php`: node builders, the resort's data, pick lists, `$money`, `$query`, `$event_on`, page shell and helpers; `tests/design_template_skiresort_test.php`.
+- 1 (done, #7958): `parts.php`: node builders, the resort's data, pick lists, `$money`, `$query`, `$event_on`, page shell and helpers; `tests/design_template_skiresort_test.php`.
 
 - 2: `cards.php`: shared parts (account bar, notice, header, footer, snow band, staff bar), the record and data cards, form fields, the comment thread, newsletter and blog parts; `tests/design_template_skiresort_cards_test.php`.
 

@@ -299,6 +299,7 @@
     "+{var:1} visit{suffix:1}": "+{var:1} ziyaret",
     "- Select Permission Action -": "- İzin Eylemi Seç -",
     "- add name below -": "- aşağıya isim ekle -",
+    "-6 °C at the summit": "Zirvede -6 °C",
     "-Last Scan: shows last readed scan for barcode scanners and no need to any action.</br>-Manuel Scan: if scanner read wrong or dont read, you can input manuel and read it with 'Read' button.": "-Son Tarama: Herhangi bir işlem yapmaya gerek kalmadan barkod okuyucular için en son okunan taramayı gösterir.</br>-Manuel Tarama: Tarayıcı yanlış okuduysa veya okumadıysa, el ile girdikten sonra 'Oku' butonu ile okutabilirsiniz.",
     "-None-": "-Hiçbiri-",
     "-None- (the page stays as it is)": "-Hiçbiri- (sayfa olduğu gibi kalır)",
