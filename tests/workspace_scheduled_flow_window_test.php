@@ -226,3 +226,60 @@ function test_workspace_scheduled_flow_window_helpers_node()
 		array('date' => '2026-11-03', 'time' => '09:00', 'repeat' => 'daily', 'every' => 2, 'until' => '2026-12-01'),
 	), $answer);
 }
+
+// The embedded drawing names the channels and departments its boxes point
+// at, as the Flows screen does: without the lists every post, approval or
+// check-in box of the window and of a draft card read "No channel chosen".
+function test_workspace_scheduled_flow_window_embed_names_channels()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains('BOOT = { people: boot.people || [], channels: boot.channels || [], departments: boot.departments || [] };', $flow);
+	pg_assert_same(2, substr_count($js, 'window.PGWsFlow.embed('), 'two embedded drawings');
+	pg_assert_same(2, substr_count($js, "channels: (BOOT && BOOT.channels) || [],\n"), 'both pass the channels');
+	pg_assert_same(2, substr_count($js, "departments: (BOOT && BOOT.departments) || [],\n"), 'both pass the departments');
+	pg_assert_contains("var channel = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];", $flow, 'the post box reads the list given');
+}
+
+// The window's end date cannot be picked before the first day, and each
+// part shows its box's dry run under it.
+function test_workspace_scheduled_flow_window_notes_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("until.min = date.value || '';", $js);
+	pg_assert_contains('when.appendChild(notes.when);', $js);
+	pg_assert_contains('post.appendChild(notes.post);', $js);
+	pg_assert_contains('tries = (answer.view && answer.view.tries) || {};', $js, 'each answer of the sketch updates the notes');
+	pg_assert_contains('touched.when = touched.when || when.contains(event.target);', $js);
+}
+
+// A part's note: the failed dry run of its box, once the part was changed.
+function test_workspace_scheduled_flow_window_notes_node()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$start = strpos($source, "\n    function scheduledFlowNotes(");
+	pg_assert_true($start !== false, 'scheduledFlowNotes is found');
+	$end = strpos($source, "\n    }\n", (int) $start);
+	$script = "'use strict';\n" . substr($source, (int) $start, (int) $end - (int) $start) . "\n    }\n";
+	$tries = "{ start: { said: 'It would not run: the last day is before the first', failed: true }, post: { said: 'It would not run: no message', failed: true } }";
+	$script .= 'console.log(JSON.stringify([scheduledFlowNotes(' . $tries . ", { when: false, post: false }),"
+		. ' scheduledFlowNotes(' . $tries . ", { when: true, post: false }),"
+		. ' scheduledFlowNotes(' . $tries . ", { when: true, post: true }),"
+		. " scheduledFlowNotes({ start: { said: 'Posts on 10 November', failed: false } }, { when: true, post: true }),"
+		. " scheduledFlowNotes(null, { when: true, post: true })]));\n";
+	$answer = ws_scheduled_flow_window_test_node($script);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('when' => '', 'post' => ''),
+		array('when' => 'It would not run: the last day is before the first', 'post' => ''),
+		array('when' => 'It would not run: the last day is before the first', 'post' => 'It would not run: no message'),
+		array('when' => '', 'post' => ''),
+		array('when' => '', 'post' => ''),
+	), $answer);
+}

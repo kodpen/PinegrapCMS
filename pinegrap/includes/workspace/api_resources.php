@@ -821,6 +821,9 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'text'        => $deleted ? '' : ws_plain_text($viewer, $row['body'], $refs),
         'body'        => $deleted ? '' : (string) $row['body'],
         'task_id'     => ((int) $row['task_id'] > 0) ? (int) $row['task_id'] : null,
+        // The message this one answers (Reply in the panel), of the same
+        // channel or discussion.
+        'parent_id'   => ((int) ($row['parent_id'] ?? 0) > 0) ? (int) $row['parent_id'] : null,
         'file'        => $file,
         'deleted'     => $deleted,
         'hidden'      => isset($hidden[(int) $row['id']]),
@@ -853,6 +856,7 @@ function ws_api_message_schema()
         'text'        => 'string',
         'body'        => 'string',
         'task_id'     => 'integer?',
+        'parent_id'   => 'integer?',
         'file'        => 'WorkspaceMessageFile?',
         'deleted'     => 'boolean',
         'hidden'      => 'boolean',
@@ -1136,16 +1140,27 @@ function ws_api_messages_create($params)
         api_fail_validation($checked['error'], 'text');
     }
 
+    // The message it answers, as Reply in the panel: one of this channel or
+    // discussion, not deleted, of the conversation as it is now.
+    $parent_id = (int) ($params['parent_id'] ?? 0);
+    $refused = ws_message_parent_check($channel, $parent_id);
+
+    if ($refused !== '') {
+        api_fail_validation($refused, 'parent_id');
+    }
+
     api_dry_run_stop('created', 'workspace_message', array(
         'channel_id' => (int) $channel['id'],
         'kind'       => $kind,
         'ack'        => $ack,
+        'parent_id'  => ($parent_id > 0) ? $parent_id : null,
         'joins'      => ($app_id === 0) && ($channel['kind'] === 'public') && !ws_channel_membership($channel['id'], $viewer['id']),
     ));
 
     $result = ws_message_send($viewer, $channel, (string) $params['text'], array(
-        'kind'   => $kind,
-        'app_id' => $app_id,
+        'kind'      => $kind,
+        'app_id'    => $app_id,
+        'parent_id' => $parent_id,
     ));
 
     if (!$result['ok']) {

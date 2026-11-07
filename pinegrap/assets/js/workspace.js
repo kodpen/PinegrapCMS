@@ -11484,6 +11484,8 @@
                     tries: view.tries,
                     config: done[0],
                     people: (BOOT && BOOT.people) || [],
+                    channels: (BOOT && BOOT.channels) || [],
+                    departments: (BOOT && BOOT.departments) || [],
                     onSelect: function (node) {
                         self.flowCardBox(detail, node, byId[node ? node.id : ''], view);
                     },
@@ -12459,6 +12461,10 @@
                 var message = el('textarea', 'form-control form-control-sm');
                 var rows = {};
                 var said = el('div', 'small mb-3');
+                // Under each part, its box's dry run when it would not run.
+                var notes = { when: el('div', 'small fg-emphasis-warning mt-2 d-none'), post: el('div', 'small fg-emphasis-warning mt-2 d-none') };
+                var touched = { when: false, post: false };
+                var tries = {};
 
                 said.setAttribute('aria-live', 'polite');
                 name.maxLength = 160;
@@ -12497,8 +12503,10 @@
                 rows.every = when.appendChild(formRow(t('sf_every'), every));
                 rows.days = when.appendChild(formRow(t('sf_days'), days));
                 rows.until = when.appendChild(formRow(t('sf_until'), until, t('sf_until_help')));
+                when.appendChild(notes.when);
                 post.appendChild(el('legend', 'h6', data.graph.nodes[1].name));
                 post.appendChild(formRow(t('sf_message'), message, t('sf_message_help', self.channel.name)));
+                post.appendChild(notes.post);
                 body.appendChild(when);
                 body.appendChild(post);
                 body.appendChild(said);
@@ -12514,12 +12522,32 @@
                 repeat.addEventListener('change', shown);
                 shown();
 
+                // The date picker offers no end before the first day.
+                function earliest() {
+                    until.min = date.value || '';
+                }
+
+                date.addEventListener('change', earliest);
+                earliest();
+
+                function noted() {
+                    var lines = scheduledFlowNotes(tries, touched);
+
+                    Object.keys(notes).forEach(function (part) {
+                        notes[part].textContent = lines[part];
+                        notes[part].classList.toggle('d-none', lines[part] === '');
+                    });
+                }
+
                 // The sketch on the Flows canvas itself, read-only
                 // (PGWsFlow.embed()), drawn anew with each answer; a box
                 // picked brings its settings forward. Where the canvas cannot
                 // be loaded, or the Flows screen holds it, the card's still
                 // picture stands in.
                 function draw(answer) {
+                    tries = (answer.view && answer.view.tries) || {};
+                    noted();
+
                     self.flowEmbedKit().then(function (config) {
                         if (!node.open) {
                             return;
@@ -12534,6 +12562,8 @@
                             tries: answer.view.tries,
                             config: config,
                             people: (BOOT && BOOT.people) || [],
+                            channels: (BOOT && BOOT.channels) || [],
+                            departments: (BOOT && BOOT.departments) || [],
                             onSelect: function (picked) {
                                 if (!picked) {
                                     return;
@@ -12613,6 +12643,8 @@
                             return;
                         }
 
+                        touched.when = touched.when || when.contains(event.target);
+                        touched.post = touched.post || post.contains(event.target);
                         clearTimeout(wait);
                         wait = setTimeout(sketchAgain, 600);
                     });
@@ -12626,6 +12658,12 @@
                     busy = true;
                     control.disabled = true;
                     clear(said);
+
+                    if (publish) {
+                        touched.when = true;
+                        touched.post = true;
+                        noted();
+                    }
 
                     api('ws_flow_scheduled_new', Object.assign(filled(), {
                         flow_id: saved.flow_id,
@@ -18365,6 +18403,20 @@
         }
 
         return start;
+    }
+
+    // The sentence under each part of the Scheduled flow window: its box's
+    // dry run when the box would not run, once the person has changed that
+    // part or tried to publish, so the empty message of a window just
+    // opened is not flagged.
+    function scheduledFlowNotes(tries, touched) {
+        var line = function (id, part) {
+            var tried = (tries || {})[id];
+
+            return (touched && touched[part] && tried && tried.failed) ? String(tried.said || '') : '';
+        };
+
+        return { when: line('start', 'when'), post: line('post', 'post') };
     }
 
     function flowOpened(result, stay) {

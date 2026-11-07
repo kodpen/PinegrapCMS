@@ -25,7 +25,7 @@ description: Plan: the Theatre design template (pinegrap-theatre): season of pro
 
 - 7 (done, #7962): `shop.php`: `tickets`, `friends`, product, cart, checkout, order, `email_order`, the catalog (Tickets, Friends and Gift Vouchers groups, `shippable => false`); test.
 
-- 8: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 8 (done, #7989): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 9: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
