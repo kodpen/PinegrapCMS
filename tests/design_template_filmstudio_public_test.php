@@ -97,7 +97,14 @@ function test_filmstudio_public_pages_are_the_plans()
 // page that only the shop makes.
 function test_filmstudio_public_links_name_template_pages()
 {
-	$known = array_flip(_test_fm_page_keys());
+	$keys = array(
+		'home', 'services', 'process', 'studio', 'crew', 'about', 'faq',
+		'projects', 'project', 'enquiry', 'my_enquiries', 'studio_hire', 'privacy',
+		'careers', 'job', 'application', 'my_applications',
+		'contact', 'newsletter', 'blog', 'blog_post', 'search', 'my_account', 'login', 'register',
+	);
+	foreach (array_keys(_test_fmp_load()['services']) as $key) $keys[] = 'service_' . $key;
+	$known = array_flip($keys);
 	$json = json_encode(_test_fmp_pages());
 	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', $json, $m);
 	pg_assert_true(count(array_unique($m[1])) > 10, 'links found');
