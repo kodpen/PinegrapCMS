@@ -27,12 +27,12 @@ description: Plan: the Museum / Art Gallery design template (pinegrap-museum): e
 
 - 8 (done, #7805): `standard.php`: contact, inbox, newsletter, News, help search, error, the message e-mails; test.
 
-- 9: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 9 (done, #7816): `account.php`: sign-in, My Account (with the order history), the staff area, `blog_new`, the directory, the account e-mails; test.
 
 - 10: assembly: `pinegrap-museum.php` (order, search sections, look, fonts, `pmz-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates, url-params), `designer/design-template-museum.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-school/`, `pinegrap-photo/`. `exhibitions.php` defines `$mz_filter`, `$mz_page_link`, `$mz_record_list`, `$mz_filter_bar` and `$mz_featured_choices` for the later collections; their tests and the main file include it first. `events.php` defines the request pieces (`$request_page`, `$request_detail`, `$request_list`, ...) and `learning.php` reuses them. Later tests share `_test_mz_page_keys()` from `tests/design_template_museum_test.php`; the pick lists the lists filter on are `$exhibition_statuses` (`?status=`), `$department_titles` (`?department=`) and `$event_kind_titles` (`?kind=`).
+- The next free step is the lowest one not marked done. Models: `pinegrap-school/`, `pinegrap-photo/`. `exhibitions.php` defines `$mz_filter`, `$mz_page_link`, `$mz_record_list`, `$mz_filter_bar` and `$mz_featured_choices` for the later collections; their tests and the main file include it first. `events.php` defines the request pieces (`$request_page`, `$request_detail`, `$request_list`, ...) and `learning.php` reuses them. The assembly includes the parts in the order of `tests/design_template_museum_account_test.php` (`pages_public`, `exhibitions`, `objects`, `events`, `learning`, `shop`, `standard`, `account`); that test already checks the whole template and the page list. Later tests share `_test_mz_page_keys()` from `tests/design_template_museum_test.php`; the pick lists the lists filter on are `$exhibition_statuses` (`?status=`), `$department_titles` (`?department=`) and `$event_kind_titles` (`?kind=`).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
