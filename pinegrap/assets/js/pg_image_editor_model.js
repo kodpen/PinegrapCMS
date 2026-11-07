@@ -2509,7 +2509,7 @@
         var mv = mul(placeMatrix(d), inv(placeMatrix(doc))), s = place.k / p0.k;
 
         d.layers = d.layers.map(function (l) {
-            if (l.type !== 'redact') {
+            if ((l.type !== 'redact') && !pictureArea(l)) {
                 return l;
             }
 
@@ -2520,9 +2520,11 @@
             n.x = cx - n.w / 2;
             n.y = cy - n.h / 2;
 
-            if (n.size) {
-                n.size *= s;
-            }
+            ['size', 'feather', 'matte'].forEach(function (f) {
+                if (n[f]) {
+                    n[f] *= s;
+                }
+            });
 
             return n;
         });
@@ -2530,10 +2532,18 @@
         return keepCanvas(doc, d);
     }
 
+    // An erased (see-through) or adjusted area made with Select area is the
+    // picture's own, as a redaction area is: it moves, scales and goes with
+    // the picture, takes no press on the stage and never moves on its own,
+    // so a cut leaves the cut-out and the picture with its hole.
+    function pictureArea(l) {
+        return !!l && ((l.type === 'erase') || (l.type === 'adjust'));
+    }
+
     // doc without its picture: the canvas with its fill and the layers
     // become an artboard of the canvas's size (in the layers' units), the
-    // layers moved onto it; the picture's own (redaction areas,
-    // adjustments, an outward frame) go with the picture.
+    // layers moved onto it; the picture's own (redaction, erased and
+    // adjusted areas, adjustments, an outward frame) go with the picture.
     function dropPicture(doc) {
         var d = clone(doc), b = canvasBox(doc), dx = b.x, dy = b.y, bg = doc.canvas ? doc.canvas.background : '#ffffff';
 
@@ -2548,7 +2558,7 @@
             delete d.frame.outside;
         }
 
-        d.layers = d.layers.filter(function (l) { return l.type !== 'redact'; }).map(function (l) {
+        d.layers = d.layers.filter(function (l) { return (l.type !== 'redact') && !pictureArea(l); }).map(function (l) {
             return mapLayer(l, function (x, y) { return [x - dx, y - dy]; });
         });
 
@@ -2561,7 +2571,7 @@
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
         saveLayout: saveLayout, cropShapePath: cropShapePath, saveSize: saveSize, applyCanvas: applyCanvas,
         picturePlace: picturePlace, placeMatrix: placeMatrix, pictureBox: pictureBox, placedMatrix: placedMatrix, pictureFree: pictureFree,
-        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture
+        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture, pictureArea: pictureArea
     };
 
     // -- export (pg_image_editor_export.js) --

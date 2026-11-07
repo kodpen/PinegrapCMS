@@ -19,7 +19,7 @@ description: Plan: the Construction Firm design template (pinegrap-construction)
 
 - 4 (done, #7633): `mail.php` (the e-mail builders) and `quotes.php`: quote requests (`quote` with `?service=`, `quote_view`, `my_quotes`, `staff_quotes`, `privacy`, `email_reply`) and the site visit request; test.
 
-- 5: `careers.php`: the Jobs collection (`careers`, `job` with an apply link `?job=`, `job_new`) and applications (`application`, `application_view`, `my_applications`, `staff_applications`); test.
+- 5 (done, #7679): `careers.php`: the Jobs collection (`careers`, `job` with an apply link `?job=`, `job_new`) and applications (`application`, `application_view`, `my_applications`, `staff_applications`); test.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 

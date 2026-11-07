@@ -11,11 +11,11 @@ description: Plan: the Museum / Art Gallery design template (pinegrap-museum): e
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-museum-design]].
 
 ## Steps (claim as `[plan:design-template-museum] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7626): `parts.php` (builders, the museum's data and pick lists, the shared parts, the cards, form fields, comment thread, blog parts); `tests/design_template_museum_test.php`.
+- 1 (done, #7626): `parts.php` (data, pick lists, shared parts, cards); `tests/design_template_museum_test.php`.
 
-- 2 (done, #7657): `pages_public.php`: home (`home_exhibitions`, `home_events`, `home_posts`), `visit`, `support` (membership and giving as words), `about`, `faq`; `tests/design_template_museum_public_test.php`.
+- 2 (done, #7657): `pages_public.php`: home, `visit`, `support`, `about`, `faq`; test.
 
-- 3: `exhibitions.php`: the Exhibitions collection (`exhibitions` by `?status=`, the `exhibition` page, `exhibition_new`), `home_exhibitions`; test.
+- 3 (done, #7684): `exhibitions.php`: Exhibitions collection, `exhibitions` by `?status=`, `exhibition`, `exhibition_new`, `home_exhibitions`; test.
 
 - 4: `objects.php`: the Collection Highlights collection (`collection` by `?department=`, the `object` page, `object_new`); test.
 
@@ -32,7 +32,7 @@ description: Plan: the Museum / Art Gallery design template (pinegrap-museum): e
 - 10: assembly: `pinegrap-museum.php` (order, search sections, look, fonts, `pmz-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates, url-params), `designer/design-template-museum.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Model files: `pinegrap-school/`, `pinegrap-photo/`. Later tests share `_test_mz_page_keys()` from `tests/design_template_museum_test.php`; the pick lists the lists filter on are `$exhibition_statuses` (`?status=`), `$department_titles` (`?department=`) and `$event_kind_titles` (`?kind=`).
+- The next free step is the lowest one not marked done. Models: `pinegrap-school/`, `pinegrap-photo/`. `exhibitions.php` defines `$mz_filter`, `$mz_page_link`, `$mz_record_list`, `$mz_filter_bar` and `$mz_featured_choices` for the later collections; their tests and the main file include it first. Later tests share `_test_mz_page_keys()` from `tests/design_template_museum_test.php`; the pick lists the lists filter on are `$exhibition_statuses` (`?status=`), `$department_titles` (`?department=`) and `$event_kind_titles` (`?kind=`).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).

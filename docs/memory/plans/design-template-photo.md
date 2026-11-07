@@ -23,7 +23,7 @@ description: Plan: the Photography Studio design template (pinegrap-photo): gall
 
 - 6 (done, #7621): `shop.php`: `vouchers`, product, cart, checkout, order, `email_order`, the catalog (a session deposit per package, gift vouchers, `shippable => false`); test.
 
-- 7: `standard.php`: contact, inbox, conversation, newsletter, blog (Photo Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 7 (done, #7644): `standard.php`: contact, inbox, conversation, newsletter, blog (Photo Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 

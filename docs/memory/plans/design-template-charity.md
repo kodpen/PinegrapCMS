@@ -32,7 +32,7 @@ description: Plan for the Charity template (pinegrap-charity): causes, campaigns
 
 - 7 Done (#7631). Standard: `standard.php` (contact, inbox, conversation, newsletter, News, post, search, error, their e-mails, `home_posts`, `newsletter_band`).
 
-- 8 Account and staff: `account.php`; test `…_account_test.php`.
+- 8 Done (#7686). Account and staff: `account.php` (also `my_pledges`, `staff_pledges`).
 
 - 9 Assembly: `pinegrap-charity.php` (folders incl. `reports`, `pch-` styles, search map, group `newsletter`), shared tests' lists, `designer/design-template-charity.md`, plan deleted; PR body names `[NEW] Added the Charity design template`.
 

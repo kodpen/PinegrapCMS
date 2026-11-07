@@ -51,19 +51,11 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - flows-next-steps.md: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow boxes, and site events flows can start on; claim as [plan:flows-next] <step>
 - flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, ready templates; steps in flows-next-steps (templates done)
-- image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
-- image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security
-- image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, close-out; claim as [plan:image-editor] E<n>
-- image-editor-steps-3.md: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a placed sticker, text to outlines, scissors, shape builder, warp; claim as [plan:image-editor] E<n>
-- image-editor-steps-4.md: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free deformation, area selection, select subject and remove background with an own algorithm, access; claim as [plan:image-editor] E<n>
-- image-editor-steps-5.md: Steps E23b, E30-E32, E31b of plans/image-editor.md: Fotoğraf and Vektör rail groups, the picture as bottom layer, Import, SVG rules for use, a context menu; claim as [plan:image-editor] E<n>
-- image-editor-steps.md: Steps E1-E10 of plans/image-editor.md: core modal, crop, server save, adjust, layers, shapes, text, stickers, the switch that removes the old editor, redaction; claim as [plan:image-editor] E<n>
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
 - image-editor-video-visuals.md: Screens of plans/image-editor-video.md (V0), 35 to 42 in plans/image-editor/: what each shows and which step builds it
-- image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound added or detached, layers over video, export with sound; held with image-editor.md
-- image-editor-visuals.md: The image editor prototype the owner approved on 2026-10-31: its screens and source in plans/image-editor/, what each screen shows and which step of plans/image-editor.md builds it
-- image-editor-workers.md: How workers take the free steps of plans/image-editor.md and its video plan: which run side by side, the files a step owns, what its PR shows, the holder's review
-- image-editor.md: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal with full screen on demand, replacing the bundled third-party one; held by one session; steps E1-E29
+- image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound, layers over video, export with sound; held by the editor's holder
+- image-editor-visuals.md: The image editor prototype (owner 2026-10-31): screens and source in plans/image-editor/, what each shows, which step built it; kept for the video plan until V11
+- image-editor-workers.md: How workers take the free steps of the image editor's plans (done but the video plan): which run side by side, the files a step owns, what its PR shows, the holder's review
 - kodpen-vendor-api-client-design-update.md: Update contract of plans/kodpen-vendor-api-client.md: release check, pin, checks before extraction, download failures and security events, beta builds, keys, P2's workflow
 - kodpen-vendor-api-client-design.md: Client contract of plans/kodpen-vendor-api-client.md: calls and headers, the licence check, card and key field, what is stored where, the switch line; updates in -design-update
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
