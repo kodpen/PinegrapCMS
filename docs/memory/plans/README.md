@@ -32,6 +32,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-filmstudio.md: Plan: the Film Studio design template (pinegrap-filmstudio): showreel, projects by industry and service, services, the studio's stages for hire, crew, project enquiries, crew calls
 - design-template-florist-design.md: Design of plans/design-template-florist.md: shipped features reused for bouquets, delivery dates, subscriptions and enquiries, what is not built, look and Turkish words
 - design-template-florist.md: Plan: the Florist design template (pinegrap-florist): bouquets, occasions, delivery, subscriptions, wedding and event flowers; ~1,000-line steps
+- design-template-library-design.md: Design of plans/design-template-library.md: which shipped features the Library template reuses for the catalogue, events, membership and rooms, what it does not build, its look and Turkish words
+- design-template-library.md: Plan: the Public Library design template (pinegrap-library): catalogue and new arrivals, events and reading clubs, membership and room booking requests, branches and hours, news; ~1,000-line steps
 - design-template-museum-design.md: Design of plans/design-template-museum.md: the shipped features the Museum template reuses, what it does not build, its look and Turkish words
 - design-template-museum.md: Plan: the Museum / Art Gallery design template (pinegrap-museum): exhibitions, highlights, visit, tickets and membership, events, school visits; ~1,000-line steps
 - design-template-podcast-design.md: Design of plans/design-template-podcast.md: what the Podcast template reuses for podcasts, episodes, sponsorship and supporters, what it does not build, its look and Turkish words
