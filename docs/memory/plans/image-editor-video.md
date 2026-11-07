@@ -1,10 +1,10 @@
 ---
 name: image-editor-video
-description: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound added or detached, layers over video, export with sound; held with image-editor.md
+description: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound, layers over video, export with sound; held by the editor's holder
 ---
 
 ## What is the status?
-- Held by the holder of `image-editor.md`, run as `image-editor-workers.md` says; claimed as `[plan:image-editor-video] V<n> — <topic>`. Video comes last (owner, 2026-11-03): V0 starts once E21-E28 and the animation steps through AN8 have landed; the holder marks lines `free`.
+- Held by the image editor's holder (the editor: `ui/image-editor-overview.md`), run as `image-editor-workers.md` says; claimed as `[plan:image-editor-video] V<n> — <topic>`. Video comes last (owner, 2026-11-03): V0 starts once E21-E28 and the animation steps through AN8 have landed; the holder marks lines `free`.
 
 ## What is it?
 - A video is a layer of the editor's document, on the animation timeline (AN1, AN2, AN9) and in scenes (AN7): trim, split, move, speed, volume. Pictures, texts, stickers, shapes and their motion lie over it; effects and transitions apply to clips.
@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-03): video editing inside the image editor: cli
 
 ## Which decisions bind it?
 - Owner, 2026-11-03 (`workflow/decisions-made-product-24.md`): inside the image editor, not a separate editor; sound allowed. This widens 2026-10-31 (no video) and #4716 (silent videos).
-- From `image-editor.md`: own code (demuxers, muxers, filters), labels through `lang()`.
+- From the image editor's decisions (`ui/image-editor-overview.md`): own code (demuxers, muxers, filters), labels through `lang()`.
 
 ## How does it work?
 - Decoding and encoding in the browser with WebCodecs (`VideoDecoder`, `AudioDecoder`, `VideoEncoder`, `AudioEncoder`); own MP4 (ISO BMFF) and WebM (Matroska) demuxers feed them. A browser without WebCodecs gets a message instead of the video tools.
@@ -22,4 +22,4 @@ description: Plan (owner 2026-11-03): video editing inside the image editor: cli
 - Files larger than one request: uploaded and saved in chunks (V8); the limits are settings.
 
 ## Which files hold the rest?
-- `image-editor-video-steps.md`: steps V0-V11. The screens come with V0 in `plans/image-editor/`.
+- `image-editor-video-steps.md`: steps V0-V11. The screens: 35-42 in `plans/image-editor/`, read with `image-editor-video-visuals.md`.

@@ -206,6 +206,12 @@ function test_custom_form_rules_templates()
 		array('pinegrap-cafe', 'cf-quote-date'),
 		array('pinegrap-clinic', 'cl-appt-date'),
 		array('pinegrap-salon', 'sl-book-date'),
+		array('pinegrap-photo', 'ph-bk-date'),
+		array('pinegrap-museum', 'mz-sv-date'),
+		array('pinegrap-campsite', 'cp-rq-arrival'),
+		array('pinegrap-campsite', 'cp-rq-departure'),
+		array('pinegrap-campsite', 'cp-gr-arrival'),
+		array('pinegrap-campsite', 'cp-gr-departure'),
 	) as $c) {
 		$node = _test_cf_rules_template_node($c[0], $c[1]);
 		pg_assert_true($node !== null, $c[1] . ' exists');

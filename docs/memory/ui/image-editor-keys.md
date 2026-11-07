@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Which shortcuts and gestures work?
-- Tool letters, the `?` help sheet, Tab kept inside and the two-finger twist: `image-editor-access.md`.
+- Tool letters, the `?` help sheet and Tab kept inside: `image-editor-access.md`; the two-finger twist and touch targets: `image-editor-touch.md`.
 - Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo; + and - zoom, 0 fits, 1 is actual size. Ctrl/Cmd and the wheel (a trackpad pinch) zoom at the pointer; the wheel pans, with Shift sideways. Space and drag, the middle button, or two fingers move the view; two fingers pinch. One finger and the left button stay free for the tools.
 - The full-screen button sets a full-window class and asks the browser for full screen; leaving the browser's full screen drops back to the window. Double click (two taps on touch) on the stage: actual size there from the fitted view, else fit again.
 

@@ -11,8 +11,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -31,7 +31,7 @@
             return MAC ? '⌘' : 'Ctrl';
         }
 
-        return { Space: t('keySpace'), Delete: t('keyDeleteName'), Arrows: t('keyArrows'), Drag: t('keyDrag') }[k] || k;
+        return { Space: t('keySpace'), Delete: t('keyDeleteName'), Arrows: t('keyArrows'), Drag: t('keyDrag'), Click: t('keyClick'), DoubleClick: t('keyDoubleClick'), LeftRight: '← →' }[k] || k;
     }
 
     // The aria-keyshortcuts form of a key list: Control or Meta for Mod.
@@ -48,17 +48,19 @@
 
     // ---- names and shortcuts on the controls ----
 
-    // A tool button's name says its letter, and screen readers hear the
+    // A tool button's name says its letter (a rail item holding several
+    // tools, the letters of its modes), and screen readers hear the
     // shortcuts of the rail, undo, redo and save.
     Editor.prototype.nameControls = function () {
         var self = this, list = this.tools.list;
 
-        Object.keys(this.toolButtons || {}).forEach(function (id) {
-            var b = self.toolButtons[id], k = M.toolKey(id, list);
+        (this.railItems || []).forEach(function (item) {
+            var b = self.toolButtons && self.toolButtons[item.id];
+            var keys = item.modes.map(function (m) { return M.toolKey(m, list); }).filter(Boolean);
 
-            if (k && !b.hasAttribute('aria-keyshortcuts')) {
-                b.title = t('tool_' + id) + ' (' + k + ')';
-                b.setAttribute('aria-keyshortcuts', k);
+            if (b && keys.length && !b.hasAttribute('aria-keyshortcuts')) {
+                b.title = t('tool_' + item.id) + ' (' + keys.join(', ') + ')';
+                b.setAttribute('aria-keyshortcuts', keys.join(' '));
             }
         });
 

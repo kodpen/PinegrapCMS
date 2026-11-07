@@ -4,7 +4,8 @@
  *
  * Tests for the image editor's access rules in the model
  * (assets/js/pg_image_editor_model.js, run under Node): the tool letters,
- * Tab kept inside a box, the two-finger twist and the help sheet's groups.
+ * Tab kept inside a box, the two-finger twist, the help sheet's groups,
+ * the timeline's keys and the long-motion warning.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -138,9 +139,9 @@ function test_image_editor_access_key_map()
 	}
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
-	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'keysView', 'keysTouch'), $r['photo'], 'photo groups');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'tool_area', 'tool_puppet', 'tool_builder', 'keysTimeline', 'keysView', 'keysTouch'), $r['photo'], 'photo groups, a group per tool with keys of its own, the timeline with the Animate tool');
 	pg_assert_same(array('keysTools', 'keysEdit', 'keysView', 'keysTouch'), $r['opt'], 'no layer keys for export only');
-	pg_assert_same(array('tool_select', 'tool_crop', 'tool_artboard', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_sticker', 'tool_frame', 'tool_vector', 'tool_motion'), $r['photoTools'], 'every photo tool has a letter, the photo canvas and the Animate tool included');
+	pg_assert_same(array('tool_select', 'tool_crop', 'tool_artboard', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_area', 'tool_sticker', 'tool_frame', 'tool_vector', 'tool_scissors', 'tool_warp', 'tool_puppet', 'tool_builder', 'tool_motion'), $r['photoTools'], 'every photo tool has a letter, the photo canvas, the Animate tool and the photo and vector modes included');
 	pg_assert_same(array('tool_arrow', 'tool_rect', 'tool_text', 'tool_pen', 'tool_redact'), $r['annTools'], 'every annotate tool has a letter');
 	pg_assert_same(array('touchPan', 'touchFit'), $r['optTouch'], 'no twist without layers');
 	pg_assert_same(array('touchPan', 'touchFit', 'touchTwist'), $r['photoTouch'], 'twist with layers');
@@ -148,4 +149,124 @@ function test_image_editor_access_key_map()
 	pg_assert_same(array('keysEdit', 'keysView', 'keysTouch'), $r['empty'], 'no tools, no tool group');
 	pg_assert_same(array('undo', 'redo', 'save', 'keyApply', 'keyEscape', 'keyHelp'), $r['photoEdit'], 'Enter applies the crop on a photo');
 	pg_assert_same(array('undo', 'redo', 'save', 'keyEscape', 'keyHelp'), $r['canvasEdit'], 'no crop row without Crop');
+}
+
+// The arrows step the playhead by a frame (Shift: a second) on the frame or
+// second grid, never past either end; Home and End jump to the ends.
+function test_image_editor_access_timeline_keys()
+{
+	$r = image_editor_access_node(
+		'function k(now, key, shift, end, fps) { return M.timelineKey(now, key, shift, end, fps); }' . "\n"
+		. 'var walk = [0], i; for (i = 0; i < 4; i++) { walk.push(k(walk[walk.length - 1], "ArrowRight", false, 5000)); }' . "\n"
+		. 'var back = [133], j; for (j = 0; j < 4; j++) { back.push(k(back[back.length - 1], "ArrowLeft", false, 5000)); }' . "\n"
+		. 'console.log(JSON.stringify({ fps: M.TIMELINE_FPS, walk: walk, back: back, between: k(50, "ArrowRight", false, 5000), betweenBack: k(50, "ArrowLeft", false, 5000),' . "\n"
+		. ' sec: k(1000, "ArrowRight", true, 5000), secMid: k(1250, "ArrowRight", true, 5000), secBack: k(1250, "ArrowLeft", true, 5000), secBackOn: k(2000, "ArrowLeft", true, 5000),' . "\n"
+		. ' atEnd: k(5000, "ArrowRight", false, 5000), nearEnd: k(4900, "ArrowRight", true, 5000), atStart: k(0, "ArrowLeft", true, 5000),' . "\n"
+		. ' home: k(2400, "Home", false, 5000), end: k(2400, "End", true, 5000), up: k(100, "ArrowUp", false, 5000), letter: k(100, "j", false, 5000),' . "\n"
+		. ' fps10: k(0, "ArrowRight", false, 5000, 10), past: k(9000, "ArrowLeft", false, 5000), nothing: k(null, "ArrowRight", false, 5000) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(30, $r['fps'], 'thirty frames a second');
+	pg_assert_same(array(0, 33, 67, 100, 133), $r['walk'], 'right steps one frame each, a rounded frame never repeats');
+	pg_assert_same(array(133, 100, 67, 33, 0), $r['back'], 'left steps back one frame each');
+	pg_assert_same(67, $r['between'], 'between frames, right goes to the next frame');
+	pg_assert_same(33, $r['betweenBack'], 'between frames, left goes to the previous frame');
+	pg_assert_same(2000, $r['sec'], 'Shift+right on a second goes to the next');
+	pg_assert_same(2000, $r['secMid'], 'Shift+right inside a second goes to its end');
+	pg_assert_same(1000, $r['secBack'], 'Shift+left inside a second goes to its start');
+	pg_assert_same(1000, $r['secBackOn'], 'Shift+left on a second goes to the one before');
+	pg_assert_same(5000, $r['atEnd'], 'not past the end');
+	pg_assert_same(5000, $r['nearEnd'], 'a second near the end stops there');
+	pg_assert_same(0, $r['atStart'], 'not before the start');
+	pg_assert_same(0, $r['home'], 'Home to the start');
+	pg_assert_same(5000, $r['end'], 'End to the end');
+	pg_assert_same(null, $r['up'], 'up is not a timeline key');
+	pg_assert_same(null, $r['letter'], 'a letter is not a timeline key');
+	pg_assert_same(100, $r['fps10'], 'another frame rate');
+	pg_assert_same(4967, $r['past'], 'a playhead past the end steps back from the end');
+	pg_assert_same(33, $r['nothing'], 'no playhead counts as the start');
+}
+
+// Longer than 5 seconds of motion, or a repeat forever, asks for a way to
+// pause it (WCAG 2.2.2); nothing to play asks nothing.
+function test_image_editor_access_motion_long()
+{
+	$r = image_editor_access_node(
+		'console.log(JSON.stringify({ forever: M.motionLong(3000, 0), once: M.motionLong(5000, 1), onceLong: M.motionLong(5100, 1),' . "\n"
+		. ' twice: M.motionLong(2500, 2), thrice: M.motionLong(2000, 3), empty: M.motionLong(0, 0), junk: M.motionLong("x", "y") }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true($r['forever'], 'a repeat forever is long');
+	pg_assert_false($r['once'], 'exactly 5 seconds once is not');
+	pg_assert_true($r['onceLong'], 'over 5 seconds once is');
+	pg_assert_false($r['twice'], 'twice 2.5 seconds is 5 seconds');
+	pg_assert_true($r['thrice'], 'three times 2 seconds is 6 seconds');
+	pg_assert_false($r['empty'], 'nothing to play');
+	pg_assert_false($r['junk'], 'no numbers, no warning');
+}
+
+// The modes of the Photo and Vector rail items have letters of their own,
+// none taken from another tool or from Animate's K.
+function test_image_editor_access_mode_letters()
+{
+	$r = image_editor_access_node(
+		'var photo = M.PROFILES.photo, canvas = M.PROFILES.canvas, seen = {}, clash = [];' . "\n"
+		. 'Object.keys(M.KEY_TOOLS).forEach(function (k) { M.KEY_TOOLS[k].forEach(function (id) { if (seen[id]) { clash.push(id); } seen[id] = k; }); });' . "\n"
+		. 'console.log(JSON.stringify({ q: M.toolForKey("q", photo), x: M.toolForKey("x", canvas), g: M.toolForKey("G", photo), w: M.toolForKey("w", photo),' . "\n"
+		. ' n: M.toolForKey("n", canvas), qCanvas: M.toolForKey("q", canvas), k: M.toolForKey("k", photo), keyWarp: M.toolKey("warp", photo),' . "\n"
+		. ' clash: clash, letters: Object.keys(M.KEY_TOOLS).length }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same('area', $r['q'], 'Q is Select area');
+	pg_assert_same('scissors', $r['x'], 'X is Scissors');
+	pg_assert_same('builder', $r['g'], 'G is Shape builder');
+	pg_assert_same('warp', $r['w'], 'W is Warp');
+	pg_assert_same('puppet', $r['n'], 'N is Free deformation');
+	pg_assert_same(null, $r['qCanvas'], 'the canvas profile has no Select area');
+	pg_assert_same(null, $r['k'], 'K stays with Animate');
+	pg_assert_same('W', $r['keyWarp'], 'Warp shows W');
+	pg_assert_same(array(), $r['clash'], 'no tool has two letters');
+	pg_assert_same(21, $r['letters'], 'twenty-one letters');
+}
+
+// A tool's own keys show only with that tool; a finger reaches 22 px, a
+// mouse the tool's reach.
+function test_image_editor_access_tool_groups_and_reach()
+{
+	$r = image_editor_access_node(
+		'function titles(g) { return g.map(function (x) { return x.title; }); }' . "\n"
+		. 'var area = M.keyMap(["area"]), ann = M.keyMap(M.PROFILES.annotate), canvas = M.keyMap(M.PROFILES.canvas);' . "\n"
+		. 'var a = area.filter(function (g) { return g.title === "tool_area"; })[0];' . "\n"
+		. 'console.log(JSON.stringify({ area: titles(area), ann: titles(ann), canvas: titles(canvas), areaRows: a.rows.map(function (r) { return r.label; }),' . "\n"
+		. ' add: a.rows[0].keys, own: a.rows !== M.KEY_MODES.area,' . "\n"
+		. ' reach: [M.touchReach("touch", 10), M.touchReach("mouse", 10), M.touchReach("pen", 6), M.touchReach("touch", 30), M.touchReach(undefined, 8)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'tool_area', 'keysView', 'keysTouch'), $r['area'], 'Select area alone has its group');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'keysView', 'keysTouch'), $r['ann'], 'the mini bar has no tool group');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'tool_puppet', 'tool_builder', 'keysTimeline', 'keysView', 'keysTouch'), $r['canvas'], 'canvas: deformation, builder and the timeline');
+	pg_assert_same(array('keyAreaAdd', 'keyAreaSubtract', 'keyAreaClose', 'touchAreaClose'), $r['areaRows'], 'area rows');
+	pg_assert_same(array('Shift', 'Drag'), $r['add'], 'Shift and drag adds');
+	pg_assert_true($r['own'], 'the sheet gets a copy of the rows');
+	pg_assert_same(array(22, 10, 6, 30, 8), $r['reach'], 'touch reach');
 }

@@ -12,8 +12,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (root) {
@@ -2509,7 +2509,7 @@
         var mv = mul(placeMatrix(d), inv(placeMatrix(doc))), s = place.k / p0.k;
 
         d.layers = d.layers.map(function (l) {
-            if (l.type !== 'redact') {
+            if ((l.type !== 'redact') && !pictureArea(l)) {
                 return l;
             }
 
@@ -2520,9 +2520,11 @@
             n.x = cx - n.w / 2;
             n.y = cy - n.h / 2;
 
-            if (n.size) {
-                n.size *= s;
-            }
+            ['size', 'feather', 'matte'].forEach(function (f) {
+                if (n[f]) {
+                    n[f] *= s;
+                }
+            });
 
             return n;
         });
@@ -2530,10 +2532,18 @@
         return keepCanvas(doc, d);
     }
 
+    // An erased (see-through) or adjusted area made with Select area is the
+    // picture's own, as a redaction area is: it moves, scales and goes with
+    // the picture, takes no press on the stage and never moves on its own,
+    // so a cut leaves the cut-out and the picture with its hole.
+    function pictureArea(l) {
+        return !!l && ((l.type === 'erase') || (l.type === 'adjust'));
+    }
+
     // doc without its picture: the canvas with its fill and the layers
     // become an artboard of the canvas's size (in the layers' units), the
-    // layers moved onto it; the picture's own (redaction areas,
-    // adjustments, an outward frame) go with the picture.
+    // layers moved onto it; the picture's own (redaction, erased and
+    // adjusted areas, adjustments, an outward frame) go with the picture.
     function dropPicture(doc) {
         var d = clone(doc), b = canvasBox(doc), dx = b.x, dy = b.y, bg = doc.canvas ? doc.canvas.background : '#ffffff';
 
@@ -2548,7 +2558,7 @@
             delete d.frame.outside;
         }
 
-        d.layers = d.layers.filter(function (l) { return l.type !== 'redact'; }).map(function (l) {
+        d.layers = d.layers.filter(function (l) { return (l.type !== 'redact') && !pictureArea(l); }).map(function (l) {
             return mapLayer(l, function (x, y) { return [x - dx, y - dy]; });
         });
 
@@ -2561,7 +2571,7 @@
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
         saveLayout: saveLayout, cropShapePath: cropShapePath, saveSize: saveSize, applyCanvas: applyCanvas,
         picturePlace: picturePlace, placeMatrix: placeMatrix, pictureBox: pictureBox, placedMatrix: placedMatrix, pictureFree: pictureFree,
-        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture
+        keepCanvas: keepCanvas, lockPicture: lockPicture, placePicture: placePicture, dropPicture: dropPicture, pictureArea: pictureArea
     };
 
     // -- export (pg_image_editor_export.js) --
@@ -4384,7 +4394,7 @@
     var KEY_TOOLS = {
         v: ['select'], c: ['crop'], a: ['adjust', 'arrow'], d: ['draw'], t: ['text'], r: ['redact'], u: ['rect'], s: ['sticker'],
         f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse'],
-        m: ['motion']
+        m: ['motion'], q: ['area'], x: ['scissors'], g: ['builder'], w: ['warp'], n: ['puppet']
     };
 
     function toolForKey(key, list) {
@@ -4452,11 +4462,42 @@
         return (a <= -180) ? a + 360 : (a === 0 ? 0 : a);
     }
 
+    // How near, in screen pixels, a press must come to a point or an edge
+    // a tool picks up (pointer: the PointerEvent's pointerType): a finger
+    // gets half of a 44 px target, a mouse or a pen the tool's own reach.
+    var TOUCH_REACH = 22;
+
+    function touchReach(pointer, px) {
+        return (pointer === 'touch') ? Math.max(TOUCH_REACH, Number(px) || 0) : (Number(px) || 0);
+    }
+
+    // The keys and touches of the tools that have their own, one group per
+    // tool of the call, titled with its name.
+    var KEY_MODES = {
+        area: [
+            { keys: ['Shift', 'Drag'], label: 'keyAreaAdd' },
+            { keys: ['Alt', 'Drag'], label: 'keyAreaSubtract' },
+            { keys: ['DoubleClick'], label: 'keyAreaClose' },
+            { keys: [], label: 'touchAreaClose' }
+        ],
+        builder: [
+            { keys: ['Alt', 'Drag'], label: 'keyBuilderRemove' }
+        ],
+        puppet: [
+            { keys: ['Click'], label: 'keyPinAdd' },
+            { keys: ['Alt', 'Click'], label: 'keyPinRemove' },
+            { keys: ['Delete'], label: 'keyPinDelete' },
+            { keys: ['Arrows'], label: 'keyPinNudge' },
+            { keys: ['Shift', 'Arrows'], label: 'keyPinNudgeMore' }
+        ]
+    };
+
     // The help sheet's groups for a call's tools: { title, rows: [{ keys,
     // label }] }, keys as tokens (Mod is Ctrl, or Cmd on a Mac; Space,
-    // Delete, Arrows and Drag are named by the sheet), title and label as
-    // label keys. Layer keys show only with a tool that makes layers, Enter
-    // only with Crop.
+    // Delete, Arrows, Drag, Click and DoubleClick are named by the sheet),
+    // title and label as label keys. Layer keys show only with a tool that
+    // makes layers, Enter only with Crop, a tool's own group (KEY_MODES)
+    // only with that tool.
     var KEY_NOLAYERS = ['crop', 'adjust', 'export'];
 
     function keyMap(list) {
@@ -4498,6 +4539,22 @@
             ] });
         }
 
+        list.forEach(function (id) {
+            if (KEY_MODES.hasOwnProperty(id)) {
+                groups.push({ title: 'tool_' + id, rows: KEY_MODES[id].slice() });
+            }
+        });
+
+        if (list.indexOf('motion') >= 0) {
+            groups.push({ title: 'keysTimeline', rows: [
+                { keys: ['K'], label: 'keyPlay' },
+                { keys: ['LeftRight'], label: 'keyFrame' },
+                { keys: ['Shift', 'LeftRight'], label: 'keySecond' },
+                { keys: ['Home'], label: 'keyStart' },
+                { keys: ['End'], label: 'keyEnd' }
+            ] });
+        }
+
         groups.push({ title: 'keysView', rows: [
             { keys: ['+'], label: 'zoomIn' },
             { keys: ['-'], label: 'zoomOut' },
@@ -4514,7 +4571,51 @@
         return groups;
     }
 
-    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
+    // The playhead after key k in the Animate tool, at now on a timeline of
+    // end ms: the arrows step to the next or previous frame of fps (Shift: to
+    // the next or previous whole second), Home goes to the start and End to
+    // the end; null for another key. Half a millisecond of slack keeps a
+    // playhead on a rounded frame from stepping to that same frame again.
+    var TIMELINE_FPS = 30;
+
+    function timelineKey(now, k, shift, end, fps) {
+        var dir = { ArrowLeft: -1, ArrowRight: 1 }[k], step, at;
+
+        end = Math.max(0, Number(end) || 0);
+        now = clamp(Number(now) || 0, 0, end);
+
+        if (k === 'Home') {
+            return 0;
+        }
+
+        if (k === 'End') {
+            return end;
+        }
+
+        if (!dir) {
+            return null;
+        }
+
+        step = shift ? 1000 : 1000 / ((fps > 0) ? fps : TIMELINE_FPS);
+        at = (dir > 0) ? Math.floor((now + 0.5) / step) + 1 : Math.ceil((now - 0.5) / step) - 1;
+
+        return clamp(Math.round(at * step), 0, end);
+    }
+
+    // True when an animation of total ms played loop times (0 forever) moves
+    // for longer than 5 seconds: WCAG 2.2.2 then asks for a way to pause it
+    // where it shows beside other content, which a GIF, APNG or WebP lacks.
+    var MOTION_PAUSE_MS = 5000;
+
+    function motionLong(total, loop) {
+        total = Number(total) || 0;
+        loop = Math.round(Number(loop) || 0);
+
+        return (total > 0) && ((loop <= 0) || (total * loop > MOTION_PAUSE_MS));
+    }
+
+    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap,
+        TOUCH_REACH: TOUCH_REACH, touchReach: touchReach, KEY_MODES: KEY_MODES, TIMELINE_FPS: TIMELINE_FPS, timelineKey: timelineKey, motionLong: motionLong };
 
     // -- The selection's commands (pg_image_editor_actions.js) --
 
@@ -4532,6 +4633,12 @@
 
         if (!s.layers && !s.picture && !s.area) {
             return out;
+        }
+
+        // A chosen deformation pin: its removal first, as a phone has
+        // neither Alt nor the Delete key; Delete still removes the layer.
+        if (s.pin && s.layers) {
+            add('removePin');
         }
 
         if (s.sheet) {
@@ -5288,9 +5395,24 @@
         return best;
     }
 
+    // Where pin i moves when the arrow keys nudge it by dx, dy document
+    // pixels: its drawn point as a share of the box, the layer's turn and
+    // mirror taken into account; null without that pin. Its rest stays.
+    function puppetNudge(l, i, dx, dy) {
+        var pin = (l && l.puppet && Array.isArray(l.puppet.pins)) ? l.puppet.pins[i] : null;
+
+        if (!pin || !pinValid(pin) || !(l.w > 0) || !(l.h > 0)) {
+            return null;
+        }
+
+        var a = drawnLocal(l, 0, 0), b = drawnLocal(l, dx, dy);
+
+        return [frac(pin.at[0] * l.w + b[0] - a[0], l.w), frac(pin.at[1] * l.h + b[1] - a[1], l.h)];
+    }
+
     var PUPPET = {
         PUPPET_MAX: PUPPET_MAX, puppetOn: puppetOn, puppetPins: puppetPins, mlsRigid: mlsRigid, puppetRest: puppetRest,
-        puppetAdd: puppetAdd, puppetHit: puppetHit
+        puppetAdd: puppetAdd, puppetHit: puppetHit, puppetNudge: puppetNudge
     };
 
     // -- scenes (pg_image_editor_scenes.js) --

@@ -20,7 +20,8 @@
  * the file manager whether or not the pages are saved afterwards.
  *
  * @author      Erdal Güral (Kodpen)
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 include('init.php');

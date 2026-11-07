@@ -11,8 +11,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -36,6 +36,14 @@
         var type = kind(l);
 
         return !type.hit || type.hit(l, p, slack);
+    }
+
+    // A layer the Select tool neither moves, resizes nor lines up: a locked
+    // one, or one of a fixed type (an erased or adjusted area, which moves
+    // with the picture). It can still be chosen in the Layers list and
+    // deleted unless it is locked.
+    function fixed(l) {
+        return !!l.locked || !!kind(l).fixed;
     }
 
     Editor.prototype.layer = function (id) {
@@ -169,7 +177,7 @@
             d.style.height = (l.h * k) + 'px';
             d.style.transform = l.rot ? 'rotate(' + l.rot + 'deg)' : '';
 
-            if ((picked.length === 1) && !l.locked) {
+            if ((picked.length === 1) && !fixed(l)) {
                 ((type.box === false) ? [] : BOX_HANDLES).forEach(function (h) {
                     d.appendChild(el('span', { class: 'pgie-sh', 'data-h': h, title: (h === 'rot') ? t('rotate') : null }));
                 });
@@ -252,7 +260,7 @@
                     this.select([hit.id]);
                 }
 
-                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !l.locked; }).map(M.clone) };
+                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !fixed(l); }).map(M.clone) };
             }
         }
 
@@ -274,7 +282,10 @@
             return d.base.slice();
         }
 
-        return d.base.concat(M.layersInBox(this.doc, box).filter(function (id) { return d.base.indexOf(id) < 0; }));
+        // An erased or adjusted area is not caught: it is the picture's own.
+        var doc = this.doc;
+
+        return d.base.concat(M.layersInBox(doc, box).filter(function (id) { return (d.base.indexOf(id) < 0) && !kind(find(doc, id)).fixed; }));
     };
 
     Editor.prototype.moveDrag = function (e) {
@@ -410,6 +421,7 @@
     // Ctrl+D duplicates, Ctrl+C copies, Ctrl+A selects all. True when used.
     Editor.prototype.layerKey = function (e, mod, k) {
         var ids = this.sel, step = e.shiftKey ? 10 : 1, free = this.selected().filter(function (l) { return !l.locked; });
+        var movable = free.filter(function (l) { return !fixed(l); });
 
         if (Editor.selectTools.indexOf(this.tool) < 0) {
             return false;
@@ -441,9 +453,9 @@
 
         var dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
 
-        if (!mod && dir && free.length) {
+        if (!mod && dir && movable.length) {
             this.change(function (doc) {
-                free.forEach(function (o) {
+                movable.forEach(function (o) {
                     var l = find(doc, o.id);
 
                     l.x += dir[0] * step;
@@ -464,9 +476,13 @@
             list.forEach(function (o) {
                 var l = M.clone(o);
 
+                // A copy of an erased or adjusted area keeps its place on the
+                // picture.
                 l.id = M.newId(doc);
-                l.x += offset;
-                l.y += offset;
+                if (!kind(l).fixed) {
+                    l.x += offset;
+                    l.y += offset;
+                }
                 doc.layers.push(l);
                 added.push(l.id);
             });
@@ -672,10 +688,11 @@
         this.change(function (doc) { doc.layers = M.reorder(doc.layers, ids, how); });
     };
 
-    // The unlocked selected layers lined up on how ('left' … 'bottom'): on
-    // their joint box when two or more are selected, else on the canvas.
+    // The selected layers the Select tool may move lined up on how ('left'
+    // … 'bottom'): on their joint box when two or more are selected, else on
+    // the canvas.
     Editor.prototype.alignLayers = function (how) {
-        var picked = this.selected(), free = picked.filter(function (l) { return !l.locked; });
+        var picked = this.selected(), free = picked.filter(function (l) { return !fixed(l); });
         var target = (picked.length > 1) ? M.bounds(free) : this.viewRect();
 
         if (free.length) {
@@ -683,9 +700,10 @@
         }
     };
 
-    // The unlocked selected layers spaced evenly along axis 'x' or 'y'.
+    // The selected layers the Select tool may move spaced evenly along axis
+    // 'x' or 'y'.
     Editor.prototype.spreadLayers = function (axis) {
-        var free = this.selected().filter(function (l) { return !l.locked; });
+        var free = this.selected().filter(function (l) { return !fixed(l); });
 
         if (free.length >= 3) {
             this.moveLayers(free, M.distribute(free.map(function (l) { return M.bounds([l]); }), axis));

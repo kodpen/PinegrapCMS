@@ -11,8 +11,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -566,9 +566,9 @@
     };
 
     // A click: the top path or shape whose outline passes within reach of
-    // p is cut at the nearest point.
-    Editor.prototype.clickCut = function (p) {
-        var k = this.view.k, layers = this.doc.layers;
+    // p is cut at the nearest point; a finger reaches further.
+    Editor.prototype.clickCut = function (p, pointer) {
+        var k = this.view.k, layers = this.doc.layers, reach = M.touchReach(pointer, 8);
 
         for (var i = layers.length - 1; i >= 0; i--) {
             var l = layers[i], kc = cuttable(l);
@@ -576,7 +576,7 @@
             if (kc) {
                 var near = M.nearestCut(kc.knots, kc.closed, M.drawnLocal(l, p[0], p[1]));
 
-                if ((near.seg >= 0) && (near.d * k < 8 + (l.stroke || 1) * k / 2)) {
+                if ((near.seg >= 0) && (near.d * k < reach + (l.stroke || 1) * k / 2)) {
                     this.cutLayers([{ id: l.id, cuts: [{ seg: near.seg, t: near.t }] }]);
                     return true;
                 }
@@ -608,7 +608,7 @@
     Editor.prototype.scissorsDown = function (e) {
         var p = this.toDoc(e.clientX, e.clientY);
 
-        this.drag = { kind: 'scut', a: p, b: p };
+        this.drag = { kind: 'scut', a: p, b: p, pointer: e.pointerType };
         e.preventDefault();
 
         try {
@@ -625,7 +625,8 @@
         }
     };
 
-    // A press that hardly moved is a click; a longer one a line.
+    // A press that hardly moved is a click (a finger may wander a little
+    // more than a mouse); a longer one a line.
     Editor.prototype.scissorsUp = function (e) {
         var d = this.drag;
 
@@ -635,9 +636,9 @@
             return;
         }
 
-        var b = e ? this.toDoc(e.clientX, e.clientY) : d.b, moved = Math.hypot(b[0] - d.a[0], b[1] - d.a[1]) * this.view.k >= 4;
+        var b = e ? this.toDoc(e.clientX, e.clientY) : d.b, moved = Math.hypot(b[0] - d.a[0], b[1] - d.a[1]) * this.view.k >= ((d.pointer === 'touch') ? 10 : 4);
 
-        if (!(moved ? this.lineCut(d.a, b) : this.clickCut(d.a))) {
+        if (!(moved ? this.lineCut(d.a, b) : this.clickCut(d.a, d.pointer))) {
             this.renderView();
         }
     };

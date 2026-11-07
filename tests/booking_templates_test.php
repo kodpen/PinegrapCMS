@@ -25,6 +25,10 @@ function _test_booking_tpl_list()
 		'pinegrap-salon'  => array('appointment', 'book_online'),
 		'pinegrap-clinic' => array('appointment', 'book_online'),
 		'pinegrap-law'    => array('consultation', 'book_online'),
+		'pinegrap-photo'  => array('book', 'book_online'),
+		'pinegrap-wedding' => array('enquiry', 'book_visit'),
+		'pinegrap-gym'    => array('class_booking', 'book_online'),
+		'pinegrap-museum' => array('school_visit', 'book_online'),
 	);
 }
 

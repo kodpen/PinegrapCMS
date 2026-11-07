@@ -166,6 +166,18 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-dealership' => array('dl-td-consent', 'dl-ti-consent', 'dl-fi-consent'),
 		'pinegrap-hotel' => array('ht-bk-consent', 'ht-ev-consent'),
 		'pinegrap-market' => array('mk-ap-consent', 'mk-hp-consent'),
+		'pinegrap-photo' => array('ph-bk-consent', 'ph-sel-consent'),
+		'pinegrap-charity' => array('ch-pl-consent', 'ch-vo-consent', 'ch-su-consent', 'ch-contact-consent'),
+		'pinegrap-travel' => array('tv-bk-consent', 'tv-eq-consent'),
+		'pinegrap-wedding' => array('wd-enq-consent'),
+		'pinegrap-construction' => array('cn-qt-consent', 'cn-app-consent'),
+		'pinegrap-school' => array('sh-ap-consent', 'sh-vs-consent'),
+		'pinegrap-gym' => array('gy-cb-consent', 'gy-jn-consent'),
+		'pinegrap-museum' => array('mz-eb-consent', 'mz-sv-consent'),
+		'pinegrap-music' => array('mu-bk-consent'),
+		'pinegrap-architecture' => array('ai-enq-consent', 'ai-con-consent', 'ai-app-consent'),
+		'pinegrap-campsite' => array('cp-rq-consent', 'cp-gr-consent'),
+		'pinegrap-cityhall' => array('cy-rq-consent', 'cy-mt-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);

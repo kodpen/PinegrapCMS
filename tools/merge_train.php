@@ -59,6 +59,7 @@ define('MERGE_TRAIN_IDENTITY_EMAIL', 'erdaltyy@gmail.com');
 define('MERGE_TRAIN_SIZE_LIMIT', 1000);
 define('MERGE_TRAIN_MAX_PRS', 12);
 define('MERGE_TRAIN_QUIET_SECONDS', 3600);
+define('MERGE_TRAIN_OVERSIZED_WAIT_SECONDS', 3600);
 define('MERGE_TRAIN_FIX_LINE', '[FIX] Miscellaneous bug fixes and new features.');
 define('MERGE_TRAIN_SECURITY_LINE', '[SECURITY] Implemented various security fixes.');
 define('MERGE_TRAIN_MODULE_LIST', 'docs/memory/core/fn-modules.md');
@@ -161,12 +162,46 @@ function merge_train_branch_name($time)
 	return 'merge-train/' . gmdate('Ymd-Hi', $time);
 }
 
+// The time a green PR became eligible, from the check runs of its head: a
+// ready PR from its last finished run, a quiet one an hour after its first
+// run started. The ready label's own time is not read, so a label put on
+// later counts from the green checks.
+function merge_train_eligible_since(array $runs, $ready)
+{
+	$started = null;
+	$completed = null;
+
+	foreach ($runs as $run) {
+		if (!empty($run['started_at'])) {
+			$time = strtotime($run['started_at']);
+			$started = ($started === null) ? $time : min($started, $time);
+		}
+
+		if (!empty($run['completed_at'])) {
+			$time = strtotime($run['completed_at']);
+			$completed = ($completed === null) ? $time : max($completed, $time);
+		}
+	}
+
+	$quiet = ($started === null) ? null : $started + MERGE_TRAIN_QUIET_SECONDS;
+
+	if ($ready) {
+		return ($completed === null) ? $quiet : $completed;
+	}
+
+	return $quiet;
+}
+
 // The train order of eligible PRs, each array('number', 'product_lines',
-// 'docs_only'): 'alone' the docs-only PRs, 'train' the others smaller first
-// up to MERGE_TRAIN_MAX_PRS within the size limit, 'later' the rest. A PR
-// over the limit rides only a train of its own, so a red train is easy to
-// blame: it is the train when no PR within the limit waits.
-function merge_train_order(array $prs)
+// 'docs_only', optional 'eligible_since'): 'alone' the docs-only PRs,
+// 'train' the others within the size limit, longest-waiting first (equal
+// waits smaller first) up to MERGE_TRAIN_MAX_PRS, 'later' the rest. A PR over the limit rides only a train of its
+// own, so a red train is easy to blame: it is the train when no PR within
+// the limit waits, or, given $now, when it has been eligible for
+// MERGE_TRAIN_OVERSIZED_WAIT_SECONDS or more (the longest-waiting one, ahead
+// of the small PRs, which take the next train). Small PRs arrive all day, so
+// without the wait an oversized PR would never ride.
+function merge_train_order(array $prs, $now = null)
 {
 	$alone = array();
 	$small = array();
@@ -199,11 +234,64 @@ function merge_train_order(array $prs)
 		return $out;
 	};
 
+	// Longest-waiting first: by size alone, small PRs that keep arriving
+	// would starve the larger ones under the limit. Equal waits fall back to
+	// the size order; an unknown wait goes after the known ones.
+	$by_wait = function ($a, $b) use ($by_size) {
+		$a_since = isset($a['eligible_since']) ? $a['eligible_since'] : null;
+		$b_since = isset($b['eligible_since']) ? $b['eligible_since'] : null;
+
+		if ($a_since !== $b_since) {
+			if ($a_since === null) {
+				return 1;
+			}
+
+			if ($b_since === null) {
+				return -1;
+			}
+
+			return ($a_since < $b_since) ? -1 : 1;
+		}
+
+		return $by_size($a, $b);
+	};
+
 	usort($alone, $by_size);
-	usort($small, $by_size);
+	usort($small, $by_wait);
 	usort($large, $by_size);
 
-	if ($small) {
+	$overdue = array();
+
+	if ($now !== null) {
+		foreach ($large as $pr) {
+			if (isset($pr['eligible_since']) && (($now - $pr['eligible_since']) >= MERGE_TRAIN_OVERSIZED_WAIT_SECONDS)) {
+				$overdue[] = $pr;
+			}
+		}
+
+		// usort() is not stable before PHP 8, so equal waits fall back to
+		// the size order explicitly.
+		usort($overdue, function ($a, $b) use ($by_size) {
+			if ($a['eligible_since'] !== $b['eligible_since']) {
+				return ($a['eligible_since'] < $b['eligible_since']) ? -1 : 1;
+			}
+
+			return $by_size($a, $b);
+		});
+	}
+
+	if ($overdue) {
+		$train = array($overdue[0]);
+		$rest = array();
+
+		foreach ($large as $pr) {
+			if ($pr['number'] !== $overdue[0]['number']) {
+				$rest[] = $pr;
+			}
+		}
+
+		$later = array_merge($small, $rest);
+	} elseif ($small) {
 		$train = array_slice($small, 0, MERGE_TRAIN_MAX_PRS);
 		$later = array_merge(array_slice($small, MERGE_TRAIN_MAX_PRS), $large);
 	} else {
@@ -497,8 +585,8 @@ function merge_train_open_trains(array $open)
 	return $trains;
 }
 
-// The eligible PRs with their product lines, as merge_train_order() takes
-// them, plus 'title' and 'why' for the list.
+// The eligible PRs with their product lines and eligible time, as
+// merge_train_order() takes them, plus 'title' and 'why' for the list.
 function merge_train_candidates()
 {
 	$open = merge_train_gh_all('pulls?state=open&base=development');
@@ -560,6 +648,7 @@ function merge_train_candidates()
 			'docs_only' => merge_train_docs_only(array_keys($files)),
 			'title' => $pr['title'],
 			'why' => in_array('ready', $labels, true) ? 'ready' : 'quiet',
+			'eligible_since' => merge_train_eligible_since($runs, in_array('ready', $labels, true)),
 		);
 	}
 
@@ -617,7 +706,7 @@ function merge_train_list()
 		$by_number[$pr['number']] = $pr;
 	}
 
-	$order = merge_train_order($candidates);
+	$order = merge_train_order($candidates, time());
 	$headings = array('alone' => 'Land alone (docs, CLAUDE.md, .github only)', 'train' => 'Train', 'later' => 'A later train');
 
 	foreach ($headings as $group => $heading) {
@@ -755,7 +844,7 @@ function merge_train_build(array $numbers, array $options)
 	$branch = merge_train_require_train_branch();
 
 	if (!$numbers) {
-		$order = merge_train_order(merge_train_candidates());
+		$order = merge_train_order(merge_train_candidates(), time());
 		$numbers = $order['train'];
 
 		if (!$numbers) {

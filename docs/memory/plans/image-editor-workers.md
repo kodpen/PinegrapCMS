@@ -1,6 +1,6 @@
 ---
 name: image-editor-workers
-description: How workers take the free steps of plans/image-editor.md and its animation and video plans: which run side by side, the files a step owns, what its PR shows, the holder's review
+description: How workers take the free steps of the image editor's plans (done but the video plan): which run side by side, the files a step owns, what its PR shows, the holder's review
 ---
 
 ## Which steps may a worker take?
@@ -8,15 +8,14 @@ description: How workers take the free steps of plans/image-editor.md and its an
 - Side by side (owner, 2026-11-01): E6, E7 and E8, which change no server code (their layers reach the save in the overlay), and one save-path step.
 - One at a time, since they change the save path (`pg_image_edit_validate()`, `pg_image_edit_apply()`, `pg_image_editor_save()`, `includes/image_engine.php`): E11, then E10, E12, E13, then AN4 and AN7's validator in that order.
 - Later, as their lines say: E9 after E6, E7, E8; E14 after E6; E15 after E7 and E14; E16 and E17 after E9 and E11; E18 after E9; E20 stays with the holder. E10b changes `pg_image_editor_render()` and the redact part, not the save path, and runs beside any step.
-- The animation plan's lines (`image-editor-animation-steps.md`) are taken and reviewed the same way, claimed as `[plan:image-editor-animation] AN<n> — <topic>`; its parts are `motion`, `render` and `scenes` and the worker `pg_image_editor_encode.js`.
-- The new tools (owner, 2026-11-03): E21, E22 and E23 side by side; E24 and E25 side by side after E23, then E23b (the Fotoğraf and Vektör rail groups, owner); E30 and E31 beside them, E32 after E23b; E27 and E28 change the save path (the engine's mask step), one at a time with the other save-path steps. The video plan's lines (`image-editor-video-steps.md`) are claimed as `[plan:image-editor-video] V<n> — <topic>`.
+- The new tools (owner, 2026-11-03): E21, E22 and E23 side by side; E24 and E25 side by side after E23, then E23b (the Fotoğraf and Vektör rail groups, owner); E30 and E31 beside them, E32 after E23b; E27 and E28 change the save path (the engine's mask step), one at a time with the other save-path steps. The video plan's lines (`image-editor-video-steps.md`) are claimed as `[plan:image-editor-video] V<n> — <topic>`; their screens are in `image-editor-video-visuals.md`.
 
 ## Which files does a step own?
 - Its tool file `assets/js/pg_image_editor_<tool>.js` (E6 draw, E7 text, E8 sticker, E10 redact, E11 versions, E12 artboard, E13 export, E14 vector), its section of the model, its labels function and API actions, its stylesheet section (`ui/image-editor-parts.md`), `tests/image_editor_<tool>_test.php`, a memory topic `ui/image-editor-<tool>.md`, and its own step line in the plan.
 - The core, `pg_image_editor_layers.js` or another tool's part only for a hook it needs: a small edit, named in the PR body. A clash with another open step goes to the architect (CLAUDE.md Working mode 10).
 
 ## How is a step built?
-- Read the step line, its screens (`image-editor-visuals.md` or `image-editor-animation-visuals.md`, the pictures in `plans/image-editor/`), the prototype's part for it, `image-editor-design.md`, `ui/image-editor-parts.md`, and the crop, adjust and layers files as examples.
+- Read the step line, its screens (`image-editor-visuals.md` or `image-editor-video-visuals.md`, the pictures in `plans/image-editor/`), the prototype's part for it, `ui/image-editor-overview.md`, `ui/image-editor-parts.md`, and the crop, adjust and layers files as examples.
 - Labels only with `php tools/tr_add.php`; rebuild the bundles; Node tests for the model section; the checks of CLAUDE.md "When a task is done".
 - Try it in a browser (`workflow/sandbox-and-environment.md`) at desktop size and on a phone (390x844 and 844x390, touch): draw or type, move, resize, undo and redo, save over a file and as a copy, reopen. The PR body says what was tried on both and what could not be.
 

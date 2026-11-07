@@ -24,10 +24,10 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
 - coordinator-context.md: Keeping a coordinator's context small (2026-11-04): what its first turn and each check-in read, tools/free_work.php for free work, what it never reads whole
-- coordinator-limits.md: Coordinator rules: model and effort, the quota guard, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
+- coordinator-limits.md: Coordinator rules: model and effort, the limit guard, a new worker for a decided draft, no hand-over at depth 7, archiving done workers and old coordinators
 - coordinator-no-plans.md: What a coordinator gives its workers when no plan step is free: a new design template; since 2026-11-06 no bug hunt and no bug issue as work
-- coordinator-quota.md: Coordinator worker count by the 5-hour quota (owner, 2026-11-02): 8 at a window's start, 4 to 10, retuned each hour against 20% a hour, read from the sessions' cost
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
+- coordinator-workers.md: How many workers a coordinator keeps (since 2026-11-07): 8 working, a session waiting on someone else does not count, when fewer; no count from the quota
 - coordinator.md: Coordinator session: one per account, keeps its cloud workers on free plan steps, looks at them every 30 minutes, writes no code, merges nothing; questions go to the architect
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-customers.md: Decisions list, customer data (owner, 2026-10-28): marketing boxes stay ticked, İYS never narrows sending, export unchanged, review order and photos, merge re-points all but consent_log
@@ -60,12 +60,11 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-29.md: Decisions list, product part 29 (2026-11-04 evening on): the external API does not delete a store credit card; a gift card line takes at most 100 units
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-30.md: Decisions list, product part 30 (2026-11-05 on): a loop in one flow (Read a row, Repeat N times, date words in a value box); the image editor's eraser on shapes and touch corners
-- decisions-made-product-31.md: Decisions list, product part 31 (2026-11-05 evening on): the image editor's move recorded by dragging, sound in an animation's video
+- decisions-made-product-31.md: Decisions list, product part 31 (2026-11-05 evening on): the image editor's move recorded by dragging, sound in an animation's video, the hole a cut leaves
 - decisions-made-product-32.md: Decisions list, product part 32 (2026-11-05 night on): a Calculate rule in the value box; a refund by lines remembers its lines; the credit refund bonus on the payment part only
 - decisions-made-product-33.md: Decisions list, product part 33 (2026-11-05 night on): the flows-next questions (AI box, wait until a date, web address start, e-mail to the record's person, channel mention) and #7015
 - decisions-made-product-34.md: Decisions list, product part 34 (2026-11-05 night on): a review hides while its order is cancelled or its item refunded; folder access taken back on cancel; no private access in a bundle
-- decisions-made-product-35.md: Decisions list, product part 35 (2026-11-05 on): live pictures of templates and designs, the installer's design step and 1440 px width, the ACP Bearer credential, a shopper's MCP consent
-- decisions-made-product-36.md: Decisions list, product part 36 (2026-11-06 on): one card per submitter in a form list (the Social template's People list)
+- decisions-made-product-35.md: Decisions list, product part 35 (2026-11-05 on): templates and designs shown as their real pages (live pictures), the installer's short design step and tour, its 1440 px width
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 - decisions-made-product-6.md: Decisions list, product part 6 (2026-10-29 night on): subscriptions (later-starting lines, price notice, operator screen), AI assistant and add-ons wait, printed order's shipping card
@@ -75,6 +74,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): search engines appended to the visitors ENUM; the ActivityPub reactions table; the joined-a-group profile action; booking deposits
 - decisions-made-schema-11.md: Decisions list, schema part 11 (2026-11-05 on): the access_scopes column of api_devices for a narrower scope asked on an OAuth refresh
+- decisions-made-schema-12.md: Decisions list, schema part 12 (2026-11-07 on): note groups, note places, group shares, PIN locks and two columns for Workspace notes (plans/workspace-notes-groups-lock.md, step N0)
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1
@@ -92,7 +92,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
 - decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): calendar move writes a due date back; the pinned My Notes row opens the Workspace list; the list's top and the tour's place; flow draft card read-only
-- decisions-made-workspace-7.md: Decisions list, workspace part 7 (2026-11-06 on): the agent channel's rules: an agent's own messages, how far an unattended flow goes, decision marks on messages, the loop-guard text
+- decisions-made-workspace-8.md: Decisions list, workspace part 8 (2026-11-07 on): notes in groups shared like notes, tabs inside a group, a PIN lock on notes and groups, locked notes never shared, media previews in notes
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
@@ -101,6 +101,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - merge-train-forks.md: A PR from a fork never rides a merge train, never lands alone and is never merged by a session; the owner reviews it. Where tools/merge_train.php enforces it
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
+- merge-train-order.md: Which eligible PRs form the next train (merge_train_order()): docs-only alone, small PRs longest-waiting first, an oversized PR alone and at the latest an hour after it became eligible
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward); what it leaves to the merging session
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run
 - merger-wake.md: How the merging session keeps waking: a 3-minute send_later chain and an hourly routine that re-arms it (2026-11-03); GitHub events are not relied on

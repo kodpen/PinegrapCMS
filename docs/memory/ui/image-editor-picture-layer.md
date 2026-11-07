@@ -9,14 +9,14 @@ module: image_editor
 - Unlocking (`M.lockPicture()`) makes a canvas on the picture when the photo had none; locking again keeps the place.
 
 ## What keeps the canvas and the layers in place?
-- `M.placePicture(doc, box)`: the new place from the box's width (ratio kept), some of it left on the canvas; the margins are worked out again so the canvas box stays (`M.keepCanvas()`). Redaction areas belong to the picture's pixels and go with it (moved and scaled, brush size too).
+- `M.placePicture(doc, box)`: the new place from the box's width (ratio kept), some of it left on the canvas; the margins are worked out again so the canvas box stays (`M.keepCanvas()`). Redaction, erased and adjusted areas belong to the picture's pixels and go with it (moved and scaled, brush size and feather too).
 - `change()` of the core calls `M.keepCanvas(before, doc)`: a crop of a placed picture keeps the canvas, what stays of the picture stays in place. `reorient()` turns or flips a placed picture around its middle without the layers (the redaction areas turn with it).
 - While cropping the frame works in the picture's own space: the stage draws it with `pictureMatrix()` and the layers' viewBox is carried by the place; otherwise `M.placedMatrix()` (stage, Animate's base move, the redaction preview).
 
 ## How is it used?
 - Layers list (rail button and Select's panel with nothing selected): a last row "Arka plan" (`boardBackground`) with its lock; a press selects it when unlocked. The Canvas panel on a photo has the checkbox `pictureFree`.
 - Select, picture unlocked: a press on the picture where no layer lies selects and moves it (snapping as a layer, Alt free); four corner handles resize it, the ratio kept; arrows nudge, Delete deletes, Escape drops the selection. Its panel is titled Arka plan as its row and shows the file's name, then lock and delete (before #6613 it read Katmanlar › Görsel, nameless). Each drag, nudge, lock or delete is one undo step.
-- Delete: `M.dropPicture()` turns the document into an artboard of the canvas (its fill, the layers moved onto it, no redaction areas, adjustments or outward frame); `syncKind()` hides the picture, gives the canvas profile's rail, and gives the photo's back on undo (`restore()` calls it).
+- Delete: `M.dropPicture()` turns the document into an artboard of the canvas (its fill, the layers moved onto it, no redaction, erased or adjusted areas, adjustments or outward frame); `syncKind()` hides the picture, gives the canvas profile's rail, and gives the photo's back on undo (`restore()` calls it).
 
 ## How is it saved?
 - `M.saveLayout()` adds `pw, ph` (the picture's size in output pixels) when `k` is not 1; the canvas keeps its own scale (output size over crop box). `pg_image_edit_extend()` checks them (1-8000, whole), and the extend step resizes the picture to them before laying it (Imagick `resizeImage()`, GD a resampled copy); `pg_image_edit_work_size()` counts them.

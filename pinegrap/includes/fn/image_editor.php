@@ -13,8 +13,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 if (!defined('PG_FUNCTIONS_DIR')) {
@@ -3702,6 +3702,7 @@ function pg_image_editor_strings_motion()
         'motionRemove'         => lang('Remove'),
         'motionWhole'          => lang('Whole animation'),
         'motionLength'         => lang('Length'),
+        'motionLongNote'       => lang('This moves for longer than 5 seconds. On a web page beside other content, visitors must be able to pause it (WCAG 2.2.2), and a GIF, APNG or WebP cannot be paused: shorten it, repeat it fewer times, or save it as a video.'),
         'motionRepeatCount'    => lang('Repeat'),
         'motionForever'        => lang('Forever'),
         'motionTimes'          => lang('{n} times'),
@@ -4412,6 +4413,8 @@ function pg_image_editor_strings_access()
         'keyDeleteName' => lang('Delete'),
         'keyArrows'     => lang('Arrow keys'),
         'keyDrag'       => lang('drag'),
+        'keyClick'      => lang('click'),
+        'keyDoubleClick' => lang('double click'),
         'stageLabel'    => lang('Picture. Press ? for the keyboard shortcuts.'),
         'keysTitle'     => lang('Keyboard shortcuts'),
         'keysTools'     => lang('Tools'),
@@ -4433,6 +4436,22 @@ function pg_image_editor_strings_access()
         'touchPan'      => lang('Two fingers: move and zoom the view'),
         'touchFit'      => lang('Double tap: actual size or fit to screen'),
         'touchTwist'    => lang('Hold a layer and twist with a second finger: turn it'),
+        'keyAreaAdd'      => lang('Add to the selection'),
+        'keyAreaSubtract' => lang('Take away from the selection'),
+        'keyAreaClose'    => lang('Close the polygon'),
+        'touchAreaClose'  => lang('Tap the first corner: close the polygon'),
+        'keyBuilderRemove' => lang('Remove the regions you drag across'),
+        'keyPinAdd'       => lang('Add a pin on the shape and drag it to bend'),
+        'keyPinRemove'    => lang('Remove a pin'),
+        'keyPinDelete'    => lang('Remove the chosen pin'),
+        'keyPinNudge'     => lang('Move the chosen pin by 1 pixel'),
+        'keyPinNudgeMore' => lang('Move the chosen pin by 10 pixels'),
+        'keysTimeline'  => lang('Timeline'),
+        'keyPlay'       => lang('Play or pause'),
+        'keyFrame'      => lang('One frame back or forward'),
+        'keySecond'     => lang('One second back or forward'),
+        'keyStart'      => lang('Go to the start'),
+        'keyEnd'        => lang('Go to the end'),
     );
 }
 

@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where does it live?
-- Tool `builder` (label "Shape builder") after `scissors` in the photo and canvas profiles; part `builder` (`pg_image_editor_builder.js`, bundled last), labels in `pg_image_editor_strings_builder()`, maths in the model's BUILDER section, tests in `tests/image_editor_builder_test.php`. Steps: E24 (`plans/image-editor-steps-3.md`).
+- Tool `builder` (label "Shape builder") after `scissors` in the photo and canvas profiles; part `builder` (`pg_image_editor_builder.js`, bundled last), labels in `pg_image_editor_strings_builder()`, maths in the model's BUILDER section, tests in `tests/image_editor_builder_test.php`. Step E24 (#6405).
 
 ## What do the buttons do?
 - With two or more selected closed shapes or paths (visible, unlocked; open paths and pen strokes are not areas): Unite, Subtract front (the bottom one without the rest), Intersect (the area all share), Exclude (odd overlaps), Divide (every piece the outlines cut). One undo step; the result is selected.

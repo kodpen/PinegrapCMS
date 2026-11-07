@@ -6,8 +6,8 @@
  * of the ARTBOARD section of assets/js/pg_image_editor_model.js, run under
  * Node): unlocking makes a canvas, a move, a resize, a crop and a turn keep
  * the canvas and the layers where they are, a delete leaves an artboard of
- * the canvas with its layers; the save's extend step takes the picture's
- * size on the canvas.
+ * the canvas with its layers; the picture's erased and adjusted areas go
+ * with it; the save's extend step takes the picture's size on the canvas.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -151,6 +151,39 @@ function test_image_editor_picture_delete()
 	pg_assert_same(null, $r['canvas'], 'no picture canvas');
 	pg_assert_same(array(array('l1', 200, 150, 50, 40)), $r['layers'], 'the layers where they were on the canvas, no redaction');
 	pg_assert_false($r['free'], 'nothing to move');
+}
+
+// An erased and an adjusted area of Select area are the picture's own, as a
+// redaction area is: they move and scale with the picture and go when it is
+// deleted; a picture layer (a cut-out over the hole) stays where it is.
+function test_image_editor_picture_areas()
+{
+	$r = image_editor_picture_node(
+		'var sq = [[[0, 0], [1, 0], [1, 1], [0, 1]]];'
+		. 'photo.layers.push({ id: "l3", type: "erase", shape: "area", x: 200, y: 100, w: 100, h: 50, feather: 4, area: sq },'
+		. ' { id: "l4", type: "adjust", shape: "area", x: 400, y: 200, w: 100, h: 100, adjust: { brightness: 10 }, filter: "none", area: sq },'
+		. ' { id: "l5", type: "image", x: 200, y: 100, w: 100, h: 50 });'
+		. 'var u = M.lockPicture(photo, false), mv = M.placePicture(u, { x: 300, y: -100, w: 1000, h: 500 }), rs = M.placePicture(u, { x: 200, y: 100, w: 500, h: 250 }), d = M.dropPicture(u);'
+		. 'console.log(JSON.stringify({ own: photo.layers.map(function (l) { return M.pictureArea(l); }),'
+		. ' moveErase: box(mv.layers[2]), moveAdjust: box(mv.layers[3]), moveCut: box(mv.layers[4]),'
+		. ' sizeErase: box(rs.layers[2]), sizeFeather: rs.layers[2].feather, sizeAdjust: box(rs.layers[3]), sizeCut: box(rs.layers[4]),'
+		. ' dropped: d.layers.map(function (l) { return l.id; }) }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array(false, false, true, true, false), $r['own'], 'the erased and the adjusted areas are the picture\'s own');
+	pg_assert_same(array(500, 0, 100, 50), $r['moveErase'], 'the erased area goes with the picture');
+	pg_assert_same(array(700, 100, 100, 100), $r['moveAdjust'], 'the adjusted area goes with the picture');
+	pg_assert_same(array(200, 100, 100, 50), $r['moveCut'], 'a cut-out stays');
+	pg_assert_same(array(300, 150, 50, 25), $r['sizeErase'], 'the erased area scaled with the picture');
+	pg_assert_same(2, $r['sizeFeather'], 'its feather too');
+	pg_assert_same(array(400, 200, 50, 50), $r['sizeAdjust'], 'the adjusted area scaled with the picture');
+	pg_assert_same(array(200, 100, 100, 50), $r['sizeCut'], 'a cut-out stays');
+	pg_assert_same(array('l1', 'l5'), $r['dropped'], 'the picture\'s areas go with it');
 }
 
 // The extend step takes the picture's size on the canvas.
