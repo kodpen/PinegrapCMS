@@ -80,7 +80,8 @@ function test_secret_screens_keep_no_store()
 {
 	foreach (array('api_settings.php', 'connections.php', 'connected_apps.php', 'edit_user.php', 'view_key_codes.php', 'edit_key_code.php',
 		'workspace_calendar_feed.php', 'workspace_mcp.php', 'erp_accountant.php', 'edit_erp_quote.php',
-		'view_short_links.php', 'view_folders.php', 'view_cart_quotes.php') as $script) {
+		'view_short_links.php', 'view_folders.php', 'view_cart_quotes.php',
+		'settings_security.php', 'settings_commerce.php', 'view_not_found_log.php') as $script) {
 		pg_assert_same('private, no-store', pg_panel_cache_control('/pinegrap/' . $script), $script);
 	}
 	pg_assert_same('private, no-store', pg_panel_cache_control('API_Settings.php'), 'any case');

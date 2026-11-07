@@ -4789,6 +4789,21 @@ function _pg_civ_fill_payment_methods(&$tree, $rows)
     }
 }
 
+/**
+ * The inline script that hands a product group's variants to
+ * pg_civ_variants.js. Tags and ampersands in the JSON are written as \u
+ * escapes, so a description holding "</script>" cannot end the script.
+ *
+ * @param array $variant_data
+ * @return string
+ */
+function pg_civ_variants_script($variant_data)
+{
+    return '<script>window.pgCivVariants = window.pgCivVariants || [];'
+        . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) . ');'
+        . '</script>';
+}
+
 // ============================================================================
 // Render a catalog_item_view system widget — single product detail.
 //
@@ -6260,9 +6275,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
         $_civ_v_v   = '10';  // bump on pg_civ_variants.js source changes
-        $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
-            . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
-            . '</script>'
+        $_civ_variant_script = pg_civ_variants_script($variant_data)
             . '<script src="' . h($_civ_v_base) . 'pg_civ_variants.js?v=' . $_civ_v_v . '" defer></script>';
     }
 
