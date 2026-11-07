@@ -3478,6 +3478,7 @@
     "change, cancel, booking, class, time": "değiştir, iptal, rezervasyon, ders, saat",
     "change, cancel, date, booking, refund": "değişiklik, iptal, tarih, çekim talebi, iade",
     "change, cancel, dates, booking, refund": "değiştirme, iptal, tarihler, rezervasyon, iade",
+    "change, cancel, dates, stay, refund": "değiştirme, iptal, tarihler, konaklama, iade",
     "change, day, booking, cancel, move": "değiştir, gün, rezervasyon, iptal, ertele",
     "change, edit, budget, deadline": "değiştir, düzenle, bütçe, teslim tarihi",
     "change, move, date, package, cancel": "değiştir, taşı, tarih, paket, iptal",

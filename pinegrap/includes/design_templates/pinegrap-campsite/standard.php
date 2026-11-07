@@ -3,11 +3,10 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Design template "Campsite", the pages every template carries: contact and
- * the inbox (a message becomes a conversation), the newsletter, the Hotel
- * Journal (the blog) and its post page, the guest help that searches the
- * whole site, the error page, the message and newsletter e-mails, and the
- * widgets that draw them, the home page's journal and Google reviews
- * among them. Included after parts.php and mail.php in the same scope;
+ * the inbox (a message becomes a conversation), the newsletter, News (the
+ * blog) and its post page, the guest help that searches the whole site,
+ * the error page, the message and newsletter e-mails, and the widgets that
+ * draw them, the home page's news and Google reviews among them. Included after parts.php and mail.php in the same scope;
  * returns array('pages' => ..., 'widgets' => ...).
  *
  * @author      Erdal Güral (Kodpen)
@@ -23,14 +22,14 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 $standard_pages = array();
 
 // Contact: a question to the reception; the staff are told, the sender
-// gets a reply. A stay or an event has its own request page, which asks
-// what the reception needs.
+// gets a reply. A stay or a group visit has its own request page, which
+// asks what the reception needs.
 $standard_pages[] = array(
     'key'              => 'contact',
     'name'             => lang('contact-us'),
     'folder'           => 'public',
     'title'            => lang('Contact us'),
-    'meta_description' => lang('A question before your stay, about a stay or for the reception? Write to us, and the answer comes to your inbox.'),
+    'meta_description' => lang('A question before your stay, during it or for the reception? Write to us, and the answer comes to your inbox.'),
     'form'             => array(
         'form_name'            => lang('Contact Form'),
         'confirmation_message' => lang('Thank you, your message has reached us. We will get back to you soon.'),
@@ -54,7 +53,7 @@ $standard_pages[] = array(
                     $col(array(
                         $el('div', 'alert alert-secondary d-flex gap-2 mb-4', lang('Note'), array(
                             $icon('bi-info-circle', 'mt-1'),
-                            $span(lang('Looking for a room, a wedding or a meeting? Its own request is faster: it asks for the dates and the guests, and you follow it from your account.'), '', lang('Text')),
+                            $span(lang('Looking for a pitch, a cabin or a group stay? Its own request is faster: it asks for the dates and how you camp, and you follow it from your account.'), '', lang('Text')),
                         )),
                         $widget('contact_form'),
                     ), '', '7'),
@@ -75,12 +74,12 @@ $standard_pages[] = array(
                             )),
                             $el('p', 'd-flex align-items-center gap-2 mb-4', lang('Opening Hours'), array(
                                 $icon('bi-clock', 'text-primary'),
-                                $span($park['reception'], '', lang('Text')),
+                                $span($park['hours'], '', lang('Text')),
                             )),
-                            $heading('h3', lang('Stays and events'), 'h6 fw-semibold mb-2'),
+                            $heading('h3', lang('Stays and groups'), 'h6 fw-semibold mb-2'),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                                $link(lang('Ask for a Room'), '{{page:book}}', 'btn btn-sm btn-outline-primary rounded-pill'),
-                                $link(lang('Weddings and Meetings'), '{{page:meetings}}', 'btn btn-sm btn-outline-primary rounded-pill'),
+                                $link(lang('Request a Stay'), '{{page:book}}', 'btn btn-sm btn-outline-primary rounded-pill'),
+                                $link(lang('Group Stays'), '{{page:groups}}', 'btn btn-sm btn-outline-primary rounded-pill'),
                                 $link(lang('Getting Here'), '{{page:location}}', 'btn btn-sm btn-outline-primary rounded-pill'),
                             )),
                         )),
@@ -107,7 +106,7 @@ $standard_pages[] = array(
     'name'             => lang('newsletter'),
     'folder'           => 'public',
     'title'            => lang('Newsletter'),
-    'meta_description' => lang('The hotel\'s offers, the seasons on the coast and the newest Hotel Journal posts, a few times a year.'),
+    'meta_description' => lang('When the season opens, the campsite\'s offers and the newest news from the lake and the forest, a few times a year.'),
     'form'             => array(
         'form_name'            => lang('Newsletter'),
         'confirmation_message' => lang('Thank you! You are on our newsletter list.'),
@@ -117,7 +116,7 @@ $standard_pages[] = array(
         'confirm_page_id'      => '{{tab:email_welcome}}',
     ),
     'tree'             => $page(array(
-        $page_header(lang('Newsletter'), lang('The hotel\'s offers, the seasons on the coast and the newest Hotel Journal posts, a few times a year.')),
+        $page_header(lang('Newsletter'), lang('When the season opens, the campsite\'s offers and the newest news from the lake and the forest, a few times a year.')),
         $el('section', 'py-5', lang('Content'), array(
             $container(array(
                 $row(array(
@@ -129,8 +128,8 @@ $standard_pages[] = array(
                             $heading('h2', lang('What we send'), 'pcp-display h5 mb-3'),
                             $check_list(array(
                                 lang('Offers for the people on the list first'),
-                                lang('When the season opens, and what is new at the hotel'),
-                                lang('The newest Hotel Journal posts: walks, food and the coast'),
+                                lang('When the season opens, and what is new at the campsite'),
+                                lang('The newest news: walks, the lake and the seasons in the forest'),
                                 lang('A few e-mails a year, never your address to anyone else'),
                             )),
                         )),
@@ -141,15 +140,15 @@ $standard_pages[] = array(
     ), false),
 );
 
-// The Hotel Journal: every post, newest first, with a search.
+// News: every post, newest first, with a search.
 $standard_pages[] = array(
     'key'              => 'blog',
-    'name'             => lang('hotel-journal'),
+    'name'             => lang('news'),
     'folder'           => 'public',
-    'title'            => lang('Hotel Journal'),
-    'meta_description' => lang('Stories from the hotel and the coast: walks and coves, the kitchen and its growers, and the seasons by the sea.'),
+    'title'            => lang('News'),
+    'meta_description' => lang('News from the campsite: the season\'s opening, walks around the lake, wildlife in the forest and what is new in the park.'),
     'tree'             => $page(array(
-        $page_header(lang('Hotel Journal'), lang('Stories from the hotel and the coast: walks and coves, the kitchen and its growers, and the seasons by the sea.')),
+        $page_header(lang('News'), lang('News from the campsite: the season\'s opening, walks around the lake, wildlife in the forest and what is new in the park.')),
         $el('section', 'py-5', lang('Posts'), array(
             $container(array($widget('blog_list'))),
         )),
@@ -159,13 +158,13 @@ $standard_pages[] = array(
 // A post: the one the list linked to (?r=), and its comments.
 $standard_pages[] = array(
     'key'              => 'blog_post',
-    'name'             => lang('journal-post'),
+    'name'             => lang('news-post'),
     'folder'           => 'public',
-    'title'            => lang('Journal Post'),
-    'meta_description' => lang('A post from the Hotel Journal.'),
+    'title'            => lang('News Post'),
+    'meta_description' => lang('A post from the campsite\'s news.'),
     'sitemap'          => false,
     'comments'         => array('label' => lang('Comment'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
-                                'email_page' => '{{tab:email_reply}}', 'email_subject' => lang('New comment in the Hotel Journal'),
+                                'email_page' => '{{tab:email_reply}}', 'email_subject' => lang('New comment on the campsite\'s news'),
                                 'notify_email' => '{{site_email}}'),
     'tree'             => $page(array(
         $widget('blog_post'),
@@ -198,10 +197,10 @@ $standard_pages[] = array(
                             $link(lang('New message'), '{{page:contact}}', 'btn btn-sm btn-primary rounded-pill'),
                         )),
                         $el('div', 'p-4 rounded-4 border', lang('Requests Note'), array(
-                            $para(lang('Booking requests and event enquiries are followed on their own pages, from your account.'), 'small text-body-secondary mb-3'),
+                            $para(lang('Stay requests and group enquiries are followed on their own pages, from your account.'), 'small text-body-secondary mb-3'),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                                $link(lang('My Bookings'), '{{page:my_bookings}}', 'btn btn-sm btn-outline-primary rounded-pill'),
-                                $link(lang('My Enquiries'), '{{page:my_enquiries}}', 'btn btn-sm btn-outline-primary rounded-pill'),
+                                $link(lang('My Stay Requests'), '{{page:my_requests}}', 'btn btn-sm btn-outline-primary rounded-pill'),
+                                $link(lang('My Group Enquiries'), '{{page:my_enquiries}}', 'btn btn-sm btn-outline-primary rounded-pill'),
                             )),
                         )),
                     ), '', '4'),
@@ -228,8 +227,8 @@ $standard_pages[] = array(
 );
 
 // Guest help: a search over the whole site - pages and the parts of pages
-// marked as search sections (the rooms, the plans, the offers and the
-// questions) - with the common questions under it, each a search section
+// marked as search sections (the kinds of stay, the prices, the facilities
+// and the questions) - with the common questions under it, each a search section
 // of its own.
 $help_topic = function ($icon_name, $text, $href) use ($el, $icon, $span) {
     return $el('a', 'list-group-item list-group-item-action d-flex align-items-center gap-2', lang('Topic'), array(
@@ -242,9 +241,9 @@ $standard_pages[] = array(
     'name'             => lang('guest-help'),
     'folder'           => 'public',
     'title'            => lang('Guest Help'),
-    'meta_description' => lang('Search the site: the rooms and their rates, booking requests, the offers, dining, the spa, getting here and answers to common questions.'),
+    'meta_description' => lang('Search the site: pitches and cabins, prices, stay requests, facilities, activities, getting here and answers to common questions.'),
     'tree'             => $page(array(
-        $page_header(lang('Guest Help'), lang('Search the whole site: the rooms and their rates, booking requests and offers, dining and the spa, getting here, and the answers to the questions we hear most.')),
+        $page_header(lang('Guest Help'), lang('Search the whole site: pitches and cabins, the season prices, stay requests, facilities and activities, getting here, and the answers to the questions we hear most.')),
         $el('section', 'py-5', lang('Content'), array(
             $container(array(
                 $row(array(
@@ -253,19 +252,19 @@ $standard_pages[] = array(
                         $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('Popular Topics'), array(
                             $heading('h2', lang('Popular topics'), 'pcp-display h5 mb-3'),
                             $el('nav', 'list-group', lang('Topics'), array(
-                                $help_topic('bi-door-open', lang('Rooms and Suites'), '{{page:rooms}}'),
-                                $help_topic('bi-tags', lang('Rates and Board'), '{{page:rates}}'),
-                                $help_topic('bi-gift', lang('Special Offers'), '{{page:offers}}'),
-                                $help_topic('bi-cup-hot', lang('Dining'), '{{page:dining}}'),
-                                $help_topic('bi-flower1', lang('Spa'), '{{page:spa}}'),
+                                $help_topic('bi-house', lang('Pitches and Cabins'), '{{page:units}}'),
+                                $help_topic('bi-tags', lang('Prices'), '{{page:prices}}'),
+                                $help_topic('bi-droplet', lang('Facilities'), '{{page:facilities}}'),
+                                $help_topic('bi-compass', lang('Activities'), '{{page:activities}}'),
+                                $help_topic('bi-signpost', lang('Park Rules'), '{{page:rules}}'),
                                 $help_topic('bi-geo-alt', lang('Getting Here'), '{{page:location}}'),
                             ), array('_attrs' => array($attr('aria-label', lang('Popular topics'))))),
                         )),
                         $el('div', 'p-4 rounded-4 border', lang('Still Need Help'), array(
                             $heading('h2', lang('Still need help?'), 'pcp-display h5 mb-2'),
-                            $para(lang('Ready to stay? Send a booking request; for anything else, write to us from the contact page.'), 'small text-body-secondary mb-3'),
+                            $para(lang('Ready to come? Send a stay request; for anything else, write to us from the contact page.'), 'small text-body-secondary mb-3'),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                                $link(lang('Ask for a Room'), '{{page:book}}', 'btn btn-sm btn-primary rounded-pill'),
+                                $link(lang('Request a Stay'), '{{page:book}}', 'btn btn-sm btn-primary rounded-pill'),
                                 $link(lang('Write to Us'), '{{page:contact}}', 'btn btn-sm btn-outline-primary rounded-pill'),
                             )),
                         )),
@@ -279,10 +278,10 @@ $standard_pages[] = array(
                 $row(array(
                     $col(array(
                         $el('div', 'accordion', lang('FAQ'), array(
-                            $faq(1, lang('Is a booking request a reservation?'), lang('Not yet. The reception checks the dates and confirms the room, the plan and the price by e-mail; the request in your account shows each answer, and only a confirmed request holds the room.'), lang('booking, reservation, confirm, request, availability'), 'cp-help-faq'),
-                            $faq(2, lang('When can I check in and out?'), sprintf(lang('Check-in is from %1$s and check-out until %2$s. Tell us your arrival time on the booking request; an early arrival can leave its luggage at the reception.'), $park['check_in'], $park['check_out']), lang('check-in, check-out, arrival, late, early, luggage'), 'cp-help-faq'),
-                            $faq(3, lang('How do I change or cancel my booking?'), lang('Write a message on your booking request in My Bookings. The reception answers there, and the request shows its new state.'), lang('change, cancel, dates, booking, refund'), 'cp-help-faq'),
-                            $faq(4, lang('How do I get to the hotel?'), lang('The location page has the way from the airport and the station, the road for those who drive and where to park. We can arrange a transfer: ask on your booking request.'), lang('airport, transfer, parking, car, train, directions'), 'cp-help-faq'),
+                            $faq(1, lang('Is a stay request a reservation?'), lang('Not yet. The reception looks for a free place for your dates and sends an offer; the request in your account shows each answer, and only a confirmed request holds the place.'), lang('booking, reservation, confirm, request, availability'), 'cp-help-faq'),
+                            $faq(2, lang('When can we arrive and leave?'), $park['arrival'] . '. ' . lang('Tell us your arrival time in the stay request; a late arrival finds its pitch number at the gate.'), lang('arrival, departure, check-in, check-out, late, early'), 'cp-help-faq'),
+                            $faq(3, lang('How do I change or cancel my stay?'), lang('Write a message on your stay request in My Stay Requests. The reception answers there, and the request shows its new state.'), lang('change, cancel, dates, stay, refund'), 'cp-help-faq'),
+                            $faq(4, lang('How do I get to the campsite?'), lang('The Getting Here page has the road for cars, caravans and motorhomes, and the train and the bus with the last stretch on foot. Long outfits find a turning place at the gate.'), lang('road, car, caravan, motorhome, train, bus, directions'), 'cp-help-faq'),
                             $faq(5, lang('Where do I find your answer to my message?'), lang('In your inbox: sign in and open Inbox from the menu under your name. Every reply is on the conversation page, and you can write back there.'), lang('inbox, reply, answer, conversation'), 'cp-help-faq'),
                         ), array('id' => 'cp-help-faq')),
                     ), '', '9'),
@@ -326,9 +325,9 @@ $standard_pages[] = array_merge($mail_settings, array(
     'title' => lang('Newsletter Welcome E-mail'),
     'tree'  => $mail_page(array(
         $mail_heading(lang('Welcome to our newsletter')),
-        $mail_para(lang('Thank you for joining. You hear first about our offers, when the season opens and what is new at the hotel, with the newest stories from the Hotel Journal.')),
+        $mail_para(lang('Thank you for joining. You hear first about our offers, when the season opens and what is new at the campsite, with the newest posts from our news.')),
         $mail_para(lang('Changed your mind? Every e-mail we send has a link to unsubscribe.'), 'small text-body-secondary mb-3'),
-        $mail_button(lang('Read the Hotel Journal'), '{{page:blog}}'),
+        $mail_button(lang('Read the News'), '{{page:blog}}'),
     )),
 ));
 
@@ -366,8 +365,8 @@ $standard_widgets = array(
             ), '3'),
             $field('cp-contact-topic', lang('What is it about?'), $select('cp-contact-topic', 'topic', lang('Choose a topic…'), array(
                 lang('A question before my stay'),
-                lang('My booking'),
-                lang('Dining and the spa'),
+                lang('My stay request'),
+                lang('Facilities and activities'),
                 lang('Getting here'),
                 lang('Lost and found'),
                 lang('Something else'),
@@ -379,9 +378,9 @@ $standard_widgets = array(
         )),
     ),
 
-    // The hotel's rating and newest reviews on Google, under the sample
+    // The campsite's rating and newest reviews on Google, under the sample
     // words of the home page. The widget draws nothing until a Places key
-    // and the hotel's Place ID are saved, and this layout shows only while
+    // and the campsite's Place ID are saved, and this layout shows only while
     // Google returns reviews. Google asks for each review's author and its
     // link, and for "Google Maps" beside what is shown without a map.
     'google_reviews' => array(
@@ -432,7 +431,7 @@ $standard_widgets = array(
         )),
     ),
 
-    // The three newest journal posts on the home page.
+    // The three newest news posts on the home page.
     'home_posts' => array(
         'page'   => 'home',
         'slug'   => lang('form-list'),
@@ -451,7 +450,7 @@ $standard_widgets = array(
         )),
     ),
 
-    // The Hotel Journal: every post, newest first, with a search over them.
+    // News: every post, newest first, with a search over them.
     'blog_list' => array(
         'page'   => 'blog',
         'slug'   => lang('form-list'),
@@ -465,7 +464,7 @@ $standard_widgets = array(
             'search_enabled'      => true,
             'search_fields'       => array('title', 'summary', 'content'),
             'search_width'        => 'full',
-            'search_label'        => lang('Search the Hotel Journal...'),
+            'search_label'        => lang('Search the news...'),
             'empty_message'       => lang('No posts yet.'),
         ),
         'tree'   => $widget_root(array(
@@ -491,25 +490,25 @@ $standard_widgets = array(
                             $icon('bi-journal-x', 'display-5 text-body-tertiary'),
                             $heading('h2', lang('Post not found'), 'pcp-display h3 mt-3'),
                             $para(lang('This post could not be found. It may have been removed.'), 'text-body-secondary mb-4', $bind('not_found')),
-                            $link(lang('Back to the Hotel Journal'), '{{page:blog}}', 'btn btn-primary rounded-pill px-4'),
+                            $link(lang('Back to the News'), '{{page:blog}}', 'btn btn-primary rounded-pill px-4'),
                         ), $show_when('record_not_found')),
                         $el('article', '', lang('Post'), array(
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Toolbar'), array(
                                 $el('a', 'd-inline-flex align-items-center gap-1 small fw-semibold link-primary text-decoration-none', lang('Link'), array(
                                     $icon('bi-arrow-left'),
-                                    $span(lang('Hotel Journal'), '', lang('Link Text')),
+                                    $span(lang('News'), '', lang('Link Text')),
                                 ), array('href' => '{{page:blog}}')),
                                 $edit_button(),
                             )),
-                            $para(lang('Hotel Journal'), 'pcp-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                            $heading('h1', lang('Five quiet coves within a short walk of the hotel'), 'pcp-display display-6 mb-3', $bind('title')),
+                            $para(lang('News'), 'pcp-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                            $heading('h1', lang('A morning walk around the lake, from the jetty to the old mill'), 'pcp-display display-6 mb-3', $bind('title')),
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary pb-3 mb-4 border-bottom', lang('Post Details'), array(
                                 $icon('bi-calendar3'),
                                 $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
                                 // The author line leaves when the record has no contact name.
                                 $el('span', 'pg-hide-if-empty d-inline-flex align-items-center gap-2 ms-2', lang('Author'), array(
                                     $icon('bi-person'),
-                                    $span(lang('The hotel team'), 'pg-field-value', lang('Value'), $bind('submitter_name')),
+                                    $span(lang('The campsite team'), 'pg-field-value', lang('Value'), $bind('submitter_name')),
                                 )),
                             )),
                             $ai_summary(),
@@ -519,10 +518,10 @@ $standard_widgets = array(
                             $el('div', 'fs-6 lh-lg', lang('Post Content'), array(), array_merge(
                                 array('text' => lang('The body of the post. Write it on the staff page; line breaks are kept.')), $bind('content'))),
                             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2 small mt-5 mb-0', lang('Note'), array(
-                                $icon('bi-door-open'),
+                                $icon('bi-tree'),
                                 $span(lang('Come and see it for yourself.'), '', lang('Text')),
-                                $link(lang('Rooms and Suites'), '{{page:rooms}}', 'alert-link'),
-                                $link(lang('Ask for a Room'), '{{page:book}}', 'alert-link'),
+                                $link(lang('Pitches and Cabins'), '{{page:units}}', 'alert-link'),
+                                $link(lang('Request a Stay'), '{{page:book}}', 'alert-link'),
                             )),
                         ), $show_when('record_found')),
                     ), '', '8'),
@@ -660,7 +659,7 @@ $standard_widgets = array(
                                     $span(lang('Cooper'), '', lang('Last Name'), $bind('last_name')),
                                 )),
                                 $el('div', 'lh-lg', lang('Message'), array(), array_merge(
-                                    array('text' => lang('Hello, we arrive with a baby next month. Can you put a cot in our room, and is there a quiet room away from the terrace?')), $bind('message'))),
+                                    array('text' => lang('Hello, we come with a small caravan and two children in the summer holidays. Is there a pitch with some shade near the play area, and may we bring our dog?')), $bind('message'))),
                             )),
                         ), $show_when('record_found')),
                     ), '', '8'),
@@ -736,7 +735,7 @@ $standard_widgets = array(
                             $link(lang('Title'), '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
                                 array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),
                         )),
-                        $para(lang('Rooms and Suites'), 'small fw-semibold text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
+                        $para(lang('Pitches and Cabins'), 'small fw-semibold text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
                         $para(lang('Excerpt'), 'small text-body-secondary mb-0', $bind('__result_excerpt')),
                     )),
                 )),
@@ -775,7 +774,7 @@ $standard_widgets = array(
                 $mail_line(lang('Subject'), array($span(lang('A question before my stay'), '', lang('Subject'), $bind('topic')))),
             ), lang('Sender')),
             $el('div', 'lh-lg', lang('Message'), array(), array_merge(
-                array('text' => lang('Hello, we arrive with a baby next month. Can you put a cot in our room, and is there a quiet room away from the terrace?')), $bind('message'))),
+                array('text' => lang('Hello, we come with a small caravan and two children in the summer holidays. Is there a pitch with some shade near the play area, and may we bring our dog?')), $bind('message'))),
             $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
             $el('p', 'small text-body-secondary mt-4 mb-0', lang('Reference'), array(
                 $span(lang('Reference Code') . ': ', '', lang('Label')),
@@ -800,7 +799,7 @@ $standard_widgets = array(
                 $el('p', 'fw-semibold mb-2', lang('Subject'), array(), array_merge(
                     array('text' => lang('A question before my stay'), '_attrs' => array($attr('style', 'font-weight:600;margin:0 0 8px'))), $bind('topic'))),
                 $el('div', 'lh-lg', lang('Message'), array(), array_merge(
-                    array('text' => lang('Hello, we arrive with a baby next month. Can you put a cot in our room, and is there a quiet room away from the terrace?')), $bind('message'))),
+                    array('text' => lang('Hello, we come with a small caravan and two children in the summer holidays. Is there a pitch with some shade near the play area, and may we bring our dog?')), $bind('message'))),
             ), lang('Your Message')),
             $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
             // The account the form opened for a visitor who had none: the
