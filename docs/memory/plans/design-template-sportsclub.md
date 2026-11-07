@@ -17,7 +17,7 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 
 - 3 (done, #7920): `squad.php` (with the list helpers `$sp_*`) and `matches.php`: the Players collection (`squad` by `?team=`, `player`, `player_new`) and the Matches collection (`fixtures` from today on and `results` before today, both by `?team=`, the `match` page, `match_new`, `home_fixtures`, `home_results`); test.
 
-- 4 (done, #7930): `mail.php` (the e-mail builders and `$comment_thread`, as Gym's parts) and `registrations.php`: academy registrations (`academy_register` with `?team=`, `registration_view`, `my_registrations`, `staff_registrations`), trial requests (`trial` with `?team=` and `?position=`, `trial_view`, `staff_trials`), `privacy`, `email_reply`; `tests/design_template_sportsclub_registrations_test.php`. The trial requests are listed on My Registrations too (`my_trials_list`); the e-mail pages are `email_registration_new`, `email_registration_received`, `email_trial_new`, `email_trial_received`.
+- 4 (done, #7930): `mail.php` (e-mail builders, `$comment_thread`) and `registrations.php`: academy registrations (`academy_register` ?team=, `registration_view`, `my_registrations` also listing trials, `staff_registrations`), trial requests (`trial` ?team= ?position=, `trial_view`, `staff_trials`), `privacy`, `email_reply`; test.
 
 - 5: `events.php`: the Club Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and the sponsorship enquiry (`sponsor_enquiry` with `?package=`, `staff_sponsors`); test.
 
