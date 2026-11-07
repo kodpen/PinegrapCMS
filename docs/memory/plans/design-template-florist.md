@@ -14,7 +14,7 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 - 1 (done, #7648): `parts.php` (builders, data, shared parts, cards, form fields, comment thread, blog parts); `tests/design_template_florist_test.php`.
 - 2 (done, #7797): `pages_public.php`: home, `bouquets`, `occasions`, `subscriptions`, `events`, `delivery`, `care`, `about`, `faq`; test.
 - 3 (done, #7806): `work.php`: the Our Work collection (`work`, `work_item`, `work_new`, the home's `home_work` widget); test.
-- 4: `mail.php` (the e-mail builders) and `orders.php`: bouquet order requests (`order_request` with `?bouquet=`, `?occasion=`, `request_view`, `my_requests`, `staff_requests`, `privacy`, `email_reply`, `email_request_new`, `email_request_received`); test.
+- 4 (done, #7912): `mail.php` (the e-mail builders) and `orders.php`: bouquet order requests (`order_request` with `?bouquet=`, `?occasion=`, `request_view`, `my_requests`, `staff_requests`, `privacy`, `email_reply`, `email_request_new`, `email_request_received`); test.
 - 5: `enquiries.php`: event enquiries (`event_enquiry` with `?event=`, `event_enquiry_view`, `staff_events`), subscription requests (`subscribe` with `?plan=`, `subscription_view`), `consultation` (the booking widget's starter beside the event enquiry, [[booking-templates]]), their e-mails; test.
 - 6: `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (bouquets by occasion, prepaid subscription bundles, vases and extras, gift cards); test.
 - 7: `standard.php`: contact, inbox, conversation, newsletter, blog (Flower Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
@@ -22,9 +22,9 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 - 9: assembly: `pinegrap-florist.php` (order, search sections, look, fonts, `pfl-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-florist.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where does the next session start?
-- Step 4. Copy `pinegrap-wedding/mail.php` and `enquiries.php` (or Gym's `mail.php` and `classes.php`) and their test. The Flower Orders form reads `?bouquet=` (`$bouquet_choices`; the bouquets page sends its last answer) and `?occasion=` (`$occasion_choices`) by `_cf.url_param`; also size (`$size_titles`), delivery date with `min_date` today, time (`$slot_titles`), area (`$zone_titles`), recipient's name, phone and address, card (`$card_choices`) and message, office status (`$request_statuses`).
-- Step 5's event enquiry reads `?event=` (`$event_choices`; the work page sends the Kind answer) and the subscription request `?plan=` (`$plan_titles`), with `$weekday_choices`, `$budget_choices`, `$enquiry_statuses`.
-- Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", `The work` "Eser".
+- Step 5. Copy `pinegrap-wedding/enquiries.php` (and the shape of `orders.php`, its test `tests/design_template_florist_orders_test.php`). `mail.php` already gives `$mail_page`, `$mail_box`, `$mail_line`, `$mail_button`, `$mail_greeting`, `$mail_settings`; `orders.php` owns `privacy` and `email_reply`, and defines `$detail`, `$bound`, `$mail_reference`, `$mail_new_account` (step 5 is included after it and may reuse them).
+- The event enquiry reads `?event=` (`$event_choices`; the work page sends the Kind answer) and the subscription request `?plan=` (`$plan_titles`), with `$weekday_choices`, `$budget_choices`, `$enquiry_statuses`. Add its e-mail page keys to `_test_fl_page_keys()` in `tests/design_template_florist_test.php`.
+- Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", `Occasion` "Vesile" (step 4 labels it `Special Occasion`, "Özel Gün"), `The work` "Eser", `The occasion` "Etkinlik".
 - PHP 7.1: no trailing comma after a call's last argument.
 
 ## Open questions
