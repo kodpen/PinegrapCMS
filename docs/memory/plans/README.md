@@ -54,6 +54,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-recruitment.md: Plan: the Recruitment Agency design template (pinegrap-recruitment): jobs by sector and city, applications, employer enquiries, career advice; ~1,000-line steps
 - design-template-restaurant-design.md: Design of plans/design-template-restaurant.md: the shipped features the Restaurant template reuses, what it does not build, its look and Turkish words
 - design-template-restaurant.md: Plan: the Restaurant design template (pinegrap-restaurant), one chef-led restaurant with menu, reservations, chef's table, events, private dining and gift vouchers, in ~1,000-line steps
+- design-template-sportsclub-design.md: Design of plans/design-template-sportsclub.md: shipped features it reuses for squads, fixtures, registrations, membership and kit, what it does not build, its look and words
+- design-template-sportsclub.md: Plan: the Sports Club design template (pinegrap-sportsclub): teams, squads, fixtures and results, academy and trials, membership, season tickets, kit and sponsors; ~1,000-line steps
 - design-template-theatre-design.md: Design of plans/design-template-theatre.md: the shipped features the Theatre template reuses, what it does not build, its look and Turkish words
 - design-template-theatre.md: Plan: the Theatre design template (pinegrap-theatre): season of productions, performance dates, tickets, friends membership, learning, venue hire, news; ~1,000-line steps
 - design-template-veterinary-design.md: Design of plans/design-template-veterinary.md: which shipped features the Veterinary template reuses for appointments, vets and health plans, what it does not build, its look and Turkish words
