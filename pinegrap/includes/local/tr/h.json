@@ -1156,6 +1156,7 @@
     "has never ordered and registered within the last {var:1} day(s)": "hiç sipariş vermemiş ve son {var:1} gün içinde kaydolmuş",
     "health": "saglik",
     "health and safety, accident, training, inspection, waste, environment": "iş sağlığı ve güvenliği, kaza, eğitim, denetim, atık, çevre",
+    "health plan, pet plan, preventive care, vaccination, wellness exam, flea, worm": "sağlık planı, evcil hayvan planı, koruyucu bakım, aşı, genel muayene, pire, kurt",
     "health-check-service": "saglik-olcumu-hizmeti",
     "health-checks": "saglik-olcumleri",
     "health-plan-request": "saglik-plani-talebi",
