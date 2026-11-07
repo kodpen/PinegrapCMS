@@ -130,12 +130,13 @@ decision questions.
    merging session can take holds a place; each coordinator's workers hold
    at most 8 of the 25.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
-9. **Coordinators.** One coordinator per account starts its cloud workers within
-   the account's quota, 4 to 10 workers each (`coordinator-limits.md`);
-   it writes no code and merges nothing. It tells the owner when the merging session
-   seems stopped (`coordinator.md`). Workers only build the project: plan
-   steps, else a new design template (`coordinator-no-plans.md`); no bug
-   hunt, and no `bug` issue is given out as work. The test coordinator on
+9. **Coordinators.** One coordinator per account keeps 8 cloud workers
+   working; a session waiting on someone else does not count
+   (`coordinator-workers.md`). It writes no code and merges nothing. It
+   tells the owner when the merging session seems stopped
+   (`coordinator.md`). Workers only build the project: plan steps, else a
+   new design template (`coordinator-no-plans.md`); no bug hunt, and no
+   `bug` issue is given out as work. The test coordinator on
    the owner's local account starts no workers: it tests and opens `bug`
    issues, which wait for the owner (`test-coordinator.md`). No session
    reopens closed PRs or marks drafts ready in bulk: a draft goes ready

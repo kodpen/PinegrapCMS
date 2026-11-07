@@ -16,7 +16,7 @@ description: Keeping a coordinator's context small (2026-11-04): what its first 
 - Tool output runs at about 2 characters a token, not 4.
 
 ## What does it read?
-- **First turn:** it fetches and reads from `origin/development`; a stale clone means reading everything twice. Then `coordinator.md`, `coordinator-limits.md`, `coordinator-quota.md` and `coordinator-todo-list.md`; anything else only when a step needs it.
+- **First turn:** it fetches and reads from `origin/development`; a stale clone means reading everything twice. Then `coordinator.md`, `coordinator-limits.md`, `coordinator-workers.md` and `coordinator-todo-list.md`; anything else only when a step needs it.
 - **When a slot is free:** `php tools/free_work.php` only (about 6 KB). It prints:
   - the queue count;
   - the plan steps not done and held by no open PR, each with its "After";
