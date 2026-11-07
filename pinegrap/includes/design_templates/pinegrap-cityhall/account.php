@@ -4,12 +4,12 @@
  *
  * Design template "City Hall", the account and staff part: signing
  * in, up and out, My Account and its pages, the staff directory, the staff
- * area (the newest quote requests, the News form with its first posts, the
- * directory's form), the account e-mails, and the widgets that draw them
- * (the account bar's login region and My Account included). Included after
- * parts.php, mail.php, projects.php, quotes.php, careers.php and
- * standard.php in the same scope (the staff area's list is quotes.php's
- * staff list); returns array('pages' => ..., 'widgets' => ...).
+ * area (the newest citizen requests, the News form with its first posts,
+ * the directory's form), the account e-mails, and the widgets that draw
+ * them (the account bar's login region and My Account included). Included
+ * after parts.php, mail.php, notices.php, requests.php and standard.php in
+ * the same scope (the staff area's list is requests.php's staff list);
+ * returns array('pages' => ..., 'widgets' => ...).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -51,7 +51,7 @@ $account_pages[] = $sign_page('logout', lang('logout'), lang('Logout'), 'logout'
 
 // ── My account ──────────────────────────────────────────────────────────
 
-// The client's own pages, behind the registration folder: the overview with
+// The resident's own pages, behind the registration folder: the overview with
 // the invoices and the security settings under it, then the profile, the
 // password, the e-mail preferences and, with the shop, the address book.
 $account_pages[] = array(
@@ -69,7 +69,7 @@ $account_pages[] = $sign_page('email_preferences', lang('email-preferences'), la
 $account_pages[] = array_merge($sign_page('address_book', lang('address-book'), lang('Address Book'), 'address_book', 'registration'),
     array('requires' => 'ecommerce'));
 
-// The firm's team as signed-in clients see them: the staff's own list,
+// The city hall's team as signed-in residents see them: the staff's own list,
 // kept from the staff area.
 $account_pages[] = array(
     'key'     => 'staff_directory',
@@ -79,7 +79,7 @@ $account_pages[] = array(
     'search'  => false,
     'sitemap' => false,
     'tree'    => $page(array(
-        $page_header(lang('Staff Directory'), lang('The project managers, the site engineers and the office, and how to reach them.')),
+        $page_header(lang('Staff Directory'), lang('The people of the city hall\'s departments and the citizen desk, and how to reach them.')),
         $el('section', 'py-5', lang('Directory'), array(
             $container(array($widget('staff_directory'))),
         )),
@@ -88,7 +88,7 @@ $account_pages[] = array(
 
 // ── The staff area ──────────────────────────────────────────────────────
 
-// Behind the private folder: the newest quote requests first, then the
+// Behind the private folder: the newest citizen requests first, then the
 // staff's shortcuts.
 $staff_shortcut = function ($icon_name, $title, $text, $href) use ($el, $heading, $para, $icon, $col) {
     return $col(array(
@@ -116,31 +116,31 @@ $account_pages[] = array(
                     $col(array(
                         $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-semibold mb-3'),
-                        $para(lang('The quote requests, the job applications and the conversations are kept here. Open a request, agree the site visit with the client and press Change Status; what you write under it reaches the client by e-mail.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('The citizen requests, the meeting requests and the conversations are kept here. Open a request, send it to its department and press Change Status; what you write under it reaches the resident by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-primary px-4'),
-                            $link(lang('All Quote Requests'), '{{page:staff_quotes}}', 'btn btn-outline-primary px-4'),
+                            $link(lang('All Citizen Requests'), '{{page:staff_requests}}', 'btn btn-outline-primary px-4'),
                         )),
                     ), '', '8'),
                 )),
             )),
         )),
-        $el('section', 'py-5', lang('Quote Requests'), array(
+        $el('section', 'py-5', lang('Citizen Requests'), array(
             $container(array(
-                $section_header(lang('Newest first'), lang('Quote Requests'), lang('All Quote Requests'), '{{page:staff_quotes}}'),
-                $widget('staff_quotes_new'),
+                $section_header(lang('Newest first'), lang('Citizen Requests'), lang('All Citizen Requests'), '{{page:staff_requests}}'),
+                $widget('staff_requests_new'),
             )),
         )),
         $el('section', 'pb-5', lang('Shortcuts'), array(
             $container(array(
                 $section_header(lang('Staff'), lang('Shortcuts')),
                 $row(array(
-                    $staff_shortcut('bi-buildings', lang('New Project'), lang('Add a finished or running project to the portfolio, with its photographs.'), '{{page:project_new}}'),
-                    $staff_shortcut('bi-briefcase', lang('New Job Opening'), lang('Publish a job opening on the careers page.'), '{{page:job_new}}'),
-                    $staff_shortcut('bi-person-workspace', lang('Job Applications'), lang('Every job application from the careers page, with its CV. Answer below each one.'), '{{page:staff_applications}}'),
+                    $staff_shortcut('bi-megaphone', lang('New Notice'), lang('Publish a public notice, a tender, a council decision or a vacancy.'), '{{page:notice_new}}'),
+                    $staff_shortcut('bi-calendar-plus', lang('New Event'), lang('Add a festival, a market, a course or a ceremony to the events.'), '{{page:event_new}}'),
+                    $staff_shortcut('bi-people', lang('Meeting Requests'), lang('Every request to meet the mayor\'s office. Propose a day below each one.'), '{{page:staff_meetings}}'),
                     $staff_shortcut('bi-chat-dots', lang('All Conversations'), lang('Every message from the contact page. Answer below each one.'), '{{page:inbox}}'),
                     $staff_shortcut('bi-journal-plus', lang('New Article'), lang('Write a post; it appears under News as soon as you send it.'), '{{page:blog_new}}'),
-                    $staff_shortcut('bi-person-plus', lang('Add to the Staff Directory'), lang('Add a colleague to the directory clients see.'), '{{page:staff_entry}}'),
+                    $staff_shortcut('bi-person-plus', lang('Add to the Staff Directory'), lang('Add a colleague to the directory residents see.'), '{{page:staff_entry}}'),
                 ), '4'),
                 $el('div', 'alert alert-secondary d-flex gap-2 mt-4 mb-0', lang('Access Note'), array(
                     $icon('bi-info-circle', 'mt-1'),
@@ -159,42 +159,42 @@ $post_body = function ($paragraphs) {
 };
 $sample_posts = array(
     array(
-        'title'       => lang('What to check before you build an extension'),
-        'summary'     => lang('The permit, the foundations and the roof: three questions to answer before the first drawing.'),
+        'title'       => lang('New benches and shade trees for Republic Square'),
+        'summary'     => lang('Forty new trees, benches in their shade and a drinking fountain: the square is ready for the summer.'),
         'content'     => $post_body(array(
-            lang('Ask the municipality what the zoning allows on your plot: the height, the distance to the neighbours and the share of the plot you may build on.'),
-            lang('Have an engineer look at the existing foundations and walls; an extension leans on the house it is built against.'),
-            lang('Plan where the roof water goes and how the new rooms are heated before the price is fixed, not after.'),
+            lang('The parks teams planted forty plane and linden trees around Republic Square this spring, chosen for their wide shade.'),
+            lang('Under them stand new benches with backs and armrests, and a drinking fountain by the clock tower.'),
+            lang('The work was asked for by the residents of the Old Town at the neighbourhood meetings last year.'),
         )),
         'cover_image' => $photo('post-1', 1200, 675),
     ),
     array(
-        'title'       => lang('How we keep a site safe'),
-        'summary'     => lang('A safety briefing every morning, fenced edges and a named person in charge: what every visitor sees on our sites.'),
+        'title'       => lang('Rubbish collection on public holidays'),
+        'summary'     => lang('Collection goes on during the holidays, with a later start in the outer neighbourhoods.'),
         'content'     => $post_body(array(
-            lang('Every working day starts with a short briefing: the day\'s work, the risks it brings and who is in charge of what.'),
-            lang('Edges, openings and scaffolding are fenced before anyone works near them, and checked again after every change.'),
-            lang('Visitors sign in at the site office, wear a helmet and a vest, and walk the site only with one of our team.'),
+            lang('Household rubbish is collected on every public holiday in the city centre, at the usual times.'),
+            lang('In the outer neighbourhoods the teams start two hours later; please put your bags out in the evening.'),
+            lang('The recycling centre is closed on the first day of each holiday and open as usual on the others.'),
         )),
         'cover_image' => $photo('post-2', 1200, 675),
     ),
     array(
-        'title'       => lang('Renovating an older building: what to expect'),
-        'summary'     => lang('Hidden damp, old wiring and walls that are not straight: how we plan for the surprises in an older building.'),
+        'title'       => lang('The riverside path is open again'),
+        'summary'     => lang('A wider path, new lights and a ramp at each footbridge: the riverside walk reopens after its repair.'),
         'content'     => $post_body(array(
-            lang('We open up a few places before we price the work, so the quote reflects what is behind the plaster.'),
-            lang('Old wiring and pipes are usually replaced as a whole: patching them costs more over the years.'),
-            lang('A contingency line in the quote covers what no survey can see, and you only pay it if it is used.'),
+            lang('The path along the river has been widened, so walkers and cyclists each have their own lane.'),
+            lang('New low lights keep it lit after dark without shining into the windows of the houses beside it.'),
+            lang('Every footbridge now has a ramp, so the whole walk can be done with a pram or a wheelchair.'),
         )),
         'cover_image' => $photo('post-3', 1200, 675),
     ),
     array(
-        'title'       => lang('From the first visit to the keys: a project\'s stages'),
-        'summary'     => lang('Site visit, quote, permit, building and handover: what happens at each stage and what we need from you.'),
+        'title'       => lang('How a request reaches the right department'),
+        'summary'     => lang('From the form to the answer: what the citizen desk does with your request, and how long each step takes.'),
         'content'     => $post_body(array(
-            lang('The site visit and the quote come first: we measure, listen to what you need and send a fixed price with the stages of the work.'),
-            lang('While the permit is prepared, we fix the materials and the schedule with you, so building can start on the agreed day.'),
-            lang('At the handover we walk the building together, note anything left to finish and give you the warranty and the documents.'),
+            lang('Every request is read at the citizen desk on the day it arrives, and sent to the department in charge within one working day.'),
+            lang('The department writes under the request when the work is planned and again when it is done, so you never have to call to ask.'),
+            lang('If a request belongs to another public body, such as the water company, we tell you which one and pass your request on.'),
         )),
         'cover_image' => $photo('post-4', 1200, 675),
     ),
@@ -240,7 +240,7 @@ $account_pages[] = $staff_form_page('blog_new', lang('new-article'), lang('New A
         'share_image_field'    => 'cover_image',
     ));
 $account_pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang('Add to the Staff Directory'),
-    lang('Signed-in clients see the directory from their account.'), 'staff_form',
+    lang('Signed-in residents see the directory from their account.'), 'staff_form',
     array(
         'form_name'            => lang('Staff Directory'),
         'collection'           => 1,
@@ -299,11 +299,11 @@ $account_link = function ($icon_name, $text, $href, $token = '', $flag = '') use
     ), $extra);
 };
 
-// The client's account menu: the quote requests and job applications first.
+// The resident's account menu: the requests and meeting requests first.
 $account_links = array(
-    $account_link('bi-folder2-open', lang('My Quote Requests'), '{{page:my_quotes}}'),
-    $account_link('bi-clipboard-check', lang('Request a Quote'), '{{page:quote}}'),
-    $account_link('bi-person-workspace', lang('My Applications'), '{{page:my_applications}}'),
+    $account_link('bi-folder2-open', lang('My Requests'), '{{page:my_requests}}'),
+    $account_link('bi-pencil-square', lang('Make a Request'), '{{page:request}}'),
+    $account_link('bi-people', lang('My Meeting Requests'), '{{page:my_meetings}}'),
     $account_link('bi-inbox', lang('Inbox'), '{{page:inbox}}'),
     $account_link('bi-person-vcard', lang('My Profile'), '#', '__profile_url'),
 );
@@ -314,12 +314,12 @@ $account_links[] = $account_link('bi-person-lines-fill', lang('Staff Directory')
 // Drawn only for the members the staff area's private folder lets in.
 $account_links[] = $account_link('bi-person-badge', lang('Staff Area'), '#', '__staff_url', 'is_staff');
 
-// The staff area's newest quote requests: the quotes part's staff list on
-// this page, the last ten without the search.
-$staff_quotes_new = $quote_list('staff', true, lang('No quote requests yet.'));
-$staff_quotes_new['config']['items_per_page'] = 10;
-unset($staff_quotes_new['config']['search_enabled'], $staff_quotes_new['config']['search_fields'],
-    $staff_quotes_new['config']['search_width'], $staff_quotes_new['config']['search_label']);
+// The staff area's newest citizen requests: the requests part's staff list
+// on this page, the last ten without the search.
+$staff_requests_new = $cy_record_list('staff', 'request', 'request_view', true, lang('No requests yet.'), array(), '', $request_row(true));
+$staff_requests_new['config']['items_per_page'] = 10;
+unset($staff_requests_new['config']['search_enabled'], $staff_requests_new['config']['search_fields'],
+    $staff_requests_new['config']['search_width'], $staff_requests_new['config']['search_label']);
 
 // ── Widgets ─────────────────────────────────────────────────────────────
 
@@ -360,8 +360,8 @@ $account_widgets = array(
                     )),
                     $login_divider(),
                     $login_item(lang('My Account'), '__my_account_url'),
-                    $login_page_item(lang('My Quote Requests'), '{{page:my_quotes}}'),
-                    $login_page_item(lang('My Applications'), '{{page:my_applications}}'),
+                    $login_page_item(lang('My Requests'), '{{page:my_requests}}'),
+                    $login_page_item(lang('My Meeting Requests'), '{{page:my_meetings}}'),
                     $login_page_item(lang('Inbox'), '{{page:inbox}}'),
                     $login_item(lang('Edit my profile'), '__profile_url'),
                     $login_item(lang('Staff area'), '__staff_url', 'is_staff'),
@@ -374,8 +374,8 @@ $account_widgets = array(
         )),
     ),
 
-    // My Account: the member's card and menu beside the quote requests
-    // card. No orders: the firm sells nothing online.
+    // My Account: the member's card and menu beside the requests card. No
+    // orders: the city hall sells nothing online.
     'my_account' => array(
         'page'   => 'my_account',
         'slug'   => lang('my-account'),
@@ -398,39 +398,39 @@ $account_widgets = array(
                         $el('nav', 'list-group', lang('Account Menu'), $account_links, array('_attrs' => array($attr('aria-label', lang('My Account'))))),
                     ), '', '4'),
                     $col(array(
-                        $el('div', 'p-4 rounded-3 border mb-4', lang('Quotes Card'), array(
+                        $el('div', 'p-4 rounded-3 border mb-4', lang('Requests Card'), array(
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-3', lang('Title'), array(
                                 $el('div', 'd-flex align-items-center gap-3', lang('Words'), array(
-                                    $icon('bi-clipboard-check', 'fs-2 text-primary'),
+                                    $icon('bi-pencil-square', 'fs-2 text-primary'),
                                     $el('div', '', lang('Text'), array(
-                                        $heading('h2', lang('Your projects with us'), 'h5 fw-semibold mb-1'),
-                                        $para(lang('Follow your quote requests, send plans and photos and read your project manager\'s messages.'), 'small text-body-secondary mb-0'),
+                                        $heading('h2', lang('Your requests'), 'h5 fw-semibold mb-1'),
+                                        $para(lang('Follow your requests, add photos and read the departments\' answers.'), 'small text-body-secondary mb-0'),
                                     )),
                                 )),
                                 $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                                    $link(lang('My Quote Requests'), '{{page:my_quotes}}', 'btn btn-primary px-4'),
-                                    $link(lang('Request a Quote'), '{{page:quote}}', 'btn btn-outline-primary px-4'),
+                                    $link(lang('My Requests'), '{{page:my_requests}}', 'btn btn-primary px-4'),
+                                    $link(lang('Make a Request'), '{{page:request}}', 'btn btn-outline-primary px-4'),
                                 )),
                             )),
                         )),
-                        $el('div', 'p-4 rounded-3 border mb-4', lang('Applications Card'), array(
+                        $el('div', 'p-4 rounded-3 border mb-4', lang('Meetings Card'), array(
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-3', lang('Title'), array(
                                 $el('div', 'd-flex align-items-center gap-3', lang('Words'), array(
-                                    $icon('bi-person-workspace', 'fs-2 text-primary'),
+                                    $icon('bi-people', 'fs-2 text-primary'),
                                     $el('div', '', lang('Text'), array(
-                                        $heading('h2', lang('Your job applications'), 'h5 fw-semibold mb-1'),
-                                        $para(lang('See where each job application stands and read our messages about it.'), 'small text-body-secondary mb-0'),
+                                        $heading('h2', lang('Your meetings with the mayor\'s office'), 'h5 fw-semibold mb-1'),
+                                        $para(lang('See the day the office proposed and write to it about your meeting.'), 'small text-body-secondary mb-0'),
                                     )),
                                 )),
-                                $link(lang('My Applications'), '{{page:my_applications}}', 'btn btn-outline-primary px-4'),
+                                $link(lang('My Meeting Requests'), '{{page:my_meetings}}', 'btn btn-outline-primary px-4'),
                             )),
                         )),
                         $el('div', 'p-4 rounded-3 bg-body-tertiary', lang('Inbox Card'), array(
                             $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
                                 $icon('bi-inbox', 'text-primary'),
-                                $span(lang('A question that is not about a project?'), '', lang('Text')),
+                                $span(lang('A question that is not a request?'), '', lang('Text')),
                             )),
-                            $para(lang('Invoices, deliveries or anything else: write from the contact page, and the answer comes to your inbox.'), 'small text-body-secondary mb-3'),
+                            $para(lang('Local taxes, the council or anything else: write from the contact page, and the answer comes to your inbox.'), 'small text-body-secondary mb-3'),
                             $link(lang('Open my inbox'), '{{page:inbox}}', 'btn btn-sm btn-outline-primary'),
                         )),
                     ), '', '8'),
@@ -440,7 +440,7 @@ $account_widgets = array(
         )),
     ),
 
-    'staff_quotes_new' => $staff_quotes_new,
+    'staff_requests_new' => $staff_requests_new,
 
     // Signing in, up and out, and the password: the layouts their widgets
     // get from the palette.
@@ -510,7 +510,7 @@ $account_widgets = array(
         'config' => array('regionType' => 'email_preferences', 'my_account_page_id' => '{{tab:my_account}}'),
         'tree'   => 'starter',
     ),
-    // The client's invoices and returns from the ERP, under the account
+    // The resident's invoices and returns from the ERP, under the account
     // overview on the same page; it draws nothing for a member without an
     // ERP account, so a site that does not use the ERP never sees it.
     'account_invoices' => array(
@@ -545,7 +545,7 @@ $account_widgets = array(
         'tree'   => $widget_root(array(
             $mail_heading(lang('Welcome!')),
             $mail_account_greeting(),
-            $mail_para(lang('Your account is ready. Your quote requests, your job applications and our messages are all in one place.')),
+            $mail_para(lang('Your account is ready. Your requests, your meeting requests and our answers are all in one place.')),
             $mail_button(lang('Go to my account'), '#', array('_bindings' => array('href' => '__my_account_url'))),
             $mail_para(lang('If you have any questions, we are here to help.'), 'small text-body-secondary mb-0', 'font-size:13px;color:#4b5563;margin:24px 0 0'),
         )),
@@ -598,7 +598,7 @@ $account_widgets = array(
         )),
     ),
 
-    // The directory signed-in clients see.
+    // The directory signed-in residents see.
     'staff_directory' => array(
         'page'   => 'staff_directory',
         'slug'   => lang('form-list'),
@@ -622,10 +622,10 @@ $account_widgets = array(
                             $portrait(lang('Deniz Aksoy'), 128), lang('Photo')),
                         $el('div', 'min-w-0', lang('Details'), array(
                             $heading('h2', lang('Deniz Aksoy'), 'h6 fw-semibold mb-0', $bind('full_name')),
-                            $para(lang('Site Engineer'), 'small text-primary fw-semibold mb-2', $bind('job_title')),
+                            $para(lang('Citizen Desk Officer'), 'small text-primary fw-semibold mb-2', $bind('job_title')),
                             $el('p', 'pg-hide-if-empty small mb-1', lang('Department'), array(
                                 $icon('bi-diagram-3', 'text-primary me-1'),
-                                $span(lang('Site Teams'), 'pg-field-value', lang('Value'), $bind('department')),
+                                $span(lang('Citizen Desk'), 'pg-field-value', lang('Value'), $bind('department')),
                             )),
                             $el('p', 'pg-hide-if-empty small mb-1 text-break', lang('Email'), array(
                                 $icon('bi-envelope', 'text-primary me-1'),
@@ -636,7 +636,7 @@ $account_widgets = array(
                                 $span('+90 555 000 00 00', 'pg-field-value', lang('Value'), $bind('phone')),
                             )),
                             $el('p', 'pg-hide-if-empty small text-body-secondary mt-2 mb-0', lang('A few words'), array(
-                                $span(lang('Ask me about site visits, deliveries and invoices.'), 'pg-field-value', lang('Value'), $bind('bio')),
+                                $span(lang('Ask me about requests, appointments and where to find each department.'), 'pg-field-value', lang('Value'), $bind('bio')),
                             )),
                         )),
                     )),

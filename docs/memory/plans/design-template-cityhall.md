@@ -16,7 +16,7 @@ description: Plan: the Municipality / City Hall design template (pinegrap-cityha
 - 3 (done, #7857): `notices.php`: the Notices collection (`notices` by `?type=`, the `notice` record page, `notice_new`, `home_notices`) and the Events collection (`events` by `?category=`, `event`, `event_new`, `home_events`); test.
 - 4 (done, #7869): `mail.php` and `requests.php`: citizen requests (`?topic=`), mayor meeting requests, `privacy`, their e-mails, `email_reply`; test.
 - 5 (done, #7886): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 6: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 6 (done, #7899): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 7: assembly: `pinegrap-cityhall.php` (order, search sections, look, fonts, `pcy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-cityhall.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
