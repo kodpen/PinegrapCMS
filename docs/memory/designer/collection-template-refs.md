@@ -25,4 +25,8 @@ module: custom_form
 ## Which template ships a categories collection?
 - hello-pinegrap 2.5.0 (#3052): staff page `blog_category_new` (form Blog Categories, `collection`, fields `name` (title role) and `description`, three sample categories), in the staff bar. The post form's `category` pick list is `_cf.kind 'reference'`, `ref '{{tab:blog_category_new}}'`, RSS role `category`; each sample post names its category; the post page prints its name with a `__ref` badge (`show 'name'`). Installed sites change nothing.
 
+## How does a template narrow a list by a referenced record?
+- On the referenced record's page: a list of the referencing form filtered `<field> is equal to` with the dynamic value `shown record` (Podcast's episodes on a podcast page, `collection-lists.md`).
+- A link into a list filtered by `?<param>=` sends the code: token `reference_code` on the referenced record's page, or the reference field itself on a referencing row (it stores the code); `pg_coll_reference_lookup()` reads it and prints the Title as the label. A static bar of referenced records cannot be built: codes are made at install, address names need pretty URLs; bars name pick-list answers only. Theatre (#7872): a performance's production is a reference, not a text field.
+
 Tests: `tests/collections_template_refs_test.php`, `tests/custom_form_seed_test.php`, `tests/design_template_collections_test.php`.

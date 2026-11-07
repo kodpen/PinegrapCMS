@@ -58,7 +58,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang.php');
 // The forwarded-scheme parser and the peer trust check, which the local
-// check_if_request_is_secure() below decides with.
+// check_if_request_is_secure() below decides with, and the request's address
+// the local get_request_uri() reads.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 pg_software_language_define(isset($router_config_row['software_language']) ? $router_config_row['software_language'] : '');
 
@@ -389,7 +390,10 @@ if (
     ($access_control_type !== 'public')
     && ($access_control_type !== '')
 ) {
-    initialize_user();
+    // The ERP, workspace and chat checks above may have initialized the user.
+    if (defined('USER_LOGGED_IN') == false) {
+        initialize_user();
+    }
 
     // do different things depending on access control type of file
     switch ($access_control_type) {
@@ -1823,28 +1827,8 @@ function initialize_url_constants()
 // create function to get current URL
 function get_request_uri()
 {
-    // the order of the conditionals below is important, because newer versions of IIS supply a REQUEST_URI value,
-    // but the value does not contain the original pretty URL and might also have other problems
-
-    // if HTTP_X_REWRITE_URL is set (i.e. ISAPI_Rewrite is being used on IIS)
-    if (isset($_SERVER['HTTP_X_REWRITE_URL'])) {
-        return $_SERVER['HTTP_X_REWRITE_URL'];
-
-    // else if REQUEST_URI is set (i.e. non IIS web server)
-    } elseif (isset($_SERVER['REQUEST_URI'])) {
-        return $_SERVER['REQUEST_URI'];
-
-    // else no REQUEST_URI or HTTP_X_REWRITE_URL can be found (i.e. IIS web server without ISAPI_Rewrite)
-    } else {
-        // if QUERY_STRING is set then return PHP_SELF and QUERY_STRING
-        if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] !== '') {
-            return $_SERVER['PHP_SELF'] . '?' . $_SERVER['QUERY_STRING'];
-
-        // else QUERY_STRING is not set, so return just PHP_SELF
-        } else {
-            return $_SERVER['PHP_SELF'];
-        }
-    }
+    // X-Rewrite-URL counts on IIS only (pg_request_uri_from_server()).
+    return pg_request_uri_from_server($_SERVER);
 }
 
 // Local copy of the helper in includes/fn/core.php. This script is required

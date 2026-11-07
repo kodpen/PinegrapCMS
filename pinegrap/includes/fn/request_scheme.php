@@ -17,8 +17,12 @@
  * Secure cookie its browser drops, a cache copy drawn for it alone), and a
  * true claim from a peer not yet listed must still give a cookie that sticks.
  *
- * Loaded by functions.php, and on its own by get_file.php and the router's
- * page cache module, which never load functions.php. The peer check requires
+ * The request's address is read here too (pg_request_uri_from_server()):
+ * which server headers name it is the same kind of trust question.
+ *
+ * Loaded by functions.php, and on its own by get_file.php, router.php, the
+ * router's page cache module and prototype.php, which read the request
+ * before functions.php. The peer check requires
  * waf.php for the address matching and the Cloudflare ranges, when it is
  * asked and the firewall is not loaded yet (a script that loads functions.php
  * without init.php); that file is guarded and only defines. The parser needs
@@ -201,4 +205,36 @@ function pg_https_peer_offer($remote)
     }
 
     return array('kind' => 'public', 'entries' => array());
+}
+
+/**
+ * The request's address (path and query string) as the visitor asked for
+ * it. X-Rewrite-URL carries the original address only on IIS, where
+ * ISAPI_Rewrite sets it and REQUEST_URI holds the rewritten one; on any
+ * other server nothing sets it but the client, whose header would replace
+ * the address the router serves and the firewall checks, so it is honoured
+ * on IIS only. Without REQUEST_URI (IIS with no rewriting) the address is
+ * PHP_SELF with the query string.
+ *
+ * Pure: reads only the array it is given. Loaded on its own by router.php,
+ * get_file.php and prototype.php, which read the address before
+ * functions.php.
+ *
+ * @param array $server $_SERVER, or an array shaped like it
+ * @return string
+ */
+function pg_request_uri_from_server($server)
+{
+    if (isset($server['HTTP_X_REWRITE_URL']) && ((string) $server['HTTP_X_REWRITE_URL'] !== '')
+        && (stripos(isset($server['SERVER_SOFTWARE']) ? (string) $server['SERVER_SOFTWARE'] : '', 'IIS') !== false)) {
+        return (string) $server['HTTP_X_REWRITE_URL'];
+    }
+
+    if (isset($server['REQUEST_URI'])) {
+        return (string) $server['REQUEST_URI'];
+    }
+
+    $self = isset($server['PHP_SELF']) ? (string) $server['PHP_SELF'] : '';
+
+    return (isset($server['QUERY_STRING']) && ((string) $server['QUERY_STRING'] !== '')) ? $self . '?' . $server['QUERY_STRING'] : $self;
 }
