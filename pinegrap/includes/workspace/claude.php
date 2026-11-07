@@ -1922,6 +1922,10 @@ Work through the queue:
       Assistant card shows its first three lines.
    d. When you cannot do a request, POST /workspace/claude/requests/{id}/fail with
       {"reason": "..."} saying why, in the language of the request.
+   e. When a request in a channel or a discussion needs no answer - it only thanks
+      or agrees, or a discussion's latest line asks nothing of you - close it with
+      POST /workspace/claude/requests/{id}/answer and {"no_answer": true} alone:
+      nothing is written. Never close a question this way.
 3. When the list is empty, read it once more: requests may have come in while you
    worked. Stop when it is still empty.
 

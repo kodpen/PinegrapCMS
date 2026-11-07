@@ -297,6 +297,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-list-viewer-filter.md: A form list's viewer filter (submitter, editor, watcher, ORed): who counts as which; watchers of the detail page, classic or designed with a record view of the list's form
 - frontend-conventions-layers.md: Palette component vs system widget layers and where each is documented, legacy pages as production and yardstick, no dead code in the widget layer, the invariant principles for system widget work.
 - google-reviews-widget.md: Google Reviews widget (kind google_reviews): Place Details with a Places API key, the settings card, the sealed state and short cache, tokens, attribution, nothing drawn when not set up
+- header-menu-stacking.md: The account menu (login region) and language list of a template's account bar come down over a sticky header: pg_sw_lift_header_menus(), the 1025 level, the covered first rows it fixed
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: The visual designer's "Edit image" on an image field: the field contract, replace versus copy, why the picture saves apart from the design
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute
