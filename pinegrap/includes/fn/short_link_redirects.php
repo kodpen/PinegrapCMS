@@ -199,7 +199,8 @@ function pg_short_link_name_from_address($address, $base_path = null)
         return '';
     }
 
-    $name = trim((string) $address);
+    $address = trim((string) $address);
+    $name = $address;
 
     if ($name === '') {
         return '';
