@@ -23,14 +23,14 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 
 - 6 (done, #8002): `members.php`: shop pages (`memberships` with Memberships and Day Passes groups, product, cart, checkout, order, `email_order`) and the members' area (`members` with perks, `house_guide`); test.
 
-- 7: `standard.php`: contact, inbox, conversation, newsletter, blog, blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 7 (done, #PRNUM): `standard.php`: contact, inbox, conversation, newsletter, blog ("Blog"), blog post, help search ("Help Center"), error, `email_new_message`, `email_message_received`, `email_welcome`; test.
 
 - 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 9: assembly: `pinegrap-coworking.php` (order, search sections, look, fonts, `pcw-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-coworking.md`; the PR body names the `[NEW]` line; this plan is deleted.
 
 ## Where does the next session start?
-- Step 7. `events.php` is included after `spaces.php` and `requests.php` (it reuses their request pieces). Step 9 includes the parts in that order; `members.php` returns `catalog` too (two groups).
+- Step 8 (start from the Gym's `account.php`). `events.php` is included after `spaces.php` and `requests.php` (it reuses their request pieces). Step 9 includes the parts in that order; `members.php` returns `catalog` too (two groups).
 - The home places `home_events` (events.php). `spaces.php` ships `book_online`; the space page links `tour` and `office_enquiry` (Office from `?space=`).
 - Translation traps: `Space` reads "Boşluk" and `Seats` "Koltuklar"; use `Workspace` and `Number of Seats`.
 - PHP 7.1: no trailing comma after a call's last argument. Commit with committer `Erdal Güral`. The Turkish shards conflict often: take development's side and re-add the keys with `tools/tr_add.php --from`.
