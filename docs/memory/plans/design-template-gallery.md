@@ -12,7 +12,7 @@ description: Plan: the Art Gallery design template (pinegrap-gallery): artists, 
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-gallery-design]].
 
 ## Steps (claim as `[plan:design-template-gallery] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: `parts.php`: node builders, the gallery's data (artists, exhibitions, works, mediums, topics, advisory, figures, voices), pick lists, `$money`, `$query`, page shell and small helpers; `tests/design_template_gallery_test.php` with `_test_gl_page_keys()`.
+- 1 (done, #7926): `parts.php`: node builders, the gallery's data (artists, exhibitions, works, mediums, topics, advisory, figures, voices), pick lists, `$money`, `$query`, page shell and small helpers; `tests/design_template_gallery_test.php` with `_test_gl_page_keys()`.
 
 - 2: `cards.php`: account bar, notice, header, footer, viewing band, the artist, exhibition, work, advisory and voice cards, form fields, the comment thread, staff bar, newsletter and blog parts; `tests/design_template_gallery_cards_test.php`.
 
