@@ -455,6 +455,7 @@
     "Delivery Date": "Teslimat Tarihi",
     "Delivery Date may not contain a date in the past.": "Teslimat Tarihi geçmiş bir tarih içeremez.",
     "Delivery Date must contain a valid date.": "Teslimat Tarihi geçerli bir tarih içermelidir.",
+    "Delivery Day": "Teslimat Günü",
     "Delivery Line": "Teslimat Hattı",
     "Delivery Note": "İrsaliye",
     "Delivery Note No": "İrsaliye No",

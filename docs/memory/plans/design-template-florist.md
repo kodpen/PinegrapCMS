@@ -15,15 +15,15 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 - 2 (done, #7797): `pages_public.php`: home, `bouquets`, `occasions`, `subscriptions`, `events`, `delivery`, `care`, `about`, `faq`; test.
 - 3 (done, #7806): `work.php`: the Our Work collection (`work`, `work_item`, `work_new`, the home's `home_work` widget); test.
 - 4 (done, #7912): `mail.php` (the e-mail builders) and `orders.php`: bouquet order requests (`order_request` with `?bouquet=`, `?occasion=`, `request_view`, `my_requests`, `staff_requests`, `privacy`, `email_reply`, `email_request_new`, `email_request_received`); test.
-- 5: `enquiries.php`: event enquiries (`event_enquiry` with `?event=`, `event_enquiry_view`, `staff_events`), subscription requests (`subscribe` with `?plan=`, `subscription_view`), `consultation` (the booking widget's starter beside the event enquiry, [[booking-templates]]), their e-mails; test.
+- 5 (done, #PR): `enquiries.php`: event enquiries (`event_enquiry` with `?event=`, `event_enquiry_view`, `staff_events`), subscription requests (`subscribe` with `?plan=`, `subscription_view`), `consultation` (the booking widget's starter beside the event enquiry, [[booking-templates]]), their e-mails; test.
 - 6: `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (bouquets by occasion, prepaid subscription bundles, vases and extras, gift cards); test.
 - 7: `standard.php`: contact, inbox, conversation, newsletter, blog (Flower Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 9: assembly: `pinegrap-florist.php` (order, search sections, look, fonts, `pfl-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-florist.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where does the next session start?
-- Step 5. Copy `pinegrap-wedding/enquiries.php` and the shape of `orders.php` and its test. `mail.php` already gives `$mail_page`, `$mail_box`, `$mail_line`, `$mail_button`, `$mail_greeting`, `$mail_settings`; `orders.php` owns `privacy`, `email_reply`, `$detail`, `$bound`, `$mail_reference`, `$mail_new_account`.
-- The event enquiry reads `?event=` (`$event_choices`; the work page sends the Kind answer) and the subscription request `?plan=` (`$plan_titles`), with `$weekday_choices`, `$budget_choices`, `$enquiry_statuses`. Add its e-mail page keys to `_test_fl_page_keys()` in `tests/design_template_florist_test.php`.
+- Step 6. Copy `pinegrap-wedding/shop.php` and its test. Step 5's `enquiries.php` defines `$subscription_statuses` and places `my_events_list`, `my_subscriptions_list` on My Requests and `staff_subscriptions_list` on the staff's order list (pages of `orders.php`); its e-mail pages are `email_event_new`, `email_event_received`, `email_subscription_new`, `email_subscription_received`.
+- The prepaid subscription bundles are one product per plan (`$plans`, `$plan_total`); the subscription request form stays the way to start without the shop.
 - Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", `Occasion` "Vesile" (step 4 labels it `Special Occasion`, "Özel Gün"), `The work` "Eser".
 - PHP 7.1: no trailing comma after a call's last argument.
 
