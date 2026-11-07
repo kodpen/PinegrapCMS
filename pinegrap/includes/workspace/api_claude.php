@@ -100,9 +100,10 @@ function ws_claude_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
-            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel. 409 when another run has taken it or it is closed.',
+            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel. 409 when another run has taken it or it is closed. 409 instructions_outdated when instructions is not the version of the instructions the site serves now (GET /workspace/claude/instructions): the run has not read them, or read them before they changed, and reads them again; a run that sends none is told so in the channel once and in the Workspace Settings.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'instructions', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'description' => 'The version of the instructions the run follows, as their claim step writes it (instructions_version of GET /workspace/claude/instructions).'),
             ),
         ),
 
@@ -657,6 +658,7 @@ function ws_api_claude_instructions($params)
     api_ok(array(
         'version'  => WS_CLAUDE_BOOTSTRAP_VERSION,
         'site'     => ws_claude_api_base(),
+        'instructions_version' => ws_claude_instructions_version(),
         'outdated' => (ws_claude_version_state($sent, WS_CLAUDE_BOOTSTRAP_VERSION) !== 'current')
             || (ws_claude_site_state($site, ws_claude_api_base()) === 'other'),
         'text'     => ws_claude_routine_prompt(),
@@ -666,7 +668,7 @@ function ws_api_claude_instructions($params)
 // What ws_api_claude_instructions() returns.
 function ws_api_claude_instructions_schema()
 {
-    return array('version' => 'integer', 'site' => 'string', 'outdated' => 'boolean', 'text' => 'string');
+    return array('version' => 'integer', 'site' => 'string', 'instructions_version' => 'string', 'outdated' => 'boolean', 'text' => 'string');
 }
 
 function ws_api_claude_brief($params)
@@ -751,10 +753,12 @@ function ws_api_claude_claim($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    ws_api_claude_instructions_check($row, $params['instructions'] ?? null);
+
     api_dry_run_stop('claimed', 'workspace_claude_request', array('id' => (int) $row['id']));
 
     // One run wins when two reach for the same request.
-    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "'
+    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "', error = ''
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent')");
 
     if (mysqli_affected_rows(db::$con) < 1) {
@@ -764,6 +768,42 @@ function ws_api_claude_claim($params)
     ws_claude_react((int) $row['message_id'], '👀', true);
 
     api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
+}
+
+/**
+ * Refuses a claim made by a run that has not read the instructions the site
+ * serves now (409 instructions_outdated): the request keeps its status for a run
+ * that has. A run that sent no version at all runs a prompt that never reads
+ * the site's instructions and cannot put itself right: the request's channel
+ * is told once, by a system line marked on the request's error, and the
+ * Workspace Settings card shows the long-prompt warning. A run that read an
+ * earlier text is only told to read it again.
+ *
+ * @param array $row  the request
+ * @param mixed $sent the version the claim sent, null when none
+ */
+function ws_api_claude_instructions_check($row, $sent)
+{
+    $state = ws_claude_instructions_state($sent, ws_claude_instructions_version());
+
+    if ($state === 'current') {
+        return;
+    }
+
+    if (($state === 'none') && !api_dry_run_requested()) {
+        ws_claude_note_version(null);
+
+        if (((int) ($row['channel_id'] ?? 0) > 0) && ((string) ($row['error'] ?? '') !== 'instructions_outdated')) {
+            db("UPDATE ws_ai_requests SET error = 'instructions_outdated'
+                WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent') AND error <> 'instructions_outdated'");
+
+            if (mysqli_affected_rows(db::$con) > 0) {
+                ws_message_system((int) $row['channel_id'], lang('Claude could not take this request: its routine does not read the instructions this site gives it. An administrator copies the prompt again from Claude in the channels in the Workspace Settings.'));
+            }
+        }
+    }
+
+    api_fail(409, 'instructions_outdated', lang('These are not the instructions the site gives out now. Read them again with GET /workspace/claude/instructions and follow the new text.'));
 }
 
 /**

@@ -7008,6 +7008,7 @@
     "These are Files that were uploaded with a Submitted Form or a Comment.": "Bunlar, Gönderilen Form veya Yorum ile yüklenen Dosyalardır.",
     "These are Public Pages that appear in the sitemap.xml file so search engines can find them.": "Bunlar, arama motorlarının bulabilmesi için sitemap.xml dosyasında görünen Genel Sayfalardır.",
     "These are Public Pages that are able to broadcast RSS feeds.": "Bunlar, RSS beslemelerini yayınlayabilen Genel Sayfalardır.",
+    "These are not the instructions the site gives out now. Read them again with GET /workspace/claude/instructions and follow the new text.": "Bunlar sitenin şu an verdiği talimatlar değil. Talimatları GET /workspace/claude/instructions ile yeniden okuyun ve yeni metne uyun.",
     "These audio & video files can be embedded into any page or downloaded from any page.": "Bu ses ve video dosyaları herhangi bir sayfaya gömülebilir veya herhangi bir sayfadan indirilebilir.",
     "These blocks are the same on more than one imported page. As shared components they are edited once and change on every page; left as they are, each page keeps its own copy.": "Bu bloklar içe aktarılan birden fazla sayfada birebir aynı. Ortak bileşen olurlarsa bir kez düzenlenir ve her sayfada değişir; bırakılırsa her sayfa kendi kopyasını tutar.",
     "These bots may crawl your site but are not counted as visitors.": "Bu botlar sitenizi tarayabilir ancak ziyaretçi sayısına dahil edilmez.",
