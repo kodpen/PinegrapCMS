@@ -598,6 +598,7 @@
     "Your browser has a secure connection to the proxy, which forwards the request to this server over plain HTTP. Secure Mode works once this proxy is listed under Settings > Firewall > Trusted Proxies; the Firewall screen offers to list {var:1} when you turn Secure Mode on. This page reads no site settings, so it cannot tell whether the proxy is listed already.": "Tarayıcınızın vekil sunucuyla bağlantısı güvenli; vekil sunucu isteği bu sunucuya düz HTTP ile iletiyor. Bu vekil sunucu Ayarlar > Güvenlik Duvarı > Güvenilen Vekil Sunucular arasına eklendiğinde Güvenli Mod çalışır; Güvenli Modu açarken Güvenlik Duvarı ekranı {var:1} adresini eklemeyi önerir. Bu sayfa site ayarlarını okumadığı için vekil sunucunun zaten listede olup olmadığını söyleyemez.",
     "Your budget": "Bütçeniz",
     "Your building": "Binanız",
+    "Your business": "İşletmeniz",
     "Your calendar address": "Takvim adresiniz",
     "Your calendar address is ready. Add it to your calendar with Add to Google Calendar or Open in Apple Calendar or Outlook.": "Takvim adresiniz hazır. Google Takvim'e ekle ya da Apple Takvim'de ya da Outlook'ta aç ile takviminize ekleyin.",
     "Your calendar address is ready. Add it to your calendar with Open in Apple Calendar or Outlook, or copy it.": "Takvim adresiniz hazır. Apple Takvim'de ya da Outlook'ta aç ile takviminize ekleyin ya da adresi kopyalayın.",

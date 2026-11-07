@@ -174,6 +174,14 @@ $public_pages[] = array(
             )),
         ), $searchable('sp-home-teams', lang('teams, men, women, veterans, youth, basketball, training times'))),
 
+        // The featured club events, read from the Club Events collection.
+        $el('section', 'py-5', lang('Club Events'), array(
+            $container(array(
+                $section_header(lang('At the clubhouse'), lang('Club events'), lang('All events'), '{{page:events}}'),
+                $widget('home_events'),
+            )),
+        ), $searchable('sp-home-events', lang('events, social, quiz night, fundraiser, open day, camp'))),
+
         $story_band('sp-home-academy', lang('Youth Academy'), lang('Where the next first team starts'),
             array(lang('Boys and girls from five to sixteen train every week with qualified coaches, play in friendly leagues and learn to love the game.')),
             $photo('home-academy', 1200, 900), lang('Young players dribbling around cones on the all-weather pitch'), true,
