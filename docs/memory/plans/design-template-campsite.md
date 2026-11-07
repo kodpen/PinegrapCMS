@@ -12,7 +12,7 @@ description: Plan: the Campsite / Holiday Park design template (pinegrap-campsit
 
 ## Steps (claim as `[plan:design-template-campsite] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7782): `parts.php` (node builders, the park's data: kinds of stay, sample pitches and cabins, facilities, activities, the area, seasons with prices as words, getting here, park rules, figures, guests' words, pick lists; shared parts: account bar, notice, header, footer, stay band, staff bar; stay-kind, unit, facility, activity and testimonial cards, season table, form fields, comment thread, blog parts); `tests/design_template_campsite_test.php`.
-- 2: `pages_public.php`: home (`home_units`, `home_posts`), `stays` and one `stay_<key>` per kind, `facilities`, `activities`, `prices`, `location`, `rules`, `about`, `faq`; `tests/design_template_campsite_public_test.php`.
+- 2 (done, #7830): `pages_public.php`: home (`home_units`, `home_posts`), `stays` and one `stay_<key>` per kind, `facilities`, `activities`, `prices`, `location`, `rules`, `about`, `faq`; `tests/design_template_campsite_public_test.php`.
 - 3: `units.php`: the Pitches and Cabins collection (`units` by `?kind=`, the `unit` record page, `unit_new`), `home_units`; test.
 - 4: `mail.php` and `stays.php`: stay requests (`book` with `?unit=`, `?kind=`, `?season=`; `request_view`, `my_requests`, `staff_requests`, `privacy`, `email_reply`) and group enquiries (`groups`, `group_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`); test.
 - 5: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
