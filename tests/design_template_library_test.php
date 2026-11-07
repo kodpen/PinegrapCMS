@@ -144,7 +144,7 @@ function _test_lb_page_keys()
 		'email_booking_new', 'email_booking_received', 'email_reply',
 		'join', 'membership_view', 'my_memberships', 'staff_memberships', 'email_membership_new', 'email_membership_received',
 		'reserve', 'reservation_view', 'my_reservations', 'staff_reservations', 'email_reservation_new', 'email_reservation_received',
-		'room_booking', 'room_booking_view', 'my_room_bookings', 'staff_room_bookings',
+		'room_booking', 'room_booking_view', 'my_room_bookings', 'staff_room_bookings', 'email_room_booking_new', 'email_room_booking_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
