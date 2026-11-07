@@ -19,7 +19,7 @@ description: Plan: the Coworking design template (pinegrap-coworking): desks, of
 
 - 4 (done, #7891): `mail.php` (the e-mail builders) and `requests.php`: tour requests (`tour`, `tour_view`, `my_tours`, `staff_tours`, `privacy`, `email_reply`, `email_tour_new`, `email_tour_received`) and office enquiries (`office_enquiry`, `enquiry_view`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
 
-- 5 (done, #PRNUM): `events.php`: Events collection (`events` from today on, ?topic=, `event`, `event_new`, samples dated from today on a weekday) and the sign-up (`event_signup` ?event=, `signup_view`, `my_signups`, `staff_signups`, two e-mails); test.
+- 5 (done, #7971): `events.php`: Events collection (`events` from today on, ?topic=, `event`, `event_new`, samples dated from today on a weekday) and the sign-up (`event_signup` ?event=, `signup_view`, `my_signups`, `staff_signups`, two e-mails); test.
 
 - 6: `members.php`: shop pages (`memberships`, product, cart, checkout, order, `email_order`, the catalog with membership products and day passes) and the members' area (`members`, `house_guide`); test.
 
