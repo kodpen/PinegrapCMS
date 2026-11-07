@@ -11,7 +11,7 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-sportsclub-design]].
 
 ## Steps (claim as `[plan:design-template-sportsclub] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #7727): `parts.php` (node builders, the club's data, pick lists, shared parts, cards, form fields, blog parts); `tests/design_template_sportsclub_test.php`.
+- 1 (done, #7727): `parts.php` (builders, data, pick lists, shared parts, cards, fields); `tests/design_template_sportsclub_test.php`.
 
 - 2 (done, #7907): `pages_public.php`: home (`home_fixtures`, `home_results`, `home_posts` placed), `teams` and one `team_<key>` per team, `club` (history and honours), `ground`, `academy`, `sponsors`, `faq`; `tests/design_template_sportsclub_public_test.php`.
 
@@ -19,7 +19,7 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 
 - 4 (done, #7930): `mail.php` (e-mail builders, `$comment_thread`) and `registrations.php`: academy registrations (`academy_register` ?team=, `registration_view`, `my_registrations` also listing trials, `staff_registrations`), trial requests (`trial` ?team= ?position=, `trial_view`, `staff_trials`), `privacy`, `email_reply`; test.
 
-- 5: `events.php`: the Club Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and the sponsorship enquiry (`sponsor_enquiry` with `?package=`, `staff_sponsors`); test.
+- 5 (done, #7961): `events.php`: the Club Events collection (`events` by `?kind=`, `event`, `event_new`, `home_events`) and the sponsorship enquiry (`sponsor_enquiry` with `?package=`, `staff_sponsors`); home places `home_events`; test.
 
 - 6: `shop.php`: `kit_shop`, `season_tickets`, `membership`, product, cart, checkout, order, `email_order`, the catalog (Kit, Season Tickets with `shippable => false`, Membership with `membership_days`), the members' area (`members`, folder `members` with access `membership`); test.
 
