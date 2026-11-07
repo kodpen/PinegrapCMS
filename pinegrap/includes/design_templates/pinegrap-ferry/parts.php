@@ -315,7 +315,7 @@ $onboard = array(
         'text' => lang('Hot meals with a view of the coast: breakfast on the morning sailings, lunch and dinner after.'), 'where' => lang('On the Cedar Island crossing')),
     array('icon' => 'bi-easel', 'title' => lang('Reclining-seat lounge'),
         'text' => lang('A quiet lounge with reclining seats and sockets beside every row.'), 'where' => lang('On the Cedar Island crossing')),
-    array('icon' => 'bi-door-closed', 'title' => lang('Cabins'),
+    array('icon' => 'bi-door-closed', 'title' => lang('Rest cabins'),
         'text' => lang('Cabins for up to four people with a washbasin, for a rest or a nap with the children.'), 'where' => lang('On the Cedar Island crossing')),
     array('icon' => 'bi-sun', 'title' => lang('Open decks'),
         'text' => lang('Benches on the top deck for the sea air, the islands coming closer and the dolphins in the bay.'), 'where' => lang('On every ship')),
