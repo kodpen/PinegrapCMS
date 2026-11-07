@@ -441,8 +441,6 @@ $genre_titles = array();
 foreach ($genres as $g) $genre_titles[] = $g['title'];
 $stage_titles = array();
 foreach ($stages as $s) $stage_titles[] = $s['title'];
-$production_titles = array();
-foreach ($productions as $p) $production_titles[] = $p['title'];
 $access_titles = array();
 foreach ($access_types as $a) $access_titles[] = $a['title'];
 $ticket_state_titles = array();
@@ -481,6 +479,19 @@ $production_stage = function ($key) use ($productions, $stages) {
 };
 $performance_production = function ($key) use ($performances, $productions) {
     return $productions[$performances[$key]['production']]['title'];
+};
+// Bindings that print fields of the production a performance points at
+// (its Production field, a reference into the Productions form, which
+// holds the production's code): $props maps an element prop to the
+// production's field, e.g. array('text' => 'title').
+$th_production_ref = function ($props) {
+    $bindings = array();
+    $params = array();
+    foreach ($props as $prop => $show) {
+        $bindings[$prop] = '__ref';
+        $params[$prop] = array('field' => 'production', 'page_id' => '{{tab:production_new}}', 'show' => $show);
+    }
+    return array('_bindings' => $bindings, '_bindParams' => $params);
 };
 $performance_access = function ($key) use ($performances, $access_types) {
     return $access_types[$performances[$key]['access']]['title'];
@@ -891,10 +902,10 @@ $genre_card = function ($key) use ($el, $para, $link, $col, $icon, $genres, $que
 };
 
 // A performance's row of the lists (the home, What's On and a production's
-// page): the date and the time, the production linking the performance's
-// page, the stage, the access mark and the ticket state. Bound to the
-// Performances form's fields.
-$performance_row = function ($sample_key = 'lh_1') use ($el, $span, $link, $icon, $bind, $performances, $productions, $stages, $ticket_states, $perf_on, $performance_production, $performance_access) {
+// page): the date and the time, the production's title (read through the
+// reference) linking the performance's page, the stage, the access mark
+// and the ticket state. Bound to the Performances form's fields.
+$performance_row = function ($sample_key = 'lh_1') use ($el, $span, $link, $icon, $bind, $performances, $productions, $stages, $ticket_states, $perf_on, $performance_production, $performance_access, $th_production_ref) {
     $s = $performances[$sample_key];
     $state = $ticket_states[$s['state']];
     return $el('article', 'd-flex flex-column flex-md-row align-items-md-center gap-3 py-3 border-bottom position-relative', lang('Performance Row'), array(
@@ -905,7 +916,7 @@ $performance_row = function ($sample_key = 'lh_1') use ($el, $span, $link, $icon
         $el('div', 'flex-grow-1', lang('Performance Details'), array(
             $el('h3', 'pth-display h5 mb-1', lang('The Production'), array(
                 $link($performance_production($sample_key), '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
-                    array('_bindings' => array('text' => 'production', 'href' => 'form_item_view'))),
+                    array_merge_recursive($th_production_ref(array('text' => 'title')), array('_bindings' => array('href' => 'form_item_view')))),
             )),
             $el('p', 'd-flex flex-wrap gap-3 small text-body-secondary mb-0', lang('Performance Facts'), array(
                 $el('span', 'd-inline-flex align-items-center gap-1', lang('Theatre Stage'), array(
@@ -926,22 +937,23 @@ $performance_row = function ($sample_key = 'lh_1') use ($el, $span, $link, $icon
 
 // The facts of a performance in one list (its page): the production, the
 // date, the curtain, the stage, the access mark and the ticket state, each
-// bound to the Performances form's field of the same name.
-$performance_facts = function ($sample_key = 'lh_1', $class = 'list-unstyled small mb-0') use ($el, $span, $bind, $performances, $productions, $stages, $perf_on, $performance_production, $performance_access, $performance_state) {
+// bound to the Performances form's field of the same name; the production
+// prints its title through the reference.
+$performance_facts = function ($sample_key = 'lh_1', $class = 'list-unstyled small mb-0') use ($el, $span, $bind, $performances, $productions, $stages, $perf_on, $performance_production, $performance_access, $performance_state, $th_production_ref) {
     $s = $performances[$sample_key];
-    $fact = function ($label, $text, $token) use ($el, $span, $bind) {
+    $fact = function ($label, $text, $binding) use ($el, $span) {
         return $el('li', 'd-flex justify-content-between gap-3 py-2 border-bottom', $label, array(
             $span($label, 'text-body-secondary', lang('Label')),
-            $span($text, 'fw-semibold text-end', $label, $bind($token)),
+            $span($text, 'fw-semibold text-end', $label, $binding),
         ));
     };
     return $el('ul', $class, lang('Performance Facts'), array(
-        $fact(lang('The Production'), $performance_production($sample_key), 'production'),
-        $fact(lang('Date'), $perf_on($s['weekday'], $s['weeks']), 'perf_date'),
-        $fact(lang('Curtain Up'), $s['time'], 'perf_time'),
-        $fact(lang('Theatre Stage'), $stages[$productions[$s['production']]['stage']]['title'], 'stage'),
-        $fact(lang('Access Performance'), $performance_access($sample_key), 'access'),
-        $fact(lang('Tickets'), $performance_state($sample_key), 'ticket_state'),
+        $fact(lang('The Production'), $performance_production($sample_key), $th_production_ref(array('text' => 'title'))),
+        $fact(lang('Date'), $perf_on($s['weekday'], $s['weeks']), $bind('perf_date')),
+        $fact(lang('Curtain Up'), $s['time'], $bind('perf_time')),
+        $fact(lang('Theatre Stage'), $stages[$productions[$s['production']]['stage']]['title'], $bind('stage')),
+        $fact(lang('Access Performance'), $performance_access($sample_key), $bind('access')),
+        $fact(lang('Tickets'), $performance_state($sample_key), $bind('ticket_state')),
     ));
 };
 
