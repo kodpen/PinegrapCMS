@@ -1349,6 +1349,7 @@
     "local sale": "yerel satış",
     "local, seasonal, sustainable, farms, waste": "yerel, mevsimsel, sürdürülebilir, çiftlikler, israf",
     "location is not a stock location of this site.": "location bu sitenin bir stok konumu değil.",
+    "locations": "ofisler",
     "locations, offices, jobs near me, remote, hybrid": "konumlar, ofisler, yakınımdaki işler, uzaktan, hibrit",
     "locked": "kilitli",
     "locked a device of user ({var:1})": "({var:1}) kullanıcısının bir cihazı kilitlendi",

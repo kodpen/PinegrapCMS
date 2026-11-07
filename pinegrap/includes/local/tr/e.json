@@ -161,6 +161,7 @@
     "EU VAT ID": "AB KDV numarası",
     "EUR/TRY": "Euro/TL",
     "Each Period": "Her Periyotta",
+    "Each additional driver's licence": "Her ek sürücünün ehliyeti",
     "Each app is written in the language its phone speaks, so it stays fast, works with the newest system features and is easy for another developer to take over.": "Her uygulama telefonunun konuştuğu dille yazılır; böylece hızlı kalır, sistemin en yeni özellikleriyle çalışır ve başka bir geliştiricinin devralması kolay olur.",
     "Each app's page has a privacy summary, and the privacy policy says it in full. No app shows ads or sells data.": "Her uygulamanın sayfasında bir gizlilik özeti vardır; gizlilik politikası ise bunu eksiksiz anlatır. Hiçbir uygulama reklam göstermez ya da veri satmaz.",
     "Each app's page says what that app keeps and where. As a rule my apps keep your data on your phone and in your own cloud, collect no advertising data and send crash reports only when you allow it.": "Her uygulamanın sayfası, o uygulamanın neleri nerede sakladığını anlatır. Uygulamalarım kural olarak verilerinizi telefonunuzda ve kendi bulutunuzda tutar, reklam verisi toplamaz ve çökme raporlarını yalnızca siz izin verdiğinizde gönderir.",
@@ -1204,6 +1205,7 @@
     "Every browser an operator turned notifications on in is listed here. A subscription belongs to the browser rather than to the sign-in, so it survives a closed window; signing out of a device ends it, and so does the button below.": "Bir kullanıcının bildirim açtığı her tarayıcı burada listelenir. Abonelik oturuma değil tarayıcıya aittir, bu yüzden pencere kapatılınca da yaşar; bir cihazdan çıkış yapmak aboneliği sonlandırır, aşağıdaki düğme de.",
     "Every café in town, rated by croissant and by how loud the music is.": "Şehirdeki her kafe; kruvasanına ve müziğinin ne kadar yüksek olduğuna göre puanlanmış.",
     "Every cake is baked for its day. Choose one of ours or tell us about the cake you have in mind.": "Her pasta kendi günü için pişer. Bizimkilerden birini seçin ya da aklınızdaki pastayı anlatın.",
+    "Every car cleaned inside and out and checked between rentals.": "Her araç iki kiralama arasında içten ve dıştan temizlenir ve kontrol edilir.",
     "Every car in our showroom, new, used and ex-demonstrator. Choose a make, a body style or a fuel to narrow the list.": "Showroomumuzdaki tüm araçlar: sıfır, ikinci el ve eski test araçları. Listeyi daraltmak için bir marka, kasa tipi veya yakıt seçin.",
     "Every category needs a name.": "Her kategorinin bir adı olmalı.",
     "Every change of stock at each location: who, where and why.": "Her konumdaki her stok değişikliği: kim, nerede ve neden.",
@@ -1921,6 +1923,8 @@
     "Extracting the archive: {var:1}": "Arşiv açılıyor: {var:1}",
     "Extraction failed. The web server may not have write permission for the software directory, or the disk may be full.": "Arşiv açılamadı. Web sunucusunun yazılım klasörüne yazma izni olmayabilir ya da disk dolu olabilir.",
     "Extras": "Ek Hizmetler",
+    "Extras are confirmed with your booking and paid at the desk": "Ek hizmetler rezervasyonunuzla onaylanır ve ofiste ödenir",
+    "Extras for the road": "Yol için ek hizmetler",
     "Eye comfort mode for the evening": "Akşamlar için göz konforu modu",
     "Eyesight and vehicle questions": "Göz ve araç soruları",
     "Eyewear & Watches": "Gözlük & Saat",
@@ -2279,5 +2283,6 @@
     "export, markdown, attachments": "dışa aktarma, markdown, ekler",
     "extra cost, variation, change, fixed price": "ek maliyet, değişiklik, sabit fiyat",
     "extra person, child, dog, pet, car, firewood, included": "ek kişi, çocuk, köpek, evcil hayvan, araba, odun, dahil",
-    "extra test, add, package": "ek tetkik, ekleme, paket"
+    "extra test, add, package": "ek tetkik, ekleme, paket",
+    "extras": "ek-hizmetler"
 }
