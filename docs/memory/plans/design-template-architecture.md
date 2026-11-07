@@ -14,7 +14,7 @@ description: Plan: the Architecture & Interiors Studio design template (pinegrap
 ## Steps (claim as `[plan:design-template-architecture] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7639): `parts.php` (node builders, the studio's data and pick lists, shared parts, cards, project facts, credits, gallery, form fields, comment thread, blog parts); `tests/design_template_architecture_test.php`.
 
-- 2: `pages_public.php`: home (`home_projects`, `home_posts`), `services` and one `service_<key>` per service, `studio`, `team`, `process`, `awards` (awards and press), `faq`; `tests/design_template_architecture_public_test.php`.
+- 2 (done, #7767): `pages_public.php`: home (`home_projects`, `home_posts`), `services` and one `service_<key>` per service, `studio`, `team`, `process`, `awards` (awards and press), `faq`; `tests/design_template_architecture_public_test.php`.
 
 - 3: `projects.php`: the Projects collection (`projects` by `?type=` and `?location=`, the `project` page with facts, the gallery, the brief, the credits and the client's words, `project_new`), `home_projects`; test.
 
