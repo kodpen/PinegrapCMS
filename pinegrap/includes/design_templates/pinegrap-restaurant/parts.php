@@ -179,8 +179,8 @@ foreach ($sittings as $s) {
 }
 
 // The courses of the menu, in the order of the menu page's tabs: each tab
-// lists the dishes of its course (a list filtered by it, ?course=). Each
-// answer's value is its own words, so a filter link reads as it shows.
+// lists the dishes of its course (a list filtered by its words, the Menu
+// form's Course answer).
 $courses = array(
     'snacks'   => array('title' => lang('To Begin'), 'icon' => 'bi-basket',
         'note' => lang('Bread from the wood oven, a few bites to share and something to open the appetite.')),
@@ -438,9 +438,9 @@ $reservation_statuses = array(lang('Request received'), lang('Table confirmed'),
 // The states of a private dining enquiry, set by the events team in the panel.
 $enquiry_statuses = array(lang('Enquiry received'), lang('Proposal sent'), lang('Confirmed'), lang('Declined'));
 
-// The query string of a link that opens a list with a filter set
-// (?course=) or a form with a choice made (?tasting=, ?event=, ?room=,
-// ?occasion=): the form's fields start with these values (_cf.url_param).
+// The query string of a link that opens a form with a choice made
+// (?tasting=, ?event=, ?room=, ?occasion=): the form's fields start with
+// these values (_cf.url_param).
 $query = function ($params) {
     return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 };
@@ -631,20 +631,24 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
 };
 
 // The footer, on a dark band: the restaurant in a sentence and its
-// profiles, the menu by course, the guests' pages, the restaurant's pages
+// profiles, the food and wine pages, the guests' pages, the restaurant's pages
 // and how to reach it with the opening hours; at the bottom the year and
 // the site's name.
-$footer = function () use ($el, $para, $link, $icon, $span, $heading, $courses, $restaurant, $opening_hours, $query, $attr) {
+$footer = function () use ($el, $para, $link, $icon, $span, $heading, $restaurant, $opening_hours, $attr) {
     $plain = 'link-body-emphasis text-decoration-none';
     $list = function ($links) use ($el) {
         $items = array();
         foreach ($links as $l) $items[] = $el('li', 'mb-2', lang('List Item'), array($l));
         return $el('ul', 'list-unstyled small mb-0', lang('Links'), $items);
     };
-    $eat_links = array();
-    foreach ($courses as $c) $eat_links[] = $link($c['title'], '{{page:menu}}?' . $query(array('course' => $c['title'])), $plain);
-    $eat_links[] = $link(lang('Tasting Menus'), '{{page:tasting}}', $plain);
-    $eat_links[] = $link(lang('Wine List'), '{{page:wine}}', $plain);
+    // The menu's courses are tabs of one page, so the footer links the
+    // pages, not a course.
+    $eat_links = array(
+        $link(lang('The Menu'), '{{page:menu}}', $plain),
+        $link(lang('Tasting Menus'), '{{page:tasting}}', $plain),
+        $link(lang('Wine List'), '{{page:wine}}', $plain),
+        $link(lang('The Chef\'s Table'), '{{page:book_online}}', $plain),
+    );
     $social = function ($name, $label) use ($el, $icon, $attr) {
         return $el('a', 'link-body-emphasis fs-5', $label, array($icon($name)), array('href' => '#', '_attrs' => array($attr('aria-label', $label))));
     };
