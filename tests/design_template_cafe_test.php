@@ -176,6 +176,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-museum' => array('mz-eb-consent', 'mz-sv-consent'),
 		'pinegrap-music' => array('mu-bk-consent'),
 		'pinegrap-architecture' => array('ai-enq-consent', 'ai-con-consent', 'ai-app-consent'),
+		'pinegrap-campsite' => array('cp-rq-consent', 'cp-gr-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);
