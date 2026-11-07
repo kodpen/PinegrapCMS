@@ -6,10 +6,11 @@
  * contact and the inbox (a message becomes a conversation), the
  * newsletter, the blog as "News" and its post page, the help center that
  * searches the whole site, the error page, the message and newsletter
- * e-mails, the home page's news and Google Reviews, and the widgets that
+ * e-mails, the home page's news, and the widgets that
  * draw them. The privacy page and the reply e-mail of the threads
- * (email_reply, its widget email_comment) are the quotes part's. Included
- * after parts.php and mail.php in the same scope; returns
+ * (email_reply, its widget email_comment) are the requests part's.
+ * Included after parts.php, mail.php and requests.php in the same scope
+ * (it reuses $resident_name, $mail_reference and $mail_new_account); returns
  * array('pages' => ..., 'widgets' => ...).
  *
  * @author      Erdal Güral (Kodpen)
@@ -24,15 +25,15 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 $standard_pages = array();
 
-// Contact: a message to the firm; the staff are told, the sender gets a
-// reply. A building project goes to the quote request instead, which asks
-// what a site visit and a price need.
+// Contact: a message to the city hall; the staff are told, the sender gets
+// a reply. A problem in the street or a service goes to the citizen request
+// instead, which asks the topic, the neighbourhood and the place.
 $standard_pages[] = array(
     'key'              => 'contact',
     'name'             => lang('contact-us'),
     'folder'           => 'public',
     'title'            => lang('Contact Us'),
-    'meta_description' => lang('A question about our work, an invoice, a delivery to one of our sites or anything else? Write to the firm.'),
+    'meta_description' => lang('A question for the city hall, the press office or the council clerks? Write to us, and the answer comes to your inbox.'),
     'form'             => array(
         'form_name'            => lang('Contact Form'),
         'confirmation_message' => lang('Thank you, your message has reached us. We will get back to you soon.'),
@@ -49,7 +50,7 @@ $standard_pages[] = array(
         'confirm_page_id'      => '{{tab:email_message_received}}',
     ),
     'tree'             => $page(array(
-        $page_header(lang('Contact Us'), lang('A question about our work, an invoice or the firm: write to us, and the answer comes to your inbox.')),
+        $page_header(lang('Contact Us'), lang('A question for the city hall, the press office or the council clerks? Write to us, and the answer comes to your inbox.')),
         $el('section', 'py-5', lang('Content'), array(
             $container(array(
                 $row(array(
@@ -57,15 +58,15 @@ $standard_pages[] = array(
                         $el('div', 'alert alert-warning d-flex gap-2 mb-4', lang('Note'), array(
                             $icon('bi-info-circle', 'mt-1'),
                             $el('span', '', lang('Text'), array(
-                                $span(lang('Planning a building project? Send a quote request, so we can book a site visit and price it.') . ' ', '', lang('Text')),
-                                $link(lang('Request a Quote'), '{{page:quote}}', 'alert-link'),
+                                $span(lang('A broken street light, rubbish left behind or a service you need? Make a request, so it goes straight to the department in charge.') . ' ', '', lang('Text')),
+                                $link(lang('Make a Request'), '{{page:request}}', 'alert-link'),
                             )),
                         )),
                         $widget('contact_form'),
                     ), '', '7'),
                     $col(array(
                         $el('div', 'p-4 rounded-3 bg-body-tertiary', lang('Contact Details'), array(
-                            $heading('h2', lang('Head Office'), 'h5 fw-semibold mb-3'),
+                            $heading('h2', lang('City Hall'), 'h5 fw-semibold mb-3'),
                             $el('p', 'd-flex align-items-start gap-2 mb-2', lang('Address'), array(
                                 $icon('bi-geo-alt', 'text-primary'),
                                 $span($city['address'], '', lang('Text')),
@@ -106,17 +107,17 @@ $standard_pages[] = array(
     'name'             => lang('newsletter'),
     'folder'           => 'public',
     'title'            => lang('Newsletter'),
-    'meta_description' => lang('Finished projects, news from our sites and advice for anyone planning to build, in one e-mail a month.'),
+    'meta_description' => lang('The city\'s news, the new notices and the coming events, in one e-mail a month.'),
     'form'             => array(
         'form_name'            => lang('Newsletter'),
         'confirmation_message' => lang('Thank you! You are now subscribed to our newsletter.'),
         'contact_group_id'     => '{{contact_group:newsletter}}',
         'confirm_email'        => 1,
-        'confirm_subject'      => lang('Welcome to the firm\'s newsletter'),
+        'confirm_subject'      => lang('Welcome to the city hall\'s newsletter'),
         'confirm_page_id'      => '{{tab:email_welcome}}',
     ),
     'tree'             => $page(array(
-        $page_header(lang('Newsletter'), lang('Finished projects, news from our sites and advice for anyone planning to build, in one e-mail a month.')),
+        $page_header(lang('Newsletter'), lang('The city\'s news, the new notices and the coming events, in one e-mail a month.')),
         $el('section', 'py-5', lang('Content'), array(
             $container(array(
                 $row(array(
@@ -127,9 +128,9 @@ $standard_pages[] = array(
                         $el('div', 'p-4 rounded-3 bg-body-tertiary', lang('What You Get'), array(
                             $heading('h2', lang('In every letter'), 'h5 fw-semibold mb-3'),
                             $check_list(array(
-                                lang('The projects we handed over, with their photographs'),
-                                lang('What is happening on our sites'),
-                                lang('Advice before you build, extend or renovate'),
+                                lang('The work finished in the neighbourhoods'),
+                                lang('The new notices, tenders and council decisions'),
+                                lang('The festivals, markets and courses of the month'),
                                 lang('One e-mail a month, never your address to anyone else'),
                             )),
                         )),
@@ -146,9 +147,9 @@ $standard_pages[] = array(
     'name'             => lang('news'),
     'folder'           => 'public',
     'title'            => lang('News'),
-    'meta_description' => lang('News from our sites, finished projects and advice for anyone planning to build.'),
+    'meta_description' => lang('News from the city hall: work in the neighbourhoods, the council\'s decisions and life in the city.'),
     'tree'             => $page(array(
-        $page_header(lang('News'), lang('News from our sites, finished projects and advice for anyone planning to build.')),
+        $page_header(lang('News'), lang('News from the city hall: work in the neighbourhoods, the council\'s decisions and life in the city.')),
         $el('section', 'py-5', lang('Posts'), array(
             $container(array($widget('blog_list'))),
         )),
@@ -191,16 +192,16 @@ $standard_pages[] = array(
                         $el('div', 'p-4 rounded-3 bg-body-tertiary mb-4', lang('Inbox Note'), array(
                             $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
                                 $icon('bi-chat-left-text', 'text-primary'),
-                                $span(lang('A question for our team?'), '', lang('Text')),
+                                $span(lang('A question for the city hall?'), '', lang('Text')),
                             )),
                             $para(lang('Write to us from the contact page; your message and our answers stay here, in one conversation.'), 'small text-body-secondary mb-3'),
                             $link(lang('New message'), '{{page:contact}}', 'btn btn-sm btn-primary'),
                         )),
                         $el('div', 'p-4 rounded-3 border', lang('Requests Note'), array(
-                            $para(lang('Messages about a quote request or a job application are written under the request or the application itself.'), 'small text-body-secondary mb-3'),
+                            $para(lang('Messages about a request or a meeting with the mayor\'s office are written under the request itself.'), 'small text-body-secondary mb-3'),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                                $link(lang('My Quote Requests'), '{{page:my_quotes}}', 'btn btn-sm btn-outline-primary'),
-                                $link(lang('My Applications'), '{{page:my_applications}}', 'btn btn-sm btn-outline-primary'),
+                                $link(lang('My Requests'), '{{page:my_requests}}', 'btn btn-sm btn-outline-primary'),
+                                $link(lang('My Meeting Requests'), '{{page:my_meetings}}', 'btn btn-sm btn-outline-primary'),
                             )),
                         )),
                     ), '', '4'),
@@ -227,8 +228,8 @@ $standard_pages[] = array(
 );
 
 // The help center: a search over the whole site - pages and the parts of
-// pages marked as search sections (the services, the projects, the process,
-// the safety points and the questions) - with the common questions under
+// pages marked as search sections (the service areas, the departments, the
+// service points and the questions) - with the common questions under
 // it, each a search section of its own.
 $help_topic = function ($icon_name, $text, $href) use ($el, $icon, $span) {
     return $el('a', 'list-group-item list-group-item-action d-flex align-items-center gap-2', lang('Topic'), array(
@@ -241,9 +242,9 @@ $standard_pages[] = array(
     'name'             => lang('help-center'),
     'folder'           => 'public',
     'title'            => lang('Help Center'),
-    'meta_description' => lang('Search the site: services, projects, our process, quote requests, careers and answers to common questions.'),
+    'meta_description' => lang('Search the site: services, departments, notices, events, requests and answers to common questions.'),
     'tree'             => $page(array(
-        $page_header(lang('Help Center'), lang('Search the whole site: our services, the projects we built, how we work, and the answers to the questions we hear most.')),
+        $page_header(lang('Help Center'), lang('Search the whole site: the city\'s services, its departments and service points, the notices, and the answers to the questions we hear most.')),
         $el('section', 'py-5', lang('Content'), array(
             $container(array(
                 $row(array(
@@ -252,12 +253,12 @@ $standard_pages[] = array(
                         $el('div', 'p-4 rounded-3 bg-body-tertiary mb-4', lang('Popular Topics'), array(
                             $heading('h2', lang('Popular topics'), 'h5 fw-semibold mb-3'),
                             $el('nav', 'list-group', lang('Topics'), array(
-                                $help_topic('bi-tools', lang('Our Services'), '{{page:services}}'),
-                                $help_topic('bi-buildings', lang('Projects'), '{{page:projects}}'),
-                                $help_topic('bi-signpost-split', lang('Our Process'), '{{page:process}}'),
-                                $help_topic('bi-clipboard-check', lang('Request a Quote'), '{{page:quote}}'),
-                                $help_topic('bi-folder2-open', lang('My Quote Requests'), '{{page:my_quotes}}'),
-                                $help_topic('bi-person-workspace', lang('Job Openings'), '{{page:careers}}'),
+                                $help_topic('bi-grid', lang('Services'), '{{page:services}}'),
+                                $help_topic('bi-megaphone', lang('Public Notices'), '{{page:notices}}'),
+                                $help_topic('bi-calendar-event', lang('Events'), '{{page:events}}'),
+                                $help_topic('bi-diagram-3', lang('Departments'), '{{page:departments}}'),
+                                $help_topic('bi-pencil-square', lang('Make a Request'), '{{page:request}}'),
+                                $help_topic('bi-folder2-open', lang('My Requests'), '{{page:my_requests}}'),
                                 $help_topic('bi-envelope', lang('Contact Us'), '{{page:contact}}'),
                             ), array('_attrs' => array($attr('aria-label', lang('Popular topics'))))),
                         )),
@@ -276,10 +277,10 @@ $standard_pages[] = array(
                 $row(array(
                     $col(array(
                         $el('div', 'accordion', lang('FAQ'), array(
-                            $faq(21, lang('Where do I see my quote request?'), lang('In My Quote Requests, once you are signed in with the address you sent it from. Its page shows the status, the day of the site visit and the messages from your project manager.'), lang('quote, request, status, site visit, my quotes'), 'cy-help-faq'),
-                            $faq(22, lang('How do I send plans or photos after my request?'), lang('Open the quote request\'s page and attach the file to a message there. Only you and the firm can open it.'), lang('plans, drawings, photos, file, upload'), 'cy-help-faq'),
-                            $faq(23, lang('Can I get an invoice for my company?'), lang('Yes. Tell us the company\'s name, address and tax number before the work starts; every invoice follows the stages of the contract.'), lang('invoice, company, billing, payment, VAT'), 'cy-help-faq'),
-                            $faq(24, lang('Where do I follow my job application?'), lang('In My Applications, once you are signed in. Its page shows where it stands, and the day of an interview is written there as a message.'), lang('job application, career, interview, status'), 'cy-help-faq'),
+                            $faq(21, lang('Where do I see my request?'), lang('In My Requests, once you are signed in with the address you sent it from. Its page shows the status, the department in charge and every answer.'), lang('request, complaint, status, answer, my requests'), 'cy-help-faq'),
+                            $faq(22, lang('How do I add a photo after my request?'), lang('Open the request\'s page and attach the photo to a message there. Only you and the city hall can open it.'), lang('photo, picture, file, upload, request'), 'cy-help-faq'),
+                            $faq(23, lang('How do I meet the mayor?'), lang('Ask for a meeting from the Meet the Mayor\'s Office page. The office proposes a day under your request within a week.'), lang('mayor, meeting, appointment, visit'), 'cy-help-faq'),
+                            $faq(24, lang('Where are the tenders published?'), lang('On the Public Notices page: choose Tender to see only the tenders, each with its reference, its deadline and its papers.'), lang('tender, bid, supplier, notice'), 'cy-help-faq'),
                             $faq(25, lang('Where do I find your answer to my message?'), lang('In your inbox: sign in and open Inbox from the menu under your name. Every reply is on the conversation page, and you can write back there.'), lang('inbox, reply, answer, conversation'), 'cy-help-faq'),
                         ), array('id' => 'cy-help-faq')),
                     ), '', '9'),
@@ -322,8 +323,8 @@ $standard_pages[] = array_merge($mail_settings, array(
     'name'  => lang('email-newsletter-welcome'),
     'title' => lang('Newsletter Welcome E-mail'),
     'tree'  => $mail_page(array(
-        $mail_heading(lang('Welcome to the firm\'s newsletter')),
-        $mail_para(lang('Thank you for subscribing. Once a month you hear about the projects we finished, the news from our sites and what to know before you build.')),
+        $mail_heading(lang('Welcome to the city hall\'s newsletter')),
+        $mail_para(lang('Thank you for subscribing. Once a month you hear about the work in the neighbourhoods, the new notices and the coming events.')),
         $mail_para(lang('Changed your mind? Every e-mail we send has a link to unsubscribe.'), 'small text-body-secondary mb-3'),
         $mail_button(lang('Read our news'), '{{page:blog}}'),
     )),
@@ -340,8 +341,8 @@ $standard_widgets = array(
         'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
         'tree'   => $widget_root(array(
             $icon('bi-envelope-paper', 'fs-1 text-primary d-block mb-2'),
-            $heading('h2', lang('News from our sites'), 'h4 fw-semibold mb-2'),
-            $para(lang('Leave your e-mail address; once a month we write about the projects we finished and what is going on at our sites.'), 'text-body-secondary mb-4'),
+            $heading('h2', lang('News from the city hall'), 'h4 fw-semibold mb-2'),
+            $para(lang('Leave your e-mail address; once a month we write about the work in the neighbourhoods, the notices and the events.'), 'text-body-secondary mb-4'),
             $newsletter_line('cy-newsletter-email'),
             $newsletter_consent('cy-newsletter-consent'),
             $captcha(),
@@ -362,10 +363,11 @@ $standard_widgets = array(
                 $col(array($field('cy-contact-phone', lang('Phone'), $input('cy-contact-phone', 'tel', 'phone', 'tel', false, array('contact_field' => 'mobile_phone')))), '6'),
             ), '3'),
             $field('cy-contact-topic', lang('What is it about?'), $select('cy-contact-topic', 'topic', lang('Choose a topic…'), array(
-                lang('A question about our work'),
-                lang('Payments and invoices'),
-                lang('Suppliers and subcontractors'),
+                lang('A general question'),
+                lang('Local taxes and fees'),
+                lang('Tenders and suppliers'),
                 lang('Press'),
+                lang('The council'),
                 lang('Something else'),
             ))),
             $field('cy-contact-message', lang('Your Message'), $textarea('cy-contact-message', 'message', 6)),
@@ -416,7 +418,7 @@ $standard_widgets = array(
         )),
     ),
 
-    // One post, with the way to ask for a quote under it.
+    // One post, with the way to make a request under it.
     'blog_post' => array(
         'page'   => 'blog_post',
         'slug'   => lang('form-detail'),
@@ -444,14 +446,14 @@ $standard_widgets = array(
                                 ), array('href' => '{{page:blog}}')),
                                 $edit_button(),
                             )),
-                            $heading('h1', lang('What to check before you build an extension'), 'display-6 fw-semibold mb-3', $bind('title')),
+                            $heading('h1', lang('New benches and shade trees for Republic Square'), 'display-6 fw-semibold mb-3', $bind('title')),
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary pb-3 mb-4 border-bottom', lang('Post Details'), array(
                                 $icon('bi-calendar3'),
                                 $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
                                 // The author line leaves when the record has no contact name.
                                 $el('span', 'pg-hide-if-empty d-inline-flex align-items-center gap-2 ms-2', lang('Author'), array(
                                     $icon('bi-person'),
-                                    $span(lang('Mert Aydın'), 'pg-field-value', lang('Value'), $bind('submitter_name')),
+                                    $span(lang('Press Office'), 'pg-field-value', lang('Value'), $bind('submitter_name')),
                                 )),
                             )),
                             $ai_summary(),
@@ -462,8 +464,8 @@ $standard_widgets = array(
                                 array('text' => lang('The body of the post. Write it on the staff page; line breaks are kept.')), $bind('content'))),
                             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2 small mt-5 mb-0', lang('Note'), array(
                                 $icon('bi-info-circle'),
-                                $span(lang('Planning something similar? We visit the site for free and send a fixed-price quote.'), '', lang('Text')),
-                                $link(lang('Request a Quote'), '{{page:quote}}', 'alert-link'),
+                                $span(lang('Something to fix or to suggest in your neighbourhood? Tell the city hall.'), '', lang('Text')),
+                                $link(lang('Make a Request'), '{{page:request}}', 'alert-link'),
                             ), array('_attrs' => array($attr('role', 'note')))),
                         ), $show_when('record_found')),
                     ), '', '8'),
@@ -529,7 +531,7 @@ $standard_widgets = array(
                 $loop(array(
                     $el('a', 'list-group-item list-group-item-action py-3', lang('Conversation'), array(
                         $el('div', 'd-flex w-100 justify-content-between gap-3', lang('Top Line'), array(
-                            $span(lang('Payments and invoices'), 'fw-semibold text-truncate', lang('Subject'), $bind('topic')),
+                            $span(lang('Local taxes and fees'), 'fw-semibold text-truncate', lang('Subject'), $bind('topic')),
                             $span(lang('Date'), 'small text-body-secondary text-nowrap', lang('Date'), $bind('submitted_date_and_time')),
                         )),
                         $el('div', 'd-flex align-items-center gap-2 small text-body-secondary mt-1', lang('Replies'), array(
@@ -587,7 +589,7 @@ $standard_widgets = array(
                                 ), array('href' => '{{page:inbox}}')),
                                 $edit_button(),
                             )),
-                            $heading('h1', lang('Payments and invoices'), 'h3 fw-semibold mb-1', $bind('topic')),
+                            $heading('h1', lang('Local taxes and fees'), 'h3 fw-semibold mb-1', $bind('topic')),
                             $el('p', 'd-flex flex-wrap align-items-center gap-2 small text-body-secondary mb-4', lang('Conversation Details'), array(
                                 $icon('bi-calendar3'),
                                 $span(lang('Date'), '', lang('Date'), $bind('submitted_date_and_time')),
@@ -601,7 +603,7 @@ $standard_widgets = array(
                                     $span(lang('Cooper'), '', lang('Last Name'), $bind('last_name')),
                                 )),
                                 $el('div', 'lh-lg', lang('Message'), array(), array_merge(
-                                    array('text' => lang('Hello, could you send last month\'s invoice again with our new company address?')), $bind('message'))),
+                                    array('text' => lang('Hello, could you tell me when the property tax for this year is due, and whether I can pay it in two parts?')), $bind('message'))),
                             )),
                         ), $show_when('record_found')),
                     ), '', '8'),
@@ -677,7 +679,7 @@ $standard_widgets = array(
                             $link(lang('Title'), '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
                                 array('_bindings' => array('href' => '__result_url', 'text' => '__result_title'))),
                         )),
-                        $para(lang('Our Services'), 'small fw-semibold text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
+                        $para(lang('Services'), 'small fw-semibold text-primary mb-1', array_merge(array('customName' => lang('Result Section')), $bind('__result_section'))),
                         $para(lang('Excerpt'), 'small text-body-secondary mb-0', $bind('__result_excerpt')),
                     )),
                 )),
@@ -706,22 +708,15 @@ $standard_widgets = array(
             $mail_heading(lang('A new message has arrived')),
             $mail_para(lang('It came from the contact form. Answer it on the conversation page: the answer reaches the sender by e-mail and in their inbox.')),
             $mail_box(array(
-                $mail_line(lang('Sender'), array(
-                    $span(lang('Jane'), '', lang('First Name'), $bind('first_name')),
-                    $span(' ', '', lang('Text')),
-                    $span(lang('Cooper'), '', lang('Last Name'), $bind('last_name')),
-                )),
+                $mail_line(lang('Sender'), $resident_name()),
                 $mail_line(lang('Email'), array($span('jane.cooper@example.com', '', lang('Email'), $bind('email')))),
                 $mail_line(lang('Phone'), array($span('+90 555 000 00 00', '', lang('Phone'), $bind('phone')))),
-                $mail_line(lang('Subject'), array($span(lang('Payments and invoices'), '', lang('Subject'), $bind('topic')))),
+                $mail_line(lang('Subject'), array($span(lang('Local taxes and fees'), '', lang('Subject'), $bind('topic')))),
             ), lang('Sender')),
             $el('div', 'lh-lg', lang('Message'), array(), array_merge(
-                array('text' => lang('Hello, could you send last month\'s invoice again with our new company address?')), $bind('message'))),
+                array('text' => lang('Hello, could you tell me when the property tax for this year is due, and whether I can pay it in two parts?')), $bind('message'))),
             $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
-            $el('p', 'small text-body-secondary mt-4 mb-0', lang('Reference'), array(
-                $span(lang('Reference Code') . ': ', '', lang('Label')),
-                $span('ABC123', '', lang('Reference Code'), $bind('reference_code')),
-            ), $mail_style('font-size:13px;color:#4b5563;margin:24px 0 0')),
+            $mail_reference(),
         )),
     ),
     'email_message_sender' => array(
@@ -739,23 +734,12 @@ $standard_widgets = array(
             $mail_para(lang('Thank you for writing to us. Our answer will be on the conversation page and in your inbox, and we will let you know by e-mail when it is there.')),
             $mail_box(array(
                 $el('p', 'fw-semibold mb-2', lang('Subject'), array(), array_merge(
-                    array('text' => lang('Payments and invoices'), '_attrs' => array($attr('style', 'font-weight:600;margin:0 0 8px'))), $bind('topic'))),
+                    array('text' => lang('Local taxes and fees'), '_attrs' => array($attr('style', 'font-weight:600;margin:0 0 8px'))), $bind('topic'))),
                 $el('div', 'lh-lg', lang('Message'), array(), array_merge(
-                    array('text' => lang('Hello, could you send last month\'s invoice again with our new company address?')), $bind('message'))),
+                    array('text' => lang('Hello, could you tell me when the property tax for this year is due, and whether I can pay it in two parts?')), $bind('message'))),
             ), lang('Your Message')),
             $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
-            // The account the form opened for a visitor who had none: the
-            // address it signs in with, and how to choose a password.
-            $el('div', 'border-top pt-3', lang('New Account'), array(
-                $el('p', 'mb-2', lang('Sign-in Email'), array(
-                    $span(lang('We opened an account for you with this address:') . ' ', '', lang('Label')),
-                    $span('sample@example.com', 'fw-semibold', lang('Value'), $bind('__new_account_email')),
-                ), $mail_style('margin:0 0 8px')),
-                $el('p', 'mb-0', lang('Password'), array(
-                    $span(lang('To choose your password, use') . ' ', '', lang('Label')),
-                    $link(lang('Forgot Password'), '{{page:forgot_password}}', ''),
-                ), $mail_style('margin:0')),
-            ), array_merge($mail_style('border-top:1px solid #dbeafe;padding-top:16px'), $show_when('has_new_account'))),
+            $mail_new_account(),
         )),
     ),
 );
