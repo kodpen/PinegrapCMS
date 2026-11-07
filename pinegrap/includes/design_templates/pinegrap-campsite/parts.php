@@ -783,7 +783,7 @@ $unit_facts = function ($sample_key = 'lakeside', $class = 'list-unstyled d-flex
     };
     return $el('ul', $class, lang('Unit Facts'), array(
         $fact('bi-house', $unit_kind($sample_key), 'kind', lang('Kind')),
-        $fact('bi-geo', $unit_setting($sample_key), 'setting', lang('Setting')),
+        $fact('bi-geo', $unit_setting($sample_key), 'setting', lang('Place in the Park')),
         $el('li', 'd-inline-flex align-items-center gap-1', lang('Sleeps'), array(
             $icon('bi-people', 'text-primary'),
             $span(lang('Sleeps'), '', lang('Label')),
@@ -811,9 +811,9 @@ $unit_card = function ($sample_key = 'lakeside') use ($el, $para, $span, $link, 
                     $link($u['name'], '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
                         array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
                 )),
-                $el('p', 'd-flex align-items-start gap-1 small mb-1', lang('Setting'), array(
+                $el('p', 'd-flex align-items-start gap-1 small mb-1', lang('Place in the Park'), array(
                     $icon('bi-geo', 'text-primary'),
-                    $span($unit_setting($sample_key), '', lang('Setting'), $bind('setting')),
+                    $span($unit_setting($sample_key), '', lang('Place in the Park'), $bind('setting')),
                 )),
                 $para($u['summary'], 'small text-body-secondary mb-3', $bind('summary')),
                 $span($from_price($u['kind']), 'pcp-price mt-auto fw-semibold', lang('Price'), $bind('price')),
