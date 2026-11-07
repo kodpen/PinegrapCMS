@@ -371,9 +371,23 @@ function test_podcast_cards_read_their_records()
 	}
 	foreach ($d['episode_rows'] as $key => $row) {
 		list($tokens, $texts) = _test_ppd_card_reads($row);
-		foreach (array('cover', 'aired', 'podcast', 'episode_number', 'title', 'form_item_view', 'summary', 'length') as $t) {
+		foreach (array('__ref', 'aired', 'episode_number', 'title', 'form_item_view', 'summary', 'length') as $t) {
 			pg_assert_true(isset($tokens[$t]), "episode $key: row reads $t");
 		}
+		// The podcast's title and cover come through the episode's Podcast
+		// reference; the episode has no field of its own for them.
+		$shows = array();
+		$nodes = array();
+		_test_ppd_nodes($row, $nodes);
+		foreach ($nodes as $n) {
+			foreach ((array)($n['props']['_bindParams'] ?? array()) as $prop => $spec) {
+				pg_assert_same('__ref', $n['props']['_bindings'][$prop] ?? '', "episode $key: $prop is a reference binding");
+				pg_assert_same('podcast', $spec['field'], "episode $key: through the Podcast field");
+				pg_assert_same('{{tab:podcast_new}}', $spec['page_id'], "episode $key: into the Podcasts form");
+				$shows[$prop] = $spec['show'];
+			}
+		}
+		pg_assert_same(array('src' => 'cover', 'alt' => 'title', 'text' => 'title'), $shows, "episode $key: the podcast's cover and title");
 		$e = $d['episodes'][$key];
 		pg_assert_true(in_array($e['title'], $texts, true), "episode $key: sample title on the canvas");
 		pg_assert_true(in_array(call_user_func($d['number_text'], $key), $texts, true), "episode $key: sample number on the canvas");

@@ -15,7 +15,7 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 
 - 2 (done, #7812): `pages_public.php`: home (`home_episodes`, `home_podcasts`, `home_posts`), `about` (the network and its hosts), `hosts`, `listen` (apps and feeds), `faq`; `tests/design_template_podcast_public_test.php`.
 
-- 3: `podcasts.php` and `episodes.php`: the Podcasts collection (`podcasts` by `?category=`, the `podcast` page with its episodes by the reference, `podcast_new`) and the Episodes collection (`episodes` newest first by `?podcast=` and `?season=`, the `episode` page with the listen link, notes, chapters, guests, transcript and comments, `episode_new`), `home_episodes`, `home_podcasts`; list helpers `$pd_*` in `parts.php`; `tests/design_template_podcast_collections_test.php`.
+- 3 (done, #7819): `podcasts.php`, `episodes.php`: Podcasts (`podcasts` by `?category=`, `podcast` with its episodes via a `shown record` filter, `podcast_new`) and Episodes (`episodes` out by today newest first, `episode` with Listen buttons, chapters, notes, transcript, comments, `episode_new`); the episode row reads the podcast's title and cover through `__ref` (`$pd_podcast_ref`); test.
 
 - 4: `mail.php` (the e-mail builders) and `sponsors.php`: `sponsor` (audience, packages, past sponsors' words), the sponsorship enquiry (`sponsor_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`), the guest pitch (`guest_pitch`, its view and staff list), `privacy`, `email_reply`; test.
 
