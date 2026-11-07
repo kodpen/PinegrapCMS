@@ -653,6 +653,9 @@ function pg_panel_no_store_screens()
         'view_short_links.php',
         'view_folders.php',
         'view_cart_quotes.php',
+        'settings_security.php',
+        'settings_commerce.php',
+        'view_not_found_log.php',
     );
 }
 
@@ -7177,29 +7180,45 @@ function pg_asset_path($url)
         $path = substr($path, strlen(PATH));
     }
 
-    $path = ltrim($path, '/');
+    $path = pg_asset_decoded_path(ltrim($path, '/'));
 
-    if ($path === '' || strpos($path, '..') !== false) {
+    if ($path === '') {
         return '';
     }
 
-    $path = rawurldecode($path);
-
     // Uploaded files first: that is where a designer's own assets live.
-    $candidate = FILE_DIRECTORY_PATH . '/' . $path;
-
-    if (is_file($candidate)) {
-        return $candidate;
-    }
-
     // Then the web root, for software assets and anything dropped in by hand.
-    $candidate = dirname(PG_FUNCTIONS_DIR) . '/' . $path;
+    // A file a link leads out of its root to is not one of ours.
+    foreach (array(FILE_DIRECTORY_PATH, dirname(PG_FUNCTIONS_DIR)) as $root) {
+        $candidate = $root . '/' . $path;
+        $real = is_file($candidate) ? realpath($candidate) : false;
+        $real_root = realpath($root);
 
-    if (is_file($candidate)) {
-        return $candidate;
+        if ($real !== false && $real_root !== false && strpos($real, rtrim($real_root, '/\\') . DIRECTORY_SEPARATOR) === 0) {
+            return $candidate;
+        }
     }
 
     return '';
+}
+
+/**
+ * The path part of a local asset address, decoded, or '' when it is empty
+ * or could leave its root: a "..", a backslash or a NUL byte, written plain
+ * or percent-encoded. Decoded before the check, so "%2e%2e/" is caught.
+ *
+ * @param string $path the address without the install path and leading slash
+ * @return string
+ */
+function pg_asset_decoded_path($path)
+{
+    $path = rawurldecode((string) $path);
+
+    if ($path === '' || strpos($path, '..') !== false || strpbrk($path, "\\\0") !== false) {
+        return '';
+    }
+
+    return $path;
 }
 
 /**

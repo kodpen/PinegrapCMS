@@ -15,7 +15,7 @@ description: Plan: the Craft Brewery design template (pinegrap-brewery): beers, 
 
 - 2 (done, #7905): `pages_public.php`: home (`home_beers`, `home_events`, `home_posts`), `taproom` (hours, food, tap list as page content, getting there), `about` (story, the brewhouse, the team), `faq`; `tests/design_template_brewery_public_test.php`.
 
-- 3: `beers.php` and `events.php`: the Beers collection (`beers` by `?style=`, the `beer` page with ABV, bitterness, tasting notes, food pairing and drinkers' notes as comments with stars, `beer_new`) and the Taproom Events collection (`events` from today by `?kind=`, `past_events`, the `event` page, `event_new`), `home_beers`, `home_events`; forms `Brewery Beers`/`Taproom Events`; test.
+- 3 (done, #7934): `beers.php` (form `Brewery Beers`: `beers` by `?style=`, `beer` with drinkers' notes as comments with stars, `beer_new`, `home_beers`) and `events.php` (form `Taproom Events`: `events` from today by `?kind=`, `past_events`, `event`, `event_new`, `home_events`); `tests/design_template_brewery_collections_test.php`.
 
 - 4: `mail.php` (the e-mail builders) and `tours.php`: the tours page (`tours`), tour booking requests (`tour_booking` with `?tour=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, `email_booking_new`, `email_booking_received`) and `book_online` (booking widget starter for private tastings); test.
 

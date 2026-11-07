@@ -4058,6 +4058,9 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
         foreach ($assets as $asset) {
             if (empty($asset['type']) || empty($asset['name']) || !isset($asset['content'])) continue;
             if (!in_array($asset['type'], array('css', 'js', 'json'))) continue;
+            // A plain file name only: one with a folder in it would be
+            // written outside the files directory.
+            if (!pg_migration_design_file_name_valid($asset['name'])) continue;
             $ext = strtolower(pathinfo($asset['name'], PATHINFO_EXTENSION));
             if (!in_array($ext, array('css', 'js', 'json'))) continue;
             // Written as a whole: a failed write keeps the asset file that
@@ -5513,7 +5516,7 @@ function _render_component_html($props, $pad, $kids = '')
             // Built-in background style + any user-supplied style merge.
             $hero_style_parts = array('background:' . $bgColor);
             $u_style = _user_attr_value($props, 'style');
-            if ($u_style !== '') $hero_style_parts[] = $u_style;
+            if ($u_style !== '') $hero_style_parts[] = h($u_style);
             $extra_attrs = _render_extra_attrs($props, array(), false, true);
             $html .= $pad . '<div class="py-' . h($padding) . ' text-center text-' . h($textColor) . '" style="' . implode(';', $hero_style_parts) . '"' . $extra_attrs . '>' . "\n";
             $html .= $pad . '    <div class="container">' . "\n";

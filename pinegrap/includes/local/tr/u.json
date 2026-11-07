@@ -175,6 +175,7 @@
     "Until Now": "Şimdiye Kadar",
     "Until a date": "Bir tarihe kadar",
     "Until the end of spring": "Bahar sonuna kadar",
+    "Until the end of the season": "Sezon sonuna kadar",
     "Until the guide is published, only the moderators can open its attachment.": "Rehber yayınlanana kadar ekini yalnızca moderatörler açabilir.",
     "Until the summer holidays": "Yaz tatiline kadar",
     "Until then, turning off session.upload_progress.enabled in php.ini closes one of the ways in; Pinegrap does not use it.": "O zamana kadar php.ini'de session.upload_progress.enabled ayarını kapatmak giriş yollarından birini kapatır; Pinegrap bu ayarı kullanmıyor.",

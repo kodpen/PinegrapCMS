@@ -451,7 +451,7 @@ foreach ($fields as $field_key => $field) {
             && (is_array($liveform->get_field_value($field['id'])) == false)
             && ($liveform->get_field_value($field['id']) != '')
         ) {
-            $pattern = '/^(?:' . str_replace('/', '\\/', trim((string)$field['validation_regex'])) . ')$/u';
+            $pattern = pg_cf_field_pattern_regex($field['validation_regex']);
             $matched = @preg_match($pattern, (string)$liveform->get_field_value($field['id']));
 
             if ($matched === 0) {

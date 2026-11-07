@@ -800,9 +800,11 @@ function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
     if (!is_string($html) || $html === '') return $html;
 
     $suffix = '_pgw' . (int)$widget_id . 'r' . (int)$row_id;
+    // id and for only after whitespace: data-id, data-product-id and
+    // data-for carry bound values and keep them.
     $moves  = array(
-        '/\bid="([^"]+)"/'                => 'id="$1',
-        '/\bfor="([^"]+)"/'               => 'for="$1',
+        '/(?<=\s)id="([^"]+)"/'           => 'id="$1',
+        '/(?<=\s)for="([^"]+)"/'          => 'for="$1',
         '/data-bs-target="#([^"]+)"/'     => 'data-bs-target="#$1',
         '/aria-controls="([^"]+)"/'       => 'aria-controls="$1',
         '/aria-labelledby="([^"]+)"/'     => 'aria-labelledby="$1',
@@ -1882,7 +1884,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
 
     // Placeholder text for the search input. Empty config falls back to the translated "Search...".
     $search_label = (isset($cfg['search_label']) && is_string($cfg['search_label']) && $cfg['search_label'] !== '')
-                        ? substr($cfg['search_label'], 0, 100)
+                        ? mb_substr($cfg['search_label'], 0, 100, 'UTF-8')
                         : (string)lang('Search...');
 
     $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message'])) ? $cfg['empty_message'] : '';
@@ -1908,7 +1910,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // The parameters the URL filters read; none in an e-mail or a preview.
     $request      = pg_sw_filter_request();
     $search_query = ($search_enabled && isset($_GET[$query_param]) && is_scalar($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
-    if (strlen($search_query) > 100) $search_query = substr($search_query, 0, 100);
+    if (mb_strlen($search_query, 'UTF-8') > 100) $search_query = mb_substr($search_query, 0, 100, 'UTF-8');
 
     // Decode + split the widget tree into static + loop-template halves.
     $tree_decoded = json_decode($tree_json, true);
@@ -8026,7 +8028,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // ── Cancellation policy resolution ─────────────────────────────────
     // Three gates control whether the cancel UI surfaces on this order:
     //   1. Site setting: ECOMMERCE_ORDER_CANCEL_ALLOWED must be true
-    //   2. Order status: must not already be cancelled
+    //   2. Order status: must not already be cancelled, and must be one
+    //      process_order_cancellation() may cancel (a basket, incomplete,
+    //      is refused through pg_order_status_move()).
     //   3. (optional) Pre-shipment: when ECOMMERCE_ORDER_CANCEL_UNTIL_SHIPPED
     //      is true (default), a recorded tracking code locks it.
     // Designer wires the cancel button under `eo_visible_if='can_cancel'`
@@ -8034,7 +8038,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // instead of being rendered then disabled.
     $_ov_cancel_allowed = defined('ECOMMERCE_ORDER_CANCEL_ALLOWED') && ECOMMERCE_ORDER_CANCEL_ALLOWED === true;
     $_ov_already_cancelled = ($order['status'] === 'cancelled');
-    $_ov_can_cancel = $_ov_cancel_allowed && !$_ov_already_cancelled;
+    $_ov_can_cancel = $_ov_cancel_allowed && !$_ov_already_cancelled
+        && pg_order_status_move($order['status'], 'cancelled') !== 'refuse';
     // This widget is the CUSTOMER's view, so the guard always applies here.
     // Must stay in lockstep with process_order_cancellation()'s guard — the
     // shared _order_has_shipped() helper is what keeps the button's visibility
@@ -9420,7 +9425,7 @@ function _render_system_widget_calendar_event_view($tree_json, $widget_id, $cfg 
                 $reserve_form = '<form action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/reserve_calendar_event.php') . '" method="post" class="d-inline">'
                     . get_token_field()
                     . '<input type="hidden" name="send_to" value="' . h(get_request_uri()) . '">'
-                    . '<input type="hidden" name="page_id" value="' . (int)_pg_sw_current_page_id() . '">'
+                    . '<input type="hidden" name="page_id" value="' . (int)pg_sw_drawn_page_id() . '">'
                     . '<input type="hidden" name="calendar_event_id" value="' . (int)$event_id . '">'
                     . '<input type="hidden" name="recurrence_number" value="' . (int)$recurrence . '">'
                     . '<input type="hidden" name="require_cookies" value="true">'

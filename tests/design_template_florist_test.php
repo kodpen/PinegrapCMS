@@ -128,7 +128,7 @@ function _test_fl_page_keys()
 	return array_merge(array(
 		'home', 'bouquets', 'occasions', 'subscriptions', 'events', 'delivery', 'care', 'about', 'faq',
 		'work', 'work_item', 'work_new',
-		'order_request', 'request_view', 'my_requests', 'staff_requests', 'privacy', 'email_reply',
+		'order_request', 'request_view', 'my_requests', 'staff_requests', 'privacy', 'email_reply', 'email_request_new', 'email_request_received',
 		'event_enquiry', 'event_enquiry_view', 'staff_events', 'subscribe', 'subscription_view', 'consultation',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
