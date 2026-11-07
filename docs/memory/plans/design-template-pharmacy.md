@@ -17,11 +17,11 @@ description: Plan: the Pharmacy design template (pinegrap-pharmacy): services, p
 
 - 3 (done, #7928): `team.php` (Pharmacists collection, `book_online`); test.
 
-- 4 (done, #7984): `mail.php` and `requests.php`: prescription requests (`prescription` with `?service=` and `?pharmacist=`; `prescription_view`, `my_prescriptions`, `staff_prescriptions`, `privacy`, `email_reply`, `email_prescription_new`, `email_prescription_received`) and questions to the pharmacist (`ask` with `?topic=`, `ask_view`, `my_questions`, `staff_questions`, their two e-mails); test.
+- 4 (done, #7984): `mail.php`, `requests.php` (prescription requests, questions to the pharmacist, `privacy`, `email_reply`); test.
 
-- 5 (done, #8005): `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: the product ranges' health products); test.
+- 5 (done, #8005): `shop.php`; test.
 
-- 6 (done, #8025): `standard.php`: contact, inbox, conversation, newsletter, Health Advice (`blog`, filtered by `?topic=`), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #8025): `standard.php`; test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
