@@ -23,13 +23,13 @@ description: Plan: the Home Services design template (pinegrap-homeservices): se
 
 - 6 (done, #8041): `standard.php`: contact, inbox, conversation, newsletter, Tips (the blog), post, help search, error, the message and welcome e-mails, `home_posts`, `google_reviews` ([[design-templates-standard-pages]]); test.
 
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #8067): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-homeservices.php` (order, search sections, look, fonts, `phs-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-homeservices.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
 - The next free step is the lowest one not marked done. Model files: `pinegrap-travel/` (collections, requests, enquiries, shop), `pinegrap-cafe.php` (`min_date`, `required_when`). Later tests share `_test_hs_page_keys()` and `_test_hs_shop_keys()` from `tests/design_template_homeservices_test.php`.
-- `estimates.php` is included after `visits.php` (reuses its record pieces); reuse `$hs_page_link`, `$hs_toolbar`, `$hs_not_found` from `services.php`.
+- Step 8 include order: parts, mail, pages_public, services, visits, estimates, shop, standard, account (later files reuse earlier pieces).
 - Check a shared key's Turkish before reuse (`Service`, `Services`, `Booking` and `Book this service` do not say "hizmet" or "ziyaret"). PHP 7.1: no trailing comma after a call's last argument.
 
 ## Open questions

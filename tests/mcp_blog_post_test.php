@@ -155,7 +155,7 @@ function test_mcp_blog_post_text()
 	pg_assert_contains('forms_fields (id 12)', $text, 'and the tool that reads the same');
 	pg_assert_contains('forms_get (id 12)', $text, 'the form itself');
 
-	foreach (array('is_collection', 'record_url_pattern', 'framework', 'rich_text', 'html_allowed', 'max_length', 'class attribute', 'forms_submission_create', 'dry_run true', 'files_create', '<img src') as $needle) {
+	foreach (array('is_collection', 'record_url_pattern', 'framework', 'rich_text', 'html_allowed', 'max_length', 'class attribute', 'forms_submission_create', 'dry_run true', 'files_create', '<img src', 'its url') as $needle) {
 		pg_assert_contains($needle, $text, $needle);
 	}
 
