@@ -90,7 +90,8 @@ function test_page_editor_fixes_unchanged_logs_nothing()
 // Each theme group keeps its reset button and draws no copy/paste buttons.
 function test_page_editor_fixes_theme_group_no_copy_paste()
 {
-	$src = page_editor_fixes_test_source();
+	// The Themes tab's rows are drawn by its part (style_designer_theme.js).
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_theme.js');
 	pg_assert_true(strpos($src, 'sd-theme-grp-act" data-act="reset-all"') !== false, 'reset button stays');
 	pg_assert_true(strpos($src, 'sd-theme-grp-act" data-act="copy"') === false, 'no copy button');
 	pg_assert_true(strpos($src, 'sd-theme-grp-act" data-act="paste"') === false, 'no paste button');

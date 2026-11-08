@@ -3015,7 +3015,7 @@ function waf_last_category($category = null)
  *
  * The built-in policy is written to LEARN, not to lock down. Inline script
  * and style stay allowed because a CMS page is full of both, and the hosts
- * the software itself loads from (jsDelivr, jQuery, DataTables,
+ * the software itself loads from (jsDelivr, jQuery,
  * Google Fonts, the Cloudflare beacons a proxied site gets injected) are
  * listed, so that what remains - analytics, maps, a payment gateway, a chat
  * widget the SITE added - is a violation. In Report-Only mode that yields

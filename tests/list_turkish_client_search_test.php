@@ -4,7 +4,7 @@
  *
  * Tests for the Turkish search of panel lists searched in the browser:
  * pgListTurkishMatch() in backend.src.js, run under Node, finds a row when
- * every search word is found either as DataTables finds it or folded with
+ * every search word is found case-insensitively without marks or folded with
  * window.pgFoldTR (I, İ, ı and i are one letter), so "YILDIZ" and "yildiz"
  * find "Yıldız" and "isik" finds "Işık"; words in any order and quoted
  * phrases keep working.
@@ -20,21 +20,22 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // The matcher of backend.src.js: window.pgFoldTR, then from the Turkish fold
-// to the function that installs the matcher on a table.
+// to the end of pgListTurkishMatch().
 function pg_list_turkish_search_test_source()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
 	$fold_start = strpos($source, 'window.pgFoldTR = function');
 	$fold_end = strpos($source, "};\n", (int) $fold_start);
 	$start = strpos($source, 'function pgListTurkishFold(');
-	$end = strpos($source, 'function pgListTurkishSearch(', (int) $start);
+	$match = strpos($source, 'function pgListTurkishMatch(', (int) $start);
+	$end = ($match === false) ? false : strpos($source, "\n}\n", $match);
 
 	if ($fold_start === false || $fold_end === false || $start === false || $end === false) {
 		return '';
 	}
 
 	return 'var window = {};' . "\n" . substr($source, $fold_start, $fold_end + 3 - $fold_start)
-		. substr($source, $start, $end - $start);
+		. substr($source, $start, $end + 3 - $start);
 }
 
 // Runs the cases with Node and returns their JSON; null without Node,
@@ -142,14 +143,10 @@ function test_list_turkish_client_search_matcher()
 	pg_assert_same(false, $r[18], 'a !word found folded leaves the row out');
 }
 
-// The matcher is installed only on Turkish panels and never on a list paged
-// on the server; the search box keeps the typed text for the list state.
+// The list table driver's browser mode searches with the panel's matcher.
 function test_list_turkish_client_search_wiring()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	$driver = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_list_table.js');
 
-	pg_assert_contains('function pgListTurkishSearch(', $source, 'installer exists');
-	pg_assert_contains("/^tr/i.test(String(software_system_language", $source, 'only on a Turkish panel');
-	pg_assert_contains('&& !options.serverSide) {' . "\n" . '            pgListTurkishSearch(datatable);', $source, 'not on a list paged on the server');
-	pg_assert_contains('search: String(datatable.search())', $source, 'the list state keeps the typed text');
+	pg_assert_contains('window.pgListTurkishMatch', $driver, 'the driver uses the matcher');
 }

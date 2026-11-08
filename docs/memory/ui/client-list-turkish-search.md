@@ -1,21 +1,17 @@
 ---
 name: client-list-turkish-search
-description: Turkish search of DataTables lists searched in the browser (orders, pages, styles, menus): which lists, the rule, why a matcher, how the list state keeps the typed text
+description: Turkish search of lists searched in the browser (the list table driver's browser mode): the rule of pgListTurkishMatch(), the fold of I, İ, ı and i
 ---
 
 ## Which lists does it cover?
-- Every `table.chart` left on DataTables whose search box is on (not `datatable-restricted-mode`), on a panel whose `software_system_language` starts with `tr`; since TD14a only `product_builder.php`'s product groups list (TD14b moves it). The list table driver uses the same `pgListTurkishMatch()` in browser mode; server lists search in SQL (`server-paged-lists.md`, PR #3677). Other panel languages keep DataTables' own search unchanged.
+- Every list the list table driver prints whole and searches in the browser (browser mode, `list-table-printed.md`): `pg_list_table.js` calls `window.pgListTurkishMatch` when it is there. Lists paged on the server search in SQL with the same fold (`server-paged-lists.md`, PR #3677).
 
 ## What does a search word find?
-- `pgListTurkishMatch(term, text)` in `backend.src.js` (pure; tests in `tests/list_turkish_client_search_test.php` under Node). The words are DataTables' smart words (any order, a "quoted phrase" is one word, `!word` must be missing). A word is found when DataTables' own match finds it (case-insensitive, marks stripped: IPHONE→iPhone, DEMİR→Demir) or when it occurs folded (`pgListTurkishFold()`: `window.pgFoldTR`, so I, İ, ı and i are one letter, then marks stripped): YILDIZ and yildiz→Yıldız, YALÇIN→Yalçın, isik→Işık, ismail→İsmail.
+- `pgListTurkishMatch(term, text)` in `backend.src.js` (pure; tests in `tests/list_turkish_client_search_test.php` under Node). Words in any order, a "quoted phrase" is one word, `!word` must be missing. A word is found by a case-insensitive match with marks stripped (IPHONE→iPhone, DEMİR→Demir) or when it occurs folded (`pgListTurkishFold()`: `window.pgFoldTR`, so I, İ, ı and i are one letter, then marks stripped): YILDIZ and yildiz→Yıldız, YALÇIN→Yalçın, isik→Işık, ismail→İsmail.
 - The fold of I, İ, ı and i was decided on issue #3742 and built in PR #3763 (same rule as the server lists and `ws_fold()`).
 
-## Why a matcher and not a diacritics hook?
-- DataTables tests a string search with a case-insensitive RegExp, and JavaScript never pairs I with ı. A `DataTable.util.diacritics()` hook lowers both sides the same way, so lowering IPHONE the Turkish way (ıphone) would lose iPhone; the rule needs "either match", which only a function search gives. `ext.search` and `search.fixed` are ANDed after the global search, so they cannot add rows back.
-
-## How does the box and the kept state still hold the text?
-- `pgListTurkishSearch(datatable)` replaces `settings.oPreviousSearch.search` with a getter/setter: the setter keeps the typed string (box input, `datatable.search(str)`, the `?query=` path, the restored state all assign it), the getter hands DataTables' filter a matcher whose `toString()` is the typed text (DataTables' box compares with `!=`). `pgListKeep()` stores `String(datatable.search())`, so `pgListState()` still reads a string.
-- DataTables empties its box for a function search; a `search.dt` handler puts the text back on the next tick unless the box has focus.
+## Why "either match"?
+- JavaScript's case-insensitive RegExp never pairs I with ı, and lowering IPHONE the Turkish way (ıphone) would lose iPhone; so a word counts when either the plain or the folded match finds it.
 
 ## Where was it done?
-- PR #3751 (part of issue #3584; server lists were #3677). Checked headless against `datatables.js` 2.3.7, not on a panel.
+- PR #3751 (issue #3584) on DataTables' search; its DataTables installer went with the removal of DataTables (TD14b2, #8253), the matcher stayed for the driver.

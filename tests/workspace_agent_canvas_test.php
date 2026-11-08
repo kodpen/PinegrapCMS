@@ -248,3 +248,92 @@ function test_workspace_agent_canvas_routes()
 	pg_assert_same(array_keys($declared['artboard']), array_keys($read['artboard']), 'the artboard\'s fields declared');
 	pg_assert_true(in_array('workspace.channels.canvases.create', array_column(ws_api_routes(), 'id'), true), 'merged into the workspace routes');
 }
+
+function workspace_agent_canvas_edit_doc()
+{
+	$doc = json_decode(json_encode(ws_canvas_from_svg(workspace_agent_canvas_svg())['doc']), true);
+	$doc['layers'][] = array('id' => 'l1', 'type' => 'text', 'text' => 'Hello', 'color' => '#000000', 'x' => 10, 'y' => 10, 'w' => 100, 'h' => 20, 'rot' => 0);
+	$doc['layers'][] = array('id' => 'l2', 'type' => 'rect', 'x' => 0, 'y' => 0, 'w' => 5, 'h' => 5, 'locked' => true);
+	unset($doc['picture']);
+
+	return $doc;
+}
+
+// Each operation on its own, in order, all or none.
+function test_workspace_agent_canvas_edit_operations()
+{
+	$doc = workspace_agent_canvas_edit_doc();
+	$small = '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50" id="svg"><circle id="g" r="5" fill="url(#g)"/></svg>';
+
+	$added = ws_canvas_edit_apply($doc, array(array('op' => 'add', 'svg' => $small)));
+	pg_assert_same('', $added['error'], 'added');
+	$layer = end($added['doc']['layers']);
+	pg_assert_same(array('l3', 'svg', 'g', true), array($layer['id'], $layer['type'], $layer['kind'], $layer['imported']), 'a new imported layer on top');
+	pg_assert_same(array(150, 75, 100, 50), array($layer['x'] + 0, $layer['y'] + 0, $layer['w'] + 0, $layer['h'] + 0), 'its own size, centred');
+	pg_assert_true(strpos($layer['markup'], 'id="i2-svg"') !== false && strpos($layer['markup'], 'url(#i2-g)') !== false, 'ids clear of the canvas\'s own i1- ids');
+	pg_assert_same('pending', $added['doc']['picture'], 'the picture pending again');
+
+	$big = ws_canvas_edit_apply($doc, array(array('op' => 'add', 'svg' => '<svg xmlns="http://www.w3.org/2000/svg" width="800" height="100"><rect width="9" height="9"/></svg>', 'x' => 1)));
+	$layer = end($big['doc']['layers']);
+	pg_assert_same(array(1, 75, 400, 50), array($layer['x'] + 0, $layer['y'] + 0, $layer['w'] + 0, $layer['h'] + 0), 'made smaller to fit, a given x kept');
+
+	$replaced = ws_canvas_edit_apply($doc, array(array('op' => 'replace', 'layer' => 'l0', 'svg' => $small)));
+	pg_assert_same(array(0, 0, 400, 200), array($replaced['doc']['layers'][0]['x'], $replaced['doc']['layers'][0]['y'], $replaced['doc']['layers'][0]['w'], $replaced['doc']['layers'][0]['h']), 'replaced in its box');
+	pg_assert_same(array('x' => 0, 'y' => 0, 'w' => 100, 'h' => 50), $replaced['doc']['layers'][0]['vb'], 'the new drawing\'s view box');
+	pg_assert_true(strpos($replaced['doc']['layers'][0]['markup'], 'id="i1-svg"') !== false, 'its own old ids free to take again');
+
+	$texted = ws_canvas_edit_apply($doc, array(array('op' => 'text', 'layer' => 'l1', 'text' => 'Bye', 'color' => '#FF0000'), array('op' => 'box', 'layer' => 'l1', 'x' => 40, 'rot' => 12.5)));
+	pg_assert_same(array('Bye', '#ff0000', 40, 10, 12.5), array($texted['doc']['layers'][1]['text'], $texted['doc']['layers'][1]['color'], $texted['doc']['layers'][1]['x'], $texted['doc']['layers'][1]['y'], $texted['doc']['layers'][1]['rot']), 'text, then its box');
+
+	$removed = ws_canvas_edit_apply($doc, array(array('op' => 'remove', 'layer' => 'l1')));
+	pg_assert_same(array('l0', 'l2'), array_column($removed['doc']['layers'], 'id'), 'removed');
+
+	$anew = ws_canvas_edit_apply($doc + array('x' => 1), array(array('op' => 'svg', 'svg' => $small)));
+	pg_assert_same(array('width' => 100, 'height' => 50, 'background' => '#ffffff'), $anew['doc']['artboard'], 'drawn anew, the background kept');
+	pg_assert_same(1, count($anew['doc']['layers']), 'one layer');
+	pg_assert_same('#000000', ws_canvas_edit_apply($doc, array(array('op' => 'svg', 'svg' => $small, 'background' => '#000000')))['doc']['artboard']['background'], 'a new background');
+}
+
+function test_workspace_agent_canvas_edit_refusals()
+{
+	$doc = workspace_agent_canvas_edit_doc();
+	$cases = array(
+		array(null, 'operations', -1),
+		array(array(), 'operations', -1),
+		array(array('op' => 'remove', 'layer' => 'l1'), 'operations', -1),
+		array(array_fill(0, 21, array('op' => 'remove', 'layer' => 'l1')), 'too_many', -1),
+		array(array(array('op' => 'paint')), 'op', 0),
+		array(array(array('op' => 'remove', 'layer' => 'l1'), array('op' => 'remove', 'layer' => 'l1')), 'layer', 1),
+		array(array(array('op' => 'box', 'layer' => 'l2', 'x' => 1)), 'locked', 0),
+		array(array(array('op' => 'box', 'layer' => 'l1', 'w' => 0)), 'box', 0),
+		array(array(array('op' => 'box', 'layer' => 'l1', 'x' => '5')), 'box', 0),
+		array(array(array('op' => 'box', 'layer' => 'l1', 'y' => 200000)), 'box', 0),
+		array(array(array('op' => 'text', 'layer' => 'l0', 'text' => 'x')), 'text', 0),
+		array(array(array('op' => 'text', 'layer' => 'l1', 'text' => 'x', 'color' => 'red')), 'color', 0),
+		array(array(array('op' => 'replace', 'layer' => 'l1', 'svg' => workspace_agent_canvas_svg())), 'not_svg', 0),
+		array(array(array('op' => 'replace', 'layer' => 'l0', 'svg' => '<svg xmlns="http://www.w3.org/2000/svg"/>')), 'empty', 0),
+		array(array(array('op' => 'add', 'svg' => str_repeat('x', 1048577))), 'too_large', 0),
+		array(array(array('op' => 'svg', 'svg' => workspace_agent_canvas_svg(), 'background' => 'blue')), 'background', 0),
+	);
+
+	foreach ($cases as $i => $case) {
+		$got = ws_canvas_edit_apply($doc, $case[0]);
+		pg_assert_same(array($case[1], $case[2], null), array($got['error'], $got['index'], $got['doc']), 'case ' . $i);
+		pg_assert_true(ws_canvas_edit_error_text($case[1]) !== '', 'case ' . $i . ' has words');
+	}
+}
+
+function test_workspace_agent_canvas_edit_route()
+{
+	$routes = array();
+
+	foreach (ws_canvas_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$edit = $routes['workspace.messages.canvas.edit'];
+	pg_assert_same(array('POST', array('PATCH'), '/workspace/messages/{id}/canvas', 'workspace:write', true), array($edit['method'], $edit['also_accepts'], $edit['path'], $edit['scope'], $edit['dry_run']), 'edit');
+	pg_assert_same(20, ws_canvas_edit_max_ops(), 'the list\'s limit');
+	pg_assert_same(ws_canvas_edit_max_ops(), $edit['params'][2]['max_items'], 'the route says the same limit');
+	pg_assert_same(array('i1-a', 'svg'), ws_canvas_taken_ids(array('svgRootId' => 'svg', 'layers' => array(array('id' => 'l0', 'type' => 'svg', 'markup' => '<g id="i1-a"/>'), array('id' => 'l1', 'type' => 'svg', 'markup' => '<g id="i1-b"/>'))), 'l1'), 'taken ids, one layer left out');
+}
