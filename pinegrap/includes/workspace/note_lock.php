@@ -125,8 +125,9 @@ function ws_note_lock_new_pin_refusal($pin, $pin2)
  *
  * It holds for the person it was opened for, and: until sign-out always;
  * with a time in minutes while it was used within that time; with "every
- * time" only for the note it was opened for, while that note is used within
- * WS_NOTE_LOCK_EVERY_TIME_IDLE.
+ * time" only for what it was opened for, while used within
+ * WS_NOTE_LOCK_EVERY_TIME_IDLE: one note, or (note 0) the list, where a
+ * locked group shows its notes' titles while each note still asks.
  *
  * @param mixed $open    the session's value: user_id, used_at, note_id
  * @param int   $user_id
@@ -151,7 +152,7 @@ function ws_note_lock_open_holds($open, $user_id, $minutes, $now, $note_id = 0)
     }
 
     if ($minutes === WS_NOTE_LOCK_EVERY_TIME) {
-        return ((int) $note_id > 0) && ((int) ($open['note_id'] ?? 0) === (int) $note_id) && ($idle <= WS_NOTE_LOCK_EVERY_TIME_IDLE);
+        return ((int) ($open['note_id'] ?? 0) === (int) $note_id) && ($idle <= WS_NOTE_LOCK_EVERY_TIME_IDLE);
     }
 
     return $idle <= ($minutes * 60);
@@ -257,6 +258,31 @@ function ws_note_lock_row($user_id)
 }
 
 /**
+ * Whether the person set a PIN, read once a request (the list asks it for
+ * every note). ws_note_lock_setup() and ws_note_lock_turn_off() change it.
+ *
+ * @param int       $user_id
+ * @param bool|null $set     to keep a known answer
+ * @return bool
+ */
+function ws_note_lock_has($user_id, $set = null)
+{
+    static $known = array();
+
+    $user_id = (int) $user_id;
+
+    if ($set !== null) {
+        $known[$user_id] = (bool) $set;
+    }
+
+    if (!array_key_exists($user_id, $known)) {
+        $known[$user_id] = (bool) ws_note_lock_row($user_id);
+    }
+
+    return $known[$user_id];
+}
+
+/**
  * The open lock kept in this session, by reference.
  *
  * @return mixed
@@ -307,10 +333,23 @@ function ws_note_lock_touch($user_id, $note_id = 0)
         return;
     }
 
+    // Most actions close the session early (ws_handle_action()); it is
+    // opened again for this one write while the answer is not yet sent. A
+    // request that never had a session (the external API) starts none.
+    $reopened = false;
+
+    if ((session_status() !== PHP_SESSION_ACTIVE) && (session_id() !== '') && !headers_sent()) {
+        $reopened = @session_start();
+    }
+
     $open = &ws_note_lock_session();
 
     if (is_array($open)) {
         $open['used_at'] = time();
+    }
+
+    if ($reopened) {
+        session_write_close();
     }
 }
 
@@ -500,6 +539,7 @@ function ws_note_lock_setup($viewer, $pin, $pin2, $minutes)
         VALUES ('" . $user_id . "', '" . e(password_hash((string) $pin, PASSWORD_DEFAULT)) . "', '" . (int) $minutes . "', 0, 0, '" . $now . "', '" . $now . "')
         ON DUPLICATE KEY UPDATE pin_hash = VALUES(pin_hash), open_minutes = VALUES(open_minutes), fails = 0, wait_until = 0, updated_at = VALUES(updated_at)");
 
+    ws_note_lock_has($user_id, true);
     ws_note_lock_open_session($user_id);
 
     return array('ok' => true);
@@ -629,6 +669,7 @@ function ws_note_lock_turn_off($viewer, $pin)
     db("UPDATE ws_notes SET locked = 0 WHERE user_id = '" . $user_id . "' AND locked = 1");
     db("UPDATE ws_note_groups SET locked = 0 WHERE user_id = '" . $user_id . "' AND locked = 1");
     db("DELETE FROM ws_note_locks WHERE user_id = '" . $user_id . "'");
+    ws_note_lock_has($user_id, false);
 
     ws_note_lock_close();
     unset($_SESSION['software']['ws_note_lock_code']);
@@ -689,4 +730,461 @@ function ws_note_lock_code_send($viewer)
     ws_note_lock_code_keep($_SESSION['software']['ws_note_lock_code'], $user_id, $code, time());
 
     return array('ok' => true, 'email' => ws_note_lock_mask_email($email));
+}
+
+// ── The gate ────────────────────────────────────────────────────────────────
+
+/**
+ * Whether a note is behind a person's lock: their own locked note, or a
+ * note in one of their locked groups. Pure.
+ *
+ * @param array $note             id, user_id, locked
+ * @param int   $user_id
+ * @param bool  $has_lock         the person set a PIN
+ * @param int[] $locked_group_ids notes the person keeps in their locked groups
+ * @return bool
+ */
+function ws_note_lock_behind($note, $user_id, $has_lock, $locked_group_ids)
+{
+    if (!$has_lock || !is_array($note) || ((int) $user_id <= 0)) {
+        return false;
+    }
+
+    if (((int) ($note['user_id'] ?? 0) === (int) $user_id) && !empty($note['locked'])) {
+        return true;
+    }
+
+    return in_array((int) ($note['id'] ?? 0), array_map('intval', (array) $locked_group_ids), true);
+}
+
+/**
+ * The notes a person keeps in their own locked groups.
+ *
+ * @param int $user_id
+ * @return int[]
+ */
+function ws_note_lock_group_note_ids($user_id)
+{
+    if (((int) $user_id <= 0) || !ws_note_lock_ready() || !ws_note_groups_ready()) {
+        return array();
+    }
+
+    return array_map('intval', (array) db_values("SELECT p.note_id FROM ws_note_places p
+        INNER JOIN ws_note_groups g ON g.id = p.group_id
+        WHERE p.user_id = '" . (int) $user_id . "' AND g.user_id = '" . (int) $user_id . "' AND g.locked = 1"));
+}
+
+/**
+ * Whether a note is behind the person's lock (ws_note_lock_behind()).
+ *
+ * @param int   $user_id
+ * @param array $note
+ * @return bool
+ */
+function ws_note_behind_lock($user_id, $note)
+{
+    if (!ws_note_lock_ready() || !is_array($note) || !ws_note_lock_has($user_id)) {
+        return false;
+    }
+
+    if (((int) $note['user_id'] === (int) $user_id) && !empty($note['locked'])) {
+        return true;
+    }
+
+    return (bool) db_value("SELECT 1 FROM ws_note_places p
+        INNER JOIN ws_note_groups g ON g.id = p.group_id
+        WHERE p.user_id = '" . (int) $user_id . "' AND p.note_id = '" . (int) $note['id'] . "'
+            AND g.user_id = '" . (int) $user_id . "' AND g.locked = 1
+        LIMIT 1");
+}
+
+/**
+ * Whether a note is behind the person's lock and the lock is closed for it.
+ *
+ * @param array $viewer
+ * @param array $note
+ * @return bool
+ */
+function ws_note_lock_closed($viewer, $note)
+{
+    return ws_note_behind_lock((int) $viewer['id'], $note) && !ws_note_lock_is_open((int) $viewer['id'], (int) $note['id']);
+}
+
+/**
+ * The gate of every use of a note on the screen: '' when the person may go
+ * on (the open lock renewed when the note is behind it), else the sentence
+ * of note_locked.
+ *
+ * @param array $viewer
+ * @param array $note
+ * @return string
+ */
+function ws_note_lock_gate($viewer, $note)
+{
+    if (!ws_note_behind_lock((int) $viewer['id'], $note)) {
+        return '';
+    }
+
+    if (!ws_note_lock_is_open((int) $viewer['id'], (int) $note['id'])) {
+        return lang('This note is locked. Open it with your PIN.');
+    }
+
+    ws_note_lock_touch((int) $viewer['id'], (int) $note['id']);
+
+    return '';
+}
+
+/**
+ * Why a note cannot be shared or sent to a channel: it is locked, or sits
+ * in a locked group of its owner. '' when it can.
+ *
+ * @param array $note
+ * @return string
+ */
+function ws_note_lock_share_refusal($note)
+{
+    if (!is_array($note) || !ws_note_behind_lock((int) $note['user_id'], $note)) {
+        return '';
+    }
+
+    return lang('A locked note cannot be shared. Unlock it first.');
+}
+
+/**
+ * A note as the list shows it while the lock is closed: its title and the
+ * lock, nothing of its text. Pure.
+ *
+ * @param array $present ws_notes_present()
+ * @return array
+ */
+function ws_note_lock_present_closed($present)
+{
+    $present['excerpt'] = '';
+    $present['lock_closed'] = true;
+
+    if (trim((string) ($present['title'] ?? '')) === '') {
+        $present['name'] = lang('Locked note');
+    }
+
+    foreach (array('body' => '', 'html' => '', 'labels' => array(), 'claude' => array(), 'scheduled' => array()) as $key => $empty) {
+        if (array_key_exists($key, $present)) {
+            $present[$key] = $empty;
+        }
+    }
+
+    return $present;
+}
+
+/**
+ * The shares a lock would take back from a note: its direct shares and the
+ * ones its groups give it.
+ *
+ * @param int $note_id
+ * @return int
+ */
+function ws_note_lock_share_count($note_id)
+{
+    return (int) db_value("SELECT COUNT(*) FROM ws_note_shares WHERE note_id = '" . (int) $note_id . "'");
+}
+
+/**
+ * Takes back a note's own shares (the people and channels it was shared
+ * with by itself), as its owner would one by one.
+ *
+ * @param array $viewer the owner
+ * @param array $note
+ */
+function ws_note_lock_unshare_direct($viewer, $note)
+{
+    $where = ws_note_groups_ready() ? " AND via_group = 0" : '';
+
+    foreach ((array) db_values("SELECT id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'" . $where) as $share_id) {
+        ws_note_unshare($viewer, $note, (int) $share_id);
+    }
+}
+
+/**
+ * Locks or unlocks one of the person's own notes. Locking a shared note
+ * asks first ($confirm) and then takes its shares back; unlocking needs the
+ * lock open for the note, or the PIN.
+ *
+ * @param array  $viewer
+ * @param array  $note    the person's own
+ * @param bool   $locked
+ * @param bool   $confirm
+ * @param string $pin     for unlocking while the lock is closed
+ * @return array ok, shares (taken back); or a refusal (confirm: shares)
+ */
+function ws_note_lock_note($viewer, $note, $locked, $confirm = false, $pin = '')
+{
+    $user_id = (int) $viewer['id'];
+
+    if (!is_array($note) || ((int) $note['user_id'] !== $user_id)) {
+        return ws_note_lock_refusal('owner', lang('Only the one who wrote a note can lock it.'));
+    }
+
+    if (!ws_note_lock_has($user_id)) {
+        return ws_note_lock_refusal('no_lock', lang('Set a PIN for your notes first.'));
+    }
+
+    if (!$locked) {
+        $refusal = ws_note_lock_unlock_proof($viewer, (int) $note['id'], $pin);
+
+        if ($refusal) {
+            return $refusal;
+        }
+
+        db("UPDATE ws_notes SET locked = 0 WHERE id = '" . (int) $note['id'] . "'");
+        ws_note_group_shares_note_changed($note, $user_id);
+
+        return array('ok' => true, 'shares' => 0);
+    }
+
+    $shares = ws_note_lock_share_count($note['id']);
+
+    if (($shares > 0) && !$confirm) {
+        return ws_note_lock_refusal('confirm', lang('Locking takes this note\'s shares back: nobody else will see it.')) + array('shares' => $shares);
+    }
+
+    db("UPDATE ws_notes SET locked = 1 WHERE id = '" . (int) $note['id'] . "'");
+    $note['locked'] = 1;
+
+    ws_note_lock_unshare_direct($viewer, $note);
+    ws_note_group_shares_note_changed($note, $user_id);
+
+    return array('ok' => true, 'shares' => $shares);
+}
+
+/**
+ * Locks or unlocks one of the person's own groups. Locking a shared group,
+ * or one holding notes of the person that are shared, asks first and then
+ * takes back the group's shares and those of the person's notes in it.
+ *
+ * @param array  $viewer
+ * @param array  $group   ws_note_group_for()
+ * @param bool   $locked
+ * @param bool   $confirm
+ * @param string $pin     for unlocking while the lock is closed
+ * @return array ok, shares; or a refusal (confirm: shares)
+ */
+function ws_note_lock_group($viewer, $group, $locked, $confirm = false, $pin = '')
+{
+    $user_id = (int) $viewer['id'];
+
+    if (!is_array($group) || ((int) $group['user_id'] !== $user_id)) {
+        return ws_note_lock_refusal('owner', lang('Only the owner of a group can lock it.'));
+    }
+
+    if (!ws_note_lock_has($user_id)) {
+        return ws_note_lock_refusal('no_lock', lang('Set a PIN for your notes first.'));
+    }
+
+    if (!$locked) {
+        $refusal = ws_note_lock_unlock_proof($viewer, 0, $pin);
+
+        if ($refusal) {
+            return $refusal;
+        }
+
+        db("UPDATE ws_note_groups SET locked = 0, updated_at = '" . time() . "' WHERE id = '" . (int) $group['id'] . "'");
+        ws_note_group_share_sync((int) $group['id'], $user_id);
+
+        return array('ok' => true, 'shares' => 0);
+    }
+
+    $own = (array) db_items("SELECT n.* FROM ws_note_places p INNER JOIN ws_notes n ON n.id = p.note_id
+        WHERE p.group_id = '" . (int) $group['id'] . "' AND n.user_id = '" . $user_id . "'");
+
+    $shares = (int) db_value("SELECT COUNT(*) FROM ws_note_group_shares WHERE group_id = '" . (int) $group['id'] . "'");
+
+    foreach ($own as $note) {
+        $shares += (int) db_value("SELECT COUNT(*) FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'" . " AND via_group = 0");
+    }
+
+    if (($shares > 0) && !$confirm) {
+        return ws_note_lock_refusal('confirm', lang('Locking takes back the shares of this group and of your notes in it: nobody else will see them.')) + array('shares' => $shares);
+    }
+
+    db("UPDATE ws_note_groups SET locked = 1, updated_at = '" . time() . "' WHERE id = '" . (int) $group['id'] . "'");
+    $group['locked'] = 1;
+
+    ws_note_group_shares_forget($group, $user_id);
+
+    foreach ($own as $note) {
+        ws_note_lock_unshare_direct($viewer, $note);
+        ws_note_group_shares_note_changed($note, $user_id);
+    }
+
+    return array('ok' => true, 'shares' => $shares);
+}
+
+/**
+ * What unlocking asks: the lock open (for the note, when one is named), or
+ * the PIN typed with it. Null when it may go on.
+ *
+ * @param array  $viewer
+ * @param int    $note_id
+ * @param string $pin
+ * @return array|null a refusal
+ */
+function ws_note_lock_unlock_proof($viewer, $note_id, $pin)
+{
+    if (is_string($pin) && ($pin !== '')) {
+        $verified = ws_note_lock_verify((int) $viewer['id'], $pin);
+
+        return $verified['ok'] ? null : $verified;
+    }
+
+    if (ws_note_lock_is_open((int) $viewer['id'], (int) $note_id)) {
+        return null;
+    }
+
+    return ws_note_lock_refusal('note_locked', lang('Type your PIN to unlock it.'), 'pin');
+}
+
+/**
+ * A note going into a group: a note of the person's own that is shared,
+ * going into their locked group, asks first ($confirm) and then loses its
+ * shares (after the move, ws_note_lock_place_after()).
+ *
+ * @param array $viewer
+ * @param array $note
+ * @param int   $group_id
+ * @param bool  $confirm
+ * @return array|null a refusal (confirm: shares); null when it may go on
+ */
+function ws_note_lock_place_check($viewer, $note, $group_id, $confirm)
+{
+    if (((int) $group_id <= 0) || !ws_note_lock_ready() || ((int) $note['user_id'] !== (int) $viewer['id'])) {
+        return null;
+    }
+
+    $group = ws_note_group_for($viewer, (int) $group_id);
+
+    if (!$group || empty($group['locked'])) {
+        return null;
+    }
+
+    $shares = ws_note_lock_share_count($note['id']);
+
+    if (($shares > 0) && !$confirm) {
+        return ws_note_lock_refusal('confirm', lang('This note is shared. In a locked group its shares are taken back: nobody else will see it.')) + array('shares' => $shares);
+    }
+
+    return null;
+}
+
+/**
+ * After a note of the person's own went into their locked group: its own
+ * shares go (the group's are kept in step by the move itself).
+ *
+ * @param array $viewer
+ * @param array $note
+ * @param int   $group_id
+ */
+function ws_note_lock_place_after($viewer, $note, $group_id)
+{
+    if (((int) $group_id > 0) && ((int) $note['user_id'] === (int) $viewer['id'])
+        && ws_note_lock_ready() && ws_note_behind_lock((int) $viewer['id'], $note)) {
+        ws_note_lock_unshare_direct($viewer, $note);
+        ws_note_group_shares_note_changed($note, (int) $viewer['id']);
+    }
+}
+
+/**
+ * The person's lock as the list reads it, once: whether they set a PIN, the
+ * notes in their locked groups, and what the session's open lock holds.
+ *
+ * @param int $user_id
+ * @return array has, group_note_ids, minutes, open
+ */
+function ws_note_lock_view($user_id)
+{
+    $row = ws_note_lock_ready() ? ws_note_lock_row($user_id) : null;
+
+    return array(
+        'has'            => (bool) $row,
+        'group_note_ids' => $row ? ws_note_lock_group_note_ids($user_id) : array(),
+        'minutes'        => $row ? (int) $row['open_minutes'] : 0,
+        'open'           => $row ? ws_note_lock_session() : null,
+    );
+}
+
+/**
+ * The lock marks of a presented note, and its text taken away while the
+ * lock is closed for it (ws_note_lock_present_closed()). Pure.
+ *
+ * @param array $present ws_notes_present()
+ * @param array $row     the note's row (user_id, locked)
+ * @param int   $user_id the reader
+ * @param array $view    ws_note_lock_view()
+ * @param int   $now
+ * @return array with locked (the owner's mark), lock_group (in a locked
+ *               group of the reader), lock_closed
+ */
+function ws_note_lock_present($present, $row, $user_id, $view, $now)
+{
+    $id = (int) $present['id'];
+    $present['locked'] = ((int) $row['user_id'] === (int) $user_id) && !empty($row['locked']);
+    $present['lock_group'] = in_array($id, (array) $view['group_note_ids'], true);
+    $present['lock_closed'] = false;
+
+    if (ws_note_lock_behind($row, $user_id, $view['has'], $view['group_note_ids'])
+        && !ws_note_lock_open_holds($view['open'], $user_id, $view['minutes'], $now, $id)) {
+        $present = ws_note_lock_present_closed($present);
+    }
+
+    return $present;
+}
+
+/**
+ * The list while the lock is closed: notes in a locked group are not
+ * listed until the list is opened (only the group's name shows), and a
+ * search finds a locked note by its title alone. Pure.
+ *
+ * @param array[] $notes     ws_note_lock_present() rows
+ * @param bool    $list_open the lock is open for the list
+ * @param string  $search
+ * @return array[]
+ */
+function ws_note_lock_list_filter($notes, $list_open, $search)
+{
+    $search = trim((string) $search);
+    $out = array();
+
+    foreach ((array) $notes as $note) {
+        if (!empty($note['lock_group']) && !$list_open) {
+            continue;
+        }
+
+        if (!empty($note['lock_closed']) && ($search !== '') && (mb_stripos((string) ($note['title'] ?? ''), $search) === false)) {
+            continue;
+        }
+
+        $out[] = $note;
+    }
+
+    return $out;
+}
+
+/**
+ * The person's groups while the lock is closed for the list: a locked group
+ * says nothing of its notes, not even how many. Pure.
+ *
+ * @param array[] $groups    ws_note_group_present()
+ * @param bool    $list_open
+ * @return array[] with lock_closed
+ */
+function ws_note_lock_groups_redact($groups, $list_open)
+{
+    foreach ((array) $groups as $index => $group) {
+        $closed = !empty($group['locked']) && !$list_open;
+        $groups[$index]['lock_closed'] = $closed;
+
+        if ($closed) {
+            $groups[$index]['count'] = null;
+        }
+    }
+
+    return $groups;
 }
