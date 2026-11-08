@@ -242,13 +242,13 @@ $riding_styles = array(lang('Commuting'), lang('Long rides at an easy pace'), la
 // ── The catalog: bikes, parts, accessories and vouchers ─────────────────
 
 // The groups of the catalog. With the shop each is a product group; 'sku'
-// starts the codes of its products. Bikes are collected in the shop, the
-// rest can be posted.
+// starts the codes of its products. Bikes are collected in the shop and a
+// voucher comes by e-mail; parts and accessories can be posted.
 $product_groups = array(
     'bikes'       => array('icon' => 'bi-bicycle', 'title' => lang('Bikes'), 'sku' => 'BKS-BIKE-', 'shippable' => false),
     'parts'       => array('icon' => 'bi-gear', 'title' => lang('Parts'), 'sku' => 'BKS-PART-', 'shippable' => true),
     'accessories' => array('icon' => 'bi-bag', 'title' => lang('Accessories'), 'sku' => 'BKS-ACC-', 'shippable' => true),
-    'vouchers'    => array('icon' => 'bi-gift', 'title' => lang('Workshop Vouchers'), 'sku' => 'BKS-GIFT-', 'shippable' => true),
+    'vouchers'    => array('icon' => 'bi-gift', 'title' => lang('Workshop Vouchers'), 'sku' => 'BKS-GIFT-', 'shippable' => false),
 );
 
 // The sample products. A bike names its kind and comes in the frame sizes;
