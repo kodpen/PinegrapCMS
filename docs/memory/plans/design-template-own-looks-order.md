@@ -22,6 +22,7 @@ description: Order of the polishing round after Launch: every shipped template's
 - Skiresort: step 2 (`cards.php`, #7986) lands as it is. `skiresort-1` (its family: conditions board, lift status, slope map, pass cards, snow report) is done (#8050); steps 3-4 then build home, conditions and slopes on it, and it needs no `-2`.
 - Coworking: `coworking-1` (its family: [[designer-blocks-coworking]]) is done (#8113); `coworking-2` (home and the plans and amenities pages on it) is next.
 - Drivingschool: `drivingschool-1` (family) done (#8117), `drivingschool-2` (pages, 1.1.0) done (#8138).
+- Marina: `marina-1` (family) done (#8159).
 - Ferry: `ferry-1` (family, [[designer-blocks-ferry]], #8123) and `ferry-2` (pages, [[design-template-ferry-pages]], #8142) are done.
 - A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
