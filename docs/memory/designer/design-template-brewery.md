@@ -18,7 +18,7 @@ description: Craft Brewery template (pinegrap-brewery): beers and taproom events
 - Not built: an age gate, automatic monthly club charges, scheduled club boxes, a live tap board, event ticket sales, tour capacity per slot, licence checks at checkout.
 
 ## What is the pbw- look?
-- `pbw-abv`, `pbw-brand`, `pbw-date`, `pbw-display`, `pbw-eyebrow`, `pbw-hero`, `pbw-lift`, `pbw-price`, `pbw-quote`; field ids `bw-`. Zilla Slab headings, Work Sans body. Look `organic`, palette `amber`, order 127 (99–125 taken), icon `bi-cup-straw`. No `opacity-*` on text ([[design-template-text-contrast]]). No fixed date, year or month; seasonal beers name their season in words. Footer, shop and tour booking say the beers are for adults of legal drinking age.
+- `pbw-abv`, `pbw-brand`, `pbw-date`, `pbw-display`, `pbw-eyebrow`, `pbw-hero`, `pbw-lift`, `pbw-price`, `pbw-quote`; field ids `bw-`. Zilla Slab headings, Work Sans body. Look `organic`, palette `amber`, order 129 (127 is Film Studio's), icon `bi-cup-straw`. No `opacity-*` on text ([[design-template-text-contrast]]). No fixed date, year or month; seasonal beers name their season in words. Footer, shop and tour booking say the beers are for adults of legal drinking age.
 - Turkish: "bira", "bira stili", "tadım salonu" (taproom), "fabrika turu"/"tur", "Bira Kulübü", "etkinlik", "alkol oranı" (ABV), "acılık" (IBU).
 
 ## Which tests cover it?

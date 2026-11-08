@@ -52,7 +52,7 @@ function test_brewery_assembly_template_offered()
 	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-cup-straw', $tpl['icon']);
-	pg_assert_same(127, $tpl['order']);
+	pg_assert_same(129, $tpl['order']);
 	pg_assert_true(!isset($tpl['requires']), 'the template opens without the shop');
 	pg_assert_true(!empty($tpl['catalog']), 'the shop\'s catalog');
 	pg_assert_same(4, count($tpl['highlights']));

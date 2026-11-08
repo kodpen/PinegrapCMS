@@ -182,7 +182,7 @@ return array(
     'name'        => lang('Craft Brewery'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 127,
+    'order'       => 129,
     'icon'        => 'bi-cup-straw',
     'description' => lang('A craft brewery with a taproom: the beers by style with a page each and drinkers\' notes, the taproom\'s hours, taps and food, taproom events from today on, brewery tour bookings the visitor follows from their account, private tastings booked at a free time, beer packs, merch, gift cards and Beer Club terms sold in the shop with a members\' area, News, a newsletter, an inbox, a staff area and a help page that searches the whole site.'),
 
