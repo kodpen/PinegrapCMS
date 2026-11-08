@@ -31,6 +31,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
 - design-template-bakery-design.md: Design of plans/design-template-bakery.md: which shipped features the Bakery template reuses for the pickup shop, cake orders, wholesale and classes, what it does not build, its look and Turkish words
 - design-template-bakery.md: Plan: the Bakery design template (pinegrap-bakery): daily bake, cakes, a pickup shop, custom cake orders, wholesale enquiries, baking classes; ~1,000-line steps
+- design-template-bikeshop-design.md: Design of plans/design-template-bikeshop.md: the shipped features the Bike Shop template reuses, what it does not build, its look and Turkish words
+- design-template-bikeshop.md: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and parts catalog, repair and service requests, bike fitting, group rides calendar, news; small steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, and where the open template plans (Skiresort, Gallery and the rest) take theirs
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - design-template-planetarium-design.md: Design of plans/design-template-planetarium.md: the shipped features the Planetarium template reuses, what it does not build, its look and Turkish words
