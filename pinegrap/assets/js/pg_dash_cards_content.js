@@ -211,6 +211,7 @@
                 open.href = row.url;
                 var tag = el("span", "pg-dash-item-tag", row.type);
                 tag.setAttribute("aria-hidden", "true");
+                tag.setAttribute("data-type", String(row.type || "").toLowerCase());
                 open.appendChild(tag);
                 var text = el("span", "pg-dash-item-main");
                 text.appendChild(el("span", "pg-dash-item-text", row.text));

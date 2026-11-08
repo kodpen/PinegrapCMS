@@ -69,6 +69,9 @@
     --pgd-live: #10b981;
     --pgd-tag-new-line: rgba(192, 38, 211, .4);
     --pgd-coupon-line: rgba(217, 119, 6, .5);
+    --pgd-note: #713f12;
+    --pgd-amber: #d97706;
+    --pgd-map-top: #a21caf;
   }
 
   html[data-bs-theme="dark"] .pg-dash,
@@ -118,6 +121,9 @@
     --pgd-live: #34d399;
     --pgd-tag-new-line: rgba(217, 70, 239, .4);
     --pgd-coupon-line: rgba(251, 191, 36, .45);
+    --pgd-note: #fef3c7;
+    --pgd-amber: #f59e0b;
+    --pgd-map-top: #f0abfc;
   }
 
   /* The drawings' button: 40 px, an 11 px corner, a quiet border; the main one
@@ -1647,30 +1653,93 @@
     border-top: 2px dotted var(--pgd-muted);
   }
 
+  /* Online engagement as drawn: the number in a 60 px green glow, its words
+     beside it, the minutes as green bars (the last five brightest), each
+     page with a live dot. */
   .pg-dash-live {
     display: flex;
     align-items: center;
-    gap: .5rem;
-  }
-
-  .pg-dash-live-dot {
-    width: .625rem;
-    height: .625rem;
-    border-radius: 50%;
-    background: var(--pg-success);
+    gap: .875rem;
   }
 
   .pg-dash-live-figure {
+    display: inline-flex;
+    flex: 0 0 3.75rem;
+    align-items: center;
+    justify-content: center;
+    width: 3.75rem;
+    height: 3.75rem;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--pgd-live) 32%, transparent), transparent 70%);
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--pgd-good);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-live-words {
+    min-width: 0;
+  }
+
+  .pg-dash-live-label {
     margin: 0;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: .875rem;
+    color: var(--pgd-fg);
   }
 
   .pg-dash-live-note {
     margin: 0;
-    font-size: .875rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-live-bars .pg-dash-bars {
+    fill: color-mix(in srgb, var(--pgd-live) 45%, transparent);
+  }
+
+  .pg-dash-live-bars .pg-dash-bars rect:nth-last-of-type(-n+5) {
+    fill: var(--pgd-live);
+  }
+
+  .pg-dash-live-pages {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-live-page {
+    display: flex;
+    align-items: center;
+    gap: .625rem;
+    padding: .5rem 0;
+    font-size: .8125rem;
+  }
+
+  .pg-dash-live-page + .pg-dash-live-page {
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-live-page::before {
+    content: "";
+    flex: 0 0 .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--pgd-live);
+  }
+
+  .pg-dash-live-path {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pgd-fg);
+  }
+
+  .pg-dash-live-count {
+    flex: 0 0 auto;
+    color: var(--pgd-muted);
+    font-variant-numeric: tabular-nums;
   }
 
   @media (forced-colors: active) {
@@ -2755,6 +2824,17 @@
     color: var(--pg-fg-emphasis);
   }
 
+  /* A file's type box: images cyan, PDFs red, as drawn. */
+  .pg-dash-item-tag:is([data-type="jpg"], [data-type="jpeg"], [data-type="png"], [data-type="gif"], [data-type="webp"], [data-type="svg"]) {
+    background: color-mix(in srgb, var(--pgd-chart-1) 16%, transparent);
+    color: var(--pgd-accent);
+  }
+
+  .pg-dash-item-tag[data-type="pdf"] {
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
+  }
+
   /* File management: the storage ring and its legend. */
   .pg-dash-storage {
     display: flex;
@@ -2766,8 +2846,8 @@
   .pg-dash-ring {
     position: relative;
     flex: none;
-    width: 6.5rem;
-    height: 6.5rem;
+    width: 5.5rem;
+    height: 5.5rem;
   }
 
   .pg-dash-ring-svg {
@@ -2778,18 +2858,21 @@
 
   .pg-dash-ring-svg circle {
     fill: none;
-    stroke-width: 3.5;
+    stroke-width: 3;
   }
 
-  .pg-dash-ring-track { stroke: var(--pg-tint); }
+  /* The drawings' parts: images cyan, documents violet, the rest yellow,
+     the free space a faint track. */
+  .pg-dash-ring-track { stroke: var(--pgd-track); }
   .pg-dash-ring-part[data-part="image"],
-  .pg-dash-storage-key[data-part="image"] { --pg-dash-part: var(--pg-info); }
+  .pg-dash-storage-key[data-part="image"] { --pg-dash-part: var(--pgd-chart-1); }
   .pg-dash-ring-part[data-part="document"],
-  .pg-dash-storage-key[data-part="document"] { --pg-dash-part: var(--pg-accent); }
+  .pg-dash-storage-key[data-part="document"] { --pg-dash-part: color-mix(in srgb, var(--pgd-chart-2), var(--pgd-chart-3)); }
   .pg-dash-ring-part[data-part="other"],
-  .pg-dash-storage-key[data-part="other"] { --pg-dash-part: var(--pg-warning); }
+  .pg-dash-storage-key[data-part="other"] { --pg-dash-part: var(--pgd-warn); }
   .pg-dash-ring-part[data-part="free"],
-  .pg-dash-storage-key[data-part="free"] { --pg-dash-part: var(--pg-fg-3); }
+  .pg-dash-storage-key[data-part="free"] { --pg-dash-part: var(--pgd-track); }
+  .pg-dash-storage-key[data-part="free"] { --pg-dash-part: var(--pgd-muted); }
   .pg-dash-ring-part { stroke: var(--pg-dash-part); }
 
   .pg-dash-ring-middle {
@@ -2848,7 +2931,7 @@
   .pg-dash-stack {
     display: flex;
     gap: 2px;
-    height: .5rem;
+    height: .75rem;
     overflow: hidden;
     border-radius: 999px;
   }
@@ -2858,14 +2941,15 @@
     background: var(--pg-dash-part);
   }
 
+  /* The drawings' sources: indigo, cyan, pink, the rest grey. */
   .pg-dash-stack-part[data-part="0"],
-  .pg-dash-stack-key[data-part="0"] { --pg-dash-part: var(--pg-accent); }
+  .pg-dash-stack-key[data-part="0"] { --pg-dash-part: color-mix(in srgb, var(--pgd-chart-2) 60%, #fff); }
   .pg-dash-stack-part[data-part="1"],
-  .pg-dash-stack-key[data-part="1"] { --pg-dash-part: var(--pg-info); }
+  .pg-dash-stack-key[data-part="1"] { --pg-dash-part: var(--pgd-chart-1); }
   .pg-dash-stack-part[data-part="2"],
-  .pg-dash-stack-key[data-part="2"] { --pg-dash-part: var(--pg-warning); }
+  .pg-dash-stack-key[data-part="2"] { --pg-dash-part: color-mix(in srgb, var(--pgd-chart-3) 55%, #fff); }
   .pg-dash-stack-part[data-part="3"],
-  .pg-dash-stack-key[data-part="3"] { --pg-dash-part: var(--pg-fg-3); }
+  .pg-dash-stack-key[data-part="3"] { --pg-dash-part: var(--pgd-muted); }
 
   .pg-dash-stack-keys {
     flex-direction: row;
@@ -4130,9 +4214,21 @@
   .pg-dash-pin-choice-note { margin-inline-start: auto; }
 
   /* My notes: one plain box. */
+  /* My notes: a pale amber note, as drawn. */
   .pg-dash-notes {
     min-height: 8rem;
+    padding: .75rem .875rem;
+    border: 1px solid color-mix(in srgb, var(--pgd-warn) 30%, transparent);
+    border-radius: .75rem;
+    background: color-mix(in srgb, var(--pgd-warn) 6%, var(--pgd-field));
+    font-size: .8125rem;
+    line-height: 1.7;
+    color: var(--pgd-note);
     resize: vertical;
+  }
+
+  .pg-dash-notes:focus {
+    border-color: var(--pgd-accent-line);
   }
 
   .pg-dash-personal-hint { margin: .25rem 0 0; }
@@ -4145,20 +4241,39 @@
     margin-bottom: .75rem;
   }
 
-  .pg-dash-perf .pg-dash-goal-ring {
-    width: 4.5rem;
-    height: 4.5rem;
+  /* The ring drawn as a half gauge: the upper half of a 132 px dial, green
+     into cyan as far as the share, the figure at its foot. */
+  .pg-dash .pg-dash-perf .pg-dash-goal-ring {
+    --pg-dash-ring-from: var(--pgd-live);
+    --pg-dash-ring-to: var(--pgd-chart-1);
+    width: 8.25rem;
+    height: 4.375rem;
     margin-bottom: 0;
+    overflow: hidden;
+  }
+
+  .pg-dash-perf .pg-dash-goal-ring-dial {
+    inset: 0 0 auto;
+    height: 8.25rem;
+    background: conic-gradient(from 270deg, var(--pg-dash-ring-from) 0%, var(--pg-dash-ring-to) calc(var(--pg-dash-ring-share, 0%) / 2), var(--pg-dash-ring-track) calc(var(--pg-dash-ring-share, 0%) / 2) 50%, transparent 50%);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - .8125rem), #000 calc(100% - .75rem));
+    mask: radial-gradient(farthest-side, transparent calc(100% - .8125rem), #000 calc(100% - .75rem));
+  }
+
+  .pg-dash-perf .pg-dash-goal-ring-value {
+    align-items: flex-end;
+    font-size: 1.25rem;
   }
 
   .pg-dash-perf-grade {
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--pgd-strong);
   }
 
-  .pg-dash-perf-grade[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
-  .pg-dash-perf-grade[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
-  .pg-dash-perf-grade[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-perf-grade[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-perf-grade[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-perf-grade[data-tone="bad"] { color: var(--pgd-bad); }
 
   @media (forced-colors: active) {
     .pg-dash-goal-ring-dial {
@@ -4173,16 +4288,25 @@
      (assets/js/pg_dash_cards_shop.js). A tone is always written out in the
      text beside its colour. */
 
+  /* The big figure in the name gradient, its line at the far end of the
+     same row. */
   .pg-dash-shop-head {
-    margin-bottom: .75rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .25rem .75rem;
   }
 
   .pg-dash-shop-figure {
     margin: 0;
-    font-size: 1.75rem;
-    font-weight: 700;
-    line-height: 1.1;
-    color: var(--pg-fg-emphasis);
+    font-size: 1.625rem;
+    font-weight: 800;
+    line-height: 1.15;
+    background: var(--pgd-name);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
     font-variant-numeric: tabular-nums;
   }
 
@@ -4191,28 +4315,34 @@
     display: flex;
     flex-wrap: wrap;
     gap: .25rem .75rem;
-    margin: .25rem 0 0;
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    margin: 0;
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-shop-note {
-    margin: 0 0 .5rem;
-  }
+  .pg-dash-shop-change[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-shop-change[data-tone="bad"] { color: var(--pgd-bad); }
 
-  .pg-dash-shop-change[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
-  .pg-dash-shop-change[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
-
-  .pg-dash-shop-days {
-    margin-bottom: .75rem;
-  }
-
-  .pg-dash-shop-days .pg-dash-bars rect {
-    opacity: .45;
+  /* The week's revenue: amber bars, today's in a gold gradient, the day
+     names under them. */
+  .pg-dash-shop-days .pg-dash-bars {
+    height: 4.375rem;
+    fill: color-mix(in srgb, var(--pgd-amber) 45%, var(--pgd-card));
   }
 
   .pg-dash-shop-days .pg-dash-bars rect.is-today {
-    opacity: 1;
+    fill: var(--pgd-warn);
+  }
+
+  .pg-dash-shop-daynames {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    margin: .25rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: .625rem;
+    text-align: center;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-shop-list {
@@ -4224,19 +4354,19 @@
   }
 
   .pg-dash-shop-item + .pg-dash-shop-item {
-    border-top: var(--pg-border-width) solid var(--pg-border-color);
+    border-top: 1px solid var(--pgd-line);
   }
 
   .pg-dash-shop-link {
     display: flex;
     align-items: center;
     gap: .75rem;
-    padding: .5rem .125rem;
+    padding: .625rem 0;
     color: inherit;
     text-decoration: none;
   }
 
-  .pg-dash-shop-link:hover .pg-dash-shop-name {
+  a.pg-dash-shop-link:hover .pg-dash-shop-name {
     text-decoration: underline;
   }
 
@@ -4249,10 +4379,10 @@
 
   .pg-dash-shop-name {
     overflow: hidden;
-    font-weight: 600;
+    font-size: .8125rem;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-shop-meta {
@@ -4260,8 +4390,12 @@
     font-size: .75rem;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
+
+  .pg-dash-shop-meta[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-shop-meta[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-shop-meta[data-tone="bad"] { color: var(--pgd-bad); }
 
   .pg-dash-shop-end {
     display: flex;
@@ -4273,31 +4407,35 @@
   }
 
   .pg-dash-shop-value {
-    font-weight: 600;
+    font-size: .8125rem;
+    color: var(--pgd-soft);
     font-variant-numeric: tabular-nums;
   }
 
   .pg-dash-shop-tag {
     padding: 0 .375rem;
+    border: 1px solid var(--pgd-line);
     border-radius: 999px;
     font-size: .6875rem;
-    background: var(--pg-tint);
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-shop-tag[data-tone="good"] {
-    background: var(--pg-success-bg-subtle);
-    color: var(--pg-success-fg-emphasis);
+    border-color: var(--pgd-good-line);
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
   }
 
   .pg-dash-shop-tag[data-tone="warn"] {
-    background: var(--pg-warning-bg-subtle);
-    color: var(--pg-warning-fg-emphasis);
+    border-color: var(--pgd-warn-line);
+    background: var(--pgd-warn-bg);
+    color: var(--pgd-warn);
   }
 
   .pg-dash-shop-tag[data-tone="bad"] {
-    background: var(--pg-danger-bg-subtle);
-    color: var(--pg-danger-fg-emphasis);
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
   }
 
   /* Offers as coupons: a dashed amber frame, the figure in its own amber
@@ -4368,27 +4506,104 @@
   .pg-dash-coupon-days[data-tone="warn"] { color: var(--pgd-warn); }
   .pg-dash-coupon-days[data-tone="bad"] { color: var(--pgd-bad); }
 
+  /* Exchange rates: a currency per ruled line, the code, its name, the
+     week's line (amber when the lira lost, cyan when it gained), the rate
+     over its toned change. */
+  .pg-dash-fx {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-fx-row {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .75rem 0;
+  }
+
+  .pg-dash-fx-row + .pg-dash-fx-row {
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-fx-code {
+    flex: 0 0 2.5rem;
+    font-size: .8125rem;
+    font-weight: 800;
+    color: var(--pgd-fg);
+    text-decoration: none;
+  }
+
+  a.pg-dash-fx-code:hover {
+    text-decoration: underline;
+  }
+
+  .pg-dash-fx-name {
+    flex: 1 1 3.75rem;
+    min-width: 0;
+    overflow: hidden;
+    font-size: .75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-fx-end {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .pg-dash-fx-rate {
+    font-size: .875rem;
+    font-weight: 800;
+    color: var(--pgd-strong);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-fx-change {
+    font-size: .6875rem;
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-fx-change[data-tone="up"]::before { content: "\25B2\00A0"; }
+  .pg-dash-fx-change[data-tone="down"]::before { content: "\25BC\00A0"; }
+  .pg-dash-fx-change[data-tone="up"] { color: var(--pgd-warn); }
+  .pg-dash-fx-change[data-tone="down"] { color: var(--pgd-accent); }
+
   .pg-dash-spark {
+    flex: 0 0 4.375rem;
     width: 4.375rem;
-    height: 1.25rem;
+    height: 1.375rem;
   }
 
   .pg-dash-spark path {
     fill: none;
-    stroke: var(--pg-dash-cat);
-    stroke-width: 1.5;
+    stroke: var(--pgd-chart-2);
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+  }
+
+  .pg-dash-spark[data-tone="up"] path { stroke: var(--pgd-warn); }
+  .pg-dash-spark[data-tone="down"] path { stroke: var(--pgd-chart-1); }
+
+  /* The sales map in the drawings' fuchsia steps; its rows' bars too. */
+  .pg-dash-map {
+    --pg-dash-map-hue: var(--pgd-chart-3);
   }
 
   .pg-dash-map svg {
     display: block;
     width: 100%;
     height: auto;
-    max-height: 12rem;
+    max-height: 22rem;
   }
 
   .pg-dash-map path {
-    fill: var(--pg-tint);
-    stroke: var(--pg-card-bg);
+    fill: var(--pgd-track);
+    stroke: var(--pgd-card);
     stroke-width: 1;
   }
 
@@ -4405,10 +4620,10 @@
     pointer-events: none;
   }
 
-  .pg-dash-map [data-step="1"] { fill: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
-  .pg-dash-map [data-step="2"] { fill: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
-  .pg-dash-map [data-step="3"] { fill: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
-  .pg-dash-map [data-step="4"] { fill: var(--pg-dash-cat); }
+  .pg-dash-map [data-step="1"] { fill: color-mix(in srgb, var(--pg-dash-map-hue) 30%, var(--pgd-card)); }
+  .pg-dash-map [data-step="2"] { fill: color-mix(in srgb, var(--pg-dash-map-hue) 45%, var(--pgd-card)); }
+  .pg-dash-map [data-step="3"] { fill: color-mix(in srgb, var(--pg-dash-map-hue) 70%, var(--pgd-card)); }
+  .pg-dash-map [data-step="4"] { fill: var(--pgd-map-top); }
 
   .pg-dash-map-legend {
     display: flex;
@@ -4416,7 +4631,7 @@
     gap: .25rem;
     margin: .375rem 0 .75rem;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-map-step {
@@ -4425,10 +4640,16 @@
     border-radius: 2px;
   }
 
-  .pg-dash-map-step[data-step="1"] { background: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
-  .pg-dash-map-step[data-step="2"] { background: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
-  .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
-  .pg-dash-map-step[data-step="4"] { background: var(--pg-dash-cat); }
+  .pg-dash-map-step[data-step="1"] { background: color-mix(in srgb, var(--pg-dash-map-hue) 30%, var(--pgd-card)); }
+  .pg-dash-map-step[data-step="2"] { background: color-mix(in srgb, var(--pg-dash-map-hue) 45%, var(--pgd-card)); }
+  .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-map-hue) 70%, var(--pgd-card)); }
+  .pg-dash-map-step[data-step="4"] { background: var(--pgd-map-top); }
+
+  .pg-dash-cardbox[data-card="salesmap"] .pg-dash-row {
+    --pg-dash-row-from: color-mix(in srgb, var(--pgd-chart-3) 70%, var(--pgd-card));
+    --pg-dash-row-to: var(--pgd-map-top);
+    grid-template-columns: minmax(0, 6.25rem) minmax(2.5rem, 1fr) minmax(3rem, auto);
+  }
 
   /* Visitor map (pg_dash_cards_visitors.js): a bubble per place over the
      plain provinces; the hovered or focused one is outlined. */
@@ -4473,7 +4694,7 @@
     margin: 0;
     font-size: .8125rem;
     font-weight: 400;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-ops-count {
@@ -4483,8 +4704,8 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .pg-dash-ops-count[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
-  .pg-dash-ops-count[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-ops-count[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-ops-count[data-tone="bad"] { color: var(--pgd-bad); }
 
   .pg-dash-ops-sub,
   .pg-dash-ops-empty {
@@ -4495,6 +4716,23 @@
 
   .pg-dash-ops-empty {
     margin-top: .5rem;
+  }
+
+  /* A lane's rows: plain 13 px lines, each ruled above, the first too. */
+  .pg-dash-ops-lane .pg-dash-shop-list {
+    margin-top: .375rem;
+  }
+
+  .pg-dash-ops-lane .pg-dash-shop-item {
+    border-top: 1px solid var(--pgd-line);
+  }
+
+  .pg-dash-ops-lane .pg-dash-shop-link {
+    padding: .375rem 0;
+  }
+
+  .pg-dash-ops-lane .pg-dash-shop-name {
+    white-space: normal;
   }
 
   @media (forced-colors: active) {
