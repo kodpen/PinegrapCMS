@@ -1112,13 +1112,14 @@ function ws_refs_resolve($viewer, $tokens)
         // MCP servers' aliases are only read when an application other than
         // the two assistants is drawn.
         $taken = null;
+        $agents = function_exists('ws_agent_tags') ? ws_agent_tags() : array();
 
         foreach ($ids['app'] as $id) {
             if (($taken === null) && ($id !== $claude_app_id) && ($id !== $ai_app_id) && isset($apps[$id])) {
                 $taken = function_exists('ws_mcp_servers') ? array_column(ws_mcp_servers(), 'alias') : array();
             }
 
-            $tag = ws_app_tag($id, $apps[$id] ?? null, $claude_app_id, $ai_app_id, (array) $taken);
+            $tag = ws_app_tag($id, $apps[$id] ?? null, $claude_app_id, $ai_app_id, (array) $taken, $agents);
 
             $put('app', $id, $tag['label'], '', $tag['meta'], '', $tag['known'], $tag['icon']);
 

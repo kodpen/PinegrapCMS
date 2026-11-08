@@ -18,6 +18,6 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 - `api_agent_requests.php`, `'mcp' => false` (the key used as itself, `ws_api_agent_caller()`: an active `app` row whose `app_id` is the caller, no device): `GET /workspace/agent-requests` (open, or a status, or all), `POST …/{id}/claim` (409 already_claimed / closed; 👀 by the agent's application), `…/answer` (text under the asking message with the asker mentioned, or `no_answer`; written through `ws_assistant_writer()`; 403 when the channel row no longer allows the agent or the asker cannot write there; ✅), `…/fail` (reason told under the message when it can be). Requests are shown as Claude's are (`WorkspaceClaudeRequest`). Everything else the agent does goes through the API's own routes and MCP tools.
 - A model agent's request is answered by the site (`model-assistants.md`); the screen and `ws_api_assistants_carry_on()` carry it on as Pinegrap AI's (`models` in the ask's result).
 
-## What is still to come (A4b2)?
-- The request shown on its message, own-message edits with an edited mark, `ws_assistants()` taking the registry agents (picker, tags, follow). Scheduled wakes and the brief: `agent-wakes.md` (A4b1).
+## What is still to come?
+- How an agent shows (its request line, tag, picker entry, own-message edits): `agent-shown.md` (A4b2).
 - Never tried live: a knock against a real receiver, the routes with a real key.
