@@ -180,6 +180,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-cityhall' => array('cy-rq-consent', 'cy-mt-consent'),
 		'pinegrap-library' => array('lib-eb-consent', 'lib-mb-consent', 'lib-rs-consent', 'lib-rb-consent'),
 		'pinegrap-marina' => array('mn-rq-consent', 'mn-ce-consent', 'mn-ev-consent'),
+		'pinegrap-theatre' => array('th-hire-consent', 'th-sg-consent', 'th-yp-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);
