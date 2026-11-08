@@ -7,7 +7,9 @@
  * way to ask for a date. A hotel's meeting rooms, an event venue's halls, a
  * coworking floor or a museum's rentals place it with their own content.
  * The core's Locations: Cards keeps the branch cards (address, hours,
- * phone).
+ * phone). The floor directory: a building's floors from the top down, each
+ * with its level, what is on it and who may go up, for a coworking house,
+ * a hotel, a museum or a shopping arcade.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,11 +21,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
     var _sdT = kit._sdT;
 
     var _SD_BLOCK_CSS = {
-        'pg-space-facts': '.pg-space-facts { font-variant-numeric: tabular-nums; }'
+        'pg-space-facts': '.pg-space-facts { font-variant-numeric: tabular-nums; }',
+        // A floor's level: a square of one size whatever its figure or word.
+        'pg-floor-level': '.pg-floor-level { display: inline-flex; align-items: center; justify-content: center; width: 4rem; height: 4rem; flex-shrink: 0; font-variant-numeric: tabular-nums; }'
     };
 
     var _SD_BLOCK_CSS_NEEDS = {
-        'locations-spaces': ['pg-ratio-16x9', 'pg-space-facts']
+        'locations-spaces': ['pg-ratio-16x9', 'pg-space-facts'],
+        'locations-floors': ['pg-floor-level']
     };
 
     // ── Spaces to hire ──────────────────────────────────────────────────
@@ -83,13 +88,52 @@ StyleDesigner.registerBlockFamily(function (kit) {
         ]);
     };
 
+    // ── Floor directory ─────────────────────────────────────────────────
+    // A floor: its level in a square, its name and line, what is on it as
+    // pills, and who may go up (an icon and the words).
+    var floor = function (n, level, name, text, rooms, access) {
+        return kit.tag('li', 'd-flex gap-4 py-4 border-bottom', _sdT('Floor {var}', n), [
+            kit.h('span', level, 'pg-floor-level rounded-3 bg-primary-subtle text-primary-emphasis fs-4 fw-bold'),
+            kit.div('flex-grow-1', _sdT('Floor Text'), [
+                kit.h('h3', name, 'h5 fw-bold mb-1'),
+                kit.p(text, 'text-body-secondary mb-3'),
+                kit.tag('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-3', _sdT('On This Floor'), rooms.map(amenity)),
+                kit.div('d-flex align-items-center gap-2 small fw-semibold', _sdT('Access'), [
+                    kit.icon('bi-key', 'text-primary'),
+                    kit.h('span', access)
+                ])
+            ])
+        ]);
+    };
+    var buildFloors = function () {
+        var list = kit.tag('ol', 'list-unstyled mb-0 border-top', _sdT('Floors'), [
+            floor(1, _sdT('Roof'), _sdT('Roof terrace'), _sdT('Tables in the open air and a view over the old harbour.'),
+                [_sdT('Terrace'), _sdT('Barbecue'), _sdT('Plants')], _sdT('Members, 8 am to 8 pm')),
+            floor(2, '3', _sdT('Private offices'), _sdT('Twelve lockable offices for two to ten people.'),
+                [_sdT('Offices'), _sdT('Kitchenette'), _sdT('Lockers')], _sdT('Office teams, around the clock')),
+            floor(3, '2', _sdT('Quiet floor'), _sdT('Fixed desks and focus booths, no calls at the desks.'),
+                [_sdT('Fixed desks'), _sdT('Phone booths'), _sdT('Library')], _sdT('Members, around the clock')),
+            floor(4, '1', _sdT('Meeting rooms'), _sdT('Five rooms from four to twenty seats, booked by the hour.'),
+                [_sdT('Meeting rooms'), _sdT('Event hall'), _sdT('Screens')], _sdT('Members and their guests')),
+            floor(5, '0', _sdT('Ground floor'), _sdT('The reception, the coffee bar and the hot desks.'),
+                [_sdT('Reception'), _sdT('Coffee bar'), _sdT('Hot desks')], _sdT('Everyone, 7 am to 10 pm'))
+        ]);
+        list.props._fx = { effect: 'slide-up', trigger: 'view', stagger: 100 };
+        return kit.section('py-5', _sdT('Locations (Floor Directory)'), [
+            kit.intro(_sdT('Floor by floor'), _sdT('Where everything is, and who can go up.')),
+            kit.div('col-lg-10 mx-auto', _sdT('Directory'), [ list ])
+        ]);
+    };
+
     return {
         prefix: 'locations-',
         items: [
-            { label: _sdT('Locations: Spaces to Hire'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'locations-spaces' } }
+            { label: _sdT('Locations: Spaces to Hire'), type: 'component', icon: 'bi-door-open', extra: { componentType: 'locations-spaces' } },
+            { label: _sdT('Locations: Floor Directory'), type: 'component', icon: 'bi-building', extra: { componentType: 'locations-floors' } }
         ],
         build: function (ctype) {
             if (ctype === 'locations-spaces') return buildSpaces();
+            if (ctype === 'locations-floors') return buildFloors();
             return null;
         },
         css: _SD_BLOCK_CSS,
