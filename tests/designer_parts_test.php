@@ -108,10 +108,11 @@ function test_designer_part_loader_runs_files_in_order_once()
 	$r = designer_parts_run(
 		'var settled = "";'
 		. 'var p = _sdPartLoad("ai"); p.then(function () { settled = "ok"; });'
-		. 'out([appended.length, _sdPartLoad("ai") === p, _sdPartLoaded("ai")]);'
-		. 'flush().then(function () { finish(0, true); return flush(); })'
+		. 'var again = _sdPartLoad("ai") === p;'
+		. 'flush().then(function () { out([appended.length, again, _sdPartLoaded("ai")]); finish(0, true); return flush(); })'
 		. '.then(function () { out([appended.map(function (s) { return s.src; }), appended[1].async, settled]); finish(1, true); return flush(); })'
-		. '.then(function () { out([settled, _sdPartLoaded("ai"), appended.length]); _sdPartLoad("ai"); out(appended.length); });'
+		. '.then(function () { out([settled, _sdPartLoaded("ai"), appended.length]); _sdPartLoad("ai"); return flush(); })'
+		. '.then(function () { out(appended.length); });'
 	);
 
 	if ($r === null) {
@@ -131,7 +132,8 @@ function test_designer_part_loader_retries_after_a_failure()
 	$r = designer_parts_run(
 		'_sdPartLoad("ai").then(function () { out("ok"); }, function () { out(["failed", appended[0].parentNode === null, _sdPartLoaded("ai")]); });'
 		. 'flush().then(function () { finish(0, false); return flush(); })'
-		. '.then(function () { _sdPartLoad("ai"); out(appended.length); return Promise.all([_sdPartLoad("nope").catch(function () { return "unknown"; }), _sdPartLoad("empty").catch(function () { return "empty"; })]); })'
+		. '.then(function () { _sdPartLoad("ai"); return flush(); })'
+		. '.then(function () { out(appended.length); return Promise.all([_sdPartLoad("nope").catch(function () { return "unknown"; }), _sdPartLoad("empty").catch(function () { return "empty"; })]); })'
 		. '.then(function (v) { out(v); });'
 	);
 

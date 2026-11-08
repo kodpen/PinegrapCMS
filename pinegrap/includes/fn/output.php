@@ -7451,6 +7451,9 @@ function pg_js_bundles()
         // script that starts it and the scripts that extend it. Its block
         // family files come after the core, whose registration call they use.
         'assets/js/style_designer.min.js'          => array_merge(array('assets/js/pg_google_fonts.js'), pg_designer_js_sources()),
+        // The designer's parts not needed to open a page (pg_designer_parts()),
+        // each run by the editor the first time it is asked for.
+        'assets/js/style_designer_ai.min.js'       => array('assets/js/designer_ai.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -7485,6 +7488,44 @@ function pg_designer_js_sources()
     }
     sort($out, SORT_STRING);
     return array_merge(array('assets/js/style_designer.src.js'), $out);
+}
+
+/**
+ * The visual designer's parts not needed to open a page, by name: each is a
+ * bundle of pg_js_bundles() kept out of style_designer.min.js. The designer
+ * screen hands the addresses of the parts the operator may use to the editor
+ * (sdDesign.parts, pg_designer_part_urls()); the editor runs a part's files
+ * the first time something asks for it (_sdPartLoad()).
+ *
+ * @return array part name => bundle under the software directory
+ */
+function pg_designer_parts()
+{
+    return array(
+        // The assistant panel (designer_ai.js), designers with the assistant on.
+        'ai' => 'assets/js/style_designer_ai.min.js',
+    );
+}
+
+/**
+ * The file addresses of the designer parts named, in load order, for
+ * sdDesign.parts. An unknown name is left out.
+ *
+ * @param array $names part names of pg_designer_parts()
+ * @return array part name => list of addresses
+ */
+function pg_designer_part_urls($names)
+{
+    $parts = pg_designer_parts();
+    $out = array();
+
+    foreach ($names as $name) {
+        if (isset($parts[$name])) {
+            $out[$name] = pg_js_bundle_urls($parts[$name]);
+        }
+    }
+
+    return $out;
 }
 
 /**

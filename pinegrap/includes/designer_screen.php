@@ -333,6 +333,9 @@ function pg_designer_screen_render($ctx)
         'hiddenPages'   => $hidden_pages,
         // The assistant panel (assets/js/designer_ai.js): designers only.
         'ai'            => $sd_ai,
+        // The editor's parts not needed to open a page, run on first use
+        // (pg_designer_parts()): their file addresses by name.
+        'parts'         => (object) pg_designer_part_urls(!empty($sd_ai['enabled']) ? array('ai') : array()),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -642,7 +645,6 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_designer_publish.js?v=' . pg_designer_asset_stamp('assets/js/pg_designer_publish.js') . '"></script>
         ' . pg_js_bundle_tags('assets/js/style_designer.min.js', false) . '
         ' . pg_ai_write_assets() . '
-        ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
         <script>
             $(document).ready(function() {
                 StyleDesigner.init({
