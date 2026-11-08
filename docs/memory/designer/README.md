@@ -227,6 +227,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
 - designer-blocks-news-maintenance-creative.md: Maintenance, news and creative blocks (2026.11.0): palette groups, the family branch and helpers, maintenance blocks without site links, attribute-dropping nodes, block details, the palette test.
 - designer-blocks-pharmacy.md: The Pharmacy block family (pharmacy- prefix): duty panel, reference readings, travel vaccines, medicine schedule; general blocks reused instead; no motion; rule and test
+- designer-blocks-planetarium.md: The Planetarium block family (planetarium- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-sky-* rules, motion and test
 - designer-blocks-skiresort.md: The Ski Resort block family (skiresort- prefix, its own palette group): the five blocks, what each draws, its pg-ski-* rules, why the pass cards are not a pricing or compare block, its test
 - designer-blocks-sportsclub.md: The Sports Club block family (sportsclub-): match day, fixtures and results, league table, squad by position; what a club places instead; rules; test
 - designer-blocks-wedding.md: The Wedding block family (wedding- prefix, its own palette group): invitation hero, real wedding story, planning checklist; the general blocks a wedding site places instead; rules and test
