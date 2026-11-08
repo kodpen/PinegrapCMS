@@ -9222,6 +9222,8 @@ function get_tables() {
 		'ws_agents',
 		'ws_channel_agents',
 		'ws_channel_memory',
+		'ws_channel_links',
+		'ws_channel_link_deliveries',
 		'ws_app_commands',
 		'ws_voice',
 		'ws_file_edits',

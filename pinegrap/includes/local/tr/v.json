@@ -62,6 +62,7 @@
     "Valid until {var:1}": "{var:1} tarihine kadar geçerli",
     "Validate": "Doğrula",
     "Validate the HTML": "HTML Doğrula",
+    "Validation Failed": "Doğrulama başarısız",
     "Validity": "Geçerlilik",
     "Validity Length": "Geçerlilik Süresi",
     "Valley Brut": "Vadi Brut",

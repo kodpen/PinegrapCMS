@@ -165,6 +165,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ws_agents();               // 11.0.172
 	upgrade_2026_11_0_ws_channel_memory();       // 11.0.173
 	upgrade_2026_11_0_ws_agent_undo();           // 11.0.174
+	upgrade_2026_11_0_ws_channel_links();        // 11.0.175
 
 }
 
@@ -5594,5 +5595,49 @@ function upgrade_2026_11_0_ws_agent_undo() {
 	install_add_column('ws_ai_changes', 'undone_at', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER undone_by");
 
 	install_note('Workspace: a record change an agent makes within the tier its channel allows is applied at once and can be undone for 7 days. Nothing changes until a channel manager raises an agent\'s tier.');
+
+}
+
+// ws_channel_links: a repository of an outside service (GitHub first) linked
+// to a Workspace channel through a connected account (connection_id). The
+// site adds a webhook to the repository (hook_id) signed with a secret of
+// the link's own, kept sealed with the site's key; events and labels say
+// which lines it writes. One repository is linked to a channel once.
+// ws_channel_link_deliveries: the delivery ids a link has written, so a
+// delivery the service sends again, or two copies in parallel, write one
+// line; rows older than 7 days are deleted.
+function upgrade_2026_11_0_ws_channel_links() {
+
+	install_create_table('ws_channel_links', "CREATE TABLE ws_channel_links (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		provider       VARCHAR(32) NOT NULL DEFAULT '',
+		connection_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		repository     VARCHAR(150) NOT NULL DEFAULT '',
+		events         VARCHAR(255) NOT NULL DEFAULT '',
+		labels         VARCHAR(400) NOT NULL DEFAULT '',
+		hook_id        BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		secret         TEXT NULL,
+		last_error     VARCHAR(255) NOT NULL DEFAULT '',
+		last_error_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_channel_repository (channel_id, provider, repository),
+		KEY idx_connection (connection_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_channel_link_deliveries', "CREATE TABLE ws_channel_link_deliveries (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		link_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		delivery_id  CHAR(36) NOT NULL DEFAULT '',
+		received_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_link_delivery (link_id, delivery_id),
+		KEY idx_received (received_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a GitHub repository can be linked to a channel, so its CI results, pull requests and labels are written into the channel. Nothing changes until someone links a repository.');
 
 }

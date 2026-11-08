@@ -853,6 +853,7 @@
     "Only a draft waiting at the provider is handed to GİB; ask after its status first.": "GİB'e yalnız sağlayıcıda bekleyen taslak verilir; önce durumunu sorun.",
     "Only a lesson?": "Yalnızca bir ders mi?",
     "Only a live flow can be paused.": "Yalnız yayındaki bir akış duraklatılabilir.",
+    "Only a manager who may change the Workspace settings can link repositories.": "Depoları yalnızca Çalışma alanı ayarlarını değiştirebilen bir yönetici bağlayabilir.",
     "Only a member of a private channel can add an agent to it.": "Özel bir kanala ajanı yalnız kanalın bir üyesi ekleyebilir.",
     "Only a member of a private channel can add people to it.": "Özel bir kanala yalnızca o kanalın üyeleri kişi ekleyebilir.",
     "Only a message, a note, a decision or a task card can be pinned.": "Yalnız bir mesaj, not, karar ya da görev kartı sabitlenebilir.",

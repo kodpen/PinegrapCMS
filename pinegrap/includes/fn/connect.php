@@ -1111,6 +1111,13 @@ function pg_connect_disconnect($id)
         return null;
     }
 
+    // The webhooks this account added to repositories go first, while its
+    // token still works (includes/workspace/github_links.php).
+    if ($row['provider'] === 'github') {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/github_links.php');
+        ws_github_links_account_removed((int) $row['id']);
+    }
+
     $provider = pg_connect_provider($row['provider']);
     $app = pg_connect_app($row['provider']);
     $secret = pg_connect_unseal($row['secret']);

@@ -1549,6 +1549,7 @@
     "delete my data, unsubscribe, correct, access": "verilerimi sil, abonelikten çık, düzelt, erişim",
     "delete, data, account, privacy, gdpr": "sil, veri, hesap, gizlilik, kvkk",
     "delete, remove, hide, edit, my posts": "sil, kaldır, gizle, düzenle, gönderilerim",
+    "deleted channel": "silinmiş kanal",
     "delivered on {var:1}": "{var:1} tarihinde teslim edildi",
     "delivery": "teslimat",
     "delivery cost, shipping, areas, postcode, same day, next day": "teslimat ücreti, gönderim, bölgeler, posta kodu, aynı gün, ertesi gün",
