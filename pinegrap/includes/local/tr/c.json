@@ -1179,6 +1179,7 @@
     "Check that the certificate of {var:1} has at least {var:2} days left": "{var:1} sertifikasının en az {var:2} günü kaldığını kontrol et",
     "Check that the whole address from the e-mail was opened, or ask for a new link.": "E-postadaki adresin tamamının açıldığından emin olun ya da yeni bir bağlantı isteyin.",
     "Check that the whole address from the message was opened, or ask for a new link.": "Mesajdaki adresin tamamının açıldığını kontrol edin ya da yeni bir bağlantı isteyin.",
+    "Check that today's feeding times and keeper talks are right on the Today page.": "Bugün sayfasındaki besleme saatlerinin ve bakıcı sohbetlerinin doğru olduğunu kontrol edin.",
     "Check that {var:1} answers": "{var:1} adresinin yanıt verdiğini kontrol et",
     "Check the address": "Adresi denetle",
     "Check the fuel level and how to return it, and save the desk's phone number before you drive away.": "Yakıt seviyesine ve aracı hangi seviyede iade edeceğinize bakın, yola çıkmadan ofisin telefon numarasını kaydedin.",
