@@ -5748,6 +5748,7 @@
     "stock quantity changed": "stok miktarı değişti",
     "stock tracking off": "stok takibi kapandı",
     "stock tracking on": "stok takibi açıldı",
+    "stone, oak, plaster, brick, terrazzo, brass, finishes": "taş, meşe, sıva, tuğla, terrazzo, pirinç, yüzey",
     "stopped at {var:1}": "{var:1} sürümünde durdu",
     "stopped notifications on one device of user ({var:1})": "({var:1}) kullanıcısının bir cihazında bildirimleri durdurdu",
     "storage, object storage, s3, bucket, endpoint, files, uploads": "storage, object storage, s3, bucket, endpoint, files, uploads, depolama, nesne depolama, kova, uç nokta, dosyalar, yüklemeler",

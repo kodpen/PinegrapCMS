@@ -114,6 +114,18 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
     ), 'children' => array());
 };
 
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 80) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
 // A sample picture with a fixed seed, so the same picture comes back on
 // every opening until the studio puts its own photographs in its place.
 $photo = function ($seed, $width, $height) {
@@ -274,7 +286,7 @@ $stages = array(
     array('title' => lang('Handover and aftercare'), 'text' => lang('We hand over the building with you and come back after the first year to see how it is used.')),
 );
 
-// What the studio believes in (the home and the studio page).
+// What the studio believes in (the studio page).
 $principles = array(
     array('icon' => 'bi-brightness-high', 'title' => lang('Light first'),
         'text' => lang('We draw every room around the light it will have at each hour of the day.')),
@@ -284,6 +296,23 @@ $principles = array(
         'text' => lang('Shade, thick walls and cross ventilation before machines.')),
     array('icon' => 'bi-chat-square-text', 'title' => lang('Listening before drawing'),
         'text' => lang('The best ideas often come from the people who will use the building.')),
+);
+
+// The materials the studio builds with (the material board of the home):
+// the sample picture's seed, the name, the finish and where it was used.
+$materials = array(
+    array('seed' => 'material-stone', 'title' => lang('Local stone'), 'alt' => lang('A wall of rough local stone'),
+        'finish' => lang('Split face, laid dry'), 'used' => lang('Walls and garden terraces')),
+    array('seed' => 'material-oak', 'title' => lang('Oak'), 'alt' => lang('Oiled oak boards'),
+        'finish' => lang('Oiled, wide boards'), 'used' => lang('Floors, stairs and joinery')),
+    array('seed' => 'material-lime', 'title' => lang('Lime plaster'), 'alt' => lang('A wall of warm white lime plaster'),
+        'finish' => lang('Hand-trowelled, warm white'), 'used' => lang('Walls and ceilings')),
+    array('seed' => 'material-brick', 'title' => lang('Handmade brick'), 'alt' => lang('Handmade bricks in a long bond'),
+        'finish' => lang('Long bond, pale mortar'), 'used' => lang('Facades and courtyards')),
+    array('seed' => 'material-terrazzo', 'title' => lang('Terrazzo'), 'alt' => lang('A polished terrazzo floor'),
+        'finish' => lang('Polished, local aggregate'), 'used' => lang('Kitchens and bathrooms')),
+    array('seed' => 'material-brass', 'title' => lang('Brass'), 'alt' => lang('Brushed brass handles'),
+        'finish' => lang('Brushed, left to darken'), 'used' => lang('Handles, lamps and rails')),
 );
 
 // The studio's people (the team page and the studio page). Fixed data, not
@@ -479,6 +508,73 @@ $icon_tile = function ($name, $class = '') use ($el, $icon) {
     return $el('span', trim('d-inline-flex align-items-center justify-content-center border border-dark-subtle text-body-emphasis p-3 lh-1 ' . $class), lang('Icon Box'), array(
         $icon($name, 'fs-4'),
     ));
+};
+
+// The Architecture: Plate Hero block (pg-arch-plate): the eyebrow and the
+// page's only h1 in eight columns, a line and the two ways on in four,
+// aligned to the foot, then one wide photograph captioned like a plate in
+// a monograph: its number, the project it shows, a line and a link to it
+// pushed to the end from sm up. The words rise and the plate fades on load;
+// the photograph is the first thing the page shows, so it is not lazy.
+$plate_hero = function ($eyebrow, $title, $lead, $buttons, $src, $alt, $plate)
+    use ($el, $heading, $para, $link, $span, $image, $container, $row, $col, $fx) {
+    $words = $row(array(
+        $col(array(
+            $para($eyebrow, 'pai-eyebrow text-uppercase fw-semibold text-body-secondary mb-3'),
+            $heading('h1', $title, 'pai-display display-4 mb-0'),
+        ), '', '8'),
+        $col(array(
+            $para($lead, 'text-body-secondary mb-4'),
+            $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), $buttons),
+        ), '', '4'),
+    ), '4', '', 'g-lg-5 align-items-end mb-4 mb-lg-5');
+    $figure = $el('figure', 'pg-arch-plate mb-0', lang('Plate'), array(
+        $el('div', 'ratio ratio-21x9 overflow-hidden bg-body-tertiary', lang('Picture'), array(
+            $image($src, $alt, 'object-fit-cover'),
+        )),
+        $el('figcaption', 'd-flex flex-wrap align-items-baseline gap-2 gap-sm-4 pt-3 mt-3 small', lang('Plate Caption'), array(
+            $span($plate['no'], 'pg-arch-no', lang('Number')),
+            $span($plate['name'], 'fw-semibold', lang('Project Name')),
+            $span($plate['place'], 'text-body-secondary', lang('Setting')),
+            $link(lang('See the Project'), $plate['href'], 'ms-sm-auto link-body-emphasis fw-semibold'),
+        )),
+    ));
+    return $el('section', 'pai-hero pt-4 pt-lg-5 pb-5 overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $fx($words, array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700)),
+            $fx($figure, array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1200, 'delay' => 200)),
+        )),
+    ));
+};
+
+// The Architecture: Material Board block (pg-arch-swatch): a header and
+// the studio's materials ($materials), each mounted like a sample on a
+// board with its finish and where it was used, rising in one after
+// another on view. A search section under its anchor $id.
+$material_board = function ($id, $class = 'py-5 bg-body-tertiary') use ($el, $heading, $para, $image, $container, $photo, $attr, $materials, $rise, $searchable) {
+    $items = array();
+    foreach ($materials as $m) {
+        $items[] = $el('li', 'col', $m['title'], array(
+            $el('div', 'pg-arch-swatch h-100', lang('Sample'), array(
+                $el('div', 'ratio ratio-1x1 overflow-hidden bg-body-tertiary mb-3', lang('Picture'), array(
+                    $image($photo($m['seed'], 600, 600), $m['alt'], 'object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
+                )),
+                $heading('h3', $m['title'], 'pai-display h6 fw-semibold mb-1'),
+                $para($m['finish'], 'small text-body-secondary mb-2'),
+                $para($m['used'], 'small mb-0'),
+            )),
+        ));
+    }
+    return $el('section', $class, lang('Materials'), array(
+        $container(array(
+            $el('div', 'col-lg-8 px-0 mb-5', lang('Section Header'), array(
+                $para(lang('Materials'), 'pai-eyebrow text-uppercase fw-semibold text-body-secondary mb-2'),
+                $heading('h2', lang('What our buildings are made of'), 'pai-display h2 mb-3'),
+                $para(lang('A few honest materials, chosen for the place, the climate and how they age, and used again from one project to the next.'), 'text-body-secondary mb-0'),
+            )),
+            $rise($el('ul', 'list-unstyled row row-cols-2 row-cols-md-3 row-cols-lg-6 g-3 mb-0', lang('Materials'), $items)),
+        )),
+    ), $searchable($id, lang('stone, oak, plaster, brick, terrazzo, brass, finishes')));
 };
 
 // A numbered step of a short how-to.
@@ -719,17 +815,19 @@ $enquiry_band = function () use ($el, $heading, $para, $link, $container, $row, 
     ));
 };
 
-// The facts of a project in one list: type, location, place, service, size
-// and stage, each bound to the Projects form's field of the same name.
+// The facts of a project in one list, as the Architecture: Project Sheet
+// block draws them (pg-arch-facts: each label beside its value on a
+// hairline): type, location, place, service, size and stage, each bound to
+// the Projects form's field of the same name.
 $project_facts = function ($sample_key = 'courtyard_house') use ($el, $span, $bind, $projects, $project_types, $locations, $services, $project_stages) {
     $p = $projects[$sample_key];
     $fact = function ($label, $text, $token, $name) use ($el, $span, $bind) {
-        return $el('div', 'col-6 col-md-4 py-3 border-bottom', $name, array(
-            $el('dt', 'pai-eyebrow small text-uppercase fw-semibold text-body-secondary mb-1', lang('Label'), array(), array('text' => $label)),
-            $el('dd', 'mb-0', $name, array($span($text, '', $name, $bind($token)))),
+        return $el('div', '', $name, array(
+            $el('dt', '', lang('Label'), array(), array('text' => $label)),
+            $el('dd', '', $name, array($span($text, '', $name, $bind($token)))),
         ));
     };
-    return $el('dl', 'row g-0 border-top mb-0', lang('Project Facts'), array(
+    return $el('dl', 'pg-arch-facts border-top mb-0', lang('Project Facts'), array(
         $fact(lang('Type'), $project_types[$p['type']]['title'], 'type', lang('Project Type')),
         $fact(lang('Location'), $locations[$p['location']], 'location', lang('Location')),
         $fact(lang('Setting'), $p['place'], 'place', lang('Setting')),
@@ -750,7 +848,9 @@ $credits_block = function ($sample_key = 'courtyard_house') use ($el, $heading, 
 
 // The gallery of a project page: the first photo wide, the others beside
 // one another under it; a photo the record lacks leaves with its frame.
-$gallery = function ($sample_key = 'courtyard_house') use ($el, $image, $photo, $attr, $projects) {
+// $rest leaves the first photo out, for a page that shows it in the
+// project sheet.
+$gallery = function ($sample_key = 'courtyard_house', $rest = false) use ($el, $image, $photo, $attr, $projects) {
     $name = $projects[$sample_key]['name'];
     $frame = function ($token, $seed, $ratio, $col_class) use ($el, $image, $photo, $attr, $name) {
         return $el('div', 'pg-hide-if-empty ' . $col_class, lang('Picture'), array(
@@ -760,12 +860,9 @@ $gallery = function ($sample_key = 'courtyard_house') use ($el, $image, $photo, 
             )),
         ));
     };
-    return $el('div', 'row g-3', lang('Gallery'), array(
-        $frame('photo_1', 'project-' . $sample_key, 'ratio-21x9', 'col-12'),
-        $frame('photo_2', 'project-' . $sample_key . '-2', 'ratio-4x3', 'col-12 col-md-4'),
-        $frame('photo_3', 'project-' . $sample_key . '-3', 'ratio-4x3', 'col-12 col-md-4'),
-        $frame('photo_4', 'project-' . $sample_key . '-4', 'ratio-4x3', 'col-12 col-md-4'),
-    ));
+    $frames = $rest ? array() : array($frame('photo_1', 'project-' . $sample_key, 'ratio-21x9', 'col-12'));
+    foreach (array(2, 3, 4) as $n) $frames[] = $frame('photo_' . $n, 'project-' . $sample_key . '-' . $n, 'ratio-4x3', 'col-12 col-md-4');
+    return $el('div', 'row g-3', lang('Gallery'), $frames);
 };
 
 // A project's card of the lists (the home, the project list and a
