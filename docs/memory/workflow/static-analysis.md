@@ -4,8 +4,8 @@ description: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what t
 ---
 
 ## What runs, and why?
-- `bash tools/static_analysis.sh` (two steps of `php-checks.yml`): PHPStan 2.3.1 level 0 over the product tree (`tools/phpstan.neon`, `phpVersion` 7.1-8.5) and PHP_CodeSniffer 4.0.4 with PHPCompatibility 10.0.0-alpha2, `testVersion 7.1-` (`tools/phpcs.xml`). Before them CI ran `php -l` on PHP 8.3 only, which passes a function PHP 7.1 lacks, a variable never set or a duplicate array key.
-- Vendored libraries are scanned for their classes, not analysed; `data/` (the starter sites' layouts) is skipped; the root `download_assistant.php` and `index.php` are checked.
+- `bash tools/static_analysis.sh` (two steps of `php-checks.yml`): PHPStan 2.3.1 level 0 over the product tree (`tools/phpstan.neon`, `phpVersion` 7.1-8.5) and PHP_CodeSniffer 4.0.4 with PHPCompatibility 10.0.0-alpha2, `testVersion 7.1-` (`tools/phpcs.xml`). `php -l` alone passes a function PHP 7.1 lacks, a variable never set or a duplicate array key.
+- Vendored libraries are scanned for their classes, not analysed; `data/` (starter site layouts) is skipped; root `download_assistant.php` and `index.php` are checked.
 
 ## What are the baselines?
 - What the tree held when the checks went in (39 PHPStan errors, 200 PHPCompatibility findings), less what was fixed or marked since (the nested named functions left with PR #972, PHPStan 39 → 12). `tools/phpcs-baseline.json` holds only `submit_order.php`'s `pfpro`. `tools/phpstan-baseline.neon` counts per file and message, `tools/phpcs-baseline.json` per file and sniff (`tools/check_php_compat.php` compares). More than the count fails; fewer passes.
@@ -25,9 +25,10 @@ description: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what t
 
 ## Where do the tools come from?
 - Nothing enters the product or a Composer file. The script downloads the pinned phars (SHA-256 checked) and fetches both standards by commit into `$RUNNER_TEMP/pinegrap-analysis` in CI, `~/.cache/pinegrap-analysis` elsewhere (`PG_ANALYSIS_TOOLS` overrides). A cloud session reaches GitHub releases and git; Packagist is blocked there.
+- Each phar has a second source (the tag's raw file, phars.phpcodesniffer.com): GitHub release 504s outlasted retries (2026-11-08).
 - A version change edits the pins in the script and regenerates both baselines in the same PR. PHPCS 4 refuses a ruleset that excludes a sniff its standard lacks: the `trim()` form-feed sniff (PHP 8.6) is not in 10.0.0-alpha2, so the ruleset excludes nothing yet.
 
 ## How long does it take?
-- In GitHub Actions PHPStan takes about 4.5 minutes and phpcs one; in a two-core session 2-4 minutes and 40 seconds. PHPStan's result cache makes a rerun on an unchanged tree take a second.
+- In CI PHPStan takes about 4.5 minutes and phpcs one; in a session 2-4 minutes and 40 seconds. Its result cache makes a rerun on an unchanged tree take a second.
 
 Related: docs/memory/workflow/static-analysis-kept-apis.md, docs/memory/workflow/sandbox-and-environment.md
