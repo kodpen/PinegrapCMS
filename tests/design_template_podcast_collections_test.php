@@ -223,6 +223,35 @@ function test_podcast_collections_bindings_name_fields()
 	}
 }
 
+// The episode page plays the record's Audio file in its own player: bound
+// src, nothing loaded before it is pressed, the box gone without a file,
+// the Listen buttons after it.
+function test_podcast_collections_episode_player_is_bound()
+{
+	$d = _test_ppdc_load();
+	$nodes = array();
+	_test_ppd_nodes($d['widgets']['episode_detail']['tree'], $nodes);
+	$audio = null;
+	foreach ($nodes as $n) if (($n['props']['tag'] ?? '') === 'audio') $audio = $n;
+	pg_assert_true($audio !== null, 'an audio element on the episode page');
+	pg_assert_same('audio', $audio['props']['_bindings']['src'] ?? '', 'its address is the Audio field');
+	$attrs = array();
+	foreach ($audio['props']['_attrs'] as $a) $attrs[$a['name']] = $a['value'];
+	pg_assert_same('none', $attrs['preload'] ?? '', 'nothing loads before it is pressed');
+	pg_assert_false(isset($attrs['src']) || isset($attrs['autoplay']), 'no typed address, never plays by itself');
+	pg_assert_contains('pg-field-value', $audio['props']['cssClass'], 'the box is judged by the player');
+	$html = _render_tree_node($d['widgets']['episode_detail']['tree'], 0);
+	pg_assert_contains('src="^^audio^^"', $html, 'the page prints the bound address');
+	pg_assert_true(strpos($html, 'src="^^audio^^"') < strpos($html, '"^^listen_url^^"'), 'the Listen buttons follow the player');
+	$player_box = '';
+	if (preg_match('#<div class="pg-hide-if-empty ppd-wave[^"]*".*?</audio>\s*</div>#s', $html, $m)) $player_box = $m[0];
+	pg_assert_true($player_box !== '', 'the player stands in a box marked to hide when empty');
+	$empty = pg_sw_hide_empty_fields(str_replace(' src="^^audio^^"', '', $player_box));
+	pg_assert_same('', trim($empty), 'without a file the box goes');
+	$full = str_replace('^^audio^^', '/files/e12.mp3', $player_box);
+	pg_assert_same($full, pg_sw_hide_empty_fields($full), 'with a file it stays');
+}
+
 // The podcasts page reads ?category=; the episodes lists show only the
 // episodes already out, newest first; a podcast's page lists its own; the
 // home shows the featured ones.

@@ -540,8 +540,18 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
         // relative date) comes back as it is.
         if ($filters !== null) $data = pg_sw_fill_value($data, $mods);
 
-        // A submitted value that starts a link's or a form's address must not
-        // carry a scheme that runs script when the address is followed.
+        // A player whose field is empty prints no address at all: the
+        // browser asks for nothing and pg-hide-if-empty sees it empty.
+        if ($data === '') {
+            $dropped = pg_sw_drop_media_address($template, $whole_string);
+            if ($dropped !== $template) {
+                $template = $dropped;
+                continue;
+            }
+        }
+
+        // A submitted value that starts a link's, a form's or a player's
+        // address must not carry a scheme that runs script or embeds data.
         if (pg_sw_token_starts_address($template, $whole_string) && pg_sw_address_runs_script($data)) {
             $data = '#';
         }
@@ -557,13 +567,26 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
     return $template;
 }
 
-// Whether the first $token in $template opens an href, action or formaction
-// value: the address then starts with what the field holds.
+// Whether the first $token in $template opens an href, action, formaction,
+// src or poster value: the address then starts with what the field holds.
 function pg_sw_token_starts_address($template, $token)
 {
     $at = strpos($template, $token);
     if ($at === false) return false;
-    return (bool)preg_match('/\b(?:href|action|formaction)\s*=\s*["\']?$/i', substr($template, max(0, $at - 40), min(40, $at)));
+    return (bool)preg_match('/\b(?:href|action|formaction|src|poster)\s*=\s*["\']?$/i', substr($template, max(0, $at - 40), min(40, $at)));
+}
+
+// $template without the attribute the first $token fills, when $token is the
+// whole src or poster value of an audio, video or source tag; else
+// $template unchanged. Attribute values are escaped, so the tag holds no '>'.
+function pg_sw_drop_media_address($template, $token)
+{
+    $at = strpos($template, $token);
+    if ($at === false || substr($template, $at + strlen($token), 1) !== '"') return $template;
+    $open = strrpos(substr($template, 0, $at), '<');
+    if ($open === false) return $template;
+    if (!preg_match('/^<(?:audio|video|source)\b[^>]*(\s(?:src|poster)=")$/i', substr($template, $open, $at - $open), $m)) return $template;
+    return substr($template, 0, $at - strlen($m[1])) . substr($template, $at + strlen($token) + 1);
 }
 
 // Whether an address escaped for HTML ($html) opens with a scheme that runs
@@ -612,8 +635,8 @@ function pg_sw_default_date_format($type)
 // a record that left a field blank shows no bare label and no empty box. A
 // "label: value" row (the form starters mark each field row so) is judged by
 // its pg-field-value element; an element without one by everything inside
-// it. Text counts as content, and so do a picture with an address, a video,
-// a frame, a link and a form control. Marked elements inside marked elements
+// it. Text counts as content, and so do a picture or a player with an
+// address, a frame, a link and a form control. Marked elements inside marked elements
 // go first, so a box whose rows all left goes with them. Any element can
 // carry the class; the designer keeps one by taking the class off.
 // With $mark (the finish pass's cut point, widgets_finish.php) only the
@@ -653,7 +676,9 @@ function pg_sw_hide_empty_fields($html, $mark = null, $wait = false)
         if ($close === null) continue;
         $inner = substr($html, $start + strlen($open), $close[0] - $start - strlen($open));
         if ($mark !== '' && strpos($inner, $mark) === false) continue;
-        if (pg_sw_has_content(pg_sw_field_value($inner))) continue;
+        // A player is judged with its own address, which its opening tag holds.
+        $judged = pg_sw_is_player_tag($tag) ? $open . $inner . '</' . $tag . '>' : pg_sw_field_value($inner);
+        if (pg_sw_has_content($judged)) continue;
         if ($wait && strpos($open . $inner, 'data-pg-bind=') !== false) {
             $html = substr($html, 0, $start) . pg_sw_empty_wait_tag($open) . substr($html, $start + strlen($open));
             continue;
@@ -670,6 +695,13 @@ function pg_sw_empty_wait_tag($open)
 {
     $end = (substr($open, -2) === '/>') ? -2 : -1;
     return rtrim(substr($open, 0, $end)) . ' hidden data-pg-empty-wait' . substr($open, $end);
+}
+
+// The elements whose address sits in their opening tag and whose inside is
+// only words for a browser that cannot play them.
+function pg_sw_is_player_tag($tag)
+{
+    return in_array(strtolower((string)$tag), array('audio', 'video'), true);
 }
 
 // The elements that have no closing tag.
@@ -698,8 +730,8 @@ function pg_sw_closing_tag($html, $tag, $from)
 }
 
 // What a marked element's value is: the inside of its pg-field-value
-// element (the element itself when it has no closing tag, a picture), or
-// the whole of $inner when it has none.
+// element (the element itself when it has no closing tag, a picture, or is
+// a player), or the whole of $inner when it has none.
 function pg_sw_field_value($inner)
 {
     if (!preg_match('#<([a-z][a-z0-9]*)\b[^>]*\bclass="[^"]*\bpg-field-value\b[^"]*"[^>]*>#i', $inner, $m, PREG_OFFSET_CAPTURE)) {
@@ -708,12 +740,15 @@ function pg_sw_field_value($inner)
     if (pg_sw_is_void_tag($m[1][0])) return $m[0][0];
     $from  = $m[0][1] + strlen($m[0][0]);
     $close = pg_sw_closing_tag($inner, strtolower($m[1][0]), $from);
+    // A player is its whole element: its address is in its opening tag.
+    if (pg_sw_is_player_tag($m[1][0])) return ($close === null) ? substr($inner, $m[0][1]) : substr($inner, $m[0][1], $close[1] - $m[0][1]);
     return ($close === null) ? substr($inner, $from) : substr($inner, $from, $close[0] - $from);
 }
 
 // Does this markup show anything: words (spaces and &nbsp; are not), a
 // picture with an address (a file field left empty comes out as
-// <img src="">), a video, a frame, a drawing, a link or a form control?
+// <img src="">), a player with an address of its own or of a <source>, a
+// frame, a drawing, a link or a form control?
 // The value a condition reads (its carrier, widgets_finish.php) is not shown
 // and does not count. A list inside a record (its span, widgets_lists.php)
 // counts: its rows are drawn by the finish pass, which judges the element
@@ -721,11 +756,25 @@ function pg_sw_field_value($inner)
 function pg_sw_has_content($html)
 {
     if (strpos((string)$html, '<!--pg-list:' . pg_sw_marker_nonce() . ':') !== false) return true;
-    $html = pg_sw_finish_strip_carriers((string)$html);
+    $html = pg_sw_media_without_fallback(pg_sw_finish_strip_carriers((string)$html));
     $text = str_replace("\xC2\xA0", ' ', html_entity_decode(strip_tags((string)$html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
     if (trim($text) !== '') return true;
-    if (preg_match('#<(video|audio|iframe|object|embed|svg|canvas|a|input|select|textarea|button)\b#i', (string)$html)) return true;
-    return (bool)preg_match('#<img\b[^>]*\bsrc="[^"]+"#i', (string)$html);
+    if (preg_match('#<(iframe|object|embed|svg|canvas|a|input|select|textarea|button)\b#i', (string)$html)) return true;
+    // A picture, a player or a player's source counts with an address.
+    return (bool)preg_match('#<(?:img|video|audio|source)\b[^>]*\bsrc="[^"]+"#i', (string)$html);
+}
+
+// $html with the words inside each audio and video element dropped: a
+// browser that plays the element never shows them, so a player is judged by
+// its address and its <source> tags alone, which stay.
+function pg_sw_media_without_fallback($html)
+{
+    $html = (string)$html;
+    if (stripos($html, '<audio') === false && stripos($html, '<video') === false) return $html;
+    return preg_replace_callback('#(<(audio|video)\b[^>]*>)(.*?)(</\2\s*>)#is', function ($m) {
+        preg_match_all('#<source\b[^>]*>#i', $m[3], $sources);
+        return $m[1] . implode('', $sources[0]) . $m[4];
+    }, $html);
 }
 
 // Can the element a widget prints its records into hold nothing but its

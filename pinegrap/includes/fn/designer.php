@@ -5086,6 +5086,14 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             } elseif ($tag_lc === 'img') {
                 if (!empty($props['src'])) { $attrs .= ' src="' . h($props['src']) . '"'; $builtin_attrs_emitted['src'] = true; }
                 if (!empty($props['alt'])) { $attrs .= ' alt="' . h($props['alt']) . '"'; $builtin_attrs_emitted['alt'] = true; }
+            } else {
+                // A player's address (a video's poster too) bound to a record
+                // field. Only a binding prints it: an unbound player keeps its
+                // Attributes panel src as before.
+                foreach (pg_media_bound_attrs($tag_lc, $props) as $_m_name => $_m_value) {
+                    $attrs .= ' ' . $_m_name . '="' . h($_m_value) . '"';
+                    $builtin_attrs_emitted[$_m_name] = true;
+                }
             }
             // The title and tooltip, then the Attributes panel's entries: not
             // the id (props.id is written above), the class, the style
@@ -5789,7 +5797,7 @@ function _apply_bindings($props, $rich_text = false)
     // chooser JS can swap. Everything else (action, section) is a
     // backend WIRING marker — it doesn't put a value into the DOM, so
     // including it in data-pg-bind would just confuse the JS updater.
-    static $renderable_props = array('text' => 1, 'html' => 1, 'src' => 1, 'alt' => 1, 'href' => 1, 'value' => 1);
+    static $renderable_props = array('text' => 1, 'html' => 1, 'src' => 1, 'alt' => 1, 'href' => 1, 'value' => 1, 'poster' => 1);
     $formats = (isset($props['_bindFormats']) && is_array($props['_bindFormats'])) ? $props['_bindFormats'] : array();
     $bind_pairs = array();
     $page_link  = null;
@@ -5854,6 +5862,23 @@ function _apply_bindings($props, $rich_text = false)
         $props['_attrs'] = $attrs;
     }
     return $props;
+}
+
+// The address attributes a media element takes from its bindings, after
+// _apply_bindings() turned them into tokens: src on audio, video and source,
+// poster on video, each only when bound. A literal src stays an Attributes
+// panel entry, so trees without the binding render as before.
+function pg_media_bound_attrs($tag, $props)
+{
+    static $by_tag = array('audio' => array('src'), 'video' => array('src', 'poster'), 'source' => array('src'));
+    $tag = strtolower((string)$tag);
+    if (!isset($by_tag[$tag]) || empty($props['_bindings']) || !is_array($props['_bindings'])) return array();
+    $out = array();
+    foreach ($by_tag[$tag] as $name) {
+        if (empty($props['_bindings'][$name]) || !isset($props[$name]) || (string)$props[$name] === '') continue;
+        $out[$name] = (string)$props[$name];
+    }
+    return $out;
 }
 
 // Whether a system widget is being drawn: a '__page_link' still standing

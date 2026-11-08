@@ -14457,6 +14457,11 @@ const StyleDesigner = (function () {
                     if (_semBP.target) sem.target = _semBP.target;
                     if (_semBP.rel) sem.rel = _semBP.rel;
                 }
+                // A video's bound poster draws the picture sample; a bound
+                // player address draws none, so the canvas fetches no media.
+                if (String(node.props.tag || '').toLowerCase() === 'video' && node.props._bindings && node.props._bindings.poster && _semBP.poster) {
+                    sem.setAttribute('poster', _semBP.poster);
+                }
                 if (node.props.tag === 'button') {
                     var btnTypeVal = node.props.btnType || 'button';
                     sem.setAttribute('type', btnTypeVal);
@@ -15327,7 +15332,7 @@ const StyleDesigner = (function () {
             return _rec ? '[' + _rec.label + ']' : '';
         }
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
-        if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
+        if (prop === 'src' || prop === 'poster') return _sdImgPlaceholderForToken(fieldName);
         if (prop === 'href') return '#';
         // A field of a referenced record ('__ref', SW_REF_TOKEN).
         if ((prop === 'text' || prop === 'alt') && fieldName === '__ref') return _sdT('Example');
@@ -29558,17 +29563,18 @@ const StyleDesigner = (function () {
         var b = p._bindings;
         if (!b) return p;
         var out = null;
-        ['text', 'href', 'src', 'alt'].forEach(function (prop) {
+        ['text', 'href', 'src', 'alt', 'poster'].forEach(function (prop) {
             if (!b[prop]) return;
             if (!out) { out = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) out[k] = p[k]; }
             var token = _sdCodeBindToken(b[prop]);
             if (prop === 'text') { out.text = _sdBindTextSlot(p.text, token); return; }
             out[prop] = token;
-            // A plain <img> keeps its src and alt in the attribute list.
-            if (n.type === 'semantic' && (prop === 'src' || prop === 'alt')) out._attrs = _sdCodeAttrsWith(p._attrs, prop, token);
+            // A plain <img> or player keeps its src, alt and poster in the attribute list.
+            if (n.type === 'semantic' && prop !== 'href') out._attrs = _sdCodeAttrsWith(p._attrs, prop, token);
         });
         return out || p;
     }
+
 
     function _sdCodeAttrsWith(list, name, value) {
         var out = [], found = false;
@@ -39360,7 +39366,7 @@ const StyleDesigner = (function () {
     // ('__page_link', designer/page-link-by-id.md), on every page. A
     // binding already set stays listed, so it can be seen and cleared.
     function _sdPageRecordBindRows(node) {
-        var bindable = _getBindableProps(node);
+        var bindable = _getBindableProps(node).filter(function (b) { return !b.widgetOnly; });
         if (!bindable.length) return '';
         var opts = _sdPageRecordValueOptions();
         var cur = (node.props && node.props._bindings) || {};
@@ -42762,6 +42768,11 @@ const StyleDesigner = (function () {
             } else if (tag === 'img') {
                 out.push({ prop: 'src',  label: _sdT('Image src'), kind: 'image' });
                 out.push({ prop: 'alt',  label: _sdT('Alt text'),  kind: 'text'  });
+            } else if (tag === 'audio' || tag === 'video' || tag === 'source') {
+                // A player's file (a video's poster too) from a record field,
+                // inside a widget only (pg_media_bound_attrs()).
+                out.push({ prop: 'src', label: _sdT('Media address'), kind: 'url', widgetOnly: true });
+                if (tag === 'video') out.push({ prop: 'poster', label: _sdT('Poster image'), kind: 'image', widgetOnly: true });
             } else if (node.props && (node.props.text || (node.props._bindings && node.props._bindings.text))) {
                 // A bound element needs no literal text of its own: a <div>
                 // bound to a ready-made HTML block (__currency_selector)
@@ -66285,6 +66296,12 @@ const StyleDesigner = (function () {
                 var sbuilt = [];
                 if (_stgL === 'a') ['href', 'target', 'rel'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
                 if (_stgL === 'img') ['src', 'alt'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
+                // A player's bound address (a video's poster too), twin of
+                // pg_media_bound_attrs(): printed only when bound.
+                var _semMedia = { audio: ['src'], video: ['src', 'poster'], source: ['src'] }[_stgL];
+                if (_semMedia && n.props._bindings) _semMedia.forEach(function (k) {
+                    if (n.props._bindings[k] && P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); }
+                });
                 var sattrs = _sdNodeExtraAttrs(n.props, P._attrs, ['id'].concat(sbuilt));
                 var _semStyle = _sdNodeStyle({ fontFamily: n.props.fontFamily, inlineStyle: n.props.inlineStyle, _attrs: P._attrs }, '', getNodeExtraStyle(n));
                 if (_semStyle) sattrs += ' style="' + esc(_semStyle) + '"';
