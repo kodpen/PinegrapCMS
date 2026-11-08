@@ -260,6 +260,13 @@ function ws_api_claude_request_present($viewer, $row)
     if ((int) ($row['note_id'] ?? 0) > 0) {
         $body = (string) $row['note_text'];
         $note = function_exists('ws_note') ? ws_note($row['note_id']) : null;
+
+        // A note locked after it asked: Claude reads neither the note nor
+        // the line (note_lock.php).
+        if ($note && function_exists('ws_note_locked_by_owner') && ws_note_locked_by_owner($note)) {
+            $note = null;
+            $body = '';
+        }
     }
 
     // A request from the Visual Page Editor (5.70): the words that asked, and

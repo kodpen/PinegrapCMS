@@ -735,7 +735,10 @@ function ws_api_note_versions_note($params)
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
     }
 
-    return array($viewer, ws_api_note_or_404($viewer, $params['id']));
+    $note = ws_api_note_or_404($viewer, $params['id']);
+    ws_api_note_locked_stop($viewer, $note);
+
+    return array($viewer, $note);
 }
 
 function ws_api_note_versions_list($params)

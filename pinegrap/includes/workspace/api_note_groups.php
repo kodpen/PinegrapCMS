@@ -568,6 +568,7 @@ function ws_api_notes_place($params)
     ws_api_note_groups_ready_or_503();
 
     $note = ws_api_note_or_404($viewer, $params['id']);
+    ws_api_note_locked_stop($viewer, $note);
     $group_id = (int) ($params['group_id'] ?? 0);
     $position = isset($params['position']) ? (int) $params['position'] : -1;
 

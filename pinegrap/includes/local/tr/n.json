@@ -1197,6 +1197,7 @@
     "No artist yet.": "Henüz sanatçı yok.",
     "No assistant has worked on this task yet. A note that writes @ai or @Claude asks one too.": "Bu görev üzerinde henüz bir asistan çalışmadı. @ai ya da @Claude yazan bir not da asistana sorar.",
     "No assistant has worked on this task yet. A note that writes @ai, @Claude or an MCP server's alias such as {var:1} asks one too.": "Bu görev üzerinde henüz bir asistan çalışmadı. @ai, @Claude ya da {var:1} gibi bir MCP sunucusu takma adı yazan bir not da asistana sorar.",
+    "No assistant is asked in a locked note.": "Kilitli bir notta hiçbir asistana soru sorulmaz.",
     "No assistant was asked in this discussion yet.": "Bu tartışmada henüz hiçbir asistana sorulmadı.",
     "No audit logs found for this period.": "Bu dönem için denetim günlüğü bulunamadı.",
     "No automatic ban on {var:1} was found. It may have expired or been released already.": "{var:1} adresi için otomatik yasak bulunamadı. Süresi dolmuş ya da daha önce kaldırılmış olabilir.",

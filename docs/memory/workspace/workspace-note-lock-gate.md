@@ -18,4 +18,4 @@ description: Notes lock gate: ws_note_behind_lock(), code note_locked on the scr
 
 ## Where are the tests?
 - `tests/workspace_note_lock_test.php`: `ws_note_lock_behind()`, `ws_note_lock_present()` (closed keeps the title only), `ws_note_lock_list_filter()`, `ws_note_lock_groups_redact()`. Locking with shares and the action gates are not unit-tested.
-- Not yet (L3): the API's own `locked` field and 423, sync, search, record history, block pull, meetings, table import, export, `get_file.php`.
+- Every other reader (API 423, assistants, files, export, blocks, history): `workspace-note-lock-readers.md`.

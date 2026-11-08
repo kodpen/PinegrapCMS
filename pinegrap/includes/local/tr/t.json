@@ -8073,6 +8073,7 @@
     "This narrows what is on screen as you type. The sliders beside it narrow by what things are instead -- pictures nobody has optimised, files with no description, pages missing from the sitemap -- and says along the top what it is hiding. The two buttons on the right switch between the grid and the list; the list sorts by name, size and date when you click a column heading, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).": "Yazdıkça ekrandakileri süzer. Yanındaki sürgüler ise ne olduklarına göre süzer — kimsenin optimize etmediği görseller, açıklaması olmayan dosyalar, site haritasında olmayan sayfalar — ve neyi gizlediğini üstte yazar. Sağdaki iki düğme ızgara ile liste arasında geçiş yapar; listede bir sütun başlığına tıklayınca ada, boyuta ya da tarihe göre sıralanır, ızgara ise karolarını dört boyutta çizer (sağ tık, Görünüm, ya da Ctrl basılıyken tekerlek).",
     "This note came with a shared group: leave the group to stop seeing it.": "Bu not paylaşılan bir grupla geldi: görmemek için gruptan ayrılın.",
     "This note is already shared in that channel.": "Bu not o kanalda zaten paylaşılmış.",
+    "This note is locked. Open it with your PIN on the notes screen.": "Bu not kilitli. Notlar ekranında PIN'inizle açın.",
     "This note is locked. Open it with your PIN.": "Bu not kilitli. PIN'inizle açın.",
     "This note is locked. Type your PIN to open it.": "Bu not kilitli. Açmak için PIN'inizi yazın.",
     "This note is no longer shared here.": "Bu not artık burada paylaşılmıyor.",

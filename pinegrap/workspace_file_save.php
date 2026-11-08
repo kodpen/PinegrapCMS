@@ -118,6 +118,13 @@ if (isset($_GET['note'])) {
         ws_file_save_refuse(lang('That note could not be found.'));
     }
 
+    // Behind the person's closed notes lock (includes/workspace/note_lock.php).
+    $locked = function_exists('ws_note_lock_gate') ? ws_note_lock_gate($viewer, $note) : '';
+
+    if ($locked !== '') {
+        ws_file_save_refuse($locked);
+    }
+
     // A canvas already in the note: only a file of the note's own folder.
     $edited = null;
 
