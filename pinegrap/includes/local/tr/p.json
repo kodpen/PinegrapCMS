@@ -2794,6 +2794,7 @@
     "payment, invoice, bank transfer, monthly invoice": "ödeme, fatura, havale, EFT, aylık fatura",
     "payment, pay, instalments, price, cost": "ödeme, öde, taksit, fiyat, ücret",
     "payment, payout, bank": "ödeme, hak ediş, banka",
+    "payment, price, call-out charge, invoice": "ödeme, fiyat, gelme ücreti, fatura",
     "payment_parts goes with payment_method split, and only with it.": "payment_parts yalnızca payment_method split ile gönderilir.",
     "payment_parts item {var:1}: send an object of {method, till_id, amount}, the amount a whole number of minor units.": "payment_parts öğesi {var:1}: {method, till_id, amount} nesnesi gönderin; tutar, alt birim cinsinden tam sayı olmalı.",
     "pcs": "adet",

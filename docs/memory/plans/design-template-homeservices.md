@@ -21,7 +21,7 @@ description: Plan: the Home Services design template (pinegrap-homeservices): se
 
 - 5 (done, #8004): `estimates.php` (`estimate` with `?service=`, `?area=`, photos; `estimate_view`, `my_estimates`, `staff_estimates`, the estimate e-mails) and `shop.php` (`plans`, product, cart, checkout, order, `email_order`; the Care Plans group: plans and gift cards, `shippable => false`); test.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, Tips (the blog), post, help search, error, the message and welcome e-mails, `home_posts`, `google_reviews` ([[design-templates-standard-pages]]); test.
+- 6 (done, #8041): `standard.php`: contact, inbox, conversation, newsletter, Tips (the blog), post, help search, error, the message and welcome e-mails, `home_posts`, `google_reviews` ([[design-templates-standard-pages]]); test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
