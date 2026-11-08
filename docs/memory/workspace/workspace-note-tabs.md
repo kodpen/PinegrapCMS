@@ -18,4 +18,4 @@ description: Note tabs over an open note on My Notes — workspace_note_tabs.js 
 - On a phone the row scrolls sideways (`overflow-x: auto`); the open tab is scrolled into view without moving the page.
 
 ## What about shared groups and the lock?
-- Shared groups (G6): the row also serves a group shared with the person, with a people mark; no + on a read-only group; a person-plus button opens the owner's Share dialog (`workspace-note-groups-shared-screen.md`). The lock pane on a locked tab comes with L4.
+- Shared groups (G6): the row also serves a group shared with the person, with a people mark; no + on a read-only group; a person-plus button opens the owner's Share dialog (`workspace-note-groups-shared-screen.md`). A locked tab opens to the lock pane (`workspace-note-lock-screen.md`).
