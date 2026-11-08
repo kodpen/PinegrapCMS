@@ -300,6 +300,26 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'inventory.moves',
+			'method'  => 'GET',
+			'path'    => '/inventory/moves',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_moves',
+			'returns' => array('list' => 'StockMove'),
+			'summary' => 'Stock history',
+			'description' => 'Every change of a product\'s units at a stock location, newest first, as the Stock history screen lists it: orders, cancellations, returns, counts, imports, marketplace and accounting changes, transfers (two rows with the same ref) and changes by hand or over this API. delta is the change, quantity_after the units left at that location. Only sites that keep stock per location record moves; GET /erp/stock/moves lists the accounting documents\' stock lines instead. Refusals: 422 location when location is not a stock location of this site.',
+			'params'  => array(
+				array('name' => 'product_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product\'s moves.'),
+				array('name' => 'location',   'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the moves at this location (GET /inventory/locations; 0 or left out: every location).'),
+				array('name' => 'reason',     'in' => 'query', 'type' => 'enum', 'values' => pg_stock_reasons(), 'description' => 'Only moves of this kind: panel (product screen), bulk_edit, import, checkout (an order), local_sale (a store sale), cancel, return, barcode, api, transfer, count (a stock count), marketplace, erp (accounting) or workspace.'),
+				array('name' => 'from',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only moves at or after this moment; a date alone counts from its 00:00 in the site\'s time zone.'),
+				array('name' => 'to',         'in' => 'query', 'type' => 'datetime', 'description' => 'Only moves at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
 			'id'      => 'inventory.transfer',
 			'method'  => 'POST',
 			'path'    => '/inventory/transfer',
