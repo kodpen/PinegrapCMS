@@ -33,6 +33,7 @@ description: Plan: the Planetarium and Observatory design template (pinegrap-pla
 ## Where to start?
 - The lowest step not marked done. Layout models: `pinegrap-skiresort/`, `pinegrap-restaurant/` for dated events. Lists: `?audience=` `$audience_titles`, `?visit=` `$visit_choices`, `?grade=` `$grade_titles`. Never `?view=` ([[design-template-hotel]]).
 - Steps 4-6 place the family's blocks ([[designer-blocks-planetarium]]).
+- Field ids the cards of step 3 read (steps 5-6 build the forms with them): Dome Shows `show_date`, `showtimes`, `length`, `age`, `language`, `audience`, `summary`, `details`, `photo_1`, `featured`; Telescope Nights `night_date`, `start_time`, `target`, `place`, `places`, `status`, `summary`, `photo_1`.
 - Order 145 is claimed here.
 
 ## Open questions
