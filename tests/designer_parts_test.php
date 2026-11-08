@@ -410,7 +410,7 @@ function test_designer_theme_part_draws_and_writes_through_the_host()
 	$js = 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "theme") factory = f; } };'
 		. 'var window = {}; var localStorage = { getItem: function () { return null; }, setItem: function () {} };'
 		. 'var listeners = []; var document = { addEventListener: function (t, f) { listeners.push(t); }, querySelector: function () { return null; } };'
-		. 'function el() { var e = { innerHTML: "", style: {}, listeners: {}, addEventListener: function (t, f) { this.listeners[t] = f; }, querySelectorAll: function () { return []; }, querySelector: function () { return null; } }; return e; }'
+		. 'function el() { var e = { innerHTML: "", style: {}, listeners: {}, addEventListener: function (t, f) { this.listeners[t] = f; }, querySelectorAll: function () { return []; }, querySelector: function () { return el(); } }; return e; }'
 		. 'var head = el(), vars = el(); document.getElementById = function (id) { return id === "sd-theme-head" ? head : (id === "sd-theme-vars" ? vars : null); };'
 		. 'var K = {}; ' . json_encode($keys) . '.forEach(function (k) { K[k] = function () {}; });'
 		. 'K._sdT = function (s) { return s; }; K.esc = function (s) { return String(s); }; K._sdUsesBootstrap = function () { return true; };'
