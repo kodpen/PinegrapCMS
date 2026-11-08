@@ -15,6 +15,7 @@ description: Order of the polishing round after Launch: every shipped template's
 4. Templates that already have a family or their own layout: news, magazine (one step each: motion and the family's newer blocks), forum.
 5. Last: hello (the default starter), playground (it then shows each family's blocks).
 - Every shipped template is in this list; Launch is in the main plan.
+- Wedding: `wedding-1` (family, [[designer-blocks-wedding]], #8167) is done.
 
 ## Where do the open template plans come?
 - Their files are not edited here (open PRs hold most). In each, the assembly step (look, fonts, rules) follows the rule: no new stock band added there. Their pages are built, so each one's polishing (`-1`, `-2`) joins the list as soon as its assembly lands, ahead of the groups not yet claimed: bakery, brewery, carrental, coworking, drivingschool, ferry, filmstudio, florist, homeservices, library (assembly #7982 open), marina, pharmacy, podcast, recruitment, restaurant, sportsclub, theatre, veterinary.
