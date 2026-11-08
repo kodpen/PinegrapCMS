@@ -1,6 +1,6 @@
 ---
 name: api-experiments
-description: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
+description: The experiments API resource (PX7, #6295; dry_run #8099): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
 ---
 
 ## Which routes are there?
