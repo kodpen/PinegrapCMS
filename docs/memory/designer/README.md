@@ -25,6 +25,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - Mark a new style_designer.js member that writes page markup or draws the canvas with `/* @pg-site-output */` on the line above it, or `bs6_migrate.php` and `check_bs6.php` read its classes as panel code (`ui/bootstrap-6-editor-markers.md`).
 - Build a design template's missing sector sections first as a palette block family, then give its home and signature pages their own composition and `_fx` motion where it fits; never copy another template's builders or band sequence (`design-template-own-look.md`).
 - Redraw a one-node text, property or style edit with `_sdRenderNode(node, …)`; a structure change, or a prop another node reads, keeps the full `render()` (`designer-incremental-canvas.md`).
+- Start a new panel's drawing function with `_sdPanelDefer(name)` and debounce per-keystroke panel draws with `_sdPanelsSoon(node)`; the canvas stays live (`designer-panels-on-demand.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -262,6 +263,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-palette-tabs-and-blocks.md: Designer palette has two tabs (Bileşenler building blocks, Bloklar ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
+- designer-panels-on-demand.md: The designer draws only the panels that can be seen, debounces them while a field is typed into, and redraws one node's Layers rows (D3, PR #8075)
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
