@@ -20,4 +20,4 @@ description: Note groups on the My Notes screen — workspace_note_groups.js (fo
 - Keyboard and touch: Move to group, Move up / Move down in a note's menu (inside a folder of two or more) and in a folder's menu; a long press opens a row's or folder's menu (`onContext()`). Shared-with-me rows are not draggable; Move to group places them.
 
 ## What is not there yet?
-- Shared groups on the screen (G6), the lock pane hiding a locked folder's notes (L steps). Tabs over an open note: `workspace-note-tabs.md`.
+- Shared groups on the screen: `workspace-note-groups-shared-screen.md`. The lock on the screen (a closed locked folder offers the PIN through `ctx.lockedBody`): `workspace-note-lock-screen.md`. Tabs over an open note: `workspace-note-tabs.md`.

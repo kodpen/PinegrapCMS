@@ -12,7 +12,7 @@ description: Steps L1-L4, M1-M3 and N9 of plans/workspace-notes-groups-lock.md: 
 
 - L3 (M) Every other reader. After L2. API and MCP note routes (`locked: true`, body null, writes and versions 423 `note_locked`), sync, search and record history (title only), block pull and `ws_blocks`, meetings, workflow table import, export (one note or print with the lock open; Export all leaves locked notes out and says how many), `get_file.php` for a locked note's folder and `workspace_file_save.php?note=` (#8198), no assistant request from a locked note; a guard test listing every reader of `ws_notes` and its gate.
 
-- L4 (M) Lock on the screen. After L1, beside L2. New `assets/js/workspace_note_lock.js`: the toolbar's Lock and its dialog, the lock pane (PIN, Open, Forgot your PIN → e-mail code → new PIN), lock marks in the list and tabs, Lock and Unlock in the menus, Lock now, the open note closed when the time ends or an answer says `note_locked`.
+- L4 (M) Lock on the screen. Done (PR #8205); `workspace/workspace-note-lock-screen.md`. New `assets/js/workspace_note_lock.js`: the toolbar's Lock and its dialog, the lock pane (PIN, Open, Forgot your PIN → e-mail code → new PIN), lock marks in the list and tabs, Lock and Unlock in the menus, Lock now, the open note closed when the time ends or an answer says `note_locked`.
 
 - M1 (M) Media, read view. Done (#8150). A line holding only a link to a file of this site drawn by `ws_render_body(…, $note = true)` after `ws_file_kind()`: a picture (lazy, bounded height), video and audio players, a PDF or other file as a card (icon, name, size); other hosts stay links; the read-only view and the print page; styles in `backend.src.css`.
 
