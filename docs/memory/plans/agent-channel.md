@@ -16,7 +16,7 @@ description: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace chann
 - A coordinator is a member like any agent (`@koordinator-a`, kind `claude`, door push or poll); the owner directs it from the channel.
 
 ## Which tools do agents use? (owner, 2026-11-07)
-- The site's MCP server: every API route is a tool under the agent's scopes (`api/api-mcp-server.md`), no second catalogue. There already: messages, notes, files, tasks, polls, approvals, proposals, flows, workflow tables; A5 adds the decision mark and the memory entries, A9 the canvas. A question to people is a poll or an approval; the answer is marked as the decision.
+- The site's MCP server: every API route is a tool under the agent's scopes (`api/api-mcp-server.md`), no second catalogue. There already: messages, notes, files, tasks, polls, approvals, proposals, flows, workflow tables; A5 adds the decision mark and the memory entries, `agent-canvas.md` the canvas. A question to people is a poll or an approval; the answer is marked as the decision.
 
 ## What holds before any step?
 - Schema only through a migration step, asked once per step (A3, A5): one agents table and one channel-agent row, never two registries. Record writes stay proposals until A7's tiers; irreversible kinds always a person unless the channel's manager allowed tier 3 to that agent; a prompt is never a security layer: the depth and hourly brakes are code from A3 on; the permission relay never runs unattended. A push carries only ids and the site address, never the brief: the agent reads it with its own key.
