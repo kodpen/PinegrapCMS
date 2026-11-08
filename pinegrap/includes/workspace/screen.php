@@ -869,6 +869,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // the Flows screen prints them (ws_screen_scripts()).
         'flow_scripts' => array_merge(pg_js_bundle_urls('assets/js/pg_graph_canvas.min.js'), pg_js_bundle_urls('assets/js/workspace_flow.min.js')),
         'notes'        => function_exists('ws_notes_ready') && ws_notes_ready(),
+        // Note groups as folders in My Notes (note_groups.php,
+        // workspace_note_groups.js).
+        'notes_groups' => function_exists('ws_note_groups_ready') && ws_note_groups_ready(),
         // What one import of notes may send (workspace_notes_import.php): its
         // size, how many files the server takes in one request and the kinds
         // of file it reads; and how many notes a person keeps.

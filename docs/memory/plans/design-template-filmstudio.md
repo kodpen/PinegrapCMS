@@ -19,16 +19,16 @@ description: Plan: the Film Studio design template (pinegrap-filmstudio): showre
 
 - 4 (done, #7936): `mail.php` (e-mail builders), `enquiries.php`: project enquiries (`enquiry` with `?service=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`), studio hire requests (`studio_hire` with `?space=`, `studio_hire_view`, `my_studio_hires`, `staff_studio_hires`), `privacy`, `email_reply`; test.
 
-- 5: `careers.php`: crew calls as the Jobs collection (`careers`, `job` with an apply link `?job=`, `job_new`) and applications (`application`, `application_view`, `my_applications`, `staff_applications`); test.
+- 5 (done, #8088): `careers.php`: crew calls (Jobs collection) and applications; test.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #8108): `standard.php`: the standard pages, the Journal as the blog; test.
 
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #8126): `account.php`: sign-in, My Account, staff area, Journal form, account e-mails; test.
 
 - 8: assembly: `pinegrap-filmstudio.php` (order, search sections, look, fonts, `pfm-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-filmstudio.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The next free step is the lowest one not marked done. Models: `pinegrap-construction/`, `pinegrap-courses/learn.php` (the video player). The enquiry reads `?service=` (`$enquiry_service_choices`), the studio hire `?space=` (`$space_titles`), the application `?job=` (`$application_job_choices`); the project list filters `?industry=` and `?service=` in the words of `$industry_titles` and `$service_titles`. Service pages are `service_<key>` under `$services`. `_test_fm_page_keys()` (step 1 test) lists every page key of the finished template.
+- The next free step is the lowest one not marked done: step 8 (assembly); every part file is merged or in review, `_test_fm_page_keys()` lists the e-mail pages too. Models: `pinegrap-construction/`, `pinegrap-courses/learn.php` (the video player). The enquiry reads `?service=` (`$enquiry_service_choices`), the studio hire `?space=` (`$space_titles`), the application `?job=` (`$application_job_choices`); the project list filters `?industry=` and `?service=` in the words of `$industry_titles` and `$service_titles`. Service pages are `service_<key>` under `$services`. `_test_fm_page_keys()` (step 1 test) lists every page key of the finished template.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).

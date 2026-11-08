@@ -114,6 +114,17 @@ function test_design_template_collection_forms()
 		'pinegrap-campsite'   => array('blog_new', 'staff_entry', 'unit_new'),
 		'pinegrap-cityhall'   => array('blog_new', 'event_new', 'notice_new', 'staff_entry'),
 		'pinegrap-library'    => array('blog_new', 'event_new', 'item_new', 'staff_entry'),
+		'pinegrap-marina'     => array('blog_new', 'boat_new', 'event_new', 'staff_entry'),
+		'pinegrap-theatre'    => array('blog_new', 'performance_new', 'production_new', 'staff_entry'),
+		'pinegrap-restaurant' => array('blog_new', 'dish_new', 'event_new', 'staff_entry'),
+		'pinegrap-drivingschool' => array('blog_new', 'course_new', 'staff_entry', 'story_new'),
+		'pinegrap-sportsclub' => array('blog_new', 'event_new', 'match_new', 'player_new', 'staff_entry'),
+		'pinegrap-pharmacy'   => array('blog_new', 'pharmacist_new', 'staff_entry'),
+		'pinegrap-ferry'      => array('blog_new', 'notice_new', 'staff_entry'),
+		'pinegrap-coworking'  => array('blog_new', 'event_new', 'space_new', 'staff_entry'),
+		'pinegrap-florist'    => array('blog_new', 'staff_entry', 'work_new'),
+		'pinegrap-homeservices' => array('blog_new', 'service_new', 'staff_entry', 'team_new'),
+		'pinegrap-veterinary' => array('blog_new', 'staff_entry', 'vet_new'),
 	);
 	$templates = _test_tpl_coll_templates();
 	foreach ($expected as $id => $keys) {

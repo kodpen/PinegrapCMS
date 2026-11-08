@@ -96,8 +96,10 @@ function _test_gl_page_keys()
 		'email_enquiry_new', 'email_enquiry_received',
 		'viewing', 'viewing_view', 'my_viewings', 'staff_viewings', 'email_viewing_new', 'email_viewing_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
+		'email_account_welcome', 'email_password_reset',
 	), _test_gl_shop_keys());
 }
 

@@ -49,6 +49,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_saved_replies.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_note_groups.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -187,6 +188,7 @@ function ws_openapi_objects()
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
         'WorkspaceNote'           => 'ws_api_note_schema',
         'WorkspaceNoteRemoval'    => 'ws_api_note_removal_schema',
+        'WorkspaceNoteGroup'      => 'ws_api_note_group_schema',
         'WorkspaceTemplate'        => 'ws_api_template_schema',
         'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
         'WorkspaceCommand'         => 'ws_api_command_schema',
@@ -2620,7 +2622,7 @@ function ws_api_routes()
 
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables
-    // (api_wtables.php), e-mail conversations (api_mail.php) and saved
-    // replies (api_saved_replies.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes());
+    // (api_wtables.php), e-mail conversations (api_mail.php), saved
+    // replies (api_saved_replies.php) and note groups (api_note_groups.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes());
 }

@@ -132,6 +132,7 @@ function _test_fl_page_keys()
 		'event_enquiry', 'event_enquiry_view', 'staff_events', 'subscribe', 'subscription_view', 'consultation',
 		'email_event_new', 'email_event_received', 'email_subscription_new', 'email_subscription_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	), _test_fl_shop_keys());

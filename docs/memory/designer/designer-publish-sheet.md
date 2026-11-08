@@ -20,4 +20,11 @@ description: The visual designer's Publish sheet: which pages it lists and check
 - The chevron menu beside the main button is gone. "Save this page as a draft" and "Take every page of the design off the site" are the sheet's foot buttons (`_pgSetDraft(keys, true)`, which asks first); "Publish this page" and "Publish every page" are rows to check ("Select all").
 - Its texts come from `lang()` in hidden `data-sdp-text` spans in the markup: `pg_designer_publish.js` is not scanned for `_sdT()` keys.
 
-Plan step D6 of `plans/designer-performance-and-publish.md` (PR #8009); D7 adds the progress and the per-page result to the sheet.
+## What does the sheet show during and after the save?
+- Publish selected keeps the sheet open: the button turns into a spinner and "Publishing…", the rows and the other actions are disabled (`busy()`). The bridge call is `publish(keys, hold, report)`.
+- The editor hands the reply to `report` through `opts.reportSaved` of `saveAjax()` (from `_pgSetDraft(keys, false, hold, report)` or the plain save). It returns whether the sheet was open to show it; only when it was not does the success toast appear. Warnings and notes still come as toasts.
+- `PgDesignerPublish.outcome(rows, reply.pages, hold)` groups the pages: on the site now, stayed drafts, not saved (held by the sheet, or another user's page, which comes back without `draft`). The result view (`data-sdp-result`) lists them and Done closes the sheet; the next opening starts from the pick view.
+- A save that did not run (shared components loading, view mode, nothing to publish, a server or network error) calls `report(null)`: the sheet gives the pick back; the editor already said why.
+- Take off the site still closes the sheet first: it asks in a confirm that must not sit under the sheet.
+
+Plan steps D6 (PR #8009) and D7 of `plans/designer-performance-and-publish.md`.

@@ -9899,6 +9899,9 @@
                 body.textContent = t('message_deleted');
             } else if (message.note_card) {
                 body.appendChild(self.noteCardNode(message.note_card));
+            } else if (message.note_group_card && window.PGWsNoteGroupShares && window.PGWsKit) {
+                // A group of notes shared here (workspace_note_group_shares.js).
+                body.appendChild(window.PGWsNoteGroupShares.card(window.PGWsKit, message.note_group_card, openNoteView));
             } else if (message.scheduled) {
                 // A scheduled action written here: its card, as it is now.
                 body.appendChild(scheduledCard(message.scheduled, function (fresh) {
@@ -21796,7 +21799,7 @@
         }
 
         var query = params();
-        var lists = { mine: [], shared: [] };
+        var lists = { mine: [], shared: [], groups: [], sharedGroups: [] };
         var current = null;     // the note open, with its text
         var field = null;       // the writing box of the open note
         var voiceRow = null;    // where a recording made in the note runs
@@ -21962,6 +21965,12 @@
 
             items.push({ icon: 'bi-link-45deg', label: t('notes_copy_link'), action: function () { copyText(absoluteUrl(CFG.urls.notes + '?note=' + note.id)); } });
 
+            var groups = groupsCtx();
+
+            if (groups) {
+                items = items.concat(window.PGWsNoteGroups.menuItems(groups, note));
+            }
+
             // The note as a file for another app, or as a page to print
             // (workspace_notes_export.php).
             if (CFG.urls.notes_export) {
@@ -22003,88 +22012,172 @@
             }
 
             notes.forEach(function (note) {
-                // What is new is new until the note is opened; the open one
-                // is being read.
-                var open = current && current.id === note.id;
-                var unread = !open && !!note.unread;
-                var item = el('div', 'ws-nb-item' + (open ? ' active' : '') + (unread ? ' ws-nb-item-unread' : ''));
-
-                var top = el('div', 'ws-nb-item-head');
-                top.appendChild(icon(note.access === 'owner' ? (note.source ? 'bi-chat-square-quote' : 'bi-journal-text') : 'bi-people'));
-                top.appendChild(el('span', 'ws-nb-item-name', note.name));
-
-                if (unread) {
-                    var dot = el('span', 'ws-nb-item-dot');
-                    dot.title = t('notes_news');
-                    dot.setAttribute('aria-label', t('notes_news'));
-                    top.appendChild(dot);
-                }
-
-                if (note.pinned) {
-                    var pinMark = icon('bi-pin-angle-fill', 'ws-nb-item-pin');
-                    pinMark.title = t('notes_pinned');
-                    top.appendChild(pinMark);
-                }
-
-
-                var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
-                more.addEventListener('click', function (event) {
-                    var box = more.getBoundingClientRect();
-
-                    event.stopPropagation();
-                    ctxMenu(box.left, box.bottom + 4, noteMenu(note));
-                });
-                top.appendChild(more);
-                item.appendChild(top);
-
-                if (note.excerpt && note.excerpt !== note.name) {
-                    item.appendChild(el('div', 'ws-nb-item-excerpt', note.excerpt));
-                }
-
-                // The time sits on the line under the title, so a narrow list
-                // column leaves the whole head row to the note's name.
-                var meta = el('div', 'ws-nb-item-meta');
-                meta.appendChild(el('span', 'ws-nb-item-time', note.updated));
-
-                if ((note['with'] || []).length || (note['in'] || []).length || note.access !== 'owner') {
-                    meta.appendChild(noteFaces(note, 4));
-                }
-
-                if (note.access !== 'owner' && note.owner) {
-                    meta.appendChild(el('span', 'text-truncate', t('notes_owner', note.owner.name)));
-                } else if (note.source && note.source.channel) {
-                    meta.appendChild(el('span', 'text-truncate', '#' + note.source.channel.name));
-                }
-
-                // Claude: still on a line asked in it, or its answer waiting
-                // to be written in when the note is opened.
-                if (note.claude_state === 'answered' || note.claude_state === 'waiting') {
-                    var claudeTag = el('span', 'ws-nb-item-claude ws-nb-item-claude-' + note.claude_state);
-                    claudeTag.appendChild(icon('bi-stars'));
-                    claudeTag.appendChild(document.createTextNode(' ' + t(note.claude_state === 'answered' ? 'notes_claude_answered' : 'notes_claude_working')));
-                    meta.appendChild(claudeTag);
-                }
-
-                item.appendChild(meta);
-
-                function openThis() {
-                    if (!current || current.id !== note.id) {
-                        openNote(note.id);
-                    }
-                }
-
-                item.addEventListener('click', openThis);
-                pressKeys(item, openThis);
-                onContext(item, function () { return noteMenu(note); });
-
-                section.appendChild(item);
+                section.appendChild(drawItem(note));
             });
 
             return section;
         }
 
+        // One note's row in a list or in a group's folder
+        // (workspace_note_groups.js).
+        function drawItem(note) {
+            // What is new is new until the note is opened; the open one
+            // is being read.
+            var open = current && current.id === note.id;
+            var unread = !open && !!note.unread;
+            var item = el('div', 'ws-nb-item' + (open ? ' active' : '') + (unread ? ' ws-nb-item-unread' : ''));
+
+            var top = el('div', 'ws-nb-item-head');
+            top.appendChild(icon(note.access === 'owner' ? (note.source ? 'bi-chat-square-quote' : 'bi-journal-text') : 'bi-people'));
+            top.appendChild(el('span', 'ws-nb-item-name', note.name));
+
+            if (unread) {
+                var dot = el('span', 'ws-nb-item-dot');
+                dot.title = t('notes_news');
+                dot.setAttribute('aria-label', t('notes_news'));
+                top.appendChild(dot);
+            }
+
+            if (note.pinned) {
+                var pinMark = icon('bi-pin-angle-fill', 'ws-nb-item-pin');
+                pinMark.title = t('notes_pinned');
+                top.appendChild(pinMark);
+            }
+
+
+            var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
+            more.addEventListener('click', function (event) {
+                var box = more.getBoundingClientRect();
+
+                event.stopPropagation();
+                ctxMenu(box.left, box.bottom + 4, noteMenu(note));
+            });
+            top.appendChild(more);
+            item.appendChild(top);
+
+            if (note.excerpt && note.excerpt !== note.name) {
+                item.appendChild(el('div', 'ws-nb-item-excerpt', note.excerpt));
+            }
+
+            // The time sits on the line under the title, so a narrow list
+            // column leaves the whole head row to the note's name.
+            var meta = el('div', 'ws-nb-item-meta');
+            meta.appendChild(el('span', 'ws-nb-item-time', note.updated));
+
+            if ((note['with'] || []).length || (note['in'] || []).length || note.access !== 'owner') {
+                meta.appendChild(noteFaces(note, 4));
+            }
+
+            if (note.access !== 'owner' && note.owner) {
+                meta.appendChild(el('span', 'text-truncate', t('notes_owner', note.owner.name)));
+            } else if (note.source && note.source.channel) {
+                meta.appendChild(el('span', 'text-truncate', '#' + note.source.channel.name));
+            }
+
+            // Claude: still on a line asked in it, or its answer waiting
+            // to be written in when the note is opened.
+            if (note.claude_state === 'answered' || note.claude_state === 'waiting') {
+                var claudeTag = el('span', 'ws-nb-item-claude ws-nb-item-claude-' + note.claude_state);
+                claudeTag.appendChild(icon('bi-stars'));
+                claudeTag.appendChild(document.createTextNode(' ' + t(note.claude_state === 'answered' ? 'notes_claude_answered' : 'notes_claude_working')));
+                meta.appendChild(claudeTag);
+            }
+
+            item.appendChild(meta);
+
+            function openThis() {
+                if (!current || current.id !== note.id) {
+                    openNote(note.id);
+                }
+            }
+
+            item.addEventListener('click', openThis);
+            pressKeys(item, openThis);
+            onContext(item, function () { return noteMenu(note); });
+
+            return item;
+        }
+
+        // What workspace_note_groups.js draws the folders with; null while
+        // groups are not installed or the script is missing.
+        function groupsCtx() {
+            if (!CFG.notes_groups || !window.PGWsNoteGroups || !window.PGWsKit) {
+                return null;
+            }
+
+            var inShared = {};
+
+            lists.sharedGroups.forEach(function (group) { inShared[group.id] = true; });
+
+            return {
+                kit: window.PGWsKit,
+                groups: lists.groups,
+                sharedGroups: lists.sharedGroups,
+                notes: lists.mine.concat(lists.shared),
+                // An own note put in a group shared with the person is drawn
+                // in that group's folder under Shared with me.
+                mine: lists.mine.filter(function (note) { return !inShared[Number(note.group_id || 0)]; }),
+                search: search,
+                people: ((BOOT && BOOT.people) || []).map(function (member) { return member.id; }),
+                channels: BOOT ? (BOOT.channels || []) : [],
+                // Share the group in an own group's menu
+                // (workspace_note_group_shares.js).
+                groupMenuExtra: function (group) {
+                    return window.PGWsNoteGroupShares ? window.PGWsNoteGroupShares.menuItems(groupsCtx(), group) : [];
+                },
+                title: t('notes_mine'),
+                emptyText: search ? t('notes_empty_search') : t('notes_empty'),
+                drawItem: drawItem,
+                ctxMenu: ctxMenu,
+                colorPicker: colorPicker,
+                setGroups: function (groups) {
+                    lists.groups = groups;
+                    drawList();
+                },
+                reload: loadList
+            };
+        }
+
+        // The open note's group as tabs over it (workspace_note_tabs.js);
+        // drawn again with the list, so a rename or a move shows at once.
+        function drawTabs() {
+            var card = pane.querySelector('.ws-nb-card');
+            var old = card ? card.querySelector('.ws-nb-tabs') : null;
+            var tabs = null;
+
+            if (!card || !current || !groupsCtx() || !window.PGWsNoteTabs) {
+                if (old) {
+                    old.remove();
+                }
+
+                return;
+            }
+
+            tabs = window.PGWsNoteTabs.draw({
+                kit: window.PGWsKit,
+                note: current,
+                notes: lists.mine.concat(lists.shared),
+                groups: lists.groups.concat(lists.sharedGroups),
+                search: search,
+                panel: card,
+                share: window.PGWsNoteGroupShares ? function (group) { window.PGWsNoteGroupShares.share(groupsCtx(), group); } : null,
+                open: function (noteId) { openNote(noteId); },
+                newNote: function () { startNew(); },
+                reload: loadList
+            });
+
+            if (old && tabs) {
+                card.replaceChild(tabs, old);
+            } else if (old) {
+                old.remove();
+            } else if (tabs) {
+                card.insertBefore(tabs, card.firstChild);
+            }
+        }
+
         function drawList() {
             clear(list);
+            drawTabs();
 
             if (!lists.mine.length && !lists.shared.length && !search) {
                 var intro = el('div', 'ws-nb-intro');
@@ -22093,14 +22186,24 @@
                 list.appendChild(intro);
             }
 
-            list.appendChild(drawSection(t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
-            list.appendChild(drawSection(t('notes_shared'), lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
+            var groups = groupsCtx();
+
+            list.appendChild(groups ? window.PGWsNoteGroups.mine(groups) : drawSection(t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
+            if (groups && window.PGWsNoteGroupShares) {
+                // Groups shared with the person as folders, then the notes
+                // shared one by one (workspace_note_group_shares.js).
+                list.appendChild(window.PGWsNoteGroupShares.section(groups, window.PGWsNoteGroups.sharedLoose(groups, lists.shared), t('notes_shared'), search ? t('notes_empty_search') : t('notes_empty_shared')));
+            } else {
+                list.appendChild(drawSection(t('notes_shared'), groups ? window.PGWsNoteGroups.sharedLoose(groups, lists.shared) : lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
+            }
         }
 
         function loadList() {
             return api('ws_notes', { search: search }).then(function (data) {
                 lists.mine = data.mine || [];
                 lists.shared = data.shared || [];
+                lists.groups = data.groups || [];
+                lists.sharedGroups = data.shared_groups || [];
 
                 if (data.menu) {
                     menuPinned = !!data.menu.pinned;
@@ -22203,6 +22306,12 @@
 
                 if (wasNew) {
                     lists.mine.unshift(data.note);
+
+                    if (note.newGroup && groupsCtx()) {
+                        note.group_id = note.newGroup;
+                        data.note.group_id = note.newGroup;
+                        window.PGWsNoteGroups.placeNew(groupsCtx(), note.id, note.newGroup);
+                    }
                 } else {
                     listed(data.note);
                 }
@@ -24511,10 +24620,12 @@
 
             var body = el('div', 'card-body ws-nb-body');
 
+            card.id = 'ws-nb-note-card';
             card.appendChild(headNode);
             card.appendChild(infoNode);
             card.appendChild(body);
             pane.appendChild(card);
+            drawTabs();
             field = null;
             voiceRow = null;
             voiceList = el('div', 'ws-nb-voices d-flex flex-column gap-2 mt-4 d-none');
@@ -24640,8 +24751,12 @@
         }
 
         function startNew() {
+            // A new note goes into the group of the note open, if any (a
+            // new note not saved yet: the group it was started in).
+            var inGroup = current ? Number((current.id ? current.group_id : current.newGroup) || 0) : 0;
+
             save().then(function () {
-                current = { id: 0, title: '', body: '', access: 'owner', pinned: false, source: null, 'with': [], 'in': [], owner: null, updated_by: null };
+                current = { id: 0, title: '', body: '', access: 'owner', pinned: false, source: null, 'with': [], 'in': [], owner: null, updated_by: null, newGroup: inGroup };
                 dirty = false;
                 remember(0);
                 drawList();
@@ -24965,9 +25080,12 @@
 
         loadList().then(function () {
             var wanted = parseInt(query.note || 0, 10) || 0;
+            var wantedGroup = parseInt(query.group || 0, 10) || 0;
 
             if (wanted) {
                 openNote(wanted);
+            } else if (wantedGroup && groupsCtx() && window.PGWsNoteGroupShares) {
+                window.PGWsNoteGroupShares.openGroup(groupsCtx(), wantedGroup, openNote);
             } else if (query['new']) {
                 startNew();
             }

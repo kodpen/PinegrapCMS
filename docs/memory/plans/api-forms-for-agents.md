@@ -13,23 +13,23 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
 
 ## Which steps?
 - F1 (S, docs and tests) Audit. Done (#7967): the gaps below; `tests/api_route_examples_test.php`.
-- F2 (S) Form and field facts. Done (#7973): a rich text area is `rich_text`, `max_length` 200000 (`api/api-form-facts.md`). Form: `framework` (of the page's design), `is_collection`, the record's site address pattern; a FormField of type `html`: `html_allowed` (the tags and attributes `pg_sanitize_rich_text()` keeps) and `max_length`; the choice fields keep their `options`; `GET /forms/{id}`, `/fields`, `api_form_field_schema()`.
-- F3 (M) Rich text in. After F2. `html` answers on create and update through the visitor path's sanitiser (`pg_sanitize_rich_text()`), the site's own address folded back to `{path}`, the length limit the column takes instead of 10,000; `author_user_id` (staff, the key's owner by default); the Status field as sent with its choices checked; `form.submitted` as today; the FormSubmission answer carries the record's address.
-- F4 (S) MCP guidance. After F2. The tools' descriptions say to read `forms_fields` first and what an `html` field takes; a resource `pinegrap://forms/{id}/fields`; a prompt `blog_post` (the form, the framework, the allowed HTML, the picture flow) (`api/mcp-resources-prompts.md`).
-- F5 (S) Pictures in a post. After F3. A picture sent through `POST /files` (`api/api-file-endpoints.md`) and referenced by its address in an `html` answer is kept as the page keeps it; the folder the form's pictures go to; size and type as the panel's upload.
+- F2 (S) Form and field facts. Done (#7973), `api/api-form-facts.md`.
+- F3 (M) Rich text in. Done (#8043): `api/api-form-rich-text-in.md`.
+- F4 (S) MCP guidance. Done (#8042): `api/mcp-form-guidance.md`.
+- F5 (S) Pictures in a post. Done (#8066): `POST /files` `form_id`, `api/api-form-rich-text-in.md`.
 
 ## What stays as it is?
 - The visitor path (`custom_form.php`) with its CAPTCHA and spam rules; file upload and signature fields stay unsendable; an API caller is staff (forms scope).
 
 ## What did the audit (F1) find?
 - 245 GET routes and 353 `dry_run` writes ran on a sandbox: no 500; the 8 writes without `dry_run` were not called. None of the gaps needs a product decision; screen and route of each in `api/api-panel-coverage.md`:
-  - G1 no `GET /inventory/moves` (stock history, `includes/fn/stock_moves.php`).
-  - G2 no route writes the staff answer to a product question.
-  - G3 ContactGroup does not say it is filled by rules; no Refresh now.
-  - G4 no read or restore of a collection item's revisions.
-  - G5 Customer has no bounce state; no Allow again.
-  - G6 experiments start/pause/end take no `dry_run`.
-  - G7 a dry-run page or file delete creates the Recycle Bin before its stop (`pg_recycle_folder_id(true)`), warning `sessionusername` on the API path.
+  - G1 `GET /inventory/moves` (stock history). Done (#8097).
+  - G2 no route writes the staff answer to a product question. Done (#8116): `POST /comments/{id}/answer`.
+  - G3 done (PR #8098): `by_rule` and `computed_at` on ContactGroup, `POST /contact-groups/{id}/refresh`.
+  - G4 no read or restore of a collection item's revisions. Done (#8111): `api/api-form-submission-revisions.md`.
+  - G5 Customer has no bounce state; no Allow again. Done (#8121): `email_suppressed`, `POST /customers/{id}/allow-mail`, `api/api-customer-mail-suppression.md`.
+  - G6 experiments start/pause/end take no `dry_run`. Done (#8099).
+  - G7 done (#8106): a dry-run page or file delete no longer creates the Recycle Bin; the real delete makes it as the key's owner.
 
 ## Where does it start?
-- F3 and F4 now; G1-G7 are free work outside the F steps.
+- F1-F5, G1 and G3-G7 done. Left: G2 (the staff answer to a product question); then delete this file.

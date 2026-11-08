@@ -194,19 +194,11 @@ function api_form_facts($page_id, $page_folder, $page_style) {
 
 	$pattern = null;
 
-	require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
-
-	$record_page = pg_ap_record_page($page_id);
-
-	if ($record_page === null) {
-
-		$record_page = api_form_classic_record_page($page_id);
-
-	}
+	$record_page = api_form_record_page($page_id);
 
 	if ($record_page !== null) {
 
-		$pattern = api_form_record_url_pattern(URL_SCHEME . HOSTNAME_SETTING . PATH, $record_page['page_name'], pg_sw_form_pretty_urls($page_id));
+		$pattern = api_form_record_url_pattern(URL_SCHEME . HOSTNAME_SETTING . PATH, $record_page['page_name'], $record_page['pretty']);
 
 	}
 
@@ -215,6 +207,65 @@ function api_form_facts($page_id, $page_folder, $page_style) {
 		'is_collection'      => $is_collection,
 		'record_url_pattern' => $pattern
 	);
+
+}
+
+// The page a form's records are read on (page_id, page_name) and whether the
+// form names them in their addresses (pretty): the first public page with a
+// designed record view of the form (pg_ap_record_page()), else the first
+// public classic form item view page. Null when no public page shows them.
+// Asked once per form per request.
+function api_form_record_page($form_page_id) {
+
+	static $pages = array();
+
+	$form_page_id = (int)$form_page_id;
+
+	if (!array_key_exists($form_page_id, $pages)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
+
+		$page = pg_ap_record_page($form_page_id);
+
+		if ($page === null) {
+
+			$page = api_form_classic_record_page($form_page_id);
+
+		}
+
+		$pages[$form_page_id] = ($page === null) ? null : array(
+			'page_id'   => (int)$page['page_id'],
+			'page_name' => (string)$page['page_name'],
+			'pretty'    => pg_sw_form_pretty_urls($form_page_id)
+		);
+
+	}
+
+	return $pages[$form_page_id];
+
+}
+
+// The address a record is read at on the site, null when no public page shows
+// the form's records or the record is not complete (only complete records
+// are shown). $row: forms row with page_id, complete, reference_code,
+// address_name.
+function api_form_submission_url($row) {
+
+	if (((int)$row['complete'] !== 1) || ((string)$row['reference_code'] === '')) {
+
+		return null;
+
+	}
+
+	$page = api_form_record_page($row['page_id']);
+
+	if ($page === null) {
+
+		return null;
+
+	}
+
+	return pg_sw_record_url($page['page_name'], $row['reference_code'], isset($row['address_name']) ? $row['address_name'] : '', $page['pretty'], URL_SCHEME . HOSTNAME_SETTING . PATH);
 
 }
 
@@ -251,6 +302,76 @@ function api_form_classic_record_page($form_page_id) {
 	}
 
 	return null;
+
+}
+
+// The folder a picture for a form's posts is filed in (POST /files with
+// form_id): the upload folder of the form's own file upload field, the one
+// that feeds the record's media (rss_field media) first, then in form order,
+// and only a folder every visitor may open - a picture inside a published
+// post must load for its readers. 0 when the form has none; the caller then
+// uses the applications' folder. Pure: $fields are form_fields rows
+// (upload_folder_id, rss_field) in form order, $public says whether a folder
+// id is public.
+function api_form_picture_folder_pick($fields, $public) {
+
+	$ordered = array();
+
+	foreach ((array)$fields as $field) {
+
+		if ((string)$field['rss_field'] === 'media') {
+
+			$ordered[] = $field;
+
+		}
+
+	}
+
+	foreach ((array)$fields as $field) {
+
+		if ((string)$field['rss_field'] !== 'media') {
+
+			$ordered[] = $field;
+
+		}
+
+	}
+
+	foreach ($ordered as $field) {
+
+		$folder_id = (int)$field['upload_folder_id'];
+
+		if (($folder_id > 0) && call_user_func($public, $folder_id)) {
+
+			return $folder_id;
+
+		}
+
+	}
+
+	return 0;
+
+}
+
+// api_form_picture_folder_pick() on a form's file upload fields, with folders
+// that still exist, outside the bin.
+function api_form_picture_folder($form_page_id) {
+
+	$binned = function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('folder.folder_id') : '';
+
+	$fields = api_rows("SELECT form_fields.upload_folder_id, form_fields.rss_field
+		FROM form_fields
+		INNER JOIN folder ON folder.folder_id = form_fields.upload_folder_id
+		WHERE form_fields.page_id = '" . (int)$form_page_id . "'
+			AND form_fields.type = 'file upload'
+			AND folder.folder_archived = '0'" . $binned . "
+		ORDER BY form_fields.sort_order ASC, form_fields.id ASC");
+
+	return api_form_picture_folder_pick($fields, function ($folder_id) {
+
+		return get_access_control_type($folder_id) === 'public';
+
+	});
 
 }
 
@@ -377,6 +498,9 @@ function api_form_submission_present($row, $values) {
 		// for a record without one; the number once the order is completed.
 		'order_number'      => api_form_submission_order_number($row),
 		'paid'              => ($state === 'none') ? null : ($state === 'paid'),
+		// Where the record is read on the site (api_form_submission_url()),
+		// set by the handler beside the row; null when no page shows it.
+		'url'               => isset($row['record_url']) ? (string)$row['record_url'] : null,
 		'values'            => $values
 	);
 
@@ -724,6 +848,8 @@ function api_form_submissions($params) {
 
 		$key = (int)$row['id'];
 
+		$row['record_url'] = api_form_submission_url($row);
+
 		$out[] = api_form_submission_present($row, isset($values[$key]) ? $values[$key] : array());
 
 	}
@@ -764,7 +890,7 @@ function api_form_submission_select() {
 
 	if (pg_form_payment_ready()) {
 
-		return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
+		return "SELECT forms.id, forms.page_id, forms.reference_code, forms.address_name, forms.complete,
 				forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp,
 				forms.order_id, forms.paid_at, orders.order_number
 			FROM forms
@@ -772,7 +898,7 @@ function api_form_submission_select() {
 
 	}
 
-	return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
+	return "SELECT forms.id, forms.page_id, forms.reference_code, forms.address_name, forms.complete,
 			forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp
 		FROM forms";
 
@@ -797,6 +923,8 @@ function api_form_submission_owned($form_id, $submission_id) {
 
 	}
 
+	$row['record_url'] = api_form_submission_url($row);
+
 	return $row;
 
 }
@@ -817,6 +945,24 @@ function api_form_submission_get($params) {
 function api_form_text_field_types() {
 
 	return array('text box', 'text area', 'email address');
+
+}
+
+// Whether an update may write a field: a text box, a text area (a rich one
+// takes HTML), an e-mail address, or a choice field that takes one answer
+// (a pick list without multiple picks, a radio button group) - a collection's
+// Status field is one, written as sent among its choices. A check box group,
+// a multiple pick list, an upload, a signature and the date and time fields
+// are not.
+function api_form_field_updatable($field) {
+
+	if (in_array($field['type'], api_form_text_field_types(), true)) {
+
+		return true;
+
+	}
+
+	return in_array($field['type'], array('pick list', 'radio button'), true) && !api_form_field_takes_many($field);
 
 }
 
@@ -842,7 +988,7 @@ function api_form_submission_update($params) {
 
 		$fields = array();
 
-		foreach (api_rows("SELECT id, name, type FROM form_fields
+		foreach (api_rows("SELECT id, name, type, multiple, wysiwyg FROM form_fields
 			WHERE page_id = '" . (int)$row['page_id'] . "' AND name <> ''
 			ORDER BY sort_order ASC, id ASC") as $field) {
 
@@ -851,6 +997,14 @@ function api_form_submission_update($params) {
 				$fields[$field['name']] = $field;
 
 			}
+
+		}
+
+		$choices = array();
+
+		foreach (api_rows("SELECT form_field_id, value FROM form_field_options WHERE page_id = '" . (int)$row['page_id'] . "'") as $option) {
+
+			$choices[(int)$option['form_field_id']][] = (string)$option['value'];
 
 		}
 
@@ -871,19 +1025,23 @@ function api_form_submission_update($params) {
 
 			}
 
-			if (!in_array($fields[$name]['type'], api_form_text_field_types(), true)) {
+			if (!api_form_field_updatable($fields[$name])) {
 
-				api_fail_validation(lang(array('string' => 'The field {var:1} is not a text field and cannot be written through the API.', 'vars' => $name)), 'values');
+				api_fail_validation(lang(array('string' => 'The field {var:1} cannot be changed through the API: only text, e-mail address and single-choice fields can.', 'vars' => $name)), 'values');
+
+			}
+
+			$field_id = (int)$fields[$name]['id'];
+
+			$checked = api_form_answer_check($fields[$name], isset($item['value']) ? (string)$item['value'] : '', isset($choices[$field_id]) ? $choices[$field_id] : array());
+
+			if (is_string($checked)) {
+
+				api_fail_validation($checked, 'values');
 
 			}
 
-			$value = trim(str_replace("\r\n", "\n", isset($item['value']) ? (string)$item['value'] : ''));
-
-			if (mb_strlen($value) > 10000) {
-
-				api_fail_validation(lang(array('string' => 'The answer to {var:1} is longer than the 10000 characters accepted.', 'vars' => $name)), 'values');
-
-			}
+			$value = $checked['value'];
 
 			if (($fields[$name]['type'] === 'email address') && ($value !== '') && !validate_email_address($value)) {
 
@@ -891,7 +1049,7 @@ function api_form_submission_update($params) {
 
 			}
 
-			$writes[(int)$fields[$name]['id']] = array('name' => $name, 'value' => $value);
+			$writes[$field_id] = array('name' => $name, 'value' => $value, 'type' => api_form_field_is_rich_text($fields[$name]) ? 'html' : 'standard');
 
 		}
 
@@ -917,12 +1075,12 @@ function api_form_submission_update($params) {
 
 		if ($kept > 0) {
 
-			api_exec("UPDATE form_data SET data = '" . escape($write['value']) . "' WHERE id = '" . $kept . "' LIMIT 1");
+			api_exec("UPDATE form_data SET data = '" . escape($write['value']) . "', type = '" . $write['type'] . "' WHERE id = '" . $kept . "' LIMIT 1");
 
 		} else {
 
 			api_exec("INSERT INTO form_data (form_id, form_field_id, data, name, type)
-				VALUES ('" . $id . "', '" . $field_id . "', '" . escape($write['value']) . "', '" . escape($write['name']) . "', 'standard')");
+				VALUES ('" . $id . "', '" . $field_id . "', '" . escape($write['value']) . "', '" . escape($write['name']) . "', '" . $write['type'] . "')");
 
 		}
 
@@ -962,6 +1120,382 @@ function api_form_submission_update($params) {
 	$values = api_form_submission_values(array($id));
 
 	api_ok(api_form_submission_present($row, isset($values[$id]) ? $values[$id] : array()));
+
+}
+
+// The revisions of a collection item exist only once the database update
+// created their table, and only for a record of a collection form: the edit
+// screen shows its History section on the same condition.
+function api_form_revisions_ready($row) {
+
+	if (!pg_record_revisions_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	if (!pg_record_revision_history_enabled($row['page_id'])) {
+
+		api_fail(409, 'not_a_collection', lang('Only the records of a collection keep revisions.'));
+
+	}
+
+}
+
+// One revision of a record (pg_record_revisions_list() or
+// pg_record_revision_get() with its user name): who saved it, how, and
+// whether it is what the record holds now. Pure.
+function api_form_revision_present($row, $current_hash) {
+
+	$record = json_decode(isset($row['record_json']) ? (string)$row['record_json'] : '', true);
+
+	if (!is_array($record)) {
+
+		$record = array();
+
+	}
+
+	$username = isset($row['user_username']) ? (string)$row['user_username'] : '';
+
+	$address = isset($record['address_name']) ? (string)$record['address_name'] : '';
+
+	return array(
+		'revision_no'     => (int)$row['revision_no'],
+		'source'          => pg_record_revision_source(isset($row['source']) ? (string)$row['source'] : ''),
+		'user_id'         => ((int)$row['user_id'] > 0) ? (int)$row['user_id'] : null,
+		'user'            => ($username !== '') ? $username : null,
+		'address_name'    => ($address !== '') ? $address : null,
+		'complete'        => !empty($record['complete']),
+		'current'         => isset($row['values_hash']) && ($current_hash !== null) && ((string)$row['values_hash'] === (string)$current_hash),
+		'created_at'      => api_time($row['created_at']),
+		'created_at_unix' => (int)$row['created_at']
+	);
+
+}
+
+// What api_form_revision_present() returns.
+function api_form_revision_schema() {
+
+	return array(
+		'revision_no'     => 'integer',
+		'source'          => 'string',
+		'user_id'         => 'integer?',
+		'user'            => 'string?',
+		'address_name'    => 'string?',
+		'complete'        => 'boolean',
+		'current'         => 'boolean',
+		'created_at'      => 'string?',
+		'created_at_unix' => 'integer'
+	);
+
+}
+
+// A revision's values beside the record's current ones, field by field in
+// form order, with what a restore would do to each: value (the revision's
+// answer is written back), file (its file is pointed at again), gone (its
+// file has been deleted since, the current one stays), kept (a signature,
+// or a revision without a file: the current value stays) or unchanged.
+// Pure.
+function api_form_revision_values_present($fields, $revision, $current, $file_ids) {
+
+	$plan = pg_record_revision_restore_plan($fields, $revision, $current, $file_ids);
+
+	$texts = function ($list) {
+
+		$out = array();
+
+		foreach ((array)$list as $value) {
+
+			if (!is_array($value)) {
+
+				$out[] = (string)$value;
+
+			}
+
+		}
+
+		return $out;
+
+	};
+
+	$out = array();
+
+	foreach (pg_record_revision_compare($fields, $revision, $current) as $row) {
+
+		$status = isset($plan[$row['field_id']]) ? $plan[$row['field_id']] : 'unchanged';
+
+		if (!$row['changed']) {
+
+			$status = 'unchanged';
+
+		}
+
+		$old_file = pg_record_revision_file_id($row['revision']);
+
+		$new_file = pg_record_revision_file_id($row['current']);
+
+		$name = '';
+
+		foreach ((array)$fields as $field) {
+
+			if ((string)(int)$field['id'] === $row['field_id']) {
+
+				$name = isset($field['name']) ? (string)$field['name'] : '';
+
+				break;
+
+			}
+
+		}
+
+		$out[] = array(
+			'field_id'        => (int)$row['field_id'],
+			'name'            => $name,
+			'label'           => $row['label'],
+			'type'            => $row['type'],
+			'values'          => $texts($row['revision']),
+			'file_id'         => ($old_file > 0) ? $old_file : null,
+			'current_values'  => $texts($row['current']),
+			'current_file_id' => ($new_file > 0) ? $new_file : null,
+			'changed'         => (bool)$row['changed'],
+			'restore'         => $status
+		);
+
+	}
+
+	return $out;
+
+}
+
+// What GET /forms/{id}/submissions/{submission_id}/revisions/{no} returns.
+function api_form_revision_detail_schema() {
+
+	return api_form_revision_schema() + array(
+		'values' => array(array(
+			'field_id'        => 'integer',
+			'name'            => 'string',
+			'label'           => 'string',
+			'type'            => 'string',
+			'values'          => 'string[]',
+			'file_id'         => 'integer?',
+			'current_values'  => 'string[]',
+			'current_file_id' => 'integer?',
+			'changed'         => 'boolean',
+			'restore'         => 'string'
+		))
+	);
+
+}
+
+// The hash of the record as it is stored now, null when it keeps no
+// revisions.
+function api_form_revision_current_hash($id) {
+
+	$snapshot = pg_record_revision_snapshot($id);
+
+	return $snapshot ? $snapshot['hash'] : null;
+
+}
+
+// One revision of the record in the address, with its user name, or a 404.
+function api_form_revision_or_fail($row, $no) {
+
+	$revision = pg_record_revision_get($row['id'], $no);
+
+	if (!$revision) {
+
+		api_fail_not_found(lang('Revision'));
+
+	}
+
+	$revision['values_hash'] = (string)api_value("SELECT values_hash FROM record_revisions
+		WHERE form_id = '" . (int)$row['id'] . "' AND revision_no = '" . (int)$revision['revision_no'] . "' LIMIT 1");
+
+	$revision['user_username'] = ((int)$revision['user_id'] > 0)
+		? (string)api_value("SELECT user_username FROM user WHERE user_id = '" . (int)$revision['user_id'] . "' LIMIT 1")
+		: '';
+
+	return $revision;
+
+}
+
+// The History section of a collection item, newest first.
+function api_form_submission_revisions($params) {
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	api_form_revisions_ready($row);
+
+	$limit = (int)$params['limit'];
+
+	$before = 0;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$before = (int)$cursor['i'];
+
+	}
+
+	$rows = pg_record_revisions_list($row['id'], $limit + 1, $before);
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['revision_no'], (int)$last['revision_no']);
+
+	}
+
+	$hash = api_form_revision_current_hash($row['id']);
+
+	$out = array();
+
+	foreach ($rows as $revision) {
+
+		$out[] = api_form_revision_present($revision, $hash);
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
+
+// One revision compared with the record, as the History section's Compare
+// shows it.
+function api_form_submission_revision_get($params) {
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	api_form_revisions_ready($row);
+
+	$revision = api_form_revision_or_fail($row, $params['no']);
+
+	$values = pg_record_revision_decode($revision['values_json']);
+
+	$names = pg_record_revision_file_names(array($values));
+
+	$out = api_form_revision_present($revision, api_form_revision_current_hash($row['id']));
+
+	$out['values'] = api_form_revision_values_present(
+		pg_record_revision_form_fields($row['page_id']),
+		$values,
+		pg_record_revision_current_values($row['id']),
+		array_keys($names));
+
+	api_ok($out);
+
+}
+
+// What a restore answers with: the record as it is now, the revision it was
+// put back to, the revision the restore was recorded as, and what happened
+// to each field that differed.
+function api_form_revision_restore_schema() {
+
+	return array(
+		'submission'    => 'FormSubmission',
+		'restored_from' => 'integer',
+		'revision_no'   => 'integer?',
+		'changed'       => 'boolean',
+		'fields'        => array(array(
+			'field_id' => 'integer',
+			'name'     => 'string',
+			'restore'  => 'string'
+		))
+	);
+
+}
+
+// Puts a revision of a collection item back, as loading it from the History
+// section and saving does: the revision's answers and its files that still
+// exist are written, a signature and a deleted file stay as they are, the
+// address name follows the restored title, and the save is recorded as a
+// revision with the source restore. Whether the record is complete stays.
+function api_form_submission_revision_restore($params) {
+
+	$app = api_current_app();
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	api_form_revisions_ready($row);
+
+	$revision = api_form_revision_or_fail($row, $params['no']);
+
+	$id = (int)$row['id'];
+
+	$values = pg_record_revision_decode($revision['values_json']);
+
+	$names = pg_record_revision_file_names(array($values));
+
+	$fields = array();
+
+	foreach (api_form_revision_values_present(pg_record_revision_form_fields($row['page_id']), $values, pg_record_revision_current_values($id), array_keys($names)) as $field) {
+
+		if ($field['restore'] !== 'unchanged') {
+
+			$fields[] = array('field_id' => $field['field_id'], 'name' => $field['name'], 'restore' => $field['restore']);
+
+		}
+
+	}
+
+	// The record already holds this revision: nothing is written or recorded.
+	$changed = ((string)$revision['values_hash'] !== (string)api_form_revision_current_hash($id));
+
+	api_dry_run_stop('restored', 'form_submission', array(
+		'id'            => $id,
+		'restored_from' => (int)$revision['revision_no'],
+		'changed'       => $changed,
+		'fields'        => $fields
+	));
+
+	$revision_no = 0;
+
+	if ($changed) {
+
+		$revision_before = pg_record_revision_before($id);
+
+		pg_record_revision_restore_values($id, $row['page_id'], $revision);
+
+		api_exec("UPDATE forms SET last_modified_user_id = '" . (int)$app['owner']['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = '" . $id . "' LIMIT 1");
+
+		if (check_if_pretty_urls_are_enabled($row['page_id'])) {
+
+			update_submitted_form_address_name($id);
+
+		}
+
+		$revision_no = pg_record_revision_after($id, $revision_before, 'restore', (int)$app['owner']['id']);
+
+		log_activity(lang(array(
+			'string' => 'Revision {var:1} of the submitted form ({var:2}) was restored through the API by the application {var:3} (key {var:4}).',
+			'vars'   => array((int)$revision['revision_no'], (string)$row['reference_code'], $app['name'], $app['api_key'])
+		)), $app['owner']['username']);
+
+	}
+
+	$row = api_form_submission_owned($params['id'], $id);
+
+	$current = api_form_submission_values(array($id));
+
+	api_ok(array(
+		'submission'    => api_form_submission_present($row, isset($current[$id]) ? $current[$id] : array()),
+		'restored_from' => (int)$revision['revision_no'],
+		'revision_no'   => ($revision_no > 0) ? (int)$revision_no : null,
+		'changed'       => $changed,
+		'fields'        => $fields
+	));
 
 }
 
@@ -1008,14 +1542,101 @@ function api_form_field_takes_many($field) {
 
 }
 
+// The longest answer a field takes, in characters: a rich text answer is HTML
+// and takes api_form_html_max_length(), any other 10000.
+function api_form_answer_max_length($field) {
+
+	return api_form_field_is_rich_text($field) ? api_form_html_max_length() : 10000;
+
+}
+
+// The site's own addresses, which a rich text answer folds back to {path}:
+// the absolute address of the site path under the configured scheme and the
+// other one, and the site path itself.
+function api_form_site() {
+
+	$host = defined('HOSTNAME_SETTING') ? (string)HOSTNAME_SETTING : '';
+
+	$path = defined('PATH') ? (string)PATH : '/';
+
+	$bases = array();
+
+	if ($host !== '') {
+
+		$bases[] = (defined('URL_SCHEME') ? URL_SCHEME : 'https://') . $host . $path;
+		$bases[] = 'https://' . $host . $path;
+		$bases[] = 'http://' . $host . $path;
+
+	}
+
+	return array('bases' => array_values(array_unique($bases)), 'path' => $path);
+
+}
+
+// A rich text answer as the site stores it: reduced by the sanitiser a
+// visitor's answer goes through (the visitor profile, as custom_form.php
+// does), then every link and image on the site's own address written with the
+// {path} placeholder, so the record keeps working when the site moves. Pure:
+// $site is api_form_site().
+function api_form_html_answer_in($html, $site) {
+
+	$html = pg_sanitize_rich_text((string)$html);
+
+	foreach ($site['bases'] as $base) {
+
+		$html = str_replace(array('href="' . $base, 'src="' . $base), array('href="{path}', 'src="{path}'), $html);
+
+	}
+
+	return prepare_rich_text_editor_content_for_input($html, $site['path']);
+
+}
+
+// One answer to one field, checked and made ready to store: array('value' =>
+// the string to store), or the refusal as a string. The length of the sent
+// text (api_form_answer_max_length()), a choice field's option values, and a
+// rich text answer through api_form_html_answer_in(). Pure apart from reading
+// the site's addresses when $site is null.
+function api_form_answer_check($field, $value, $choices, $site = null) {
+
+	$name = (string)$field['name'];
+
+	$value = trim(str_replace("\r\n", "\n", (string)$value));
+
+	$max = api_form_answer_max_length($field);
+
+	if (mb_strlen($value) > $max) {
+
+		return lang(array('string' => 'The answer to {var:1} is longer than the {var:2} characters accepted.', 'vars' => array($name, $max)));
+
+	}
+
+	if (($value !== '') && pg_cf_type_has_options($field['type']) && !in_array($value, (array)$choices, true)) {
+
+		return lang(array('string' => 'The answer to {var:1} is not one of the choices the field offers.', 'vars' => $name));
+
+	}
+
+	if (($value !== '') && api_form_field_is_rich_text($field)) {
+
+		$value = trim(api_form_html_answer_in($value, ($site === null) ? api_form_site() : $site));
+
+	}
+
+	return array('value' => $value);
+
+}
+
 // The answers of a new submission, keyed by field id, from the {name, value}
 // objects sent: a string per field, a list for a field that takes several
 // (its name sent once per choice). Returns the refusal as a string instead
 // when one is not acceptable. Pure: the fields and their choices are given.
 //
-// $fields   field rows (id, name, type, multiple), in form order
+// $fields   field rows (id, name, type, multiple, wysiwyg), in form order
 // $choices  field id => the option values the field offers
-function api_form_submission_answers($items, $fields, $choices) {
+// $site     the site's addresses for a rich text answer (api_form_site());
+//           read from the site when not given
+function api_form_submission_answers($items, $fields, $choices, $site = null) {
 
 	$by_name = array();
 
@@ -1058,22 +1679,17 @@ function api_form_submission_answers($items, $fields, $choices) {
 
 		}
 
-		$value = trim(str_replace("\r\n", "\n", isset($item['value']) ? (string)$item['value'] : ''));
-
-		if (mb_strlen($value) > 10000) {
-
-			return lang(array('string' => 'The answer to {var:1} is longer than the 10000 characters accepted.', 'vars' => $name));
-
-		}
-
 		$key = (int)$field['id'];
 
-		if (($value !== '') && pg_cf_type_has_options($field['type'])
-			&& !in_array($value, isset($choices[$key]) ? $choices[$key] : array(), true)) {
+		$value = api_form_answer_check($field, isset($item['value']) ? (string)$item['value'] : '', isset($choices[$key]) ? $choices[$key] : array(), $site);
 
-			return lang(array('string' => 'The answer to {var:1} is not one of the choices the field offers.', 'vars' => $name));
+		if (is_string($value)) {
+
+			return $value;
 
 		}
+
+		$value = $value['value'];
 
 		if (api_form_field_takes_many($field)) {
 
@@ -1096,6 +1712,25 @@ function api_form_submission_answers($items, $fields, $choices) {
 	}
 
 	return $answers;
+
+}
+
+// Whether a user row (user_id, user_role, user_manage_forms; null when there
+// is no enabled user) may be named as a record's author: a member of staff
+// who may work with forms, the rule the forms scope itself follows - a role
+// below the user role, or the forms right. Pure.
+function api_form_author_is_staff($user) {
+
+	if (!is_array($user) || ((int)$user['user_id'] <= 0)) {
+
+		return false;
+
+	}
+
+	// user_manage_forms is enum('no','yes'); '1' and 'true' are read as yes too,
+	// as api_load_owner() reads the right, because some releases wrote them.
+	return ((int)$user['user_role'] < 3)
+		|| in_array(strtolower(trim((string)$user['user_manage_forms'])), array('yes', '1', 'true'), true);
 
 }
 
@@ -1147,6 +1782,26 @@ function api_form_submission_create($params) {
 
 	$complete = array_key_exists('complete', $params) ? (bool)$params['complete'] : true;
 
+	// The record's author: the owner of the key, or a member of staff named
+	// by author_user_id (a byline shows forms.user_id as the submitter).
+	$author_id = (int)$app['owner']['id'];
+
+	if (isset($params['author_user_id']) && ((int)$params['author_user_id'] !== $author_id)) {
+
+		$author = api_row("SELECT user_id, user_role, user_manage_forms FROM user
+			WHERE user_id = '" . (int)$params['author_user_id'] . "'" . pg_user_enabled_sql() . "
+			LIMIT 1");
+
+		if (!api_form_author_is_staff($author)) {
+
+			api_fail_validation(lang('The author must be an enabled member of staff who may work with forms.'), 'author_user_id');
+
+		}
+
+		$author_id = (int)$author['user_id'];
+
+	}
+
 	$pretty_urls = check_if_pretty_urls_are_enabled($id);
 
 	// The forms scope is held by roles below the user role and by a user with
@@ -1192,13 +1847,20 @@ function api_form_submission_create($params) {
 
 	api_dry_run_stop('created', 'form_submission', array('form_id' => $id, 'values' => count($answers), 'complete' => $complete));
 
-	$created = pg_submitted_form_create($liveform, $fields, $id, $complete, (int)$app['owner']['id'], $office_use_only_access, $pretty_urls, array(), !empty($params['send_notifications']));
+	$created = pg_submitted_form_create($liveform, $fields, $id, $complete, $author_id, $office_use_only_access, $pretty_urls, array(), !empty($params['send_notifications']));
 
 	$liveform->remove_form();
 
 	if ($created === false) {
 
 		api_fail(500, 'server_error', lang('The submission could not be saved.'));
+
+	}
+
+	// The author is the submitter; the change is the key owner's.
+	if ($author_id !== (int)$app['owner']['id']) {
+
+		api_exec("UPDATE forms SET last_modified_user_id = '" . (int)$app['owner']['id'] . "' WHERE id = '" . (int)$created['id'] . "' LIMIT 1");
 
 	}
 
@@ -1343,6 +2005,7 @@ function api_form_submission_schema() {
 		'updated_at'        => 'string?',
 		'order_number'      => 'string?',
 		'paid'              => 'boolean?',
+		'url'               => 'string?',
 		'values'            => array(array(
 			'field_id' => 'integer',
 			'name'     => 'string',

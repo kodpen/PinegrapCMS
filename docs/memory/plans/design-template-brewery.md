@@ -17,13 +17,13 @@ description: Plan: the Craft Brewery design template (pinegrap-brewery): beers, 
 
 - 3 (done, #7934): `beers.php` (form `Brewery Beers`: `beers` by `?style=`, `beer` with drinkers' notes as comments with stars, `beer_new`, `home_beers`) and `events.php` (form `Taproom Events`: `events` from today by `?kind=`, `past_events`, `event`, `event_new`, `home_events`); `tests/design_template_brewery_collections_test.php`.
 
-- 4: `mail.php` (the e-mail builders) and `tours.php`: the tours page (`tours`), tour booking requests (`tour_booking` with `?tour=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, `email_booking_new`, `email_booking_received`) and `book_online` (booking widget starter for private tastings); test.
+- 4 (done, #8045): `mail.php` and `tours.php` (tours, tour booking requests, `book_online`, privacy, booking e-mails); `tests/design_template_brewery_tours_test.php`.
 
-- 5: `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog with beer packs, glassware, merch, gift cards and club terms with `membership_days`) and the Beer Club (`club` with the terms, the members' area in a `club` folder with access `membership`: `club_home`, `club_releases`); test.
+- 5 (done, #8061): `shop.php` (shop pages, catalog with packs, merch, gift cards and club terms with `membership_days`; `club`, members' area `club_home`, `club_releases` in folder `club`); `tests/design_template_brewery_shop_test.php`.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #8086): `standard.php` (contact, inbox, conversation, newsletter, News, blog post, help search, error, message and newsletter e-mails); `tests/design_template_brewery_standard_test.php`.
 
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #8124): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-brewery.php` (order, search sections, look, fonts, `pbw-` rules, folders incl. `club`, contact group, group `newsletter`, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-brewery.md`; the PR body names `[NEW] Added the Craft Brewery design template`; this plan and its design file are deleted.
 

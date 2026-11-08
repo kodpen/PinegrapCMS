@@ -9382,7 +9382,125 @@ const StyleDesigner = (function () {
     }
 
     // ========================= RENDER =========================
+    // ── Panels on demand
+    // The Layers tree, the HTML tree and the Attributes and Styles panels
+    // are drawn only while they can be seen: a hidden one (the bottom panel
+    // folded, the Overview folded or on its Notes tab) is marked stale and
+    // drawn when it shows again (_sdPanelsFlush()). Typing in a field draws
+    // the canvas on every key and the other panels once the typing pauses
+    // (_sdPanelsSoon()); an edit of one node redraws only that node's rows
+    // in the Layers tree (_sdTreeRowsRedraw()).
+    var _sdPanelStale = {};
+    var SD_PANELS_TYPING_MS = 180;
+    var _sdPanelsTimer = 0, _sdPanelsNode = null, _sdPanelsMixed = false;
+
+    // The element whose visibility decides whether panel `name` is drawn.
+    function _sdPanelHost(name) {
+        var id = { tree: 'sd-overview-tree-wrap', html: 'sd-html-tree', attrs: 'sd-bp-attrs', styles: 'sd-bp-styles' }[name];
+        return id ? document.getElementById(id) : null;
+    }
+
+    // True when `host` cannot be seen: not laid out (it or an ancestor is
+    // display:none) or inside the folded bottom panel. No host: not hidden,
+    // the panel's own function decides what to do.
+    function _sdPanelHidden(host) {
+        if (!host) return false;
+        if (host.closest && host.closest('.sd-panel-bottom.collapsed')) return true;
+        return !(host.getClientRects && host.getClientRects().length);
+    }
+
+    // Asked first by a panel's drawing function: true when the panel is
+    // hidden, which marks it to be drawn once it shows. Showing it again
+    // is noticed by the folds and tabs that show it, and by a resize
+    // observer on the host for any other way.
+    function _sdPanelDefer(name) {
+        var host = _sdPanelHost(name);
+        if (!_sdPanelHidden(host)) { delete _sdPanelStale[name]; return false; }
+        _sdPanelStale[name] = true;
+        if (host && !host._sdPanelObs && typeof ResizeObserver === 'function') {
+            host._sdPanelObs = new ResizeObserver(function () { _sdPanelsFlush(); });
+            host._sdPanelObs.observe(host);
+        }
+        return true;
+    }
+
+    // Draws every stale panel that can be seen now.
+    function _sdPanelsFlush() {
+        var paint = { tree: renderTree, html: renderHtmlTree, attrs: renderAttrsPanel, styles: renderStylesPanel };
+        Object.keys(_sdPanelStale).forEach(function (n) {
+            if (paint[n] && !_sdPanelHidden(_sdPanelHost(n))) paint[n]();
+        });
+    }
+
+    // The panels a keystroke in a field changes, drawn once the typing
+    // pauses; `node` is the node typed into (null: not one node). Keys
+    // typed into two nodes before the pause draw the whole Layers tree.
+    function _sdPanelsSoon(node) {
+        if (_sdPanelsTimer && _sdPanelsNode !== (node || null)) _sdPanelsMixed = true;
+        _sdPanelsNode = node || null;
+        clearTimeout(_sdPanelsTimer);
+        _sdPanelsTimer = setTimeout(_sdPanelsNow, SD_PANELS_TYPING_MS);
+    }
+
+    // Draws now what _sdPanelsSoon() put off.
+    function _sdPanelsNow() {
+        var node = _sdPanelsMixed ? null : _sdPanelsNode;
+        _sdPanelsCancel();
+        _sdTreeRefresh(node);
+        renderStatusBar();
+        renderAttrsPanel();
+        renderHtmlTree();
+        _sdLivePreviewSchedule();
+    }
+
+    // Drops what _sdPanelsSoon() put off: render() draws every panel.
+    function _sdPanelsCancel() {
+        clearTimeout(_sdPanelsTimer);
+        _sdPanelsTimer = 0;
+        _sdPanelsNode = null;
+        _sdPanelsMixed = false;
+    }
+
+    // The Layers tree after an edit of `node` (null: anything).
+    function _sdTreeRefresh(node) {
+        if (node && _sdTreeRowsRedraw(node)) return;
+        renderTree();
+    }
+
+    // Redraws the rows of `node` and its descendants in place, when the
+    // tree on screen was drawn from this page and is not stale. Its
+    // ancestors' rows read nothing of its props (label, id, badges and
+    // icon are the row's own node's), so they stay. False when the whole
+    // tree must be drawn: a node of a shared component (its rows are drawn
+    // inside the component's open marks), the root, no row for the node.
+    function _sdTreeRowsRedraw(node) {
+        var list = document.getElementById('sd-tree-list');
+        if (!list || !node || node === tree || list._sdTreeOf !== tree || _sdPanelStale.tree) return false;
+        if (_resolveSharedSid(node) > 0) return false;
+        if (_sdPanelDefer('tree')) return true;
+        var row = _sdTreeRowOf(list, node);
+        if (!row || !row.parentNode) return false;
+        var depth = parseInt(row.style.getPropertyValue('--depth'), 10) || 1;
+        var next = row.nextElementSibling;
+        var kids = (next && next.classList.contains('sd-tree-children')) ? next : null;
+        var fresh = document.createElement('ul');
+        _sdSharedOpen = {};
+        buildTreeItems(fresh, node, depth);
+        var parent = row.parentNode;
+        while (fresh.firstChild) parent.insertBefore(fresh.firstChild, row);
+        parent.removeChild(row);
+        if (kids) parent.removeChild(kids);
+        // The rows match the tree as it is now (_sdTreeSelectInPlace()).
+        list._sdTreeEpoch = _sdEditEpoch;
+        return true;
+    }
+    // ── end of panels on demand
+
     function render() {
+        // The node an edit limited this render to (_sdRenderNode()), read
+        // before renderCanvas() takes it.
+        var _scope = _sdCanvasScope;
+        _sdPanelsCancel();
         // The tree may have changed since the last paint; the editable-area
         // set is derived from it.
         _sdEditableInvalidate();
@@ -9396,7 +9514,7 @@ const StyleDesigner = (function () {
         renderCanvas();
         renderProperties();
         renderStatusBar();
-        renderTree();
+        _sdTreeRefresh(_scope);
         renderHtmlTree();
         renderAttrsPanel();
         renderStylesPanel();
@@ -9690,9 +9808,11 @@ const StyleDesigner = (function () {
             _canvasDetailsState[id] = { open: d.open, def: d._sdOpenDefault };
         });
     }
-    function _restoreDetailsState() {
+    // `root` limits it to one redrawn element: the <details> outside it
+    // keep the default they were drawn with.
+    function _restoreDetailsState(root) {
         if (!canvasDoc) return;
-        var all = Array.prototype.slice.call(canvasDoc.querySelectorAll('details'));
+        var all = Array.prototype.slice.call((root || canvasDoc).querySelectorAll('details'));
         // Every default is read first: opening one of a named group closes
         // the others.
         var defs = all.map(function (d) { return d.open; });
@@ -10777,8 +10897,127 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── Incremental canvas
+    // A text, property or style edit changes one node: renderCanvas() then
+    // draws that node's element again in place (_sdCanvasRedrawNode())
+    // instead of emptying the body and building the whole page. The edit
+    // paths name the node with _sdRenderNode(); every other caller (add,
+    // move, delete, undo, a tab switch, an edit inside a shared component)
+    // names none and gets the full rebuild. Anything the node's element
+    // cannot be redrawn alone for falls back to the full rebuild too.
+    var _sdCanvasScope = null;
+
+    // Runs `fn` (render() by default, or renderCanvas()) with the canvas
+    // limited to `node`. The scope lasts for this call only: a later render
+    // is never limited by an edit made before it.
+    function _sdRenderNode(node, fn) {
+        _sdCanvasScope = node || null;
+        try { (fn || render)(); } finally { _sdCanvasScope = null; }
+    }
+
+    // The node renderCanvas() was limited to, read once.
+    function _sdCanvasScopeTake() {
+        var n = _sdCanvasScope;
+        _sdCanvasScope = null;
+        return n;
+    }
+
+    // Props another node or the page's structure reads: an element id
+    // (labels, toggles and anchors point at it), the region a node shows,
+    // the search section's anchor, a placed part, an editable area or a lock
+    // (their marks reach the descendants and the content level), the tag (a
+    // summary draws as its own wrapper, a table tag changes the builder).
+    var _SD_SCOPE_FULL_PROPS = ['id', 'regionType', 'regionName', 'searchSection', 'partOf', '_editable', '_locked', 'tag'];
+
+    // True when a change of `prop` needs the whole canvas.
+    function _sdScopeFullProp(prop) {
+        return _SD_SCOPE_FULL_PROPS.indexOf(String(prop || '')) !== -1;
+    }
+
+    // The nodes from `root` down to `node`, both included; null when `node`
+    // is not in that tree.
+    function _sdNodePath(root, node) {
+        if (!root || !node) return null;
+        var stack = [[root, [root]]];
+        while (stack.length) {
+            var top = stack.pop(), n = top[0], path = top[1];
+            if (n === node) return path;
+            var kids = n.children || [];
+            for (var i = kids.length - 1; i >= 0; i--) {
+                if (kids[i]) stack.push([kids[i], path.concat([kids[i]])]);
+            }
+        }
+        return null;
+    }
+
+    // Whether `node`'s element can be drawn again alone: a node of the page
+    // tree `root` (not the root, whose element is the body), the page the
+    // canvas shows (`drawnPage` is the page last drawn, `activePage` the
+    // active one), outside every shared component and system widget (their
+    // trees are drawn with their widget's context and snapshots), not a
+    // shared reference itself, and neither a placed part nor inside one.
+    function _sdCanvasScopeOk(node, root, drawnPage, activePage) {
+        if (!node || !root || node === root || node.type === 'root') return false;
+        if (!drawnPage || drawnPage !== activePage) return false;
+        if (node.type === 'shared_ref' || _resolveSharedSid(node) > 0) return false;
+        var path = _sdNodePath(root, node);
+        if (!path) return false;
+        for (var i = 1; i < path.length; i++) {
+            if (_sdPartOf(path[i])) return false;
+        }
+        return true;
+    }
+
+    // The canvas wrappers of a page node (_findCanvasEl() finds the first).
+    function _sdCanvasWrapsOf(node) {
+        if (!canvasDoc || !node) return [];
+        return Array.prototype.slice.call(canvasDoc.querySelectorAll('[data-sd-id="' + node._id + '"]:not([data-sw-sid])'));
+    }
+
+    // Draws `node`'s element again in place: buildNodeEl() of its subtree
+    // replaces the old wrapper, so the rest of the canvas keeps its DOM, its
+    // scroll position and the state the operator gave it. What a full
+    // rebuild keeps is kept here too: the tabs and <details> the operator
+    // opened, a collapse opened by a click (copied into the tree first), a
+    // modal, offcanvas or dropdown menu open inside the node. The canvas
+    // passes that bind the page's scripts run again; each binds only what
+    // is not bound yet. False, and nothing changed, when the node has no
+    // single wrapper on the canvas.
+    function _sdCanvasRedrawNode(node) {
+        var wraps = _sdCanvasWrapsOf(node);
+        if (wraps.length !== 1 || !wraps[0].parentNode) return false;
+        var old = wraps[0];
+        _syncToggleableShowStateFromDom();
+        _captureTabState();
+        _captureDetailsState();
+        var open = _sdCanvasOpenCapture(old);
+        injectGoogleFonts();
+        _sdSharedOpen = {};
+        var el = buildNodeEl(node);
+        old.parentNode.replaceChild(el, old);
+        _sdCanvasOpenRestore(el, open, _sdFindNodeForEl);
+        _reExecuteCanvasScripts(el);
+        _sdThemeSwitchers();
+        _sdScrollers();
+        _sdFxCanvas();
+        _initCanvasTooltips();
+        _restoreTabState();
+        _restoreDetailsState(el);
+        _sdBootModuleWidgets();
+        _sdApplyImageStamps();
+        _sdTextInnerMark();
+        requestAnimationFrame(function () { adjustCanvasToolbars(); updateIconResizeHandle(); });
+        return true;
+    }
+    // ── end of incremental canvas
+
     function renderCanvas() {
         if (!canvasDoc || !canvasDoc.body || !iframeReady) return;
+        // An edit of one node redraws that node alone (_sdRenderNode()).
+        var _scope = _sdCanvasScopeTake();
+        if (_scope && canvasDoc._sdDrawn && !_sdPendingScrollY && !_sdPendingOpen &&
+            _sdCanvasScopeOk(_scope, tree, canvasDoc.body._sdDrawnPage, _pgActivePage()) &&
+            _sdCanvasRedrawNode(_scope)) return;
         // Preserve scroll position so options changes don't jump the canvas to top
         var _scrollY = (canvasDoc.documentElement ? canvasDoc.documentElement.scrollTop : 0) ||
                        canvasDoc.body.scrollTop || 0;
@@ -15894,7 +16133,7 @@ const StyleDesigner = (function () {
                     // A child deleted from the DOM while typing is still in
                     // the tree — redraw so the canvas shows it again.
                     if (_chrome.some(function (n) { return !n.isConnected; })) {
-                        setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
+                        setTimeout(function () { try { _sdRenderNode(node, renderCanvas); } catch (e) {} }, 0);
                     }
                     if (newText !== origText && newText !== origShown) {
                         // liveTextObs already wrote `newText` into node.props
@@ -15904,7 +16143,7 @@ const StyleDesigner = (function () {
                         node.props[item.prop] = newText;
                         _sdSharedMarkEdited(node);
                         renderProperties();
-                        renderTree();
+                        _sdTreeRefresh(node);
                         _sdLivePreviewSchedule();
                     } else {
                         // No real change \u2192 drop the pre-emptive snapshot so
@@ -15950,7 +16189,7 @@ const StyleDesigner = (function () {
                         if (_chrome.length) {
                             // Writing the text back would wipe the children
                             // out of the element; redraw it from the tree.
-                            setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
+                            setTimeout(function () { try { _sdRenderNode(node, renderCanvas); } catch (e) {} }, 0);
                         }
                         else if (isRichText || keepsMarkup) item.el.innerHTML = origText || '';
                         else item.el.textContent = origText || '';
@@ -17172,9 +17411,16 @@ const StyleDesigner = (function () {
             case 'widget_part': return _sdPaletteCreate(extra);
             case 'component':
                 var ctype = extra.componentType;
+                // A family file's block: its rules join _SD_BLOCK_CSS_NEEDS
+                // when the families are read, before the line below.
+                var _ctFamily = _sdBlockFamilyOf(ctype);
                 // Rules this block needs go to the Styles panel, not inline;
                 // not while the drop rules only look at the block's shape.
                 if (!_sdPaletteDry) _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
+                if (_ctFamily) {
+                    var _ctFamilyNode = _ctFamily.build(ctype);
+                    if (_ctFamilyNode) return _ctFamilyNode;
+                }
                 
                 // Nested Component Expansion (Bootstrap Studio Style)
                 
@@ -19932,50 +20178,12 @@ const StyleDesigner = (function () {
                 // legal blocks at the end of the branch share them, and so do
                 // the maintenance/launch, news and creative blocks after them.
                 if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal|maintenance|coming-soon|news|bento|marquee|showcase|quote|gallery|scroller)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
-                    var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
-                    var _bkDiv = function (cls, name, kids, attrs) {
-                        var p = { tag: 'div', cssClass: cls, customName: name };
-                        if (attrs) p._attrs = attrs;
-                        return createNode('semantic', p, kids || []);
-                    };
-                    var _bkTag = function (tag, cls, name, kids, attrs) {
-                        var p = { tag: tag, cssClass: cls, customName: name };
-                        if (attrs) p._attrs = attrs;
-                        return createNode('semantic', p, kids || []);
-                    };
-                    var _bkSection = function (cls, name, kids) {
-                        return createNode('semantic', { tag: 'section', cssClass: cls, customName: name }, [
-                            createNode('container', { fluid: false, cssClass: '' }, kids)
-                        ]);
-                    };
-                    var _bkRow = function (name, kids, cls) {
-                        return createNode('row', { gutter: '4', justify: '', align: '', cssClass: cls || '', customName: name }, kids);
-                    };
-                    var _bkCol = function (name, kids, lg, md, sm, cls) {
-                        return createNode('col', { xs: '12', sm: sm || '', md: md || '', lg: lg || '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
-                    };
-                    var _bkH = function (tag, text, cls) { return createNode('content', { contentType: 'heading', tag: tag, text: text, cssClass: cls || '' }); };
-                    var _bkP = function (text, cls) { return createNode('content', { contentType: 'paragraph', text: text, cssClass: cls || '' }); };
-                    var _bkIcon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
-                    var _bkBtn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
-                    var _bkLink = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
-                    // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
-                    var _bkTime = function (datetime, text, cls, name) {
-                        return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
-                    };
-                    // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
-                    var _bkRegion = function (label) {
-                        return [
-                            { name: 'role',       value: 'region' },
-                            { name: 'aria-label', value: label },
-                            { name: 'tabindex',   value: '0' }
-                        ];
-                    };
-                    // An icon-only link (social, share, email), named by its aria-label.
-                    var _bkIconLink = function (icon, label, cls, href) {
-                        return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
-                            _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon) ]);
-                    };
+                    // The shared builders (_sdBlockKit()), the ones a family file gets too.
+                    var _bkKit = _sdBlockKit();
+                    var _bkUid = _bkKit.uid, _bkDiv = _bkKit.div, _bkTag = _bkKit.tag, _bkSection = _bkKit.section;
+                    var _bkRow = _bkKit.row, _bkCol = _bkKit.col, _bkH = _bkKit.h, _bkP = _bkKit.p, _bkIcon = _bkKit.icon;
+                    var _bkBtn = _bkKit.btn, _bkLink = _bkKit.link, _bkTime = _bkKit.time, _bkRegion = _bkKit.region;
+                    var _bkIconLink = _bkKit.iconLink, _bkImg = _bkKit.img, _bkIntro = _bkKit.intro;
                     // Pause control of a pg-marquee block: one wrapper (hidden
                     // under reduced motion) around a btn-check and its label.
                     // The label must follow the input: Bootstrap styles it
@@ -19993,13 +20201,6 @@ const StyleDesigner = (function () {
                                 _bkIcon('bi-play-fill'),
                                 _bkH('span', label, 'visually-hidden')
                             ], [{ name: 'for', value: id }])
-                        ]);
-                    };
-                    var _bkImg = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
-                    var _bkIntro = function (title, lead) {
-                        return _bkDiv('text-center mb-5', _sdT('Section Header'), [
-                            _bkH('h2', title, 'fw-bold mb-2'),
-                            _bkP(lead, 'lead text-body-secondary mb-0')
                         ]);
                     };
                     // One menu line: name, a rule that leads the eye to the
@@ -23443,6 +23644,7 @@ const StyleDesigner = (function () {
                 var searchBox = document.getElementById('sd-ov-search-wrap');
                 if (treeWrap)  treeWrap.style.display  = sub === 'tree'  ? '' : 'none';
                 if (notesWrap) notesWrap.style.display = sub === 'notes' ? '' : 'none';
+                if (sub === 'tree') _sdPanelsFlush();
                 // Header title mirrors the active sub-tab — same pattern the
                 // right panel uses for Design ↔ Themes so both ends feel
                 // consistent. Icon swaps too.
@@ -24750,6 +24952,7 @@ const StyleDesigner = (function () {
             var isNowCollapsed = p.classList.contains('collapsed');
             if (colBtn) { colBtn.classList.toggle('bi-chevron-up', isNowCollapsed); colBtn.classList.toggle('bi-chevron-down', !isNowCollapsed); }
             try { localStorage.setItem(_BP_COL_KEY, isNowCollapsed ? '1' : '0'); } catch(e) {}
+            if (!isNowCollapsed) _sdPanelsFlush();
         }
         // Restore collapsed state
         try { if (localStorage.getItem(_BP_COL_KEY) === '1') { p.classList.add('collapsed'); if (colBtn) { colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up'); } } } catch(e) {}
@@ -26151,14 +26354,14 @@ const StyleDesigner = (function () {
     // collapsible bottom strip à la Bootstrap Studio.
     function renderStylesPanel() {
         var stylesPane = document.getElementById('sd-bp-styles');
-        if (!stylesPane) return;
+        if (!stylesPane || _sdPanelDefer('styles')) return;
         var el = _selectedCanvasEl();
         renderStylesTabPane(stylesPane, el);
     }
 
     function renderAttrsPanel() {
         var panel = document.getElementById('sd-bp-attrs');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('attrs')) return;
 
         // ── Multi-select mode ──
         if (selectedNodes.length > 1) {
@@ -26390,7 +26593,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 propUndo();
                 n.props[propKey] = this.value;
-                renderCanvas();
+                _sdRenderNode(_sdScopeFullProp(propKey) ? null : n, renderCanvas);
                 renderHtmlTree();
             });
             inp.addEventListener('change', function () {
@@ -26417,7 +26620,7 @@ const StyleDesigner = (function () {
                 saveState();
                 n.props.cssClass = (n.props.cssClass || '').split(' ').filter(function (c) { return c.trim() && c !== cls; }).join(' ');
                 renderAttrsPanel();
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
                 renderProperties();
                 renderHtmlTree();
             });
@@ -26493,7 +26696,7 @@ const StyleDesigner = (function () {
                 inp.addEventListener('input', function () {
                     valueUndo();
                     n.props._attrs[parseInt(this.dataset.idx, 10)].value = this.value;
-                    renderCanvas();
+                    _sdRenderNode(n, renderCanvas);
                     renderHtmlTree();
                     // The Properties panel reads the same _attrs (Value, ID,
                     // Placeholder, Pattern…). Without this it keeps showing
@@ -26526,7 +26729,7 @@ const StyleDesigner = (function () {
                     saveState();
                     n.props._attrs.splice(parseInt(this.dataset.idx, 10), 1);
                     renderAttrsPanel();
-                    renderCanvas();
+                    _sdRenderNode(n, renderCanvas);
                     renderHtmlTree();
                     renderProperties();
                 });
@@ -26587,7 +26790,7 @@ const StyleDesigner = (function () {
             }).join(' ').trim();
             node.props.cssClass = cleaned;
             renderAttrsPanel();
-            renderCanvas();
+            _sdRenderNode(node, renderCanvas);
             renderProperties();
             renderHtmlTree();
             if (ci) ci.value = '';
@@ -26604,7 +26807,7 @@ const StyleDesigner = (function () {
             existing.push(val);
             node.props.cssClass = existing.join(' ').trim();
             renderAttrsPanel();
-            renderCanvas();
+            _sdRenderNode(node, renderCanvas);
             renderProperties();
             renderHtmlTree();
         }
@@ -27017,7 +27220,7 @@ const StyleDesigner = (function () {
 
     function renderStylesPanel() {
         var panel = document.getElementById('sd-bp-styles');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('styles')) return;
 
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-styles-empty"><span class="bi bi-palette2 d-block mb-1" style="font-size:1.3rem"></span>' + esc(_sdT('No element selected')) + '</div>';
@@ -27088,7 +27291,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 n.props._styles[parseInt(this.dataset.idx, 10)].prop = this.value;
                 syncInlineStyle(n);
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
             inp.addEventListener('change', function () { saveState(); });
         });
@@ -27096,7 +27299,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 n.props._styles[parseInt(this.dataset.idx, 10)].val = this.value;
                 syncInlineStyle(n);
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
             inp.addEventListener('change', function () { saveState(); });
         });
@@ -27105,8 +27308,7 @@ const StyleDesigner = (function () {
                 saveState();
                 n.props._styles.splice(parseInt(this.dataset.idx, 10), 1);
                 syncInlineStyle(n);
-                
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
         });
 
@@ -27396,6 +27598,9 @@ const StyleDesigner = (function () {
     function renderTree() {
         var list = document.getElementById('sd-tree-list');
         if (!list) return;
+        // Hidden (the Notes tab, a folded Overview): drawn when shown; the
+        // notes list it also refreshes may be the one on screen.
+        if (_sdPanelDefer('tree')) { if (_refreshNotesPanel) _refreshNotesPanel(); return; }
         _sdTreeOpenToSelection();
         list.innerHTML = '';
 
@@ -28083,7 +28288,7 @@ const StyleDesigner = (function () {
         // The code view draws the same page as text (_sdCodeRefresh()).
         if (_sdCodeEnabled()) { _sdCodeRefresh(); return; }
         var panel = document.getElementById('sd-html-tree');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('html')) return;
         panel.innerHTML = '';
 
         var frame = _sdPageFrameRows();
@@ -30494,8 +30699,8 @@ const StyleDesigner = (function () {
 
         showCtxMenu(x, y, [
             // The assistant panel is there only for the designers it serves.
-            ((!multi && node.type !== 'root' && _sdAccess() === 'full' && window.PgDesignerAI && findNodeById(node._id, tree))
-                ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { window.PgDesignerAI.open(node._id); } }
+            ((!multi && node.type !== 'root' && _sdAccess() === 'full' && _sdAiAvailable() && findNodeById(node._id, tree))
+                ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { _sdAiRun(function (ai) { ai.open(node._id); }); } }
                 : null),
             ((!multi && typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image'))
                 ? { icon: 'bi-brush', label: _sdT('Edit Image'), handler: function () { _sdOpenImageEditorForNode(node); } }
@@ -46883,7 +47088,8 @@ const StyleDesigner = (function () {
                                      'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
                                      'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
                                      'events-cards', 'notice-promo', 'legal-accessibility-statement'];
-                if (_noWrapCtypes.indexOf((payload.extra || {}).componentType || '') === -1) {
+                var _nwCtype = (payload.extra || {}).componentType || '';
+                if (_noWrapCtypes.indexOf(_nwCtype) === -1 && !_sdBlockFamilyOf(_nwCtype)) {
                     n = createNode('container', { fluid: false, cssClass: '' }, [n]);
                 }
             }
@@ -51597,8 +51803,8 @@ const StyleDesigner = (function () {
                 // Mirror placement/trigger/title/content into the prop too
                 // (round-trip for forward-compat with structured props).
                 selectedNode.props['popover' + capFirst(key)] = this.value;
-                renderCanvas();
-                renderHtmlTree();
+                _sdRenderNode(selectedNode, renderCanvas);
+                _sdPanelsSoon(selectedNode);
             });
         });
 
@@ -51935,18 +52141,18 @@ const StyleDesigner = (function () {
                         _rewriteCssClassFromColProps(selectedNode);
                     }
                 }
+                // The node's own element is drawn again; a prop another
+                // node reads redraws the whole canvas (_sdScopeFullProp()).
+                var _scopeNode = _sdScopeFullProp(prop) ? null : selectedNode;
                 // For selects and checkboxes/switches, a full re-render
                 if (el.tagName === 'SELECT' || isCb) {
-                    render();
+                    _sdRenderNode(_scopeNode, render);
                 } else {
                     // For text/textarea, just update canvas (don't re-render props to keep focus)
-                    renderCanvas();
-                    renderTree();
-                    renderStatusBar();
-                    renderAttrsPanel();
-                    renderHtmlTree();
-                    // render() does not run on a keystroke here.
-                    _sdLivePreviewSchedule();
+                    _sdRenderNode(_scopeNode, renderCanvas);
+                    // The other panels once the typing pauses; render()
+                    // does not run on a keystroke here.
+                    _sdPanelsSoon(_scopeNode);
                 }
             });
         });
@@ -52017,9 +52223,9 @@ const StyleDesigner = (function () {
                 // Before the change, one undo step per run of typing.
                 saveState((el.tagName === 'SELECT') ? undefined : _sdEditRun('nodeattr:' + name));
                 setNodeAttr(selectedNode, name, this.value);
-                renderCanvas();
-                renderAttrsPanel();
-                renderHtmlTree();
+                _sdRenderNode(name === 'id' ? null : selectedNode, renderCanvas);
+                if (el.tagName === 'SELECT') { renderAttrsPanel(); renderHtmlTree(); }
+                else _sdPanelsSoon(name === 'id' ? null : selectedNode);
             });
         });
 
@@ -70024,7 +70230,11 @@ const StyleDesigner = (function () {
                                       : _sdT('Saved. This page is a draft, off the site.');
                     _okDur = _liveToo ? 4500 : 2500;
                 }
-                sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                // opts.reportSaved: the Publish sheet lists the result
+                // itself while it is open, so no toast repeats it.
+                if (!(typeof opts.reportSaved === 'function' && opts.reportSaved(res.data))) {
+                    sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                }
                 // The canvas's classic system regions are drawn from the saved pages.
                 _sdLegacyRegionForget();
                 // Update last-modified statusbar label without a full page reload
@@ -70162,9 +70372,48 @@ const StyleDesigner = (function () {
         if (!p) return false;
         if (_sdComponentOnly()) return false;             // never saved as a page
         if (p.page_id === 0) return true;                 // never saved
-        if (p.key === _activeKey) _pgReadFieldsIntoPage(p);
-        return _pgBaselineOf(p) !== p.baseline;
+        if (p.key === _activeKey) {
+            _pgReadFieldsIntoPage(p);
+            return _pgBaselineOf(p) !== p.baseline;
+        }
+        // A page not open: its answer is kept until something could change
+        // it (_pgDirtyMemoKey()), so the poll's sweep and every draw of the
+        // tab strip stop serialising pages nobody touched.
+        var key = _pgDirtyMemoKey(p);
+        var memo = _pgDirtyMemo[p.key];
+        if (memo && _pgDirtyMemoSame(memo, key)) return memo.dirty;
+        key.dirty = _pgBaselineOf(p) !== p.baseline;
+        _pgDirtyMemo[p.key] = key;
+        return key.dirty;
     }
+
+    // ── Lazy dirty checks
+    // The dirty answer of each page not open, by page key. Kept beside the
+    // pages, not on them: a page object is copied and sent, and the entry
+    // holds its tree.
+    var _pgDirtyMemo = {};
+
+    // What a kept answer depends on: the edit epoch (every saveState() and
+    // render() moves it, so any change made through the editor drops every
+    // kept answer), the tree object, the baseline it is compared with (a
+    // save or a reload replaces it) and the page's settings as the baseline
+    // writes them. The open page is never kept: typing in place changes its
+    // tree without moving the epoch.
+    function _pgDirtyMemoKey(p) {
+        return {
+            epoch: _sdEditEpoch,
+            tree: p.tree,
+            baseline: p.baseline,
+            fields: _pgSettingsJSON(p) + '|' + JSON.stringify(p.formSettings || {})
+        };
+    }
+
+    // True when kept answer `memo` still holds for `key`.
+    function _pgDirtyMemoSame(memo, key) {
+        return !!memo && !!key && memo.epoch === key.epoch && memo.tree === key.tree &&
+            memo.baseline === key.baseline && memo.fields === key.fields;
+    }
+    // ── end of lazy dirty checks
 
     // Shared fields: design name, theme, collection, body classes, social
     // position, and the three asset blobs the assets panel keeps in hidden
@@ -74074,17 +74323,26 @@ const StyleDesigner = (function () {
     function _pgActiveIsDraft()   { var a = _pgActivePage(); return _pgDraftsReady() && !!(a && a.page_draft); }
 
     // hold: keys of changed pages on the site to leave out of the save (the
-    // Publish sheet's unchecked rows, _pgPublishRows()).
-    function _pgSetDraft(keys, on, hold) {
-        if (!_pgDraftsCanChange()) return;
+    // Publish sheet's unchecked rows, _pgPublishRows()). report: the sheet's
+    // callback, given the save's reply, or null when no save ran.
+    function _pgSetDraft(keys, on, hold, report) {
+        var _unreported = report;
+        report = function (reply) { var r = _unreported; _unreported = null; return r ? r(reply) : false; };
+        var _r = _pgSetDraftRun(keys, on, hold, report);
+        if (_r === false) report(null);
+    }
+
+    // _pgSetDraft()'s work; false when it stopped before a save.
+    function _pgSetDraftRun(keys, on, hold, report) {
+        if (!_pgDraftsCanChange()) return false;
         // The state reaches the server with a save. When no save can run
         // now, nothing is marked: a mark left behind would show a state the
         // site does not have.
         if (_sharedLoadInFlight > 0) {
             sdToast(_sdT('The shared components are still loading — wait a second.'), 'info', 2400);
-            return;
+            return false;
         }
-        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return false; }
         _pgTabsPersistActive();
         var list = keys.map(_pgPageByKey).filter(function (p) {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
@@ -74093,7 +74351,7 @@ const StyleDesigner = (function () {
         var held = on ? [] : list.filter(_pgExperimentHeld);
         if (held.length) {
             list = list.filter(function (p) { return !_pgExperimentHeld(p); });
-            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return; }
+            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return false; }
         }
         // The home page stays on the site; the server would refuse it too.
         var home = on ? list.filter(function (p) { return p.page_home; }) : [];
@@ -74101,7 +74359,7 @@ const StyleDesigner = (function () {
         if (!list.length) {
             sdToast(esc(home.length ? _sdT('The home page stays on the site.')
                                     : (on ? _sdT('Nothing to take off the site.') : _sdT('Nothing to publish.'))), 'info', 3500);
-            return;
+            return false;
         }
         var go = function () {
             // The keys as the save sends them: a new page gets its id and a
@@ -74143,6 +74401,7 @@ const StyleDesigner = (function () {
             };
             saveAjax({
                 hold: hold || [],
+                reportSaved: report,
                 successMessage: function (data) {
                     var n = applied(data).length;
                     if (!n) return '';
@@ -74159,13 +74418,13 @@ const StyleDesigner = (function () {
                     // site actually has.
                     if (rest.length) unmark(rest, true);
                 },
-                onError: function () { unmark(marked, false); }
+                onError: function () { unmark(marked, false); report(null); }
             });
         };
         // Taking a page that visitors can open off the site is asked first;
         // a page that was never published has nobody to lose.
         var live = on ? list.filter(function (p) { return p.page_id > 0; }) : [];
-        if (!live.length) { go(); return; }
+        if (!live.length) { go(); return true; }
         var ask = (live.length > 1)
             ? _sdT('{var} pages will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open them; administrators will.', live.length)
             : _sdT('"{var}" will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open it; administrators will.', live[0].page_name || _sdT('New Page'));
@@ -74173,10 +74432,13 @@ const StyleDesigner = (function () {
         if (typeof window.pgConfirm === 'function') {
             window.pgConfirm({ title: _sdT('Take off the site'), message: ask,
                                confirmText: _sdT('Yes, make it a draft'), cancelText: _sdT('No'), variant: 'warning' })
-                .then(function (ok) { if (ok) go(); });
+                .then(function (ok) { if (ok) go(); else report(null); });
         } else if (window.confirm(ask)) {
             go();
+        } else {
+            return false;
         }
+        return true;
     }
 
     // The draft switch of Page Settings shows the active page; the home page
@@ -74439,9 +74701,9 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         window.PgDesignerPublish.open({
             rows: _pgPublishRows,
-            publish: function (keys, hold) {
-                if (keys.length) _pgSetDraft(keys, false, hold);
-                else saveAjax({ hold: hold });
+            publish: function (keys, hold, report) {
+                if (keys.length) _pgSetDraft(keys, false, hold, report);
+                else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
             takeOff: function (keys) { _pgSetDraft(keys, true); }
         });
@@ -75517,13 +75779,129 @@ const StyleDesigner = (function () {
         try { localStorage.removeItem(RECENT_COMPS_KEY); } catch(e) {}
     }
 
+    // ── Block families in their own files ───────────────────────────────
+    // A block family (a template's sector sections, or general blocks under
+    // a core group's prefix) lives in assets/js/style_designer_blocks_<family>.js,
+    // bundled after this file by pg_js_bundles(), and hands itself over with
+    // StyleDesigner.registerBlockFamily(factory). The factory runs once, on
+    // first use, with _sdBlockKit(), and returns:
+    //   prefix  the componentType prefix of its blocks ('launch-')
+    //   group   { title, icon }: its own palette group; left out when its
+    //           blocks sit in a core group under that group's prefix
+    //   items   its palette items, the shape of _sdBlockPaletteItems()
+    //   build   function (ctype) -> the block's node tree, or null
+    //   css     rule name -> CSS text, added to _SD_BLOCK_CSS
+    //   needs   ctype -> rule names, added to _SD_BLOCK_CSS_NEEDS
+    // A core entry of the same name wins. A family block is a whole section:
+    // dropped on the page root, it is not wrapped in a container.
+    var _sdBlockFamilyFactories = [];
+    var _sdBlockFamilyList = null;
+    var _sdBlockFamilyByType = {};
+
+    function _sdRegisterBlockFamily(factory) {
+        if (typeof factory !== 'function') return;
+        _sdBlockFamilyFactories.push(factory);
+        _sdBlockFamilyList = null;
+    }
+
+    function _sdBlockFamilies() {
+        if (_sdBlockFamilyList) return _sdBlockFamilyList;
+        var list = [], byType = {}, kit = _sdBlockKit();
+        _sdBlockFamilyFactories.forEach(function (factory) {
+            var fam = null;
+            try { fam = factory(kit); } catch (e) { console.error('[SD] block family', e); }
+            if (!fam || typeof fam.prefix !== 'string' || !fam.prefix || typeof fam.build !== 'function') return;
+            // A type another family already lists stays with that family.
+            fam.items = (Array.isArray(fam.items) ? fam.items : []).filter(function (it) {
+                var ct = (it && it.extra && it.extra.componentType) || '';
+                if (!ct || byType[ct]) return false;
+                byType[ct] = fam;
+                return true;
+            });
+            [[fam.css, _SD_BLOCK_CSS], [fam.needs, _SD_BLOCK_CSS_NEEDS]].forEach(function (pair) {
+                Object.keys(pair[0] || {}).forEach(function (k) {
+                    if (!Object.prototype.hasOwnProperty.call(pair[1], k)) pair[1][k] = pair[0][k];
+                });
+            });
+            list.push(fam);
+        });
+        _sdBlockFamilyByType = byType;
+        _sdBlockFamilyList = list;
+        return list;
+    }
+
+    // The family that builds this componentType, or null for a core block.
+    function _sdBlockFamilyOf(ctype) {
+        _sdBlockFamilies();
+        return Object.prototype.hasOwnProperty.call(_sdBlockFamilyByType, ctype) ? _sdBlockFamilyByType[ctype] : null;
+    }
+
+    // The builders the ready-made blocks share, handed to every family
+    // factory; createFromPalette()'s block branch takes the same ones.
+    /* @pg-site-output */
+    function _sdBlockKit() {
+        var kit = { _sdT: _sdT, createNode: createNode };
+        kit.uid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
+        kit.div = function (cls, name, kids, attrs) {
+            var p = { tag: 'div', cssClass: cls, customName: name };
+            if (attrs) p._attrs = attrs;
+            return createNode('semantic', p, kids || []);
+        };
+        kit.tag = function (tag, cls, name, kids, attrs) {
+            var p = { tag: tag, cssClass: cls, customName: name };
+            if (attrs) p._attrs = attrs;
+            return createNode('semantic', p, kids || []);
+        };
+        kit.section = function (cls, name, kids) {
+            return createNode('semantic', { tag: 'section', cssClass: cls, customName: name }, [
+                createNode('container', { fluid: false, cssClass: '' }, kids)
+            ]);
+        };
+        kit.row = function (name, kids, cls) {
+            return createNode('row', { gutter: '4', justify: '', align: '', cssClass: cls || '', customName: name }, kids);
+        };
+        kit.col = function (name, kids, lg, md, sm, cls) {
+            return createNode('col', { xs: '12', sm: sm || '', md: md || '', lg: lg || '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
+        };
+        kit.h = function (tag, text, cls) { return createNode('content', { contentType: 'heading', tag: tag, text: text, cssClass: cls || '' }); };
+        kit.p = function (text, cls) { return createNode('content', { contentType: 'paragraph', text: text, cssClass: cls || '' }); };
+        kit.icon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
+        kit.btn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
+        kit.link = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
+        // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
+        kit.time = function (datetime, text, cls, name) {
+            return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
+        };
+        // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
+        kit.region = function (label) {
+            return [
+                { name: 'role',       value: 'region' },
+                { name: 'aria-label', value: label },
+                { name: 'tabindex',   value: '0' }
+            ];
+        };
+        // An icon-only link (social, share, email), named by its aria-label.
+        kit.iconLink = function (icon, label, cls, href) {
+            return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
+                _attrs: [{ name: 'aria-label', value: label }] }, [ kit.icon(icon) ]);
+        };
+        kit.img = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
+        kit.intro = function (title, lead) {
+            return kit.div('text-center mb-5', _sdT('Section Header'), [
+                kit.h('h2', title, 'fw-bold mb-2'),
+                kit.p(lead, 'lead text-body-secondary mb-0')
+            ]);
+        };
+        return kit;
+    }
+
     // Ready-made blocks. These are whole page sections, not building
     // elements, so they live in their own palette tab; the component tab
     // keeps the primitives. The list stays flat and the palette buckets it
     // by the prefix of the component type, so a new block only has to name
     // itself — nothing here is edited when one is added.
     function _sdBlockPaletteItems() {
-        return [
+        var items = [
             { label: _sdT('Navbar: Brand + Links + CTA'), type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-light-cta' } },
             { label: _sdT('Navbar: Search + Dropdown'),   type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-search' } },
             { label: _sdT('Navbar: Dark, Center Links'),  type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-dark-center' } },
@@ -75651,6 +76029,9 @@ const StyleDesigner = (function () {
             { label: _sdT('Scroller: Snap Cards'),         type: 'component', icon: 'bi-collection',             extra: { componentType: 'scroller-cards' } },
             { label: _sdT('Legal: Accessibility Statement'), type: 'component', icon: 'bi-universal-access',   extra: { componentType: 'legal-accessibility-statement' } }
         ];
+        // Then each family file's blocks, in bundle order.
+        _sdBlockFamilies().forEach(function (fam) { items = items.concat(fam.items); });
+        return items;
     }
 
     // Prefix -> group. A type that matches nothing still shows up, under
@@ -75672,6 +76053,9 @@ const StyleDesigner = (function () {
             { title: _sdT('Maintenance & Launch'), icon: 'bi-cone-striped',   match: ['maintenance-', 'coming-soon-'] },
             { title: _sdT('Legal'),            icon: 'bi-universal-access',   match: ['legal-'] }
         ];
+        _sdBlockFamilies().forEach(function (fam) {
+            if (fam.group && fam.group.title) groups.push({ title: fam.group.title, icon: fam.group.icon || 'bi-box', match: [fam.prefix] });
+        });
         var other = { title: _sdT('Other'), icon: 'bi-box', match: [], items: [] };
         groups.forEach(function (g) { g.items = []; });
 
@@ -78529,6 +78913,94 @@ const StyleDesigner = (function () {
     saveAjax          = _sdProbeWrapSave(saveAjax);
 
 
+    // ── Parts on demand ───────────────────────────────────────────────────
+    // A part of the editor not needed to open a page is a bundle of its own
+    // (pg_designer_parts(), includes/fn/output.php): the screen hands the
+    // addresses of its files over as sdDesign.parts.<name>, and the part runs
+    // the first time something asks for it. _sdPartLoad() answers a promise
+    // that settles once every file of the part has run, in order; asked again
+    // it answers the same promise, and after a failure the next ask tries
+    // again. A part the screen did not hand over is refused.
+    var _sdParts = {};
+
+    function _sdPartUrls(name) {
+        var parts = (_design && _design.parts) || null;
+        var urls = (parts && Object.prototype.hasOwnProperty.call(parts, name)) ? parts[name] : null;
+        return (Array.isArray(urls) && urls.length) ? urls : null;
+    }
+
+    function _sdPartLoaded(name) {
+        return !!(_sdParts[name] && _sdParts[name].done);
+    }
+
+    function _sdPartScript(url) {
+        return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = url;
+            s.async = false;
+            s.onload = function () { resolve(); };
+            s.onerror = function () {
+                if (s.parentNode) s.parentNode.removeChild(s);
+                reject(new Error('could not load ' + url));
+            };
+            document.head.appendChild(s);
+        });
+    }
+
+    function _sdPartLoad(name) {
+        if (_sdParts[name]) return _sdParts[name].promise;
+        var urls = _sdPartUrls(name);
+        if (!urls) return Promise.reject(new Error('no editor part ' + name));
+        var entry = _sdParts[name] = { done: false, promise: null };
+        // One file after the other: a later file of the part may use what an
+        // earlier one defined.
+        entry.promise = urls.reduce(function (chain, url) {
+            return chain.then(function () { return _sdPartScript(url); });
+        }, Promise.resolve()).then(function () {
+            entry.done = true;
+        }, function (err) {
+            delete _sdParts[name];
+            throw err;
+        });
+        return entry.promise;
+    }
+    // ── end of parts on demand ────────────────────────────────────────────
+
+    // The assistant panel is the part 'ai', handed over only to the designers
+    // it serves. Its toolbar button and the canvas menu's "Ask the assistant
+    // about this" run it on first use; a proposal opened from a link runs it
+    // at once, and otherwise it runs once the editor has settled, so the
+    // requests still waiting from an earlier visit are carried on as before.
+    function _sdAiAvailable() {
+        return !!_sdPartUrls('ai');
+    }
+
+    function _sdAiRun(then) {
+        _sdPartLoad('ai').then(function () {
+            if (window.PgDesignerAI && then) then(window.PgDesignerAI);
+        }, function () {
+            sdToast(esc(_sdT('The assistant could not be loaded. Check the connection and try again.')), 'error');
+        });
+    }
+
+    function _sdAiPartInit() {
+        if (!_sdAiAvailable()) return;
+        var btn = document.getElementById('sd-ai-btn');
+        if (btn) {
+            btn.addEventListener('click', function first() {
+                btn.removeEventListener('click', first);
+                // Once the part has run, its own listener on the button
+                // answers the click.
+                if (_sdPartLoaded('ai')) return;
+                _sdAiRun(function (ai) { ai.toggle(); });
+            });
+        }
+        var ai = _design && _design.ai;
+        setTimeout(function () {
+            _sdPartLoad('ai').catch(function () { /* the button asks again */ });
+        }, (ai && parseInt(ai.proposal, 10) > 0) ? 0 : 1500);
+    }
+
     // What the assistant panel (assets/js/designer_ai.js) reads and does in
     // the editor: the active tab's tree, page and selection, and one way to
     // put a proposed tree in place of the tab's own - as a single undo step,
@@ -78616,6 +79088,7 @@ const StyleDesigner = (function () {
                 checkAutosaveRestore(hadExistingTree);
                 _updateSaveButtonState();
             }
+            _sdAiPartInit();
         },
         getTree: function () { return tree; },
         getTreeJSON: function () { return JSON.stringify(tree); },
@@ -78642,6 +79115,8 @@ const StyleDesigner = (function () {
         // touch the page, so a screen other than the editor can load this
         // file to build a design template's widgets: the installer does, for
         // an installation made with a template (install/index.php).
+        // A block family file's hand-over (_sdRegisterBlockFamily()).
+        registerBlockFamily: _sdRegisterBlockFamily,
         starterTree: function (regionType) {
             return _swIsType(regionType) ? _buildStarterTree(regionType) : null;
         }

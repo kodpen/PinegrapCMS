@@ -34,6 +34,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-currency-symbol.md: External API currency symbol is plain text (₺, €), not the HTML entity the currency screen stores (&#8378;, &euro;): one rule, api_currency_symbol_text(), for GET /meta and GET /store/currencies
 - api-customer-consents.md: GET /customers/{id}/consents (the consent_log rows of a customer and its accounts) and the customer.consent_changed webhook announced by pg_consent_log_record(); what is left out and why
 - api-customer-credit.md: Store credit over the API: GET/POST /customers/{id}/credit and void under gift_cards:*, the account pick, credit.* events, export and erasure of a customer's cards
+- api-customer-mail-suppression.md: email_suppressed on the Customer answer (the suppressed badge of the contact screens) and POST /customers/{id}/allow-mail, the contact card's "Allow again" with dry_run
 - api-customer-subscriptions.md: GET /customers/{id}/subscriptions, the pause/resume/cancel moves with dry_run (PR #4399), and the subscription.* webhooks announced from pg_subscription_mail_send()
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
 - api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
@@ -45,15 +46,17 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-discovery-document.md: The credential-free discovery document (.well-known/pinegrap.json and GET integration.php/discovery): its fields and sources, where it is wired, which gates apply, device_signin and pairing
 - api-dry-run.md: Making an external API write rehearsable (X-Dry-Run or ?dry_run=true): the route flag, where api_dry_run_stop() goes, batch endpoints, the *_check() split, side effects a rehearsal skips
 - api-endpoint-rules.md: Writing an external API endpoint: one route row, one presenter, list paging and batch reads, body checks, nullable fields, error codes, formats, partial updates, mirroring panel changes
-- api-experiments.md: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move, experiments:read/write for roles 0-1, two events
+- api-experiments.md: The experiments API resource (PX7, #6295; dry_run #8099): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
 - api-fediverse.md: GET /fediverse/followers and /fediverse/deliveries (fediverse:read): shapes, paging, the state filter, who may hold the scope; the personal data export and erasure of a Fediverse account
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies
 - api-folder-access-widening.md: External API page and folder moves keep or narrow access: access type rank, and for private folders the aclfolder reader list (PR #1786); 409 access_widening_refused
 - api-form-facts.md: What GET /forms/{id} and /forms/{id}/fields tell a client before it writes a record: framework, is_collection, record_url_pattern; rich_text, html_allowed and max_length on a rich text area
+- api-form-rich-text-in.md: Rich text answers sent through POST /forms/{id}/submissions and its update (sanitised, {path} folded, html limit), author_user_id, single-choice updates (Status field), the record's url
+- api-form-submission-revisions.md: The History of a collection item over the API: list revisions, one compared with the record, restore (dry_run), through includes/fn/record_revisions.php
 - api-form-submission-writes.md: POST /forms/{id}/submissions, its delete twins, GET /forms/{id}/fields: the create and delete path shared with the submitted form screens, answers, refusals, events
 - api-idempotency-key.md: External API Idempotency-Key: reservation row before the write, 409 idempotency_in_progress on an overlapping retry, errors give the key back, 300 s stale take-over, secrets kept out of the record
-- api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, GET /inventory?location=, POST /inventory/transfer, their scopes, refusals and dry run; what inventory.changed carries
+- api-inventory-locations.md: Stock per location in the external API and MCP: GET /inventory/locations, /inventory, /inventory/moves, POST /inventory/transfer; scopes, refusals, dry run, inventory.changed
 - api-mcp-client-streams.md: The MCP client reads an event-stream answer only until the event that answers its request (api_http_request() option complete); why curl's error 23 then counts as success; other callers unchanged
 - api-mcp-client.md: The site as an MCP client (includes/mcp/client.php, the Workspace's MCP servers): what a refusal says (OAuth challenge, moved address, old /sse address, JSON-RPC error, timeout) and why
 - api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
@@ -71,6 +74,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
 - api-panel-coverage.md: How far the external API covers what the panel manages (gap list #5239, X1-X13 landed; audit #7967), how a new write route reuses the screen's write path, and what deliberately has no endpoint
 - api-product-bundles.md: Product bundles in the external API: the bundle block on Product, the bundle fields POST /products/{id} writes, what it refuses, the price batch and inventory answers for a bundle
+- api-product-question-answer.md: POST /comments/{id}/answer writes, changes or removes the staff answer to a product question through the comment screen's save (comments:write, dry_run); refusals, the asker's mail
 - api-response-json-encoding.md: API and MCP answers as JSON (pg_json_encode_answer()): broken UTF-8 bytes, keys too, become U+FFFD on every PHP version; INF or NAN becomes a 500 or -32603, never an empty body
 - api-returns.md: GET /returns, GET /returns/{id}, POST /returns/{id} (approve, reject, ship, receive, close, refund) through the return screen's write functions, the action check, codes, events
 - api-reviews-and-wishlist.md: Reviews and favourites in the external API: verified and store_reply on Comment, GET /products/{id}/reviews, rating on Product, GET /customers/{id}/wishlist, product.review.created
@@ -103,7 +107,8 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on Visitor Tracking, batchRunReports cached by an hourly job, state in a sealed service entry
 - mailchimp-sync-running-claim.md: How the MailChimp sync in the general job keeps two overlapping runs from syncing at once.
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
-- mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context and /customer, refs/{type}/{id}) read by their GET routes; prompts channel_summary, weekly_report; who sees them, errors, caching
+- mcp-form-guidance.md: What MCP tells a model before it writes a form record (PR #8042): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument
+- mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context and /customer, refs/{type}/{id}, forms/{id}/fields) read by their GET routes; prompts; who sees them, errors, caching
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/).
 - translations-api-dry-run.md: The seven translation API writes take X-Dry-Run (PR #1911): where each stops, the batch counts, translate_api_write_check(), pg_tr_result_judge(), pg_tr_reviewed_kept()
