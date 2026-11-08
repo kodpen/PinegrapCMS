@@ -207,6 +207,7 @@
     "Up to %s": "En fazla %s",
     "Up to %s in all": "Toplam %s'ye kadar",
     "Up to %s per traveller": "Kişi başı en fazla %s",
+    "Up to 10": "10 kişiye kadar",
     "Up to 10 keys of an item, separated by commas: each becomes a value of this box inside the loop.": "Bir öğenin en çok 10 anahtarı, virgülle ayrılmış: her biri döngü içinde bu kutunun bir değeri olur.",
     "Up to 10%": "%10'a kadar",
     "Up to 100 products added": "100 ürüne kadar ekleme",

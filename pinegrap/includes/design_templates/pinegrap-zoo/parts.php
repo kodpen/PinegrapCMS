@@ -312,9 +312,9 @@ $membership_prices = array(
 // each adoptable animal is a product per level; the adopt page lists the
 // levels once and the animals beside them.
 $adoption_levels = array(
-    'friend'   => array('title' => lang('Friend'), 'benefits' => array(lang('An adoption certificate by e-mail'), lang('A photo and the animal\'s story'), lang('News from its keepers twice a year'))),
-    'keeper'   => array('title' => lang('Keeper'), 'benefits' => array(lang('Everything in Friend'), lang('Your name on the habitat\'s board'), lang('Two tickets for a day at the zoo'))),
-    'guardian' => array('title' => lang('Guardian'), 'benefits' => array(lang('Everything in Keeper'), lang('Meet the animal with its keeper'), lang('An invitation to the adopters\' evening'))),
+    'friend'   => array('title' => lang('Friend Level'), 'benefits' => array(lang('An adoption certificate by e-mail'), lang('A photo and the animal\'s story'), lang('News from its keepers twice a year'))),
+    'keeper'   => array('title' => lang('Keeper Level'), 'benefits' => array(lang('Everything in the Friend Level'), lang('Your name on the habitat\'s board'), lang('Two tickets for a day at the zoo'))),
+    'guardian' => array('title' => lang('Guardian Level'), 'benefits' => array(lang('Everything in the Keeper Level'), lang('Meet the animal with its keeper'), lang('An invitation to the adopters\' evening'))),
 );
 $adoption_prices = array(
     'friend'   => array('USD' => 40, 'EUR' => 37, 'GBP' => 32, 'TRY' => 1350),
