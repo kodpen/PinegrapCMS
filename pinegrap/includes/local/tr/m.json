@@ -1941,6 +1941,7 @@
     "membership expired": "üyeliği bitmiş",
     "membership job removed {var:1} member(s) from membership contact group because membership was no longer valid (e.g. membership expired)": "üyelik işi {var:1} üyeyi üyelik rehber grubundan çıkardı, çünkü üyelik artık geçerli değildi (ör. üyeliğin süresi doldu)",
     "membership job sent expiration warning e-mail(s) to {var:1} member(s)": "üyelik işi {var:1} üyeye süre sonu uyarı e-postası gönderdi",
+    "membership, a year, free dome shows, telescope nights": "üyelik, bir yıl, ücretsiz kubbe gösterileri, teleskop geceleri",
     "membership, annual pass, free entry, zoo": "üyelik, yıllık kart, ücretsiz giriş, hayvanat bahçesi",
     "membership, annual pass, season ticket, member benefits": "üyelik, yıllık kart, sezon bileti, üye ayrıcalıkları",
     "membership, join, member, annual meeting, vote, price": "üyelik, katıl, üye, genel kurul, oy, fiyat",
