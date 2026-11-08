@@ -1738,6 +1738,7 @@
     "A phrase in quotes finds those words together.": "Tırnak içindeki bir ifade o kelimeleri bir arada bulur.",
     "A pickup method has no rate, service or address limit. Change it in the shipping method.": "Mağazadan teslim yönteminin ücreti, servisi ya da adres sınırı yoktur. Bunu kargo yönteminde değiştirin.",
     "A pickup was booked for {var:1} label(s).": "{var:1} etiket için kurye çağrıldı.",
+    "A picture for a form takes only these file types: {var:1}": "Bir formun resmi yalnızca şu dosya türlerini alır: {var:1}",
     "A picture from the file manager or from an address.": "Dosya yöneticisinden ya da bir adresten gelen görsel.",
     "A picture of the front cover, taller than wide.": "Ön kapağın, boyu eninden uzun bir resmi.",
     "A picture of what you saw, or a PDF. Only the moderators can open it.": "Gördüğünüzün bir resmi ya da bir PDF. Yalnızca moderatörler açabilir.",

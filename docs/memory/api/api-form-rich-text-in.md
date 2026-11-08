@@ -11,4 +11,8 @@ description: Rich text answers sent through POST /forms/{id}/submissions and its
 - The update (`api_form_field_updatable()`) writes text box, text area, e-mail address, and a single-answer choice field (pick list without multiple, radio button) with one of its option values: a collection's Status field is written as sent, so a post is published in one call (owner, `workflow/decisions-made-product-36.md`). Check box groups, multiple pick lists, dates, times, uploads and signatures stay refused. A rich answer is stored with `form_data.type = 'html'`.
 - Every FormSubmission carries `url`, the record's address on the site (`api_form_submission_url()`: complete records only, the page from `api_form_record_page()`), null when no public page shows the form's records.
 
+## How does a picture get into a post?
+- `POST /files` with `form_id` (also needs `forms:read`, the form under the forms folder rule, 404 outside): images only (`api_files_picture_types()`: jpg, jpeg, png, gif, webp), the same size limit and upload cap as any API upload (`api_files_size_limit()`, `pg_image_upload_cap_apply()`). Filed in `api_form_picture_folder()`: the upload folder of the form's own file upload field, the `rss_field = 'media'` field first, then form order, public folders only (a published post's picture must load for every reader); else the applications' folder (`api_upload_folder_id`). `files.attachment` stays 0, so the file is served to everyone.
+- The client puts the File's `url` in an `<img src>` of the rich text answer; the visitor profile keeps an image on the site's host and `api_form_html_answer_in()` stores it as `{path}<name>`, as the page stores its own pictures. An image on another host is removed.
+
 Tests: `tests/api_forms_test.php`.
