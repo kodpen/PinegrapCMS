@@ -289,7 +289,9 @@ function test_designer_fx_script_reads_the_page()
 // rest and drops what no longer applies, and the panel wires it up.
 function test_designer_fx_panel()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	// The code view's attribute writes are in its part (style_designer_code.js).
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js')
+		. "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
 	$twins = strpos($js, '    // The lists are first-is-default');
 	$twins_end = strpos($js, '    // The id, the title and tooltip, the interaction');
 	$panel = strpos($js, '    var _SD_FX_CONTENT');
