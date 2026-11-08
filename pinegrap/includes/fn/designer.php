@@ -2345,8 +2345,8 @@ function pg_designer_design_set_draft($style_id, $on, $user)
 
 /**
  * The editor's UI text keys: every _sdT('…') key in the designer's sources
- * (pg_designer_js_sources(): assets/js/style_designer.src.js and its block
- * family files), the sources the served .min.js is built from (the literals
+ * (pg_designer_js_all_sources(): assets/js/style_designer.src.js, its block
+ * family files and its parts), the sources the served .min.js is built from (the literals
  * there are not guaranteed to keep their quotes). The keys are English source
  * text, so the JS files themselves are the single list — there is no second
  * copy to keep in step. Scanning 4.7 MB on every editor load would be
@@ -2362,7 +2362,7 @@ function pg_designer_i18n_keys()
     $keys = array();
 
     $files = array();
-    foreach (pg_designer_js_sources() as $relative) {
+    foreach (pg_designer_js_all_sources() as $relative) {
         $path = PG_FUNCTIONS_DIR . '/' . $relative;
         if (is_file($path)) $files[$relative] = $path;
     }

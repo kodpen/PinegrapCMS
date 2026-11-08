@@ -145,3 +145,135 @@ function test_designer_part_loader_retries_after_a_failure()
 	pg_assert_same(2, $r[1], 'the next ask appends the file again');
 	pg_assert_same(array('unknown', 'empty'), $r[2], 'a part not handed over is refused');
 }
+
+// The core's kit for the parts cut out of it: the keys of the object
+// _sdPartKit() builds, functions and state alike.
+function designer_parts_kit_keys()
+{
+	$source = _test_blocks_js();
+	$from = strpos($source, '    function _sdPartKit() {');
+	$to = strpos($source, "\n    }\n", (int) $from);
+	pg_assert_true(($from !== false) && ($to !== false), 'the core builds a kit for its parts');
+	$body = substr($source, $from, $to - $from);
+	preg_match_all('/^\s{12}([A-Za-z_$][A-Za-z0-9_$]*):/m', $body, $m);
+	return array_flip($m[1]);
+}
+
+// The core's top-level names (four-space declarations inside its closure).
+function designer_parts_core_names()
+{
+	preg_match_all('/^    (?:function\s+|var\s+|let\s+|const\s+)([A-Za-z_$][A-Za-z0-9_$]*)/m', _test_blocks_js(), $m);
+	return array_flip($m[1]);
+}
+
+// A part cut out of the core registers with StyleDesigner.definePart(), takes
+// every editor name it uses from the kit (K.<name>, a key the kit has) and
+// uses no name of the core's closure directly: there it would be undefined.
+function test_designer_parts_cut_from_the_core_use_only_the_kit()
+{
+	$kit = designer_parts_kit_keys();
+	$core = designer_parts_core_names();
+	$cut = 0;
+
+	foreach (pg_designer_parts() as $name => $bundle) {
+		foreach (pg_js_bundles()[$bundle] as $source) {
+			if (!preg_match('#^assets/js/style_designer_[a-z0-9_]+\.js$#', $source)) {
+				continue;
+			}
+
+			$cut++;
+			$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $source);
+			pg_assert_true(strpos($js, "StyleDesigner.definePart('" . $name . "', function (K) {") !== false, $source . ' registers part ' . $name);
+			preg_match_all('/\bK\.([A-Za-z_$][A-Za-z0-9_$]*)/', $js, $used);
+
+			foreach (array_unique($used[1]) as $key) {
+				pg_assert_true(isset($kit[$key]), $source . ': K.' . $key . ' is in the kit');
+			}
+
+			// Names the part declares itself (its aliases and functions).
+			preg_match_all('/(?:function\s+|var\s+|let\s+|const\s+)([A-Za-z_$][A-Za-z0-9_$]*)/', $js, $own);
+			$own = array_flip($own[1]);
+			$bare = preg_replace(array("~//[^\n]*~", '~/\*.*?\*/~s', "~'(?:[^'\\\\\n]|\\\\.)*'~", '~"(?:[^"\\\\\n]|\\\\.)*"~'), ' ', $js);
+			preg_match_all('/(?<![.\w$])([A-Za-z_$][A-Za-z0-9_$]*)(?!\s*:(?!:))/', $bare, $ids);
+
+			foreach (array_unique($ids[1]) as $id) {
+				if (isset($core[$id]) && !isset($own[$id])) {
+					pg_assert_true(false, $source . ' uses the core\'s ' . $id . ' outside the kit');
+				}
+			}
+		}
+	}
+
+	pg_assert_true($cut >= 1, 'at least one part is cut out of the core');
+}
+
+// The import (HTML / ZIP and the paste-a-page reply) is a part: its code left
+// the core, which keeps only the two entry points that run it.
+function test_designer_import_is_a_part()
+{
+	$parts = pg_designer_parts();
+	pg_assert_same('assets/js/style_designer_import.min.js', $parts['import'] ?? '', 'the import is a part');
+	pg_assert_same(array('assets/js/style_designer_import.js'), pg_js_bundles()['assets/js/style_designer_import.min.js'] ?? array(), 'built from its file');
+	$core = _test_blocks_js();
+	pg_assert_false(strpos($core, 'function _pgImportFindShared(') !== false, 'the core no longer holds the import');
+	pg_assert_true(strpos($core, "_sdPartCall('import', 'open'") !== false, 'the import dialog runs the part');
+	pg_assert_true(strpos($core, "_sdPartCall('import', 'apply'") !== false, 'the paste-a-page reply runs the part');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_true(strpos($screen, "array('import')") !== false || strpos($screen, "'import'") !== false, 'the screen hands the import part over');
+}
+
+// The readers of the designer's _sdT() keys read the parts too.
+function test_designer_readers_see_the_parts()
+{
+	$all = pg_designer_js_all_sources();
+	pg_assert_same(pg_designer_js_sources(), array_slice($all, 0, count(pg_designer_js_sources())), 'the bundled sources first');
+	pg_assert_true(in_array('assets/js/style_designer_import.js', $all, true), 'the import part is read');
+	pg_assert_true(in_array('Make the repeated parts shared?', pg_designer_i18n_keys(), true), 'a key only the import part uses is in the editor\'s map');
+}
+
+// The import part under Node, handed a kit like the core's: a one-page reply
+// drops the blank placeholder tab through the kit's setter, opens the page as
+// a new tab after the open one and counts the tab sequence on; a reply of two
+// pages with the same header asks whether to share it.
+function test_designer_import_part_runs_on_the_kit()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$js = 'process.on("unhandledRejection", function () {});'
+		. 'var factory = null; var StyleDesigner = { definePart: function (n, f) { factory = f; } };'
+		. 'var window = {}; var asked = 0;'
+		. 'var document = { getElementById: function () { return null; }, createElement: function () { asked++; throw new Error("asked"); } };'
+		. 'var pgUI = { dialog: { hide: function () {}, show: function () {} } };'
+		. 'var state = { pages: [{ key: "p0", page_id: 0, page_name: "", tree: { children: [] } }, { key: "p1", page_id: 5, page_name: "Home", tree: { children: [{}] } }], active: "p1", seq: 0 };'
+		. 'var inserted = [], switched = null, toasts = 0;'
+		. 'var K = { _sdT: function (s) { return s; }, esc: function (s) { return String(s); }, sdToast: function () { toasts++; }, gid: function () { return "g"; },'
+		. ' getNodeLabel: function () { return "x"; }, createDefaultTree: function () { return { children: [] }; }, reindex: function () { return 1; },'
+		. ' _backfillIds: function () {}, _normalizeToggleableShowState: function () {}, _pgNewPageDraft: function () { return 1; },'
+		. ' _pgTabsInsertAfter: function (p, after) { inserted.push([p.page_name, after]); }, _pgTabsPersistActive: function () {}, _pgTabsRender: function () {},'
+		. ' _pgTabsSwitch: function (k) { switched = k; }, _pgTemplateTrackRows: function () {}, _pgToken: function () { return "t"; },'
+		. ' _pgTreeOf: function (p) { return p.tree; }, _refreshSharedPalette: function () {}, _sdSmartActiveHost: function () { return false; }, _sdUsesBootstrap: function () { return true; } };'
+		. 'Object.defineProperties(K, { pages: { get: function () { return state.pages; }, set: function (v) { state.pages = v; } }, activeKey: { get: function () { return state.active; } },'
+		. ' newTabSeq: { get: function () { return state.seq; }, set: function (v) { state.seq = v; } }, sharedCache: { get: function () { return {}; } }, design: { get: function () { return null; } } });'
+		. "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_import.js') . "\n"
+		. 'var api = factory(K);'
+		. 'api.apply({ pages: [{ page_name: "About", tree: { children: [] } }] }, "Site");'
+		. 'console.log(JSON.stringify([typeof api.open, state.pages.map(function (p) { return p.key; }), inserted, state.seq, switched === null ? null : switched.indexOf("new") === 0, toasts]));'
+		. 'var band = function () { return { type: "semantic", props: { tag: "header" }, children: [{ type: "content", props: {}, children: [] }, { type: "content", props: {}, children: [] }, { type: "content", props: {}, children: [] }] }; };'
+		. 'try { api.apply({ pages: [{ tree: { children: [band()] } }, { tree: { children: [band()] } }] }, ""); } catch (e) {}'
+		. 'console.log(JSON.stringify(asked));';
+
+	$file = tempnam(sys_get_temp_dir(), 'sdimport') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the import part runs: ' . implode("\n", $lines));
+	pg_assert_same(array('function', array('p1'), array(array('About', 'p1')), 1, true, 1), json_decode($lines[0], true), 'the page opened as a tab after the open one, the blank tab dropped');
+	pg_assert_same(1, json_decode($lines[1], true), 'a header on both pages is offered as shared');
+}
