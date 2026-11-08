@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-9
-description: Decisions list, workspace part 9 (2026-11-08 on): an agent channel made with a slash command, its decisions kept apart; agents' messages may be marked; channel memory read by title
+description: Decisions list, workspace part 9 (2026-11-08 on): an agent channel made with a slash command, its decisions kept apart; agents' messages may be marked; channel memory read by title; GitHub by OAuth
 ---
 
 ## Where are the rules and the earlier parts?
@@ -19,3 +19,6 @@ description: Decisions list, workspace part 9 (2026-11-08 on): an agent channel 
 ## How do agents use a channel's memory? (owner, 2026-11-08, in the architect's window)
 - Agents save memory entries in any channel, agent channel or not: one memory for both. They use it as Claude Code uses its memory: they look at the titles, decide what they need and read only those entries.
 - A channel with an agent shows the memory; in a channel without one it is reached only by a button in the channel's settings.
+
+## How do users connect GitHub to a channel? (owner, 2026-11-08, in the architect's window)
+- With OAuth from Settings › Connections and a repository webhook the site sets itself: no repository secrets, no workflow file. Chosen over keyless GitHub Actions (OIDC), which still needs a workflow file. Plan: `plans/github-channel-connection.md`.
