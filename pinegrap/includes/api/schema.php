@@ -3962,6 +3962,57 @@ function api_schema() {
 			)
 		),
 
+		// The History section of a collection item (includes/fn/record_revisions.php).
+		array(
+			'id'      => 'forms.submission_revisions',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submission_revisions',
+			'returns' => array('list' => 'FormSubmissionRevision'),
+			'summary' => 'Revisions of a collection record',
+			'description' => 'The History section of the submitted-form screen: one revision for every save that changed the record\'s answers or its address name, newest first, with who saved it and how (source edit, restore, api or workspace). A save that only marked it complete or incomplete writes none. current marks the revision the record holds now. The answers are not listed; read one revision with GET /forms/{id}/submissions/{submission_id}/revisions/{no} and put it back with POST …/revisions/{no}/restore. Only the records of a collection form keep revisions: any other is answered 409 not_a_collection. The site keeps the last revisions of each record and the recent ones (the page revision settings), so old numbers disappear. Cursor paged. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_revision_get',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions/{no}',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submission_revision_get',
+			'returns' => 'FormSubmissionRevisionDetail',
+			'summary' => 'One revision of a collection record, compared with the record',
+			'description' => 'What Compare shows in the History section: every field in form order with the revision\'s answers (values; file_id for an upload) beside the record\'s current ones, changed when they differ, and restore, what a restore would do to it: value (the answer is written back), file (the revision\'s file is attached again), gone (that file has been deleted since, the current one stays), kept (a signature, or a revision without a file: the current value stays) or unchanged. 409 not_a_collection for a record of a form that is no collection; 404 for a revision number the record does not have.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'no',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The revision number (GET /forms/{id}/submissions/{submission_id}/revisions).')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_revision_restore',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions/{no}/restore',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_revision_restore',
+			'dry_run' => true,
+			'returns' => 'FormSubmissionRestore',
+			'summary' => 'Put a revision of a collection record back',
+			'description' => 'As loading the revision from the History section and saving it: the revision\'s answers are written back and its uploaded files that still exist are attached again; a signature and a file deleted since stay as they are now (fields lists what happens to each field that differs, as restore in GET …/revisions/{no}). The address name follows the restored title on a form with pretty addresses, whether the record is complete stays, and the save is recorded as a revision of its own with the source restore (revision_no). When the record already holds that revision nothing is written and changed is false. 409 not_a_collection for a record of a form that is no collection; 404 for a revision number the record does not have.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'no',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The revision number (GET /forms/{id}/submissions/{submission_id}/revisions).')
+			)
+		),
+
 		/* ----- Pages -------------------------------------------------------- */
 
 		array(

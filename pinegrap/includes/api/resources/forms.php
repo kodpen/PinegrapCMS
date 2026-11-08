@@ -1123,6 +1123,382 @@ function api_form_submission_update($params) {
 
 }
 
+// The revisions of a collection item exist only once the database update
+// created their table, and only for a record of a collection form: the edit
+// screen shows its History section on the same condition.
+function api_form_revisions_ready($row) {
+
+	if (!pg_record_revisions_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	if (!pg_record_revision_history_enabled($row['page_id'])) {
+
+		api_fail(409, 'not_a_collection', lang('Only the records of a collection keep revisions.'));
+
+	}
+
+}
+
+// One revision of a record (pg_record_revisions_list() or
+// pg_record_revision_get() with its user name): who saved it, how, and
+// whether it is what the record holds now. Pure.
+function api_form_revision_present($row, $current_hash) {
+
+	$record = json_decode(isset($row['record_json']) ? (string)$row['record_json'] : '', true);
+
+	if (!is_array($record)) {
+
+		$record = array();
+
+	}
+
+	$username = isset($row['user_username']) ? (string)$row['user_username'] : '';
+
+	$address = isset($record['address_name']) ? (string)$record['address_name'] : '';
+
+	return array(
+		'revision_no'     => (int)$row['revision_no'],
+		'source'          => pg_record_revision_source(isset($row['source']) ? (string)$row['source'] : ''),
+		'user_id'         => ((int)$row['user_id'] > 0) ? (int)$row['user_id'] : null,
+		'user'            => ($username !== '') ? $username : null,
+		'address_name'    => ($address !== '') ? $address : null,
+		'complete'        => !empty($record['complete']),
+		'current'         => isset($row['values_hash']) && ($current_hash !== null) && ((string)$row['values_hash'] === (string)$current_hash),
+		'created_at'      => api_time($row['created_at']),
+		'created_at_unix' => (int)$row['created_at']
+	);
+
+}
+
+// What api_form_revision_present() returns.
+function api_form_revision_schema() {
+
+	return array(
+		'revision_no'     => 'integer',
+		'source'          => 'string',
+		'user_id'         => 'integer?',
+		'user'            => 'string?',
+		'address_name'    => 'string?',
+		'complete'        => 'boolean',
+		'current'         => 'boolean',
+		'created_at'      => 'string?',
+		'created_at_unix' => 'integer'
+	);
+
+}
+
+// A revision's values beside the record's current ones, field by field in
+// form order, with what a restore would do to each: value (the revision's
+// answer is written back), file (its file is pointed at again), gone (its
+// file has been deleted since, the current one stays), kept (a signature,
+// or a revision without a file: the current value stays) or unchanged.
+// Pure.
+function api_form_revision_values_present($fields, $revision, $current, $file_ids) {
+
+	$plan = pg_record_revision_restore_plan($fields, $revision, $current, $file_ids);
+
+	$texts = function ($list) {
+
+		$out = array();
+
+		foreach ((array)$list as $value) {
+
+			if (!is_array($value)) {
+
+				$out[] = (string)$value;
+
+			}
+
+		}
+
+		return $out;
+
+	};
+
+	$out = array();
+
+	foreach (pg_record_revision_compare($fields, $revision, $current) as $row) {
+
+		$status = isset($plan[$row['field_id']]) ? $plan[$row['field_id']] : 'unchanged';
+
+		if (!$row['changed']) {
+
+			$status = 'unchanged';
+
+		}
+
+		$old_file = pg_record_revision_file_id($row['revision']);
+
+		$new_file = pg_record_revision_file_id($row['current']);
+
+		$name = '';
+
+		foreach ((array)$fields as $field) {
+
+			if ((string)(int)$field['id'] === $row['field_id']) {
+
+				$name = isset($field['name']) ? (string)$field['name'] : '';
+
+				break;
+
+			}
+
+		}
+
+		$out[] = array(
+			'field_id'        => (int)$row['field_id'],
+			'name'            => $name,
+			'label'           => $row['label'],
+			'type'            => $row['type'],
+			'values'          => $texts($row['revision']),
+			'file_id'         => ($old_file > 0) ? $old_file : null,
+			'current_values'  => $texts($row['current']),
+			'current_file_id' => ($new_file > 0) ? $new_file : null,
+			'changed'         => (bool)$row['changed'],
+			'restore'         => $status
+		);
+
+	}
+
+	return $out;
+
+}
+
+// What GET /forms/{id}/submissions/{submission_id}/revisions/{no} returns.
+function api_form_revision_detail_schema() {
+
+	return api_form_revision_schema() + array(
+		'values' => array(array(
+			'field_id'        => 'integer',
+			'name'            => 'string',
+			'label'           => 'string',
+			'type'            => 'string',
+			'values'          => 'string[]',
+			'file_id'         => 'integer?',
+			'current_values'  => 'string[]',
+			'current_file_id' => 'integer?',
+			'changed'         => 'boolean',
+			'restore'         => 'string'
+		))
+	);
+
+}
+
+// The hash of the record as it is stored now, null when it keeps no
+// revisions.
+function api_form_revision_current_hash($id) {
+
+	$snapshot = pg_record_revision_snapshot($id);
+
+	return $snapshot ? $snapshot['hash'] : null;
+
+}
+
+// One revision of the record in the address, with its user name, or a 404.
+function api_form_revision_or_fail($row, $no) {
+
+	$revision = pg_record_revision_get($row['id'], $no);
+
+	if (!$revision) {
+
+		api_fail_not_found(lang('Revision'));
+
+	}
+
+	$revision['values_hash'] = (string)api_value("SELECT values_hash FROM record_revisions
+		WHERE form_id = '" . (int)$row['id'] . "' AND revision_no = '" . (int)$revision['revision_no'] . "' LIMIT 1");
+
+	$revision['user_username'] = ((int)$revision['user_id'] > 0)
+		? (string)api_value("SELECT user_username FROM user WHERE user_id = '" . (int)$revision['user_id'] . "' LIMIT 1")
+		: '';
+
+	return $revision;
+
+}
+
+// The History section of a collection item, newest first.
+function api_form_submission_revisions($params) {
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	api_form_revisions_ready($row);
+
+	$limit = (int)$params['limit'];
+
+	$before = 0;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$before = (int)$cursor['i'];
+
+	}
+
+	$rows = pg_record_revisions_list($row['id'], $limit + 1, $before);
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['revision_no'], (int)$last['revision_no']);
+
+	}
+
+	$hash = api_form_revision_current_hash($row['id']);
+
+	$out = array();
+
+	foreach ($rows as $revision) {
+
+		$out[] = api_form_revision_present($revision, $hash);
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
+
+// One revision compared with the record, as the History section's Compare
+// shows it.
+function api_form_submission_revision_get($params) {
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	api_form_revisions_ready($row);
+
+	$revision = api_form_revision_or_fail($row, $params['no']);
+
+	$values = pg_record_revision_decode($revision['values_json']);
+
+	$names = pg_record_revision_file_names(array($values));
+
+	$out = api_form_revision_present($revision, api_form_revision_current_hash($row['id']));
+
+	$out['values'] = api_form_revision_values_present(
+		pg_record_revision_form_fields($row['page_id']),
+		$values,
+		pg_record_revision_current_values($row['id']),
+		array_keys($names));
+
+	api_ok($out);
+
+}
+
+// What a restore answers with: the record as it is now, the revision it was
+// put back to, the revision the restore was recorded as, and what happened
+// to each field that differed.
+function api_form_revision_restore_schema() {
+
+	return array(
+		'submission'    => 'FormSubmission',
+		'restored_from' => 'integer',
+		'revision_no'   => 'integer?',
+		'changed'       => 'boolean',
+		'fields'        => array(array(
+			'field_id' => 'integer',
+			'name'     => 'string',
+			'restore'  => 'string'
+		))
+	);
+
+}
+
+// Puts a revision of a collection item back, as loading it from the History
+// section and saving does: the revision's answers and its files that still
+// exist are written, a signature and a deleted file stay as they are, the
+// address name follows the restored title, and the save is recorded as a
+// revision with the source restore. Whether the record is complete stays.
+function api_form_submission_revision_restore($params) {
+
+	$app = api_current_app();
+
+	$row = api_form_submission_owned($params['id'], $params['submission_id']);
+
+	api_form_revisions_ready($row);
+
+	$revision = api_form_revision_or_fail($row, $params['no']);
+
+	$id = (int)$row['id'];
+
+	$values = pg_record_revision_decode($revision['values_json']);
+
+	$names = pg_record_revision_file_names(array($values));
+
+	$fields = array();
+
+	foreach (api_form_revision_values_present(pg_record_revision_form_fields($row['page_id']), $values, pg_record_revision_current_values($id), array_keys($names)) as $field) {
+
+		if ($field['restore'] !== 'unchanged') {
+
+			$fields[] = array('field_id' => $field['field_id'], 'name' => $field['name'], 'restore' => $field['restore']);
+
+		}
+
+	}
+
+	// The record already holds this revision: nothing is written or recorded.
+	$changed = ((string)$revision['values_hash'] !== (string)api_form_revision_current_hash($id));
+
+	api_dry_run_stop('restored', 'form_submission', array(
+		'id'            => $id,
+		'restored_from' => (int)$revision['revision_no'],
+		'changed'       => $changed,
+		'fields'        => $fields
+	));
+
+	$revision_no = 0;
+
+	if ($changed) {
+
+		$revision_before = pg_record_revision_before($id);
+
+		pg_record_revision_restore_values($id, $row['page_id'], $revision);
+
+		api_exec("UPDATE forms SET last_modified_user_id = '" . (int)$app['owner']['id'] . "', last_modified_timestamp = UNIX_TIMESTAMP() WHERE id = '" . $id . "' LIMIT 1");
+
+		if (check_if_pretty_urls_are_enabled($row['page_id'])) {
+
+			update_submitted_form_address_name($id);
+
+		}
+
+		$revision_no = pg_record_revision_after($id, $revision_before, 'restore', (int)$app['owner']['id']);
+
+		log_activity(lang(array(
+			'string' => 'Revision {var:1} of the submitted form ({var:2}) was restored through the API by the application {var:3} (key {var:4}).',
+			'vars'   => array((int)$revision['revision_no'], (string)$row['reference_code'], $app['name'], $app['api_key'])
+		)), $app['owner']['username']);
+
+	}
+
+	$row = api_form_submission_owned($params['id'], $id);
+
+	$current = api_form_submission_values(array($id));
+
+	api_ok(array(
+		'submission'    => api_form_submission_present($row, isset($current[$id]) ? $current[$id] : array()),
+		'restored_from' => (int)$revision['revision_no'],
+		'revision_no'   => ($revision_no > 0) ? (int)$revision_no : null,
+		'changed'       => $changed,
+		'fields'        => $fields
+	));
+
+}
+
 // The fields of one form, on their own: what a client reads before it sends
 // a submission. The same field objects GET /forms/{id} carries, one page.
 function api_form_fields($params) {

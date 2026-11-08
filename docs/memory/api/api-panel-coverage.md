@@ -13,7 +13,7 @@ description: How far the external API covers what the panel manages (gap list #5
   - G1 `view_stock_moves.php` (`includes/fn/stock_moves.php`) -> `GET /inventory/moves` (product, location, reason, period; `products:read`): every change at a location, all `pg_stock_reasons()`. `/erp/stock/moves` lists only ERP document lines.
   - G2 `edit_comment.php` Answer box -> `POST /comments/{id}/answer` through `pg_product_question_answer_save()` (`comments:write`).
   - G3 `edit_contact_group.php` -> `by_rule` on ContactGroup, `POST /contact-groups/{id}/refresh` (the audience_refresh action).
-  - G4 `edit_submitted_form.php` History -> `GET /forms/{id}/submissions/{submission_id}/revisions` and a restore.
+  - G4 `edit_submitted_form.php` History -> `GET /forms/{id}/submissions/{submission_id}/revisions`, one revision and its restore: done (`api/api-form-submission-revisions.md`).
   - G5 `edit_contact.php` suppressed badge, `view_contacts.php` -> `email_suppressed` on Customer, `POST /customers/{id}/allow-mail` (`pg_mail_bounce_allow_contact()`).
   - G6 `experiments.php` sheet -> `dry_run` on start, pause, end.
   - G7 `DELETE /pages/{id}`, `/files/{id}`: `pg_recycle_folder_id(true)` makes the bin before the stop; its log reads `$_SESSION['sessionusername']`, absent on the API path.

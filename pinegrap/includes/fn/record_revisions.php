@@ -1082,3 +1082,125 @@ function pg_record_revision_loaded_notice($revision, $notes)
             ' . (($list !== '') ? '<ul class="mb-0 mt-5">' . $list . '</ul>' : '') . '
         </div>';
 }
+
+/**
+ * An item's revisions, newest first, for the external API's listing: who
+ * saved each (their name when the account still exists), the source, the
+ * record columns and the hash that tells it apart from the stored item.
+ *
+ * @param int $form_id
+ * @param int $limit   rows to read
+ * @param int $before  only revisions below this number, 0 for the newest
+ * @return array rows: revision_no, record_json, values_hash, user_id, source, created_at, user_username
+ */
+function pg_record_revisions_list($form_id, $limit, $before)
+{
+    if ((int) $form_id <= 0 || !pg_schema_has('record_revisions', 'source')) {
+        return array();
+    }
+
+    return (array) db_items(
+        "SELECT record_revisions.revision_no, record_revisions.record_json, record_revisions.values_hash,
+            record_revisions.user_id, record_revisions.source, record_revisions.created_at, user.user_username
+         FROM record_revisions
+         LEFT JOIN user ON user.user_id = record_revisions.user_id
+         WHERE record_revisions.form_id = '" . (int) $form_id . "'"
+            . (((int) $before > 0) ? " AND record_revisions.revision_no < '" . (int) $before . "'" : '') . "
+         ORDER BY record_revisions.revision_no DESC
+         LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * The form_data rows a restore writes for the fields whose plan is 'value',
+ * as the edit screen's save writes them (pg_submitted_form_save_value()):
+ * one row per value, a date, date and time or time value keeping its type,
+ * a rich-text area typed html; a field the revision holds no value for
+ * gets one empty row, as an emptied field of the edit form does. Pure.
+ *
+ * @param array $fields   form_fields rows: id, name, type, wysiwyg
+ * @param array $revision pg_record_revision_decode() of the revision
+ * @param array $plan     pg_record_revision_restore_plan()
+ * @return array field id (string) => list of data, type, name
+ */
+function pg_record_revision_restore_rows($fields, $revision, $plan)
+{
+    $out = array();
+
+    foreach ((array) $fields as $field) {
+        $id = (string) (int) $field['id'];
+
+        if (!isset($plan[$id]) || $plan[$id] !== 'value') {
+            continue;
+        }
+
+        $type = 'standard';
+
+        if (in_array($field['type'], array('date', 'date and time', 'time'), true)) {
+            $type = (string) $field['type'];
+        } elseif ($field['type'] === 'text area' && (int) $field['wysiwyg'] === 1) {
+            $type = 'html';
+        }
+
+        $values = array();
+
+        foreach ((isset($revision[$id]) ? (array) $revision[$id] : array()) as $value) {
+            if (!is_array($value)) {
+                $values[] = (string) $value;
+            }
+        }
+
+        if (!$values) {
+            $values[] = '';
+        }
+
+        $out[$id] = array();
+
+        foreach ($values as $value) {
+            $out[$id][] = array('data' => $value, 'type' => $type, 'name' => (string) $field['name']);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Writes a revision's values back into the item without the edit form: the
+ * value fields as the revision holds them (a rich-text answer cleaned for
+ * staff, as the screen's load does), then the files that still exist
+ * (pg_record_revision_restore_files()). Signatures and files that are gone
+ * stay as they are. The caller takes the state before and records the
+ * revision after (source 'restore'), as the screen's save does.
+ *
+ * @param int   $form_id
+ * @param int   $page_id
+ * @param array $revision pg_record_revision_get()
+ * @return array pg_record_revision_restore_plan(): field id => status
+ */
+function pg_record_revision_restore_values($form_id, $page_id, $revision)
+{
+    $form_id = (int) $form_id;
+    $fields  = pg_record_revision_form_fields($page_id);
+    $values  = pg_record_revision_decode($revision['values_json']);
+    $names   = pg_record_revision_file_names(array($values));
+    $plan    = pg_record_revision_restore_plan($fields, $values, pg_record_revision_current_values($form_id), array_keys($names));
+
+    foreach (pg_record_revision_restore_rows($fields, $values, $plan) as $field_id => $rows) {
+        db("DELETE FROM form_data WHERE form_id = '$form_id' AND form_id != '0' AND form_field_id = '" . (int) $field_id . "'");
+
+        foreach ($rows as $row) {
+            db_q(
+                "INSERT INTO form_data (form_id, form_field_id, data, name, type) VALUES (?, ?, ?, ?, ?)",
+                array(
+                    (string) $form_id,
+                    (string) (int) $field_id,
+                    ($row['type'] === 'html') ? pg_sanitize_rich_text($row['data'], 'staff') : $row['data'],
+                    $row['name'],
+                    $row['type'],
+                ));
+        }
+    }
+
+    pg_record_revision_restore_files($form_id, $page_id, $revision, array());
+
+    return $plan;
+}
