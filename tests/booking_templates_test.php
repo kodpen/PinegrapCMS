@@ -29,6 +29,7 @@ function _test_booking_tpl_list()
 		'pinegrap-wedding' => array('enquiry', 'book_visit'),
 		'pinegrap-gym'    => array('class_booking', 'book_online'),
 		'pinegrap-museum' => array('school_visit', 'book_online'),
+		'pinegrap-restaurant' => array('reserve', 'book_online'),
 	);
 }
 

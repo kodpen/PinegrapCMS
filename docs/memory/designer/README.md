@@ -167,6 +167,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
+- design-template-restaurant.md: Restaurant template (pinegrap-restaurant): menu and events as collections, reservation requests, chef's table, private dining enquiries, gift vouchers in the shop, prt- look, tests.
 - design-template-salon-words.md: Beauty Salon template wording (1.1.1, #4807): hizmet and randevu, own keys for the booking field, staff shortcut and statuses, e-posta page names; sample days and times fit the opening hours (#4944).
 - design-template-salon.md: Beauty Salon template (pinegrap-salon): its parts folder, the booking on the Clinic's request pattern, what is not built, the psl- look, tests.
 - design-template-school.md: Private School template (pinegrap-school): programmes with a page each, events collection, admission applications and visit requests followed from the account, News, no shop, psh- look, tests.
