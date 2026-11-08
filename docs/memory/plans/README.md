@@ -42,8 +42,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-ferry.md: Plan: the Ferry design template (pinegrap-ferry): routes and ports, timetables and fares as words, booking requests, travel notices, onboard services; ~1,000-line steps
 - design-template-filmstudio-design.md: Design of plans/design-template-filmstudio.md: which shipped features the Film Studio template reuses, what it does not build, its look and Turkish words
 - design-template-filmstudio.md: Plan: the Film Studio design template (pinegrap-filmstudio): showreel, projects by industry and service, services, the studio's stages for hire, crew, project enquiries, crew calls
-- design-template-florist-design.md: Design of plans/design-template-florist.md: shipped features reused for bouquets, delivery dates, subscriptions and enquiries, what is not built, look and Turkish words
-- design-template-florist.md: Plan: the Florist design template (pinegrap-florist): bouquets, occasions, delivery, subscriptions, wedding and event flowers; ~1,000-line steps
 - design-template-gallery-design.md: Design of plans/design-template-gallery.md: the shipped features it reuses, what it does not build, its look and Turkish words
 - design-template-gallery.md: Plan: the Art Gallery design template (pinegrap-gallery): artists, exhibitions, works, artwork and private-viewing enquiries, editions in the shop, the journal; small steps
 - design-template-homeservices-design.md: Design of plans/design-template-homeservices.md: shipped features it reuses for services, estimates, visits and areas, what it does not build, its look and Turkish words
