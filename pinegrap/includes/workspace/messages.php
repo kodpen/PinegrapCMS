@@ -731,9 +731,12 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 
     $now = time();
     $marked = in_array($kind, array('note', 'decision'), true);
+    // An application posting a decision marks it as itself, never as the
+    // person it acts for (channel_memory.php).
+    $app_mark = $marked && ($app_id > 0) && ws_marks_kind_ready();
 
     db("INSERT INTO ws_messages (channel_id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name,
-            marked_by, marked_at, created_at)
+            marked_by, marked_at, created_at" . ($app_mark ? ', marked_by_kind' : '') . ")
         VALUES (
             '" . (int) $channel['id'] . "',
             '" . $parent_id . "',
@@ -744,9 +747,9 @@ function ws_message_send($viewer, $channel, $body, $options = array())
             '" . (int) ($options['task_id'] ?? 0) . "',
             '" . $file_id . "',
             '" . e(mb_substr((string) ($options['file_name'] ?? ''), 0, 255)) . "',
-            '" . ($marked ? (int) $viewer['id'] : 0) . "',
+            '" . ($marked ? ($app_mark ? $app_id : (int) $viewer['id']) : 0) . "',
             '" . ($marked ? $now : 0) . "',
-            '" . $now . "')");
+            '" . $now . "'" . ($app_mark ? ", 'app'" : '') . ")");
 
     $message_id = (int) mysqli_insert_id(db::$con);
 
@@ -1765,6 +1768,20 @@ function ws_message_mark_check($viewer, $message, $kind)
     }
 
     return array('ok' => true, 'error' => '', 'forbidden' => false);
+}
+
+/**
+ * The application that wrote a message, 0 when a person (or the system)
+ * did: a poll or an approval an agent asked is settled in its name.
+ *
+ * @param int $message_id
+ * @return int
+ */
+function ws_message_app_id($message_id)
+{
+    $row = db_item("SELECT sender_kind, sender_id FROM ws_messages WHERE id = '" . (int) $message_id . "'");
+
+    return (is_array($row) && (($row['sender_kind'] ?? '') === 'app')) ? (int) $row['sender_id'] : 0;
 }
 
 /**
