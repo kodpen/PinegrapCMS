@@ -73,7 +73,7 @@ function _test_dtae_widget_on($tpl, $page_key, $type)
 function test_design_templates_account_emails_templates_found()
 {
 	$tpls = _test_dtae_templates();
-	foreach (array('hello-pinegrap', 'pinegrap-appstudio', 'pinegrap-bookshop', 'pinegrap-boutique', 'pinegrap-cafe', 'pinegrap-clinic', 'pinegrap-courses', 'pinegrap-events', 'pinegrap-law', 'pinegrap-playground', 'pinegrap-portfolio', 'pinegrap-realestate', 'pinegrap-salon', 'pinegrap-store', 'pinegrap-launch', 'pinegrap-dealership', 'pinegrap-hotel', 'pinegrap-market', 'pinegrap-charity', 'pinegrap-social', 'pinegrap-travel', 'pinegrap-photo', 'pinegrap-wedding', 'pinegrap-construction', 'pinegrap-gym', 'pinegrap-music', 'pinegrap-school', 'pinegrap-museum', 'pinegrap-architecture', 'pinegrap-campsite', 'pinegrap-cityhall', 'pinegrap-library') as $id) {
+	foreach (array('hello-pinegrap', 'pinegrap-appstudio', 'pinegrap-bookshop', 'pinegrap-boutique', 'pinegrap-cafe', 'pinegrap-clinic', 'pinegrap-courses', 'pinegrap-events', 'pinegrap-law', 'pinegrap-playground', 'pinegrap-portfolio', 'pinegrap-realestate', 'pinegrap-salon', 'pinegrap-store', 'pinegrap-launch', 'pinegrap-dealership', 'pinegrap-hotel', 'pinegrap-market', 'pinegrap-charity', 'pinegrap-social', 'pinegrap-travel', 'pinegrap-photo', 'pinegrap-wedding', 'pinegrap-construction', 'pinegrap-gym', 'pinegrap-music', 'pinegrap-school', 'pinegrap-museum', 'pinegrap-architecture', 'pinegrap-campsite', 'pinegrap-cityhall', 'pinegrap-library', 'pinegrap-theatre') as $id) {
 		pg_assert_true(isset($tpls[$id]) && is_array($tpls[$id]), $id . ' loaded');
 	}
 }
