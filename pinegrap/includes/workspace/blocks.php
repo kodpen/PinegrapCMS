@@ -222,6 +222,11 @@ function ws_block_source($viewer, $row)
             return null;
         }
 
+        // Behind the reader's closed notes lock: not offered or pulled.
+        if (function_exists('ws_note_lock_closed') && ws_note_lock_closed($viewer, $note)) {
+            return null;
+        }
+
         $body = (string) $note['body'];
         $where = ws_note_title($viewer, $note);
         $time = (int) $note['updated_at'];

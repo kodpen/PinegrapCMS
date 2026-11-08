@@ -1227,6 +1227,7 @@
     "Locked area": "Kilitli alan",
     "Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.": "Site sahibi tarafından kilitlendi: cihaz sınırı bu oturumu düşüremez, kullanıcı da kapatamaz.",
     "Locked note": "Kilitli not",
+    "Locked notes": "Kilitli notlar",
     "Locked on {var:1}.": "{var:1} üzerinde kilitli.",
     "Locked on {var:1}: {var:2}": "{var:1} üzerinde kilitli: {var:2}",
     "Locked up to {var:1}": "{var:1} dahil kilitli",

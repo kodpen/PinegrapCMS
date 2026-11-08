@@ -12,7 +12,7 @@ description: Steps A5-A9 of plans/agent-channel.md: channel memory and decision 
   - A6b (S) after A3b and A6: on the Agents card the provider select of `ws_model_providers()`, the address field (azure, custom), the terms line, Try (`ws_model_agent_test()`).
 - A7 (M) Risk tiers. After A4. Tiers on `ws_change_types()` (1 reading and messages, 2 a reversible record change, 3 irreversible), the execution policy from the channel-agent row, an undo journal for agent changes; then flows: an "ask an agent" box and agent-started runs by permission (`plans/flows-next.md` shape).
 - A8 (M) Further doors. After A4. The Claude Code channel plugin in a separate repository (`kodpen/pinegrap-claude-channel`: poll, claim, push the event, tools reply, fail, context, record, react, post), applied to Anthropic's channel list, under the shelved plan's security rules; per-person sessions over OAuth with the "via" badge; a chat box on the dashboard on the same catalogue.
-- A9 (S) The canvas as an agent tool: now `plans/agent-canvas.md` (owner 2026-11-08: the agent writes SVG; its routes C1-C3 free now, the built-in assistant's tools C4 after A4). Workflow tables need nothing: their routes are complete (`workspace/workflow-tables-api.md`).
+- The canvas as an agent tool (A9): moved to `plans/agent-canvas.md` (owner 2026-11-08: the agent writes SVG); its routes C1-C3 start now, the built-in assistant's tools (C4) after A4. Workflow tables need nothing: their routes are complete (`workspace/workflow-tables-api.md`).
 
 ## Which run side by side?
 - A5 and A6 beside A4 after A3; A5b after A5; A7, A8 and A9 together after A4.

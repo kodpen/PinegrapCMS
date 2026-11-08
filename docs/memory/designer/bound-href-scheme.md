@@ -1,13 +1,15 @@
 ---
 name: bound-href-scheme
-description: A form field bound to a link's address never prints a javascript:, vbscript: or data: address
+description: A form field bound to a link's, form's, picture's or player's address never prints a javascript:, vbscript: or data: address
 module: widgets
 ---
 
 ## What happens to a field value that starts a link's address?
 
 `pg_sw_apply_tokens()` checks a form field filled at the start of an
-`href`, `action` or `formaction` value (`pg_sw_token_starts_address()`).
+`href`, `action`, `formaction`, `src` or `poster` value
+(`pg_sw_token_starts_address()`; `src` and `poster` since the bound player,
+[[bound-media-src]]).
 When the value opens with `javascript:`, `vbscript:`, `livescript:` or
 `data:` (`pg_sw_address_runs_script()`: entities decoded once, control
 characters and spaces dropped, any case) the address becomes `#`; the
