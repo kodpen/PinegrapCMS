@@ -32,7 +32,7 @@ description: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and 
 
 - 7 (done, #8323): `shop.php`: the catalog (Bikes, Parts, Accessories, Workshop Vouchers; SKUs `BKS-BIKE-`, `-PART-`, `-ACC-`, `-GIFT-`), product, cart, checkout, order, `email_order`; test.
 
-- 8: `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 8 (done, #8333): `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 9: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the account e-mail pages; test.
 
