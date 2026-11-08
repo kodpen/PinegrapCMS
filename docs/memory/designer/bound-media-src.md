@@ -1,11 +1,11 @@
 ---
 name: bound-media-src
-description: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR __PR__)
+description: audio, video and source take src (video also poster) from a record field binding under the bound address rule; an empty value prints none (#7654, PR #8211)
 module: designer, widgets
 ---
 
 ## May a media element take its address from a record field?
-- Yes (architect, 2026-11-06, #7654; built in PR __PR__): in a widget tree `audio`, `video` and `source` take a `_bindings.src` binding to a record field (a file field gives its address, a URL field its text), and `video` a `_bindings.poster` binding, as `img` takes `_bindings.src`.
+- Yes (architect, 2026-11-06, #7654; built in PR #8211): in a widget tree `audio`, `video` and `source` take a `_bindings.src` binding to a record field (a file field gives its address, a URL field its text), and `video` a `_bindings.poster` binding, as `img` takes `_bindings.src`.
 - `_render_tree_node()` prints them through `pg_media_bound_attrs($tag, $props)` (`includes/fn/designer.php`): only a bound prop prints, and it wins over an Attributes panel `src`; an unbound player keeps its typed `src`, so trees without the binding render byte-identical. `_apply_bindings()` lists `poster` in `$renderable_props` (`data-pg-bind="poster:…"`).
 
 ## What address may it print?
