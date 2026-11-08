@@ -823,13 +823,10 @@ function api_files_delete($params) {
 
 	}
 
-	$bin_id = (int)pg_recycle_folder_id(true);
-
-	if ($bin_id <= 0) {
-
-		api_fail(409, 'recycle_bin_unavailable', lang('This site has no recycle bin, so a file cannot be removed through the API.'));
-
-	}
+	// The bin folder is made on the first real delete, below the stop: a
+	// rehearsal writes nothing, so it reports folder_id null while no bin
+	// exists yet.
+	$bin_id = (int)pg_recycle_folder_id(false);
 
 	if (pg_recycle_is_inside($file['folder'])) {
 
@@ -837,7 +834,19 @@ function api_files_delete($params) {
 
 	}
 
-	api_dry_run_stop('recycled', 'file', array('id' => $id, 'name' => $file['name'], 'folder_id' => $bin_id));
+	api_dry_run_stop('recycled', 'file', array('id' => $id, 'name' => $file['name'], 'folder_id' => ($bin_id > 0) ? $bin_id : null));
+
+	if ($bin_id <= 0) {
+
+		$bin_id = (int)pg_recycle_folder_id(true, array('id' => (int)$app['owner']['id'], 'username' => (string)$app['owner']['username']));
+
+	}
+
+	if ($bin_id <= 0) {
+
+		api_fail(409, 'recycle_bin_unavailable', lang('This site has no recycle bin, so a file cannot be removed through the API.'));
+
+	}
 
 	$original_folder = (int)$file['folder'];
 

@@ -132,7 +132,12 @@ function pg_recycle_retention_days()
 // The bin folder id from config; created on first use. Private so the
 // front end never serves binned pages or files to visitors, archived so the
 // classic screens show its contents struck out of the everyday views.
-function pg_recycle_folder_id($create = false)
+//
+// $user names who creates the bin, as array('id' => ..., 'username' => ...),
+// for the folder's owner and the log line. Without it the signed-in panel
+// user is taken; an entry point without a session (the external API) passes
+// the account it acts for.
+function pg_recycle_folder_id($create = false, $user = null)
 {
     static $cached = null;
 
@@ -160,6 +165,13 @@ function pg_recycle_folder_id($create = false)
         return 0;
     }
 
+    if (!is_array($user)) {
+        $user = array(
+            'id' => defined('USER_ID') ? USER_ID : 0,
+            'username' => isset($_SESSION['sessionusername']) ? (string) $_SESSION['sessionusername'] : '',
+        );
+    }
+
     $root_id = pg_explorer_root_folder_id();
     $root_level = (int) db_value("SELECT folder_level FROM folder WHERE folder_id = '" . e($root_id) . "'");
 
@@ -185,7 +197,7 @@ function pg_recycle_folder_id($create = false)
             '0',
             '0',
             UNIX_TIMESTAMP(),
-            '" . e(USER_ID) . "')");
+            '" . e((int) $user['id']) . "')");
 
     $id = (int) mysqli_insert_id(db::$con);
     db("UPDATE config SET recycle_folder_id = '" . e($id) . "'");
@@ -194,7 +206,7 @@ function pg_recycle_folder_id($create = false)
     // The shared reader cached "no bin" a moment ago; it has one now.
     pg_recycle_bin_folder_id(true);
 
-    log_activity(lang(array('string' => 'folder ({var:1}) was created', 'vars' => array(lang('Recycle Bin')))), $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'folder ({var:1}) was created', 'vars' => array(lang('Recycle Bin')))), (string) $user['username']);
 
     return $id;
 }

@@ -17,7 +17,7 @@ description: External API writes to products, groups, pages and key codes: the s
 - Score the record before answering: `api_products_rescore()` runs `pg_catalog_seo_rescore('product', $id)`, i.e. `pg_seo_recalculate('product', array($id))` (root `seo.php`); a group create through the writer is scored the same way; pages and group updates call it with their own type. Writing only `seo_analysis_current = 0` leaves the client reading the old score until the nightly job.
 
 ## How do deletes work?
-- Products and product groups go to the catalogue Recycle Bin by default; `permanent=true` deletes outright with the screen's whole cleanup. Lists hide binned rows; a single read still shows them with `recycled: true`. 409 `recycle_bin_unavailable` on a site without the bin, 409 `already_recycled`. `product.deleted` carries `recycled`. Pages work the same way (`permanent=true`); a file can only be binned, never deleted outright through the API.
+- Products and product groups go to the catalogue Recycle Bin by default; `permanent=true` deletes outright with the screen's whole cleanup. Lists hide binned rows; a single read still shows them with `recycled: true`. 409 `recycle_bin_unavailable` on a site without the bin, 409 `already_recycled`. `product.deleted` carries `recycled`. Pages work the same way (`permanent=true`); a file can only be binned, never deleted outright through the API. A page or file rehearsal (dry run) writes nothing: the bin folder is created only on the first real delete, as the key's owner (`pg_recycle_folder_id(true, $user)`), and the rehearsal answers `folder_id: null` while none exists yet.
 - Every delete has a POST twin for IIS: `external-api-iis-environment.md`.
 
 ## Why may a key code not equal an offer's code?
