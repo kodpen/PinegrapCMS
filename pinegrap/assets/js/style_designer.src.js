@@ -9690,9 +9690,11 @@ const StyleDesigner = (function () {
             _canvasDetailsState[id] = { open: d.open, def: d._sdOpenDefault };
         });
     }
-    function _restoreDetailsState() {
+    // `root` limits it to one redrawn element: the <details> outside it
+    // keep the default they were drawn with.
+    function _restoreDetailsState(root) {
         if (!canvasDoc) return;
-        var all = Array.prototype.slice.call(canvasDoc.querySelectorAll('details'));
+        var all = Array.prototype.slice.call((root || canvasDoc).querySelectorAll('details'));
         // Every default is read first: opening one of a named group closes
         // the others.
         var defs = all.map(function (d) { return d.open; });
@@ -10777,8 +10779,127 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── Incremental canvas
+    // A text, property or style edit changes one node: renderCanvas() then
+    // draws that node's element again in place (_sdCanvasRedrawNode())
+    // instead of emptying the body and building the whole page. The edit
+    // paths name the node with _sdRenderNode(); every other caller (add,
+    // move, delete, undo, a tab switch, an edit inside a shared component)
+    // names none and gets the full rebuild. Anything the node's element
+    // cannot be redrawn alone for falls back to the full rebuild too.
+    var _sdCanvasScope = null;
+
+    // Runs `fn` (render() by default, or renderCanvas()) with the canvas
+    // limited to `node`. The scope lasts for this call only: a later render
+    // is never limited by an edit made before it.
+    function _sdRenderNode(node, fn) {
+        _sdCanvasScope = node || null;
+        try { (fn || render)(); } finally { _sdCanvasScope = null; }
+    }
+
+    // The node renderCanvas() was limited to, read once.
+    function _sdCanvasScopeTake() {
+        var n = _sdCanvasScope;
+        _sdCanvasScope = null;
+        return n;
+    }
+
+    // Props another node or the page's structure reads: an element id
+    // (labels, toggles and anchors point at it), the region a node shows,
+    // the search section's anchor, a placed part, an editable area or a lock
+    // (their marks reach the descendants and the content level), the tag (a
+    // summary draws as its own wrapper, a table tag changes the builder).
+    var _SD_SCOPE_FULL_PROPS = ['id', 'regionType', 'regionName', 'searchSection', 'partOf', '_editable', '_locked', 'tag'];
+
+    // True when a change of `prop` needs the whole canvas.
+    function _sdScopeFullProp(prop) {
+        return _SD_SCOPE_FULL_PROPS.indexOf(String(prop || '')) !== -1;
+    }
+
+    // The nodes from `root` down to `node`, both included; null when `node`
+    // is not in that tree.
+    function _sdNodePath(root, node) {
+        if (!root || !node) return null;
+        var stack = [[root, [root]]];
+        while (stack.length) {
+            var top = stack.pop(), n = top[0], path = top[1];
+            if (n === node) return path;
+            var kids = n.children || [];
+            for (var i = kids.length - 1; i >= 0; i--) {
+                if (kids[i]) stack.push([kids[i], path.concat([kids[i]])]);
+            }
+        }
+        return null;
+    }
+
+    // Whether `node`'s element can be drawn again alone: a node of the page
+    // tree `root` (not the root, whose element is the body), the page the
+    // canvas shows (`drawnPage` is the page last drawn, `activePage` the
+    // active one), outside every shared component and system widget (their
+    // trees are drawn with their widget's context and snapshots), not a
+    // shared reference itself, and neither a placed part nor inside one.
+    function _sdCanvasScopeOk(node, root, drawnPage, activePage) {
+        if (!node || !root || node === root || node.type === 'root') return false;
+        if (!drawnPage || drawnPage !== activePage) return false;
+        if (node.type === 'shared_ref' || _resolveSharedSid(node) > 0) return false;
+        var path = _sdNodePath(root, node);
+        if (!path) return false;
+        for (var i = 1; i < path.length; i++) {
+            if (_sdPartOf(path[i])) return false;
+        }
+        return true;
+    }
+
+    // The canvas wrappers of a page node (_findCanvasEl() finds the first).
+    function _sdCanvasWrapsOf(node) {
+        if (!canvasDoc || !node) return [];
+        return Array.prototype.slice.call(canvasDoc.querySelectorAll('[data-sd-id="' + node._id + '"]:not([data-sw-sid])'));
+    }
+
+    // Draws `node`'s element again in place: buildNodeEl() of its subtree
+    // replaces the old wrapper, so the rest of the canvas keeps its DOM, its
+    // scroll position and the state the operator gave it. What a full
+    // rebuild keeps is kept here too: the tabs and <details> the operator
+    // opened, a collapse opened by a click (copied into the tree first), a
+    // modal, offcanvas or dropdown menu open inside the node. The canvas
+    // passes that bind the page's scripts run again; each binds only what
+    // is not bound yet. False, and nothing changed, when the node has no
+    // single wrapper on the canvas.
+    function _sdCanvasRedrawNode(node) {
+        var wraps = _sdCanvasWrapsOf(node);
+        if (wraps.length !== 1 || !wraps[0].parentNode) return false;
+        var old = wraps[0];
+        _syncToggleableShowStateFromDom();
+        _captureTabState();
+        _captureDetailsState();
+        var open = _sdCanvasOpenCapture(old);
+        injectGoogleFonts();
+        _sdSharedOpen = {};
+        var el = buildNodeEl(node);
+        old.parentNode.replaceChild(el, old);
+        _sdCanvasOpenRestore(el, open, _sdFindNodeForEl);
+        _reExecuteCanvasScripts(el);
+        _sdThemeSwitchers();
+        _sdScrollers();
+        _sdFxCanvas();
+        _initCanvasTooltips();
+        _restoreTabState();
+        _restoreDetailsState(el);
+        _sdBootModuleWidgets();
+        _sdApplyImageStamps();
+        _sdTextInnerMark();
+        requestAnimationFrame(function () { adjustCanvasToolbars(); updateIconResizeHandle(); });
+        return true;
+    }
+    // ── end of incremental canvas
+
     function renderCanvas() {
         if (!canvasDoc || !canvasDoc.body || !iframeReady) return;
+        // An edit of one node redraws that node alone (_sdRenderNode()).
+        var _scope = _sdCanvasScopeTake();
+        if (_scope && canvasDoc._sdDrawn && !_sdPendingScrollY && !_sdPendingOpen &&
+            _sdCanvasScopeOk(_scope, tree, canvasDoc.body._sdDrawnPage, _pgActivePage()) &&
+            _sdCanvasRedrawNode(_scope)) return;
         // Preserve scroll position so options changes don't jump the canvas to top
         var _scrollY = (canvasDoc.documentElement ? canvasDoc.documentElement.scrollTop : 0) ||
                        canvasDoc.body.scrollTop || 0;
@@ -15894,7 +16015,7 @@ const StyleDesigner = (function () {
                     // A child deleted from the DOM while typing is still in
                     // the tree — redraw so the canvas shows it again.
                     if (_chrome.some(function (n) { return !n.isConnected; })) {
-                        setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
+                        setTimeout(function () { try { _sdRenderNode(node, renderCanvas); } catch (e) {} }, 0);
                     }
                     if (newText !== origText && newText !== origShown) {
                         // liveTextObs already wrote `newText` into node.props
@@ -15950,7 +16071,7 @@ const StyleDesigner = (function () {
                         if (_chrome.length) {
                             // Writing the text back would wipe the children
                             // out of the element; redraw it from the tree.
-                            setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
+                            setTimeout(function () { try { _sdRenderNode(node, renderCanvas); } catch (e) {} }, 0);
                         }
                         else if (isRichText || keepsMarkup) item.el.innerHTML = origText || '';
                         else item.el.textContent = origText || '';
@@ -26352,7 +26473,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 propUndo();
                 n.props[propKey] = this.value;
-                renderCanvas();
+                _sdRenderNode(_sdScopeFullProp(propKey) ? null : n, renderCanvas);
                 renderHtmlTree();
             });
             inp.addEventListener('change', function () {
@@ -26379,7 +26500,7 @@ const StyleDesigner = (function () {
                 saveState();
                 n.props.cssClass = (n.props.cssClass || '').split(' ').filter(function (c) { return c.trim() && c !== cls; }).join(' ');
                 renderAttrsPanel();
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
                 renderProperties();
                 renderHtmlTree();
             });
@@ -26455,7 +26576,7 @@ const StyleDesigner = (function () {
                 inp.addEventListener('input', function () {
                     valueUndo();
                     n.props._attrs[parseInt(this.dataset.idx, 10)].value = this.value;
-                    renderCanvas();
+                    _sdRenderNode(n, renderCanvas);
                     renderHtmlTree();
                     // The Properties panel reads the same _attrs (Value, ID,
                     // Placeholder, Pattern…). Without this it keeps showing
@@ -26488,7 +26609,7 @@ const StyleDesigner = (function () {
                     saveState();
                     n.props._attrs.splice(parseInt(this.dataset.idx, 10), 1);
                     renderAttrsPanel();
-                    renderCanvas();
+                    _sdRenderNode(n, renderCanvas);
                     renderHtmlTree();
                     renderProperties();
                 });
@@ -26549,7 +26670,7 @@ const StyleDesigner = (function () {
             }).join(' ').trim();
             node.props.cssClass = cleaned;
             renderAttrsPanel();
-            renderCanvas();
+            _sdRenderNode(node, renderCanvas);
             renderProperties();
             renderHtmlTree();
             if (ci) ci.value = '';
@@ -26566,7 +26687,7 @@ const StyleDesigner = (function () {
             existing.push(val);
             node.props.cssClass = existing.join(' ').trim();
             renderAttrsPanel();
-            renderCanvas();
+            _sdRenderNode(node, renderCanvas);
             renderProperties();
             renderHtmlTree();
         }
@@ -27050,7 +27171,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 n.props._styles[parseInt(this.dataset.idx, 10)].prop = this.value;
                 syncInlineStyle(n);
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
             inp.addEventListener('change', function () { saveState(); });
         });
@@ -27058,7 +27179,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 n.props._styles[parseInt(this.dataset.idx, 10)].val = this.value;
                 syncInlineStyle(n);
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
             inp.addEventListener('change', function () { saveState(); });
         });
@@ -27067,8 +27188,7 @@ const StyleDesigner = (function () {
                 saveState();
                 n.props._styles.splice(parseInt(this.dataset.idx, 10), 1);
                 syncInlineStyle(n);
-                
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
         });
 
@@ -51560,7 +51680,7 @@ const StyleDesigner = (function () {
                 // Mirror placement/trigger/title/content into the prop too
                 // (round-trip for forward-compat with structured props).
                 selectedNode.props['popover' + capFirst(key)] = this.value;
-                renderCanvas();
+                _sdRenderNode(selectedNode, renderCanvas);
                 renderHtmlTree();
             });
         });
@@ -51898,12 +52018,15 @@ const StyleDesigner = (function () {
                         _rewriteCssClassFromColProps(selectedNode);
                     }
                 }
+                // The node's own element is drawn again; a prop another
+                // node reads redraws the whole canvas (_sdScopeFullProp()).
+                var _scopeNode = _sdScopeFullProp(prop) ? null : selectedNode;
                 // For selects and checkboxes/switches, a full re-render
                 if (el.tagName === 'SELECT' || isCb) {
-                    render();
+                    _sdRenderNode(_scopeNode, render);
                 } else {
                     // For text/textarea, just update canvas (don't re-render props to keep focus)
-                    renderCanvas();
+                    _sdRenderNode(_scopeNode, renderCanvas);
                     renderTree();
                     renderStatusBar();
                     renderAttrsPanel();
@@ -51980,7 +52103,7 @@ const StyleDesigner = (function () {
                 // Before the change, one undo step per run of typing.
                 saveState((el.tagName === 'SELECT') ? undefined : _sdEditRun('nodeattr:' + name));
                 setNodeAttr(selectedNode, name, this.value);
-                renderCanvas();
+                _sdRenderNode(name === 'id' ? null : selectedNode, renderCanvas);
                 renderAttrsPanel();
                 renderHtmlTree();
             });
