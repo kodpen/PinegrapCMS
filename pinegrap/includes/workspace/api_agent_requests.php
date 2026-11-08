@@ -5,7 +5,8 @@
  * Workspace - the external API of an application agent's requests
  * (agent_queue.php): the requests waiting for the calling agent, a claim
  * that one run wins (409 for the other), an answer under the message that
- * asked, a fail. Only the key of an active app agent, used as itself, may
+ * asked, a fail, the brief; and the agent's own scheduled wakes
+ * (agent_wake.php). Only the key of an active app agent, used as itself, may
  * call them: a device or OAuth session of the same application is its
  * person. The agent reads the channel with its owner's reach, as every
  * application does.
@@ -95,7 +96,114 @@ function ws_agent_request_api_routes()
                 array('name' => 'reason', 'in' => 'body', 'type' => 'string', 'max_length' => 250, 'required' => true),
             ),
         ),
+        array(
+            'id'          => 'workspace.agent_requests.brief',
+            'method'      => 'GET',
+            'path'        => '/workspace/agent-requests/{id}/brief',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_agent_request_brief',
+            'mcp'         => false,
+            'returns'     => 'WorkspaceClaudeBrief',
+            'summary'     => 'What the agent is told before it starts',
+            'description' => 'One text: who the agent is, now, who asked, where (the channel or discussion, or the schedule that woke it and the channels it is in), the request inside a data block, the channel\'s memory index and decision lines, the loop-guard text unless the channel switched it off, the site\'s MCP address and the scopes of the key, the routes that close the request, the language of the answer and the rules. A wake request (no message) carries its note as the request.' . $only,
+            'params'      => array($id),
+        ),
+        array(
+            'id'          => 'workspace.agent_wake.get',
+            'method'      => 'GET',
+            'path'        => '/workspace/agent-wake',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_agent_wake_get',
+            'mcp'         => false,
+            'returns'     => ws_api_agent_wake_schema(),
+            'summary'     => 'The calling agent\'s scheduled wakes',
+            'description' => 'every: minutes between two wakes, 0 for a one-time wake or none; next_at: the next wake, null for none; note: what each wake request carries.' . $only,
+            'params'      => array(),
+        ),
+        array(
+            'id'          => 'workspace.agent_wake.set',
+            'method'      => 'POST',
+            'path'        => '/workspace/agent-wake',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_agent_wake_set',
+            'mcp'         => false,
+            'dry_run'     => true,
+            'returns'     => ws_api_agent_wake_schema(),
+            'summary'     => 'Set the calling agent\'s scheduled wakes',
+            'description' => 'The same as /wake @agent in a channel, for the agent itself: every (minutes, 1-1440) wakes it every so often from now; at (a moment to come) once; off clears the schedule. Give exactly one of them. Each wake makes a request with no message, carrying the note, and knocks a push door; the hourly brake holds. A person sets it with /wake in a channel or on the Agents card.' . $only,
+            'params'      => array(
+                array('name' => 'every', 'in' => 'body', 'type' => 'int', 'min' => 1, 'max' => WS_AGENT_WAKE_EVERY_MAX),
+                array('name' => 'at', 'in' => 'body', 'type' => 'datetime'),
+                array('name' => 'off', 'in' => 'body', 'type' => 'bool'),
+                array('name' => 'note', 'in' => 'body', 'type' => 'string', 'max_length' => WS_AGENT_WAKE_NOTE_MAX),
+            ),
+        ),
     );
+}
+
+// What the wake routes return.
+function ws_api_agent_wake_schema()
+{
+    return array('handle' => 'string', 'every' => 'integer', 'next_at' => 'string?', 'note' => 'string');
+}
+
+/**
+ * An agent's schedule as the wake routes give it. Pure but for api_time().
+ *
+ * @param array $agent wake_every, wake_next_at, wake_note, handle
+ * @return array
+ */
+function ws_api_agent_wake_present($agent)
+{
+    $next = (int) ($agent['wake_next_at'] ?? 0);
+
+    return array(
+        'handle'  => (string) ($agent['handle'] ?? ''),
+        'every'   => (int) ($agent['wake_every'] ?? 0),
+        'next_at' => ($next > 0) ? api_time($next) : null,
+        'note'    => (string) ($agent['wake_note'] ?? ''),
+    );
+}
+
+function ws_api_agent_wake_get($params)
+{
+    api_ok(ws_api_agent_wake_present(ws_api_agent_caller()));
+}
+
+function ws_api_agent_wake_set($params)
+{
+    $agent = ws_api_agent_caller();
+    $now = time();
+    $given = array_values(array_filter(array('every', 'at', 'off'), function ($name) use ($params) {
+        return isset($params[$name]) && ($params[$name] !== null) && ($params[$name] !== false);
+    }));
+
+    if (count($given) !== 1) {
+        api_fail_validation(lang('Give exactly one of every, at or off.'), 'every');
+    }
+
+    $parsed = array('action' => $given[0], 'every' => (int) ($params['every'] ?? 0), 'at' => (int) ($params['at'] ?? 0), 'note' => trim((string) ($params['note'] ?? '')));
+
+    if (($parsed['action'] === 'at') && ($parsed['at'] <= $now)) {
+        api_fail_validation(lang('That time has passed. Choose a time to come.'), 'at');
+    }
+
+    $values = ws_agent_wake_values($parsed, $now);
+
+    api_dry_run_stop('set', 'workspace_agent_wake', ws_api_agent_wake_present(array('handle' => $agent['handle']) + $values));
+
+    ws_agent_wake_save((int) $agent['id'], $values);
+    ws_api_log(lang(array('string' => '@{var:1} set its wakes', 'vars' => (string) $agent['handle'])));
+
+    api_ok(ws_api_agent_wake_present(array('handle' => $agent['handle']) + $values));
+}
+
+function ws_api_agent_request_brief($params)
+{
+    $agent = ws_api_agent_caller();
+    $row = ws_api_agent_request_or_404($agent, $params['id']);
+
+    api_ok(array('request_id' => (int) $row['id'], 'text' => ws_agent_brief($agent, $row, api_current_scopes())));
 }
 
 /**
@@ -227,6 +335,12 @@ function ws_api_agent_request_answer($params)
     $reply_id = 0;
 
     if (empty($params['no_answer'])) {
+        // A wake made in no channel: the agent writes where it needs with
+        // workspace.messages.create and closes the request with no_answer.
+        if (((int) $row['channel_id'] === 0) && ws_agent_wake_of($row)) {
+            api_fail_validation(lang('This wake was made in no channel: write with workspace.messages.create, then close it with no_answer.'), 'text');
+        }
+
         $place = ws_api_agent_request_place($viewer, $agent, $row);
 
         if (!$place) {
@@ -235,8 +349,9 @@ function ws_api_agent_request_answer($params)
 
         $text = trim((string) $params['text']);
         $mention = '<@user:' . (int) $row['requested_by'] . '>';
+        $wake = ws_agent_wake_of($row);
 
-        if (strpos($text, $mention) === false) {
+        if (!$wake && (strpos($text, $mention) === false)) {
             $text = $mention . ' ' . $text;
         }
 
@@ -288,7 +403,8 @@ function ws_api_agent_request_fail($params)
 
     $reply_id = 0;
 
-    if ($place && ($reason !== '')) {
+    // A wake was asked by nobody: there is nobody to tell.
+    if ($place && ($reason !== '') && !ws_agent_wake_of($row)) {
         $sent = ws_message_send($place['writer'], $place['channel'], '<@user:' . (int) $row['requested_by'] . '> ' . $reason, array(
             'parent_id' => (int) $row['message_id'],
             'app_id'    => (int) $agent['app_id'],
