@@ -453,7 +453,9 @@ function ws_canvas_undo($viewer, $message, $version)
     }
 
     $data = @file_get_contents(pg_file_versions_path($before));
-    $path = FILE_DIRECTORY_PATH . '/' . basename($stored);
+    // Written in the file directory, as the picture's take writes it.
+    $name = basename($stored);
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
 
     if (!is_string($data) || !pg_image_editor_put($path, $data)
         || !pg_file_versions_add($file_id, $path, (string) $before['doc_json'], 'restore', (int) $viewer['id'], (int) $before['redacted'] === 1)) {
