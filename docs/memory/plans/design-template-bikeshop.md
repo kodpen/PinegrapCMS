@@ -20,7 +20,7 @@ description: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and 
 ## Steps (claim as `[plan:design-template-bikeshop] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #8179): the `bikeshop-` palette block family `assets/js/style_designer_blocks_bikeshop.js` (workshop board, frame sizes, group rides, bike fit), `tests/designer_blocks_bikeshop_test.php`, `designer/designer-blocks-bikeshop.md`.
 
-- 2 (done, #8230): `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$ride_on`, page shell, helpers; test.
+- 2 (done, #8230): `parts.php` (data, pick lists, helpers); test.
 
 - 3: `cards.php`: shared parts (account bar, notice, header, footer, staff bar), record and data cards, form fields, comment thread, newsletter and blog parts; test.
 
