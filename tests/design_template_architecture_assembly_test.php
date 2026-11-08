@@ -233,3 +233,56 @@ function test_architecture_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_projects"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places the projects and the Journal');
 }
+
+// Home, projects and the project page place the Architecture blocks: every
+// pg-arch- class's rule ships in the User Styles, the interactions are kept
+// as written and something rises on each; the home has one h1 in the plate
+// hero, a plate captioned with its project and a link to it, the material
+// board as a search section, and no figures or principles band.
+function test_architecture_assembly_pages_on_architecture_blocks()
+{
+	$tpl = _test_ai_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'projects'), true)) $trees[$p['key']] = $p['tree'];
+	$trees['project'] = $tpl['widgets']['project_detail']['tree'];
+	$wanted = array('home' => array('pg-arch-plate', 'pg-arch-swatch'), 'projects' => array('pg-arch-plate'), 'project' => array('pg-arch-facts'));
+	pg_assert_same(3, count($trees), 'home, projects, the project page');
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_ai_asm_nodes($tree, $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-arch-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach ($wanted[$key] as $class) pg_assert_contains($class, $classes, $key . ': places ' . $class);
+		pg_assert_true($effects >= 2, $key . ': something moves');
+		pg_assert_same(1, $h1, $key . ': one h1');
+		foreach (array('Figures', 'Our Principles') as $band) pg_assert_false(in_array($band, $labels, true), $key . ': no ' . $band . ' band');
+	}
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the plate hero comes in on load');
+	pg_assert_contains('"id":"ai-home-materials"', $home, 'the material board is a search section');
+	pg_assert_same(6, substr_count($home, 'pg-arch-swatch '), 'six mounted samples');
+	pg_assert_contains('{{page:projects}}?location=', $home, 'the plate links its project by its place');
+	$projects = json_encode($trees['projects'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('{{page:projects}}?type=', $projects, 'the projects plate links its project by its type');
+	pg_assert_contains('"templateWidget":"projects_list"', $projects, 'the list stays');
+	$project = json_encode($trees['project'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_same(1, substr_count($project, '"src":"photo_1"'), 'the first photo once, in the sheet');
+}

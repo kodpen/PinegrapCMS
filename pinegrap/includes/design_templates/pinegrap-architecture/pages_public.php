@@ -141,25 +141,16 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('An architecture and interior design studio: houses, workplaces, hotels and public places, designed around light and the people who use them.'),
     'tree'             => $page(array(
-        // The way in: one large photograph, the studio in a sentence and
-        // the two ways on.
-        $el('section', 'pai-hero pt-4 pt-lg-5 pb-5', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Architecture and interiors'), 'pai-eyebrow text-uppercase fw-semibold text-body-secondary mb-3'),
-                        $heading('h1', lang('Buildings shaped by light, place and the people inside'), 'pai-display display-4 mb-0'),
-                    ), '', '8'),
-                    $col(array(
-                        $para($studio['tagline'] . '.', 'text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('See Our Projects'), '{{page:projects}}', 'btn btn-dark rounded-0 px-4'),
-                            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-outline-dark rounded-0 px-4'),
-                        )),
-                    ), '', '4'),
-                ), '4', '', 'g-lg-5 align-items-end mb-4 mb-lg-5'),
-                $framed($photo('hero', 1800, 770), lang('The courtyard of a stone house in the late afternoon light'), '21x9', false),
-            )),
+        // The way in: the studio in a sentence above one wide photograph,
+        // captioned like a plate with the project it shows.
+        $plate_hero(lang('Architecture and interiors'), lang('Buildings shaped by light, place and the people inside'), $studio['tagline'] . '.', array(
+            $link(lang('See Our Projects'), '{{page:projects}}', 'btn btn-dark rounded-0 px-4'),
+            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-outline-dark rounded-0 px-4'),
+        ), $photo('hero', 1800, 770), lang('The courtyard of a stone house in the late afternoon light'), array(
+            'no'    => '01',
+            'name'  => $projects['courtyard_house']['name'],
+            'place' => $projects['courtyard_house']['place'],
+            'href'  => '{{page:projects}}?' . $query(array('location' => $locations[$projects['courtyard_house']['location']])),
         )),
 
         // The featured projects, read from the Projects collection.
@@ -170,21 +161,15 @@ $public_pages[] = array(
             )),
         )),
 
-        $figures_band(),
-
         $el('section', 'py-5', lang('Services'), array(
             $container(array(
                 $section_header(lang('What we do'), lang('From the first sketch to the last detail'), lang('All Services'), '{{page:services}}'),
-                $row($service_cols, '4'),
+                $rise($row($service_cols, '4')),
             )),
         ), $searchable('ai-home-services', lang('architect, interior designer, renovation, extension, landscape, furniture'))),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Our Principles'), array(
-            $container(array(
-                $section_header(lang('How we think'), lang('What guides every drawing'), lang('About the Studio'), '{{page:studio}}'),
-                $row($principle_tiles, '4'),
-            )),
-        ), $searchable('ai-home-principles', lang('sustainable, daylight, natural materials, energy, approach'))),
+        // What the buildings are made of: the studio's materials on a board.
+        $material_board('ai-home-materials'),
 
         $el('section', 'py-5', lang('How We Work'), array(
             $container(array(
@@ -192,10 +177,11 @@ $public_pages[] = array(
                     $col(array(
                         $para(lang('Step by step'), 'pai-eyebrow text-uppercase fw-semibold text-body-secondary mb-2'),
                         $heading('h2', lang('From a conversation to the keys'), 'pai-display h2 mb-4'),
-                        $stage_list('list-unstyled mb-4'),
+                        $rise($stage_list('list-unstyled mb-4')),
                         $link(lang('How We Work'), '{{page:process}}', 'btn btn-outline-dark rounded-0 px-4'),
                     ), '', '6'),
-                    $col(array($framed($photo('home-process', 1200, 1500), lang('Sketches and a cardboard model on a studio table'), '4x5')), '', '6'),
+                    $col(array($fx($framed($photo('home-process', 1200, 1500), lang('Sketches and a cardboard model on a studio table'), '4x5'),
+                        array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900))), '', '6'),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
         ), $searchable('ai-home-process', lang('how it works, brief, concept, planning, tender, site, handover'))),
@@ -214,7 +200,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Awards and Press'), array(
             $container(array(
                 $section_header(lang('Recognition'), lang('Awards and press'), lang('Awards and Press'), '{{page:awards}}'),
-                $el('ul', 'list-unstyled border-top mb-0', lang('Awards'), array_slice($award_items, 0, 3)),
+                $rise($el('ul', 'list-unstyled border-top mb-0', lang('Awards'), array_slice($award_items, 0, 3))),
             )),
         )),
 
