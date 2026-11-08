@@ -3944,6 +3944,7 @@
     "captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site key, secret key, stopforumspam, form limits, blocked email": "captcha, spam, robot, bot, turnstile, cloudflare, hcaptcha, site anahtarı, gizli anahtar, stopforumspam, form sınırları, blocked email, engelli e-posta, eposta engel, site key, secret key, form limits",
     "car": "arac",
     "car licence, automatic, motorcycle, truck, trailer, licence class": "otomobil ehliyeti, otomatik, motosiklet, kamyonet, römork, ehliyet sınıfı",
+    "car licence, automatic, motorcycle, truck, trailer, licence class, minimum age": "otomobil ehliyeti, otomatik, motosiklet, kamyon, römork, ehliyet sınıfı, yaş sınırı",
     "car, motorway, train, station, bus, taxi": "araba, otoyol, tren, istasyon, otobüs, taksi",
     "car-and-trailer-licence": "romorklu-otomobil-ehliyeti",
     "car-licence": "otomobil-ehliyeti",

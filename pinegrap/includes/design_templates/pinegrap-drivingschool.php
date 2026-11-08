@@ -180,7 +180,7 @@ $ds_css = implode("\n", array(
 
 return array(
     'name'        => lang('Driving School'),
-    'version'     => '1.0.0',
+    'version'     => '1.1.0',
     'framework'   => 'bootstrap5',
     'order'       => 111,
     'icon'        => 'bi-car-front',
@@ -234,10 +234,11 @@ return array(
         'email_footer' => array('name' => lang('Driving School E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pdr- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the Driving School blocks its
+    // pages place beside its pdr- rules in one User Styles entry, and its
+    // two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $ds_css),
+        'css'   => pg_design_template_user_styles(array('drivingschool-licences', 'drivingschool-signs', 'drivingschool-test-sheet'), $ds_css),
         'fonts' => json_encode($ds_fonts),
     ),
 );
