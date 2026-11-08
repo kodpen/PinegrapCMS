@@ -418,6 +418,7 @@
     "Delete this application": "Bu uygulamayı sil",
     "Delete this draft? It has no number and nothing has been posted, so nothing is reversed.": "Bu taslak silinsin mi? Numarası yok ve hiçbir kayıt atılmadı; geri alınacak bir şey yok.",
     "Delete this experiment?": "Bu deney silinsin mi?",
+    "Delete this memory entry? It cannot be undone.": "Bu hafıza kaydı silinsin mi? Geri alınamaz.",
     "Delete this message from your view? The others still see it.": "Bu mesaj sizin görünümünüzden silinsin mi? Diğerleri görmeye devam eder.",
     "Delete this message?": "Bu mesaj silinsin mi?",
     "Delete this message? It goes from the conversation without a trace.": "Bu mesaj silinsin mi? Konuşmadan iz bırakmadan kalkar.",

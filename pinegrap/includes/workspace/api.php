@@ -51,6 +51,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_saved_replies.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_note_groups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_agents.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_agent_requests.php');
 
 /**
@@ -199,6 +200,10 @@ function ws_openapi_objects()
         'WorkspaceSavedReply'      => 'ws_api_saved_reply_schema',
         'WorkspaceChannelAgent'        => 'ws_api_channel_agent_schema',
         'WorkspaceChannelAgentRemoval' => 'ws_api_channel_agent_removal_schema',
+        'WorkspaceMemoryIndexEntry'    => 'ws_api_memory_index_entry_schema',
+        'WorkspaceMemoryEntry'         => 'ws_api_memory_entry_schema',
+        'WorkspaceMemoryWriter'        => 'ws_api_memory_writer_schema',
+        'WorkspaceMemoryDeletion'      => 'ws_api_memory_deletion_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
         'WorkspaceTimeEntry'      => 'ws_api_task_time_range_schema',
         'WorkspaceTimeTask'       => 'ws_api_task_time_task_schema',
@@ -960,7 +965,7 @@ function ws_api_routes()
             'mcp'         => false,
             'returns'     => 'WorkspaceAgentPreamble',
             'summary'     => 'What the site tells an agent about a message that asks it',
-            'description' => 'For an application that answers messages (workspace.app.mentioned) with a model of its own. text is the short preamble the site sends an MCP agent whose server has it turned on: the application\'s name and this site, now, who wrote the message, the channel or the discussion by name, the language to answer in and the rules Pinegrap AI follows. The message itself is not in it (the event carries it): put it after text inside a data block of your own. Nothing else written in the channel is in it. 404 for a message the owner of the application may not read.',
+            'description' => 'For an application that answers messages (workspace.app.mentioned) with a model of its own. text is the short preamble the site sends an MCP agent whose server has it turned on: the application\'s name and this site, now, who wrote the message, the channel or the discussion by name, the language to answer in and the rules Pinegrap AI follows. The message itself is not in it (the event carries it): put it after text inside a data block of your own. Of what was written in the channel only its memory is in it, as an index (each entry\'s id, title and tags, pinned first, expired ones left out; read an entry with GET /workspace/memory/{id}), and its decision lines. 404 for a message the owner of the application may not read.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
@@ -2627,8 +2632,9 @@ function ws_api_routes()
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables
     // (api_wtables.php), e-mail conversations (api_mail.php), saved
-    // replies (api_saved_replies.php), note groups (api_note_groups.php) and
-    // the agents of a channel (api_agents.php) and their requests
+    // replies (api_saved_replies.php), note groups (api_note_groups.php),
+    // the agents of a channel (api_agents.php), a channel's memory with the
+    // decision mark (api_memory.php) and the agents' requests
     // (api_agent_requests.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_agent_request_api_routes());
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes());
 }

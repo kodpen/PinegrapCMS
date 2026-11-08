@@ -110,3 +110,77 @@ function test_workspace_note_lock_mask_email()
 	pg_assert_same('', ws_note_lock_mask_email('nothing'), 'not an address');
 	pg_assert_same('', ws_note_lock_mask_email(null), 'nothing');
 }
+
+function test_workspace_note_lock_every_time_list_level()
+{
+	$now = 3000000;
+	$list = array('user_id' => 7, 'used_at' => $now - 30, 'note_id' => 0);
+
+	pg_assert_true(ws_note_lock_open_holds($list, 7, 0, $now), 'every time: opened for the list, the list is open');
+	pg_assert_true(!ws_note_lock_open_holds($list, 7, 0, $now, 42), 'every time: a note still asks');
+}
+
+function test_workspace_note_lock_behind()
+{
+	$own_locked = array('id' => 1, 'user_id' => 7, 'locked' => 1);
+	$own_open = array('id' => 2, 'user_id' => 7, 'locked' => 0);
+	$theirs = array('id' => 3, 'user_id' => 9, 'locked' => 1);
+
+	pg_assert_true(ws_note_lock_behind($own_locked, 7, true, array()), 'own locked note');
+	pg_assert_true(!ws_note_lock_behind($own_locked, 7, false, array()), 'no PIN, nothing is behind a lock');
+	pg_assert_true(!ws_note_lock_behind($own_open, 7, true, array()), 'own unlocked note outside a locked group');
+	pg_assert_true(ws_note_lock_behind($own_open, 7, true, array(2)), 'own note in a locked group');
+	pg_assert_true(!ws_note_lock_behind($theirs, 7, true, array()), 'somebody else\'s lock is not the reader\'s');
+	pg_assert_true(ws_note_lock_behind($theirs, 7, true, array('3')), 'a note shared with the reader in the reader\'s locked group');
+}
+
+function test_workspace_note_lock_present_closed_keeps_the_title_only()
+{
+	$now = 4000000;
+	$view = array('has' => true, 'group_note_ids' => array(), 'minutes' => 5, 'open' => null);
+	$present = array('id' => 1, 'title' => 'Bank', 'name' => 'Bank', 'excerpt' => 'IBAN TR00', 'body' => 'IBAN TR00', 'html' => '<p>IBAN TR00</p>', 'labels' => array('x' => 'y'), 'claude' => array('a'));
+	$row = array('id' => 1, 'user_id' => 7, 'locked' => 1);
+
+	$closed = ws_note_lock_present($present, $row, 7, $view, $now);
+	pg_assert_same('Bank', $closed['name'], 'the title stays');
+	pg_assert_true($closed['locked'] && $closed['lock_closed'], 'marked locked and closed');
+	pg_assert_true(strpos(json_encode($closed), 'TR00') === false, 'nothing of the text is left');
+
+	$untitled = ws_note_lock_present(array('title' => '', 'name' => 'IBAN TR00') + $present, $row, 7, $view, $now);
+	pg_assert_true(strpos(json_encode($untitled), 'TR00') === false, 'a name taken from the first line goes too');
+
+	$view['open'] = array('user_id' => 7, 'used_at' => $now - 10, 'note_id' => 0);
+	$open = ws_note_lock_present($present, $row, 7, $view, $now);
+	pg_assert_same('IBAN TR00', $open['body'], 'with the lock open the text is there');
+	pg_assert_true($open['locked'] && !$open['lock_closed'], 'locked, open');
+
+	$reader = ws_note_lock_present($present, $row, 9, array('has' => true, 'group_note_ids' => array(), 'minutes' => 5, 'open' => null), $now);
+	pg_assert_true(!$reader['locked'] && !$reader['lock_closed'], 'the owner\'s mark is the owner\'s');
+}
+
+function test_workspace_note_lock_list_filter()
+{
+	$notes = array(
+		array('id' => 1, 'title' => 'Bank', 'lock_group' => false, 'lock_closed' => true),
+		array('id' => 2, 'title' => 'In a locked group', 'lock_group' => true, 'lock_closed' => true),
+		array('id' => 3, 'title' => 'Shopping', 'lock_group' => false, 'lock_closed' => false),
+	);
+
+	$ids = function ($rows) { return array_map(function ($row) { return $row['id']; }, $rows); };
+
+	pg_assert_same(array(1, 3), $ids(ws_note_lock_list_filter($notes, false, '')), 'a closed locked group\'s notes are not listed');
+	pg_assert_same(array(1, 2, 3), $ids(ws_note_lock_list_filter($notes, true, '')), 'with the list open they are');
+	pg_assert_same(array(1, 3), $ids(ws_note_lock_list_filter($notes, false, 'bank')), 'a closed note found by its title');
+	pg_assert_same(array(3), $ids(ws_note_lock_list_filter($notes, false, 'IBAN')), 'not by its text');
+}
+
+function test_workspace_note_lock_groups_redact()
+{
+	$groups = array(array('id' => 1, 'locked' => true, 'count' => 4), array('id' => 2, 'locked' => false, 'count' => 2));
+
+	$closed = ws_note_lock_groups_redact($groups, false);
+	pg_assert_same(null, $closed[0]['count'], 'a closed locked group has no count');
+	pg_assert_true($closed[0]['lock_closed'] && !$closed[1]['lock_closed'], 'marked');
+	pg_assert_same(2, $closed[1]['count'], 'others keep theirs');
+	pg_assert_same(4, ws_note_lock_groups_redact($groups, true)[0]['count'], 'open: the count is back');
+}

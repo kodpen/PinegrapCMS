@@ -323,7 +323,7 @@ function ws_channel_board_decisions($viewer, $channel, $q)
         LIMIT 100");
 
     $hidden = ws_message_hidden_ids($viewer['id'], array_map(function ($row) { return (int) $row['id']; }, $rows));
-    $people = ws_people(array_unique(array_map(function ($row) { return (int) $row['marked_by']; }, $rows)));
+    $people = ws_people(ws_mark_people_ids($rows));
     $out = array();
 
     foreach ($rows as $row) {
@@ -346,7 +346,7 @@ function ws_channel_board_decisions($viewer, $channel, $q)
             continue;
         }
 
-        $by = $people[(int) $row['marked_by']]['name'] ?? '';
+        $by = ws_mark_by_name($row, $people);
         $when = ws_time_label((int) $row['marked_at'] ?: (int) $row['created_at']);
 
         $out[] = array(

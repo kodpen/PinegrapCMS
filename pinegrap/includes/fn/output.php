@@ -7394,6 +7394,7 @@ function pg_js_bundles()
             'assets/js/workspace_note_groups.js',
             'assets/js/workspace_note_tabs.js',
             'assets/js/workspace_note_group_shares.js',
+            'assets/js/workspace_memory.js',
             'assets/js/workspace_replies.js',
             'assets/js/workspace.js',
         ),

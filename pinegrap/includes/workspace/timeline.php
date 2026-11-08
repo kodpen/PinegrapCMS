@@ -160,7 +160,7 @@ function ws_timeline_where($channel_ids, $filters, $content = true)
 
     if ($content && ($filters['person_id'] > 0)) {
         $person = (int) $filters['person_id'];
-        $where[] = "(marked_by = '" . $person . "' OR (sender_kind = 'user' AND sender_id = '" . $person . "'))";
+        $where[] = "((marked_by = '" . $person . "'" . (ws_marks_kind_ready() ? " AND marked_by_kind = 'user'" : '') . ") OR (sender_kind = 'user' AND sender_id = '" . $person . "'))";
     }
 
     if ($content && ($filters['search'] !== '')) {
@@ -395,7 +395,7 @@ function ws_timeline_items($viewer, $rows, $channels)
             $people_ids[] = (int) $row['sender_id'];
         }
 
-        if ((int) $row['marked_by'] > 0) {
+        if (((int) $row['marked_by'] > 0) && !ws_mark_by_app($row)) {
             $people_ids[] = (int) $row['marked_by'];
         }
     }
@@ -442,8 +442,8 @@ function ws_timeline_items($viewer, $rows, $channels)
             'file'      => $file,
             'sender'    => $sender,
             // Who took it as a decision, when that was not the writer.
-            'marked_by' => (($marked_by > 0) && !(($row['sender_kind'] === 'user') && ((int) $row['sender_id'] === $marked_by)))
-                ? ($people[$marked_by]['name'] ?? '')
+            'marked_by' => (($marked_by > 0) && !(($row['sender_kind'] === (ws_mark_by_app($row) ? 'app' : 'user')) && ((int) $row['sender_id'] === $marked_by)))
+                ? ws_mark_by_name($row, $people)
                 : '',
             'locked'    => !empty($row['locked']),
             'edited'    => ((int) $row['edited_at'] > 0),

@@ -31,6 +31,31 @@ function ws_action_error($message, $field = '')
 }
 
 /**
+ * The refusal of a note behind the person's closed notes lock (code
+ * note_locked, with the note's id and title for the lock pane); null when
+ * the person may go on (note_lock.php's ws_note_lock_gate()).
+ *
+ * @param array $viewer
+ * @param array $note
+ * @return array|null
+ */
+function ws_action_note_locked($viewer, $note)
+{
+    $error = (is_array($note) && function_exists('ws_note_lock_gate')) ? ws_note_lock_gate($viewer, $note) : '';
+
+    if ($error === '') {
+        return null;
+    }
+
+    $title = trim((string) $note['title']);
+
+    return ws_action_error($error) + array(
+        'code' => 'note_locked',
+        'note' => array('id' => (int) $note['id'], 'name' => ($title !== '') ? $title : lang('Locked note')),
+    );
+}
+
+/**
  * @param array $data
  * @return array
  */
@@ -1138,11 +1163,28 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That note could not be found.'));
             }
 
+            // A note behind the closed lock is not moved; a shared note of
+            // the person's own asks before it goes into their locked group,
+            // which takes its shares back (note_lock.php).
+            $locked = ws_action_note_locked($viewer, $note);
+
+            if ($locked) {
+                return $locked;
+            }
+
+            $refusal = ws_note_lock_place_check($viewer, $note, (int) ($request['group_id'] ?? 0), !empty($request['confirm']));
+
+            if ($refusal) {
+                return ws_action_error($refusal['error']) + array('code' => $refusal['code'], 'shares' => (int) ($refusal['shares'] ?? 0));
+            }
+
             $result = ws_note_place($viewer, $note, (int) ($request['group_id'] ?? 0), (int) ($request['position'] ?? -1));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error'], (string) $result['field']);
             }
+
+            ws_note_lock_place_after($viewer, ws_note($note['id']), (int) $result['group_id']);
 
             return ws_action_ok(array(
                 'note_id'  => (int) $note['id'],
@@ -1192,6 +1234,30 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('lock' => ws_note_lock_state($viewer)) + (isset($result['email']) ? array('email' => $result['email']) : array()));
+
+        // A note or a group of the person's own locked or unlocked. Locking
+        // a shared one answers code confirm (with how many shares) until it
+        // is asked again with confirm; unlocking needs the lock open or the
+        // PIN (note_lock.php).
+        case 'ws_note_lock_note':
+        case 'ws_note_group_lock':
+            if ($action === 'ws_note_lock_note') {
+                $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'owner');
+                $result = ws_note_lock_note($viewer, $note, !empty($request['locked']), !empty($request['confirm']), is_string($request['pin'] ?? null) ? $request['pin'] : '');
+            } else {
+                $group = ws_note_group_for($viewer, (int) ($request['group_id'] ?? 0));
+                $result = ws_note_lock_group($viewer, $group, !empty($request['locked']), !empty($request['confirm']), is_string($request['pin'] ?? null) ? $request['pin'] : '');
+            }
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']) + array(
+                    'code'   => (string) $result['code'],
+                    'wait'   => (int) $result['wait'],
+                    'shares' => (int) ($result['shares'] ?? 0),
+                );
+            }
+
+            return ws_action_ok(array('shares' => (int) $result['shares'], 'groups' => ws_note_groups($viewer), 'lock' => ws_note_lock_state($viewer)));
 
         // Shared note groups (includes/workspace/note_group_shares.php):
         // who has a group, sharing it with people or in a channel, taking a
@@ -1249,6 +1315,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That note is not in the group.'));
             }
 
+            $locked = ws_action_note_locked($viewer, $note);
+
+            if ($locked) {
+                return $locked;
+            }
+
             $result = ws_note_group_take_out($viewer, $group, $note);
 
             if (!$result['ok']) {
@@ -1277,6 +1349,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That note could not be found.'));
             }
 
+            $locked = ws_action_note_locked($viewer, $note);
+
+            if ($locked) {
+                return $locked;
+            }
+
             // Its earlier versions, or one of them: for whoever may read it.
             if (!empty($request['versions'])) {
                 return ws_action_ok(array('versions' => ws_note_versions($viewer, $note)));
@@ -1301,6 +1379,11 @@ function ws_handle_action($action, $request)
 
         case 'ws_note_save':
             $data = array('note_id' => (int) ($request['note_id'] ?? 0));
+            $locked = ($data['note_id'] > 0) ? ws_action_note_locked($viewer, ws_note_for($viewer, $data['note_id'], 'view')) : null;
+
+            if ($locked) {
+                return $locked;
+            }
 
             foreach (array('title', 'body', 'pinned', 'base', 'revision') as $field) {
                 if (array_key_exists($field, $request)) {
@@ -1321,6 +1404,12 @@ function ws_handle_action($action, $request)
 
             if (!$note) {
                 return ws_action_error(lang('Only the one who wrote a note can delete it.'));
+            }
+
+            $locked = ws_action_note_locked($viewer, $note);
+
+            if ($locked) {
+                return $locked;
             }
 
             $result = ws_note_delete($viewer, $note);
@@ -1412,6 +1501,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That note could not be found.'));
             }
 
+            $locked = ws_action_note_locked($viewer, $note);
+
+            if ($locked) {
+                return $locked;
+            }
+
             // A form part as the screen sends it, or base64 (ws_upload_request_file()).
             $file = ws_upload_request_file($request);
 
@@ -1433,6 +1528,12 @@ function ws_handle_action($action, $request)
 
             if (!$note) {
                 return ws_action_error(lang('That note could not be found.'));
+            }
+
+            $locked = ws_action_note_locked($viewer, $note);
+
+            if ($locked) {
+                return $locked;
             }
 
             $asked = array();
@@ -1458,6 +1559,12 @@ function ws_handle_action($action, $request)
 
             if (!$note) {
                 return ws_action_error(lang('That note could not be found.'));
+            }
+
+            $locked = ws_action_note_locked($viewer, $note);
+
+            if ($locked) {
+                return $locked;
             }
 
             $changed = ws_note_claude_deliver($viewer, $note, (int) ($request['request_id'] ?? 0));
@@ -3280,6 +3387,67 @@ function ws_handle_action($action, $request)
             }
 
             return ws_action_ok(array('messages' => ws_channel_decisions($viewer, $channel['id'])));
+
+        // A channel's memory (channel_memory.php): every entry with its
+        // text, the expired ones too; written by whoever may post here.
+        case 'ws_memory_list':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            return ws_action_ok(array(
+                'entries'  => array_map('ws_memory_present', ws_memory_rows($channel['id'])),
+                'can_post' => ws_can_post_channel($viewer, $channel),
+            ));
+
+        case 'ws_memory_save':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $current = null;
+
+            if ((int) ($request['id'] ?? 0) > 0) {
+                $current = ws_memory_row((int) $request['id']);
+
+                if (!$current || ((int) $current['channel_id'] !== (int) $channel['id'])) {
+                    return ws_action_error(lang('That memory entry could not be found.'));
+                }
+            }
+
+            // The expiry comes as the date field's day, kept to its end.
+            $expires = trim((string) ($request['expires'] ?? ''));
+            $input = array(
+                'title'      => (string) ($request['title'] ?? ''),
+                'text'       => (string) ($request['text'] ?? ''),
+                'tags'       => (string) ($request['tags'] ?? ''),
+                'pinned'     => !empty($request['pinned']),
+                'expires_at' => ($expires === '') ? 0 : (int) strtotime($expires . ' 23:59:59'),
+            );
+            $check = ws_memory_check($viewer, $channel, $input, $current);
+
+            if (!$check['ok']) {
+                return ws_action_error($check['error'], $check['field']);
+            }
+
+            $id = ws_memory_save($channel['id'], $check['values'], 'user', $viewer['id'], $current);
+
+            return ws_action_ok(array('entry' => ws_memory_present(ws_memory_row($id))));
+
+        case 'ws_memory_delete':
+            $row = ws_memory_row((int) ($request['id'] ?? 0));
+
+            if (!$row || !ws_can_read_channel($viewer, ws_channel($row['channel_id']))) {
+                return ws_action_error(lang('That memory entry could not be found.'));
+            }
+
+            $result = ws_memory_delete($viewer, $row);
+
+            return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
         case 'ws_channel_files':
             $channel = ws_action_channel($viewer, $request);
