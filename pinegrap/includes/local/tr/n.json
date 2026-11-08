@@ -2222,6 +2222,7 @@
     "No visit has been recorded today, although yesterday had {var:1}: the visit tracking may be broken.": "Dün {var:1} ziyaret olmasına rağmen bugün hiç ziyaret kaydedilmedi: ziyaret takibi bozulmuş olabilir.",
     "No visit in this period has a known location.": "Bu dönemde konumu bilinen ziyaret yok.",
     "No visit requests yet.": "Henüz ziyaret talebi yok.",
+    "No visit requests yet. Choose a visit for your class.": "Henüz ziyaret talebi yok. Sınıfınız için bir ziyaret seçin.",
     "No visit requests yet. Choose a visit for your school or group.": "Henüz ziyaret talebi yok. Okulunuz veya grubunuz için bir ziyaret seçin.",
     "No visits counted yet.": "Henüz sayılmış ziyaret yok.",
     "No visits in this period yet.": "Bu dönemde henüz ziyaret yok.",
