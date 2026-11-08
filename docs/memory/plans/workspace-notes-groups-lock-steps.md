@@ -14,7 +14,7 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 
 - G3 (M) Drag and drop. After G2. Same file: notes into, out of, along and between groups; groups in the list; the questions a shared or a locked group asks (`-design.md`); Move to group and a long press as the keyboard and touch ways.
 
-- G4 (M) Tabs. After G2, beside G3. New `assets/js/workspace_note_tabs.js`: an open note's group as tabs over it (tablist, the group's order, lock and shared marks, + for a new note in the group, arrow keys, a tab dragged along changes the order, sideways scroll on a phone); the note is saved before switching, as a list click does.
+- G4 (M) Tabs. Done (PR #8095). New `assets/js/workspace_note_tabs.js`: an open note's group as tabs over it (tablist, the group's order, lock and shared marks, + for a new note in the group, arrow keys, a tab dragged along changes the order, sideways scroll on a phone); the note is saved before switching, as a list click does.
 
 - G5 (M) Shared groups, store. After G1. New `includes/workspace/note_group_shares.php`: a group shared with people (read or edit) or in a channel (one card for the group, none per note) through `ws_note_shares` rows with `via_group`, kept in step when a note goes in or out, is deleted or locked, a share is taken back or the group deleted; direct shares stay. People with edit put in, order and take out their own notes, the owner any; only own notes go into a shared group; one who leaves or loses access takes their notes out. One bell line per group shared or note added; note folders follow `ws_note_folder_sync()`; deletions kept for sync as `ws_note_deletion_rows()` does.
 
@@ -23,4 +23,4 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 - G7 (M) API and MCP. After G5. New `includes/workspace/api_note_groups.php`: list, create, change and delete groups, place a note, each with dry run through the panel's `*_check()`, MCP tools as the note routes have; `group_id` on note objects; `check_api_schema.php`. Sharing stays on the screen, as for notes.
 
 ## Where does the next session start?
-- N0, G1, G2 done. Free next: G3 (drag and drop, same file `assets/js/workspace_note_groups.js`; the rows come from `drawItem()` in `startNotes()`, placing goes through `ws_note_place` with `position`), G4 beside it (new file), G5 (store, new file). Screen notes: `workspace/workspace-note-groups-screen.md`; store: `workspace/workspace-note-groups.md`.
+- N0, G1, G2, G4 done. Free next: G3 (drag and drop, same file `assets/js/workspace_note_groups.js`; the rows come from `drawItem()` in `startNotes()`, placing goes through `ws_note_place` with `position`), G5 (store, new file). Tabs: `workspace/workspace-note-tabs.md`. Screen notes: `workspace/workspace-note-groups-screen.md`; store: `workspace/workspace-note-groups.md`.
