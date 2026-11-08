@@ -7456,6 +7456,7 @@ function pg_js_bundles()
         // each run by the editor the first time it is asked for.
         'assets/js/style_designer_ai.min.js'       => array('assets/js/designer_ai.js'),
         'assets/js/style_designer_import.min.js'   => array('assets/js/style_designer_import.js'),
+        'assets/js/style_designer_code.min.js'     => array('assets/js/style_designer_code.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -7508,6 +7509,9 @@ function pg_designer_parts()
         'ai' => 'assets/js/style_designer_ai.min.js',
         // The HTML / ZIP import and the paste-a-page reply opened as tabs.
         'import' => 'assets/js/style_designer_import.min.js',
+        // The code view's runtime: switching it on, its document and
+        // selection, the file tabs and the search in all tabs.
+        'code'   => 'assets/js/style_designer_code.min.js',
     );
 }
 
