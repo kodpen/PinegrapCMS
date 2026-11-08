@@ -37,7 +37,7 @@ function _test_mzp_load()
 	$tier_texts = array();
 	foreach (array_keys($tiers) as $key) $tier_texts[$key] = $tier_price_text($key);
 	$out = array('part' => $public_part, 'admission' => $admission, 'tiers' => $tiers, 'departments' => $departments,
-		'admission_texts' => $admission_texts, 'tier_texts' => $tier_texts, 'opening_hours' => $opening_hours);
+		'admission_texts' => $admission_texts, 'tier_texts' => $tier_texts, 'opening_hours' => $opening_hours, 'objects' => $objects);
 	return $out;
 }
 
@@ -141,23 +141,29 @@ function test_museum_public_prices_are_the_shops()
 	pg_assert_contains('{{page:book_online}}', json_encode($pages['visit']), 'the visit page books a timed entry');
 }
 
-// The home opens the highlights of each department in the words of the
-// Department list.
-function test_museum_public_home_departments()
+// The home walks the highlights trail: four works in walking order, each
+// with its room as an icon and a word from the highlight's own data; the
+// department cards left the home for the collection page.
+function test_museum_public_home_trail()
 {
 	$d = _test_mzp_load();
 	$nodes = array();
 	_test_mzp_nodes(_test_mzp_pages()['home']['tree'], $nodes);
-	$seen = array();
+	$stops = array();
+	$rooms = array();
 	foreach ($nodes as $n) {
-		$href = (string)($n['props']['href'] ?? '');
-		if (strpos($href, '{{page:collection}}?') !== 0) continue;
-		parse_str(substr($href, strlen('{{page:collection}}?')), $q);
-		$seen[] = $q['department'];
+		pg_assert_false(strpos((string)($n['props']['href'] ?? ''), '{{page:collection}}?') === 0, 'no department card on the home');
+		if (($n['props']['tag'] ?? '') === 'h3' && strpos((string)($n['props']['cssClass'] ?? ''), 'pmz-display h5') === 0) $stops[] = $n['props']['text'];
+		if (($n['props']['_label'] ?? '') === lang('Room') && isset($n['props']['text'])) $rooms[] = $n['props']['text'];
 	}
-	$titles = array();
-	foreach ($d['departments'] as $dep) $titles[] = $dep['title'];
-	pg_assert_same($titles, $seen, 'a card per department, filtering the highlights');
+	$want = array();
+	$want_rooms = array();
+	foreach (array('coin', 'harbour', 'dancer', 'tile') as $k) {
+		$want[] = $d['objects'][$k]['title'];
+		$want_rooms[] = $d['objects'][$k]['gallery'];
+	}
+	pg_assert_same($want, $stops, 'four stops in walking order');
+	pg_assert_same($want_rooms, $rooms, 'each stop names its room');
 }
 
 // Search anchors and ids carry the template's prefix, classes are its own

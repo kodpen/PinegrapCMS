@@ -48,19 +48,22 @@ $object_pages[] = array(
     'meta_description' => lang('Highlights of the museum\'s collection: paintings, sculpture, works on paper, decorative arts, photography and archaeology.'),
     'tree'             => $page(array(
         $page_header(lang('Collection Highlights'), lang('A few of the works we care for, from ancient coins to street photographs. Choose a department to narrow the list.')),
-        $el('section', 'py-5', lang('Featured'), array(
+        // One work to look closer at, with its wall label and three details
+        // (Museum: Look Closer).
+        $look_closer('harbour', 'mz-collection-closer'),
+        $el('section', 'py-5 bg-body-tertiary', lang('Featured'), array(
             $container(array(
                 $section_header(lang('Do not miss'), lang('Highlights to see first')),
                 $widget('collection_featured'),
             )),
         )),
-        $el('section', 'py-5 bg-body-tertiary', lang('Departments'), array(
+        $el('section', 'py-5', lang('Departments'), array(
             $container(array(
                 $section_header(lang('Departments'), lang('Six departments, one collection')),
-                $row($object_department_cols, '4'),
+                $rise($row($object_department_cols, '4')),
             )),
         )),
-        $el('section', 'py-5', lang('Collection'), array(
+        $el('section', 'py-5 border-top', lang('Collection'), array(
             $container(array(
                 $mz_filter_bar('collection', lang('Department'), 'department', $department_titles),
                 $widget('collection_list'),

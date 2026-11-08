@@ -185,7 +185,7 @@ $museum_css = implode("\n", array(
 
 return array(
     'name'        => lang('Museum'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 95,
     'icon'        => 'bi-bank2',
@@ -241,10 +241,10 @@ return array(
         'email_footer' => array('name' => lang('Museum E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pmz- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Museum blocks' pg-museum- rules and its
+    // pmz- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $museum_css),
+        'css'   => pg_design_template_user_styles(array('museum-exhibition', 'museum-object', 'museum-trail'), $museum_css),
         'fonts' => json_encode($museum_fonts),
     ),
 );
