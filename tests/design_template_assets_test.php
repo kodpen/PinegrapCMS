@@ -27,7 +27,12 @@ function _test_dta_js_rule($name)
 {
 	static $lines = null;
 	if ($lines === null) {
-		$lines = explode("\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+		// The core and the block family files, in bundle order.
+		$js = '';
+		foreach (pg_designer_js_sources() as $relative) {
+			$js .= (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative) . "\n";
+		}
+		$lines = explode("\n", $js);
 	}
 	$css = '';
 	$inside = false;
