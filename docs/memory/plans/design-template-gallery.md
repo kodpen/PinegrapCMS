@@ -24,12 +24,14 @@ description: Plan: the Art Gallery design template (pinegrap-gallery): artists, 
 
 - 8 (done, #8110): `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`, filtered by `?topic=`), blog post, help search, error; test.
 
-- 9: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 9 (done, #8128): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 10: assembly: `pinegrap-gallery.php` (order, search sections, look, fonts, `pgl-` rules, folders), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, custom-form-rules), `designer/design-template-gallery.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
 - The lowest step not marked done. Model: `pinegrap-pharmacy/` and `pinegrap-museum/` (same shape). The enquiry's lists: `?artwork=` `$work_choices`, `?kind=` `$enquiry_choices`; the viewing's `?exhibition=` `$exhibition_choices`. `_test_gl_page_keys()` (step 1 test) lists every page key; later tests `require_once` it. Each page file is included after `parts.php` and `cards.php`; `artists.php` holds the list pieces, `mail.php` the e-mail frame. The cards bind these field names, so the forms use them: Artists `name`, `medium`, `based`, `summary`, `photo`; Exhibitions `title`, `status`, `dates`, `opening`, `summary`, `photo_1`; Works `title`, `artist` (reference), `technique`, `size`, `price`, `availability`, `photo`.
+
+- For step 10: the main file includes `parts.php`, `cards.php`, `mail.php`, then `pages_public.php`, `artists.php`, `exhibitions.php`, `requests.php`, `shop.php`, `standard.php`, `account.php` in that order (`standard.php` uses `artists.php`'s `$gl_filter`, `$gl_filter_bar`, `$gl_record_list`; `account.php` uses `requests.php`'s `$request_list` and `$enquiry_row`). `tests/design_template_gallery_account_test.php` already loads every part and checks the template is whole against `_test_gl_page_keys()`. The shop's catalog is `shop.php`'s `catalog`; the newsletter needs the `newsletter` contact group.
 
 ## Open questions
 - None: all reuses shipped features; new behaviour goes to the architect (Working mode 10).
