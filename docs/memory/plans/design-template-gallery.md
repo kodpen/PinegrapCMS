@@ -14,24 +14,24 @@ description: Plan: the Art Gallery design template (pinegrap-gallery): artists, 
 ## Steps (claim as `[plan:design-template-gallery] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7926): `parts.php`, data and helpers. 2 (done, #7966): `cards.php`. 3 (done, #7992): `pages_public.php` (home places `home_exhibitions`, `home_artists`, `home_posts`).
 
-- 4 (done, #8017): `artists.php`: the Artists collection (`artists` by `?medium=`, `artist` with the artist's works, `artist_new`, `home_artists`) and the Works collection (`works` by `?artist=` and `?medium=`, `work` with the enquiry link, `work_new`); test.
+- 4 (done, #8017): `artists.php`.
 
-- 5 (done, #8034): `exhibitions.php`: the Exhibitions collection (`exhibitions` by `?status=`, `exhibition` with its works and the opening night, `exhibition_new`, `home_exhibitions`); test.
+- 5 (done, #8034): `exhibitions.php`.
 
-- 6 (done, #8057): `mail.php` and `requests.php`: artwork enquiries (`enquire` with `?artwork=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`, `email_enquiry_new`, `email_enquiry_received`) and private viewings (`viewing` with `?exhibition=`, `viewing_view`, `my_viewings`, `staff_viewings`, their two e-mails); test.
+- 6 (done, #8057): `mail.php` and `requests.php`.
 
-- 7 (done, #8092): `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: editions, small works, catalogues); test.
+- 7 (done, #8092): `shop.php`.
 
-- 8 (done, #8110): `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`, filtered by `?topic=`), blog post, help search, error; test.
+- 8 (done, #8110): `standard.php`.
 
-- 9 (done, #8128): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 9 (done, #8128): `account.php`.
 
 - 10: assembly: `pinegrap-gallery.php` (order, search sections, look, fonts, `pgl-` rules, folders), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, custom-form-rules), `designer/design-template-gallery.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
 - The lowest step not marked done. Model: `pinegrap-pharmacy/` and `pinegrap-museum/` (same shape). The enquiry's lists: `?artwork=` `$work_choices`, `?kind=` `$enquiry_choices`; the viewing's `?exhibition=` `$exhibition_choices`. `_test_gl_page_keys()` (step 1 test) lists every page key; later tests `require_once` it. Each page file is included after `parts.php` and `cards.php`; `artists.php` holds the list pieces, `mail.php` the e-mail frame. The cards bind these field names, so the forms use them: Artists `name`, `medium`, `based`, `summary`, `photo`; Exhibitions `title`, `status`, `dates`, `opening`, `summary`, `photo_1`; Works `title`, `artist` (reference), `technique`, `size`, `price`, `availability`, `photo`.
 
-- For step 10: the main file includes `parts.php`, `cards.php`, `mail.php`, then `pages_public.php`, `artists.php`, `exhibitions.php`, `requests.php`, `shop.php`, `standard.php`, `account.php` in that order (`standard.php` uses `artists.php`'s `$gl_filter`, `$gl_filter_bar`, `$gl_record_list`; `account.php` uses `requests.php`'s `$request_list` and `$enquiry_row`). `tests/design_template_gallery_account_test.php` already loads every part and checks the template is whole against `_test_gl_page_keys()`. The shop's catalog is `shop.php`'s `catalog`; the newsletter needs the `newsletter` contact group.
+- Step 10 include order: parts, cards, mail, pages_public, artists, exhibitions, requests, shop, standard, account (standard uses artists' list pieces, account the requests' list). The account test already checks the whole template.
 
 ## Open questions
 - None: all reuses shipped features; new behaviour goes to the architect (Working mode 10).
