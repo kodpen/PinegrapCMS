@@ -1,6 +1,6 @@
 ---
 name: designer-blocks-launch
-description: The launch- block family (Product Launch group, style_designer_blocks_launch.js): its seven blocks, their interactions, the CSS colour switch, what was reused instead (bento-features), the spec table's sticky head
+description: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 ---
 
 ## What does the family hold?
