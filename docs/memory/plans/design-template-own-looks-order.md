@@ -21,6 +21,7 @@ description: Order of the polishing round after Launch: every shipped template's
 - Architecture: `-1` #8264, `-2` #8280 done.
 - Campsite: `-1` #8269 done.
 - Cityhall: `-1` #8291, `-2` #8308 done.
+- Construction: `-1` #8292 done.
 
 ## Where do the open template plans come?
 - Their files are not edited here (open PRs hold most). In each, the assembly step (look, fonts, rules) adds no new stock band. Their pages are built, so each one's `-1`, `-2` joins the list once its assembly lands, ahead of unclaimed groups: bakery, brewery, carrental, coworking, drivingschool, ferry, filmstudio, florist, homeservices, library (assembly #7982 open), marina, pharmacy, podcast, recruitment, restaurant, sportsclub, theatre, veterinary.
