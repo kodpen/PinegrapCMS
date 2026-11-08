@@ -132,6 +132,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-brewery.md: Craft Brewery template (pinegrap-brewery): beers and taproom events as collections, tour booking requests, private tastings booked online, packs and Beer Club terms in the shop, pbw- look, tests.
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-campsite.md: Campsite template (pinegrap-campsite): kinds of stay, Pitches and Cabins collection, prices as words, stay requests and group enquiries, no shop, pcp- look, tests.
+- design-template-carrental.md: Car Rental template (pinegrap-carrental): the fleet as a collection, booking requests with extras and deals, business rentals, desks, extras, deals and terms as fixed content, pcr- look, tests.
 - design-template-charity.md: Charity template (pinegrap-charity): causes and campaigns with progress, gifts as donation products, pledges and volunteers followed from the account, events, reports, News, pch- look, tests.
 - design-template-cityhall.md: City Hall template (pinegrap-cityhall): services directory, Notices and Events collections, citizen and meeting requests, no shop, pcy- look, tests.
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
@@ -199,6 +200,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials
 - design-template-travel.md: Travel Agency template (pinegrap-travel): tours and destinations as collections, reviews, booking requests and tailor-made enquiries, deposits and gift cards in the shop, ptv- look, tests.
 - design-template-veterinary.md: Veterinary template (pinegrap-veterinary): services, pets, emergencies, vets as a collection, online booking, appointment and health plan requests, plans in the shop, pvt- look, tests.
+- design-template-wedding-pages.md: Wedding template 2.0.0: home, timeline, packages and venue on the Wedding blocks: the builders, each page's composition, motion, what left, the test
 - design-template-wedding.md: Wedding template (pinegrap-wedding): packages, spaces, Real Weddings collection, enquiries from the account, venue visits by the booking widget, deposits and gift cards, pwd- look, tests.
 - design-templates-catalog-and-look.md: A design template's own data and looks: catalog and contact groups made on opening, their placeholders, suggested look and palette, highlights, gallery drawing, dark sections, ratio classes.
 - design-templates-file-format.md: Writing a design template file (includes/design_templates/<id>.php): version, keys, placeholders, requires, starter widgets, shared parts, folders, and what opening a template writes before Publish.
@@ -222,6 +224,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-block-style.md: Where CSS for ready-made designer blocks may live: Bootstrap classes, _SD_BLOCK_CSS in the Styles panel, never inline style or a <style> element; how a design template ships them.
 - designer-block-theme-colours.md: Which classes keep a ready-made designer block in step with the design's look and colour palette, which ones break it, and the contrast traps measured on the ready-made blocks.
 - designer-block-theme-surfaces.md: How a ready-made designer block writes a dark navbar, a hero on a photo, buttons and links on tinted or primary surfaces, and carousel slides so they pass contrast in every look, palette and mode.
+- designer-blocks-bikeshop.md: The Bike Shop block family (bikeshop- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-bike-* rules, motion and test
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test

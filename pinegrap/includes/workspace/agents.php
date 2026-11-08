@@ -549,3 +549,175 @@ function ws_agent_brake($depth, $last_hour)
 
     return '';
 }
+
+/**
+ * An agent's fields from the card checked and filled from its current row.
+ * Claude's row keeps its kind, handle and door (the Claude card writes its
+ * routine); an `app` agent works through an application and has a door, a
+ * `model` agent is run by the site with a provider's key and has none.
+ * Secrets are written apart. Pure: what other agents, MCP servers and people
+ * hold is read by the caller.
+ *
+ * @param array      $input      kind, handle, name, app_id, provider, model, status, door_kind, door_url, wake_every, wake_note
+ * @param array|null $current    ws_agent_shape() of the agent, null for a new one
+ * @param string[]   $taken      handles other agents and MCP servers hold
+ * @param string[]   $user_names the people's user names
+ * @param int[]      $app_ids    the applications an agent may work through
+ * @return array ok, error (a sentence), field, values
+ */
+function ws_agent_save_check($input, $current, $taken, $user_names, $app_ids)
+{
+    $input = (array) $input;
+    $claude = $current && ($current['kind'] === 'claude');
+    $values = array(
+        'kind'       => $current ? $current['kind'] : (string) ($input['kind'] ?? ''),
+        'handle'     => $claude ? 'claude' : mb_strtolower(ltrim(trim((string) ($input['handle'] ?? '')), '@')),
+        'name'       => trim((string) ($input['name'] ?? '')),
+        'app_id'     => (int) ($input['app_id'] ?? 0),
+        'provider'   => trim((string) ($input['provider'] ?? '')),
+        'model'      => trim((string) ($input['model'] ?? '')),
+        'status'     => (string) ($input['status'] ?? ($current ? $current['status'] : 'active')),
+        'door_kind'  => (string) ($input['door_kind'] ?? 'poll'),
+        'door_url'   => trim((string) ($input['door_url'] ?? '')),
+        'wake_every' => (int) ($input['wake_every'] ?? 0),
+        'wake_note'  => trim((string) ($input['wake_note'] ?? '')),
+    );
+    $fail = function ($error, $field) use (&$values) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'values' => $values);
+    };
+
+    if (!in_array($values['kind'], array('claude', 'app', 'model'), true) || (!$current && ($values['kind'] === 'claude'))) {
+        return $fail(lang('An agent works through an application or runs on a model.'), 'kind');
+    }
+
+    if (!$claude) {
+        $problem = ws_agent_handle_problem($values['handle'], $taken, $user_names);
+
+        if ($problem !== '') {
+            return $fail($problem, 'handle');
+        }
+    }
+
+    if (($values['name'] === '') || (mb_strlen($values['name']) > 100)) {
+        return $fail(lang('Give the agent a name of up to 100 characters.'), 'name');
+    }
+
+    if (($values['app_id'] !== 0) && !in_array($values['app_id'], array_map('intval', (array) $app_ids), true)) {
+        return $fail(lang('That application could not be found.'), 'app_id');
+    }
+
+    if (($values['kind'] === 'app') && ($values['app_id'] === 0)) {
+        return $fail(lang('Choose the application the agent works through.'), 'app_id');
+    }
+
+    if ($values['kind'] === 'model') {
+        if (($values['provider'] === '') || (mb_strlen($values['provider']) > 32) || ($values['model'] === '') || (mb_strlen($values['model']) > 100)) {
+            return $fail(lang('A model agent needs its provider and model.'), 'model');
+        }
+    } else {
+        $values['provider'] = '';
+        $values['model'] = '';
+    }
+
+    if (!in_array($values['status'], array('active', 'paused', 'off'), true)) {
+        return $fail(lang('Invalid request.'), 'status');
+    }
+
+    if ($claude) {
+        $values['door_kind'] = 'push';
+        $values['door_url'] = $current['door_url'];
+    } elseif ($values['kind'] === 'model') {
+        $values['door_kind'] = 'poll';
+        $values['door_url'] = '';
+    } else {
+        $problem = ws_agent_door_problem($values['door_kind'], $values['door_url']);
+
+        if ($problem !== '') {
+            return $fail($problem, 'door_url');
+        }
+
+        if (mb_strlen($values['door_url']) > 500) {
+            return $fail(lang('A push door needs an https address.'), 'door_url');
+        }
+    }
+
+    if (($values['wake_every'] < 0) || ($values['wake_every'] > 1440)) {
+        return $fail(lang('Wake it every 1 to 1440 minutes, or 0 for never.'), 'wake_every');
+    }
+
+    if (mb_strlen($values['wake_note']) > 250) {
+        return $fail(lang('The wake note is at most 250 characters.'), 'wake_note');
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'values' => $values);
+}
+
+/**
+ * Writes an agent from values ws_agent_save_check() passed. A sealed secret
+ * is written when given ('' removes it, null keeps it). A schedule changed
+ * starts again from now.
+ *
+ * @param array       $viewer
+ * @param array       $values
+ * @param array|null  $current ws_agent_shape(), null for a new agent
+ * @param string|null $key_sealed
+ * @param string|null $door_sealed
+ * @return int the agent's id
+ */
+function ws_agent_save($viewer, $values, $current, $key_sealed = null, $door_sealed = null)
+{
+    $now = time();
+    $sealed = function ($value) {
+        return ($value === '') ? 'NULL' : "'" . e($value) . "'";
+    };
+    $sets = array();
+
+    foreach (array('kind', 'handle', 'name', 'provider', 'model', 'status', 'door_kind', 'door_url', 'wake_note') as $field) {
+        $sets[] = $field . " = '" . e((string) $values[$field]) . "'";
+    }
+
+    $sets[] = "app_id = '" . (int) $values['app_id'] . "'";
+    $sets[] = "wake_every = '" . (int) $values['wake_every'] . "'";
+    $sets[] = "updated_at = '" . $now . "'";
+
+    if (!$current || ((int) $current['wake_every'] !== (int) $values['wake_every'])) {
+        $sets[] = "wake_next_at = '" . (((int) $values['wake_every'] > 0) ? $now + 60 * (int) $values['wake_every'] : 0) . "'";
+    }
+
+    if ($key_sealed !== null) {
+        $sets[] = "key_sealed = " . $sealed($key_sealed);
+    }
+
+    if ($door_sealed !== null) {
+        $sets[] = "door_secret_sealed = " . $sealed($door_sealed);
+    }
+
+    if ($current) {
+        db("UPDATE ws_agents SET " . implode(', ', $sets) . " WHERE id = '" . (int) $current['id'] . "'");
+
+        return (int) $current['id'];
+    }
+
+    db("INSERT INTO ws_agents SET " . implode(', ', $sets) . ", created_by = '" . (int) $viewer['id'] . "', created_at = '" . $now . "'");
+
+    return (int) mysqli_insert_id(db::$con);
+}
+
+/**
+ * Deletes an agent and its rows in the channels. Claude's row is kept: its
+ * card switches it off.
+ *
+ * @param array $agent ws_agent_shape()
+ * @return bool
+ */
+function ws_agent_delete($agent)
+{
+    if ($agent['kind'] === 'claude') {
+        return false;
+    }
+
+    db("DELETE FROM ws_channel_agents WHERE agent_id = '" . (int) $agent['id'] . "'");
+    db("DELETE FROM ws_agents WHERE id = '" . (int) $agent['id'] . "'");
+
+    return true;
+}

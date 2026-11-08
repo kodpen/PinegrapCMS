@@ -189,7 +189,7 @@ function ws_action_flow_refused($result)
  * theirs, on the canvas.
  *
  * @param array         $viewer
- * @param array         $request  sentence
+ * @param array         $request  sentence, channel_id (the new flow's home, optional)
  * @param callable|null $ask      messages => answer; pg_ai_chat() when null
  * @return array
  */
@@ -201,7 +201,9 @@ function ws_action_flow_ai_sketch($viewer, $request, $ask = null)
         return ws_action_error(lang('Write in a sentence what the flow should do.'), 'sentence');
     }
 
-    $result = ws_flow_ai_sketch($viewer, $sentence, 0, $ask);
+    // Add › Flow in a channel's composer makes it with that channel as its
+    // home; ws_flow_save() refuses one the person does not read.
+    $result = ws_flow_ai_sketch($viewer, $sentence, max(0, (int) ($request['channel_id'] ?? 0)), $ask);
     $flow = $result['ok'] ? ws_flow_for($viewer, (int) $result['flow_id'], 'edit') : null;
 
     return ws_action_flow_ai_sketch_answer($result, $flow ? ws_flow_detail($viewer, $flow) : null);

@@ -187,6 +187,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-pharmacy' => array('rx-pr-consent', 'rx-aq-consent'),
 		'pinegrap-ferry' => array('fy-bk-consent', 'fy-gr-consent'),
 		'pinegrap-coworking' => array('cw-tr-consent', 'cw-oe-consent', 'cw-su-consent'),
+		'pinegrap-carrental' => array('cr-bk-consent', 'cr-be-consent', 'cr-contact-consent'),
 		'pinegrap-florist' => array('fl-ord-consent', 'fl-evt-consent', 'fl-sub-consent'),
 		'pinegrap-homeservices' => array('hs-bk-consent', 'hs-es-consent'),
 		'pinegrap-veterinary' => array('vt-ap-consent', 'vt-pj-consent'),

@@ -1287,5 +1287,33 @@ module.exports = [
             await h.click('[data-ws-flow-layer-close]');
             await h.waitFor('the layer closes', () => !document.querySelector('.ws-flow-layer'), 4000);
         }
+    },
+
+    {
+        name: 'the layer on a new flow (Add › New flow in a channel): the ways to start first, the flow made with that home, left blank it is not kept',
+        run: async (h) => {
+            await h.openList();
+            await h.page(() => window.PGWsKit.flowLayer(0, { home: 3 }));
+            await h.waitFor('the ways to start in the layer', () => !!document.querySelector('.ws-flow-layer .wsf-gallery:not(.d-none) .wsf-start-card'), 8000);
+
+            const before = await h.page(() => document.querySelector('.ws-flow-layer-bar a').getAttribute('href'));
+
+            h.ok('the Flows screen link names no flow yet', before.indexOf('?flow=') === -1, before);
+            await h.page(() => document.querySelector('.ws-flow-layer [data-refocus="tpl-empty"]').click());
+            await h.until('created', () => h.store.callsOf('ws_flow_create').length === 1, 3000);
+
+            const made = h.store.callsOf('ws_flow_create')[0].data;
+
+            h.same('made with the channel as its home', Number(made.channel_id), 3);
+            await h.waitFor('the empty canvas in the layer', () => !!document.querySelector('.ws-flow-layer .wsf-palette button'), 4000);
+
+            const id = await h.page(() => (document.querySelector('.ws-flow-layer-bar a').getAttribute('href').match(/\?flow=(\d+)/) || [])[1] || '');
+
+            h.ok('the link names the new flow', id !== '', id);
+            await h.click('[data-ws-flow-layer-close]');
+            await h.waitFor('the layer closes', () => !document.querySelector('.ws-flow-layer'), 4000);
+            await h.until('the blank flow binned', () => h.store.callsOf('ws_flow_bin').length === 1, 3000);
+            h.same('the new one', String(h.store.callsOf('ws_flow_bin')[0].data.flow_id), id);
+        }
     }
 ];

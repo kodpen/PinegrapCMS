@@ -2699,6 +2699,16 @@ function ws_flow_ai_sketch($viewer, $sentence, $channel_id = 0, $ask = null)
         return $fail(lang('Pinegrap AI is not ready on this site, so the flow has to be built by hand.'));
     }
 
+    // A home asked for is checked before the model is asked, with
+    // ws_flow_save()'s rule, so a refused one costs no request.
+    if ((int) $channel_id > 0) {
+        $home = ws_channel((int) $channel_id);
+
+        if (!$home || !in_array((string) $home['kind'], array('public', 'private'), true) || !ws_can_read_channel($viewer, $home)) {
+            return $fail(lang('A flow\'s home is a public or private channel you read.'));
+        }
+    }
+
     if ($ask === null) {
         $ask = function ($messages) {
             return pg_ai_chat($messages, array('temperature' => 0.1, 'max_tokens' => 4000));

@@ -396,6 +396,13 @@ if ($_POST) {
             $anchor = '#ws-claude';
             break;
 
+        // The agent registry (includes/workspace/agents_settings.php).
+        case 'agent_save':
+        case 'agent_delete':
+            ws_agents_settings_post($viewer, $action, $liveform);
+            $anchor = '#ws-agents';
+            break;
+
         // Bulk changes the assistants propose (includes/workspace/bulk.php).
         case 'bulk':
             ws_bulk_settings_post($viewer, $liveform);
@@ -851,6 +858,8 @@ pg_page_shell([
             ' . ws_holidays_settings_card($self_url) . '
 
             ' . ws_claude_settings_card($self_url, $viewer, $assistant_credentials) . '
+
+            ' . ws_agents_settings_card($self_url, $viewer) . '
 
             ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
 

@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-02): eight small independent features: address 
 - Global, as every plan of the review: nothing here is built around one country; the EU VAT step applies only to sites that sell into the EU and changes nothing elsewhere.
 
 ## Which steps, in one line each?
-- Done: SF1 #5087 #5118, SF2 #5053, SF3 #5352 #5382 #5409, SF4 #5351 #5385, SF5 #5550, SF6a #5552, SF7 #5064, SF8 #5075.
+- Done: SF1 #5087 #5118, SF2 #5053, SF3 #5352 #5382 #5409, SF4 #5351 #5385, SF5 #5550, SF6 #5552 #6410 #6468 #6493, SF7 #5064, SF8 #5075.
 6. SF6 EU VAT: the VAT id checked against VIES at checkout and on the account card; a valid id from another member state sets the order's existing tax-exempt flag (reverse charge) with the note the invoice needs.
 
 ## Which decisions bind it?

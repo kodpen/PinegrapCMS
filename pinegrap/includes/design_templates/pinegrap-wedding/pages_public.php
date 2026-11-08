@@ -34,6 +34,117 @@ $framed = function ($src, $alt, $ratio = '4x3', $lazy = true) use ($el, $image, 
     ));
 };
 
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 90) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
+// The Wedding blocks' ornament: two hairlines and a heart between them
+// (pg-wedding-rule), decoration only.
+$ornament = function ($class) use ($el, $icon, $attr) {
+    return $el('div', trim('pg-wedding-rule ' . $class), lang('Divider'), array($icon('bi-suit-heart')),
+        array('_attrs' => array($attr('aria-hidden', 'true'))));
+};
+
+// Wedding: Invitation Hero. The garden laid for dinner as a wide photo and
+// the invitation card over its lower edge (pg-wedding-invite): the
+// planner's line, the two ways on and its facts as a description list.
+// The photo fades in and the card rises, both on load.
+$invitation_hero = function () use ($el, $heading, $para, $link, $image, $icon, $span, $container, $photo, $planner, $ornament, $fx) {
+    $facts = array(
+        array('bi-calendar-heart', lang('Weddings'), lang('One a day')),
+        array('bi-people', lang('Guests'), lang('From 40 to 300')),
+        array('bi-tree', lang('Spaces'), lang('Four, indoors and out')),
+    );
+    $details = array();
+    foreach ($facts as $f) {
+        $details[] = $el('div', 'col', $f[1], array(
+            $icon($f[0], 'd-block fs-4 text-primary mb-1'),
+            $el('dt', 'small text-uppercase fw-semibold text-body-secondary', lang('Term'), array($span($f[1], '', lang('Text')))),
+            $el('dd', 'fw-semibold mb-0', lang('Value'), array($span($f[2], '', lang('Text')))),
+        ));
+    }
+    $picture = $el('div', 'ratio ratio-21x9 rounded-4 overflow-hidden bg-body-tertiary', lang('Picture Frame'), array(
+        $image($photo('hero', 1600, 690), lang('Long tables laid for a wedding dinner under olive trees'), 'object-fit-cover'),
+    ));
+    $card = $el('div', 'pg-wedding-invite position-relative col-lg-8 col-xl-7 mx-auto mt-4 p-4 p-md-5 rounded-4 bg-body shadow text-center', lang('Invitation Card'), array(
+        $para(lang('Planning and a venue by the sea'), 'pwd-eyebrow small text-uppercase fw-semibold text-primary mb-3'),
+        $heading('h1', lang('Your day, beautifully planned'), 'pwd-display display-4 mb-3'),
+        $ornament('col-8 col-md-6 mx-auto mb-3'),
+        $para($planner['tagline'] . '.', 'lead text-body-secondary mb-4'),
+        $el('dl', 'row row-cols-1 row-cols-sm-3 g-3 mb-4', lang('Details'), $details),
+        $el('div', 'd-flex flex-wrap justify-content-center gap-2', lang('Buttons'), array(
+            $link(lang('Book a Venue Visit'), '{{page:book_visit}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+            $link(lang('See the Packages'), '{{page:packages}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
+        )),
+    ));
+    return $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $fx($picture, array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1000)),
+            $fx($card, array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700, 'delay' => 300)),
+        )),
+    ));
+};
+
+// Wedding: Real Wedding Story. One sample wedding told in a band: three
+// of its pictures (pg-wedding-mosaic), the couple, their day in facts,
+// their own words and the suppliers who made it. The same words and
+// pictures as its record in the Real Weddings form.
+$wedding_story = function ($key, $id, $topics) use ($el, $heading, $para, $link, $image, $icon, $span, $container, $row, $col, $attr, $photo, $weddings, $spaces, $seasons, $fx, $searchable) {
+    $w = $weddings[$key];
+    $lazy = array('_attrs' => array($attr('loading', 'lazy')));
+    $facts = array();
+    foreach (array(
+        array('bi-tree', $spaces[$w['space']]['title'], lang('Venue Space')),
+        array('bi-sun', $seasons[$w['season']]['title'], lang('Season')),
+        array('bi-people', $w['guests'] . ' ' . lang('guests'), lang('Guests')),
+    ) as $f) {
+        $facts[] = $el('li', 'd-flex align-items-center gap-2', $f[2], array(
+            $icon($f[0], 'text-primary'),
+            $span($f[2], 'visually-hidden', lang('Label')),
+            $span($f[1], 'fw-semibold', lang('Value')),
+        ));
+    }
+    $suppliers = array();
+    foreach ($w['suppliers'] as $s) {
+        $suppliers[] = $el('dt', 'col-5 fw-normal text-body-secondary', lang('Role'), array($span($s[0], '', lang('Text'))));
+        $suppliers[] = $el('dd', 'col-7 fw-semibold', lang('Supplier'), array($span($s[1], '', lang('Text'))));
+    }
+    $mosaic = $el('div', 'pg-wedding-mosaic', lang('Picture Mosaic'), array(
+        $image($photo('wedding-' . $key, 720, 960), $w['couple'], 'rounded-4', $lazy),
+        $image($photo('wedding-' . $key . '-2', 480, 360), $w['couple'], 'rounded-4', $lazy),
+        $image($photo('wedding-' . $key . '-3', 480, 360), $w['couple'], 'rounded-4', $lazy),
+    ));
+    $body = $el('div', '', lang('Story Body'), array(
+        $para(lang('Real wedding'), 'pwd-eyebrow small text-uppercase fw-semibold text-primary mb-2'),
+        $heading('h2', $w['couple'], 'pwd-display display-6 mb-3'),
+        $el('ul', 'list-unstyled d-flex flex-wrap gap-3 mb-3', lang('Wedding Facts'), $facts),
+        $para($w['summary'], 'text-body-secondary mb-4'),
+        $el('figure', 'border-start border-3 border-primary ps-3 mb-4', lang('Quote'), array(
+            $el('blockquote', 'blockquote mb-2', lang('Quote Text'), array($para($w['quote'], 'pwd-quote mb-0'))),
+            $el('figcaption', 'small text-body-secondary', lang('Caption'), array($span($w['couple'], '', lang('Text')))),
+        )),
+        $heading('h3', lang('The suppliers'), 'h6 text-uppercase fw-semibold mb-2'),
+        $el('dl', 'row small mb-4', lang('Suppliers'), $suppliers),
+        $link(lang('All Real Weddings'), '{{page:weddings}}', 'btn btn-outline-primary rounded-pill px-4'),
+    ));
+    return $el('section', 'py-5', lang('Real Wedding Story'), array(
+        $container(array(
+            $row(array(
+                $col(array($fx($mosaic, array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900))), '', '6'),
+                $col(array($fx($body, array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700, 'stagger' => 80))), '', '6'),
+            ), '4', '', 'align-items-center g-lg-5'),
+        )),
+    ), $searchable($id, $topics));
+};
+
 // A band of text beside a picture; $flip puts the picture first from lg up.
 // The band is a search section under its anchor $id, with the topics a
 // visitor may search for that it does not say itself.
@@ -122,78 +233,45 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Wedding planning and an olive estate by the sea for one wedding a day: packages, spaces, real weddings and venue visits.'),
     'tree'             => $page(array(
-        // The way in: the planner in a sentence, the two ways on and a
-        // photo of the garden laid for dinner.
-        $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Planning and a venue by the sea'), 'pwd-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Your day, beautifully planned'), 'pwd-display display-3 mb-3'),
-                        $para($planner['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Book a Venue Visit'), '{{page:book_visit}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                            $link(lang('See the Packages'), '{{page:packages}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
-                        )),
-                        $para($planner['promise'] . '.', 'small text-body-secondary mt-4 mb-0'),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('Long tables laid for a wedding dinner under olive trees'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
+        // The way in: the invitation over the garden laid for dinner.
+        $invitation_hero(),
 
         $el('section', 'py-5', lang('Planning Services'), array(
             $container(array(
                 $section_header(lang('How we help'), lang('Planning your way'), lang('All services'), '{{page:services}}'),
-                $row($service_cols, '4'),
+                $rise($row($service_cols, '4')),
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('The Venue'), array(
-            $container(array(
-                $section_header(lang('One estate, four spaces'), lang('A space for every wedding'), lang('See the venue'), '{{page:venue}}'),
-                $row($space_cols, '4'),
-            )),
-        )),
+        // One real wedding told in full, then the featured ones read from
+        // the Real Weddings collection.
+        $wedding_story('selin-emre', 'wd-home-story', lang('wedding stories, inspiration, suppliers, photographer, florist')),
 
-        // The featured weddings, read from the Real Weddings collection.
-        $el('section', 'py-5', lang('Real Weddings'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Real Weddings'), array(
             $container(array(
                 $section_header(lang('Love stories'), lang('Real weddings at the estate'), lang('All Real Weddings'), '{{page:weddings}}'),
                 $widget('home_weddings'),
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Packages'), array(
+        $el('section', 'py-5', lang('The Venue'), array(
             $container(array(
-                $section_header(lang('Clear prices'), lang('Venue packages'), lang('Compare packages'), '{{page:packages}}'),
-                $row($package_cols, '4'),
+                $section_header(lang('One estate, four spaces'), lang('A space for every wedding'), lang('See the venue'), '{{page:venue}}'),
+                $rise($row($space_cols, '4')),
             )),
         )),
 
-        $el('section', 'py-5', lang('Why Choose Us'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Packages'), array(
             $container(array(
-                $section_header(lang('Why couples choose us'), lang('One team, one wedding a day'), lang('About Us'), '{{page:about}}'),
-                $row($why_tiles, '4'),
+                $section_header(lang('Clear prices'), lang('Venue packages'), lang('Compare packages'), '{{page:packages}}'),
+                $rise($row($package_cols, '4')),
             )),
-        ), $searchable('wd-why-us', lang('exclusive, one wedding a day, planner, team, prices'))),
-
-        $story_band('wd-home-timeline', lang('Planning Timeline'), lang('From the first idea to the last dance'),
-            array(lang('A wedding is a year of small decisions. Our timeline shows what to do and when, from choosing the date to handing everything over in the last week.'), lang('Every couple we plan with gets it as their own checklist.')),
-            $photo('home-timeline', 1200, 900), lang('A planner\'s notebook with swatches and a pen'), true,
-            array($link(lang('See the timeline'), '{{page:timeline}}', 'btn btn-outline-primary rounded-pill px-4')),
-            lang('checklist, when to book, plan, schedule, to do')),
+        )),
 
         // What couples say: sample words for the planner to replace, and
         // beside them its own Google reviews, which show once Google
         // Reviews is set up under Site Settings.
-        $el('section', 'py-5 bg-body-tertiary', lang('Testimonials'), array(
+        $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
                 $section_header(lang('Kind words'), lang('What couples say')),
                 $row($testimonial_cols, '4'),
@@ -201,7 +279,7 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5', lang('From the Journal'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('From the Journal'), array(
             $container(array(
                 $section_header(lang('Wedding Journal'), lang('Ideas and advice'), lang('All articles'), '{{page:blog}}'),
                 $widget('home_posts'),
@@ -320,7 +398,7 @@ $public_pages[] = array(
         $page_header(lang('Wedding Packages'), lang('Three ways to celebrate at the estate, priced per guest. Every package can be shaped to you.')),
         $el('section', 'py-5', lang('Packages'), array(
             $container(array(
-                $row($package_cols, '4'),
+                $rise($row($package_cols, '4')),
             )),
         ), $searchable('wd-packages', lang('package, all inclusive, menu, price per person, what is included'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Package Prices'), array(
@@ -343,7 +421,6 @@ $public_pages[] = array(
                 $para(sprintf(lang('Prices are per guest and include taxes; a deposit of %s holds your date.'), $deposit_text), 'small text-body-secondary mt-3 mb-0'),
             )),
         ), $searchable('wd-prices', lang('price, prices, cost, how much, per person, deposit'))),
-        $ask_band(lang('Something different in mind?'), lang('A weekday wedding, a long lunch or a whole weekend: tell us and we will make a proposal.')),
     )),
 );
 
@@ -368,7 +445,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Spaces'), array(
             $container(array(
                 $section_header(lang('One estate, four spaces'), lang('Our spaces')),
-                $row($space_cols, '4'),
+                $rise($row($space_cols, '4')),
             )),
         ), $searchable('wd-spaces', lang('capacity, how many guests, indoor, outdoor, garden, hall, terrace'))),
         $story_band('wd-venue-estate', lang('The estate'), lang('Everything in one place'),
@@ -379,7 +456,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Gallery'), array(
             $container(array(
                 $section_header(lang('A first look'), lang('The estate in pictures'), lang('Open the gallery'), '{{page:gallery}}'),
-                $row(array($gallery_item(0), $gallery_item(2), $gallery_item(4), $gallery_item(6)), '3'),
+                $rise($row(array($gallery_item(0), $gallery_item(2), $gallery_item(4), $gallery_item(6)), '3'), 120),
             )),
         )),
     )),
@@ -426,20 +503,24 @@ $public_pages[] = array(
     'meta_description' => lang('What to do and when, from twelve months before the wedding to the week of the day.'),
     'tree'             => $page(array(
         $page_header(lang('Planning Timeline'), lang('What to do and when, from the first idea to the last week.')),
-        $el('section', 'py-5', lang('Timeline'), array(
+        // Wedding: Planning Checklist. A card per stage under the
+        // ornament, rising on view one after another, and the way to the
+        // planning services under them.
+        $el('section', 'py-5 bg-body-tertiary', lang('Timeline'), array(
             $container(array(
-                $row(array(
-                    $col(array(
-                        $el('ol', 'list-unstyled mb-0', lang('Timeline'), $stage_items),
-                    ), '', '8'),
-                ), '4', 'center'),
+                $el('div', 'text-center col-lg-8 mx-auto mb-5', lang('Section Header'), array(
+                    $para(lang('Planning with us'), 'pwd-eyebrow small text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', lang('From the first idea to the last dance'), 'pwd-display display-6 mb-3'),
+                    $ornament('col-6 col-md-4 mx-auto mb-3'),
+                    $para(lang('A wedding is a year of small decisions. Our timeline shows what to do and when, from choosing the date to handing everything over in the last week.'), 'lead text-body-secondary mb-0'),
+                )),
+                $rise($el('ol', 'list-unstyled row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-4', lang('Timeline'), $stage_items), 100),
+                $el('div', 'd-flex flex-column flex-sm-row align-items-sm-center justify-content-center gap-3 text-center', lang('Checklist Foot'), array(
+                    $para(lang('With full or partial planning, your planner keeps this list with you and reminds you of each step in time.'), 'small text-body-secondary mb-0'),
+                    $link(lang('See the planning services'), '{{page:services}}', 'btn btn-outline-primary rounded-pill px-4 text-nowrap'),
+                )),
             )),
-        ), $searchable('wd-timeline', lang('checklist, when to book, schedule, to do, months before'))),
-        $story_band('wd-timeline-help', lang('Planning with us'), lang('We keep the list for you'),
-            array(lang('With full or partial planning, your planner keeps this list with you and reminds you of each step in time.')),
-            $photo('timeline-help', 1200, 900), lang('A planner ticking off a checklist'), false,
-            array($link(lang('See the planning services'), '{{page:services}}', 'btn btn-outline-primary rounded-pill px-4')),
-            lang('planner, help, reminder'), 'py-5 bg-body-tertiary'),
+        ), $searchable('wd-timeline', lang('checklist, when to book, schedule, to do, months before, planner, reminder'))),
     )),
 );
 
