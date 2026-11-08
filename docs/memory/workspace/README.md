@@ -33,6 +33,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 - agent-questions.md: How an agent asks the people with a poll or an approval, and why the outcome is written in the agent's name (never as the owner's decision)
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, the membership routes, the depth and hourly brakes
+- agent-risk-tiers.md: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when an application agent's proposal is applied at once, the undo journal in ws_ai_changes (step 11.0.174), who may undo and when
 - agent-shown.md: How a registry agent shows (A4b2): the line under the message that woke it, its tag and @ picker entry, its ws_assistants() entry kept off tasks, its own message edits
 - agent-wakes.md: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1, #8246)
 - approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation

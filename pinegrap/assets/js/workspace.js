@@ -12072,7 +12072,7 @@
                     account.appendChild(off);
                     card.appendChild(account);
                 } else if (change.status === 'applied') {
-                    var done = el('div', 'ws-draft-done', t(change.action === 'draft' ? (change.flow_id ? 'sa_draft_flowed' : 'sa_draft_saved') : 'change_applied', change.decided_by, change.decided) + ' ');
+                    var done = el('div', 'ws-draft-done', (change.by_agent ? t('change_applied_agent', change.proposer, change.decided) : t(change.action === 'draft' ? (change.flow_id ? 'sa_draft_flowed' : 'sa_draft_saved') : 'change_applied', change.decided_by, change.decided)) + ' ');
 
                     if (change.flow_id) {
                         var flow = el('a', '', t('sa_draft_flow_see'));
@@ -12090,6 +12090,34 @@
                     }
 
                     card.appendChild(done);
+
+                    // Applied at once within the agent's tier: a member who
+                    // may change the record puts it back for 7 days.
+                    if (change.can_undo) {
+                        var undo = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5 mt-2', t('change_undo'), 'bi-arrow-counterclockwise');
+
+                        undo.addEventListener('click', function () {
+                            ask(t('change_undo_ask'), t('change_undo'), true).then(function (yes) {
+                                if (!yes) {
+                                    return;
+                                }
+
+                                undo.disabled = true;
+
+                                api('ws_agent_change_undo', { change_id: change.id }).then(function () {
+                                    toast(t('change_undo_done'), 'success');
+                                    self.sync();
+                                }).catch(function (error) {
+                                    undo.disabled = false;
+                                    fail(error);
+                                });
+                            });
+                        });
+
+                        card.appendChild(undo);
+                    }
+                } else if (change.status === 'undone') {
+                    card.appendChild(el('div', 'ws-draft-done', t('change_undone', change.undone_by, change.undone)));
                 } else if (change.status === 'dismissed') {
                     card.appendChild(el('div', 'ws-draft-done', t('change_dismissed', change.decided_by)));
                 } else if (change.status === 'stale') {

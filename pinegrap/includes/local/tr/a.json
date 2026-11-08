@@ -6083,6 +6083,8 @@
     "Applied Offers (from the offers of the order and its lines)": "Uygulanan Teklifler (siparişin ve satırlarının tekliflerinden)",
     "Applied Offers (promotions active in the cart)": "Uygulanan Teklifler (sepette etkin promosyonlar)",
     "Applied Offers Info Box": "Uygulanan Teklifler Bilgi Kutusu",
+    "Applied at once by {var:1} · {var:2}": "{var:1} tarafından hemen uygulandı · {var:2}",
+    "Applied at once within the tier this channel allows {var:1}; a member may undo it for 7 days.": "Kanalın {var:1} için izin verdiği seviye içinde hemen uygulandı; bir üye 7 gün boyunca geri alabilir.",
     "Applied by {var:1} · {var:2}": "{var:1} uyguladı · {var:2}",
     "Applied gift cards with their remove links": "Kaldırma bağlantılarıyla uygulanan hediye kartları",
     "Applied in the editor by {1}; it goes live when the page is published there.": "{1} düzenleyicide uyguladı; sayfa orada yayınlanınca siteye çıkar.",
