@@ -23,4 +23,4 @@ description: How the visual designer's speed is measured (the ?sd_perf=1 probe, 
 | `JSON.parse` of the tree | undo, redo, revert | 0.98 |
 | `findNodeById()` last node | each lookup | 0.08 |
 
-- So the serialising is a few ms per edit even on this page; the cost an operator feels is the DOM: the whole canvas rebuilt by `renderCanvas()` and the eight panels redrawn by `render()`. Browser numbers of the probe on the fixture were not taken yet (no running instance in the measuring session); D2 records the `first draw` / `edit` numbers before and after its change, D5 the `open` before and after.
+- So the serialising is a few ms per edit even on this page; the cost an operator feels is the DOM: the whole canvas rebuilt by `renderCanvas()` and the eight panels redrawn by `render()`. Browser numbers of the probe on the fixture were not taken yet (no running instance in the measuring session); D2 (#8048, `designer-incremental-canvas.md`) made a one-node edit redraw only that element; its browser `edit` numbers are still to be taken with the probe. D5 records the `open` before and after.

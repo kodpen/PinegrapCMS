@@ -16,6 +16,7 @@
  *   pinegrap://workspace/channels/{id}/context   GET /workspace/channels/{id}/context
  *   pinegrap://workspace/channels/{id}/customer  GET /workspace/channels/{id}/customer
  *   pinegrap://workspace/refs/{type}/{id}        GET /workspace/refs?type=&id=
+ *   pinegrap://forms/{id}/fields                 GET /forms/{id}/fields
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -65,6 +66,14 @@ function pg_mcp_resource_kinds() {
 			'name'         => 'workspace_record_refs',
 			'title'        => 'Where a record was talked about',
 			'description'  => 'The messages and tasks that point at one record, in the channels the person may read. type is order, product, product_group, offer, cart_quote, contact, user_account, erp_account, invoice, waybill, receipt, edoc, erp_quote, form, calendar_event, booking, file or page; id is the record\'s id.'
+		),
+
+		'form_fields' => array(
+			'uri_template' => 'pinegrap://forms/{id}/fields',
+			'route'        => 'forms.fields',
+			'name'         => 'form_fields',
+			'title'        => 'Form fields',
+			'description'  => 'The fields of one form, to read before writing a submission or a collection record: each field\'s name (what an answer is addressed by), label, type, whether it is required and the option values of a choice field. A rich-text area (rich_text true) takes HTML: html_allowed lists the tags, attributes, style properties, address schemes and image hosts it keeps, and max_length its longest answer. id is the form\'s id, which is its page id.'
 		)
 
 	);

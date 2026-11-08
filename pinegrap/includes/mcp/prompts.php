@@ -8,6 +8,7 @@
  *
  *   channel_summary (channel_id)    summarise a channel from its context
  *   weekly_report   (channel_id?)   a weekly report from the person's day
+ *   blog_post       (form_id, topic?)  a post written as one record of a form
  *
  * A prompt is offered only while the resources it reads are the caller's to
  * read, and it names or embeds nothing else: channel_summary embeds the
@@ -27,10 +28,11 @@ if (!defined('PG_MCP_ENTRY')) {
 	exit;
 }
 
-// The prompts, by name: what a client shows, the arguments, the resources
-// the caller must be able to read for the prompt to be offered (needs), and
-// the resource a prompt embeds when the caller may read it (embed: its
-// template variables from the prompt's arguments).
+// The prompts, by name: what a client shows, the arguments (an id unless
+// 'kind' is 'text'), the resources the caller must be able to read for the
+// prompt to be offered (needs), the routes that must be among the caller's
+// tools as well (tools), and the resource a prompt embeds when the caller
+// may read it (embed: its template variables from the prompt's arguments).
 function pg_mcp_prompt_kinds() {
 
 	return array(
@@ -52,14 +54,27 @@ function pg_mcp_prompt_kinds() {
 				array('name' => 'channel_id', 'description' => 'A channel or discussion to report on as well.', 'required' => false)
 			),
 			'needs'       => array('my_day')
+		),
+
+		'blog_post' => array(
+			'title'       => 'Write a blog post',
+			'description' => 'Write a blog post, or any record of a form such as a news item or a collection entry, and send it as one submission: the form\'s fields say what each one takes, the body is HTML the rich-text field keeps, pictures are uploaded first.',
+			'arguments'   => array(
+				array('name' => 'form_id', 'description' => 'The id of the form the post is a record of (its page id).', 'required' => true),
+				array('name' => 'topic', 'description' => 'What the post is about, in a few words.', 'required' => false, 'kind' => 'text')
+			),
+			'needs'       => array('form_fields'),
+			'tools'       => array('forms.get', 'forms.submission_create'),
+			'embed'       => array('resource' => 'form_fields', 'arguments' => array('id' => 'form_id'))
 		)
 
 	);
 
 }
 
-// Whether the caller is offered a prompt: it exists and every resource it
-// reads is one the caller may read. $routes is pg_mcp_routes().
+// Whether the caller is offered a prompt: it exists, every resource it
+// reads is one the caller may read and every tool it names is one of the
+// caller's. $routes is pg_mcp_routes(), by tool name.
 function pg_mcp_prompt_is_offered($name, $routes) {
 
 	$kinds = pg_mcp_prompt_kinds();
@@ -80,7 +95,26 @@ function pg_mcp_prompt_is_offered($name, $routes) {
 
 	}
 
+	foreach ((isset($kinds[$name]['tools']) ? $kinds[$name]['tools'] : array()) as $route_id) {
+
+		$tool = pg_mcp_tool_name($route_id);
+
+		if (!isset($routes[$tool]['id']) || ($routes[$tool]['id'] !== $route_id)) {
+
+			return false;
+
+		}
+
+	}
+
 	return true;
+
+}
+
+// The longest text argument a prompt takes, in characters.
+function pg_mcp_prompt_text_max() {
+
+	return 500;
 
 }
 
@@ -176,7 +210,26 @@ function pg_mcp_prompt_arguments($name, $arguments) {
 
 		$text = (is_string($value) || is_int($value)) ? (string)$value : '';
 
-		// Every argument a prompt takes today is the id of a channel.
+		// A text argument is the person's own words for the prompt: one line,
+		// cut to nothing it does not need, and refused when it is too long
+		// rather than silently shortened.
+		if (isset($argument['kind']) && ($argument['kind'] === 'text')) {
+
+			$text = trim((string)preg_replace('/[\x00-\x1F\x7F]+/u', ' ', is_string($value) ? $value : $text));
+
+			if (($text === '') || (mb_strlen($text) > pg_mcp_prompt_text_max())) {
+
+				return array('values' => array(), 'error' => 'Invalid argument: ' . $argument_name . ' must be text of 1 to ' . pg_mcp_prompt_text_max() . ' characters.');
+
+			}
+
+			$values[$argument_name] = $text;
+
+			continue;
+
+		}
+
+		// Every other argument is the id of a record.
 		if (preg_match('#^' . pg_mcp_resource_variable_pattern('id') . '\z#', $text) !== 1) {
 
 			return array('values' => array(), 'error' => 'Invalid argument: ' . $argument_name . ' must be a positive whole number.');
@@ -250,6 +303,10 @@ function pg_mcp_prompt_result($name, $values, $site, $routes, $embedded) {
 			. 'Write in the language the channel is written in. If the context cannot be read or is empty, say so and stop.' . "\n\n"
 			. pg_mcp_prompt_rules_text();
 
+	} else if ($name === 'blog_post') {
+
+		$text = pg_mcp_prompt_blog_post_text($values, $site, $routes, $embedded !== null);
+
 	} else {
 
 		$text = 'Write a weekly report for the person who connected you to the Workspace of ' . $site . ', from what you can read there now.' . "\n\n"
@@ -283,6 +340,39 @@ function pg_mcp_prompt_result($name, $values, $site, $routes, $embedded) {
 	}
 
 	return array('description' => $kinds[$name]['description'], 'messages' => $messages);
+
+}
+
+// blog_post's text. $attached says whether the form's fields follow as an
+// embedded resource. The picture step names files_create only when it is one
+// of the caller's tools.
+function pg_mcp_prompt_blog_post_text($values, $site, $routes, $attached) {
+
+	$form = array('id' => $values['form_id']);
+
+	$about = isset($values['topic']) ? ' about: ' . $values['topic'] : '';
+
+	$fields = $attached
+		? 'The form\'s fields are attached below as the resource ' . pg_mcp_resource_uri('form_fields', $form) . '.'
+		: 'Read the form\'s fields from ' . pg_mcp_prompt_read_line('form_fields', $form) . '.';
+
+	$files = pg_mcp_tool_name('files.create');
+
+	$pictures = (isset($routes[$files]['id']) && ($routes[$files]['id'] === 'files.create'))
+		? '- Pictures: upload each one with the tool ' . $files . ' and put the url it answers in an <img src="..."> with an alt text. A picture from another site is removed, since html_allowed lists the image hosts kept; a field of type file upload cannot be sent at all.'
+		: '- Pictures: this connection cannot upload files, so leave pictures out and say so; a picture from another site is removed, since html_allowed lists the image hosts kept.';
+
+	$create = pg_mcp_tool_name('forms.submission_create');
+
+	return 'Write a blog post for the person who asked' . $about . ', and send it as one record of form ' . $values['form_id'] . ' on ' . $site . '.' . "\n\n"
+		. $fields . ' Each field has a name (what an answer is addressed by), a label, a type, whether it is required, and the option values of a choice field. Read the form itself with the tool ' . pg_mcp_tool_name('forms.get') . ' (id ' . $values['form_id'] . '): is_collection says whether it is a collection, record_url_pattern where a record is read on the site, framework the page design (bootstrap5 or custom).' . "\n\n"
+		. 'Then:' . "\n"
+		. '- Put the post on the fields by their labels: the title in the title field, the body in the field whose rich_text is true, and an answer in every required field. A choice field (a status, a category) takes one of its option values exactly as listed. Choose a status that publishes only when the person asked to publish; otherwise a draft one, if the field offers it.' . "\n"
+		. '- Write the body as HTML that field keeps: only the tags, attributes, style properties and address schemes its html_allowed lists, within its max_length characters. No class attribute is kept, whatever the framework, so do not lean on a framework\'s classes; use headings, paragraphs, lists, links and emphasis.' . "\n"
+		. $pictures . "\n"
+		. '- Send it with the tool ' . $create . ' with dry_run true first and read the answer; then send it again without dry_run. Report the record\'s id and reference code and, when record_url_pattern is set, the address it will be read at.' . "\n"
+		. 'Write in the language the person writes in. If the form has no field for the body, or the fields cannot be read, say so and stop.' . "\n\n"
+		. pg_mcp_prompt_rules_text();
 
 }
 

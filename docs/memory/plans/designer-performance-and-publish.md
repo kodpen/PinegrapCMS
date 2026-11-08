@@ -13,7 +13,7 @@ description: Plan (owner 2026-11-06): the visual designer stops rebuilding every
 
 ## Which steps?
 - D1 (S) Measure. Done (#7987): `designer/designer-performance.md`.
-- D2 (M) Incremental canvas. After D1 and own-looks B0. A text, property or style edit redraws only the edited node's element (`buildNodeEl()` of that subtree swapped in place; ids, selection and scroll kept); the full rebuild stays for structure changes (add, move, delete, undo, tab switch, shared component edits). The toggleable open state and the editor-state classes survive as today.
+- D2 (M) Incremental canvas. Done (#8048): `designer/designer-incremental-canvas.md`. A one-node text, property or style edit redraws that element in place; structure changes, shared components, parts and props other nodes read keep the full rebuild. Browser `edit` numbers of the probe still to be taken.
 - D3 (M) Panels on demand. After D2. Only the visible panel redraws; the Layers tree updates the changed row and its ancestors; in-place typing debounces the panels and the validation while the canvas text stays live.
 - D4 (S) Lazy dirty checks. After D3. The page baseline and the shared snapshots are compared on tab switch and at save, not after every render; `_pgPageUnchanged()` keeps its rules (`multi-page-designer-editor.md`).
 - D5 (M, several PRs) Parts. After D4. The file is cut into parts bundled in order by `tools/build_js.php` (as `pg_image_editor_<part>.js`, `ui/image-editor-parts.md`); the parts not needed to open a page (AI, code view, theme panel, Google fonts browser, interactions, import) load on first use through one loader; D1's probe shows the opening before and after. One PR per part.
@@ -24,4 +24,4 @@ description: Plan (owner 2026-11-06): the visual designer stops rebuilding every
 - The save path and its checks (`pg_designer_save_page()`), the lock on the save path, the drafts model (`page-drafts.md`), the canvas's Bootstrap 5.3.8 output, the three-place rule for widget layouts. A new question goes to the architect.
 
 ## Where does it start?
-- D2 once own-looks B0 (#8022, same script) has merged; D7 is free beside it.
+- D3 once D2 (#8048) has merged; D7 is free beside it.
