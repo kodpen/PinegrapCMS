@@ -30699,8 +30699,8 @@ const StyleDesigner = (function () {
 
         showCtxMenu(x, y, [
             // The assistant panel is there only for the designers it serves.
-            ((!multi && node.type !== 'root' && _sdAccess() === 'full' && window.PgDesignerAI && findNodeById(node._id, tree))
-                ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { window.PgDesignerAI.open(node._id); } }
+            ((!multi && node.type !== 'root' && _sdAccess() === 'full' && _sdAiAvailable() && findNodeById(node._id, tree))
+                ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { _sdAiRun(function (ai) { ai.open(node._id); }); } }
                 : null),
             ((!multi && typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image'))
                 ? { icon: 'bi-brush', label: _sdT('Edit Image'), handler: function () { _sdOpenImageEditorForNode(node); } }
@@ -78913,6 +78913,94 @@ const StyleDesigner = (function () {
     saveAjax          = _sdProbeWrapSave(saveAjax);
 
 
+    // ── Parts on demand ───────────────────────────────────────────────────
+    // A part of the editor not needed to open a page is a bundle of its own
+    // (pg_designer_parts(), includes/fn/output.php): the screen hands the
+    // addresses of its files over as sdDesign.parts.<name>, and the part runs
+    // the first time something asks for it. _sdPartLoad() answers a promise
+    // that settles once every file of the part has run, in order; asked again
+    // it answers the same promise, and after a failure the next ask tries
+    // again. A part the screen did not hand over is refused.
+    var _sdParts = {};
+
+    function _sdPartUrls(name) {
+        var parts = (_design && _design.parts) || null;
+        var urls = (parts && Object.prototype.hasOwnProperty.call(parts, name)) ? parts[name] : null;
+        return (Array.isArray(urls) && urls.length) ? urls : null;
+    }
+
+    function _sdPartLoaded(name) {
+        return !!(_sdParts[name] && _sdParts[name].done);
+    }
+
+    function _sdPartScript(url) {
+        return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = url;
+            s.async = false;
+            s.onload = function () { resolve(); };
+            s.onerror = function () {
+                if (s.parentNode) s.parentNode.removeChild(s);
+                reject(new Error('could not load ' + url));
+            };
+            document.head.appendChild(s);
+        });
+    }
+
+    function _sdPartLoad(name) {
+        if (_sdParts[name]) return _sdParts[name].promise;
+        var urls = _sdPartUrls(name);
+        if (!urls) return Promise.reject(new Error('no editor part ' + name));
+        var entry = _sdParts[name] = { done: false, promise: null };
+        // One file after the other: a later file of the part may use what an
+        // earlier one defined.
+        entry.promise = urls.reduce(function (chain, url) {
+            return chain.then(function () { return _sdPartScript(url); });
+        }, Promise.resolve()).then(function () {
+            entry.done = true;
+        }, function (err) {
+            delete _sdParts[name];
+            throw err;
+        });
+        return entry.promise;
+    }
+    // ── end of parts on demand ────────────────────────────────────────────
+
+    // The assistant panel is the part 'ai', handed over only to the designers
+    // it serves. Its toolbar button and the canvas menu's "Ask the assistant
+    // about this" run it on first use; a proposal opened from a link runs it
+    // at once, and otherwise it runs once the editor has settled, so the
+    // requests still waiting from an earlier visit are carried on as before.
+    function _sdAiAvailable() {
+        return !!_sdPartUrls('ai');
+    }
+
+    function _sdAiRun(then) {
+        _sdPartLoad('ai').then(function () {
+            if (window.PgDesignerAI && then) then(window.PgDesignerAI);
+        }, function () {
+            sdToast(esc(_sdT('The assistant could not be loaded. Check the connection and try again.')), 'error');
+        });
+    }
+
+    function _sdAiPartInit() {
+        if (!_sdAiAvailable()) return;
+        var btn = document.getElementById('sd-ai-btn');
+        if (btn) {
+            btn.addEventListener('click', function first() {
+                btn.removeEventListener('click', first);
+                // Once the part has run, its own listener on the button
+                // answers the click.
+                if (_sdPartLoaded('ai')) return;
+                _sdAiRun(function (ai) { ai.toggle(); });
+            });
+        }
+        var ai = _design && _design.ai;
+        setTimeout(function () {
+            _sdPartLoad('ai').catch(function () { /* the button asks again */ });
+        }, (ai && parseInt(ai.proposal, 10) > 0) ? 0 : 1500);
+    }
+
     // What the assistant panel (assets/js/designer_ai.js) reads and does in
     // the editor: the active tab's tree, page and selection, and one way to
     // put a proposed tree in place of the tab's own - as a single undo step,
@@ -79000,6 +79088,7 @@ const StyleDesigner = (function () {
                 checkAutosaveRestore(hadExistingTree);
                 _updateSaveButtonState();
             }
+            _sdAiPartInit();
         },
         getTree: function () { return tree; },
         getTreeJSON: function () { return JSON.stringify(tree); },

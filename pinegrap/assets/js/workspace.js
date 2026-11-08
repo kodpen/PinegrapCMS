@@ -9899,6 +9899,9 @@
                 body.textContent = t('message_deleted');
             } else if (message.note_card) {
                 body.appendChild(self.noteCardNode(message.note_card));
+            } else if (message.note_group_card && window.PGWsNoteGroupShares && window.PGWsKit) {
+                // A group of notes shared here (workspace_note_group_shares.js).
+                body.appendChild(window.PGWsNoteGroupShares.card(window.PGWsKit, message.note_group_card, openNoteView));
             } else if (message.scheduled) {
                 // A scheduled action written here: its card, as it is now.
                 body.appendChild(scheduledCard(message.scheduled, function (fresh) {
@@ -21796,7 +21799,7 @@
         }
 
         var query = params();
-        var lists = { mine: [], shared: [], groups: [] };
+        var lists = { mine: [], shared: [], groups: [], sharedGroups: [] };
         var current = null;     // the note open, with its text
         var field = null;       // the writing box of the open note
         var voiceRow = null;    // where a recording made in the note runs
@@ -22102,12 +22105,26 @@
                 return null;
             }
 
+            var inShared = {};
+
+            lists.sharedGroups.forEach(function (group) { inShared[group.id] = true; });
+
             return {
                 kit: window.PGWsKit,
                 groups: lists.groups,
+                sharedGroups: lists.sharedGroups,
                 notes: lists.mine.concat(lists.shared),
-                mine: lists.mine,
+                // An own note put in a group shared with the person is drawn
+                // in that group's folder under Shared with me.
+                mine: lists.mine.filter(function (note) { return !inShared[Number(note.group_id || 0)]; }),
                 search: search,
+                people: ((BOOT && BOOT.people) || []).map(function (member) { return member.id; }),
+                channels: BOOT ? (BOOT.channels || []) : [],
+                // Share the group in an own group's menu
+                // (workspace_note_group_shares.js).
+                groupMenuExtra: function (group) {
+                    return window.PGWsNoteGroupShares ? window.PGWsNoteGroupShares.menuItems(groupsCtx(), group) : [];
+                },
                 title: t('notes_mine'),
                 emptyText: search ? t('notes_empty_search') : t('notes_empty'),
                 drawItem: drawItem,
@@ -22140,9 +22157,10 @@
                 kit: window.PGWsKit,
                 note: current,
                 notes: lists.mine.concat(lists.shared),
-                groups: lists.groups,
+                groups: lists.groups.concat(lists.sharedGroups),
                 search: search,
                 panel: card,
+                share: window.PGWsNoteGroupShares ? function (group) { window.PGWsNoteGroupShares.share(groupsCtx(), group); } : null,
                 open: function (noteId) { openNote(noteId); },
                 newNote: function () { startNew(); },
                 reload: loadList
@@ -22171,7 +22189,13 @@
             var groups = groupsCtx();
 
             list.appendChild(groups ? window.PGWsNoteGroups.mine(groups) : drawSection(t('notes_mine'), lists.mine, search ? t('notes_empty_search') : t('notes_empty')));
-            list.appendChild(drawSection(t('notes_shared'), groups ? window.PGWsNoteGroups.sharedLoose(groups, lists.shared) : lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
+            if (groups && window.PGWsNoteGroupShares) {
+                // Groups shared with the person as folders, then the notes
+                // shared one by one (workspace_note_group_shares.js).
+                list.appendChild(window.PGWsNoteGroupShares.section(groups, window.PGWsNoteGroups.sharedLoose(groups, lists.shared), t('notes_shared'), search ? t('notes_empty_search') : t('notes_empty_shared')));
+            } else {
+                list.appendChild(drawSection(t('notes_shared'), groups ? window.PGWsNoteGroups.sharedLoose(groups, lists.shared) : lists.shared, search ? t('notes_empty_search') : t('notes_empty_shared')));
+            }
         }
 
         function loadList() {
@@ -22179,6 +22203,7 @@
                 lists.mine = data.mine || [];
                 lists.shared = data.shared || [];
                 lists.groups = data.groups || [];
+                lists.sharedGroups = data.shared_groups || [];
 
                 if (data.menu) {
                     menuPinned = !!data.menu.pinned;
@@ -25055,9 +25080,12 @@
 
         loadList().then(function () {
             var wanted = parseInt(query.note || 0, 10) || 0;
+            var wantedGroup = parseInt(query.group || 0, 10) || 0;
 
             if (wanted) {
                 openNote(wanted);
+            } else if (wantedGroup && groupsCtx() && window.PGWsNoteGroupShares) {
+                window.PGWsNoteGroupShares.openGroup(groupsCtx(), wantedGroup, openNote);
             } else if (query['new']) {
                 startNew();
             }

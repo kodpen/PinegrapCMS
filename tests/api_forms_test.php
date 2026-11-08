@@ -119,7 +119,7 @@ function test_api_forms_every_route_applies_the_folder_rule()
 		pg_assert_same(($route['method'] === 'GET') ? 'forms:read' : 'forms:write', $route['scope'], $route['id'] . ' scope');
 	}
 
-	pg_assert_same(9, $found, 'list, get, fields, submissions, one submission, its create, update and both deletes');
+	pg_assert_same(12, $found, 'list, get, fields, submissions, one submission, its create, update, both deletes, revisions, one revision and its restore');
 
 	pg_assert_contains('api_form_owner_filter(', api_forms_test_function_source('api_form_submission_owned'), 'the submission loader');
 }

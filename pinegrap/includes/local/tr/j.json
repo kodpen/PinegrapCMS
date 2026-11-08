@@ -136,6 +136,7 @@
     "Journal Entries": "Günce Yazıları",
     "Journal Entry": "Günce Yazısı",
     "Journal Post": "Günce Yazısı",
+    "Journal Story": "Günce Yazısı",
     "Journal Team": "Günce Ekibi",
     "Journalists, retailers and repair partners: write to us and the right person answers.": "Gazeteciler, satıcılar ve onarım ortakları: bize yazın, doğru kişi yanıtlasın.",
     "Journalists, shops and partners: write to us and the right person answers.": "Gazeteciler, mağazalar ve iş ortakları: bize yazın, doğru kişi yanıtlasın.",
@@ -195,6 +196,8 @@
     "join-the-library": "kutuphaneye-uye-ol",
     "joined a contact group": "bir kişi grubuna katıldı",
     "journal": "gunce",
+    "journal, blog, articles, studio visits, conversations, interviews, collecting": "günce, blog, yazılar, atölye ziyaretleri, söyleşiler, röportajlar, koleksiyon",
     "journal-post": "gunce-yazisi",
+    "journal-story": "gunce-yazisi",
     "just now": "az önce"
 }

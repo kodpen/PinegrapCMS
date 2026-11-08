@@ -199,6 +199,10 @@
             head.appendChild(mark(kit, 'bi-lock-fill', kit.t('notes_group_locked')));
         }
 
+        if (group.shared) {
+            head.appendChild(mark(kit, 'bi-people', kit.t('notes_group_shared')));
+        }
+
         box.appendChild(head);
 
         row.setAttribute('role', 'tablist');
@@ -391,11 +395,22 @@
         box.appendChild(row);
 
         // + : a new note in this group. The screen saves the open one first
-        // and places the new one last in the group (startNew()).
-        var add = kit.button('ws-nb-tabs-add', '', 'bi-plus-lg', kit.t('notes_tab_new'));
-        add.title = kit.t('notes_tab_new');
-        add.addEventListener('click', function () { ctx.newNote(); });
-        box.appendChild(add);
+        // and places the new one last in the group (startNew()). A group
+        // shared with the person to read only takes none.
+        if (group.reach !== 'view') {
+            var add = kit.button('ws-nb-tabs-add', '', 'bi-plus-lg', kit.t('notes_tab_new'));
+            add.title = kit.t('notes_tab_new');
+            add.addEventListener('click', function () { ctx.newNote(); });
+            box.appendChild(add);
+        }
+
+        // The owner shares the group from here too (workspace_note_group_shares.js).
+        if (ctx.share && !group.reach && !group.locked) {
+            var shareButton = kit.button('ws-nb-tabs-add', '', 'bi-person-plus', kit.t('notes_group_share'));
+            shareButton.title = kit.t('notes_group_share');
+            shareButton.addEventListener('click', function () { ctx.share(group); });
+            box.appendChild(shareButton);
+        }
 
         var focusIndex = notes.map(function (one) { return Number(one.id); }).indexOf(focusAfter);
 

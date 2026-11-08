@@ -4,13 +4,12 @@
  *
  * Tests for the general block families that extend the core's Hours &
  * Locations group (assets/js/style_designer_blocks_hours.js and
- * style_designer_blocks_locations.js): the core's registration call and
- * helper kit are cut out of style_designer.src.js and run under Node with
- * each family file (skipped on a machine without Node). A general family
- * opens no palette group of its own; each block draws a section with one h2
- * and no skipped heading level, no fixed colour class, every {var} slot
- * filled, no year, an entrance the interaction normalizer keeps, and the
- * structure its name promises.
+ * style_designer_blocks_locations.js), run under Node by
+ * helpers/designer_family_run.php (skipped on a machine without Node). A
+ * general family opens no palette group of its own; each block draws a
+ * section with one h2 and no skipped heading level, no fixed colour class,
+ * every {var} slot filled, no year, an entrance the interaction normalizer
+ * keeps, and the structure its name promises.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -22,87 +21,13 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-function designer_blocks_general_test_file($name)
-{
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_blocks_' . $name . '.js');
-}
-
-// The core between $from and the first $to after it, asserted found.
-function designer_blocks_general_test_cut($from, $to)
-{
-	static $js = null;
-	if ($js === null) {
-		$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
-	}
-	$start = strpos($js, $from);
-	$end = $start === false ? false : strpos($js, $to, $start + strlen($from));
-	pg_assert_true($start !== false && $end !== false, 'the core holds ' . trim($from));
-	return ($start === false || $end === false) ? '' : substr($js, $start, $end - $start);
-}
-
-// Every block's tree, drawn under Node, flattened to the facts the tests
-// read; null without Node.
-function designer_blocks_general_test_run($name)
-{
-	static $runs = array();
-	if (array_key_exists($name, $runs)) {
-		return $runs[$name];
-	}
-	$out = array();
-	$code = 1;
-	@exec('node --version 2>&1', $out, $code);
-	if ($code !== 0) {
-		return $runs[$name] = null;
-	}
-
-	$script = "'use strict';\n"
-		. designer_blocks_general_test_cut('    function _sdT(key, vars) {', "\n    }\n") . "\n    }\n"
-		. "var _ids = 0;\n"
-		. "function createNode(type, props, children) { return { id: 'n' + (++_ids), type: type, props: props || {}, children: children || [] }; }\n"
-		. designer_blocks_general_test_cut('    // ── Block families in their own files', '    // ── Block stylesheet')
-		. designer_blocks_general_test_cut('    function _sdFxSpec() {', '    // The data-pg-fx-* attributes')
-		. "var _SD_BLOCK_CSS = {}, _SD_BLOCK_CSS_NEEDS = {};\n"
-		. "var StyleDesigner = { registerBlockFamily: _sdRegisterBlockFamily };\n"
-		. designer_blocks_general_test_file($name) . "\n"
-		. "var fam = _sdBlockFamilies()[0];\n"
-		. "var report = { prefix: fam.prefix, group: fam.group ? fam.group.title : null, blocks: {} };\n"
-		. "fam.items.forEach(function (it) {\n"
-		. "  var ct = it.extra.componentType, root = fam.build(ct);\n"
-		. "  var b = { root: [root.type, root.props.tag], attrs: root.props._attrs || [], classes: [], headings: [], texts: [], fx: [], badges: [], cells: [] };\n"
-		. "  (function walk(n) {\n"
-		. "    var p = n.props;\n"
-		. "    String(p.cssClass || '').split(/\\s+/).forEach(function (c) { if (c) b.classes.push(c); });\n"
-		. "    if (p.text) b.texts.push(p.text);\n"
-		. "    if (p.alt) b.texts.push(p.alt);
-"
-		. "    var tag = p.tag || '';\n"
-		. "    if (/^t[hd]$/.test(tag)) b.cells.push(tag + ':' + ((p._attrs || []).filter(function (a) { return a.name === 'scope'; }).map(function (a) { return a.value; })[0] || ''));\n"
-		. "    if (/^h[1-6]$/.test(tag)) b.headings.push(tag);\n"
-		. "    if (p._fx) b.fx.push(_sdFxNormalize(p._fx) ? 'ok' : 'dropped');\n"
-		. "    if (/(^| )badge( |$)/.test(p.cssClass || '') && n.children.length) {\n"
-		. "      b.badges.push(n.children.map(function (k) { return k.props.contentType || k.props.tag; }).join('+'));\n"
-		. "    }\n"
-		. "    n.children.forEach(walk);\n"
-		. "  })(root);\n"
-		. "  report.blocks[ct] = b;\n"
-		. "});\n"
-		. "report.unknown = fam.build(fam.prefix + 'none');\n"
-		. "console.log(JSON.stringify(report));\n";
-
-	$file = tempnam(sys_get_temp_dir(), 'pggen');
-	file_put_contents($file, $script);
-	$out = array();
-	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
-	unlink($file);
-	pg_assert_same(0, $code, implode("\n", $out));
-	return $runs[$name] = json_decode((string) end($out), true);
-}
+require_once(__DIR__ . '/helpers/designer_family_run.php');
 
 function test_designer_blocks_general_families_join_core_groups()
 {
-	$expect = array('hours' => array('hours-', array('hours-seasons')), 'locations' => array('locations-', array('locations-spaces')));
+	$expect = array('hours' => array('hours-', array('hours-seasons')), 'locations' => array('locations-', array('locations-spaces', 'locations-floors')));
 	foreach ($expect as $name => $want) {
-		$got = designer_blocks_general_test_run($name);
+		$got = pg_test_designer_family_run($name);
 		if ($got === null) {
 			pg_assert_true(true, 'Node is not installed: the run is skipped');
 			return;
@@ -119,7 +44,7 @@ function test_designer_blocks_general_blocks_draw_sound_trees()
 	$fixed = array('bg-white', 'bg-light', 'bg-dark', 'text-white', 'text-white-50', 'text-light', 'text-dark', 'text-muted', 'text-bg-light', 'text-bg-dark', 'btn-light', 'btn-dark', 'btn-outline-light', 'link-light', 'navbar-dark');
 	$blocks = array();
 	foreach (array('hours', 'locations') as $name) {
-		$got = designer_blocks_general_test_run($name);
+		$got = pg_test_designer_family_run($name);
 		if ($got === null) {
 			pg_assert_true(true, 'Node is not installed: the run is skipped');
 			return;
@@ -150,18 +75,26 @@ function test_designer_blocks_general_blocks_draw_sound_trees()
 	pg_assert_same(9, count(array_keys($spaces['classes'], 'badge', true)), 'three amenities on each card');
 	pg_assert_true(in_array('Up to 120 guests', $spaces['texts'], true) && in_array('180 m²', $spaces['texts'], true), 'a space says how many it holds and its size');
 	pg_assert_true(in_array('pg-ratio-16x9', $spaces['classes'], true) && in_array('object-fit-cover', $spaces['classes'], true), 'pictures keep one shape');
+
+	$floors = $blocks['locations-floors'];
+	pg_assert_same(5, count(array_keys($floors['headings'], 'h3', true)), 'a heading per floor');
+	pg_assert_same(5, count(array_keys($floors['classes'], 'pg-floor-level', true)), 'a level square per floor');
+	pg_assert_same(15, count(array_keys($floors['classes'], 'badge', true)), 'what is on each floor, as pills');
+	pg_assert_true(in_array('Everyone, 7 am to 10 pm', $floors['texts'], true) && in_array('Members, around the clock', $floors['texts'], true), 'who may go up, in words');
+	pg_assert_true(in_array('Roof', $floors['texts'], true) && in_array('0', $floors['texts'], true), 'from the roof down to the ground floor');
 }
 
 // The rules the blocks need are read from the family files by the PHP
 // stylesheet reader, so a template can ship them.
 function test_designer_blocks_general_rules_reach_the_stylesheet()
 {
-	$hours = _pg_designer_block_css_parse(designer_blocks_general_test_file('hours'));
+	$hours = _pg_designer_block_css_parse(pg_test_designer_family_file('hours'));
 	pg_assert_same(array('pg-hours-table'), array_keys($hours['rules']), 'the hours family\'s rule');
 	pg_assert_same(array('pg-hours-table'), $hours['needs']['hours-seasons'], 'seasonal hours need it');
-	$spaces = _pg_designer_block_css_parse(designer_blocks_general_test_file('locations'));
-	pg_assert_same(array('pg-space-facts'), array_keys($spaces['rules']), 'the locations family\'s rule');
+	$spaces = _pg_designer_block_css_parse(pg_test_designer_family_file('locations'));
+	pg_assert_same(array('pg-space-facts', 'pg-floor-level'), array_keys($spaces['rules']), 'the locations family\'s rules');
+	pg_assert_same(array('pg-floor-level'), $spaces['needs']['locations-floors'], 'the floor directory needs its level square');
 	pg_assert_same(array('pg-ratio-16x9', 'pg-space-facts'), $spaces['needs']['locations-spaces'], 'the space cards need the core picture ratio and their own rule');
 	$source = _pg_designer_block_css_source();
-	pg_assert_true(isset($source['rules']['pg-hours-table'], $source['rules']['pg-space-facts']), 'the block stylesheet holds both rules');
+	pg_assert_true(isset($source['rules']['pg-hours-table'], $source['rules']['pg-space-facts'], $source['rules']['pg-floor-level']), 'the block stylesheet holds the rules');
 }

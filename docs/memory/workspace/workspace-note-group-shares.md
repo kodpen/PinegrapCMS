@@ -4,7 +4,7 @@ description: Shared note groups (note_group_shares.php, G5): group shares writte
 ---
 
 ## How is a group shared?
-- `ws_note_group_shares` rows (person with can_edit, or a channel with the card's `message_id`); the group's notes reach people through `ws_note_shares` rows with `via_group` = the group, one per note and person or channel. A channel gets one card for the group ("Shared a group of notes: …"), none per note; the card's drawing is G6.
+- `ws_note_group_shares` rows (person with can_edit, or a channel with the card's `message_id`); the group's notes reach people through `ws_note_shares` rows with `via_group` = the group, one per note and person or channel. A channel gets one card for the group ("Shared a group of notes: …"), none per note; the screen and the card: `workspace-note-groups-shared-screen.md`.
 - `ws_note_group_share_sync($group_id, $by)` lays the wanted rows (`ws_note_group_share_wanted()`, pure) over the rows there are (`ws_note_group_share_diff()`, pure): insert, change the right in place, delete. It runs after every change below; nothing else writes `via_group` rows.
 
 ## Which rows does a group want?

@@ -300,6 +300,26 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'inventory.moves',
+			'method'  => 'GET',
+			'path'    => '/inventory/moves',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_moves',
+			'returns' => array('list' => 'StockMove'),
+			'summary' => 'Stock history',
+			'description' => 'Every change of a product\'s units at a stock location, newest first, as the Stock history screen lists it: orders, cancellations, returns, counts, imports, marketplace and accounting changes, transfers (two rows with the same ref) and changes by hand or over this API. delta is the change, quantity_after the units left at that location. Only sites that keep stock per location record moves; GET /erp/stock/moves lists the accounting documents\' stock lines instead. Refusals: 422 location when location is not a stock location of this site.',
+			'params'  => array(
+				array('name' => 'product_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product\'s moves.'),
+				array('name' => 'location',   'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the moves at this location (GET /inventory/locations; 0 or left out: every location).'),
+				array('name' => 'reason',     'in' => 'query', 'type' => 'enum', 'values' => pg_stock_reasons(), 'description' => 'Only moves of this kind: panel (product screen), bulk_edit, import, checkout (an order), local_sale (a store sale), cancel, return, barcode, api, transfer, count (a stock count), marketplace, erp (accounting) or workspace.'),
+				array('name' => 'from',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only moves at or after this moment; a date alone counts from its 00:00 in the site\'s time zone.'),
+				array('name' => 'to',         'in' => 'query', 'type' => 'datetime', 'description' => 'Only moves at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
 			'id'      => 'inventory.transfer',
 			'method'  => 'POST',
 			'path'    => '/inventory/transfer',
@@ -3977,6 +3997,57 @@ function api_schema() {
 			)
 		),
 
+		// The History section of a collection item (includes/fn/record_revisions.php).
+		array(
+			'id'      => 'forms.submission_revisions',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submission_revisions',
+			'returns' => array('list' => 'FormSubmissionRevision'),
+			'summary' => 'Revisions of a collection record',
+			'description' => 'The History section of the submitted-form screen: one revision for every save that changed the record\'s answers or its address name, newest first, with who saved it and how (source edit, restore, api or workspace). A save that only marked it complete or incomplete writes none. current marks the revision the record holds now. The answers are not listed; read one revision with GET /forms/{id}/submissions/{submission_id}/revisions/{no} and put it back with POST …/revisions/{no}/restore. Only the records of a collection form keep revisions: any other is answered 409 not_a_collection. The site keeps the last revisions of each record and the recent ones (the page revision settings), so old numbers disappear. Cursor paged. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_revision_get',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions/{no}',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submission_revision_get',
+			'returns' => 'FormSubmissionRevisionDetail',
+			'summary' => 'One revision of a collection record, compared with the record',
+			'description' => 'What Compare shows in the History section: every field in form order with the revision\'s answers (values; file_id for an upload) beside the record\'s current ones, changed when they differ, and restore, what a restore would do to it: value (the answer is written back), file (the revision\'s file is attached again), gone (that file has been deleted since, the current one stays), kept (a signature, or a revision without a file: the current value stays) or unchanged. 409 not_a_collection for a record of a form that is no collection; 404 for a revision number the record does not have.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'no',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The revision number (GET /forms/{id}/submissions/{submission_id}/revisions).')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_revision_restore',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions/{no}/restore',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_revision_restore',
+			'dry_run' => true,
+			'returns' => 'FormSubmissionRestore',
+			'summary' => 'Put a revision of a collection record back',
+			'description' => 'As loading the revision from the History section and saving it: the revision\'s answers are written back and its uploaded files that still exist are attached again; a signature and a file deleted since stay as they are now (fields lists what happens to each field that differs, as restore in GET …/revisions/{no}). The address name follows the restored title on a form with pretty addresses, whether the record is complete stays, and the save is recorded as a revision of its own with the source restore (revision_no). When the record already holds that revision nothing is written and changed is false. 409 not_a_collection for a record of a form that is no collection; 404 for a revision number the record does not have.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'no',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The revision number (GET /forms/{id}/submissions/{submission_id}/revisions).')
+			)
+		),
+
 		/* ----- Pages -------------------------------------------------------- */
 
 		array(
@@ -4483,6 +4554,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/start',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_start',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'Start or resume an experiment',
 			'description' => 'A set-up (draft) experiment starts, a paused one runs again; visitors are then drawn into its variants by their weights. A start is refused with 409 experiment_state when the page is no longer on the site, a variant is no longer a draft, another experiment runs on the page, or the experiment is running or ended. The first start stamps started_at and announces experiment.started. Stored copies of pages are made old, as after a panel change.',
@@ -4497,6 +4569,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/pause',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_pause',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'Pause an experiment',
 			'description' => 'A running experiment pauses: every visitor sees the live page and nothing is counted until it runs again. 409 experiment_state unless it is running.',
@@ -4511,6 +4584,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/end',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_end',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'End an experiment without a winner',
 			'description' => 'A running or paused experiment ends for good, with no winner and the live page as it is; the variant draft stays in Drafts. Publishing a variant\'s design as the winner is done in the panel, where the page lock applies. Announces experiment.ended. 409 experiment_state when it is a set-up or already ended.',
