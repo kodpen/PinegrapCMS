@@ -233,6 +233,7 @@ function test_custom_form_rules_templates()
 		array('pinegrap-carrental', 'cr-bk-return-date'),
 		array('pinegrap-carrental', 'cr-be-start'),
 		array('pinegrap-filmstudio', 'fm-hire-date'),
+		array('pinegrap-gallery', 'gl-vw-date'),
 	) as $c) {
 		$node = _test_cf_rules_template_node($c[0], $c[1]);
 		pg_assert_true($node !== null, $c[1] . ' exists');
