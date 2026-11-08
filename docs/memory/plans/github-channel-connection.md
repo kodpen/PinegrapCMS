@@ -14,11 +14,11 @@ description: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings â€
 - Who may link: who may post in the channel and manage connections; a private channel only by a member.
 
 ## Steps (claim as `[plan:github-channel-connection] G<n> â€” <topic>`; after A4 of `plans/agent-channel.md`)
-- G1 (M) GitHub provider and purpose (model A), setup page, connect and disconnect; no schema.
+- G1 (M) GitHub provider and purpose (model A), setup page, connect and disconnect; no schema. Done (#PR): `channel_links` purpose, `api/api-connected-accounts-github.md`.
 - G2 (M, schema) Links, webhook creation and removal, the receiver, the lines, the card. Schema asked when claimed (a link table or rows in an existing one).
 - G3 (S) Model B for GitHub once the broker exists.
 - Then this repository's CI moves to the connection and the four `PG_WS_*` secrets and the `channel` jobs can go (asked first: the merging session reads those lines).
 
 ## Open questions (asked when the step is claimed)
-- Scopes: `admin:repo_hook` creates hooks; listing private repositories needs `repo`, or the user types `owner/name`.
+- Scopes (decided in G1, least privilege): only `admin:repo_hook`; public repositories may be listed, a private one is typed as `owner/name` (no `repo` scope).
 - A GitHub App (fine-grained, one central webhook address, a Kodpen relay) instead of an OAuth app, for model B.

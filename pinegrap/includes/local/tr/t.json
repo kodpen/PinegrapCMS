@@ -5470,6 +5470,7 @@
     "The provider did not return a PDF for this document.": "Sağlayıcı bu belge için PDF döndürmedi.",
     "The provider gave no lasting permission.": "Sağlayıcı kalıcı izin vermedi.",
     "The provider may already have delivered this message, and sent again it would arrive twice. Check the provider's report first.": "Sağlayıcı bu mesajı zaten iletmiş olabilir; yeniden gönderilirse iki kez gider. Önce sağlayıcının raporuna bakın.",
+    "The provider no longer accepts the permission.": "Sağlayıcı bu izni artık kabul etmiyor.",
     "The provider of this connection is not known to this version.": "Bu bağlantının sağlayıcısını bu sürüm tanımıyor.",
     "The provider refused the delivery note.": "Sağlayıcı irsaliyeyi reddetti.",
     "The provider returned a different document than the one asked for.": "Sağlayıcı istenenden farklı bir belge döndürdü.",
