@@ -117,8 +117,8 @@ function ws_note_group_order_merge($current, $asked)
 /**
  * A group row for the screen.
  *
- * @param array $row id, name, color, sort, locked, notes (count)
- * @return array id, name, color, hex, sort, locked, count
+ * @param array $row id, name, color, sort, locked, notes (count), shares (count)
+ * @return array id, name, color, hex, sort, locked, count, shared
  */
 function ws_note_group_present($row)
 {
@@ -132,6 +132,7 @@ function ws_note_group_present($row)
         'sort'   => (int) ($row['sort'] ?? 0),
         'locked' => !empty($row['locked']),
         'count'  => (int) ($row['notes'] ?? 0),
+        'shared' => (int) ($row['shares'] ?? 0) > 0,
     );
 }
 
@@ -148,7 +149,9 @@ function ws_note_groups($viewer)
         return array();
     }
 
-    $rows = (array) db_items("SELECT g.id, g.name, g.color, g.sort, g.locked, COUNT(p.note_id) AS notes
+    // Whether a group is shared: the screen asks before a note goes in or out.
+    $rows = (array) db_items("SELECT g.id, g.name, g.color, g.sort, g.locked, COUNT(p.note_id) AS notes,
+            (SELECT COUNT(*) FROM ws_note_group_shares s WHERE s.group_id = g.id) AS shares
         FROM ws_note_groups g
         LEFT JOIN ws_note_places p ON p.group_id = g.id
         WHERE g.user_id = '" . (int) $viewer['id'] . "'

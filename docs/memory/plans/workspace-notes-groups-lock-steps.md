@@ -12,7 +12,7 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 
 - G2 (M) Groups on the screen. Done (PR #8065). New `assets/js/workspace_note_groups.js`: folders in My Notes as `-design.md` draws them, open or closed kept in the browser, New group, the group's menu, the note menu's Move to group, search answered inside groups, phone.
 
-- G3 (M) Drag and drop. After G2. Same file: notes into, out of, along and between groups; groups in the list; the questions a shared or a locked group asks (`-design.md`); Move to group and a long press as the keyboard and touch ways.
+- G3 (M) Drag and drop. Done (PR #8104). Same file: notes into, out of, along and between groups; groups in the list; the questions a shared or a locked group asks (`-design.md`); Move to group and a long press as the keyboard and touch ways.
 
 - G4 (M) Tabs. Done (PR #8095). New `assets/js/workspace_note_tabs.js`: an open note's group as tabs over it (tablist, the group's order, lock and shared marks, + for a new note in the group, arrow keys, a tab dragged along changes the order, sideways scroll on a phone); the note is saved before switching, as a list click does.
 
@@ -23,4 +23,4 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 - G7 (M) API and MCP. After G5. New `includes/workspace/api_note_groups.php`: list, create, change and delete groups, place a note, each with dry run through the panel's `*_check()`, MCP tools as the note routes have; `group_id` on note objects; `check_api_schema.php`. Sharing stays on the screen, as for notes.
 
 ## Where does the next session start?
-- N0, G1, G2, G4 done. Free next: G3 (drag and drop, same file `assets/js/workspace_note_groups.js`; the rows come from `drawItem()` in `startNotes()`, placing goes through `ws_note_place` with `position`), G5 (store, new file). Tabs: `workspace/workspace-note-tabs.md`. Screen notes: `workspace/workspace-note-groups-screen.md`; store: `workspace/workspace-note-groups.md`.
+- N0, G1, G2, G3, G4, G5 done. Free next: G6 (shared groups on the screen: the Share dialog over the `ws_note_group_share*` actions, groups shared with me as folders, the group's channel card, `?group=N`; the store is `workspace/workspace-note-group-shares.md`) and G7 (API, new file). G6 extends `workspace_note_groups.js` (drag and drop already asks for shared groups through `group.shared`) and draws the card for the group share's `message_id`. Screen notes: `workspace/workspace-note-groups-screen.md`; tabs: `workspace/workspace-note-tabs.md`.
