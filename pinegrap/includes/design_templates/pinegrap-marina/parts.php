@@ -140,6 +140,7 @@ $harbour = array(
     'address'     => lang('Harbour Road 1, Pine Bay'),
     'coordinates' => '40.6512, 29.2741',
     'vhf'         => lang('VHF channel 72'),
+    'channel'     => '72',
     'phone'       => '+90 555 000 00 00',
     'email'       => 'harbour@example.com',
     'hours'       => lang('Harbour office: every day, 8:00 to 20:00 in summer and 8:30 to 17:30 in winter'),
@@ -401,6 +402,26 @@ $figures = array(
     array('value' => '60', 'label' => lang('Berths kept for visitors')),
     array('value' => '30 m', 'label' => lang('Largest boat we take')),
     array('value' => '40 t', 'label' => lang('Travel lift in the boatyard')),
+);
+
+// The pontoons behind the breakwater (the Pontoon Plan block on the home,
+// the berths and the arriving page): the letter, what it is for, how many
+// berths, their length, the largest boat, the depth alongside and what
+// each berth has. The berths add up to the first figure above.
+$pontoons = array(
+    'A' => array('name' => lang('Pontoon A'), 'use' => lang('Visiting boats'), 'berths' => '60',
+        'from' => '10', 'to' => '25', 'largest' => '25', 'depth' => '3.5', 'amenities' => array('power', 'water', 'wifi')),
+    'B' => array('name' => lang('Pontoon B'), 'use' => lang('Seasonal and annual'), 'berths' => '200',
+        'from' => '8', 'to' => '15', 'largest' => '15', 'depth' => '3', 'amenities' => array('power', 'water', 'wifi')),
+    'C' => array('name' => lang('Pontoon C'), 'use' => lang('Large yachts'), 'berths' => '110',
+        'from' => '15', 'to' => '30', 'largest' => '30', 'depth' => '3.5', 'amenities' => array('power', 'water', 'wifi')),
+    'D' => array('name' => lang('Pontoon D'), 'use' => lang('Day boats and tenders'), 'berths' => '50',
+        'from' => '5', 'to' => '9', 'largest' => '9', 'depth' => '2.5', 'amenities' => array('water')),
+);
+$pontoon_amenities = array(
+    'power' => array('icon' => 'bi-plug', 'title' => lang('Shore power')),
+    'water' => array('icon' => 'bi-droplet', 'title' => lang('Water')),
+    'wifi'  => array('icon' => 'bi-wifi', 'title' => lang('Wi-Fi')),
 );
 
 // What crews say, each about a kind of berth.

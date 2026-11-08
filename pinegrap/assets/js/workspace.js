@@ -3730,6 +3730,7 @@
             slashInserts: options.slashInserts,
             removeLabel: options.removeLabel,
             headings: !!options.headings,
+            media: options.media,
             pasteFiles: options.pasteFiles,
             onInput: function () {
                 field.pickerCheck();
@@ -24359,7 +24360,7 @@
         }
 
         // Files dropped on the note or picked: kept for those who may read it,
-        // and linked where the caret was.
+        // and put where the caret was, on a line of their own (insertFile()).
         function attach(files) {
             // Taken now: the list empties as soon as the picker is reset or
             // the drop is over, before the note has been saved.
@@ -24390,7 +24391,7 @@
 
                     request.done.then(function (data) {
                         card.remove();
-                        field.rich.insertLink(data.file.name, data.file.url);
+                        field.rich.insertFile(data.file.name, data.file.url);
                     }).catch(function (error) {
                         card.remove();
 
@@ -24405,8 +24406,8 @@
         }
 
         // A canvas drawn in the image editor, kept as the note's own file
-        // with its document (workspace_file_save.php?note=) and linked where
-        // the caret was.
+        // with its document (workspace_file_save.php?note=) and put where the
+        // caret was, on a line of its own.
         function drawCanvas() {
             if (!current || !editable() || !field) {
                 return;
@@ -24429,7 +24430,7 @@
                         save: { mode: 'url', url: CFG.urls.file_save + '?note=' + note.id, label: t('canvas_to_note') }
                     }).then(function (result) {
                         if (current && (current.id === note.id) && field && result && result.file) {
-                            field.rich.insertLink(result.file.name, result.file.url);
+                            field.rich.insertFile(result.file.name, result.file.url);
                         }
                     });
                 }, function () {
@@ -24465,7 +24466,9 @@
         }
 
         // The recordings a note links to: a Markdown link whose words are a
-        // recorder's file name (voice-…), once each, in their order.
+        // recorder's file name (voice-…), once each, in their order. One on a
+        // line of its own has its player there (the writing box's media card,
+        // the read view's sound player) and is left out.
         function voiceLinks(text) {
             var found = [];
             var seen = {};
@@ -24478,8 +24481,19 @@
                 return found;
             }
 
+            var inline = {};
+            var mediaLine = window.PGWsEditor && window.PGWsEditor.mediaLine;
+
+            String(text || '').split(/\r\n|\r|\n/).forEach(function (line) {
+                var media = mediaLine ? mediaLine(line, CFG.urls.files) : null;
+
+                if (media) {
+                    inline[media.url] = true;
+                }
+            });
+
             while ((match = pattern.exec(String(text || ''))) !== null) {
-                if (window.PGWsVoice.isVoice(match[1]) && !seen[match[2]]) {
+                if (window.PGWsVoice.isVoice(match[1]) && !seen[match[2]] && !inline[match[2]]) {
                     seen[match[2]] = true;
                     found.push({ name: match[1], url: match[2], kind: 'audio' });
                 }
@@ -24688,6 +24702,25 @@
                 removeLabel: t('block_remove_note'),
                 // Headings and rules, which a note draws and a message does not.
                 headings: true,
+                // A file of this site on a line of its own is a card showing
+                // it (a recording with its player), which opens the image
+                // viewer or the file preview.
+                media: {
+                    open: function (media) {
+                        if (media.kind === 'image') {
+                            viewImages([{ src: media.url, alt: media.label, caption: media.label }], 0);
+                        } else if (media.kind === 'pdf' || media.kind === 'video') {
+                            previewFile({ url: media.url, name: media.label, kind: media.kind });
+                        } else {
+                            window.open(media.url, '_blank', 'noopener');
+                        }
+                    },
+                    player: function (media) {
+                        return (window.PGWsVoice && window.PGWsVoice.isVoice(media.label))
+                            ? window.PGWsVoice.player({ name: media.label, url: media.url, kind: 'audio' }, featureHelpers(), {})
+                            : null;
+                    }
+                },
                 // A picture pasted into the note is attached, as a dropped one.
                 pasteFiles: function (files) { attach(files); },
                 onKeydown: function (event) {
