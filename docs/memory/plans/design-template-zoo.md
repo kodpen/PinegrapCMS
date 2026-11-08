@@ -8,7 +8,7 @@ description: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals 
 - File layout like Ski Resort (main file plus folder `pinegrap-zoo/`, one file per step, `$…_part`; [[design-template-museum]]); never its look.
 
 ## What makes it unlike the shipped templates?
-- Composition: the home opens on the day: a short hero, `zoo-today` second, then the animal spotlight, zone cards, map teaser, conservation band. No figures row, testimonials, ask band or FAQ accordion on the home.
+- Composition: the home opens on the day: short hero, `zoo-today` second, then the animal spotlight, zone cards, map teaser, conservation band. No figures row, testimonials, ask band or FAQ accordion on the home.
 - Signature sections (family `zoo-`, step 1): the day's schedule with the next item marked, the animal spotlight with its status scale, the numbered park map, the conservation projects.
 - Motion: schedule rows and map zones rise on view, the spotlight photo scales in; nothing moves by itself (`props._fx` only).
 - Type: Bricolage Grotesque headings, Rubik body; no other template uses either for headings.
