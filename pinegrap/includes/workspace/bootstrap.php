@@ -120,6 +120,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/home.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/note_groups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/note_group_shares.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/note_lock.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_io.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_import.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_enex.php');

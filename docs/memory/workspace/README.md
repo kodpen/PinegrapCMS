@@ -46,7 +46,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
 - mail-triage.md: Pinegrap AI's one suggestion on a new e-mail conversation (G8, PR #3787, decision #3744 a): the per-box switch, when it runs, the prompt, the message and its draft, what it never does
-- note-media.md: A note line holding only a link to a file of this site is drawn as the file (picture, video/sound player, file card) by ws_render_body(…, $note = true); includes/workspace/note_media.php
+- note-media.md: A note line linking only to a file of this site is drawn as the file in the read view (ws_render_body, note_media.php) and as a media card in the writing box (workspace_editor.js)
 - plan-board-grid.md: Plan board (workspace_board.php) grid columns and why .ws-board's min-width equals the grid minimum (#3815)
 - voice-browser-to-text.md: "Convert to text" for a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
@@ -272,6 +272,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-note-groups-screen.md: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
 - workspace-note-groups-shared-screen.md: Shared note groups on the screen (G6) — workspace_note_group_shares.js (Share dialog, Shared with me folders, channel group card, ?group=N) and the list fields shared_groups / shared_group
 - workspace-note-groups.md: Workspace note groups and the notes lock — tables of step 11.0.119, readiness probes ws_note_groups_ready() / ws_note_lock_ready()
+- workspace-note-lock.md: The notes lock store (includes/workspace/note_lock.php): PIN set-up and checks, the open lock in the session, the times, the pause after wrong PINs, the e-mailed code, panel actions ws_note_lock_*
 - workspace-note-tabs.md: Note tabs over an open note on My Notes — workspace_note_tabs.js (group as ARIA tablist, marks, +, keys, drag to reorder via ws_note_place) and drawTabs() in startNotes()
 - workspace-notes-deletions.md: Deleting a note over the API (PR #1674) and ws_note_deletions (schema 11.0.85): who may, whom a deletion or a person share taken back is kept for, how long, deleted in the changes listing, no MCP tool
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become
