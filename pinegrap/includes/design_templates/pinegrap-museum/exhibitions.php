@@ -98,7 +98,13 @@ $exhibition_pages[] = array(
     'meta_description' => lang('The exhibitions on now at the museum, the ones coming soon and the ones we have shown before.'),
     'tree'             => $page(array(
         $page_header(lang('Exhibitions'), lang('What is on now, what is coming and what we have shown before. Choose a state to narrow the list.')),
-        $el('section', 'py-5', lang('Exhibitions'), array(
+        // The exhibition on now first, as a poster (Museum: Exhibition
+        // Hero); the list under it holds the others.
+        $exhibition_hero('light', array(), 'h2', 'mz-exhibition-now', array(
+            $link(lang('Book Tickets'), '{{page:book_online}}', 'btn btn-primary btn-lg px-4'),
+            $link(lang('Become a Member'), '{{page:support}}', 'btn btn-outline-secondary btn-lg px-4'),
+        )),
+        $el('section', 'py-5 border-top', lang('Exhibitions'), array(
             $container(array(
                 $mz_filter_bar('exhibitions', lang('Show'), 'status', $exhibition_statuses),
                 $widget('exhibitions_list'),

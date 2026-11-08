@@ -1399,3 +1399,187 @@ $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_whe
     ), $show_when('has_ai_links'));
 };
 
+
+// ── The Museum blocks ───────────────────────────────────────────────────
+// The home, the exhibitions page and the collection page place the Museum
+// blocks (exhibition hero, look closer, highlights trail); their
+// pg-museum- rules ship in the template's User Styles.
+
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 80) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
+// The Museum: Exhibition Hero block: the exhibition $key as a poster. Its
+// state as the eyebrow, its title ($tag: the home's h1, an h2 under a page
+// header), the summary, a dl.pg-museum-facts of when, where, the curator
+// and the admission, and the buttons; under them
+// the exhibitions $others (keys) when there are any; beside it the picture
+// in a portrait pg-museum-poster frame. The words rise, the poster fades,
+// the others follow, on load. $buttons: the links under the facts.
+$exhibition_hero = function ($key, $others, $tag, $id, $buttons, $class = 'py-5 overflow-hidden') use ($el, $heading, $para, $image, $span, $container, $row, $col, $fx, $attr, $searchable, $photo, $exhibitions, $exhibition_status_titles) {
+    $e = $exhibitions[$key];
+    $fact = function ($label, $value) use ($el, $span) {
+        return $el('div', '', $label, array(
+            $el('dt', '', lang('Label'), array(), array('text' => $label)),
+            $el('dd', '', $label, array($span($value, '', lang('Value')))),
+        ));
+    };
+    $words = array(
+        $para($exhibition_status_titles[$e['status']], 'pmz-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+        $heading($tag, $e['title'], 'pmz-display ' . ($tag === 'h1' ? 'display-4' : 'display-6') . ' mb-3'),
+        $para($e['summary'], 'lead text-body-secondary mb-4'),
+        $el('dl', 'pg-museum-facts mb-4', lang('Facts'), array(
+            $fact(lang('When'), $e['when']),
+            $fact(lang('Where'), $e['gallery']),
+            $fact(lang('Curator'), $e['curator']),
+            $fact(lang('Admission'), end($e['details'])),
+        )),
+        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), $buttons),
+    );
+    $columns = array($fx($col($words, '', '7'), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700)));
+    $columns[] = $fx($col(array(
+        $el('figure', 'mb-0', lang('Exhibition Picture'), array(
+            $el('div', 'pg-museum-poster rounded-3 shadow', lang('Picture'), array(
+                $image($photo('exhibition-' . $key, 960, 1200), $e['summary'], '', $tag === 'h1' ? array() : array('_attrs' => array($attr('loading', 'lazy')))),
+            )),
+            $el('figcaption', 'small text-body-secondary mt-2', lang('Photo Caption'), array(), array('text' => $e['title'] . ' · ' . $e['gallery'])),
+        )),
+    ), '', '5'), array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1000, 'delay' => 200));
+    $more = array();
+    if ($others) {
+        $items = array();
+        foreach ($others as $k) {
+            $o = $exhibitions[$k];
+            $items[] = $el('li', 'py-3 border-bottom', $o['title'], array(
+                $heading('h3', $o['title'], 'h6 fw-semibold mb-1'),
+                $para($o['when'] . ' · ' . $o['gallery'], 'small text-body-secondary mb-0'),
+            ));
+        }
+        $more[] = $fx($el('div', 'mt-5', lang('Also On'), array(
+            $heading($tag === 'h1' ? 'h2' : 'h3', lang('Also on'), 'small text-uppercase fw-semibold text-body-secondary border-bottom pb-2 mb-0'),
+            $el('ul', 'list-unstyled row row-cols-1 row-cols-md-2 g-0 column-gap-md-4 mb-0', lang('Exhibitions'), $items),
+        )), array('effect' => 'slide-up', 'trigger' => 'load', 'delay' => 400));
+    }
+    return $el('section', $class, lang('Museum (Exhibition Hero)'), array(
+        $container(array_merge(array(
+            $row($columns, '4', '', 'g-lg-5 align-items-center'),
+        ), $more)),
+    ), $searchable($id, lang('exhibition, now on, tickets, curator, admission')));
+};
+
+// The details of a work to look closer at (the collection page): the
+// close-up's seed, its alt text, the name and why to look.
+$look_details = array(
+    'harbour' => array(
+        array('detail-sky', lang('A pink evening sky over the masts'), lang('The sky'),
+            lang('The painter laid the pink over a grey ground, so the evening seems to glow from behind the clouds.')),
+        array('detail-lamps', lang('Small dots of yellow along the quay'), lang('The lamps'),
+            lang('A single touch of yellow for each lamp: step back and the quay lights up.')),
+        array('detail-boat', lang('A fishing boat with a red sail'), lang('The red sail'),
+            lang('The only red in the painting leads your eye to the boat coming home last.')),
+    ),
+);
+
+// The Museum: Look Closer block: the work $key with its wall label
+// (pg-museum-label: maker, title, period, material, gallery) beside its
+// title, its story and an ol of numbered details (pg-museum-no), each a
+// close-up, a name and a line; the way to its department's other works.
+// The work fades and the details rise on view. A search section under $id.
+$look_closer = function ($key, $id) use ($el, $heading, $para, $link, $image, $span, $container, $row, $col, $fx, $rise, $attr, $searchable, $query, $photo, $objects, $departments, $look_details) {
+    $o = $objects[$key];
+    $dep = $departments[$o['department']];
+    $lazy = array('_attrs' => array($attr('loading', 'lazy')));
+    $details = array();
+    foreach ($look_details[$key] as $n => $d) {
+        $details[] = $el('li', 'd-flex gap-3 mb-4', $d[2], array(
+            $span((string)($n + 1), 'pg-museum-no', lang('Number')),
+            $el('div', 'flex-grow-1', lang('Detail Text'), array(
+                $el('div', 'ratio ratio-16x9 rounded-3 overflow-hidden bg-body-tertiary mb-2', lang('Close-up'), array(
+                    $image($photo($d[0], 640, 360), $d[1], 'object-fit-cover', $lazy),
+                )),
+                $heading('h3', $d[2], 'h6 fw-semibold mb-1'),
+                $para($d[3], 'small text-body-secondary mb-0'),
+            )),
+        ));
+    }
+    return $el('section', 'py-5', lang('Museum (Look Closer)'), array(
+        $container(array(
+            $row(array(
+                $fx($col(array(
+                    $el('figure', 'mb-0', lang('Work Picture'), array(
+                        $el('div', 'ratio ratio-4x3 rounded-3 overflow-hidden bg-body-tertiary mb-3', lang('Picture'), array(
+                            $image($photo('object-' . $key . '-large', 1400, 1050), $o['story'], 'object-fit-cover', $lazy),
+                        )),
+                        $el('figcaption', 'pg-museum-label small', lang('Wall Label'), array(
+                            $para($o['maker'], 'fw-semibold'),
+                            $para($o['title'], 'fst-italic'),
+                            $para($o['period']),
+                            $para($o['material'], 'text-body-secondary'),
+                            $para($o['gallery'], 'text-body-secondary mb-0'),
+                        )),
+                    )),
+                ), '', '7'), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900)),
+                $col(array(
+                    $para(lang('Look closer'), 'pmz-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', $o['title'], 'pmz-display h2 mb-3'),
+                    $para($o['story'], 'text-body-secondary mb-4'),
+                    $rise($el('ol', 'list-unstyled mb-4', lang('Details'), $details), 120),
+                    $link($dep['title'], '{{page:collection}}?' . $query(array('department' => $dep['title'])), 'btn btn-outline-primary px-4'),
+                ), '', '5'),
+            ), '4', '', 'g-lg-5'),
+        )),
+    ), $searchable($id, lang('art, paintings, sculpture, objects, artworks, archive')));
+};
+
+// The Museum: Highlights Trail block: the works $keys in walking order on
+// an ol.pg-museum-trail, each a numbered stop (pg-museum-no) with its
+// picture, title, maker and period, and its room as an icon and a word;
+// over them the trail's title, its length, where it starts and the guided
+// tours. The header fades and the stops rise on view. A search section
+// under $id.
+$highlights_trail = function ($keys, $id, $class = 'py-5') use ($el, $heading, $para, $link, $image, $icon, $span, $container, $fx, $rise, $attr, $searchable, $query, $photo, $objects, $event_kinds) {
+    $stops = array();
+    foreach (array_values($keys) as $n => $k) {
+        $o = $objects[$k];
+        $stops[] = $el('li', 'col', $o['title'], array(
+            $span((string)($n + 1), 'pg-museum-no mb-3', lang('Number')),
+            $el('div', 'ratio ratio-4x3 rounded-3 overflow-hidden bg-body-tertiary mb-3', lang('Picture'), array(
+                $image($photo('trail-' . $k, 800, 600), $o['title'], 'object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
+            )),
+            $heading('h3', $o['title'], 'pmz-display h5 mb-1'),
+            $para($o['maker'] . ' · ' . $o['period'], 'small text-body-secondary mb-2'),
+            $el('div', 'badge rounded-pill bg-primary-subtle text-primary-emphasis d-inline-flex align-items-center gap-1', lang('Room'), array(
+                $icon('bi-geo-alt'),
+                $span($o['gallery'], '', lang('Room')),
+            )),
+        ));
+    }
+    $detail = function ($icon_name, $text, $name) use ($el, $icon, $span) {
+        return $el('div', 'd-flex align-items-center gap-2 small', $name, array($icon($icon_name, 'text-primary'), $span($text, '', lang('Text'))));
+    };
+    return $el('section', $class, lang('Museum (Highlights Trail)'), array(
+        $container(array(
+            $fx($el('div', 'row g-4 align-items-end mb-5', lang('Trail Header'), array(
+                $el('div', 'col-lg-7', lang('Trail Title'), array(
+                    $para(lang('Highlights trail'), 'pmz-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', lang('Four works not to miss'), 'pmz-display h2 mb-3'),
+                    $para(lang('A walk through the galleries from the oldest work to the newest. Follow the numbers on the floor plan you get at the desk.'), 'text-body-secondary mb-0'),
+                )),
+                $el('div', 'col-lg-5 d-flex flex-wrap gap-3 justify-content-lg-end align-items-center', lang('Trail Details'), array(
+                    $detail('bi-clock', lang('About an hour'), lang('Length')),
+                    $detail('bi-signpost-split', lang('Meet at the information desk'), lang('Start')),
+                    $link(lang('Highlights Tour'), '{{page:events}}?' . $query(array('kind' => $event_kinds['tour']['title'])), 'btn btn-primary px-4'),
+                )),
+            )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800)),
+            $rise($el('ol', 'pg-museum-trail list-unstyled row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-4 mb-0', lang('Stops'), $stops), 120),
+        )),
+    ), $searchable($id, lang('highlights, must see, tour, route, galleries, masterpieces')));
+};

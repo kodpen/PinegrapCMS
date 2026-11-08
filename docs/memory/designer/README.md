@@ -178,6 +178,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-marina-pages.md: Marina template 2.0.0: home, berths, the kind pages and arriving on the Marina blocks: the builders, each page's composition, motion, what left, the test
 - design-template-marina.md: Marina template (pinegrap-marina): kinds of berth, rates as words, Charter Boats and Events collections, berth requests, charter enquiries, event entries, no shop, pmn- look, tests.
 - design-template-market.md: Marketplace template (pinegrap-market): makers as a Sellers collection beside the store's catalog, one cart, maker applications and order help followed from the account, pmk- look, tests.
+- design-template-museum-pages.md: Museum template 2.0.0: home, exhibitions and collection on the Museum blocks: the builders, each page's composition, motion, what left, the test
 - design-template-museum.md: Museum template (pinegrap-museum): exhibitions and highlights as collections, event place and school visit requests, tickets and membership in the shop, timed entry, pmz- look, tests.
 - design-template-music.md: Music Artist template (pinegrap-music): shows and releases as collections, press kit with a public press folder, booking enquiries, merch and gift cards in the shop, pmu- look, tests.
 - design-template-news-layout.md: News template page shapes: the lead grid, most read in the article view, newsletter field order, one tip call, band padding, p titles in the drawer, whole tips, byline links.

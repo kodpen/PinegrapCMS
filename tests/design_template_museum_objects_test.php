@@ -166,7 +166,7 @@ function test_museum_objects_filters()
 			$seen++;
 		}
 	}
-	pg_assert_same(count($d['departments']) * 3, $seen, 'a department link in the filter row, the cards and the footer each');
+	pg_assert_same(count($d['departments']) * 3 + 1, $seen, 'a department link in the filter row, the cards and the footer each, and the look-closer work\'s');
 	$c = $d['widgets']['collection_featured']['config'];
 	pg_assert_same(array(array('field' => 'featured', 'operator' => 'is equal to', 'value' => $d['featured'][0], 'dynamic_value' => '')), $c['filters'], 'the featured ones');
 	pg_assert_same(3, $c['max_results'], 'three at most');
