@@ -36,7 +36,7 @@ description: Plan: the Planetarium and Observatory design template (pinegrap-pla
 
 - 9 (done, #8305): `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), post, search, error ([[design-templates-standard-pages]]); test.
 
-- 10: `account.php`: sign-in, My Account, `staff`, `blog_new`, `staff_directory`, `staff_entry`, account e-mails; test.
+- 10 (done, #8319): `account.php`: sign-in, My Account, staff area, news form, staff directory, account e-mails; test.
 
 - 11: assembly: `pinegrap-planetarium.php` (order 145, search sections, look, fonts, `ppm-` rules, folders), assembly test, the shared test lists, `designer/design-template-planetarium.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
