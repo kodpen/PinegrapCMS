@@ -18,7 +18,7 @@ description: Plan: the Art Gallery design template (pinegrap-gallery): artists, 
 
 - 5 (done, #8034): `exhibitions.php`: the Exhibitions collection (`exhibitions` by `?status=`, `exhibition` with its works and the opening night, `exhibition_new`, `home_exhibitions`); test.
 
-- 6: `mail.php` and `requests.php`: artwork enquiries (`enquire` with `?artwork=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`, `email_enquiry_new`, `email_enquiry_received`) and private viewings (`viewing` with `?exhibition=`, `viewing_view`, `my_viewings`, `staff_viewings`, their two e-mails); test.
+- 6 (done, #8057): `mail.php` and `requests.php`: artwork enquiries (`enquire` with `?artwork=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`, `email_enquiry_new`, `email_enquiry_received`) and private viewings (`viewing` with `?exhibition=`, `viewing_view`, `my_viewings`, `staff_viewings`, their two e-mails); test.
 
 - 7: `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: editions, small works, catalogues); test.
 
@@ -29,7 +29,7 @@ description: Plan: the Art Gallery design template (pinegrap-gallery): artists, 
 - 10: assembly: `pinegrap-gallery.php` (order, search sections, look, fonts, `pgl-` rules, folders), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, custom-form-rules), `designer/design-template-gallery.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
-- The lowest step not marked done. Model: `pinegrap-pharmacy/` and `pinegrap-museum/` (same shape). The enquiry's lists: `?artwork=` `$work_choices`, `?kind=` `$enquiry_choices`; the viewing's `?exhibition=` `$exhibition_choices`. `_test_gl_page_keys()` (step 1 test) lists every page key; later tests `require_once` it. Each page file is included after `parts.php` and `cards.php`. The cards bind these field names, so the forms use them: Artists `name`, `medium`, `based`, `summary`, `photo`; Exhibitions `title`, `status`, `dates`, `opening`, `summary`, `photo_1`; Works `title`, `artist` (reference), `technique`, `size`, `price`, `availability`, `photo`.
+- The lowest step not marked done. Model: `pinegrap-pharmacy/` and `pinegrap-museum/` (same shape). The enquiry's lists: `?artwork=` `$work_choices`, `?kind=` `$enquiry_choices`; the viewing's `?exhibition=` `$exhibition_choices`. `_test_gl_page_keys()` (step 1 test) lists every page key; later tests `require_once` it. Each page file is included after `parts.php` and `cards.php`; `artists.php` holds the list pieces, `mail.php` the e-mail frame. The cards bind these field names, so the forms use them: Artists `name`, `medium`, `based`, `summary`, `photo`; Exhibitions `title`, `status`, `dates`, `opening`, `summary`, `photo_1`; Works `title`, `artist` (reference), `technique`, `size`, `price`, `availability`, `photo`.
 
 ## Open questions
 - None: all reuses shipped features; new behaviour goes to the architect (Working mode 10).

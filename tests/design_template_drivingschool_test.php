@@ -117,7 +117,7 @@ function _test_ds_page_keys()
 		'lesson_request', 'lesson_request_view', 'my_lesson_requests', 'staff_lesson_requests', 'book_online',
 		'stories', 'story', 'story_new',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
-		'email_new_message', 'email_message_received', 'email_welcome',
+		'email_new_message', 'email_message_received', 'email_welcome', 'email_account_welcome', 'email_password_reset',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	);

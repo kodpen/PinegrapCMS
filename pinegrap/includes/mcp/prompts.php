@@ -370,7 +370,7 @@ function pg_mcp_prompt_blog_post_text($values, $site, $routes, $attached) {
 		. '- Put the post on the fields by their labels: the title in the title field, the body in the field whose rich_text is true, and an answer in every required field. A choice field (a status, a category) takes one of its option values exactly as listed. Choose a status that publishes only when the person asked to publish; otherwise a draft one, if the field offers it.' . "\n"
 		. '- Write the body as HTML that field keeps: only the tags, attributes, style properties and address schemes its html_allowed lists, within its max_length characters. No class attribute is kept, whatever the framework, so do not lean on a framework\'s classes; use headings, paragraphs, lists, links and emphasis.' . "\n"
 		. $pictures . "\n"
-		. '- Send it with the tool ' . $create . ' with dry_run true first and read the answer; then send it again without dry_run. Report the record\'s id and reference code and, when record_url_pattern is set, the address it will be read at.' . "\n"
+		. '- Send it with the tool ' . $create . ' with dry_run true first and read the answer; then send it again without dry_run. Report the record\'s id, its reference code and its url, the address it is read at on the site (null when no public page shows the form\'s records).' . "\n"
 		. 'Write in the language the person writes in. If the form has no field for the body, or the fields cannot be read, say so and stop.' . "\n\n"
 		. pg_mcp_prompt_rules_text();
 
