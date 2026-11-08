@@ -98,6 +98,7 @@ description: Generated from the module field of the memory files: each includes/
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]
 - `gift_card_list_edit`: [[list-table-quick-edit-gift-cards]]
 - `gift_card_recipients`: [[gift-card-recipient-check]]
+- `github_links`: [[api-github-channel-links]]
 - `google_analytics`: [[google-analytics-card]]
 - `google_reviews`: [[google-reviews-widget]]
 - `graph_canvas`: [[graph-canvas-core-module]]
