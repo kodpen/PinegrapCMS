@@ -230,6 +230,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-block-theme-surfaces.md: How a ready-made designer block writes a dark navbar, a hero on a photo, buttons and links on tinted or primary surfaces, and carousel slides so they pass contrast in every look, palette and mode.
 - designer-blocks-architecture.md: The Architecture block family (architecture- prefix, own palette group): plate hero, project sheet, material board; general blocks placed instead; rules, test
 - designer-blocks-bikeshop.md: The Bike Shop block family (bikeshop- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-bike-* rules, motion and test
+- designer-blocks-campsite.md: The Campsite block family (campsite- prefix, own palette group): hero with a kind-of-stay chooser, comfort scale, pitch drawing; general and other blocks placed instead; rules, test
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
