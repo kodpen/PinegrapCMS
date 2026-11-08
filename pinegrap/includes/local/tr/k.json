@@ -275,6 +275,7 @@
     "kids, children, age, baby, family": "çocuklar, yaş, bebek, aile",
     "kids, children, age, family": "çocuklar, çocuk, yaş, aile",
     "kids, family, dog, pets": "çocuk, aile, köpek, evcil hayvan",
+    "kids, family, dog, pets, age, ID": "çocuk, aile, köpek, evcil hayvan, yaş, kimlik",
     "kilogram": "kilogram",
     "kind": "tür",
     "kind:id, such as contact:12": "tür:no, örneğin contact:12",

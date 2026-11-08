@@ -108,6 +108,7 @@ function _test_bw_page_keys()
 		'beers', 'beer', 'beer_new', 'events', 'past_events', 'event', 'event_new',
 		'tours', 'tour_booking', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy', 'email_reply', 'book_online',
 		'email_booking_new', 'email_booking_received',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
