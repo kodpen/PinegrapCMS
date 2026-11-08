@@ -25,10 +25,10 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
 - 245 GET routes and 353 `dry_run` writes ran on a sandbox: no 500; the 8 writes without `dry_run` were not called. None of the gaps needs a product decision; screen and route of each in `api/api-panel-coverage.md`:
   - G1 no `GET /inventory/moves` (stock history, `includes/fn/stock_moves.php`).
   - G2 no route writes the staff answer to a product question.
-  - G3 ContactGroup does not say it is filled by rules; no Refresh now.
+  - G3 done (PR #8098): `by_rule` and `computed_at` on ContactGroup, `POST /contact-groups/{id}/refresh`.
   - G4 no read or restore of a collection item's revisions.
   - G5 Customer has no bounce state; no Allow again.
-  - G6 experiments start/pause/end take no `dry_run`.
+  - G6 experiments start/pause/end take no `dry_run`. Done (#8099).
   - G7 a dry-run page or file delete creates the Recycle Bin before its stop (`pg_recycle_folder_id(true)`), warning `sessionusername` on the API path.
 
 ## Where does it start?

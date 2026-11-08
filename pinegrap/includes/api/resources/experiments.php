@@ -313,9 +313,10 @@ function api_experiments_get($params) {
 
 }
 
-// A move, as the panel's buttons make it: refused with 409 experiment_state
-// when the status cannot move there now or a start's checks fail.
-function api_experiments_move($params, $action) {
+// The checks of a move, as the panel's buttons make it: refused with 409
+// experiment_state when the status cannot move there now or a start's checks
+// fail. Writes nothing; a dry run stops after it.
+function api_experiments_move_prepare($params, $action) {
 
 	api_experiments_ready_or_fail();
 
@@ -329,7 +330,23 @@ function api_experiments_move($params, $action) {
 
 	}
 
-	$done = pg_experiment_sheet_move($row, $to);
+	$checked = pg_experiment_sheet_move_check($row, $to);
+
+	if (!$checked['ok']) {
+
+		api_fail(409, 'experiment_state', $checked['error']);
+
+	}
+
+	return array('row' => $row, 'to' => $to, 'detail' => array('id' => (int)$row['id'], 'status' => (string)$row['status'], 'to' => $to));
+
+}
+
+// The move itself, after api_experiments_move_prepare(). The status in the
+// write's WHERE still refuses a move another caller made meanwhile.
+function api_experiments_move_commit($move) {
+
+	$done = pg_experiment_sheet_move($move['row'], $move['to']);
 
 	if (!$done['ok']) {
 
@@ -337,24 +354,36 @@ function api_experiments_move($params, $action) {
 
 	}
 
-	api_ok(api_experiment_answer(api_experiment_load_or_fail($params['id'])));
+	api_ok(api_experiment_answer(api_experiment_load_or_fail($move['row']['id'])));
 
 }
 
 function api_experiments_start($params) {
 
-	api_experiments_move($params, 'start');
+	$move = api_experiments_move_prepare($params, 'start');
+
+	api_dry_run_stop('started', 'experiment', $move['detail']);
+
+	api_experiments_move_commit($move);
 
 }
 
 function api_experiments_pause($params) {
 
-	api_experiments_move($params, 'pause');
+	$move = api_experiments_move_prepare($params, 'pause');
+
+	api_dry_run_stop('paused', 'experiment', $move['detail']);
+
+	api_experiments_move_commit($move);
 
 }
 
 function api_experiments_end($params) {
 
-	api_experiments_move($params, 'end');
+	$move = api_experiments_move_prepare($params, 'end');
+
+	api_dry_run_stop('ended', 'experiment', $move['detail']);
+
+	api_experiments_move_commit($move);
 
 }

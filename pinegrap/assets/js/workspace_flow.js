@@ -48,6 +48,10 @@
  * place of the Workspace (a flow draft's card in a channel): the canvas
  * without its chrome, one at a time (embed()).
  *
+ * window.PGWsFlow.mount(root, boot, options) draws the editor into any
+ * element (one flow alone with options.single, for a layer over a channel)
+ * and gives { destroy(), flush() }; start() is mount() on the address.
+ *
  * assets/js/workspace.js starts it (window.PGWsFlow.start()) with the team
  * it has loaded and lends it its helpers through window.PGWsKit. Every text
  * comes from the #ws-config block (ws_flow_js_strings()); names and texts
@@ -272,6 +276,9 @@
     var t = null;
     var el = null;
     var uid = 0;
+    // The window and document listeners are added once (bindWindow()) and
+    // do nothing while no editor is mounted.
+    var windowBound = false;
 
     var state = {
         flows: [],
@@ -327,9 +334,12 @@
         // A flow Pinegrap AI just drafted from a sentence (sketchCard()):
         // { flow, notes }, null once hidden or another flow is shown.
         sketch: null,
-        // The Flows screen started on this page (start()); while it runs no
+        // An editor mounted on this page (mount(), start()); while it runs no
         // drawing is embedded elsewhere, as both would share this state.
         screen: false,
+        // The editor mounted: { root, single, onClose, instance }, null when
+        // none. single: one flow in a layer over another screen (mount()).
+        mounted: null,
         // The drawing embedded elsewhere (embed()): its instance, null when
         // none; tries holds each box's dry run by its id ({ said, failed }).
         embed: null,
@@ -794,30 +804,89 @@
 
     // ── Start ──────────────────────────────────────────────────────────
 
-    function start(root, boot) {
-        K = window.PGWsKit;
+    // The flow, the box and the run an address names (?flow=, ?box=,
+    // ?run=): a draft card's "Open on the canvas", a run's card in a channel.
+    function addressOptions(search) {
+        return {
+            flow: parseInt((/[?&]flow=([0-9]+)/.exec(search || '') || [])[1], 10) || 0,
+            box: (/[?&]box=([a-z0-9_]+)(&|$)/.exec(search || '') || [])[1] || '',
+            run: parseInt((/[?&]run=([0-9]+)/.exec(search || '') || [])[1], 10) || 0
+        };
+    }
 
-        if (!K) {
-            return;
+    // The Flows screen: the editor with its flow list, on what the address
+    // names.
+    function start(root, boot) {
+        return mount(root, boot, addressOptions(window.location.search));
+    }
+
+    // The editor drawn into root, one at a time on a page (a second mount()
+    // destroys the first, and an embedded drawing ends first). options:
+    //   flow     the flow to open (0: the flow list, or with single the ways
+    //            to start a new flow)
+    //   box      a box of it to select
+    //   run      a run of it to show
+    //   single   one flow, in a layer over another screen: no flow list, no
+    //            New flow, the address and the page's back arrow left alone;
+    //            the way back to the list calls onClose
+    //   onClose  called when a single editor would go back to the list (the
+    //            flow deleted, or one that cannot be opened)
+    // Returns { destroy(), flush() }, null without the Workspace kit:
+    // destroy() stops the run's looks and the timers, saves what is unsaved
+    // and empties root, giving the save's promise; flush() saves what is
+    // unsaved and resolves true once nothing is left unsaved (false after
+    // a failed save or against a newer draft).
+    function mount(root, boot, options) {
+        if (!window.PGWsKit || !root) {
+            return null;
+        }
+
+        if (state.mounted) {
+            state.mounted.instance.destroy();
         }
 
         if (state.embed) {
             state.embed.destroy();
         }
 
-        state.screen = true;
-
+        options = options || {};
+        K = window.PGWsKit;
         CFG = K.cfg || {};
         FL = CFG.flows || {};
         BOOT = boot || {};
         t = K.t;
         el = K.el;
 
+        var instance = {
+            destroy: function () {
+                if (!state.mounted || (state.mounted.instance !== instance)) {
+                    return Promise.resolve();
+                }
+
+                return unmount();
+            },
+            flush: function () {
+                if (!state.mounted || (state.mounted.instance !== instance)) {
+                    return Promise.resolve(true);
+                }
+
+                return flush().then(function () {
+                    return !(state.dirty || state.saveError || state.conflict);
+                });
+            }
+        };
+
+        Object.keys(ui).forEach(function (key) {
+            delete ui[key];
+        });
+        mountState();
+        state.screen = true;
+        state.mounted = { root: root, single: !!options.single, onClose: (typeof options.onClose === 'function') ? options.onClose : null, instance: instance, ready: !!FL.ready };
         K.clear(root);
 
         if (!FL.ready) {
             root.appendChild(el('div', 'alert theme-warning', t('fl_not_ready')));
-            return;
+            return instance;
         }
 
         state.outline = !!(window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches);
@@ -826,38 +895,181 @@
         bindCanvas();
         bindWindow();
 
-        var asked = parseInt((/[?&]flow=([0-9]+)/.exec(window.location.search) || [])[1], 10) || 0;
-        // A box to open with the flow (a draft card's "Edit on the canvas").
-        var askedBox = (/[?&]box=([a-z0-9_]+)(&|$)/.exec(window.location.search) || [])[1] || '';
-        // A run to open with the flow (a run's card in a channel).
-        var askedRun = parseInt((/[?&]run=([0-9]+)/.exec(window.location.search) || [])[1], 10) || 0;
+        var asked = parseInt(options.flow, 10) || 0;
+        var askedBox = String(options.box || '');
+        var askedRun = parseInt(options.run, 10) || 0;
+
+        // The flow asked for opens with its box or its run; one that cannot
+        // be opened (deleted, out of reach) shows the list instead (a
+        // single editor closes).
+        function openAsked() {
+            open(asked).then(function () {
+                if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
+                    select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
+                }
+
+                if (askedRun && state.flow && (state.flow.id === asked)) {
+                    openLastRun({ id: askedRun, flow_id: asked });
+                }
+            });
+        }
+
+        if (singleFlow()) {
+            if (asked) {
+                openAsked();
+            } else if (FL.build) {
+                showGallery(null);
+            } else {
+                showNone();
+            }
+
+            return instance;
+        }
 
         K.api('ws_flow_list').then(function (data) {
+            if (!state.mounted || (state.mounted.instance !== instance)) {
+                return;
+            }
+
             state.flows = data.flows || [];
             state.scheduled = data.scheduled || null;
             drawList();
 
             // The flow the address names opens, else the flow list (an old
             // ?view=scheduled address too: the list ends with the scheduled
-            // actions); when the one asked for cannot be opened (deleted,
-            // out of reach), the list shows instead.
+            // actions).
             if (asked) {
-                open(asked).then(function () {
-                    if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
-                        select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
-                    }
-
-                    if (askedRun && state.flow && (state.flow.id === asked)) {
-                        openLastRun({ id: askedRun, flow_id: asked });
-                    }
-                });
+                openAsked();
             } else {
                 showNone();
             }
         }).catch(function (error) {
+            if (!state.mounted || (state.mounted.instance !== instance)) {
+                return;
+            }
+
             K.fail(error);
             showNone();
         });
+
+        return instance;
+    }
+
+    // What one editor holds of the module's state, as a new one starts
+    // (a single editor may follow the Flows screen's on a page, or another).
+    function mountState() {
+        state.flows = [];
+        state.flow = null;
+        state.graph = null;
+        state.edit = false;
+        state.problems = [];
+        state.warnings = [];
+        state.selected = null;
+        state.view = { x: 40, y: 40, k: 1 };
+        state.binding = null;
+        state.dirty = false;
+        state.history = null;
+        state.saving = null;
+        state.leaveSent = -1;
+        state.saveError = '';
+        state.conflict = '';
+        state.refocus = '';
+        state.listing = false;
+        state.panel = '';
+        state.section = '';
+        state.galleryInto = null;
+        state.scheduled = null;
+        state.runs = { flow: 0, items: [], next: null, loading: false, error: '' };
+        state.run = null;
+        state.stash = null;
+        state.starting = false;
+        state.startToken = null;
+        state.opening = {};
+        state.poll = { timer: 0, delay: POLL_FIRST, busy: 0, note: null };
+        state.share = null;
+        state.marks = null;
+        state.sketch = null;
+        state.tries = null;
+    }
+
+    // The editor taken off the page: the run's looks and the timers stop,
+    // what is unsaved is sent (the promise given), the canvas and the
+    // dialogs it made let go, root is emptied and the page's back arrow
+    // goes. The listeners of the window stay, idle until the next mount().
+    function unmount() {
+        var mounted = state.mounted;
+        var saved;
+
+        stopPoll();
+        window.clearTimeout(state.settleTimer);
+        window.clearTimeout(state.arriving);
+        window.clearTimeout(state.saveTimer);
+        state.settleTimer = 0;
+        state.arriving = 0;
+        state.saveTimer = 0;
+        saved = mounted.ready ? flush().catch(function () {}) : Promise.resolve();
+
+        if (mounted.ready) {
+            canvas.destroy();
+        }
+
+        [ui.shareModal, ui.templateModal].forEach(function (modal) {
+            if (modal && modal.parentNode) {
+                modal.parentNode.removeChild(modal);
+            }
+        });
+        ui.shareModal = null;
+        ui.templateModal = null;
+        K.clear(mounted.root);
+
+        if (!mounted.single) {
+            K.viewBack(null);
+        }
+
+        state.mounted = null;
+        state.screen = false;
+        state.listing = false;
+
+        return saved;
+    }
+
+    // A single editor: one flow in a layer over another screen.
+    function singleFlow() {
+        return !!(state.mounted && state.mounted.single);
+    }
+
+    // The page's back arrow (K.viewBack()); a single editor leaves the page's
+    // arrow alone and puts its way back into its own bar.
+    function viewBack(label, onBack, refocusKey) {
+        if (!singleFlow()) {
+            K.viewBack(label, onBack, refocusKey);
+            return;
+        }
+
+        if (!label || !ui.bar) {
+            return;
+        }
+
+        var back = K.button('btn btn-sm btn-text theme-secondary', label, 'bi-arrow-left');
+
+        back.setAttribute('data-refocus', refocusKey || 'back');
+        back.addEventListener('click', onBack);
+        ui.bar.appendChild(back);
+    }
+
+    // The address names the flow open (search: '?flow=<id>', '' for none),
+    // so a reload opens it again; a single editor leaves the page's address
+    // as it is.
+    function setAddress(search) {
+        if (singleFlow()) {
+            return;
+        }
+
+        try {
+            window.history.replaceState(null, '', window.location.pathname + search);
+        } catch (error) {
+            // An address that cannot be changed changes nothing else.
+        }
     }
 
     function layout(root) {
@@ -1402,23 +1614,38 @@
         drawList();
     }
 
+    // The flow list, no flow open; a single editor has no list: it closes
+    // (onClose).
     function showNone() {
+        if (singleFlow()) {
+            if (state.mounted.onClose) {
+                state.mounted.onClose();
+            }
+
+            return;
+        }
+
+        clearScreen();
+        listing(true);
+        drawFlows();
+        refocus();
+    }
+
+    // No flow open, nothing drawn: what the list and the template gallery
+    // start from.
+    function clearScreen() {
         closeSetup();
         endRun();
         state.panel = '';
         state.flow = null;
         state.graph = graphOf(null);
         K.clear(ui.bar);
-        K.viewBack(null);
+        viewBack(null);
         newFlowButton();
 
         // The address no longer names a flow, so a reload does not ask for
         // one that is gone.
-        try {
-            window.history.replaceState(null, '', window.location.pathname);
-        } catch (error) {
-            // An address that cannot be changed changes nothing else.
-        }
+        setAddress('');
 
         state.section = '';
         ui.scheduled.classList.add('d-none');
@@ -1435,9 +1662,6 @@
         ui.empty.classList.remove('d-none');
         ui.stage.classList.remove('d-none');
         ui.outlineBox.classList.add('d-none');
-        listing(true);
-        drawFlows();
-        refocus();
     }
 
     // ── Opening, creating ──────────────────────────────────────────────
@@ -1490,13 +1714,11 @@
                 return;
             }
 
-            // The focus asked for is the gallery's: showNone() would spend
-            // it on the flow list it draws on the way.
             var focus = state.refocus;
 
             window.clearTimeout(state.saveTimer);
             state.refocus = '';
-            showNone();
+            clearScreen();
             listing(false);
             backToList();
             state.refocus = focus;
@@ -1509,7 +1731,7 @@
 
             if (into) {
                 // Opened from a flow: the arrow goes back to that flow.
-                K.viewBack(t('fl_tpl_back'), function () {
+                viewBack(t('fl_tpl_back'), function () {
                     open(into);
                 }, 'tpl-back');
             } else {
@@ -2303,7 +2525,7 @@
         ui.stage.classList.add('d-none');
         ui.scheduled.classList.remove('d-none');
 
-        K.viewBack(t('sa_canvas_back'), function () {
+        viewBack(t('sa_canvas_back'), function () {
             state.refocus = 'sched-refused flows-search';
             showNone();
         }, 'sa-back');
@@ -2510,11 +2732,7 @@
         ui.app.classList.toggle('wsf-readonly', !state.edit);
         ui.conflictBox.classList.add('d-none');
 
-        try {
-            window.history.replaceState(null, '', window.location.pathname + '?flow=' + flow.id);
-        } catch (error) {
-            // An address that cannot be changed leaves the flow open all the same.
-        }
+        setAddress('?flow=' + flow.id);
 
         listEntry(flow);
         drawBar();
@@ -2544,7 +2762,7 @@
 
     // "New flow", what the screen is for, in the toolbar's first slot.
     function newFlowButton() {
-        if (!FL.build) {
+        if (!FL.build || singleFlow()) {
             return;
         }
 
@@ -2563,9 +2781,12 @@
         ui.bar.appendChild(create);
     }
 
-    // The page's back arrow goes back to the flow list.
+    // The page's back arrow goes back to the flow list; a single editor has
+    // none (the layer around it closes it).
     function backToList() {
-        K.viewBack(t('fl_list_back'), showList, 'flows');
+        if (!singleFlow()) {
+            K.viewBack(t('fl_list_back'), showList, 'flows');
+        }
     }
 
     // A flow that may be run now: live, published, and the person's to edit
@@ -11790,8 +12011,18 @@
     }
 
     function bindWindow() {
+        if (windowBound) {
+            return;
+        }
+
+        windowBound = true;
+
         // Space held on the canvas is the core's (create()).
         document.addEventListener('keydown', function (event) {
+            if (!state.screen) {
+                return;
+            }
+
             if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S')) && drafting()) {
                 event.preventDefault();
                 save();
@@ -11809,7 +12040,7 @@
         });
 
         window.addEventListener('blur', function () {
-            if (state.dirty) {
+            if (state.screen && state.dirty) {
                 save();
             }
         });
@@ -11817,6 +12048,10 @@
         // A hidden tab saves what is on its way and stops looking at the run
         // shown; shown again, it looks at once.
         document.addEventListener('visibilitychange', function () {
+            if (!state.screen) {
+                return;
+            }
+
             if (document.visibilityState === 'hidden') {
                 saveOnLeave(false);
                 stopPoll();
@@ -11827,11 +12062,13 @@
         });
 
         window.addEventListener('pagehide', function () {
-            saveOnLeave(true);
+            if (state.screen) {
+                saveOnLeave(true);
+            }
         });
 
         window.addEventListener('beforeunload', function (event) {
-            if (!drafting() || !state.flow) {
+            if (!state.screen || !drafting() || !state.flow) {
                 return;
             }
 
@@ -12108,5 +12345,5 @@
         };
     }
 
-    window.PGWsFlow = { start: start, showAction: showAction, runFlag: runFlag, embed: embed };
+    window.PGWsFlow = { start: start, mount: mount, showAction: showAction, runFlag: runFlag, embed: embed };
 })();

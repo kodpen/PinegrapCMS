@@ -21,7 +21,7 @@ description: Plan: the Craft Brewery design template (pinegrap-brewery): beers, 
 
 - 5 (done, #8061): `shop.php` (shop pages, catalog with packs, merch, gift cards and club terms with `membership_days`; `club`, members' area `club_home`, `club_releases` in folder `club`); `tests/design_template_brewery_shop_test.php`.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #8086): `standard.php` (contact, inbox, conversation, newsletter, News, blog post, help search, error, message and newsletter e-mails); `tests/design_template_brewery_standard_test.php`.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 

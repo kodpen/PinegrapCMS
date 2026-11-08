@@ -23,7 +23,7 @@ description: Plan: the Veterinary Practice design template (pinegrap-veterinary)
 
 - 6 (done, #8054): `standard.php`: contact, inbox, conversation, newsletter, Pet Care Articles (`blog`, filtered by `?species=`), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #8074): `account.php`: sign-in, My Account, `staff`, `blog_new` (pet field), directory, e-mails; test.
 
 - 8: assembly: `pinegrap-veterinary.php` (order, search sections, look, fonts, `pvt-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-veterinary.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 

@@ -2388,7 +2388,7 @@ function api_schema() {
 			'handler' => 'api_contact_groups_list',
 			'returns' => array('list' => 'ContactGroup'),
 			'summary' => 'Contact groups',
-			'description' => 'The lists campaigns are sent to, by id, cursor paged, each with how many contacts it holds. email_subscription says whether campaigns may go to it and its members choose whether they get them; subscription_type open offers it to every contact on the e-mail preferences page, closed only to its members. An account with the contacts right but the user role sees only the groups given to it, as on the contact screens.',
+			'description' => 'The lists campaigns are sent to, by id, cursor paged, each with how many contacts it holds. email_subscription says whether campaigns may go to it and its members choose whether they get them; subscription_type open offers it to every contact on the e-mail preferences page, closed only to its members. by_rule says the group is filled by its rules alone (its members cannot be changed by hand; POST /contact-groups/{id}/refresh runs the rules now), computed_at when they last ran to the end. An account with the contacts right but the user role sees only the groups given to it, as on the contact screens.',
 			'params'  => array(
 				array('name' => 'email_subscription', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the groups that take e-mail subscriptions, or only the ones that do not.'),
 				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the description.'),
@@ -2512,6 +2512,21 @@ function api_schema() {
 				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to put into the group. Each has to exist.'),
 				array('name' => 'remove', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to take out of the group.'),
 				array('name' => 'opt_in', 'in' => 'body', 'type' => 'bool', 'description' => 'The choice for this group\'s e-mail, written for every contact in add (ignored when add is empty). Only for a group that takes subscriptions.')
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.refresh',
+			'method'  => 'POST',
+			'path'    => '/contact-groups/{id}/refresh',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_refresh',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'done' => 'boolean', 'added' => 'integer', 'removed' => 'integer', 'members' => 'integer'),
+			'summary' => 'Run a contact group\'s rules now',
+			'description' => 'Refresh now on the contact group screen, for a group filled by rules (by_rule true): its rules run for a few seconds, the contacts they select are put in and the ones they no longer select taken out. A member that did not come from the rules (one kept when the group got them) is never taken out. A large group takes several calls: send it again until done is true; each call goes on from where the last one stopped. added and removed count the whole pass so far, members what the group holds now. The change is announced once, as contact_group.members_changed, when the pass is done. The rules also run on their own about once an hour (computed_at on the group). A hand group is refused with 409 contact_group_not_by_rule. An account with the user role may refresh the groups given to it, as on the group screen.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 
@@ -4452,6 +4467,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/start',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_start',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'Start or resume an experiment',
 			'description' => 'A set-up (draft) experiment starts, a paused one runs again; visitors are then drawn into its variants by their weights. A start is refused with 409 experiment_state when the page is no longer on the site, a variant is no longer a draft, another experiment runs on the page, or the experiment is running or ended. The first start stamps started_at and announces experiment.started. Stored copies of pages are made old, as after a panel change.',
@@ -4466,6 +4482,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/pause',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_pause',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'Pause an experiment',
 			'description' => 'A running experiment pauses: every visitor sees the live page and nothing is counted until it runs again. 409 experiment_state unless it is running.',
@@ -4480,6 +4497,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/end',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_end',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'End an experiment without a winner',
 			'description' => 'A running or paused experiment ends for good, with no winner and the live page as it is; the variant draft stays in Drafts. Publishing a variant\'s design as the winner is done in the panel, where the page lock applies. Announces experiment.ended. 409 experiment_state when it is a set-up or already ended.',

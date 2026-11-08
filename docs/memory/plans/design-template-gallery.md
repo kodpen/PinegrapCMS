@@ -20,7 +20,7 @@ description: Plan: the Art Gallery design template (pinegrap-gallery): artists, 
 
 - 6 (done, #8057): `mail.php` and `requests.php`: artwork enquiries (`enquire` with `?artwork=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`, `email_enquiry_new`, `email_enquiry_received`) and private viewings (`viewing` with `?exhibition=`, `viewing_view`, `my_viewings`, `staff_viewings`, their two e-mails); test.
 
-- 7: `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: editions, small works, catalogues); test.
+- 7 (done, #8092): `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: editions, small works, catalogues); test.
 
 - 8: `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`, filtered by `?topic=`), blog post, help search, error; test.
 
