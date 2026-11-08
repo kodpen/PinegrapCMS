@@ -178,3 +178,59 @@ function test_designer_block_families_core_asks_the_family()
 	pg_assert_contains("_noWrapCtypes.indexOf(_nwCtype) === -1 && !_sdBlockFamilyOf(_nwCtype)", $js, 'a family block is not wrapped in a container');
 	pg_assert_contains('registerBlockFamily: _sdRegisterBlockFamily,', $js, 'the registration call is public');
 }
+
+// Every block of every shipped family file draws under Node: a tree whose
+// nodes all have a type, and whose interactions pg_fx_normalize() keeps as
+// they are written (a typo in an effect or field would be dropped silently).
+function test_designer_block_families_shipped_blocks_draw()
+{
+	$families = array_slice(pg_designer_js_sources(), 1);
+	if (!$families) {
+		pg_assert_true(true, 'no family file is shipped');
+		return;
+	}
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+	if ($code !== 0) {
+		pg_assert_true(true, 'Node is not installed: the run is skipped');
+		return;
+	}
+	$script = "'use strict';\n"
+		. "function _sdT(key) { return key; }\n"
+		. "function createNode(type, props, children) { return { type: type, props: props || {}, children: children || [] }; }\n"
+		. designer_block_families_test_cut('    // ── Block families in their own files', '    // ── Block stylesheet')
+		. designer_block_families_test_cut('    var _SD_BLOCK_CSS = {', "\n    };") . "\n    };\n"
+		. designer_block_families_test_cut('    var _SD_BLOCK_CSS_NEEDS = {', "\n    };") . "\n    };\n"
+		. "var StyleDesigner = { registerBlockFamily: _sdRegisterBlockFamily };\n";
+	foreach ($families as $family) {
+		$script .= (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $family) . "\n";
+	}
+	$script .= "var out = {};\n"
+		. "_sdBlockFamilies().forEach(function (fam) { fam.items.forEach(function (it) {\n"
+		. "  var ct = it.extra.componentType, node = fam.build(ct), fx = [], untyped = 0;\n"
+		. "  (function walk(n) { if (!n || !n.type) { untyped++; return; } if (n.props._fx) fx.push(n.props._fx); (n.children || []).forEach(walk); })(node);\n"
+		. "  out[ct] = { drawn: !!node, untyped: untyped, fx: fx };\n"
+		. "}); });\n"
+		. "console.log(JSON.stringify(out));\n";
+
+	$file = tempnam(sys_get_temp_dir(), 'pgblockship');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+	pg_assert_same(0, $code, implode("\n", $out));
+	$got = json_decode((string) end($out), true);
+	pg_assert_true(is_array($got) && count($got) > 0, 'the shipped family blocks are drawn');
+	foreach (is_array($got) ? $got : array() as $ctype => $block) {
+		pg_assert_true($block['drawn'], $ctype . ' draws');
+		pg_assert_same(0, $block['untyped'], $ctype . ': nodes without a type');
+		foreach ($block['fx'] as $fx) {
+			$kept = pg_fx_normalize($fx);
+			pg_assert_true(is_array($kept), $ctype . ': ' . json_encode($fx) . ' is an interaction');
+			foreach ($fx as $field => $value) {
+				pg_assert_true(is_array($kept) && array_key_exists($field, $kept) && $kept[$field] === $value, $ctype . ': ' . $field . ' of ' . json_encode($fx) . ' is kept as written');
+			}
+		}
+	}
+}
