@@ -1566,7 +1566,9 @@ function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
             continue;
         }
 
-        $existing = (int) db_value("SELECT id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . $user_id . "' LIMIT 1");
+        // A share a shared group wrote (via_group) is the group's: a direct
+        // share is a row of its own, which stays when the group is taken back.
+        $existing = (int) db_value("SELECT id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . $user_id . "'" . (ws_note_groups_ready() ? " AND via_group = 0" : '') . " LIMIT 1");
 
         if ($existing > 0) {
             db("UPDATE ws_note_shares SET can_edit = '" . ($can_edit ? 1 : 0) . "' WHERE id = '" . $existing . "'");
@@ -1608,7 +1610,7 @@ function ws_note_share_channel($viewer, $note, $channel)
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'message_id' => 0);
     }
 
-    $existing = db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND channel_id = '" . (int) $channel['id'] . "' LIMIT 1");
+    $existing = db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND channel_id = '" . (int) $channel['id'] . "'" . (ws_note_groups_ready() ? " AND via_group = 0" : '') . " LIMIT 1");
 
     if (is_array($existing)) {
         return array('ok' => false, 'error' => lang('This note is already shared in that channel.'), 'message_id' => (int) $existing['message_id']);
@@ -1645,10 +1647,18 @@ function ws_note_unshare($viewer, $note, $share_id = 0)
 
     $share = ((int) $share_id > 0)
         ? db_item("SELECT * FROM ws_note_shares WHERE id = '" . (int) $share_id . "' AND note_id = '" . (int) $note['id'] . "'")
-        : db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . (int) $viewer['id'] . "' LIMIT 1");
+        : db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'" . (ws_note_groups_ready() ? " ORDER BY via_group" : '') . " LIMIT 1");
 
     if (!is_array($share) || (!$owner && ((int) $share['user_id'] !== (int) $viewer['id']))) {
         return array('ok' => false, 'error' => lang('That share could not be found.'));
+    }
+
+    // A shared group's row would be written again by the group: the note
+    // leaves through the group (note_group_shares.php).
+    if ((int) ($share['via_group'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => $owner
+            ? lang('This note is shared through a group: take it out of the group or take the group back.')
+            : lang('This note came with a shared group: leave the group to stop seeing it.'));
     }
 
     // The note leaves the person's list, for the apps that keep notes in
@@ -2277,7 +2287,7 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
  */
 function ws_note_inbox_kinds()
 {
-    return array('note_shared', 'note_updated', 'note_answer', 'note_answer_ai');
+    return array('note_shared', 'note_updated', 'note_answer', 'note_answer_ai', 'note_group_added');
 }
 
 /**
