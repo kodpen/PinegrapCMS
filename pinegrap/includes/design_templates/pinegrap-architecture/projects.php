@@ -97,13 +97,23 @@ $project_pages[] = array(
     'title'            => lang('Projects'),
     'meta_description' => lang('Houses, workplaces, hotels, libraries and public spaces the studio has designed, with the photographs and credits of each.'),
     'tree'             => $page(array(
-        $page_header(lang('Projects'), lang('Buildings, interiors and places we have designed, completed or under way. Choose a type or a place to narrow the list.')),
-        $el('section', 'py-5', lang('Projects'), array(
+        // The list opens on a plate of the work: the second plate of the
+        // studio's book, the project it shows one click away.
+        $plate_hero(lang('Our work'), lang('Projects'), lang('Buildings, interiors and places we have designed, completed or under way. Choose a type or a place to narrow the list.'), array(
+            $link(lang('Start a Project'), '{{page:enquiry}}', 'btn btn-dark rounded-0 px-4'),
+            $link(lang('How We Work'), '{{page:process}}', 'btn btn-outline-dark rounded-0 px-4'),
+        ), $photo('project-print_works', 1800, 770), $projects['print_works']['name'], array(
+            'no'    => '02',
+            'name'  => $projects['print_works']['name'],
+            'place' => $projects['print_works']['place'],
+            'href'  => '{{page:projects}}?' . $query(array('type' => $project_types[$projects['print_works']['type']]['title'])),
+        )),
+        $el('section', 'py-5 border-top', lang('Projects'), array(
             $container(array(
-                $ai_filter_bar(array(
+                $rise($ai_filter_bar(array(
                     array('label' => lang('Type'), 'param' => 'type', 'values' => $type_titles),
                     array('label' => lang('Location'), 'param' => 'location', 'values' => $location_titles),
-                )),
+                )), 60),
                 $widget('projects_list'),
             )),
         )),
@@ -258,9 +268,11 @@ $project_widgets = array(
     ),
 );
 
-// One project: the type and location, the name, the summary, the gallery,
-// the facts, the brief, the client's words and the credits, and beside
-// them the ways to start a similar project or see more of the same type.
+// One project as the studio publishes a building: the project sheet (the
+// first photo beside the type and location, the name, the summary, the
+// facts and the credits), the other photos, then the brief and the
+// client's words beside the ways to start a similar project or see more
+// of the same type.
 $project_sample_key = 'courtyard_house';
 $project_sample = $projects[$project_sample_key];
 $project_not_found = lang('This project could not be found. It may have been renamed or taken off the list.');
@@ -289,18 +301,35 @@ $project_widgets['project_detail'] = array(
                     ), array('href' => '{{page:projects}}')),
                     $edit_button(),
                 )),
-                $el('p', 'pai-eyebrow d-flex flex-wrap gap-2 small text-uppercase fw-semibold text-body-secondary mb-2', lang('Type and Location'), array(
-                    $span($project_types[$project_sample['type']]['title'], '', lang('Project Type'), $bind('type')),
-                    $span('·', '', lang('Separator'), array('_attrs' => array($attr('aria-hidden', 'true')))),
-                    $span($locations[$project_sample['location']], '', lang('Location'), $bind('location')),
-                )),
-                $heading('h1', $project_sample['name'], 'pai-display display-5 mb-3', $bind('name')),
-                $para($project_sample['summary'], 'lead text-body-secondary mb-4 col-lg-8 px-0', $bind('summary')),
-                $el('div', 'mb-5', lang('Gallery'), array($gallery($project_sample_key))),
+                // The project sheet (Architecture: Project Sheet): the first
+                // photo beside the type, the name, the summary, the facts
+                // and the credits; the photo fades and the facts rise.
+                $row(array(
+                    $fx($col(array(
+                        $el('figure', 'mb-0', lang('Photograph'), array(
+                            $el('span', 'pg-field-value d-block ratio ratio-4x3 overflow-hidden bg-body-tertiary', lang('Picture Frame'), array(
+                                $image($photo('project-' . $project_sample_key, 1600, 1200), $project_sample['name'], 'w-100 h-100 object-fit-cover',
+                                    array('_bindings' => array('src' => 'photo_1', 'alt' => 'name'))),
+                            )),
+                            $el('figcaption', 'small text-body-secondary mt-2', lang('Photo Caption'), array(), array_merge(array('text' => $project_sample['place']), $bind('place'))),
+                        )),
+                    ), '', '7'), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900)),
+                    $col(array(
+                        $el('p', 'pai-eyebrow d-flex flex-wrap gap-2 small text-uppercase fw-semibold text-body-secondary mb-2', lang('Type and Location'), array(
+                            $span($project_types[$project_sample['type']]['title'], '', lang('Project Type'), $bind('type')),
+                            $span('·', '', lang('Separator'), array('_attrs' => array($attr('aria-hidden', 'true')))),
+                            $span($locations[$project_sample['location']], '', lang('Location'), $bind('location')),
+                        )),
+                        $heading('h1', $project_sample['name'], 'pai-display display-6 mb-3', $bind('name')),
+                        $para($project_sample['summary'], 'text-body-secondary mb-4', $bind('summary')),
+                        $rise($project_facts($project_sample_key)),
+                        $el('div', 'mt-4', lang('Credits'), array($credits_block($project_sample_key))),
+                    ), '', '5'),
+                ), '4', '', 'g-lg-5 mb-5'),
+                $el('div', 'mb-5', lang('Gallery'), array($gallery($project_sample_key, true))),
                 $row(array(
                     $col(array(
-                        $project_facts($project_sample_key),
-                        $el('div', 'pg-hide-if-empty mt-5', lang('The Brief'), array(
+                        $el('div', 'pg-hide-if-empty', lang('The Brief'), array(
                             $heading('h2', lang('The Brief'), 'pai-eyebrow h6 text-uppercase fw-bold mb-3'),
                             $el('p', 'pg-field-value fs-5 mb-0', lang('Value'), array(), array_merge(array('text' => $project_sample['brief']), $bind('brief'))),
                         )),
@@ -312,8 +341,7 @@ $project_widgets['project_detail'] = array(
                         )),
                     ), '', '8'),
                     $col(array(
-                        $credits_block($project_sample_key),
-                        $el('aside', 'border-top border-dark-subtle pt-4 mt-5', lang('Start a Project'), array(
+                        $el('aside', 'border-top border-dark-subtle pt-4', lang('Start a Project'), array(
                             $heading('h2', lang('Planning something similar?'), 'pai-display h5 mb-2'),
                             $para(lang('Tell us about your site and your plans. The first consultation is free.'), 'small text-body-secondary mb-3'),
                             // Opens the enquiry with this project's

@@ -5,7 +5,8 @@
  * Panel actions - the workspace.
  *
  *   pg_panel_ws  ws_* - every workspace action
- *                (includes/workspace/actions.php)
+ *                (includes/workspace/actions.php; a channel's agents in
+ *                includes/workspace/channel_agents_panel.php)
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
  * for the contract.
@@ -32,6 +33,11 @@ function pg_panel_ws($request, $action)
     validate_token();
 
     require_once(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+    // A channel's agents in its settings (channel_agents_panel.php).
+    if (in_array($action, ws_channel_agents_actions(), true)) {
+        respond(ws_channel_agents_action($action, $request));
+    }
 
     respond(ws_handle_action($action, $request));
 }
