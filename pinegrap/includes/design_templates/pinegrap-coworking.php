@@ -236,10 +236,11 @@ return array(
         'email_footer' => array('name' => lang('Coworking E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pcw- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the palette blocks its home,
+    // plans and amenities pages place, and its pcw- rules, in one User
+    // Styles entry; and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $coworking_css),
+        'css'   => pg_design_template_user_styles(array('coworking-hero', 'locations-spaces', 'locations-floors'), $coworking_css),
         'fonts' => json_encode($coworking_fonts),
     ),
 );

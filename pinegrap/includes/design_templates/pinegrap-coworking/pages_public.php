@@ -95,24 +95,6 @@ $hours_list = function ($class = 'list-unstyled mb-0') use ($el, $span, $opening
     return $el('ul', $class, lang('Opening Hours'), $items);
 };
 
-// The spaces of one kind as a price list: the name, the seats and the
-// price on each line. The plans page lists the offices and the meeting
-// rooms this way.
-$price_list = function ($kind) use ($el, $span, $spaces, $space_price) {
-    $items = array();
-    foreach ($spaces as $key => $s) {
-        if ($s['kind'] !== $kind) continue;
-        $items[] = $el('li', 'list-group-item d-flex flex-wrap align-items-center justify-content-between gap-2 py-3', $s['name'], array(
-            $el('div', '', lang('Space Name'), array(
-                $span($s['name'], 'd-block fw-semibold', lang('Name')),
-                $span(sprintf(lang('Up to %d people'), $s['seats']), 'd-block small text-body-secondary', lang('Seats')),
-            )),
-            $span($space_price($key), 'pcw-price fw-bold text-primary', lang('Price')),
-        ));
-    }
-    return $el('ul', 'list-group list-group-flush rounded-3 border', lang('Price List'), $items);
-};
-
 // The cards of the shared data, in their order.
 $kind_cards_row = array();
 foreach (array_keys($kinds) as $key) $kind_cards_row[] = $kind_card($key);
@@ -123,8 +105,193 @@ foreach (array_keys($amenities) as $key) $amenity_cols[] = $amenity_card($key);
 $testimonial_cols = array();
 foreach (array_keys($testimonials) as $n) $testimonial_cols[] = $testimonial_card($n);
 
-// ── Home ────────────────────────────────────────────────────────────────
+// ── Coworking blocks ────────────────────────────────────────────────────
+// Home, plans and amenities place the palette's blocks with the space's own
+// data: Coworking: Workspace Hero (assets/js/style_designer_blocks_
+// coworking.js), Locations: Spaces to Hire and Locations: Floor Directory
+// (style_designer_blocks_locations.js). The same structure and classes,
+// their rules shipped in User Styles from the block source
+// (pinegrap-coworking.php), the motion as node interactions (props._fx,
+// played by pg_fx; reduced motion is honoured there).
 
+// A node with an interaction.
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+
+// The unit words a price is followed by, as the blocks write them apart
+// from the figure.
+$unit_words = array('hour' => lang('/hour'), 'day' => lang('/day'), 'month' => lang('/month'));
+
+// The lowest price of a kind of space, from its spaces.
+$kind_from = function ($kind) use ($spaces, $money) {
+    $low = null;
+    foreach ($spaces as $s) {
+        if ($s['kind'] !== $kind) continue;
+        if ($low === null || $s['price']['USD'] < $low['USD']) $low = $s['price'];
+    }
+    return $money($low);
+};
+
+// Coworking: Workspace Hero — the space in a sentence and "how do you
+// work?" answered by a way in per kind of space, each with its lowest
+// price and unit and opening the spaces of that kind; a mosaic of two
+// pictures beside it. Text and ways rise in on load, the pictures fade in.
+$way_lines = array(
+    'hot'     => lang('Any free desk, for a day or a month'),
+    'fixed'   => lang('Your own desk, your screen stays'),
+    'office'  => lang('A lockable room for a team of two to ten'),
+    'meeting' => lang('Booked by the hour, screen and coffee included'),
+    'event'   => lang('Talks and launches for up to eighty'),
+);
+$cw_hero = function () use ($el, $heading, $para, $link, $image, $span, $icon, $container, $row, $col, $attr, $fx, $kinds, $kind_from, $unit_words, $way_lines, $query, $photo, $hub) {
+    $ways = array();
+    $n = 0;
+    foreach ($kinds as $kkey => $k) {
+        $n++;
+        $ways[] = $el('li', '', sprintf(lang('Way %d'), $n), array(
+            $el('a', 'pg-cw-way d-flex align-items-center gap-3 p-3 rounded-3 text-body text-decoration-none', $k['title'], array(
+                $el('div', 'd-inline-flex align-items-center justify-content-center rounded-3 bg-primary-subtle text-primary-emphasis p-2 lh-1', lang('Icon Box'), array(
+                    $icon($k['icon'], 'fs-4'),
+                )),
+                $el('div', 'flex-grow-1', lang('Way Text'), array(
+                    $span($k['title'], 'd-block fw-bold', lang('Name')),
+                    $span($way_lines[$kkey], 'd-block small text-body-secondary', lang('Text')),
+                )),
+                $el('div', 'text-end text-nowrap pg-cw-price', lang('Price'), array(
+                    $span(lang('Starting at'), 'd-block small text-body-secondary', lang('Label')),
+                    $span($kind_from($kkey), 'fw-bold', lang('Price')),
+                    $span($unit_words[$k['unit']], 'small text-body-secondary', lang('Unit')),
+                )),
+                $icon('bi-arrow-right', 'text-primary'),
+            ), array('href' => '{{page:spaces}}?' . $query(array('kind' => $k['title'])))),
+        ));
+    }
+    return $el('section', 'pcw-hero py-5 overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $row(array(
+                $col(array(
+                    $fx($el('div', 'mb-4', lang('Hero Text'), array(
+                        $span($hub['address'], 'd-inline-block mb-3 small fw-semibold text-uppercase text-primary', lang('Eyebrow')),
+                        $heading('h1', lang('A better place to do your work'), 'pcw-display display-4 mb-3'),
+                        $para($hub['tagline'] . '. ' . lang('How do you work?'), 'lead text-body-secondary mb-0'),
+                    )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700, 'stagger' => 100)),
+                    $fx($el('ul', 'list-unstyled d-grid gap-2 mb-0', lang('Ways In'), $ways, array('_attrs' => array($attr('aria-label', lang('Ways to work'))))),
+                        array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 600, 'delay' => 300, 'stagger' => 90)),
+                    $el('div', 'd-flex flex-wrap align-items-center gap-3 mt-4', lang('Buttons'), array(
+                        $link(lang('Book a Free Day'), '{{page:tour}}?' . $query(array('plan' => lang('Free trial day'))), 'btn btn-primary px-4'),
+                        $link(lang('See the Plans'), '{{page:plans}}', 'fw-semibold link-primary text-decoration-none'),
+                    )),
+                ), '', '6'),
+                $col(array(
+                    $fx($el('div', 'pg-cw-mosaic', lang('Picture Mosaic'), array(
+                        $image($photo('hero', 600, 800), lang('Members working at long shared tables under tall warehouse windows'), 'rounded-4 pg-cw-tall'),
+                        $image($photo('booth', 500, 500), lang('A phone booth with a lamp and a stool'), 'rounded-4 pg-cw-short'),
+                    )), array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1000)),
+                ), '', '6'),
+            ), '4', '', 'g-lg-5 align-items-center'),
+        ), 'py-lg-4'),
+    ));
+};
+
+// Locations: Spaces to Hire — a card per space of the given kinds: its
+// picture, name, summary, seats, floor and kind, its features as pills,
+// "Starting at" + price + unit apart, and the way to book or ask. The row
+// rises on view, one card after another.
+$space_cards = function ($kind_keys, $action, $href, $id, $topics, $title, $lead, $class = 'py-5')
+    use ($el, $heading, $para, $link, $image, $span, $icon, $container, $row, $col, $fx, $searchable, $spaces, $kinds, $floors, $money, $unit_words, $photo) {
+    $fact = function ($icon_name, $text, $name) use ($el, $icon, $span) {
+        return $el('li', 'd-flex align-items-center gap-2', $name, array($icon($icon_name, 'text-primary flex-shrink-0'), $span($text, '', lang('Text'))));
+    };
+    $cards = array();
+    foreach ($spaces as $key => $s) {
+        if (!in_array($s['kind'], $kind_keys, true)) continue;
+        $pills = array();
+        foreach ($s['features'] as $f) {
+            $pills[] = $el('li', '', $f, array($span($f, 'badge rounded-pill text-wrap bg-body-secondary text-body-emphasis fw-normal', lang('Pill'))));
+        }
+        $cards[] = $col(array(
+            $el('div', 'card h-100 border-0 shadow-sm overflow-hidden', $s['name'], array(
+                $image($photo('space-' . $key, 800, 450), $s['name'], 'card-img-top object-fit-cover pg-ratio-16x9', array('_attrs' => array(array('name' => 'loading', 'value' => 'lazy')))),
+                $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
+                    $heading('h3', $s['name'], 'pcw-display h5 mb-2'),
+                    $para($s['summary'], 'small text-body-secondary mb-3'),
+                    $el('ul', 'list-unstyled d-flex flex-wrap gap-3 small fw-semibold mb-3 pg-space-facts', lang('Space Facts'), array(
+                        $fact('bi-people', sprintf(lang('Up to %d people'), $s['seats']), lang('Capacity')),
+                        $fact('bi-building', $floors[$s['floor']], lang('Floor')),
+                        $fact('bi-grid-3x2-gap', $kinds[$s['kind']]['title'], lang('Kind')),
+                    )),
+                    $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-4', lang('Features'), $pills),
+                    $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mt-auto pt-3 border-top', lang('Card Foot'), array(
+                        $el('div', 'pcw-price', lang('Price'), array(
+                            $span(lang('Starting at'), 'small text-body-secondary me-1', lang('Label')),
+                            $span($money($s['price']), 'fw-bold', lang('Price')),
+                            $span($unit_words[$kinds[$s['kind']]['unit']], 'small text-body-secondary', lang('Unit')),
+                        )),
+                        $link($action, $href, 'btn btn-sm btn-outline-primary'),
+                    )),
+                )),
+            )),
+        ), '6', '4');
+    }
+    return $el('section', $class, $title, array(
+        $container(array(
+            $el('div', 'text-center mb-5', lang('Section Header'), array(
+                $heading('h2', $title, 'pcw-display h2 mb-2'),
+                $para($lead, 'lead text-body-secondary mb-0'),
+            )),
+            $fx($row($cards, '4', 'center'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 120)),
+        )),
+    ), $searchable($id, $topics));
+};
+
+// Locations: Floor Directory — the building from the top floor down: its
+// level, its name, a line, its spaces as pills and who may go up. The list
+// rises on view, one floor after another.
+$floor_notes = array(
+    'second' => array('level' => '2', 'text' => lang('The quiet top floor: the library, the corner office and the boardroom.'), 'access' => lang('Members during staffed hours; residents and offices around the clock')),
+    'first'  => array('level' => '1', 'text' => lang('Fixed desks and the team offices around the courtyard.'), 'access' => lang('Residents and offices, around the clock')),
+    'ground' => array('level' => '0', 'text' => lang('The front desk, the coffee bar, the open floor and the hall.'), 'access' => lang('Everyone during staffed hours')),
+);
+$floor_directory = function () use ($el, $heading, $para, $span, $icon, $container, $fx, $searchable, $spaces, $floors, $floor_notes) {
+    $items = array();
+    foreach ($floor_notes as $key => $f) {
+        $pills = array();
+        foreach ($spaces as $s) {
+            if ($s['floor'] !== $key) continue;
+            $pills[] = $el('li', '', $s['name'], array($span($s['name'], 'badge rounded-pill text-wrap bg-body-secondary text-body-emphasis fw-normal', lang('Pill'))));
+        }
+        $items[] = $el('li', 'd-flex gap-4 py-4 border-bottom', $floors[$key], array(
+            $span($f['level'], 'pg-floor-level rounded-3 bg-primary-subtle text-primary-emphasis fs-4 fw-bold', lang('Level')),
+            $el('div', 'flex-grow-1', lang('Floor Text'), array(
+                $heading('h3', $floors[$key], 'pcw-display h5 mb-1'),
+                $para($f['text'], 'text-body-secondary mb-3'),
+                $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-3', lang('On This Floor'), $pills),
+                $el('div', 'd-flex align-items-center gap-2 small fw-semibold', lang('Access'), array(
+                    $icon('bi-key', 'text-primary'),
+                    $span($f['access'], '', lang('Text')),
+                )),
+            )),
+        ));
+    }
+    return $el('section', 'py-5', lang('Floors'), array(
+        $container(array(
+            $el('div', 'text-center mb-5', lang('Section Header'), array(
+                $heading('h2', lang('Floor by floor'), 'pcw-display h2 mb-2'),
+                $para(lang('Where everything is, and who can go up.'), 'lead text-body-secondary mb-0'),
+            )),
+            $el('div', 'col-lg-10 mx-auto', lang('Directory'), array(
+                $fx($el('ol', 'list-unstyled mb-0 border-top', lang('Floors'), $items), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 100)),
+            )),
+        )),
+    ), $searchable('cw-floors', lang('floors, where, building, library, terrace, access, key card')));
+};
+
+// ── Home ────────────────────────────────────────────────────────────────
+// The space's own order: how do you work (a way in per kind), the spaces
+// from the collection, the rooms to book, what is included, the events,
+// the members' words and the blog.
 $public_pages[] = array(
     'key'              => 'home',
     'name'             => lang('home'),
@@ -132,37 +299,7 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Hot desks, fixed desks, private offices and meeting rooms in an old warehouse, with day passes, monthly plans and a free first day.'),
     'tree'             => $page(array(
-        // The way in: the space in a sentence, the two ways on and a photo
-        // of the open floor.
-        $el('section', 'pcw-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para($hub['region'], 'pcw-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('A better place to do your work'), 'pcw-display display-3 mb-3'),
-                        $para($hub['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Book a Free Day'), '{{page:tour}}?' . $query(array('plan' => lang('Free trial day'))), 'btn btn-primary btn-lg px-4'),
-                            $link(lang('See the Plans'), '{{page:plans}}', 'btn btn-outline-primary btn-lg px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('Members working at long shared tables under tall warehouse windows'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
-
-        $el('section', 'py-5', lang('Ways to Work'), array(
-            $container(array(
-                $section_header(lang('Ways to work'), lang('A desk, an office or a room for an hour'), lang('All Spaces'), '{{page:spaces}}'),
-                $row($kind_cards_row, '4'),
-            )),
-        ), $searchable('cw-home-kinds', lang('desk, office, room, workspace, coworking'))),
+        $el('div', '', lang('Ways to Work'), array($cw_hero()), $searchable('cw-home-kinds', lang('desk, office, room, workspace, coworking'))),
 
         // The spaces, read from the Spaces collection.
         $el('section', 'py-5 bg-body-tertiary', lang('Spaces'), array(
@@ -172,28 +309,19 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5', lang('Membership Plans'), array(
-            $container(array(
-                $section_header(lang('Membership'), lang('A plan for how you work'), lang('Compare the plans'), '{{page:plans}}'),
-                $row($plan_cards_row, '4'),
-            )),
-        )),
+        $space_cards(array('meeting', 'event'), lang('Book a meeting room'), '{{page:book_online}}', 'cw-home-rooms',
+            lang('meeting room, conference room, hourly, boardroom, event hall'),
+            lang('A room for your next meeting'), lang('Members and visitors pick a free time online and pay by the hour.')),
 
-        $story_band('cw-home-rooms', lang('Meeting Rooms'), lang('A room for your next meeting'),
-            array(lang('Rooms for four to twelve with a screen and a whiteboard, booked by the hour. Members and visitors pick a free time online.')),
-            $photo('home-rooms', 1200, 900), lang('A meeting room with a long table and a screen on the wall'), true,
-            array($link(lang('Book a meeting room'), '{{page:book_online}}', 'btn btn-outline-primary px-4')),
-            lang('meeting room, conference room, hourly, boardroom'), 'py-5 bg-body-tertiary'),
-
-        $el('section', 'py-5', lang('Amenities'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Amenities'), array(
             $container(array(
                 $section_header(lang('Included'), lang('Everything you need to get on with it'), lang('All amenities'), '{{page:amenities}}'),
-                $row($amenity_cols, '4'),
+                $fx($row($amenity_cols, '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 80)),
             )),
         ), $searchable('cw-home-amenities', lang('wifi, coffee, printing, phone booth, lockers, showers'))),
 
         // The community events, read from the Events collection.
-        $el('section', 'py-5 bg-body-tertiary', lang('Community Events'), array(
+        $el('section', 'py-5', lang('Community Events'), array(
             $container(array(
                 $section_header(lang('Community'), lang('Meet the people around you'), lang('All events'), '{{page:events}}'),
                 $widget('home_events'),
@@ -203,7 +331,7 @@ $public_pages[] = array(
         // What members say: sample words for the space to replace, and
         // beside them its own Google reviews, which show once Google
         // Reviews is set up under Site Settings.
-        $el('section', 'py-5', lang('Member Stories'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Member Stories'), array(
             $container(array(
                 $section_header(lang('Our members'), lang('What members say')),
                 $row($testimonial_cols, '4'),
@@ -211,7 +339,7 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('From the Blog'), array(
+        $el('section', 'py-5', lang('From the Blog'), array(
             $container(array(
                 $section_header(lang('Blog'), lang('Notes on working well'), lang('All posts'), '{{page:blog}}'),
                 $widget('home_posts'),
@@ -221,9 +349,9 @@ $public_pages[] = array(
 );
 
 // ── Membership plans ────────────────────────────────────────────────────
-// The plans, the private offices, the meeting rooms by the hour and how
-// starting works. Each plan opens the tour request with the plan chosen;
-// the shop's membership pages are linked from the shop pages only.
+// The plans, the private offices and the meeting rooms as space cards, and
+// how starting works. Each plan opens the tour request with the plan
+// chosen; the shop's membership pages are linked from the shop pages only.
 $public_pages[] = array(
     'key'              => 'plans',
     'name'             => lang('membership'),
@@ -234,35 +362,15 @@ $public_pages[] = array(
         $page_header(lang('Membership Plans'), lang('Pay by the day or by the month, with no joining fee. Come for a tour and your first day is free.')),
         $el('section', 'py-5', lang('Plans'), array(
             $container(array(
-                $row($plan_cards_row, '4'),
+                $fx($row($plan_cards_row, '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 100)),
             )),
         ), $searchable('cw-plans', lang('price, prices, cost, monthly, day pass, membership fee'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Private Offices'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('For teams'), 'pcw-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                        $heading('h2', lang('An office of your own'), 'pcw-display h2 mb-3'),
-                        $para(lang('Furnished offices for two to ten people, let by the month with meeting room hours, post handling and everything the members have. Tell us about your team and we send an offer.'), 'text-body-secondary mb-4'),
-                        $link(lang('Ask About an Office'), '{{page:office_enquiry}}', 'btn btn-primary px-4'),
-                    ), '', '6'),
-                    $col(array($price_list('office')), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        ), $searchable('cw-offices', lang('private office, team room, studio, lease, rent'))),
-        $el('section', 'py-5', lang('Meeting Rooms'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('By the hour'), 'pcw-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                        $heading('h2', lang('Meeting rooms for members and visitors'), 'pcw-display h2 mb-3'),
-                        $para(lang('Every plan comes with meeting room hours. Beyond them, or without a plan, a room is paid by the hour.'), 'text-body-secondary mb-4'),
-                        $link(lang('Book a meeting room'), '{{page:book_online}}', 'btn btn-outline-primary px-4'),
-                    ), '', '6', '', '12', 'order-lg-last'),
-                    $col(array($price_list('meeting')), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        ), $searchable('cw-room-prices', lang('meeting room price, hourly rate, conference room'))),
+        $space_cards(array('office'), lang('Ask About an Office'), '{{page:office_enquiry}}', 'cw-offices',
+            lang('private office, team room, studio, lease, rent'),
+            lang('An office of your own'), lang('Furnished offices for two to ten people, let by the month with meeting room hours, post handling and everything the members have.'), 'py-5 bg-body-tertiary'),
+        $space_cards(array('meeting'), lang('Book a meeting room'), '{{page:book_online}}', 'cw-room-prices',
+            lang('meeting room price, hourly rate, conference room'),
+            lang('Meeting rooms for members and visitors'), lang('Every plan comes with meeting room hours. Beyond them, or without a plan, a room is paid by the hour.')),
         $el('section', 'py-5 bg-body-tertiary', lang('Good to Know'), array(
             $container(array(
                 $row(array(
@@ -290,6 +398,24 @@ $public_pages[] = array(
 );
 
 // ── Amenities ───────────────────────────────────────────────────────────
+// What is included, three places told in alternating rows (Features:
+// Alternating), and the building floor by floor.
+$amenity_row = function ($n, $id, $label, $title, $text, $seed, $alt, $topics) use ($el, $heading, $para, $image, $row, $col, $fx, $photo) {
+    $node = $row(array(
+        $col(array(
+            $el('span', 'text-uppercase text-primary fw-semibold small mb-2 d-block', lang('Label'), array(), array('text' => $label)),
+            $heading('h3', $title, 'pcw-display fw-bold mb-3'),
+            $para($text, 'lead text-body-secondary mb-0'),
+        ), '', '6'),
+        $col(array(
+            $image($photo($seed, 1200, 800), $alt, 'img-fluid rounded-3 shadow-sm', array('_attrs' => array(array('name' => 'loading', 'value' => 'lazy')))),
+        ), '', '6'),
+    ), '4', '', 'align-items-center' . ($n % 2 === 0 ? ' flex-lg-row-reverse' : '') . ($n < 3 ? ' mb-5' : ''));
+    $node['props']['id'] = $id;
+    $node['props']['searchSection'] = true;
+    $node['props']['searchKeywords'] = $topics;
+    return $fx($node, array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700));
+};
 
 $public_pages[] = array(
     'key'              => 'amenities',
@@ -301,22 +427,26 @@ $public_pages[] = array(
         $page_header(lang('Amenities'), lang('Everything that makes a working day easier, included in every plan.')),
         $el('section', 'py-5', lang('Amenities'), array(
             $container(array(
-                $row($amenity_cols, '4'),
+                $fx($row($amenity_cols, '4'), array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => 80)),
             )),
         ), $searchable('cw-amenities', lang('wifi, internet, coffee, kitchen, printer, lockers, showers, parking'))),
-        $story_band('cw-coffee', lang('Coffee Bar'), lang('Good coffee, all day'),
-            array($amenities['coffee']['text'], lang('The coffee bar is where people meet between calls, and where most introductions happen.')),
-            $photo('coffee', 1200, 900), lang('A barista pouring milk at the coffee bar'), false, array(),
-            lang('coffee, tea, kitchen, lunch, snacks'), 'py-5 bg-body-tertiary'),
-        $story_band('cw-terrace', lang('Roof Terrace'), lang('Work in the open air'),
-            array($amenities['terrace']['text']),
-            $photo('terrace', 1200, 900), lang('Tables and plants on a roof terrace above the harbour'), true,
-            array($link(lang('Community Events'), '{{page:events}}', 'btn btn-outline-primary px-4')),
-            lang('terrace, outdoor, roof, garden')),
-        $story_band('cw-address', lang('Business Address'), lang('An address for your company'),
-            array($amenities['post']['text'], lang('Resident desks and offices include it; for other plans, ask at the front desk.')),
-            $photo('post', 1200, 900), lang('Pigeonholes with members\' post at the front desk'), false, array(),
-            lang('virtual office, registered address, mail, post, parcels'), 'py-5 bg-body-tertiary'),
+        $el('section', 'py-5 bg-body-tertiary', lang('Features (Alternating)'), array(
+            $container(array(
+                $el('div', 'text-center mb-5', lang('Section Header'), array(
+                    $heading('h2', lang('Three places members love'), 'pcw-display h2 mb-0'),
+                )),
+                $amenity_row(1, 'cw-coffee', lang('Coffee Bar'), lang('Good coffee, all day'),
+                    $amenities['coffee']['text'] . ' ' . lang('The coffee bar is where people meet between calls, and where most introductions happen.'),
+                    'coffee', lang('A barista pouring milk at the coffee bar'), lang('coffee, tea, kitchen, lunch, snacks')),
+                $amenity_row(2, 'cw-terrace', lang('Roof Terrace'), lang('Work in the open air'),
+                    $amenities['terrace']['text'],
+                    'terrace', lang('Tables and plants on a roof terrace above the harbour'), lang('terrace, outdoor, roof, garden')),
+                $amenity_row(3, 'cw-address', lang('Business Address'), lang('An address for your company'),
+                    $amenities['post']['text'] . ' ' . lang('Resident desks and offices include it; for other plans, ask at the front desk.'),
+                    'post', lang('Pigeonholes with members\' post at the front desk'), lang('virtual office, registered address, mail, post, parcels')),
+            )),
+        )),
+        $floor_directory(),
     )),
 );
 
