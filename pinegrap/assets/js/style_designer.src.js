@@ -9382,7 +9382,125 @@ const StyleDesigner = (function () {
     }
 
     // ========================= RENDER =========================
+    // ── Panels on demand
+    // The Layers tree, the HTML tree and the Attributes and Styles panels
+    // are drawn only while they can be seen: a hidden one (the bottom panel
+    // folded, the Overview folded or on its Notes tab) is marked stale and
+    // drawn when it shows again (_sdPanelsFlush()). Typing in a field draws
+    // the canvas on every key and the other panels once the typing pauses
+    // (_sdPanelsSoon()); an edit of one node redraws only that node's rows
+    // in the Layers tree (_sdTreeRowsRedraw()).
+    var _sdPanelStale = {};
+    var SD_PANELS_TYPING_MS = 180;
+    var _sdPanelsTimer = 0, _sdPanelsNode = null, _sdPanelsMixed = false;
+
+    // The element whose visibility decides whether panel `name` is drawn.
+    function _sdPanelHost(name) {
+        var id = { tree: 'sd-overview-tree-wrap', html: 'sd-html-tree', attrs: 'sd-bp-attrs', styles: 'sd-bp-styles' }[name];
+        return id ? document.getElementById(id) : null;
+    }
+
+    // True when `host` cannot be seen: not laid out (it or an ancestor is
+    // display:none) or inside the folded bottom panel. No host: not hidden,
+    // the panel's own function decides what to do.
+    function _sdPanelHidden(host) {
+        if (!host) return false;
+        if (host.closest && host.closest('.sd-panel-bottom.collapsed')) return true;
+        return !(host.getClientRects && host.getClientRects().length);
+    }
+
+    // Asked first by a panel's drawing function: true when the panel is
+    // hidden, which marks it to be drawn once it shows. Showing it again
+    // is noticed by the folds and tabs that show it, and by a resize
+    // observer on the host for any other way.
+    function _sdPanelDefer(name) {
+        var host = _sdPanelHost(name);
+        if (!_sdPanelHidden(host)) { delete _sdPanelStale[name]; return false; }
+        _sdPanelStale[name] = true;
+        if (host && !host._sdPanelObs && typeof ResizeObserver === 'function') {
+            host._sdPanelObs = new ResizeObserver(function () { _sdPanelsFlush(); });
+            host._sdPanelObs.observe(host);
+        }
+        return true;
+    }
+
+    // Draws every stale panel that can be seen now.
+    function _sdPanelsFlush() {
+        var paint = { tree: renderTree, html: renderHtmlTree, attrs: renderAttrsPanel, styles: renderStylesPanel };
+        Object.keys(_sdPanelStale).forEach(function (n) {
+            if (paint[n] && !_sdPanelHidden(_sdPanelHost(n))) paint[n]();
+        });
+    }
+
+    // The panels a keystroke in a field changes, drawn once the typing
+    // pauses; `node` is the node typed into (null: not one node). Keys
+    // typed into two nodes before the pause draw the whole Layers tree.
+    function _sdPanelsSoon(node) {
+        if (_sdPanelsTimer && _sdPanelsNode !== (node || null)) _sdPanelsMixed = true;
+        _sdPanelsNode = node || null;
+        clearTimeout(_sdPanelsTimer);
+        _sdPanelsTimer = setTimeout(_sdPanelsNow, SD_PANELS_TYPING_MS);
+    }
+
+    // Draws now what _sdPanelsSoon() put off.
+    function _sdPanelsNow() {
+        var node = _sdPanelsMixed ? null : _sdPanelsNode;
+        _sdPanelsCancel();
+        _sdTreeRefresh(node);
+        renderStatusBar();
+        renderAttrsPanel();
+        renderHtmlTree();
+        _sdLivePreviewSchedule();
+    }
+
+    // Drops what _sdPanelsSoon() put off: render() draws every panel.
+    function _sdPanelsCancel() {
+        clearTimeout(_sdPanelsTimer);
+        _sdPanelsTimer = 0;
+        _sdPanelsNode = null;
+        _sdPanelsMixed = false;
+    }
+
+    // The Layers tree after an edit of `node` (null: anything).
+    function _sdTreeRefresh(node) {
+        if (node && _sdTreeRowsRedraw(node)) return;
+        renderTree();
+    }
+
+    // Redraws the rows of `node` and its descendants in place, when the
+    // tree on screen was drawn from this page and is not stale. Its
+    // ancestors' rows read nothing of its props (label, id, badges and
+    // icon are the row's own node's), so they stay. False when the whole
+    // tree must be drawn: a node of a shared component (its rows are drawn
+    // inside the component's open marks), the root, no row for the node.
+    function _sdTreeRowsRedraw(node) {
+        var list = document.getElementById('sd-tree-list');
+        if (!list || !node || node === tree || list._sdTreeOf !== tree || _sdPanelStale.tree) return false;
+        if (_resolveSharedSid(node) > 0) return false;
+        if (_sdPanelDefer('tree')) return true;
+        var row = _sdTreeRowOf(list, node);
+        if (!row || !row.parentNode) return false;
+        var depth = parseInt(row.style.getPropertyValue('--depth'), 10) || 1;
+        var next = row.nextElementSibling;
+        var kids = (next && next.classList.contains('sd-tree-children')) ? next : null;
+        var fresh = document.createElement('ul');
+        _sdSharedOpen = {};
+        buildTreeItems(fresh, node, depth);
+        var parent = row.parentNode;
+        while (fresh.firstChild) parent.insertBefore(fresh.firstChild, row);
+        parent.removeChild(row);
+        if (kids) parent.removeChild(kids);
+        // The rows match the tree as it is now (_sdTreeSelectInPlace()).
+        list._sdTreeEpoch = _sdEditEpoch;
+        return true;
+    }
+    // ── end of panels on demand
+
     function render() {
+        // The node an edit limited this render to (_sdRenderNode()), read
+        // before renderCanvas() takes it.
+        var _scope = _sdCanvasScope;
+        _sdPanelsCancel();
         // The tree may have changed since the last paint; the editable-area
         // set is derived from it.
         _sdEditableInvalidate();
@@ -9396,7 +9514,7 @@ const StyleDesigner = (function () {
         renderCanvas();
         renderProperties();
         renderStatusBar();
-        renderTree();
+        _sdTreeRefresh(_scope);
         renderHtmlTree();
         renderAttrsPanel();
         renderStylesPanel();
@@ -16025,7 +16143,7 @@ const StyleDesigner = (function () {
                         node.props[item.prop] = newText;
                         _sdSharedMarkEdited(node);
                         renderProperties();
-                        renderTree();
+                        _sdTreeRefresh(node);
                         _sdLivePreviewSchedule();
                     } else {
                         // No real change \u2192 drop the pre-emptive snapshot so
@@ -23526,6 +23644,7 @@ const StyleDesigner = (function () {
                 var searchBox = document.getElementById('sd-ov-search-wrap');
                 if (treeWrap)  treeWrap.style.display  = sub === 'tree'  ? '' : 'none';
                 if (notesWrap) notesWrap.style.display = sub === 'notes' ? '' : 'none';
+                if (sub === 'tree') _sdPanelsFlush();
                 // Header title mirrors the active sub-tab — same pattern the
                 // right panel uses for Design ↔ Themes so both ends feel
                 // consistent. Icon swaps too.
@@ -24833,6 +24952,7 @@ const StyleDesigner = (function () {
             var isNowCollapsed = p.classList.contains('collapsed');
             if (colBtn) { colBtn.classList.toggle('bi-chevron-up', isNowCollapsed); colBtn.classList.toggle('bi-chevron-down', !isNowCollapsed); }
             try { localStorage.setItem(_BP_COL_KEY, isNowCollapsed ? '1' : '0'); } catch(e) {}
+            if (!isNowCollapsed) _sdPanelsFlush();
         }
         // Restore collapsed state
         try { if (localStorage.getItem(_BP_COL_KEY) === '1') { p.classList.add('collapsed'); if (colBtn) { colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up'); } } } catch(e) {}
@@ -26234,14 +26354,14 @@ const StyleDesigner = (function () {
     // collapsible bottom strip à la Bootstrap Studio.
     function renderStylesPanel() {
         var stylesPane = document.getElementById('sd-bp-styles');
-        if (!stylesPane) return;
+        if (!stylesPane || _sdPanelDefer('styles')) return;
         var el = _selectedCanvasEl();
         renderStylesTabPane(stylesPane, el);
     }
 
     function renderAttrsPanel() {
         var panel = document.getElementById('sd-bp-attrs');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('attrs')) return;
 
         // ── Multi-select mode ──
         if (selectedNodes.length > 1) {
@@ -27100,7 +27220,7 @@ const StyleDesigner = (function () {
 
     function renderStylesPanel() {
         var panel = document.getElementById('sd-bp-styles');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('styles')) return;
 
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-styles-empty"><span class="bi bi-palette2 d-block mb-1" style="font-size:1.3rem"></span>' + esc(_sdT('No element selected')) + '</div>';
@@ -27478,6 +27598,9 @@ const StyleDesigner = (function () {
     function renderTree() {
         var list = document.getElementById('sd-tree-list');
         if (!list) return;
+        // Hidden (the Notes tab, a folded Overview): drawn when shown; the
+        // notes list it also refreshes may be the one on screen.
+        if (_sdPanelDefer('tree')) { if (_refreshNotesPanel) _refreshNotesPanel(); return; }
         _sdTreeOpenToSelection();
         list.innerHTML = '';
 
@@ -28165,7 +28288,7 @@ const StyleDesigner = (function () {
         // The code view draws the same page as text (_sdCodeRefresh()).
         if (_sdCodeEnabled()) { _sdCodeRefresh(); return; }
         var panel = document.getElementById('sd-html-tree');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('html')) return;
         panel.innerHTML = '';
 
         var frame = _sdPageFrameRows();
@@ -51681,7 +51804,7 @@ const StyleDesigner = (function () {
                 // (round-trip for forward-compat with structured props).
                 selectedNode.props['popover' + capFirst(key)] = this.value;
                 _sdRenderNode(selectedNode, renderCanvas);
-                renderHtmlTree();
+                _sdPanelsSoon(selectedNode);
             });
         });
 
@@ -52027,12 +52150,9 @@ const StyleDesigner = (function () {
                 } else {
                     // For text/textarea, just update canvas (don't re-render props to keep focus)
                     _sdRenderNode(_scopeNode, renderCanvas);
-                    renderTree();
-                    renderStatusBar();
-                    renderAttrsPanel();
-                    renderHtmlTree();
-                    // render() does not run on a keystroke here.
-                    _sdLivePreviewSchedule();
+                    // The other panels once the typing pauses; render()
+                    // does not run on a keystroke here.
+                    _sdPanelsSoon(_scopeNode);
                 }
             });
         });
@@ -52104,8 +52224,8 @@ const StyleDesigner = (function () {
                 saveState((el.tagName === 'SELECT') ? undefined : _sdEditRun('nodeattr:' + name));
                 setNodeAttr(selectedNode, name, this.value);
                 _sdRenderNode(name === 'id' ? null : selectedNode, renderCanvas);
-                renderAttrsPanel();
-                renderHtmlTree();
+                if (el.tagName === 'SELECT') { renderAttrsPanel(); renderHtmlTree(); }
+                else _sdPanelsSoon(name === 'id' ? null : selectedNode);
             });
         });
 
