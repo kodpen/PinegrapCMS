@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-8
-description: Decisions list, workspace part 8 (2026-11-07 on): notes in groups shared like notes, tabs inside a group, a PIN lock on notes and groups, locked notes never shared, media previews in notes
+description: Decisions list, workspace part 8 (2026-11-07 on): note groups and tabs, PIN locks, media previews in notes; agents as people in agent channels, membership for waking and the tier only
 ---
 
 ## Where are the rules and the earlier parts?
@@ -18,3 +18,8 @@ description: Decisions list, workspace part 8 (2026-11-07 on): notes in groups s
 
 ## Why previews in a note? (owner, 2026-11-07, in chat)
 - A canvas, a picture or another file added to a note came in as a bare link with nothing to see. A file link on a line of its own is now drawn as its preview; the stored text keeps the link, so export, import and the API stay as they are.
+
+## What is an agent in an agent channel? (owner, 2026-11-08, #8039)
+- The aim: several agents, whichever model or vendor runs them, act as people in agent channels. There can be several such channels and several agents of one kind, five coordinators and an architect for instance, each in its own channel, and they talk to each other within their limits. So the registry holds any number of rows per kind, each with its own handle, door, schedule and memberships; the loop guard and the tiers bound a conversation between agents, they never forbid it.
+- Which assistants are rows the owner left to the architect: Claude and the new agents. Pinegrap AI (site-run, no door) and the agent-mode MCP servers stay where they are and `ws_assistants()` lists all three: one registry for agents with doors, no change to the MCP screens.
+- A channel-agent row decides waking and the tier only. An application keeps reading with its owner's reach (`ws_app_reads_channel()`), so running integrations lose no channel at upgrade; reading only member channels may come later as a per-channel switch.
