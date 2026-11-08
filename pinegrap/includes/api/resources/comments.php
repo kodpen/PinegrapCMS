@@ -492,6 +492,122 @@ function api_comments_update($params) {
 
 }
 
+// What writing this text as a question's staff answer does: 'added' when
+// it has none, 'changed' or 'unchanged' when it has one, 'removed' for an
+// empty text over an answer and 'unchanged' for an empty text over none.
+// The text is cut as pg_product_question_answer_save() cuts it. Pure.
+function api_comment_answer_outcome($current, $text) {
+
+	$text = pg_product_question_answer_text($text);
+
+	$has = is_string($current);
+
+	if ($text === '') {
+
+		return $has ? 'removed' : 'unchanged';
+
+	}
+
+	if (!$has) {
+
+		return 'added';
+
+	}
+
+	return ($current === $text) ? 'unchanged' : 'changed';
+
+}
+
+// What POST /comments/{id}/answer answers.
+function api_comment_answer_schema() {
+
+	return array(
+		'question_id' => 'integer',
+		'result'      => 'string',
+		'answer'      => 'Comment?'
+	);
+
+}
+
+// The staff answer to a product question, as the Answer box of the comment
+// screen writes it: under the key owner's name, published at once, an empty
+// text removes it. The asker is mailed when an answer is first written.
+// comments:write is held by roles 0 to 2 only, who may edit every folder, so
+// the screen's folder check has no row to narrow here.
+function api_comments_answer($params) {
+
+	$app = api_current_app();
+
+	$id = (int)$params['id'];
+
+	if (!pg_product_questions_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	$row = api_comment_load_or_fail($id);
+
+	if (api_comment_kind($row) !== 'question') {
+
+		api_fail(409, 'not_a_question', lang('Only a product question can be answered here.'), 'id');
+
+	}
+
+	$state = pg_product_question_state($id);
+
+	$current = is_array($state['answer']) ? (string)$state['answer']['message'] : null;
+
+	$result = api_comment_answer_outcome($current, $params['text']);
+
+	// Whether the asker would be mailed: pg_product_question_answer_mail()'s
+	// rule, read before the dry run stops.
+	$asker = (int)$row['created_user_id'];
+
+	$asker_email = ($asker > 0) ? (string)api_value("SELECT user_email FROM user WHERE user_id = '" . $asker . "'") : '';
+
+	api_dry_run_stop($result, 'comment_answer', array(
+		'question_id' => $id,
+		'page_id'     => (int)$row['page_id'],
+		'answer_id'   => is_array($state['answer']) ? (int)$state['answer']['id'] : null,
+		'email'       => ($result === 'added') && pg_product_question_answer_mail_due(
+			$row, array('published' => '1', 'created_user_id' => (int)$app['owner']['id']), $asker_email)
+	));
+
+	if ($result !== 'unchanged') {
+
+		$saved = pg_product_question_answer_save($id, $params['text'], (int)$app['owner']['id'], (string)$app['owner']['username']);
+
+		if ($saved === '') {
+
+			api_fail_server();
+
+		}
+
+		// The asker hears of a new answer once, as from the screen.
+		if ($saved === 'added') {
+
+			pg_product_question_answer_mail($id);
+
+		}
+
+		log_activity(lang(array(
+			'string' => 'The answer to a product question on page ({var:1}) was saved through the API by the application {var:2} (key {var:3}).',
+			'vars'   => array((string)$row['page_name'], $app['name'], $app['api_key'])
+		)), $app['owner']['username']);
+
+	}
+
+	$after = pg_product_question_state($id);
+
+	api_ok(array(
+		'question_id' => $id,
+		'result'      => $result,
+		'answer'      => is_array($after['answer']) ? api_comment_present(api_comment_load_or_fail((int)$after['answer']['id'])) : null
+	));
+
+}
+
 // As on the comments screen: the attachment goes with it unless another
 // comment shares the file (duplicated pages copy their comments), and so
 // does the panel notification about it.

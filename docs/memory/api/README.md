@@ -74,6 +74,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-orders-list.md: GET /orders: status comma list, sort placed_desc, modified_since on last_modified_timestamp, cursor marks, and the writers that move the stamp (pg_order_touch_sql(), PR #2258)
 - api-panel-coverage.md: How far the external API covers what the panel manages (gap list #5239, X1-X13 landed; audit #7967), how a new write route reuses the screen's write path, and what deliberately has no endpoint
 - api-product-bundles.md: Product bundles in the external API: the bundle block on Product, the bundle fields POST /products/{id} writes, what it refuses, the price batch and inventory answers for a bundle
+- api-product-question-answer.md: POST /comments/{id}/answer writes, changes or removes the staff answer to a product question through the comment screen's save (comments:write, dry_run); refusals, the asker's mail
 - api-response-json-encoding.md: API and MCP answers as JSON (pg_json_encode_answer()): broken UTF-8 bytes, keys too, become U+FFFD on every PHP version; INF or NAN becomes a 500 or -32603, never an empty body
 - api-returns.md: GET /returns, GET /returns/{id}, POST /returns/{id} (approve, reject, ship, receive, close, refund) through the return screen's write functions, the action check, codes, events
 - api-reviews-and-wishlist.md: Reviews and favourites in the external API: verified and store_reply on Comment, GET /products/{id}/reviews, rating on Product, GET /customers/{id}/wishlist, product.review.created
