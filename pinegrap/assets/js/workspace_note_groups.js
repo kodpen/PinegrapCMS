@@ -160,6 +160,37 @@
         });
     }
 
+    // A move made from a menu draws the list again, so the row the menu
+    // came from is gone and the focus falls back to the page: it goes to
+    // the moved note's row or group's folder once the list is drawn.
+    function refocus(selector) {
+        var held = document.activeElement;
+
+        if (held && held !== document.body && held.isConnected) {
+            return;
+        }
+
+        var node = document.querySelector(selector);
+
+        if (node) {
+            node.focus({ preventScroll: false });
+        }
+    }
+
+    function reloadThenFocus(ctx, selector) {
+        return Promise.resolve(ctx.reload()).then(function () {
+            refocus(selector);
+        });
+    }
+
+    function noteSelector(noteId) {
+        return '.ws-nb-section-groups [data-note-id="' + Number(noteId) + '"]';
+    }
+
+    function groupSelector(groupId) {
+        return '.ws-nb-group-toggle[data-group-id="' + Number(groupId) + '"]';
+    }
+
     function groupById(ctx, groupId) {
         return (ctx.groups || []).filter(function (group) { return Number(group.id) === Number(groupId); })[0] || null;
     }
@@ -224,7 +255,7 @@
                     setClosed(Number(groupId), false);
                 }
 
-                ctx.reload();
+                return reloadThenFocus(ctx, noteSelector(note.id));
             }).catch(kit.fail);
         });
     }
@@ -243,6 +274,7 @@
 
         ctx.kit.api('ws_note_group_order', { group_ids: ids }).then(function (data) {
             ctx.setGroups(data.groups || []);
+            refocus(groupSelector(movingId));
         }).catch(ctx.kit.fail);
     }
 
@@ -252,6 +284,7 @@
     function noteRow(ctx, note, groupId) {
         var item = ctx.drawItem(note);
 
+        item.dataset.noteId = String(note.id);
         draggable(item, function () { return { kind: 'note', note: note }; });
         dropTarget(item, function (held) {
             return (held.kind === 'note') && (Number(held.note.id) !== Number(note.id));
@@ -326,6 +359,7 @@
 
             kit.api('ws_note_group_save', sent).then(function (data) {
                 ctx.setGroups(data.groups || []);
+                refocus(group ? groupSelector(group.id) : '.ws-nb-group-add');
             }).catch(kit.fail);
         });
     }
@@ -340,7 +374,8 @@
 
             kit.api('ws_note_group_delete', { group_id: group.id }).then(function () {
                 setClosed(group.id, false);
-                ctx.reload();
+
+                return reloadThenFocus(ctx, '.ws-nb-group-add');
             }).catch(kit.fail);
         });
     }
@@ -380,7 +415,11 @@
         var dot = kit.el('span', 'ws-nb-group-dot' + (group.hex ? '' : ' ws-nb-group-dot-none'));
 
         body.id = 'ws-nb-group-' + group.id;
+        // The folder's notes are read as one group named after it.
+        body.setAttribute('role', 'group');
+        body.setAttribute('aria-label', group.name);
         toggle.type = 'button';
+        toggle.dataset.groupId = String(group.id);
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         toggle.setAttribute('aria-controls', body.id);
         toggle.appendChild(kit.icon('bi-chevron-right', 'ws-nb-group-chevron'));
@@ -396,6 +435,7 @@
         if (group.locked) {
             var lock = kit.icon('bi-lock-fill', 'ws-nb-group-lock');
             lock.title = kit.t('notes_group_locked');
+            lock.setAttribute('role', 'img');
             lock.setAttribute('aria-label', kit.t('notes_group_locked'));
             toggle.appendChild(lock);
         } else {
@@ -412,6 +452,9 @@
         head.appendChild(toggle);
 
         var more = kit.button('ws-nb-item-more', '', 'bi-three-dots', kit.t('more'));
+        // Every folder has one: the name tells them apart.
+        more.setAttribute('aria-label', kit.t('more') + ': ' + group.name);
+        more.setAttribute('aria-haspopup', 'menu');
         more.addEventListener('click', function (event) {
             var rect = more.getBoundingClientRect();
 
@@ -564,7 +607,7 @@
         }
 
         ctx.kit.api('ws_note_place', { note_id: note.id, group_id: groupId, position: position }).then(function () {
-            ctx.reload();
+            return reloadThenFocus(ctx, noteSelector(note.id));
         }).catch(ctx.kit.fail);
     }
 
