@@ -772,3 +772,196 @@ function ws_note_group_shares_present($viewer, $group)
 
     return $out;
 }
+
+/**
+ * Which folder each listed note is drawn in once groups are shared with the
+ * person: a note in one of their own groups stays there; any other note that
+ * sits in a group shared with them (put in by its owner, or by the person
+ * themselves) takes that group and its place in the group's order. A note in
+ * two shared groups goes to the lower group id, the same on every load.
+ *
+ * @param array[] $notes   listed notes with group_id, group_sort
+ * @param int[]   $own_ids the person's own group ids
+ * @param array[] $places  ws_note_places rows of the shared groups: note_id, group_id, sort
+ * @return array[] the notes with group_id, group_sort and shared_group (0 or the group)
+ */
+function ws_note_groups_shared_assign($notes, $own_ids, $places)
+{
+    $own = array_flip(array_map('intval', (array) $own_ids));
+    $where = array();
+
+    foreach ((array) $places as $place) {
+        $note_id = (int) $place['note_id'];
+        $group_id = (int) $place['group_id'];
+
+        if (!isset($where[$note_id]) || ($group_id < $where[$note_id]['group_id'])) {
+            $where[$note_id] = array('group_id' => $group_id, 'sort' => (int) $place['sort']);
+        }
+    }
+
+    foreach ((array) $notes as $index => $note) {
+        $notes[$index]['shared_group'] = 0;
+
+        if (isset($own[(int) ($note['group_id'] ?? 0)])) {
+            continue;
+        }
+
+        $place = $where[(int) $note['id']] ?? null;
+
+        if ($place) {
+            $notes[$index]['group_id'] = $place['group_id'];
+            $notes[$index]['group_sort'] = $place['sort'];
+            $notes[$index]['shared_group'] = $place['group_id'];
+        }
+    }
+
+    return $notes;
+}
+
+/**
+ * The groups shared with the person by name (not their own, not locked), as
+ * Shared with me lists them: ws_note_group_present() with owner, reach
+ * (edit | view) and shared; and the places of their notes.
+ *
+ * @param array $viewer
+ * @return array groups (array[]), places (note_id, group_id, sort rows)
+ */
+function ws_note_groups_shared_with($viewer)
+{
+    if (!ws_note_groups_ready()) {
+        return array('groups' => array(), 'places' => array());
+    }
+
+    $me = (int) $viewer['id'];
+    $rows = (array) db_items("SELECT g.id, g.user_id, g.name, g.color, g.sort, g.locked, MAX(s.can_edit) AS can_edit
+        FROM ws_note_group_shares s
+        INNER JOIN ws_note_groups g ON g.id = s.group_id
+        WHERE s.user_id = '" . $me . "' AND g.user_id <> '" . $me . "' AND g.locked = 0
+        GROUP BY g.id, g.user_id, g.name, g.color, g.sort, g.locked
+        ORDER BY g.name, g.id
+        LIMIT " . WS_NOTE_GROUPS_MAX);
+
+    if (!$rows) {
+        return array('groups' => array(), 'places' => array());
+    }
+
+    $ids = array_map(function ($row) { return (int) $row['id']; }, $rows);
+    $people = ws_people(array_unique(array_map(function ($row) { return (int) $row['user_id']; }, $rows)));
+
+    // Only the notes the person can read count: those the group brought to
+    // them, and their own they put in.
+    $places = (array) db_items("SELECT p.note_id, p.group_id, p.sort FROM ws_note_places p
+        INNER JOIN ws_notes n ON n.id = p.note_id
+        WHERE p.group_id IN (" . implode(',', $ids) . ")
+            AND (n.user_id = '" . $me . "' OR EXISTS (SELECT 1 FROM ws_note_shares s WHERE s.note_id = p.note_id AND s.user_id = '" . $me . "' AND s.via_group = p.group_id))
+        ORDER BY p.group_id, p.sort, p.note_id");
+    $counts = array();
+
+    foreach ($places as $place) {
+        $counts[(int) $place['group_id']] = ($counts[(int) $place['group_id']] ?? 0) + 1;
+    }
+
+    $groups = array();
+
+    foreach ($rows as $row) {
+        $group = ws_note_group_present($row + array('notes' => $counts[(int) $row['id']] ?? 0));
+        $group['owner'] = $people[(int) $row['user_id']] ?? null;
+        $group['reach'] = empty($row['can_edit']) ? 'view' : 'edit';
+        $group['shared'] = true;
+        $groups[] = $group;
+    }
+
+    return array('groups' => $groups, 'places' => $places);
+}
+
+/**
+ * The person's own groups marked shared when anybody else has them, for the
+ * folder's and the tabs' people mark.
+ *
+ * @param array[] $groups ws_note_groups()
+ * @return array[]
+ */
+function ws_note_groups_mark_shared($groups)
+{
+    $ids = array_map(function ($group) { return (int) $group['id']; }, (array) $groups);
+    $shared = array();
+
+    if ($ids && ws_note_groups_ready()) {
+        foreach ((array) db_items("SELECT DISTINCT group_id FROM ws_note_group_shares WHERE group_id IN (" . implode(',', $ids) . ")") as $row) {
+            $shared[(int) $row['group_id']] = true;
+        }
+    }
+
+    foreach ((array) $groups as $index => $group) {
+        $groups[$index]['shared'] = isset($shared[(int) $group['id']]);
+    }
+
+    return $groups;
+}
+
+/**
+ * The cards of groups shared in a channel: for each message that shares a
+ * group, the group with the notes it holds that the viewer reads, in the
+ * group's order. Notes are read through the channel's own rows (via_group),
+ * so a card shows what the channel was given.
+ *
+ * @param array $viewer
+ * @param int[] $message_ids
+ * @return array message id => group_id, name, hex, owner, notes (id, name, updated), url
+ */
+function ws_note_group_cards_map($viewer, $message_ids)
+{
+    $message_ids = array_filter(array_map('intval', (array) $message_ids));
+
+    if (empty($message_ids) || !ws_note_groups_ready()) {
+        return array();
+    }
+
+    $shares = (array) db_items("SELECT s.message_id, s.channel_id, g.id, g.user_id, g.name, g.color, g.sort, g.locked
+        FROM ws_note_group_shares s
+        INNER JOIN ws_note_groups g ON g.id = s.group_id
+        WHERE s.message_id IN (" . implode(',', $message_ids) . ") AND s.channel_id > 0");
+
+    if (!$shares) {
+        return array();
+    }
+
+    $people = ws_people(array_unique(array_map(function ($row) { return (int) $row['user_id']; }, $shares)));
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+    $out = array();
+
+    foreach ($shares as $share) {
+        $notes = array();
+        $rows = (array) db_items("SELECT n.* FROM ws_note_shares ns
+            INNER JOIN ws_notes n ON n.id = ns.note_id
+            INNER JOIN ws_note_places p ON p.note_id = n.id AND p.group_id = ns.via_group
+            WHERE ns.via_group = '" . (int) $share['id'] . "' AND ns.channel_id = '" . (int) $share['channel_id'] . "'
+            ORDER BY p.sort, n.id
+            LIMIT " . WS_NOTE_LIMIT);
+
+        foreach ($rows as $row) {
+            if (ws_note_access($viewer, $row) === '') {
+                continue;
+            }
+
+            $notes[] = array(
+                'id'      => (int) $row['id'],
+                'name'    => ws_note_title($viewer, $row),
+                'updated' => ws_time_label($row['updated_at']),
+            );
+        }
+
+        $group = ws_note_group_present($share + array('notes' => count($notes)));
+
+        $out[(int) $share['message_id']] = array(
+            'group_id' => (int) $share['id'],
+            'name'     => $group['name'],
+            'hex'      => $group['hex'],
+            'owner'    => $people[(int) $share['user_id']] ?? null,
+            'notes'    => $notes,
+            'url'      => $base . 'workspace_notes.php?group=' . (int) $share['id'],
+        );
+    }
+
+    return $out;
+}

@@ -954,11 +954,25 @@ function ws_notes_list($viewer, $search = '')
 
     // The person's groups, and the group each note is kept in (group_id,
     // group_sort; note_groups.php).
-    return array(
+    $out = array(
         'mine'   => ws_note_places_add($viewer, ws_notes_present($viewer, $mine)),
         'shared' => ws_note_places_add($viewer, ws_notes_present($viewer, $shared)),
         'groups' => ws_note_groups($viewer),
     );
+
+    // Groups shared with the person, and the notes drawn in them
+    // (note_group_shares.php).
+    if (function_exists('ws_note_groups_shared_with') && ws_note_groups_ready()) {
+        $with = ws_note_groups_shared_with($viewer);
+        $own = array_map(function ($group) { return (int) $group['id']; }, $out['groups']);
+
+        $out['groups'] = ws_note_groups_mark_shared($out['groups']);
+        $out['shared_groups'] = $with['groups'];
+        $out['mine'] = ws_note_groups_shared_assign($out['mine'], $own, $with['places']);
+        $out['shared'] = ws_note_groups_shared_assign($out['shared'], $own, $with['places']);
+    }
+
+    return $out;
 }
 
 /**
@@ -2430,6 +2444,21 @@ function ws_notes_js_strings()
         'notes_group_own_only'  => lang('Only your own notes go into a shared group.'),
         'notes_tab_new'         => lang('New note in this group'),
         'notes_tab_shared'      => lang('Shared note'),
+        'notes_group_shared'    => lang('Shared group'),
+        'notes_group_share'     => lang('Share the group'),
+        'notes_group_share_title' => ws_js_template('Share the group “{var:1}”', 1),
+        'notes_group_share_help' => lang('Everyone you share it with sees every note in it. People who can add notes put in their own notes, which stay theirs.'),
+        'notes_group_share_locked' => lang('A locked group cannot be shared.'),
+        'notes_group_can_add'   => lang('Can add notes'),
+        'notes_group_channel'   => lang('Or share it in a channel'),
+        'notes_group_no_channel' => lang('No channel'),
+        'notes_group_only_you'  => lang('Only you can see this group.'),
+        'notes_group_shared_ok' => lang('The group is shared.'),
+        'notes_group_leave'     => lang('Leave the group'),
+        'notes_group_leave_ask' => ws_js_template('Leave the group “{var:1}”? Your notes in it are taken out of it; they are not deleted.', 1),
+        'notes_group_card'      => lang('Group of notes'),
+        'notes_group_open'      => lang('Open in My Notes'),
+        'notes_group_not_listed' => lang('This group is not among your notes. Its notes can be read from the card where it was shared.'),
         'notes_export_all'      => lang('Export all'),
         'notes_import'          => lang('Import'),
         'notes_import_title'    => lang('Import notes'),
