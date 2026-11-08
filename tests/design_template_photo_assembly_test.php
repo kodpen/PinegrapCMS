@@ -232,3 +232,83 @@ function test_photo_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_galleries"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places the galleries and the journal');
 }
+
+// Home, how it works, packages and about stand on the Photo blocks: the
+// rules of every pg-photo- class they use ship in User Styles, their
+// interactions survive pg_fx_normalize(), something comes in on each, and
+// the stock bands are gone from them.
+function test_photo_assembly_pages_on_photo_blocks()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer_fx.php');
+	$tpl = _test_ph_asm_tpl();
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'version raised with the pages');
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$wanted = array(
+		'home'       => array('pg-photo-strip', 'pg-photo-sheet', 'pg-photo-exif'),
+		'experience' => array('pg-photo-sheet'),
+		'packages'   => array(),
+		'about'      => array(),
+	);
+	$seen = array();
+	foreach ($tpl['pages'] as $p) {
+		if (!isset($wanted[$p['key']])) continue;
+		$seen[] = $p['key'];
+		$nodes = array();
+		_test_ph_asm_tpl_nodes($p['tree'], $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if (isset($n['props']['tag']) && $n['props']['tag'] === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $p['key'] . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-photo-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $p['key'] . ': the rule of ' . $class . ' ships');
+		foreach ($wanted[$p['key']] as $class) pg_assert_contains($class, $classes, $p['key'] . ': places ' . $class);
+		pg_assert_true($effects >= 1, $p['key'] . ': something comes in');
+		pg_assert_true($h1 <= 1, $p['key'] . ': one h1 at most');
+		foreach (array('Write to Us', 'Figures', 'Why Choose Us') as $band) {
+			// About keeps the studio's figures and why tiles.
+			if ($p['key'] === 'about' && $band !== 'Write to Us') continue;
+			pg_assert_false(in_array(lang($band), $labels, true), $p['key'] . ': no ' . $band . ' band');
+		}
+	}
+	pg_assert_same(4, count($seen), 'home, experience, packages, about');
+
+	$home = null;
+	foreach ($tpl['pages'] as $p) if ($p['key'] === 'home') $home = $p['tree'];
+	$nodes = array();
+	_test_ph_asm_tpl_nodes($home, $nodes);
+	$frames = 0;
+	$proofs = 0;
+	$picked = 0;
+	$dt = 0;
+	$dd = 0;
+	foreach ($nodes as $n) {
+		$class = isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '';
+		$tag = isset($n['props']['tag']) ? $n['props']['tag'] : '';
+		if (strpos($class, 'pg-photo-strip') !== false) {
+			foreach ($n['children'] as $list) if (($list['props']['tag'] ?? '') === 'ol') $frames = count($list['children']);
+		}
+		if (strpos($class, 'pg-photo-sheet') !== false) $proofs = count($n['children']);
+		if (strpos($class, 'pg-photo-picked') !== false) $picked++;
+		if ($tag === 'dt') $dt++;
+		if ($tag === 'dd') $dd++;
+	}
+	pg_assert_same(6, $frames, 'a frame of the strip per category');
+	pg_assert_same(12, $proofs, 'twelve proofs on the sheet');
+	pg_assert_same(3, $picked, 'three picks ringed');
+	pg_assert_true($dt === 6 && $dd === 6, 'the six camera settings as dt/dd pairs');
+	$json = json_encode($home, JSON_UNESCAPED_UNICODE);
+	pg_assert_contains('"trigger":"load"', $json, 'the filmstrip hero comes in on load');
+	pg_assert_contains('"id":"ph-home-clients"', $json, 'the contact sheet is a search section');
+}

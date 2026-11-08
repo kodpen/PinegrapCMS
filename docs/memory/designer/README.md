@@ -184,6 +184,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-own-look.md: Rule (owner, 2026-11-07): sector sections first as palette blocks, reused not duplicated, general ones in general groups; own composition and motion on home and signature pages
 - design-template-pharmacy-pages.md: Pharmacy template 2.0.0: home, on duty, health checks and three service pages on the Pharmacy blocks: the builders, each page's composition, what left, no motion, the test
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
+- design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
