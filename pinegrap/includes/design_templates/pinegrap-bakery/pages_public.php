@@ -335,6 +335,13 @@ $order_ways = array(
 $order_way_tiles = array();
 foreach ($order_ways as $w) $order_way_tiles[] = $feature_tile($w['icon'], $w['title'], $w['text']);
 
+// With the shop on, the page leads to it: the one public page that links a
+// shop page, so the shared parts and the other pages stand without it.
+$shop_on = defined('ECOMMERCE') && ECOMMERCE;
+$order_more = $shop_on
+    ? array($link(lang('Order for pickup'), '{{page:shop}}', 'btn btn-primary rounded-pill px-4 mt-3'))
+    : array();
+
 $public_pages[] = array(
     'key'              => 'how_to_order',
     'name'             => lang('order-and-collect'),
@@ -342,7 +349,7 @@ $public_pages[] = array(
     'title'            => lang('Order and Collect'),
     'meta_description' => lang('Order bread, pastries and cakes ahead, choose the day you collect them at the counter, and how far ahead each kind of order is placed.'),
     'tree'             => $page(array(
-        $page_header(lang('Order and Collect'), lang('Order ahead and collect at the counter on the day you choose: your order is packed and waiting with your name on it.')),
+        $page_header(lang('Order and Collect'), lang('Order ahead and collect at the counter on the day you choose: your order is packed and waiting with your name on it.'), $order_more),
         $el('section', 'py-5', lang('Ways to Order'), array(
             $container(array(
                 $row($order_way_tiles, '4'),
