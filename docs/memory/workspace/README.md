@@ -26,6 +26,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
+- agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, the membership routes, the depth and hourly brakes
 - approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation
 - claude-draft-decide-once.md: A task Claude or Pinegrap AI proposes in a channel (ws_ai_drafts) is accepted or dismissed once: conditional UPDATE on the pending row, checked by affected rows, before the task is opened.
 - contact-group-joined-event.md: Flow event contact_group.joined: one ws_events_in row per contact added to a group, from pg_announce_contact_group_members(); payload, group filter kept as status, outputs

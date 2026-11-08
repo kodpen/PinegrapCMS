@@ -9219,6 +9219,8 @@ function get_tables() {
 		'ws_note_places',
 		'ws_note_group_shares',
 		'ws_note_locks',
+		'ws_agents',
+		'ws_channel_agents',
 		'ws_app_commands',
 		'ws_voice',
 		'ws_file_edits',

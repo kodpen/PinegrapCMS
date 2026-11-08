@@ -138,6 +138,10 @@ function pg_reseal_registry()
     // A flow's web address secret, one row per flow (flow_web_start.php).
     $registry[] = $rows('workspace', 'config_text', 'value', 'name', 'iv', array('where' => "name LIKE 'ws\\_flow\\_web\\_%' AND value <> ''"));
     $registry[] = $config('workspace', 'ws_claude_token', 'iv');
+    // The agent registry: a model agent's provider key and a door's secret
+    // (workspace/agents.php), Claude's routine token among them.
+    $registry[] = $rows('workspace', 'ws_agents', 'key_sealed', 'id', 'iv');
+    $registry[] = $rows('workspace', 'ws_agents', 'door_secret_sealed', 'id', 'iv');
     $registry[] = $config_text('workspace', 'ws_voice_key', 'iv');
     $registry[] = $config_text('workspace', 'ws_voice_speech_key', 'iv');
 

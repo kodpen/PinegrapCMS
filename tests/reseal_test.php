@@ -211,7 +211,8 @@ function test_reseal_registry_module_entries()
 		'erp_edoc_providers.credentials_enc', 'config.parasut_credentials_enc', 'config.backup_remote_settings',
 		'config.product_feeds', 'config.oauth_google_client_secret', 'user_mfa.totp_secret', 'user_mfa.pending_secret',
 		'subscriptions.card_ref', 'config.translation_google_key', 'ws_mcp_servers.secret', 'ws_calendar_feeds.token_secret',
-		'ws_mail_boxes.settings', 'config.ws_claude_token', 'config_text.value',
+		'ws_mail_boxes.settings', 'config.ws_claude_token', 'config_text.value', 'ws_agents.key_sealed',
+		'ws_agents.door_secret_sealed',
 	);
 	$found = array();
 
