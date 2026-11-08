@@ -1,6 +1,6 @@
 ---
 name: workspace-note-lock
-description: The notes lock store (includes/workspace/note_lock.php): PIN set-up and checks, the open lock in the session, the times, the pause after wrong PINs, the e-mailed code, panel actions ws_note_lock_*
+description: Notes lock store (note_lock.php): PIN set-up and checks, open lock in the session, times, wrong-PIN pause, e-mailed code, actions ws_note_lock_*; the gate in workspace-note-lock-gate.md
 ---
 
 ## Where is the lock kept?
@@ -8,9 +8,8 @@ description: The notes lock store (includes/workspace/note_lock.php): PIN set-up
 - The open lock is `$_SESSION['software']['ws_note_lock']` (user_id, used_at, note_id); the e-mailed code `$_SESSION['software']['ws_note_lock_code']` (its sha256, never the code). Sign-out or another browser closes the lock.
 
 ## When does an open lock hold?
-- `ws_note_lock_open_holds()` (pure): until sign-out (65535) always; a time in minutes while the last use is within it; "every time" (0) only for the note named when it was opened (`ws_note_lock_open` with `note_id`) and while that note is used within 15 minutes (`WS_NOTE_LOCK_EVERY_TIME_IDLE`). `ws_note_lock_is_open($user_id, $note_id)` reads the row and the session.
-- `ws_note_lock_touch()` renews it on each use of a locked note (the gate's work, L2). `ws_note_lock_close()` is Lock now.
-- `ws_handle_action()` closes the session early for most actions; `ws_note_lock_*` keep it writable. A gate that calls `ws_note_lock_touch()` from another action needs the same exception, or the renewal is lost.
+- `ws_note_lock_open_holds()` (pure): until sign-out (65535) always; a time in minutes while the last use is within it; "every time" (0) only for what it was opened for (`ws_note_lock_open` with `note_id`; 0 = the list, which then shows a locked group's titles while each note still asks), used within 15 minutes (`WS_NOTE_LOCK_EVERY_TIME_IDLE`). `ws_note_lock_is_open($user_id, $note_id)` reads the row and the session.
+- `ws_note_lock_touch()` renews it on each gated use. `ws_handle_action()` closes the session early (`ws_note_lock_*` keep it open), so the touch reopens it with `session_start()` for its one write, only when the request had a session (never in the external API). `ws_note_lock_close()` is Lock now.
 
 ## What do wrong PINs do?
 - `ws_note_lock_verify()` counts a wrong PIN in one UPDATE (`fails`); the fifth in a row sets `wait_until` 15 minutes out and starts the count again. While paused every PIN check answers code `wait` with the seconds left; the e-mailed code still sets a new PIN, which ends the pause.
@@ -24,4 +23,4 @@ description: The notes lock store (includes/workspace/note_lock.php): PIN set-up
 - Setting up, opening, a new PIN and a new time open the lock in the session.
 
 ## Where are the tests?
-- `tests/workspace_note_lock_test.php`: PIN shape, typed twice, times, `ws_note_lock_open_holds()`, the code, the masked address. The database paths (counting, pause, turn off) are not unit-tested.
+- `tests/workspace_note_lock_test.php`: PIN, times, `ws_note_lock_open_holds()`, the code, masked address; the gate's pure parts too (`workspace-note-lock-gate.md`). Database paths (counting, pause, turn off) are not unit-tested.

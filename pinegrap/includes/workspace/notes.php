@@ -613,6 +613,9 @@ function ws_notes_present($viewer, $rows, $full = false)
 
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
     $out = array();
+    // The reader's notes lock (note_lock.php): a note behind it, while the
+    // lock is closed, keeps its title and loses its text.
+    $lock = function_exists('ws_note_lock_view') ? ws_note_lock_view((int) $viewer['id']) : null;
     $news = ws_note_news_map($viewer, array_map(function ($row) { return (int) $row['id']; }, $rows));
 
     foreach ($rows as $row) {
@@ -706,6 +709,10 @@ function ws_notes_present($viewer, $rows, $full = false)
         if ($full) {
             $note = array_merge($note, ws_note_body_view($viewer, $body));
             $note['claude'] = function_exists('ws_note_claude_state') ? ws_note_claude_state($viewer, $id) : array();
+        }
+
+        if ($lock) {
+            $note = ws_note_lock_present($note, $row, (int) $viewer['id'], $lock, time());
         }
 
         $out[] = $note;
@@ -885,7 +892,7 @@ function ws_notes_list_columns()
 {
     return "n.id, n.user_id, n.title, LEFT(n.body, " . WS_NOTE_LIST_BODY . ") AS body, n.pinned,
         n.source_message_id, n.source_channel_id, n.source_user_id, n.channel_id, n.updated_by, n.folder_id,
-        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '');
+        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '') . (ws_note_lock_ready() ? ', n.locked' : '');
 }
 
 /**
@@ -970,6 +977,15 @@ function ws_notes_list($viewer, $search = '')
         $out['shared_groups'] = $with['groups'];
         $out['mine'] = ws_note_groups_shared_assign($out['mine'], $own, $with['places']);
         $out['shared'] = ws_note_groups_shared_assign($out['shared'], $own, $with['places']);
+    }
+
+    // Behind a closed lock: a locked group's notes are not listed, and a
+    // search finds a locked note by its title alone (note_lock.php).
+    if (function_exists('ws_note_lock_list_filter') && ws_note_lock_ready() && ws_note_lock_has($me)) {
+        $list_open = ws_note_lock_is_open($me);
+
+        $out['mine'] = ws_note_lock_list_filter($out['mine'], $list_open, $search);
+        $out['shared'] = ws_note_lock_list_filter($out['shared'], $list_open, $search);
     }
 
     return $out;
@@ -1145,6 +1161,13 @@ function ws_note_save_check($viewer, $data)
             return $fail(lang('That note could not be found.'));
         }
 
+        // Behind the person's closed notes lock (note_lock.php).
+        $locked = function_exists('ws_note_lock_gate') ? ws_note_lock_gate($viewer, $note) : '';
+
+        if ($locked !== '') {
+            return $fail($locked, $note_id);
+        }
+
         if (ws_note_stale($note, $data, (int) $viewer['id'])) {
             $error = ((int) $note['updated_by'] !== (int) $viewer['id'])
                 ? lang(array('string' => '{var:1} changed this note meanwhile.', 'vars' => ws_person_name($note['updated_by'])))
@@ -1287,6 +1310,12 @@ function ws_note_delete_check($viewer, $note)
 {
     if (!is_array($note) || ((int) $note['user_id'] !== (int) $viewer['id'])) {
         return array('ok' => false, 'error' => lang('Only the one who wrote a note can delete it.'));
+    }
+
+    $locked = function_exists('ws_note_lock_gate') ? ws_note_lock_gate($viewer, $note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked);
     }
 
     return array('ok' => true, 'error' => '');
@@ -1572,6 +1601,12 @@ function ws_note_from_message($viewer, $message)
  */
 function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
 {
+    $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked, 'shared' => 0);
+    }
+
     $shared = 0;
     $now = time();
 
@@ -1620,6 +1655,12 @@ function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
  */
 function ws_note_share_channel($viewer, $note, $channel)
 {
+    $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked, 'message_id' => 0);
+    }
+
     if (!ws_can_post_channel($viewer, $channel)) {
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'message_id' => 0);
     }
@@ -1776,6 +1817,12 @@ function ws_note_cards_map($viewer, $message_ids)
  */
 function ws_note_to_channel($viewer, $note, $data)
 {
+    $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked, 'field' => '', 'channel_id' => 0);
+    }
+
     if (trim((string) ($data['name'] ?? '')) === '') {
         $data['name'] = ws_note_title($viewer, $note);
     }

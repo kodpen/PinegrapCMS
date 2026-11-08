@@ -159,7 +159,15 @@ function ws_note_groups($viewer)
         ORDER BY g.sort, g.id
         LIMIT " . WS_NOTE_GROUPS_MAX);
 
-    return array_map('ws_note_group_present', $rows);
+    $groups = array_map('ws_note_group_present', $rows);
+
+    // A locked group behind a closed lock says nothing of its notes
+    // (note_lock.php).
+    if (function_exists('ws_note_lock_groups_redact') && ws_note_lock_ready() && ws_note_lock_has((int) $viewer['id'])) {
+        $groups = ws_note_lock_groups_redact($groups, ws_note_lock_is_open((int) $viewer['id']));
+    }
+
+    return $groups;
 }
 
 /**
