@@ -50,6 +50,23 @@ function test_api_deletes_create_the_bin_after_the_dry_run_stop()
 		pg_assert_same(1, substr_count($body, 'pg_recycle_folder_id(true'), $handler[0] . ' creates it in one place');
 		pg_assert_contains("pg_recycle_folder_id(true, array('id' => (int)\$app['owner']['id'], 'username' => (string)\$app['owner']['username']))", $body, $handler[0] . ' names the owner');
 		pg_assert_contains("'folder_id' => (\$bin_id > 0) ? \$bin_id : null", $body, $handler[0] . ' reports no bin yet as null');
+
+		// A site without the bin schema is refused before the stop, so a
+		// rehearsal meets the same 409 as the real call; the refusal after
+		// the creation stays for a failed insert.
+		$ready = strpos($body, "if (!pg_recycle_ready()) {\n");
+		$refusals = array();
+		$offset = 0;
+
+		while (($at = strpos($body, "api_fail(409, 'recycle_bin_unavailable'", $offset)) !== false) {
+			$refusals[] = $at;
+			$offset = $at + 1;
+		}
+
+		pg_assert_true(($ready !== false) && ($ready < $stop), $handler[0] . ' checks the bin schema before the stop');
+		pg_assert_same(2, count($refusals), $handler[0] . ' refuses without a bin twice');
+		pg_assert_true(($refusals[0] > $ready) && ($refusals[0] < $stop), $handler[0] . ' refuses a rehearsal without the schema');
+		pg_assert_true($refusals[1] > $create, $handler[0] . ' refuses a failed creation');
 	}
 }
 
