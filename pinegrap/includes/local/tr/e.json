@@ -2599,6 +2599,7 @@
     "every minute": "dakikada bir",
     "every order": "her siparişte",
     "every {var:1} hour{suffix:1}": "{var:1} saatte bir",
+    "every {var:1} min": "her {var:1} dk",
     "every {var:1} minutes": "{var:1} dakikada bir",
     "everybody with open tasks": "açık görevi olan herkes",
     "exchange, refund, change date, cancel": "değişim, iade, tarih değiştirme, iptal",

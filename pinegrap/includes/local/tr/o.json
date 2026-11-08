@@ -854,6 +854,7 @@
     "Only an administrator can add MCP servers.": "MCP sunucularını yalnızca bir yönetici ekleyebilir.",
     "Only an administrator can change a role.": "Rolü yalnız bir yönetici değiştirebilir.",
     "Only an administrator can change a user.": "Bir kullanıcıyı yalnız yönetici değiştirebilir.",
+    "Only an administrator can change the agents.": "Ajanları yalnız bir yönetici değiştirebilir.",
     "Only an administrator can change this.": "Bunu yalnız bir yönetici değiştirebilir.",
     "Only an administrator can connect Claude.": "Claude'u yalnız bir yönetici bağlayabilir.",
     "Only an administrator can connect Pinegrap AI.": "Pinegrap AI'ı yalnız bir yönetici bağlayabilir.",
