@@ -4,7 +4,7 @@ description: Campsite template 2.0.0: home, places to stay and the tent pitches 
 ---
 
 ## Which builders draw the blocks?
-- Version 2.0.0 (#8269 family, then its pages): home, `stays` and `stay_tent` place the Campsite blocks ([[designer-blocks-campsite]]); their rules ship through `pg_design_template_user_styles(array('campsite-hero', 'campsite-comfort', 'campsite-pitch'), $campsite_css)`.
+- Version 2.0.0 (#8269 family, then its pages, #8301): home, `stays` and `stay_tent` place the Campsite blocks ([[designer-blocks-campsite]]); their rules ship through `pg_design_template_user_styles(array('campsite-hero', 'campsite-comfort', 'campsite-pitch'), $campsite_css)`.
 - `parts.php`: `$fx`, `$rise` (slide-up on view, stagger 80), `$camp_hero($eyebrow, $title, $lead, $src, $alt)` (the page's only `h1`; the chooser's tiles link each `stay_<key>`, the facts are `$park['arrival']` and `$park['opening']`; picture fades, card rises, on load), `$comfort_scale($id, $class)` (reads each kind's `bring` and `ready` lists in `$kinds`), `$pitch_drawing($id, $more, $class)`. `$feature_section` in `pages_public.php` takes `$moving` to make its cards rise.
 
 ## What does each page hold?
