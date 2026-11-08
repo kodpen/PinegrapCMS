@@ -314,6 +314,7 @@
     "Viewing {var:1} of {var:2} I can access. {var:3} Total": "Erişebileceğim {var:1} / {var:2} görüntüleniyor. Toplam {var:3}",
     "Viewing {var:1} of {var:2} Total": "Toplam {var:1} / {var:2} görüntüleniyor",
     "Viewings": "Gezme Talepleri",
+    "Viewings Card": "Gösterimler Kartı",
     "Viewings are free and always with an agent. We confirm the time within a working day.": "Gezmeler ücretsizdir ve her zaman bir danışmanla yapılır. Saati bir iş günü içinde onaylarız.",
     "Viewings arranged and accompanied": "Gezmeler ayarlanır ve eşlik edilir",
     "Viewings by appointment": "Randevuyla gezme",
