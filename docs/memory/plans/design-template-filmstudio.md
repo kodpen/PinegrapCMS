@@ -21,7 +21,7 @@ description: Plan: the Film Studio design template (pinegrap-filmstudio): showre
 
 - 5 (done, #8088): `careers.php`: crew calls (Jobs collection) and applications; test.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #8108): `standard.php`: the standard pages, the Journal as the blog; test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
