@@ -45,8 +45,6 @@ function api_files_allowed_types() {
 
 }
 
-// The image dimension columns arrive with an upgrade, so they are named only
-// when they are there.
 // What a picture for a form's posts may be (POST /files with form_id): the
 // image types, as an <img> in a rich text answer shows them.
 function api_files_picture_types() {
@@ -55,6 +53,8 @@ function api_files_picture_types() {
 
 }
 
+// The image dimension columns arrive with an upgrade, so they are named only
+// when they are there.
 function api_files_dimensions_ready() {
 
 	return pg_schema_has('files', 'image_width');
