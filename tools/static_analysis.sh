@@ -79,23 +79,32 @@ sha256_of () {
 
 # A phar from a release, kept under its version's name; a file whose checksum
 # does not match is fetched again, and a download that does not match is
-# refused.
+# refused. Each address after the first is a second source of the same file:
+# GitHub's release downloads have answered 504 to the runners for minutes on
+# end, beyond any retry, while the copy elsewhere still came through. The
+# pinned checksum keeps every source honest.
 fetch_phar () {
-	local file="$cache/$1" url="$2" sha="$3"
+	local file="$cache/$1" sha="$2" url
+	shift 2
 
 	if [ -f "$file" ] && [ "$(sha256_of "$file")" = "$sha" ]; then
 		return 0
 	fi
 
-	curl -fsSL --retry 3 -o "$file.part" "$url" || { echo "Could not download $url" >&2; return 1; }
+	for url in "$@"; do
+		if ! curl -fsSL --retry 4 --retry-delay 15 --connect-timeout 30 -o "$file.part" "$url"; then
+			echo "Could not download $url" >&2
+		elif [ "$(sha256_of "$file.part")" != "$sha" ]; then
+			echo "$url does not match its pinned SHA-256; not used." >&2
+		else
+			mv "$file.part" "$file"
+			return 0
+		fi
 
-	if [ "$(sha256_of "$file.part")" != "$sha" ]; then
-		echo "$url does not match its pinned SHA-256; not used." >&2
 		rm -f "$file.part"
-		return 1
-	fi
+	done
 
-	mv "$file.part" "$file"
+	return 1
 }
 
 # A repository at one commit, fetched by its hash, so the content is what the
@@ -118,7 +127,9 @@ fetch_commit () {
 run_phpstan () {
 	local phar="phpstan-$PHPSTAN_VERSION.phar"
 
-	fetch_phar "$phar" "https://github.com/phpstan/phpstan/releases/download/$PHPSTAN_VERSION/phpstan.phar" "$PHPSTAN_SHA256" || return 1
+	fetch_phar "$phar" "$PHPSTAN_SHA256" \
+		"https://github.com/phpstan/phpstan/releases/download/$PHPSTAN_VERSION/phpstan.phar" \
+		"https://raw.githubusercontent.com/phpstan/phpstan/$PHPSTAN_VERSION/phpstan.phar" || return 1
 
 	if [ "$generate" -eq 1 ]; then
 		php "$cache/$phar" analyse -c tools/phpstan.neon --memory-limit=3G --no-progress --generate-baseline tools/phpstan-baseline.neon
@@ -138,7 +149,9 @@ run_phpstan () {
 run_phpcompat () {
 	local phar="phpcs-$PHPCS_VERSION.phar" report="$cache/phpcs-report.json" status=0
 
-	fetch_phar "$phar" "https://github.com/PHPCSStandards/PHP_CodeSniffer/releases/download/$PHPCS_VERSION/phpcs.phar" "$PHPCS_SHA256" || return 1
+	fetch_phar "$phar" "$PHPCS_SHA256" \
+		"https://github.com/PHPCSStandards/PHP_CodeSniffer/releases/download/$PHPCS_VERSION/phpcs.phar" \
+		"https://phars.phpcodesniffer.com/phars/phpcs-$PHPCS_VERSION.phar" || return 1
 	fetch_commit phpcompatibility https://github.com/PHPCompatibility/PHPCompatibility "$PHPCOMPATIBILITY_COMMIT" || return 1
 	fetch_commit phpcsutils https://github.com/PHPCSStandards/PHPCSUtils "$PHPCSUTILS_COMMIT" || return 1
 

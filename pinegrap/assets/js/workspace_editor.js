@@ -3973,7 +3973,14 @@
             }
 
             if (card.getAttribute('data-kind') === 'media') {
-                self.openMedia(card);
+                var action = event.target.closest('[data-ws-media-action]');
+
+                if (action && action.wsRun) {
+                    action.wsRun();
+                } else {
+                    self.openMedia(card);
+                }
+
                 return;
             }
 
@@ -4751,15 +4758,45 @@
             }
         },
 
+        // A file of the note put in another's place (a canvas drawn again):
+        // every card of the old file links the new one, and the box's owner
+        // hears the change.
+        replaceFile: function (oldUrl, name, url) {
+            var self = this;
+            var markup = '[' + String(name || '').replace(/[\[\]\n]/g, '') + '](' + url + ')';
+            var changed = false;
+
+            Array.prototype.forEach.call(self.node.querySelectorAll('.ws-rich-block-media'), function (card) {
+                var file = self.mediaOf ? self.mediaOf(card.getAttribute('data-markup') || '') : null;
+
+                if (file && file.url === oldUrl) {
+                    card.replaceWith(blockNode('media', markup, self.options.removeLabel));
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                self.drawPreviews();
+                self.node.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            return changed;
+        },
+
         // A media card whose file the box's owner plays where it is (a
         // recording, options.media.player()) holds that player instead of
         // the server's drawing. A player copied back by undo has lost its
         // listeners: it is made again.
+        // A card's owner may also give it one action (options.media.action(),
+        // a Promise of { icon, label, run } or null): a button beside the
+        // remove one, e.g. Edit the picture on a canvas.
         drawMedia: function () {
             var self = this;
-            var player = self.mediaOf && self.options.media && self.options.media.player;
+            var media = self.mediaOf ? self.options.media : null;
+            var player = media && media.player;
+            var action = media && media.action;
 
-            if (!player) {
+            if (!player && !action) {
                 return;
             }
 
@@ -4770,11 +4807,25 @@
                     return;
                 }
 
-                var media = self.mediaOf(markup);
-                var made = media ? player(media) : null;
+                var file = self.mediaOf(markup);
+                var made = (file && player) ? player(file) : null;
 
-                Array.prototype.forEach.call(card.querySelectorAll('[data-ws-media-player], .ws-rich-block-view'), function (old) { old.remove(); });
+                Array.prototype.forEach.call(card.querySelectorAll('[data-ws-media-player], [data-ws-media-action], .ws-rich-block-view'), function (old) { old.remove(); });
                 card.wsMedia = markup;
+
+                if (file && action) {
+                    Promise.resolve(action(file)).then(function (offered) {
+                        if (!offered || card.wsMedia !== markup || !card.parentNode) {
+                            return;
+                        }
+
+                        var go = button('ws-rich-block-action', '', offered.icon || 'bi-pencil', offered.label || '');
+                        go.setAttribute('data-ws-media-action', '1');
+                        go.tabIndex = -1;
+                        go.wsRun = offered.run;
+                        card.insertBefore(go, card.querySelector('.ws-rich-block-remove'));
+                    }).catch(function () {});
+                }
 
                 if (!made) {
                     card.classList.remove('ws-rich-block-shown');

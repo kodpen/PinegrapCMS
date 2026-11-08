@@ -96,14 +96,6 @@ $hours_list = function ($class = 'list-unstyled mb-0') use ($el, $span, $opening
     return $el('ul', $class, lang('Opening Hours'), $items);
 };
 
-// The emergency number as a large button that calls it.
-$emergency_button = function ($class = 'btn btn-danger btn-lg rounded-pill px-4') use ($el, $icon, $span, $pharmacy, $tel) {
-    return $el('a', $class . ' d-inline-flex align-items-center gap-2', lang('Emergency Number'), array(
-        $icon('bi-telephone-plus'),
-        $span(sprintf(lang('Call %s'), $pharmacy['emergency']), 'text-nowrap', lang('Link Text')),
-    ), array('href' => $tel($pharmacy['emergency'])));
-};
-
 // A prescription request's steps, numbered.
 $prescription_step_list = function () use ($el, $step, $prescription_steps) {
     $items = array();
@@ -111,13 +103,250 @@ $prescription_step_list = function () use ($el, $step, $prescription_steps) {
     return $el('ol', 'list-unstyled mb-0', lang('Steps'), $items);
 };
 
+
+// ── The pharmacy blocks ─────────────────────────────────────────────────
+// The structure of the pharmacy blocks (assets/js/style_designer_blocks_
+// pharmacy.js), so the pages place the same sections the palette offers
+// and the pg-pharmacy-figures rule (shipped in User Styles by
+// pinegrap-pharmacy.php) lines up their figures. A quiet sector: nothing
+// here moves. Sample figures are general guidance the pharmacist edits.
+
+// A table cell; a head cell names what it heads with scope.
+$rx_cell = function ($tag, $children, $class = '', $scope = '') use ($el, $attr) {
+    $extra = $scope !== '' ? array('_attrs' => array($attr('scope', $scope))) : array();
+    return $el($tag, $class, $tag === 'th' ? lang('Header Cell') : lang('Cell'), $children, $extra);
+};
+// A table in a frame that scrolls sideways on a phone: a named, focusable
+// region, so a keyboard can scroll it. The caption names the table.
+$rx_table = function ($label, $caption, $heads, $rows, $name) use ($el, $span, $attr) {
+    return $el('div', 'table-responsive rounded-4 border bg-body p-2 p-md-3', lang('Table Wrap'), array(
+        $el('table', 'table align-middle mb-0 pg-pharmacy-figures', $name, array(
+            $el('caption', 'visually-hidden', lang('Table Caption'), array($span($caption, '', lang('Text')))),
+            $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Head Row'), $heads))),
+            $el('tbody', '', lang('Table Body'), $rows),
+        )),
+    ), array('_attrs' => array($attr('role', 'region'), $attr('aria-label', $label), $attr('tabindex', '0'))));
+};
+// A column head in the muted small type of the blocks.
+$rx_head = function ($text) use ($rx_cell, $span) {
+    return $rx_cell('th', array($span($text, '', lang('Text'))), 'small text-body-secondary fw-semibold', 'col');
+};
+// A figure template with its values filled: '{var}', or '{var:1}' and
+// '{var:2}' for a range.
+$rx_fill = function ($text, $values) {
+    $values = (array)$values;
+    if (count($values) === 1) return str_replace('{var}', $values[0], $text);
+    return str_replace(array('{var:1}', '{var:2}'), $values, $text);
+};
+
+// Pharmacy: Duty Panel. The three on-duty answers as icon rows beside the
+// night window card (its steps and what to bring), and under them the
+// emergency line that calls the emergency number. $searchable_id names the
+// search section.
+$duty_panel = function ($class, $searchable_id, $topics) use ($el, $heading, $para, $span, $icon, $link, $container, $row, $col, $searchable, $rx_fill, $duty_facts, $duty_tips, $pharmacy, $tel) {
+    $answers = array();
+    $n = 0;
+    foreach ($duty_facts as $f) {
+        $n++;
+        $answers[] = $el('li', 'd-flex gap-3 py-3 border-bottom', $rx_fill(lang('Answer {var}'), (string)$n), array(
+            $el('div', 'd-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary-emphasis p-3 lh-1 align-self-start', lang('Icon Box'), array(
+                $icon($f['icon'], 'fs-5'),
+            )),
+            $el('div', '', lang('Answer Text'), array(
+                $heading('h3', $f['title'], 'h5 fw-bold mb-1'),
+                $para($f['text'], 'text-body-secondary mb-0'),
+            )),
+        ));
+    }
+    $steps = array(
+        lang('Ring the night bell at the side window.'),
+        lang('Show your prescription to the pharmacist on duty.'),
+        lang('A small duty fee is added at night and on holidays.'),
+    );
+    $step_items = array();
+    foreach ($steps as $i => $text) {
+        $step_items[] = $el('li', $i === count($steps) - 1 ? '' : 'mb-2', $rx_fill(lang('Step {var}'), (string)($i + 1)), array($span($text, '', lang('Text'))));
+    }
+    $bring = array();
+    foreach ($duty_tips as $i => $text) {
+        $bring[] = $el('li', 'd-flex gap-2', $rx_fill(lang('Item {var}'), (string)($i + 1)), array(
+            $icon('bi-check2', 'text-primary flex-shrink-0'),
+            $span($text, '', lang('Text')),
+        ));
+    }
+    return $el('section', $class, lang('Pharmacy (Duty Panel)'), array(
+        $container(array(
+            $row(array(
+                $col(array(
+                    $heading('h2', lang('When we are closed'), 'prx-display fw-bold mb-2'),
+                    $para(lang('Pharmacies take turns to stay open at night and on holidays, so there is always one on duty near you.'), 'lead text-body-secondary mb-3'),
+                    $el('ul', 'list-unstyled mb-0', lang('Answers'), $answers),
+                ), '', '7'),
+                $col(array(
+                    $el('div', 'card h-100 border-0 bg-body-tertiary', lang('Night Window Card'), array(
+                        $el('div', 'card-body p-4', lang('Card Body'), array(
+                            $heading('h3', lang('At the night window'), 'h5 fw-bold mb-3'),
+                            $el('ol', 'mb-4', lang('Steps'), $step_items),
+                            $heading('h4', lang('What to bring'), 'h6 fw-bold mb-2'),
+                            $el('ul', 'list-unstyled d-grid gap-2 mb-0', lang('What to Bring'), $bring),
+                        )),
+                    )),
+                ), '', '5'),
+            ), '4', '', 'g-lg-5'),
+            $el('div', 'alert alert-danger d-flex flex-wrap align-items-center gap-3 mt-4 mb-0', lang('Emergency Line'), array(
+                $icon('bi-telephone-fill', 'fs-4 flex-shrink-0'),
+                $para(lang('A medical emergency cannot wait for a pharmacy. Call the emergency number at once.'), 'fw-semibold mb-0 me-auto'),
+                $link(sprintf(lang('Call %s'), $pharmacy['emergency']), $tel($pharmacy['emergency']), 'btn btn-danger', array(), array('_label' => lang('Emergency Link'))),
+            )),
+        )),
+    ), $searchable($searchable_id, $topics));
+};
+
+// Pharmacy: Reference Readings. A table each for blood pressure and fasting
+// blood sugar: a row per band with a pill (an icon and a word, so colour is
+// never the only cue), its figures and what to do; the foot books a check.
+$readings_section = function ($class, $searchable_id, $topics, $title = '') use ($el, $heading, $para, $span, $icon, $link, $container, $row, $col, $searchable, $rx_cell, $rx_table, $rx_head, $rx_fill) {
+    $looks = array(
+        'good'  => array('bg-success-subtle text-success-emphasis', 'bi-check-circle-fill'),
+        'watch' => array('bg-warning-subtle text-warning-emphasis', 'bi-exclamation-circle-fill'),
+        'high'  => array('bg-danger-subtle text-danger-emphasis', 'bi-exclamation-triangle-fill'),
+    );
+    $band = function ($name, $state, $figures, $todo) use ($el, $span, $icon, $rx_cell, $looks) {
+        return $el('tr', '', $name, array(
+            $rx_cell('th', array(
+                $el('span', 'badge rounded-pill text-wrap ' . $looks[$state][0], lang('Status Badge'), array(
+                    $icon($looks[$state][1], 'me-1'),
+                    $span($name, '', lang('Text')),
+                )),
+            ), '', 'row'),
+            $rx_cell('td', array($span($figures, 'fw-semibold', lang('Text'))), 'text-nowrap'),
+            $rx_cell('td', array($span($todo, 'small text-body-secondary', lang('Text')))),
+        ));
+    };
+    $heads = array($rx_head(lang('Your reading')), $rx_head(lang('Figures')), $rx_head(lang('What to do')));
+    $tables = array(
+        array(lang('Blood pressure'), lang('Upper / lower figure, in mmHg'), lang('Blood pressure readings and what they mean'), array(
+            $band(lang('Normal'), 'good', $rx_fill(lang('Below {var}'), '120 / 80'), lang('Check again at your next visit.')),
+            $band(lang('Slightly high'), 'watch', $rx_fill(lang('{var:1} to {var:2}'), array('120 / 80', '139 / 89')), lang('Measure again in a week, rested.')),
+            $band(lang('High'), 'high', $rx_fill(lang('{var} or above'), '140 / 90'), lang('Book a visit to your doctor.')),
+        )),
+        array(lang('Blood sugar'), lang('Before breakfast, in mg/dL'), lang('Fasting blood sugar readings and what they mean'), array(
+            $band(lang('Normal'), 'good', $rx_fill(lang('{var:1} to {var:2}'), array('70', '99')), lang('Check again at your next visit.')),
+            $band(lang('Slightly high'), 'watch', $rx_fill(lang('{var:1} to {var:2}'), array('100', '125')), lang('Ask us about food and exercise.')),
+            $band(lang('High'), 'high', $rx_fill(lang('{var} or above'), '126'), lang('Book a visit to your doctor.')),
+        )),
+    );
+    $cols = array();
+    foreach ($tables as $t) {
+        $cols[] = $col(array(
+            $heading('h3', $t[0], 'h5 fw-bold mb-1'),
+            $para($t[1], 'small text-body-secondary mb-3'),
+            $rx_table($t[0], $t[2], $heads, $t[3], lang('Readings Table')),
+        ), '', '6');
+    }
+    return $el('section', $class, lang('Pharmacy (Reference Readings)'), array(
+        $container(array(
+            $el('div', 'text-center mb-5', lang('Section Header'), array(
+                $heading('h2', $title !== '' ? $title : lang('Know your numbers'), 'prx-display fw-bold mb-2'),
+                $para(lang('What a reading taken at rest means, and when to see your doctor. Your doctor\'s own targets come first.'), 'lead text-body-secondary mb-0'),
+            )),
+            $row($cols, '4', '', 'g-lg-5'),
+            $el('div', 'd-flex flex-wrap align-items-center gap-3 mt-4', lang('Readings Foot'), array(
+                $para(lang('A single reading is not a diagnosis. We measure in private, free of rush.'), 'small text-body-secondary mb-0 me-auto'),
+                $link(lang('Book a health check'), '{{page:book_online}}', 'btn btn-primary rounded-pill px-4', array(), array('_label' => lang('Booking Link'))),
+            )),
+        )),
+    ), $searchable($searchable_id, $topics));
+};
+
+// Pharmacy: Travel Vaccines. A row per vaccine: for whom, how many doses
+// and how long before the trip to start; the header books a consultation.
+$vaccines_section = function ($class, $searchable_id, $topics) use ($el, $heading, $para, $span, $link, $container, $searchable, $rx_cell, $rx_table, $rx_head, $rx_fill) {
+    $vaccine = function ($name, $who, $doses, $before) use ($el, $span, $rx_cell) {
+        return $el('tr', '', $name, array(
+            $rx_cell('th', array($span($name, 'fw-semibold', lang('Text'))), '', 'row'),
+            $rx_cell('td', array($span($who, 'small', lang('Text')))),
+            $rx_cell('td', array($span($doses, '', lang('Text'))), 'text-nowrap'),
+            $rx_cell('td', array($span($before, 'fw-semibold', lang('Text'))), 'text-nowrap'),
+        ));
+    };
+    $title = lang('Vaccines before you travel');
+    return $el('section', $class, lang('Pharmacy (Travel Vaccines)'), array(
+        $container(array(
+            $el('div', 'd-flex flex-wrap align-items-end justify-content-between gap-3 mb-4', lang('Section Header'), array(
+                $el('div', '', lang('Section Title'), array(
+                    $heading('h2', $title, 'prx-display fw-bold mb-1'),
+                    $para(lang('Start in good time: some vaccines take several doses or weeks to protect you.'), 'text-body-secondary mb-0'),
+                )),
+                $link(lang('Book a travel consultation'), '{{page:book_online}}', 'btn btn-primary rounded-pill px-4', array(), array('_label' => lang('Booking Link'))),
+            )),
+            $rx_table($title, lang('Travel vaccines, who needs them, doses and when to start'),
+                array($rx_head(lang('Vaccine')), $rx_head(lang('For whom')), $rx_head(lang('Doses')), $rx_head(lang('Start before the trip'))),
+                array(
+                    $vaccine(lang('Hepatitis A'), lang('Most destinations outside Europe'), $rx_fill(lang('{var} doses'), '2'), $rx_fill(lang('{var} weeks'), '2')),
+                    $vaccine(lang('Typhoid'), lang('Where food and water may be unsafe'), $rx_fill(lang('{var} dose'), '1'), $rx_fill(lang('{var} weeks'), '2')),
+                    $vaccine(lang('Yellow fever'), lang('Parts of Africa and South America'), $rx_fill(lang('{var} dose'), '1'), $rx_fill(lang('{var} days'), '10')),
+                    $vaccine(lang('Rabies'), lang('Long stays, hiking, work with animals'), $rx_fill(lang('{var} doses'), '3'), $rx_fill(lang('{var} weeks'), '4')),
+                ), lang('Vaccines Table')),
+            $para(lang('Bring your vaccination card: the pharmacist checks what you already have.'), 'small text-body-secondary mt-3 mb-0'),
+        )),
+    ), $searchable($searchable_id, $topics));
+};
+
+// Pharmacy: Medicine Schedule. A row per medicine (its name and a note on
+// food), a column per time of day; a time without a dose says so in words.
+// The intro's button leads to where a review is asked for ($book_href).
+$schedule_section = function ($class, $searchable_id, $topics_words, $book_href) use ($el, $heading, $para, $span, $icon, $link, $container, $row, $col, $searchable, $rx_cell, $rx_table) {
+    $none = lang('No dose');
+    $medicine = function ($name, $note, $doses) use ($el, $span, $rx_cell, $none) {
+        $cells = array($rx_cell('th', array(
+            $span($name, 'd-block fw-semibold', lang('Text')),
+            $span($note, 'd-block small fw-normal text-body-secondary', lang('Text')),
+        ), '', 'row'));
+        foreach ($doses as $d) {
+            $cells[] = $rx_cell('td', array($span($d, $d === $none ? 'small text-body-secondary' : 'fw-bold', lang('Text'))), 'text-center');
+        }
+        return $el('tr', '', $name, $cells);
+    };
+    $time_head = function ($icon_name, $name) use ($rx_cell, $icon, $span) {
+        return $rx_cell('th', array(
+            $icon($icon_name, 'd-block text-primary fs-5 mb-1'),
+            $span($name, 'small fw-semibold', lang('Text')),
+        ), 'text-center', 'col');
+    };
+    $title = lang('Your medicines through the day');
+    return $el('section', $class, lang('Pharmacy (Medicine Schedule)'), array(
+        $container(array(
+            $row(array(
+                $col(array(
+                    $heading('h2', $title, 'prx-display fw-bold mb-3'),
+                    $para(lang('After a medicine review we write your day out like this, so every medicine has its time and nothing is taken twice.'), 'text-body-secondary mb-4'),
+                    $link(lang('Book a medicine review'), $book_href, 'btn btn-primary rounded-pill px-4', array(), array('_label' => lang('Booking Link'))),
+                ), '', '4'),
+                $col(array(
+                    $rx_table($title, lang('Sample medicine schedule by time of day'), array(
+                        $rx_cell('th', array($span(lang('Medicine'), 'small fw-semibold', lang('Text'))), '', 'col'),
+                        $time_head('bi-sunrise', lang('Morning')),
+                        $time_head('bi-sun', lang('Midday')),
+                        $time_head('bi-sunset', lang('Evening')),
+                        $time_head('bi-moon', lang('Bedtime')),
+                    ), array(
+                        $medicine(lang('Blood pressure tablet'), lang('With water, before breakfast'), array('1', $none, $none, $none)),
+                        $medicine(lang('Diabetes tablet'), lang('With a meal'), array('1', $none, '1', $none)),
+                        $medicine(lang('Cholesterol tablet'), lang('At the same time each night'), array($none, $none, $none, '1')),
+                        $medicine(lang('Vitamin D'), lang('With food'), array($none, '1', $none, $none)),
+                    ), lang('Schedule Table')),
+                    $para(lang('A sample: never change a medicine or its time without asking your doctor or pharmacist.'), 'small text-body-secondary mt-3 mb-0'),
+                ), '', '8'),
+            ), '4', '', 'g-lg-5'),
+        )),
+    ), $searchable($searchable_id, $topics_words));
+};
 // The cards of the shared data, in their order.
 $service_cols = array();
 foreach (array_keys($services) as $key) $service_cols[] = $service_card($key);
 $check_cols = array();
 foreach (array_keys($checks) as $key) $check_cols[] = $check_card($key);
-$duty_cols = array();
-foreach (array_keys($duty_facts) as $key) $duty_cols[] = $duty_card($key);
 $range_cols = array();
 foreach (array_keys($ranges) as $key) $range_cols[] = $range_card($key);
 $testimonial_cols = array();
@@ -153,10 +382,6 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
-
         $el('section', 'py-5', lang('Our Services'), array(
             $container(array(
                 $section_header(lang('What we do'), lang('More than a counter'), lang('All services'), '{{page:services}}'),
@@ -164,12 +389,8 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Health Checks'), array(
-            $container(array(
-                $section_header(lang('In ten minutes'), lang('Know your numbers'), lang('All health checks'), '{{page:health_checks}}'),
-                $row($check_cols, '4'),
-            )),
-        )),
+        // What a reading means, the way a health check explains it.
+        $readings_section('py-5 bg-body-tertiary', 'rx-home-readings', lang('blood pressure, sugar, glucose, normal, high, what it means')),
 
         // The pharmacists, read from the Pharmacists collection.
         $el('section', 'py-5', lang('Our Pharmacists'), array(
@@ -179,13 +400,9 @@ $public_pages[] = array(
             )),
         )),
 
-        // Being on duty, in a band of its own.
-        $el('section', 'py-5 bg-body-tertiary', lang('On Duty'), array(
-            $container(array(
-                $section_header(lang('Nights and holidays'), lang('When we are closed'), lang('On Duty'), '{{page:on_duty}}'),
-                $row($duty_cols, '4'),
-            )),
-        ), $searchable('rx-home-on-duty', lang('night, Sunday, holiday, open late, duty pharmacy'))),
+        // Being on duty: the three answers, the night window and the
+        // emergency line.
+        $duty_panel('py-5 bg-body-tertiary', 'rx-home-on-duty', lang('night, Sunday, holiday, open late, duty pharmacy')),
 
         $el('section', 'py-5', lang('On Our Shelves'), array(
             $container(array(
@@ -270,13 +487,21 @@ foreach ($services as $key => $s) {
     $buttons = array($service_action($key));
     $buttons[0]['props']['cssClass'] = 'btn btn-primary rounded-pill px-4';
     $buttons[] = $link(lang('Ask a Pharmacist'), '{{page:ask}}', 'btn btn-outline-primary rounded-pill px-4');
+    // The pharmacy block a service's page shows under its intro: the
+    // readings for the health checks, the travel vaccines for travel
+    // health, the day's schedule for a medicine review.
+    $block_id = 'rx-service-' . str_replace('_', '-', $key) . '-more';
+    if ($key === 'health_checks') $service_block = $readings_section('py-5', $block_id, lang('blood pressure, sugar, glucose, normal, high, what it means'), lang('What your figures mean'));
+    elseif ($key === 'travel_health') $service_block = $vaccines_section('py-5', $block_id, lang('hepatitis, typhoid, yellow fever, rabies, abroad'));
+    elseif ($key === 'medicine_review') $service_block = $schedule_section('py-5', $block_id, lang('dose, morning, evening, bedtime, tablets'), '#rx-service-medicine-review');
+    else $service_block = null;
     $public_pages[] = array(
         'key'              => 'service_' . $key,
         'name'             => $service_slugs[$key],
         'folder'           => 'public',
         'title'            => $s['title'],
         'meta_description' => $s['summary'],
-        'tree'             => $page(array(
+        'tree'             => $page(array_values(array_filter(array(
             $page_header($s['title'], $s['summary']),
             $el('section', 'py-5', $s['title'], array(
                 $container(array(
@@ -293,6 +518,7 @@ foreach ($services as $key => $s) {
                     ), '4', '', 'g-lg-5 align-items-center'),
                 )),
             ), $searchable('rx-service-' . str_replace('_', '-', $key))),
+            $service_block,
             $el('section', 'py-5 bg-body-tertiary', lang('Our Pharmacists'), array(
                 $container(array(
                     $section_header(lang('Who does it'), lang('The pharmacists for this service'), lang('Meet the team'),
@@ -300,17 +526,11 @@ foreach ($services as $key => $s) {
                     $check_list($pharmacist_lines),
                 )),
             )),
-        )),
+        )))),
     );
 }
 
 // ── Health checks ───────────────────────────────────────────────────────
-
-$check_tiles = array(
-    $feature_tile('bi-door-closed', lang('In private'), lang('Every check is done in our consultation room, with the door closed.')),
-    $feature_tile('bi-journal-medical', lang('Written down'), lang('You take your figures home on a card; bring it next time to see how they change.')),
-    $feature_tile('bi-person-check', lang('The next step'), lang('When a figure needs a doctor, we tell you so plainly and write a note for your visit.')),
-);
 
 $public_pages[] = array(
     'key'              => 'health_checks',
@@ -329,11 +549,7 @@ $public_pages[] = array(
                 $row($check_cols, '4'),
             )),
         ), $searchable('rx-checks', lang('blood pressure, sugar, glucose, cholesterol, weight, BMI, measure, price'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Good to Know'), array(
-            $container(array(
-                $row($check_tiles, '4'),
-            )),
-        )),
+        $readings_section('py-5 bg-body-tertiary', 'rx-check-readings', lang('blood pressure, sugar, glucose, normal, high, what it means'), lang('What your figures mean')),
         $el('section', 'py-5', lang('Before Your Check'), array(
             $container(array(
                 $row(array(
@@ -365,34 +581,25 @@ $public_pages[] = array(
     'title'            => lang('On Duty'),
     'meta_description' => lang('Our duty nights and holidays, how to find the pharmacy on duty tonight when we are closed, and when to call 112 instead.'),
     'tree'             => $page(array(
-        $page_header(lang('On Duty'), lang('Pharmacies take turns to stay open at night and on holidays, so there is always one on duty near you.'), array(
-            $el('div', 'mt-3', lang('Buttons'), array($emergency_button())),
-        )),
-        $el('section', 'py-5', lang('On Duty'), array(
-            $container(array(
-                $row($duty_cols, '4'),
-            )),
-        ), $searchable('rx-on-duty', lang('duty pharmacy, night, Sunday, holiday, open now, late'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('At Night'), array(
+        $page_header(lang('On Duty'), lang('Pharmacies take turns to stay open at night and on holidays, so there is always one on duty near you.')),
+        $duty_panel('py-5', 'rx-on-duty', lang('duty pharmacy, night, Sunday, holiday, open now, late')),
+        // The opening hours, beside the way here: the hours a closed door
+        // keeps and where the night bell is.
+        $el('section', 'py-5 bg-body-tertiary', lang('Opening hours'), array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $heading('h2', lang('At the night window'), 'prx-display h3 mb-4'),
-                        $el('ol', 'list-unstyled mb-0', lang('Steps'), array(
-                            $step(1, lang('Ring the night bell'), lang('The bell is at the side window; the pharmacist on duty answers within a few minutes.')),
-                            $step(2, lang('Show your prescription'), lang('Medicines are handed out through the window, with the same advice as by day.')),
-                            $step(3, lang('Pay the duty fee'), lang('A small fee set by the chamber is added at night and on holidays.')),
-                        )),
+                        $heading('h2', lang('Opening hours'), 'prx-display h3 mb-3'),
+                        $hours_list(),
                     ), '', '6'),
                     $col(array(
-                        $heading('h2', lang('What to bring'), 'prx-display h3 mb-3'),
-                        $check_list($duty_tips, 'list-unstyled mb-4'),
-                        $heading('h3', lang('Opening hours'), 'h6 fw-bold mb-2'),
-                        $hours_list(),
+                        $heading('h2', lang('Getting here'), 'prx-display h3 mb-3'),
+                        $para($pharmacy['address'], 'mb-3'),
+                        $link(lang('Getting here'), '{{page:location}}', 'btn btn-outline-primary rounded-pill px-4'),
                     ), '', '6'),
                 ), '4', '', 'g-lg-5'),
             )),
-        ), $searchable('rx-night-window', lang('night bell, window, fee, identity card'))),
+        ), $searchable('rx-duty-hours', lang('opening hours, Sunday, address'))),
     ), false),
 );
 

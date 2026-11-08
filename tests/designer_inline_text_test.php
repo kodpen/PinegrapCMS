@@ -198,7 +198,8 @@ function test_designer_inline_text_wiring()
 
 	pg_assert_contains("doc.write('<!DOCTYPE html><html lang=\"' + esc(_sdDocLang()) + '\"' + (canvasDarkTheme", $source, 'the canvas document carries the page language');
 	pg_assert_contains("<html lang=\"' + esc(_sdDocLang()) + '\">\\n\\n    <head>", $source, 'the HTML export prints the same language');
-	pg_assert_contains("var lang = _sdDocLang();", $source, 'the code view prints the same language');
+	// The code view's document is built in its part (style_designer_code.js).
+	pg_assert_contains("var lang = _sdDocLang();", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js'), 'the code view prints the same language');
 	pg_assert_false(strpos($source, "document.documentElement.lang || 'en'") !== false, 'no second copy of the page language');
 
 	$virtual = designer_inline_text_test_fn($source, '_createVirtualText');

@@ -35,8 +35,6 @@ function _test_rx_load()
 	foreach (array_keys($services) as $key) $service_cards[$key] = $service_card($key);
 	$check_cards = array();
 	foreach (array_keys($checks) as $key) $check_cards[$key] = $check_card($key);
-	$duty_cards = array();
-	foreach (array_keys($duty_facts) as $key) $duty_cards[$key] = $duty_card($key);
 	$pharmacist_cards = array();
 	foreach (array_keys($pharmacists) as $key) $pharmacist_cards[$key] = $pharmacist_card($key);
 	$day_trees = array();
@@ -78,7 +76,6 @@ function _test_rx_load()
 		'radios'             => array('collect_choices' => $collect_choices, 'contact_choices' => $contact_choices),
 		'service_cards'      => $service_cards,
 		'check_cards'        => $check_cards,
-		'duty_cards'         => $duty_cards,
 		'pharmacist_cards'   => $pharmacist_cards,
 		'day_trees'          => $day_trees,
 		'range_cards'        => $range_cards,
@@ -106,7 +103,7 @@ function _test_rx_trees()
 {
 	$d = _test_rx_load();
 	return array_merge(array($d['header'], $d['footer']), $d['shared'], array_values($d['service_cards']),
-		array_values($d['check_cards']), array_values($d['duty_cards']), array_values($d['pharmacist_cards']),
+		array_values($d['check_cards']), array_values($d['pharmacist_cards']),
 		array_values($d['day_trees']), array_values($d['range_cards']), $d['testimonial_cards']);
 }
 
