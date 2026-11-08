@@ -232,10 +232,10 @@ return array(
         'email_footer' => array('name' => lang('Pharmacy E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its prx- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the pharmacy blocks' rules its pages place
+    // and its prx- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $pharmacy_css),
+        'css'   => pg_design_template_user_styles(array('pharmacy-readings', 'pharmacy-vaccines', 'pharmacy-schedule'), $pharmacy_css),
         'fonts' => json_encode($pharmacy_fonts),
     ),
 );
