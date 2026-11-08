@@ -186,7 +186,7 @@ $sportsclub_css = implode("\n", array(
 
 return array(
     'name'        => lang('Sports Club'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 113,
     'icon'        => 'bi-trophy',
