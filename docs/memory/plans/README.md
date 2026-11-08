@@ -44,8 +44,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-florist.md: Plan: the Florist design template (pinegrap-florist): bouquets, occasions, delivery, subscriptions, wedding and event flowers; ~1,000-line steps
 - design-template-gallery-design.md: Design of plans/design-template-gallery.md: the shipped features it reuses, what it does not build, its look and Turkish words
 - design-template-gallery.md: Plan: the Art Gallery design template (pinegrap-gallery): artists, exhibitions, works, artwork and private-viewing enquiries, editions in the shop, the journal; small steps
-- design-template-homeservices-design.md: Design of plans/design-template-homeservices.md: shipped features it reuses for services, estimates, visits and areas, what it does not build, its look and Turkish words
-- design-template-homeservices.md: Plan: the Home Services design template (pinegrap-homeservices): services, price guide, estimates, visit bookings, service areas, team, reviews; ~1,000-line steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, and where the open template plans (Skiresort, Gallery and the rest) take theirs
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - design-template-pharmacy-design.md: Design of plans/design-template-pharmacy.md: the shipped features it reuses, what it does not build, its look and Turkish words
