@@ -17,6 +17,9 @@ description: Phone Launch Site template (pinegrap-launch): the Orbit in three mo
 - A trade-in or support request is a form record as Real Estate's ([[design-template-realestate]]): model from `?model=` (`_cf.url_param`), photos in `private`, status office-use-only, messages the record page's Comments widget (`tradein_messages`, `support_messages`), views `submitter_only`.
 - Not built (new behaviour): a countdown, variant sets from a template's catalog, pre-orders charged later, a trade-in price calculator, IMEI checks.
 
+## How are home and features built?
+- On the Product Launch blocks: [[design-template-launch-home]].
+
 ## What is the plx- look?
 - `plx-brand`, `plx-eyebrow`, `plx-figure` and `plx-price` (tabular figures), `plx-hero` and `plx-glow` (palette light on the dark `data-bs-theme="dark"` sections, `color-mix()` after a plain fallback), `plx-specs`, `plx-lift`, `plx-swatch` / `-lg` / `-<colour>`. The swatches are the only fixed colours: the phone's finishes, the same under any palette. Two fonts (Manrope headings, Inter body). Field ids use `lx-`.
 - Turkish trap: `Process` reads İşlem, `Newsroom` Haber Merkezi, `Launch List` Haber Listesi; check a shared key before reusing it.

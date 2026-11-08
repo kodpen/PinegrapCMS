@@ -147,6 +147,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-gym.md: Gym template (pinegrap-gym): classes and a timetable, trainers, plans, class booking and join requests, memberships in the shop with a members' area, pgy- look, tests.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials
 - design-template-hotel.md: Hotel template (pinegrap-hotel): rooms as a collection with rates, booking requests and event enquiries followed from the account, gift vouchers in the shop, pht- look, tests.
+- design-template-launch-home.md: Launch template's home and features pages on the Product Launch blocks: builders, sections, motion, the colour picker's swatch classes, what left
 - design-template-launch.md: Phone Launch Site template (pinegrap-launch): the Orbit in three models, specs and compare from one data file, a buy page that stands without the shop, trade-in and support requests, plx- look, tests.
 - design-template-law.md: Law Firm template (pinegrap-law): practice areas, lawyers, results, fees, a consultation request with a conflict check followed from the account, careers, no shop, plw- look, tests.
 - design-template-library.md: Public Library template (pinegrap-library): branches as data, catalogue and events as collections, card, reservation, place and room requests, no shop, plb- look, tests.

@@ -18,7 +18,7 @@ description: Plan (owner 2026-11-07): block families in their own source files (
 
 ## Launch: what makes it an Apple-like product page?
 - L1 (M) Done (#8052): `designer/designer-blocks-launch.md`; the feature tile grid reuses `bento-features`. Family `launch-`, group "Product Launch". After B0. Blocks: the product hero (large phone picture on a dark band, name, price line, two buttons; entrance on load), the sticky showcase (picture column `_fx` sticky beside feature panels revealed on view), the feature tile grid (revealed with stagger), the camera band (full-width picture with parallax), the colour band (finish swatches over the picture), the spec comparison (models side by side, a sticky head row, tabular figures), the in-the-box strip, the buy band. Reduced motion: the panels show at once, the sticky column stays put.
-- L2 (M) After L1. Home and `features` rebuilt on the family: the sections follow the product, not the story band, figures, testimonials and FAQ sequence; `plx-` rules the family covers dropped.
+- L2 (M) Done (#PRNUM): `designer/design-template-launch.md`. After L1. Home and `features` rebuilt on the family: the sections follow the product, not the story band, figures, testimonials and FAQ sequence; `plx-` rules the family covers dropped.
 - L3 (M) After L2. `camera`, `specs`, `compare` rebuilt (the comparison from `$models`, one source as today), version 2.0.0, the launch tests updated, `designer/design-template-launch.md` rewritten.
 
 ## Where does it start?
