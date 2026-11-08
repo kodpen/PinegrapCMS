@@ -1281,7 +1281,10 @@ function api_form_author_is_staff($user) {
 
 	}
 
-	return ((int)$user['user_role'] < 3) || ((int)$user['user_manage_forms'] === 1);
+	// user_manage_forms is enum('no','yes'); '1' and 'true' are read as yes too,
+	// as api_load_owner() reads the right, because some releases wrote them.
+	return ((int)$user['user_role'] < 3)
+		|| in_array(strtolower(trim((string)$user['user_manage_forms'])), array('yes', '1', 'true'), true);
 
 }
 

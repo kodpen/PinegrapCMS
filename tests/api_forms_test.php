@@ -426,9 +426,11 @@ function test_api_forms_update_writable_fields()
 // forms right; nobody else, and no missing or disabled user.
 function test_api_forms_author_is_staff()
 {
-	pg_assert_true(api_form_author_is_staff(array('user_id' => 4, 'user_role' => 2, 'user_manage_forms' => 0)), 'manager');
-	pg_assert_true(api_form_author_is_staff(array('user_id' => 4, 'user_role' => 3, 'user_manage_forms' => 1)), 'user with the forms right');
-	pg_assert_false(api_form_author_is_staff(array('user_id' => 4, 'user_role' => 3, 'user_manage_forms' => 0)), 'user without it');
+	pg_assert_true(api_form_author_is_staff(array('user_id' => 4, 'user_role' => 2, 'user_manage_forms' => 'no')), 'manager');
+	pg_assert_true(api_form_author_is_staff(array('user_id' => 4, 'user_role' => 3, 'user_manage_forms' => 'yes')), 'user with the forms right');
+	pg_assert_true(api_form_author_is_staff(array('user_id' => 4, 'user_role' => 3, 'user_manage_forms' => '1')), 'the right as an older release wrote it');
+	pg_assert_false(api_form_author_is_staff(array('user_id' => 4, 'user_role' => 3, 'user_manage_forms' => 'no')), 'user without it');
+	pg_assert_false(api_form_author_is_staff(array('user_id' => 4, 'user_role' => 3, 'user_manage_forms' => '')), 'an empty right');
 	pg_assert_false(api_form_author_is_staff(null), 'no enabled user');
 
 	$create = api_forms_test_function_source('api_form_submission_create');
