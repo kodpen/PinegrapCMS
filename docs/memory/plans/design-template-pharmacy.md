@@ -23,7 +23,7 @@ description: Plan: the Pharmacy design template (pinegrap-pharmacy): services, p
 
 - 6 (done, #8025): `standard.php`; test.
 
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #8051): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-pharmacy.php` (order, search sections, look, fonts, `prx-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-pharmacy.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
