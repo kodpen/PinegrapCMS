@@ -45,7 +45,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-discovery-document.md: The credential-free discovery document (.well-known/pinegrap.json and GET integration.php/discovery): its fields and sources, where it is wired, which gates apply, device_signin and pairing
 - api-dry-run.md: Making an external API write rehearsable (X-Dry-Run or ?dry_run=true): the route flag, where api_dry_run_stop() goes, batch endpoints, the *_check() split, side effects a rehearsal skips
 - api-endpoint-rules.md: Writing an external API endpoint: one route row, one presenter, list paging and batch reads, body checks, nullable fields, error codes, formats, partial updates, mirroring panel changes
-- api-experiments.md: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move, experiments:read/write for roles 0-1, two events
+- api-experiments.md: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
 - api-fediverse.md: GET /fediverse/followers and /fediverse/deliveries (fediverse:read): shapes, paging, the state filter, who may hold the scope; the personal data export and erasure of a Fediverse account
 - api-fields-parameter.md: External API ?fields= on reads: which answers are trimmed row by row (paged listings and GET /webhooks, api_route_returns_listing()) and which as one record
 - api-file-endpoints.md: External API routes that send or take a file: api_send_file() and binary routes, Range/If-Range, multipart form_file uploads, $_FILES outside MCP, the Idempotency-Key fingerprint, picture copies

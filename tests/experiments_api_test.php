@@ -133,3 +133,66 @@ function test_experiment_move_event()
 	pg_assert_same('experiment.ended', pg_experiment_move_event('running', 'ended'), 'an end');
 	pg_assert_same('experiment.ended', pg_experiment_move_event('paused', 'ended'), 'an end from a pause');
 }
+
+function _test_api_experiment_body($relative, $name)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+	$start = strpos($source, "\nfunction " . $name . '(');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$next = strpos($source, "\nfunction ", $start + 1);
+
+	return ($next === false) ? substr($source, $start) : substr($source, $start, $next - $start);
+}
+
+// The three moves can be rehearsed.
+function test_api_experiment_moves_take_dry_run()
+{
+	$routes = array();
+	foreach (api_schema() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	foreach (array('experiments.start', 'experiments.pause', 'experiments.end') as $id) {
+		pg_assert_true(!empty($routes[$id]['dry_run']), $id . ' can be rehearsed');
+	}
+}
+
+// A rehearsal meets every refusal of the real move, the 409s included,
+// and stops before the write.
+function test_api_experiment_move_checks_before_dry_run_before_write()
+{
+	$file = 'includes/api/resources/experiments.php';
+	$prepare = _test_api_experiment_body($file, 'api_experiments_move_prepare');
+
+	pg_assert_contains('api_experiments_ready_or_fail(', $prepare, '503 is checked');
+	pg_assert_contains('api_experiment_load_or_fail(', $prepare, '404 is checked');
+	pg_assert_contains('pg_experiment_may_move(', $prepare, 'the state 409 is checked');
+	pg_assert_contains('pg_experiment_sheet_move_check(', $prepare, 'the start checks are asked');
+	pg_assert_false(strpos($prepare, 'pg_experiment_sheet_move(') !== false, 'prepare writes nothing');
+
+	foreach (array('api_experiments_start', 'api_experiments_pause', 'api_experiments_end') as $handler) {
+		$body = _test_api_experiment_body($file, $handler);
+		$stop = strpos($body, 'api_dry_run_stop(');
+
+		pg_assert_true($stop !== false, $handler . ' has a dry run stop');
+		pg_assert_true(strpos($body, 'api_experiments_move_prepare(') < $stop, $handler . ' checks before the stop');
+		pg_assert_true($stop < strpos($body, 'api_experiments_move_commit('), $handler . ' stops before the write');
+	}
+}
+
+// The panel's move runs the same checks the rehearsal asks, before its write.
+function test_experiment_sheet_move_runs_the_check()
+{
+	$body = _test_api_experiment_body('includes/fn/experiments_sheet.php', 'pg_experiment_sheet_move');
+	$check = _test_api_experiment_body('includes/fn/experiments_sheet.php', 'pg_experiment_sheet_move_check');
+
+	pg_assert_true(strpos($body, 'pg_experiment_sheet_move_check(') !== false, 'the move calls the check');
+	pg_assert_true(strpos($body, 'pg_experiment_sheet_move_check(') < strpos($body, 'UPDATE experiments'), 'check before the write');
+	pg_assert_false(strpos($check, 'UPDATE ') !== false || strpos($check, 'INSERT ') !== false || strpos($check, 'pg_announce(') !== false, 'the check writes nothing');
+	pg_assert_contains('pg_page_is_draft(', $check, 'variants still drafts');
+	pg_assert_contains("status = 'running'", $check, 'one running experiment per page');
+}

@@ -1,6 +1,6 @@
 ---
 name: api-experiments
-description: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move, experiments:read/write for roles 0-1, two events
+description: The experiments API resource (PX7, #6295): list, get with figures and the z-test, start/pause/end via the sheet move (dry_run), experiments:read/write for roles 0-1, two events
 ---
 
 ## Which routes are there?
@@ -12,7 +12,7 @@ description: The experiments API resource (PX7, #6295): list, get with figures a
 - Variants and sums of a page of rows: two queries (`api_experiment_variants_for()`).
 
 ## How is a move made?
-- `api_experiments_move()`: `pg_experiment_may_move()` first, then `pg_experiment_sheet_move()`, the panel's own (start checks: page on the site, variants still drafts, no other running); a refusal is 409 `experiment_state`, named in the route descriptions. 503 `service_unavailable` before the upgrade.
+- Each move route: `api_experiments_move_prepare()` (503 `service_unavailable` before the upgrade, 404, `pg_experiment_may_move()`, then `pg_experiment_sheet_move_check()`, the panel's own start checks: page on the site, variants still drafts, no other running; a refusal is 409 `experiment_state`, named in the route descriptions), then `api_dry_run_stop()`, then `api_experiments_move_commit()` through `pg_experiment_sheet_move()`, which runs the same check first. A rehearsal meets every refusal but one: a move another caller makes meanwhile (the status in the UPDATE's WHERE).
 - `pg_experiment_sheet_move()` now raises the page cache generation (`pg_page_cache_mark_dirty()`: an API request is no signed-in panel POST, and every stored copy carries the weights) and announces `pg_experiment_move_event()`: `experiment.started` on the first start only (draft → running; a resume is not), `experiment.ended` on any end, with id, page_id, name, goal_kind, winner_variant_id.
 
 ## Who may delegate it?
