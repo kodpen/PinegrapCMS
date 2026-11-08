@@ -49,6 +49,14 @@ $match_pages[] = array(
     'meta_description' => lang('Every match to come for every team of the club, with the date, the kick-off time and whether it is at home or away.'),
     'tree'             => $page(array(
         $page_header(lang('Fixtures'), lang('Every match to come, nearest first. Choose a team to narrow the list.')),
+        // Match day first: the first team's next match and the last
+        // result, then every fixture.
+        $sc_matchday(array(
+            $heading('h2', lang('Match day'), 'psp-display h3 mb-0'),
+        ), array(
+            $link(lang('Getting to the ground'), '{{page:ground}}', 'btn btn-primary px-4'),
+            $link(lang('See the results'), '{{page:results}}', 'btn btn-outline-primary px-4'),
+        ), 'view', 'sp-fixtures-matchday', lang('next match, kick-off, derby, home match')),
         $el('section', 'py-5', lang('Fixtures'), array(
             $container(array(
                 $sp_filter_bar('fixtures', lang('By team'), 'team', $team_titles),
@@ -79,6 +87,7 @@ $match_pages[] = array(
                 )),
             )),
         ), $searchable('sp-results', lang('results, scores, match report, won, lost, drawn'))),
+        $sc_table(),
     )),
 );
 

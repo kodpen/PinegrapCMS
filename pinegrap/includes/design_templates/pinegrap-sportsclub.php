@@ -22,7 +22,8 @@
  *
  * The pages are built in includes/design_templates/pinegrap-sportsclub/
  * (not read as templates of their own): parts.php holds the node builders,
- * the club's data and the parts every page repeats; squad.php the list
+ * the club's data and the parts every page repeats; blocks.php the club's
+ * palette blocks (Match Day, League Table, Squad by Position); squad.php the list
  * helpers ($sp_…) the later files use, with the Players collection;
  * mail.php the e-mail builders; pages_public.php, matches.php,
  * registrations.php, events.php, shop.php, standard.php and account.php
@@ -79,6 +80,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // shop's items are parts.php's data).
 $sportsclub_dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub';
 include $sportsclub_dir . '/parts.php';
+include $sportsclub_dir . '/blocks.php';
 $squad_part        = include $sportsclub_dir . '/squad.php';
 include $sportsclub_dir . '/mail.php';
 $public_part       = include $sportsclub_dir . '/pages_public.php';
@@ -175,9 +177,6 @@ $sportsclub_css = implode("\n", array(
     '.psp-score{font-family:var(--pg-font-heading);font-variant-numeric:tabular-nums;letter-spacing:.02em}',
     // The club's badge beside its name: a touch larger than the text.
     '.psp-crest{line-height:1}',
-    // The home page's way in: a diagonal wash of the primary colour, as the
-    // stripe across a club shirt.
-    '.psp-hero{background-image:linear-gradient(115deg,rgba(var(--bs-primary-rgb),.12) 0%,rgba(var(--bs-primary-rgb),.12) 38%,transparent 38%)}',
     // Team, player, match and event cards rise a little under the pointer.
     '.psp-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.psp-lift:hover,.psp-lift:focus-visible,.psp-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
@@ -245,10 +244,11 @@ return array(
         'email_footer' => array('name' => lang('Sports Club E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its psp- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the palette blocks its home,
+    // fixtures, results and teams pages place, and its psp- rules, in one
+    // User Styles entry; and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $sportsclub_css),
+        'css'   => pg_design_template_user_styles(array('sportsclub-matchday', 'sportsclub-table', 'sportsclub-squad'), $sportsclub_css),
         'fonts' => json_encode($sportsclub_fonts),
     ),
 );
