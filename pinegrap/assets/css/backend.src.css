@@ -18958,6 +18958,94 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 .ws-nb-item-more:focus-visible {
     opacity: 1;
 }
+/* Note groups as folders in My notes (workspace_note_groups.js). */
+.ws-nb-group-add {
+    padding: 0 .4rem;
+    font-size: .75rem;
+    letter-spacing: normal;
+    text-transform: none;
+}
+.ws-nb-group-head {
+    display: flex;
+    align-items: center;
+    gap: .2rem;
+    border-radius: var(--ws-radius-sm);
+}
+.ws-nb-group-head:hover {
+    background: var(--pg-bg-1);
+}
+.ws-nb-group-head:hover .ws-nb-item-more,
+.ws-nb-group-head .ws-nb-item-more:focus-visible {
+    opacity: 1;
+}
+.ws-nb-group-toggle {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    gap: .45rem;
+    min-width: 0;
+    padding: .4rem .5rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-weight: 600;
+    text-align: start;
+}
+.ws-nb-group-toggle:focus-visible {
+    outline: 2px solid var(--pg-primary-border-subtle);
+    outline-offset: -2px;
+}
+.ws-nb-group-chevron {
+    flex: none;
+    font-size: .7rem;
+    color: var(--pg-fg-2);
+    transition: transform .15s ease;
+}
+.ws-nb-group.open .ws-nb-group-chevron {
+    transform: rotate(90deg);
+}
+.ws-nb-group-dot {
+    flex: none;
+    width: .6rem;
+    height: .6rem;
+    border-radius: 50%;
+}
+.ws-nb-group-dot-none {
+    border: 1px solid var(--pg-fg-2);
+}
+.ws-nb-group-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-nb-group-lock {
+    flex: none;
+    color: var(--pg-fg-2);
+}
+.ws-nb-group-body {
+    display: none;
+    flex-direction: column;
+    gap: .2rem;
+    margin-inline-start: .9rem;
+    padding-inline-start: .35rem;
+    border-inline-start: 1px solid var(--pg-border-color);
+}
+.ws-nb-group.open .ws-nb-group-body {
+    display: flex;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ws-nb-group-chevron {
+        transition: none;
+    }
+}
+/* No hover on a touch screen: the folder's menu button stays visible. */
+@media (pointer: coarse) {
+    .ws-nb-group-head .ws-nb-item-more {
+        opacity: 1;
+    }
+}
 .ws-nb-item-excerpt {
     display: -webkit-box;
     margin-top: .15rem;

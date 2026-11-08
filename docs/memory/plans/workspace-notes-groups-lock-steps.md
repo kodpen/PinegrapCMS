@@ -10,7 +10,7 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 
 - G1 (M) Groups store. Done (PR #8044). New `includes/workspace/note_groups.php`: a person's groups with counts; create, rename, colour (`ws_palette()`), order, delete (notes back to no group, never deleted); a note placed in a group or none and ordered in it; `ws_notes_list()` answers the groups and each note's group for the viewer; actions `ws_note_group_*`; at most 200 groups, names of 100 characters.
 
-- G2 (M) Groups on the screen. After G1. New `assets/js/workspace_note_groups.js`: folders in My Notes as `-design.md` draws them, open or closed kept in the browser, New group, the group's menu, the note menu's Move to group, search answered inside groups, phone.
+- G2 (M) Groups on the screen. Done (PR #8065). New `assets/js/workspace_note_groups.js`: folders in My Notes as `-design.md` draws them, open or closed kept in the browser, New group, the group's menu, the note menu's Move to group, search answered inside groups, phone.
 
 - G3 (M) Drag and drop. After G2. Same file: notes into, out of, along and between groups; groups in the list; the questions a shared or a locked group asks (`-design.md`); Move to group and a long press as the keyboard and touch ways.
 
@@ -21,3 +21,6 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 - G6 (M) Shared groups, screen. After G2 and G5. The group's Share dialog (people, read or edit, a channel, who has it, take back), shared groups under Shared with me, the channel card of a group listing its notes, `workspace_notes.php?group=N`.
 
 - G7 (M) API and MCP. After G5. New `includes/workspace/api_note_groups.php`: list, create, change and delete groups, place a note, each with dry run through the panel's `*_check()`, MCP tools as the note routes have; `group_id` on note objects; `check_api_schema.php`. Sharing stays on the screen, as for notes.
+
+## Where does the next session start?
+- N0, G1, G2 done. Free next: G3 (drag and drop, same file `assets/js/workspace_note_groups.js`; the rows come from `drawItem()` in `startNotes()`, placing goes through `ws_note_place` with `position`), G4 beside it (new file), G5 (store, new file). Screen notes: `workspace/workspace-note-groups-screen.md`; store: `workspace/workspace-note-groups.md`.
