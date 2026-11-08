@@ -16,7 +16,7 @@ description: Plan: the Recruitment Agency design template (pinegrap-recruitment)
 - 3 (done, #7833): `jobs.php`: the Jobs collection (`jobs` by `?sector=`, `?city=` and `?type=`, the `job` page with facts, duties, requirements, the consultant and an apply link `?job=`, `job_new`), `home_jobs`; test.
 - 4 (done, #7935): `mail.php` (the e-mail builders) and `applications.php`: applications (`apply` with `?job=`, open application without one, `application_view`, `my_applications`, `staff_applications`, `privacy`, `email_reply`); test.
 - 5 (done, #8132): `employers.php`: employer enquiries (`hire` with `?sector=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`); test.
-- 6: `standard.php`: contact, inbox, conversation, job alerts (`newsletter`), Career Advice (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #8156): `standard.php`: contact, inbox, conversation, job alerts (`newsletter`), Career Advice (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 8: assembly: `pinegrap-recruitment.php` (order, search sections, look, fonts, `prc-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-recruitment.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
