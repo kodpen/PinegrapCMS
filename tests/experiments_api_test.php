@@ -174,9 +174,11 @@ function test_api_experiment_move_checks_before_dry_run_before_write()
 	pg_assert_contains('pg_experiment_sheet_move_check(', $prepare, 'the start checks are asked');
 	pg_assert_false(strpos($prepare, 'pg_experiment_sheet_move(') !== false, 'prepare writes nothing');
 
-	foreach (array('api_experiments_start', 'api_experiments_pause', 'api_experiments_end') as $handler) {
+	foreach (array('api_experiments_start' => 'started', 'api_experiments_pause' => 'paused', 'api_experiments_end' => 'ended') as $handler => $would) {
 		$body = _test_api_experiment_body($file, $handler);
 		$stop = strpos($body, 'api_dry_run_stop(');
+
+		pg_assert_contains("api_dry_run_stop('" . $would . "', 'experiment'", $body, $handler . ' would say ' . $would);
 
 		pg_assert_true($stop !== false, $handler . ' has a dry run stop');
 		pg_assert_true(strpos($body, 'api_experiments_move_prepare(') < $stop, $handler . ' checks before the stop');

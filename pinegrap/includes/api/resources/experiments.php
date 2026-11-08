@@ -362,7 +362,7 @@ function api_experiments_start($params) {
 
 	$move = api_experiments_move_prepare($params, 'start');
 
-	api_dry_run_stop('start', 'experiment', $move['detail']);
+	api_dry_run_stop('started', 'experiment', $move['detail']);
 
 	api_experiments_move_commit($move);
 
@@ -372,7 +372,7 @@ function api_experiments_pause($params) {
 
 	$move = api_experiments_move_prepare($params, 'pause');
 
-	api_dry_run_stop('pause', 'experiment', $move['detail']);
+	api_dry_run_stop('paused', 'experiment', $move['detail']);
 
 	api_experiments_move_commit($move);
 
@@ -382,7 +382,7 @@ function api_experiments_end($params) {
 
 	$move = api_experiments_move_prepare($params, 'end');
 
-	api_dry_run_stop('end', 'experiment', $move['detail']);
+	api_dry_run_stop('ended', 'experiment', $move['detail']);
 
 	api_experiments_move_commit($move);
 
