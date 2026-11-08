@@ -102,16 +102,32 @@ $project_pages[] = array(
     'title'            => lang('Our Projects'),
     'meta_description' => lang('Homes, offices, schools, warehouses, roads and bridges we have built, with the facts of each project.'),
     'tree'             => $page(array(
-        $page_header(lang('Our Projects'), lang('Buildings and works we have handed over or have on site now. Choose a sector or a service to narrow the list.')),
-        $el('section', 'py-5', lang('Projects'), array(
+        // The firm's board over a finished building, in place of the page
+        // header: the list's title, the way to a quote and the facts of
+        // the portfolio.
+        $board_hero(lang('Our work'), lang('Our Projects'), lang('Buildings and works we have handed over or have on site now. Choose a sector or a service to narrow the list.'),
+            array(
+                $link(lang('Request a Quote'), '{{page:quote}}', 'btn btn-primary rounded-0 px-4'),
+                $link(lang('Our Services'), '{{page:services}}', 'btn btn-outline-secondary rounded-0 px-4'),
+            ),
+            $photo('projects-hero', 1600, 1200), lang('A finished apartment block with its landscaped garden'),
+            array(
+                lang('Sectors') => lang('Housing, workplaces, schools, industry and roads'),
+                lang('Every project') => lang('One project manager from the site visit to the keys'),
+                lang('Our builders') => lang('Employed by us, never passed on'),
+                lang('Every building') => lang('A ten-year structural warranty'),
+            )),
+        $el('section', 'py-5 border-top', lang('Projects'), array(
             $container(array(
-                $cn_filter_bar(array(
+                $rise($cn_filter_bar(array(
                     array('label' => lang('Sector'), 'param' => 'sector', 'values' => $sector_titles),
                     array('label' => lang('Service Type'), 'param' => 'service', 'values' => $service_titles),
-                )),
+                )), 60),
                 $widget('projects_list'),
             )),
         )),
+        // A project on site now, stage by stage.
+        $site_progress('valley_bridge', 'cn-projects-on-site', 'py-5 bg-body-tertiary'),
     )),
 );
 

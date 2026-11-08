@@ -518,6 +518,187 @@ $figure_row = function ($class = '') use ($el, $span, $col, $row, $figures) {
     return $row($cols, '4', '', $class);
 };
 
+// ── The Construction blocks ─────────────────────────────────────────────
+
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 80) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
+// The barrier stripe of the boards and the notice: decoration only.
+$cn_stripe = function () use ($el, $attr) {
+    return $el('div', 'pg-cn-stripe', lang('Stripe'), array(), array('_attrs' => array($attr('aria-hidden', 'true'))));
+};
+
+// The Construction: Site Board Hero block (pg-cn-board, pg-cn-stripe): a
+// site photograph in seven columns and the firm's board in five, laid over
+// the photograph's edge from lg up; the board carries the eyebrow, the
+// page's only h1, a line, $buttons and four facts ($facts: label => value).
+// The photograph fades and the board rises on load; the photograph is the
+// first thing the page shows, so it is not lazy.
+$board_hero = function ($eyebrow, $title, $lead, $buttons, $src, $alt, $facts) use ($el, $heading, $para, $image, $container, $row, $col, $fx, $cn_stripe) {
+    $dl = array();
+    foreach ($facts as $label => $value) {
+        $dl[] = $el('div', '', $label, array(
+            $el('dt', '', lang('Label'), array(), array('text' => $label)),
+            $el('dd', '', lang('Value'), array(), array('text' => $value)),
+        ));
+    }
+    $picture = $col(array(
+        $el('div', 'ratio ratio-4x3 overflow-hidden bg-body-tertiary', lang('Picture'), array(
+            $image($src, $alt, 'object-fit-cover'),
+        )),
+    ), '', '7');
+    $board = $col(array(
+        $el('div', 'pg-cn-board', lang('Board'), array(
+            $cn_stripe(),
+            $el('div', 'p-4 p-lg-5', lang('Board Body'), array(
+                $para($eyebrow, 'pcn-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+                $heading('h1', $title, 'pcn-display display-5 mb-3'),
+                $para($lead, 'text-body-secondary mb-4'),
+                $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), $buttons),
+                $el('dl', 'border-top pt-4', lang('Board Facts'), $dl),
+            )),
+        )),
+    ), '', '5');
+    return $el('section', 'pcn-hero py-4 py-lg-5 overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $row(array(
+                $fx($picture, array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1000)),
+                $fx($board, array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700, 'delay' => 200)),
+            ), '', '', 'g-0 align-items-center'),
+        )),
+    ));
+};
+
+// The stages of the projects on site now, by project key: the share done
+// (25, 50 or 75: a Bootstrap width class draws the bar) and each stage's state ('done', 'now' or 'next'), name and line.
+$site_stages = array(
+    'logistics_hub' => array('done' => 50, 'stages' => array(
+        array('done', lang('Groundworks'), lang('The site levelled, the foundations and the truck yard\'s base laid.')),
+        array('done', lang('Structural frame'), lang('The precast concrete and steel portal frame standing.')),
+        array('now', lang('Roof and cladding'), lang('The roof sheets going on and the walls closing the warehouse in.')),
+        array('next', lang('Docks and offices'), lang('The loading docks fitted, the office block finished inside.')),
+        array('next', lang('Handover'), lang('Checked with the client, the keys handed over, the site cleared.')),
+    )),
+    'valley_bridge' => array('done' => 25, 'stages' => array(
+        array('done', lang('Earthworks'), lang('The road\'s line cut and the retaining walls built.')),
+        array('now', lang('Bridge deck'), lang('The bridge\'s piers standing and its deck cast span by span.')),
+        array('next', lang('Drainage and surfacing'), lang('The drains laid and the road surfaced.')),
+        array('next', lang('Lighting and barriers'), lang('The street lights and the safety barriers put up.')),
+        array('next', lang('Handover'), lang('The road opened to traffic and the old road returned.')),
+    )),
+);
+
+// The Construction: Project Progress block (pg-cn-stages, pg-cn-dot,
+// pg-cn-done, pg-cn-now): one project on site in five columns (its name,
+// summary, the share done as a progress bar, a site photograph) beside its
+// stages on a line down the left in seven. The project fades in and the
+// stages rise one after another on view. A search section under its
+// anchor $id.
+$site_progress = function ($key, $id, $class = 'py-5') use ($el, $heading, $para, $link, $span, $image, $icon, $container, $row, $col, $attr, $fx, $rise, $query, $projects, $sectors, $site_stages, $searchable, $photo) {
+    $p = $projects[$key];
+    $s = $site_stages[$key];
+    $marks = array(
+        'done' => array('icon' => 'bi-check-lg', 'word' => lang('Done'), 'badge' => 'text-bg-primary'),
+        'now'  => array('icon' => 'bi-cone-striped', 'word' => lang('On site now'), 'badge' => 'text-bg-warning'),
+        'next' => array('icon' => 'bi-circle', 'word' => lang('Coming next'), 'badge' => 'text-bg-secondary'),
+    );
+    $items = array();
+    foreach ($s['stages'] as $st) {
+        $m = $marks[$st[0]];
+        // A stage to come takes the list's plain look: only done and now
+        // have a rule of their own.
+        $items[] = $el('li', $st[0] === 'next' ? '' : 'pg-cn-' . $st[0], $st[1], array(
+            $el('div', 'pg-cn-dot', lang('Stage Mark'), array($icon($m['icon'])), array('_attrs' => array($attr('aria-hidden', 'true')))),
+            $el('div', 'd-flex flex-wrap align-items-center gap-2 mb-1', lang('Stage Head'), array(
+                $heading('h3', $st[1], 'h6 fw-semibold mb-0'),
+                $span($m['word'], 'badge rounded-0 ' . $m['badge'], lang('State')),
+            )),
+            $para($st[2], 'small text-body-secondary mb-0'),
+        ));
+    }
+    $share = (string)(int)$s['done'];
+    $about = $col(array(
+        $para(lang('On site now'), 'pcn-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+        $heading('h2', $p['name'], 'pcn-display h2 mb-3'),
+        $para($p['summary'], 'text-body-secondary mb-4'),
+        $el('div', 'd-flex justify-content-between small fw-semibold mb-2', lang('Progress Head'), array(
+            $span(lang('Work done'), '', lang('Text')),
+            $span($share . '%', '', lang('Share')),
+        )),
+        $el('div', 'progress rounded-0 mb-4', lang('Progress Bar'), array(
+            $el('div', 'progress-bar w-' . $share, lang('Progress')),
+        ), array('_attrs' => array(
+            $attr('role', 'progressbar'), $attr('aria-label', lang('Work done')),
+            $attr('aria-valuenow', $share), $attr('aria-valuemin', '0'), $attr('aria-valuemax', '100'),
+        ))),
+        $el('div', 'ratio ratio-16x9 overflow-hidden bg-body-tertiary', lang('Picture'), array(
+            $image($photo('on-site-' . $key, 1200, 675), lang('The latest photograph from the site.'), 'object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
+        )),
+        $link(lang('More projects in this sector'), '{{page:projects}}?' . $query(array('sector' => $sectors[$p['sector']]['title'])), 'd-inline-block small fw-semibold link-primary mt-3'),
+    ), '', '5');
+    $stages = $col(array(
+        $rise($el('ol', 'pg-cn-stages list-unstyled mb-0', lang('Stages'), $items), 100),
+    ), '', '7');
+    return $el('section', $class, lang('Project Progress'), array(
+        $container(array(
+            $row(array(
+                $fx($about, array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800)),
+                $stages,
+            ), '4', '', 'g-lg-5'),
+        )),
+    ), $searchable($id, lang('on site, progress, stage, under construction, current project')));
+};
+
+// The Construction: Neighbour Notice block (pg-cn-notice, pg-cn-stripe,
+// pg-cn-hours): the notice the firm puts up for the street on a tinted
+// band, a framed sheet under the barrier stripe with the working hours,
+// deliveries, noisy work and how long, and the call to the firm. The sheet
+// rises on view. A search section under its anchor $id.
+$street_notice = function ($id, $class = 'py-5 bg-body-tertiary') use ($el, $heading, $para, $link, $icon, $container, $fx, $cn_stripe, $searchable, $firm) {
+    $fact = function ($label, $value, $cls) use ($el) {
+        return $el('div', 'col-sm-6', $label, array(
+            $el('dt', 'small text-uppercase text-body-secondary', lang('Label'), array(), array('text' => $label)),
+            $el('dd', $cls, lang('Value'), array(), array('text' => $value)),
+        ));
+    };
+    $sheet = $el('div', 'pg-cn-notice', lang('Notice'), array(
+        $cn_stripe(),
+        $el('div', 'p-4 p-lg-5', lang('Notice Body'), array(
+            $el('div', 'd-flex align-items-center gap-3 mb-3', lang('Notice Head'), array(
+                $icon('bi-cone-striped', 'fs-2 text-primary'),
+                $heading('h2', lang('Building work on your street'), 'pcn-display h3 mb-0'),
+            )),
+            $para(lang('Every site we run puts up this notice for its neighbours: what we build, when we work and whom to call. Thank you for your patience while we work.'), 'mb-4'),
+            $el('dl', 'row g-3 mb-4', lang('Notice Facts'), array(
+                $fact(lang('Working hours'), lang('Monday to Friday, 8:00 to 18:00; Saturday, 8:00 to 13:00'), 'pg-cn-hours mb-0'),
+                $fact(lang('Deliveries'), lang('Between 9:30 and 15:00, away from the school run'), 'pg-cn-hours mb-0'),
+                $fact(lang('Noisy work'), lang('Kept to weekday mornings, never on Sundays'), 'mb-0'),
+                $fact(lang('How long'), lang('Written on each site\'s notice, with the date of the handover'), 'mb-0'),
+            )),
+            $el('div', 'd-flex flex-wrap align-items-center gap-3 border-top pt-4', lang('Notice Contact'), array(
+                $para(lang('A question or a problem? Call the site manager.'), 'fw-semibold mb-0 me-auto'),
+                $link(lang('Call the Site'), 'tel:' . preg_replace('/[^0-9+]/', '', $firm['phone']), 'btn btn-primary rounded-0 px-4'),
+            )),
+        )),
+    ));
+    return $el('section', $class, lang('Neighbour Notice'), array(
+        $container(array(
+            $el('div', 'col-lg-9 col-xl-8 mx-auto', lang('Notice Column'), array(
+                $fx($sheet, array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700)),
+            )),
+        )),
+    ), $searchable($id, lang('neighbours, noise, working hours, deliveries, dust, complaint')));
+};
+
 // ── The parts every page repeats ────────────────────────────────────────
 
 // The line in the account bar: the free site visit and the way to ask for

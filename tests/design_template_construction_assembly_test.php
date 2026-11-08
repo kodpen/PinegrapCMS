@@ -224,3 +224,63 @@ function test_construction_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_projects"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places the projects and the news');
 }
+
+// Home, the projects page and the safety page place the Construction
+// blocks: every pg-cn- class's rule ships in the User Styles, the
+// interactions are kept as written and something moves on each; one h1 on
+// each; the home and the projects page open on the site board hero (the
+// home asks for a quote and has no figures band), show a project on site
+// with its stages, and the safety page puts up the notice for the street.
+function test_construction_assembly_pages_on_construction_blocks()
+{
+	$tpl = _test_cn_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'projects', 'safety'), true)) $trees[$p['key']] = $p['tree'];
+	$wanted = array(
+		'home'     => array('pg-cn-board', 'pg-cn-stripe', 'pg-cn-stages', 'pg-cn-dot'),
+		'projects' => array('pg-cn-board', 'pg-cn-stripe', 'pg-cn-stages', 'pg-cn-dot'),
+		'safety'   => array('pg-cn-notice', 'pg-cn-stripe', 'pg-cn-hours'),
+	);
+	pg_assert_same(3, count($trees), 'home, projects, safety');
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_cn_asm_tpl_nodes($tree, $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-cn-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach ($wanted[$key] as $class) pg_assert_contains($class, $classes, $key . ': places ' . $class);
+		pg_assert_true($effects >= 2, $key . ': something moves');
+		pg_assert_same(1, $h1, $key . ': one h1');
+		if ($key === 'home') pg_assert_false(in_array('Figures', $labels, true), 'home: no figures band');
+	}
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the hero comes in on load');
+	pg_assert_contains('{{page:quote}}', $home, 'the hero asks for a quote');
+	pg_assert_contains('"role"', $home, 'the work done is a progress bar');
+	foreach (array('home', 'projects') as $key) {
+		$json = json_encode($trees[$key], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		pg_assert_same(5, substr_count($json, 'pg-cn-dot'), $key . ': five stages');
+		pg_assert_same(1, substr_count($json, '"cssClass":"pg-cn-now'), $key . ': one stage on site now');
+		pg_assert_same(4, substr_count($json, '"tag":"dt"'), $key . ': four board facts');
+	}
+	$safety = json_encode($trees['safety'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_same(4, substr_count($safety, '"tag":"dt"'), 'four notice facts');
+	pg_assert_contains('tel:', $safety, 'the notice calls the firm');
+}

@@ -122,34 +122,25 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('A building contractor for homes, offices, schools and roads: a free site visit, a fixed price and handover on time.'),
     'tree'             => $page(array(
-        // The way in: the firm in a sentence, the two ways on and a photo
-        // of a site.
-        $el('section', 'pcn-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Building contractor'), 'pcn-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('We build what you plan'), 'pcn-display display-3 mb-3'),
-                        $para($firm['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Request a Quote'), '{{page:quote}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('See Our Projects'), '{{page:projects}}', 'btn btn-outline-secondary btn-lg px-4'),
-                        )),
-                        $para($firm['licence'] . '.', 'small text-body-secondary mt-4 mb-0'),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('A crane over a building site at sunrise'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
+        // The way in: the firm's site board over a photograph of a site,
+        // the two ways on and the facts a site board shows.
+        $board_hero(lang('Building contractor'), lang('We build what you plan'), $firm['tagline'] . '.',
+            array(
+                $link(lang('Request a Quote'), '{{page:quote}}', 'btn btn-primary rounded-0 px-4'),
+                $link(lang('See Our Projects'), '{{page:projects}}', 'btn btn-outline-secondary rounded-0 px-4'),
+            ),
+            $photo('hero', 1600, 1200), lang('A crane over a building site at sunrise'),
+            array(
+                lang('We build') => lang('New builds, extensions and refurbishments'),
+                lang('Site visit') => lang('Free, within a week of your call'),
+                lang('Our builders') => lang('Employed by us, never passed on'),
+                lang('Every building') => lang('A ten-year structural warranty'),
             )),
-        )),
-
-        $figures_band(),
 
         $el('section', 'py-5', lang('Our Services'), array(
             $container(array(
                 $section_header(lang('What we do'), lang('From the foundations to the keys'), lang('All Services'), '{{page:services}}'),
-                $row($service_cols, '4'),
+                $rise($row($service_cols, '4')),
             )),
         ), $searchable('cn-home-services', lang('builder, contractor, construction company, renovation, design and build'))),
 
@@ -161,26 +152,15 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5', lang('Why Build with Us'), array(
+        // A project on site now, stage by stage.
+        $site_progress('logistics_hub', 'cn-home-on-site'),
+
+        $el('section', 'py-5 bg-body-tertiary', lang('Why Build with Us'), array(
             $container(array(
                 $section_header(lang('The way we build'), lang('Why build with us'), lang('About Us'), '{{page:about}}'),
-                $row($why_tiles, '4'),
+                $rise($row($why_tiles, '4')),
             )),
         ), $searchable('cn-why-us', lang('fixed price, on time, project manager, safety, reliable'))),
-
-        $el('section', 'py-5 bg-body-tertiary', lang('Our Process'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Step by step'), 'pcn-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                        $heading('h2', lang('From the first call to the keys'), 'pcn-display h2 mb-4'),
-                        $el('ol', 'list-unstyled mb-4', lang('Steps'), $process_items),
-                        $link(lang('Our Process'), '{{page:process}}', 'btn btn-outline-secondary px-4'),
-                    ), '', '6'),
-                    $col(array($framed($photo('home-process', 1200, 900), lang('An engineer and a client reading drawings on site'))), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        ), $searchable('cn-home-process', lang('how it works, site visit, quote, permit, handover'))),
 
         // What clients say: sample words for the firm to replace, and beside
         // them its own Google reviews, which show once Google Reviews is set
@@ -188,7 +168,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
                 $section_header(lang('Our clients'), lang('What clients say')),
-                $row($testimonial_cols, '4'),
+                $rise($row($testimonial_cols, '4'), 120),
                 $widget('google_reviews'),
             )),
         )),
@@ -354,13 +334,15 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Safety'), array(
             $container(array(
                 $section_header(lang('On every site'), lang('How we work safely')),
-                $row($safety_tiles, '4'),
+                $rise($row($safety_tiles, '4')),
             )),
         ), $searchable('cn-safety', lang('health and safety, accident, training, inspection, waste, environment'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Accreditations'), array(
+        // The notice every site puts up for its street.
+        $street_notice('cn-safety-neighbours'),
+        $el('section', 'py-5', lang('Accreditations'), array(
             $container(array(
                 $section_header(lang('Certified'), lang('Our certificates')),
-                $row($accreditation_tiles, '4'),
+                $rise($row($accreditation_tiles, '4')),
             )),
         ), $searchable('cn-accreditations', lang('ISO, certificate, accreditation, licence, insurance'))),
         $figures_band(),
