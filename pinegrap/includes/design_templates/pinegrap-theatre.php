@@ -193,7 +193,7 @@ return array(
     'name'        => lang('Theatre'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 105,
+    'order'       => 107,
     'icon'        => 'bi-ticket-perforated',
     'description' => lang('A theatre or performing-arts venue: the season with productions now playing, coming and past and a page each, performances from today with access performances, your visit with the box office hours, venue hire enquiries, school group requests and youth theatre places followed from the account, support and friends, tickets, friends membership and gift vouchers in the shop, News, a newsletter, an inbox, a staff area and a help center that searches the whole site.'),
 

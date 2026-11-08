@@ -54,7 +54,7 @@ function test_theatre_assembly_template_offered()
 	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-ticket-perforated', $tpl['icon']);
-	pg_assert_same(105, $tpl['order']);
+	pg_assert_same(107, $tpl['order']);
 	pg_assert_true(!isset($tpl['requires']), 'the template opens without the shop');
 	pg_assert_same(array('tickets', 'friends', 'vouchers'), array_keys($tpl['catalog']['groups']), 'the tickets\', the friends\' and the vouchers\' catalog');
 	pg_assert_same(4, count($tpl['highlights']));
