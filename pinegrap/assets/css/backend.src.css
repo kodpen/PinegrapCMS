@@ -15038,6 +15038,27 @@ a.ws-chip:hover {
   min-width: 0;
   cursor: auto;
 }
+/* A media card's one action (Edit the picture on a canvas), beside its
+   remove button. */
+.ws-rich-block-action {
+  flex-shrink: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pg-fg-2);
+  padding: .2rem .3rem;
+  border-radius: var(--ws-radius-xs);
+  line-height: 1;
+}
+.ws-rich-block-action:hover {
+  background: var(--pg-bg-2);
+  color: var(--ws-accent);
+}
+.ws-rich-block-shown > .ws-rich-block-action {
+  position: absolute;
+  top: .3rem;
+  right: 2.1rem;
+  background: var(--pg-bg-1);
+}
 /* The panel gives every table in a card a bottom margin (important). */
 .card .ws-table-wrap .table.ws-table,
 .card .ws-calc-block .table.ws-table {
