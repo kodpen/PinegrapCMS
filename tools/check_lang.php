@@ -48,7 +48,8 @@ $language_file = 'includes/local/tr.json';
 
 $designer_file = 'assets/js/style_designer.src.js';
 
-$designer_family_pattern = '~^assets/js/style_designer_blocks_[a-z0-9_]+\.js$~';
+// Its block family files and the parts cut out of it (style_designer_<name>.js).
+$designer_family_pattern = '~^assets/js/style_designer_[a-z0-9_]+\.js$~';
 
 $root = isset($argv[1]) ? rtrim($argv[1], '/\\') : dirname(__DIR__) . '/pinegrap';
 
@@ -257,7 +258,7 @@ foreach ($iterator as $file) {
 
 	$relative = str_replace($root_real . DIRECTORY_SEPARATOR, '', $path);
 
-	// The designer's core and its block family files (pg_designer_js_sources()).
+	// The designer's core, its block family files and its parts (pg_designer_js_all_sources()).
 	$is_designer = (str_replace('\\', '/', $relative) === $designer_file)
 		|| (preg_match($designer_family_pattern, str_replace('\\', '/', $relative)) === 1);
 

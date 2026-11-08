@@ -7969,6 +7969,7 @@
     "This paragraph holds more than text. Change it in a word processor.": "Bu paragrafta metinden fazlası var. Bir kelime işlemcide değiştirin.",
     "This paragraph is part of a content control or a form. Change it in a word processor.": "Bu paragraf bir içerik denetiminin ya da formun parçası. Bir kelime işlemcide değiştirin.",
     "This part of the SVG is kept as it was written. It can be moved, but not edited here.": "SVG'nin bu kısmı yazıldığı gibi korunur. Taşınabilir ama burada düzenlenemez.",
+    "This part of the editor could not be loaded. Check the connection and try again.": "Editörün bu bölümü yüklenemedi. Bağlantıyı denetleyip yeniden deneyin.",
     "This part shows nothing.": "Bu parça hiçbir şey göstermez.",
     "This pass needs the software upgrade and the PHP DOM extension.": "Bu tarama için yazılım güncellemesi ve PHP DOM eklentisi gerekir.",
     "This pass story could not be found. It may have been taken off the list.": "Bu başarı hikâyesi bulunamadı. Listeden kaldırılmış olabilir.",

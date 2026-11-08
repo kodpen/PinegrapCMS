@@ -7455,6 +7455,7 @@ function pg_js_bundles()
         // The designer's parts not needed to open a page (pg_designer_parts()),
         // each run by the editor the first time it is asked for.
         'assets/js/style_designer_ai.min.js'       => array('assets/js/designer_ai.js'),
+        'assets/js/style_designer_import.min.js'   => array('assets/js/style_designer_import.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -7505,7 +7506,33 @@ function pg_designer_parts()
     return array(
         // The assistant panel (designer_ai.js), designers with the assistant on.
         'ai' => 'assets/js/style_designer_ai.min.js',
+        // The HTML / ZIP import and the paste-a-page reply opened as tabs.
+        'import' => 'assets/js/style_designer_import.min.js',
     );
+}
+
+/**
+ * Every source of the visual designer: the bundled ones
+ * (pg_designer_js_sources()), then the sources of its parts
+ * (pg_designer_parts()). The readers of the editor's _sdT() keys read this
+ * list, so a key only a part uses still reaches the editor's map.
+ *
+ * @return array paths under the software directory
+ */
+function pg_designer_js_all_sources()
+{
+    $out = pg_designer_js_sources();
+    $bundles = pg_js_bundles();
+
+    foreach (pg_designer_parts() as $bundle) {
+        foreach (isset($bundles[$bundle]) ? $bundles[$bundle] : array() as $source) {
+            if (!in_array($source, $out, true)) {
+                $out[] = $source;
+            }
+        }
+    }
+
+    return $out;
 }
 
 /**
