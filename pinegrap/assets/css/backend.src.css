@@ -19040,6 +19040,113 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
         transition: none;
     }
 }
+/* An open note's group as tabs over it (workspace_note_tabs.js). */
+.ws-nb-tabs {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .35rem .6rem 0;
+    border-bottom: 1px solid var(--pg-border-color);
+    font-size: .8125rem;
+}
+.ws-nb-tabs-group {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: .35rem;
+    max-width: 10rem;
+    padding-bottom: .35rem;
+    font-weight: 600;
+}
+.ws-nb-tabs-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ws-nb-tabs-row {
+    display: flex;
+    flex: 1 1 auto;
+    gap: .15rem;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+}
+.ws-nb-tab {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: .3rem;
+    max-width: 14rem;
+    padding: .35rem .65rem;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--pg-fg-2);
+    white-space: nowrap;
+}
+.ws-nb-tab:hover {
+    color: inherit;
+    background: var(--pg-bg-1);
+}
+.ws-nb-tab.active {
+    border-bottom-color: var(--ws-accent);
+    color: inherit;
+    font-weight: 600;
+}
+.ws-nb-tab:focus-visible,
+.ws-nb-tabs-add:focus-visible {
+    outline: 2px solid var(--pg-primary-border-subtle);
+    outline-offset: -2px;
+}
+.ws-nb-tab-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ws-nb-tab-mark {
+    flex: none;
+    font-size: .7rem;
+    color: var(--pg-fg-2);
+}
+.ws-nb-tab-dragging {
+    opacity: .5;
+}
+.ws-nb-tab-drop-before {
+    box-shadow: inset 2px 0 0 var(--ws-accent);
+}
+.ws-nb-tab-drop-after {
+    box-shadow: inset -2px 0 0 var(--ws-accent);
+}
+[dir="rtl"] .ws-nb-tab-drop-before {
+    box-shadow: inset -2px 0 0 var(--ws-accent);
+}
+[dir="rtl"] .ws-nb-tab-drop-after {
+    box-shadow: inset 2px 0 0 var(--ws-accent);
+}
+.ws-nb-tabs-add {
+    flex: none;
+    margin-bottom: .2rem;
+    padding: .15rem .45rem;
+    border: 0;
+    border-radius: var(--ws-radius-sm);
+    background: transparent;
+    color: var(--pg-fg-2);
+}
+.ws-nb-tabs-add:hover {
+    background: var(--pg-bg-1);
+    color: inherit;
+}
+/* A phone: the group's name gives the row its room. */
+@media (max-width: 575.98px) {
+    .ws-nb-tabs-group {
+        max-width: 5rem;
+    }
+    .ws-nb-tab {
+        max-width: 9rem;
+    }
+}
 /* No hover on a touch screen: the folder's menu button stays visible. */
 @media (pointer: coarse) {
     .ws-nb-group-head .ws-nb-item-more {

@@ -7392,6 +7392,7 @@ function pg_js_bundles()
             'assets/js/workspace_customer.js',
             'assets/js/workspace_flow_flag.js',
             'assets/js/workspace_note_groups.js',
+            'assets/js/workspace_note_tabs.js',
             'assets/js/workspace_replies.js',
             'assets/js/workspace.js',
         ),

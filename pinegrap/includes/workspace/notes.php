@@ -2412,6 +2412,8 @@ function ws_notes_js_strings()
         'notes_group_move'      => lang('Move to group'),
         'notes_group_move_to'   => ws_js_template('Move “{var:1}” to a group', 1),
         'notes_group_none'      => lang('No group'),
+        'notes_tab_new'         => lang('New note in this group'),
+        'notes_tab_shared'      => lang('Shared note'),
         'notes_export_all'      => lang('Export all'),
         'notes_import'          => lang('Import'),
         'notes_import_title'    => lang('Import notes'),
