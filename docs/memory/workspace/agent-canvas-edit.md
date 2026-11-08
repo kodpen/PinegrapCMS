@@ -1,6 +1,6 @@
 ---
 name: agent-canvas-edit
-description: An agent edits any canvas of its channel in place (POST|PATCH /workspace/messages/{id}/canvas): the operations, 409 on a stale version, the agent version, the author's inbox line
+description: An agent edits any canvas of its channel in place (POST|PATCH messages/{id}/canvas): operations, 409 when stale, the agent version, the inbox line, the "Edited by @handle" mark and Undo
 ---
 
 ## What can an edit do?
@@ -13,5 +13,7 @@ description: An agent edits any canvas of its channel in place (POST|PATCH /work
 - The edited document, `picture: pending` and `by` the agent, is a new `file_versions` row with source `agent` over the same pixels (the file keeps its last drawn picture until a browser draws the new one), then `pg_file_versions_prune()` keeps the original and the last ten.
 - A canvas whose message a person wrote: its author gets the inbox line `canvas_edited` ("@handle edited your canvas in #channel", `ws_canvas_inbox_describe()`, actor 0), unless the owner of the application is that author.
 
-## What is not done yet?
-- The "Edited by @handle" mark on the message and its Undo (the version before as a new one): plan step C3b, in the channel's script.
+## How does the person see and undo it?
+- A person's canvas (message `sender_kind` user) whose newest version is an agent's edit (source `agent` with an earlier version) carries `file.canvas_edit` {handle, version, can_undo} (`ws_canvas_edit_mark()`); `workspace.js` `filePreview()` draws "Edited by @handle" under the picture and Undo when `can_undo` (the payload's `can_edit` and may post). The agent's own canvas carries no mark.
+- `ws_canvas_message_state()` reads the handle from a 300-byte tail of the document starting at `"by":{` (`ws_canvas_by_handle()`, handle shape only), never the whole document; a quoted `"by"` inside a layer's markup is JSON-escaped and cannot match.
+- Undo, panel action `ws_canvas_undo` {message_id, version} (`ws_canvas_undo()`, C3b #8299): `ws_message_edit_check()` must pass, the newest version must still be that agent edit (else refused), and the version before must not be an undrawn agent picture. Its pixels go back to the file and its document becomes a new version (source `restore`), so the edit stays among the versions; then prune, file size, `ws_message_touch()`. No API route: an agent edits again instead.
