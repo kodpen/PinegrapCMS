@@ -187,6 +187,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
 - design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
+- design-template-podcast.md: Podcast Network template (pinegrap-podcast): podcasts and episodes as collections, bound player, sponsorship and pitch requests, supporters' membership folder, ppd- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
 - design-template-recruitment.md: Recruitment Agency template (pinegrap-recruitment): jobs as a collection, applications and staff requests followed from the account, Career Advice, job alerts, no shop, prc- look, tests.
