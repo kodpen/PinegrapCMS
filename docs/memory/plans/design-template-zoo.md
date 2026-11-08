@@ -17,9 +17,9 @@ description: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals 
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-zoo-design]].
 
 ## Steps (claim as `[plan:design-template-zoo] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #8090): the `zoo-` palette block family `assets/js/style_designer_blocks_zoo.js` (today's schedule, animal spotlight, park map, conservation projects), `tests/designer_blocks_zoo_test.php`, `designer/designer-blocks-zoo.md`.
+- 1 (done, #8090): the `zoo-` block family `assets/js/style_designer_blocks_zoo.js` ([[designer-blocks-zoo]]).
 - 2 (done, #8143): `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$event_on`, page shell, helpers; test.
-- 3: `cards.php`: shared parts (account bar, notice, header, footer, staff bar), record and data cards, form fields, comment thread, newsletter and blog parts; test.
+- 3 (done, #8170): `cards.php`: shared parts (account bar, notice, header, footer, staff bar), record and data cards, form fields, comment thread, newsletter and blog parts; test.
 - 4: `pages_public.php`: home (`home_animals`, `home_events`, `home_posts` placed as widgets), `today`, `map`, `tickets`, `memberships`, `adopt`, `about`, `faq`; places the `zoo-` blocks; test.
 - 5: `animals.php`: the Animals collection (`animals` by `?habitat=` and `?class=`, `animal`, `animal_new`, `home_animals`); test.
 - 6: `mail.php` and `visits.php`: school and group visit requests (`visit_request` with `?visit=`, `?group=`, `?age=`, `visit_view`, `my_visits`, `staff_visits`, `privacy`, `email_reply`, `email_visit_new`, `email_visit_received`); test.
@@ -31,7 +31,7 @@ description: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals 
 
 ## Where to start?
 - The lowest step not marked done. Layout models: `pinegrap-skiresort/`, `pinegrap-museum/`; `pinegrap-restaurant/` for dated events. Lists: `?habitat=` `$habitat_titles`, `?class=` `$class_titles`, `?visit=` `$visit_choices`, `?group=` `$group_kinds`, `?age=` `$age_titles`. Never `?view=` ([[design-template-hotel]]).
-- Steps 4-5 place the `zoo-` family blocks ([[designer-blocks-zoo]]); `$pin` needs the family rule `pg-zoo-pin`.
+- Steps 4-5 place the `zoo-` family blocks; `$pin` and the animal card need the family rule `pg-zoo-pin`. The cards' field names are in [[design-template-zoo-design]].
 
 ## Open questions
 - None: all reuses shipped features; new behaviour goes to the architect (Working mode 10).
