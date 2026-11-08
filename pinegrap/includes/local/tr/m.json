@@ -1563,6 +1563,7 @@
     "Moving the visitors table to InnoDB stopped: {var:1}. It stays on MyISAM and works as before.": "Ziyaretçi tablosunun InnoDB'ye taşınması durdu: {var:1}. Tablo MyISAM'da kalıyor ve eskisi gibi çalışıyor.",
     "Moving to the Recycle Bin": "Geri Dönüşüm Kutusuna taşınıyor",
     "Moving to the visual designer": "Görsel tasarımcıya taşınıyor",
+    "Moving-up day for every class": "Her sınıf için sınıf geçme günü",
     "Mozilla data": "Mozilla verisi",
     "Mr.": "Bay",
     "Mr/Ms": "Bay/Bayan",
