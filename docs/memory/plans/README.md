@@ -56,8 +56,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-recruitment.md: Plan: the Recruitment Agency design template (pinegrap-recruitment): jobs by sector and city, applications, employer enquiries, career advice; ~1,000-line steps
 - design-template-skiresort-design.md: Design of plans/design-template-skiresort.md: the shipped features the Ski Resort template reuses, what it does not build, its look and Turkish words
 - design-template-skiresort.md: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, lifts, conditions, passes and rental, lesson requests, lodging enquiries, dated events; small steps
-- design-template-sportsclub-design.md: Design of plans/design-template-sportsclub.md: shipped features it reuses for squads, fixtures, registrations, membership and kit, what it does not build, its look and words
-- design-template-sportsclub.md: Plan: the Sports Club design template (pinegrap-sportsclub): teams, squads, fixtures and results, academy and trials, membership, season tickets, kit and sponsors; ~1,000-line steps
 - design-template-veterinary-design.md: Design of plans/design-template-veterinary.md: which shipped features the Veterinary template reuses for appointments, vets and health plans, what it does not build, its look and Turkish words
 - design-template-veterinary.md: Plan: the Veterinary Practice design template (pinegrap-veterinary): services, vets, appointment requests, pet health plans, emergencies, pet care articles; ~1,000-line steps
 - designer-performance-and-publish.md: Plan (owner 2026-11-06): the visual designer stops rebuilding everything on every edit and opens faster, and Publish lists the pages to put on the site; steps D1-D7, one worker at a time on the script
