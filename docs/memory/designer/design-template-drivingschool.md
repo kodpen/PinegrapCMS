@@ -22,7 +22,7 @@ description: Driving School template (pinegrap-drivingschool): licence classes, 
 ## What is the pdr- look?
 - `pdr-brand`, `pdr-display`, `pdr-eyebrow`, `pdr-hero`, `pdr-lift`, `pdr-stat` (tabular figures), `pdr-plate` (a licence letter as a number plate), `pdr-badge`, `pdr-quote`; Barlow headings, Inter body. Field ids `drv-`. No fixed date in the sample; no `opacity-*` on text.
 - Turkish: "sürücü kursu", "ehliyet sınıfı", "ders", "eğitmen", "direksiyon sınavı", "kayıt talebi", "başarı hikâyesi", "Haberler".
-- Its polishing (block family, then home and licence pages) comes later ([[design-template-own-looks-order]]).
+- Polishing: family [[designer-blocks-drivingschool]] (#8117), then its pages ([[design-template-own-looks-order]]).
 
 ## Which tests cover it?
 - `design_template_drivingschool_test.php` (data, shared parts, `_test_ds_page_keys()`, `_test_ds_nodes()`) and `…_public_`, `…_courses_`, `…_enrolments_`, `…_lessons_`, `…_stories_`, `…_standard_`, `…_account_test.php`; `…_assembly_test.php`: pages and widgets, placeholders, `requires`, search sections, `pdr-` rules, four comment threads, samples, Google reviews.

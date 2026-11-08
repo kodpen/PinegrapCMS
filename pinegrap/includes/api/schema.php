@@ -3401,6 +3401,21 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'customers.allow_mail',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/allow-mail',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_allow_mail',
+			'dry_run' => true,
+			'returns' => 'Customer',
+			'summary' => 'Allow e-mail to a customer again',
+			'description' => 'Lifts the block that stops e-mail to the customer\'s stored address after a hard bounce, a complaint, a manual block or too many soft bounces: the "Allow again" button of the contact card. The customer\'s email_suppressed says whether a block stands. The address is read from the customer record, never sent. Written to the activity log. 409 email_not_suppressed when no block stands (or the customer has no address). The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'customers.subscriptions.pause',
 			'method'  => 'POST',
 			'path'    => '/customers/{id}/subscriptions/{subscription_id}/pause',

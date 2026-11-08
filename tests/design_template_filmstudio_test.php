@@ -130,6 +130,7 @@ function _test_fm_page_keys()
 		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
+		'email_account_welcome', 'email_password_reset',
 	);
 	foreach (array('commercials', 'brand_films', 'music_videos', 'documentary', 'corporate', 'post') as $key) $keys[] = 'service_' . $key;
 	return $keys;

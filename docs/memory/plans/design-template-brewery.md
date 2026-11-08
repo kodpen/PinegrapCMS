@@ -23,7 +23,7 @@ description: Plan: the Craft Brewery design template (pinegrap-brewery): beers, 
 
 - 6 (done, #8086): `standard.php` (contact, inbox, conversation, newsletter, News, blog post, help search, error, message and newsletter e-mails); `tests/design_template_brewery_standard_test.php`.
 
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #8124): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: assembly: `pinegrap-brewery.php` (order, search sections, look, fonts, `pbw-` rules, folders incl. `club`, contact group, group `newsletter`, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-brewery.md`; the PR body names `[NEW] Added the Craft Brewery design template`; this plan and its design file are deleted.
 

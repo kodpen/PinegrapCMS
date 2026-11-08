@@ -64,7 +64,8 @@ function api_customer_present($row) {
 			'zip'     => $row['business_zip_code'],
 			'country' => $row['business_country']
 		),
-		'lead_source' => $row['lead_source']
+		'lead_source' => $row['lead_source'],
+		'email_suppressed' => !empty($row['email_suppressed'])
 	);
 
 }
@@ -189,8 +190,18 @@ function api_customer_select() {
 			contacts.mobile_phone, contacts.business_phone, contacts.home_phone,
 			contacts.business_address_1, contacts.business_city,
 			contacts.business_state, contacts.business_zip_code, contacts.business_country,
-			contacts.lead_source
+			contacts.lead_source,
+			" . api_customer_suppressed_sql(pg_mail_bounces_ready()) . " AS email_suppressed
 		FROM contacts";
+
+}
+
+// Whether the contact's address is suppressed (a hard bounce, a complaint, a
+// manual block or the soft limit), as the suppressed badge of the contact
+// screens shows it; 0 before the mail_bounces table exists. Pure.
+function api_customer_suppressed_sql($ready) {
+
+	return $ready ? pg_mail_bounce_suppressed_sql('contacts.email_address') : '0';
 
 }
 
@@ -796,7 +807,8 @@ function api_customer_schema() {
 			'zip'     => 'string?',
 			'country' => 'string?'
 		),
-		'lead_source' => 'string?'
+		'lead_source' => 'string?',
+		'email_suppressed' => 'boolean'
 	);
 
 }
@@ -1134,5 +1146,58 @@ function api_customers_delete($params) {
 	));
 
 	api_ok(array('id' => $id, 'deleted' => true));
+
+}
+
+// "Allow again" on the suppressed badge of the contact card: lifts the block
+// on the customer's stored address through the screen's own call
+// (pg_mail_bounce_allow_contact()), which reads the address from the contact
+// and writes the activity line. An address that is not suppressed is refused,
+// so a rehearsal says whether the real call would lift anything.
+function api_customers_allow_mail($params) {
+
+	$id = (int)$params['id'];
+
+	$row = api_customer_reachable_or_fail($id, 'contacts.id, contacts.email_address, ' . api_customer_suppressed_sql(pg_mail_bounces_ready()) . ' AS email_suppressed');
+
+	$refusal = api_customer_allow_mail_refusal($row);
+
+	if ($refusal !== '') {
+
+		api_fail(409, $refusal, lang('No block stops e-mail to this customer\'s address.'));
+
+	}
+
+	api_dry_run_stop('allowed', 'customer', array('id' => $id, 'email_suppressed' => false));
+
+	if (!pg_mail_bounce_allow_contact($id)) {
+
+		api_fail(409, 'email_not_suppressed', lang('No block stops e-mail to this customer\'s address.'));
+
+	}
+
+	$row = api_row(api_customer_select() . " WHERE contacts.id = '" . $id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Customer'));
+
+	}
+
+	api_ok(api_customer_present($row));
+
+}
+
+// Why the block cannot be lifted, '' when it can: a customer with no address,
+// or an address nothing suppresses. Pure.
+function api_customer_allow_mail_refusal($row) {
+
+	if (trim((string)($row['email_address'] ?? '')) === '' || empty($row['email_suppressed'])) {
+
+		return 'email_not_suppressed';
+
+	}
+
+	return '';
 
 }

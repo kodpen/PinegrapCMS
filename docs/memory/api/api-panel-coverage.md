@@ -14,7 +14,7 @@ description: How far the external API covers what the panel manages (gap list #5
   - G2 `edit_comment.php` Answer box -> `POST /comments/{id}/answer` through `pg_product_question_answer_save()` (`comments:write`).
   - G3 `edit_contact_group.php` -> `by_rule` on ContactGroup, `POST /contact-groups/{id}/refresh` (the audience_refresh action).
   - G4 `edit_submitted_form.php` History -> `GET /forms/{id}/submissions/{submission_id}/revisions`, one revision and its restore: done (`api/api-form-submission-revisions.md`).
-  - G5 `edit_contact.php` suppressed badge, `view_contacts.php` -> `email_suppressed` on Customer, `POST /customers/{id}/allow-mail` (`pg_mail_bounce_allow_contact()`).
+  - G5 `edit_contact.php` suppressed badge, `view_contacts.php` -> `email_suppressed` on Customer, `POST /customers/{id}/allow-mail` (`pg_mail_bounce_allow_contact()`). Done (#8121).
   - G6 `experiments.php` sheet -> `dry_run` on start, pause, end.
   - G7 `DELETE /pages/{id}`, `/files/{id}`: `pg_recycle_folder_id(true)` makes the bin before the stop; its log reads `$_SESSION['sessionusername']`, absent on the API path.
 - Not routes, for a technical reason: an import (`import.php`) is a run over many requests (cursor file, run lock, 8 s slices, an uploaded source, 30-day undo); the records it writes are reachable one by one. A design template is installed in the designer: `pg_design_template_prepare()` writes rows, the pages stay unsaved tabs until Publish there, and no server-side publish exists.

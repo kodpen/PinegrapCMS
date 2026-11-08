@@ -265,6 +265,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-nested-controls.md: Why the channel list's pin and the search palette's account link are aria-hidden mouse shortcuts inside their link/option, and the keyboard routes to the same actions (Shift+F10 menu, Shift+Enter)
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
 - workspace-note-group-shares.md: Shared note groups (note_group_shares.php, G5): group shares written as ws_note_shares rows with via_group, the sync, who puts notes in, leaving, bell lines, the hooks the lock calls
+- workspace-note-groups-api.md: Note groups in the external API and MCP (includes/workspace/api_note_groups.php): routes, access, refusals, dry run, group_id on note objects; sharing stays on the screen
 - workspace-note-groups-screen.md: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
 - workspace-note-groups-shared-screen.md: Shared note groups on the screen (G6) — workspace_note_group_shares.js (Share dialog, Shared with me folders, channel group card, ?group=N) and the list fields shared_groups / shared_group
 - workspace-note-groups.md: Workspace note groups and the notes lock — tables of step 11.0.119, readiness probes ws_note_groups_ready() / ws_note_lock_ready()

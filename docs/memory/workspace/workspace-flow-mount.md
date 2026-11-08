@@ -22,5 +22,8 @@ description: PGWsFlow.mount(root, boot, options) in workspace_flow.js: the Flows
 ## Window listeners?
 - `bindWindow()` adds keydown (Ctrl+S, undo), blur, visibilitychange, pagehide and beforeunload once (`windowBound`); each returns at once while `state.screen` is false, so a destroyed editor never saves or asks on leave.
 
+## Where does another page get the editor's config?
+- Panel action `ws_flow_editor_config` (`ws_flow_editor_config($viewer)`, flows.php, L2): `{ flows: ws_flow_js_config($viewer, 'flows'), strings: ws_flow_js_strings() }`, the Flows screen's own config with its rights (the member gate of `ws_handle_action()`) and builder kinds; read once a page. The embed's `ws_flow_embed_config` stays labels only.
+
 ## Tests
-- `tests/workspace_flows_canvas_test.php` `test_workspace_flows_canvas_editor_mounts_and_destroys` (Node, the real `mount`/`unmount`/`bindWindow`/`showNone`/`clearScreen` with stubs); the address and parity tests read `addressOptions()` and `clearScreen()`.
+- `tests/workspace_flows_canvas_test.php` `test_workspace_flows_canvas_editor_mounts_and_destroys` (Node, the real `mount`/`unmount`/`bindWindow`/`showNone`/`clearScreen` with stubs); the address and parity tests read `addressOptions()` and `clearScreen()`; `test_workspace_flows_canvas_editor_config_action` for L2.
