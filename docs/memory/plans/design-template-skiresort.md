@@ -16,7 +16,7 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 - 3 (done, #8080): `pages_public.php`: home (`home_slopes`, `home_events`, `home_posts` placed as widgets), `conditions`, `passes`, `rental`, `ski_school`, `lodging`, `about`, `faq`; test.
 - 4 (done, #8102): `slopes.php`: the Slopes collection (`slopes` by `?difficulty=` and `?area=`, `slope`, `slope_new`, `home_slopes`), the Lifts collection (`lifts`, `lift_new`); test.
 - 5 (done, #8118): `mail.php` and `lessons.php`: lesson requests (`lesson_request` with `?lesson=`, `?level=`, `?age=`, `lesson_view`, `my_lessons`, `staff_lessons`, `privacy`, `email_reply`, `email_lesson_new`, `email_lesson_received`); test.
-- 6: `enquiries.php`: lodging and group enquiries (`group_enquiry` with `?stay=` and `?group=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
+- 6 (done, #8135): `enquiries.php`: lodging and group enquiries (`group_enquiry` with `?stay=` and `?group=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
 - 7: `events.php`: the Events collection by date (`events` from today on, `event`, `event_new`, `home_events`); test.
 - 8: `shop.php`: the catalog (three groups, SKUs `SKI-PASS-`, `SKI-SEASON-`, `SKI-RENT-<key>`), `buy_passes`, `rental_shop`, product, cart, checkout, order, `email_order`; test.
 - 9: `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
