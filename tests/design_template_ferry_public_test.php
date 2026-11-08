@@ -41,7 +41,7 @@ function _test_fyp_load()
 		}
 	}
 	$out = array('part' => $public_part, 'routes' => $routes, 'ports' => $ports, 'route_titles' => $route_titles,
-		'notice_route_choices' => $notice_route_choices, 'fare_titles' => $fare_titles, 'fare_words' => $fare_words);
+		'notice_route_choices' => $notice_route_choices, 'fare_titles' => $fare_titles, 'fare_words' => $fare_words, 'fare_kinds' => $fare_kinds);
 	return $out;
 }
 
@@ -174,14 +174,20 @@ function test_ferry_public_timetables_fares_ports()
 		if (isset($q['route'])) $routed[] = $q['route'];
 	}
 	pg_assert_same($d['route_titles'], $routed, 'a booking link per route, in order');
-	foreach ($d['routes'] as $key => $r) pg_assert_contains(implode(' · ', $r['sailings']['low']['back']), $json, "timetables: winter returns of $key");
+	foreach ($d['routes'] as $key => $r) {
+		foreach ($r['sailings']['low']['back'] as $t) pg_assert_contains('"text":"' . $t . '","_attrs":[{"name":"datetime","value":"' . $t . '"}]', $json, "timetables: winter return $t of $key");
+	}
 	$json = json_encode($pages['fares']['tree'], JSON_UNESCAPED_UNICODE);
 	foreach ($d['fare_words'] as $key => $words) foreach ($words as $w) pg_assert_contains($w, $json, "fares: $w for $key");
 	$fares = array();
 	foreach (_test_fyp_queries($pages['fares']['tree'], 'booking_request') as $q) {
 		if (isset($q['fare'])) $fares[] = $q['fare'];
 	}
-	pg_assert_same($d['fare_titles'], $fares, 'a booking link per fare, in order');
+	$grouped = array();
+	foreach (array('foot', 'vehicle', 'extra') as $group) {
+		foreach ($d['fare_kinds'] as $f) if ($f['group'] === $group) $grouped[] = $f['title'];
+	}
+	pg_assert_same($grouped, $fares, 'a booking link per fare, by group');
 	$json = json_encode($pages['ports']['tree']);
 	foreach (array_keys($d['ports']) as $port) pg_assert_contains('"id":"fy-port-' . $port . '"', $json, "ports: $port");
 }

@@ -242,10 +242,6 @@ $routes = array(
 $route_ports = function ($key) use ($routes, $ports) {
     return sprintf(lang('From %1$s to %2$s'), $ports[$routes[$key]['from']]['title'], $ports[$routes[$key]['to']]['title']);
 };
-// A route's departure times from one end in a season, as one line.
-$sailing_times = function ($key, $season, $way) use ($routes) {
-    return implode(' · ', $routes[$key]['sailings'][$season][$way]);
-};
 // A route's sailings a day in a season, as words.
 $sailings_a_day = function ($key, $season) use ($routes) {
     return sprintf(lang('%d sailings a day each way'), count($routes[$key]['sailings'][$season]['out']));
@@ -808,14 +804,14 @@ $feature_card = function ($item, $md = '6', $lg = '3') use ($el, $heading, $para
     ), $md, $lg);
 };
 
-// What a traveller says: the quote, the person and the route.
-$testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $icon, $portrait, $testimonials) {
+// What a traveller says: the quote under a rule in the palette's colour,
+// the person and the route; no card, so the words carry it.
+$testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $portrait, $testimonials) {
     $t = $testimonials[$n];
     return $col(array(
-        $el('figure', 'card h-100 border-0 shadow-sm rounded-4 p-4 mb-0', lang('Traveller Quote'), array(
-            $icon('bi-quote', 'fs-2 text-primary lh-1 mb-2'),
+        $el('figure', 'h-100 border-top border-primary border-3 pt-4 mb-0', lang('Traveller Quote'), array(
             $el('blockquote', 'mb-4', lang('Quote'), array($para($t['quote'], 'pfy-quote mb-0'))),
-            $el('figcaption', 'd-flex align-items-center gap-3 mt-auto', lang('Traveller Details'), array(
+            $el('figcaption', 'd-flex align-items-center gap-3', lang('Traveller Details'), array(
                 $image($portrait($t['name'], 96), $t['name'], 'rounded-circle', array('_attrs' => array($attr('width', '48'), $attr('height', '48'), $attr('loading', 'lazy')))),
                 $el('div', '', lang('Name and Role'), array(
                     $span($t['name'], 'd-block fw-semibold', lang('Name')),
@@ -826,71 +822,137 @@ $testimonial_card = function ($n) use ($el, $para, $span, $col, $image, $attr, $
     ), '', '4');
 };
 
-// A route's timetable as a table: a row per season, a column per port of
-// departure with its times. The route's name opens the booking request
-// with the route chosen (?route=).
-$timetable = function ($key) use ($el, $link, $span, $heading, $attr, $routes, $ports, $seasons, $sailing_times, $query) {
-    $r = $routes[$key];
-    $head = array($el('th', '', lang('Table Header'), array(), array('text' => lang('Timetable'), '_attrs' => array($attr('scope', 'col')))));
-    foreach (array('from', 'to') as $end) {
-        $head[] = $el('th', '', lang('Table Header'), array(), array('text' => sprintf(lang('Departures from %s'), $ports[$r[$end]]['title']), '_attrs' => array($attr('scope', 'col'))));
-    }
-    $rows = array();
-    foreach ($seasons as $season => $s) {
-        $rows[] = $el('tr', '', lang('Table Row'), array(
-            $el('th', 'fw-semibold', lang('Table Header'), array(
-                $span($s['title'], 'd-block', lang('Season')),
-                $span($s['when'], 'd-block small fw-normal text-body-secondary', lang('When')),
-            ), array('_attrs' => array($attr('scope', 'row')))),
-            $el('td', 'pfy-time', lang('Table Cell'), array(), array('text' => $sailing_times($key, $season, 'out'))),
-            $el('td', 'pfy-time', lang('Table Cell'), array(), array('text' => $sailing_times($key, $season, 'back'))),
-        ));
-    }
-    return $el('div', 'mb-4', lang('Timetable'), array(
-        $el('div', 'd-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-2', lang('Timetable Title'), array(
-            $heading('h3', $r['title'], 'pfy-display h5 mb-0'),
-            $link(lang('Book this route'), '{{page:booking_request}}?' . $query(array('route' => $r['title'])), 'small fw-semibold link-primary'),
-        )),
-        $el('div', 'table-responsive', lang('Timetable Table'), array(
-            $el('table', 'table align-middle mb-0', lang('Table'), array(
-                $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Table Row'), $head))),
-                $el('tbody', '', lang('Table Body'), $rows),
-            )),
-        )),
-    ));
+// The ferry blocks' structure (assets/js/style_designer_blocks_ferry.js):
+// the same classes, so their rules (pg-ferry-*, shipped in User Styles by
+// pinegrap-ferry.php) apply; a list that rises in as it scrolls into view
+// carries the interaction the palette block has (props._fx, played by
+// pg_fx, still under reduced motion).
+$rise = function ($node, $stagger = 90) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
 };
 
-// The fares as a table: a row per kind of fare, a column per route (or the
-// one route given). Each kind's name opens the booking request with the
-// fare chosen (?fare=), each route's name opens its page; a kind a route
-// does not offer shows a dash.
-$fare_table = function ($only = '') use ($el, $link, $span, $attr, $routes, $fare_kinds, $fare, $query) {
-    $head = array($el('th', '', lang('Table Header'), array(), array('text' => lang('Fare'), '_attrs' => array($attr('scope', 'col')))));
-    foreach ($routes as $key => $r) {
-        if ($only !== '' && $only !== $key) continue;
-        $head[] = $el('th', 'text-end', lang('Table Header'), array(
-            $link($r['title'], '{{page:route_' . $key . '}}', 'link-body-emphasis'),
-        ), array('_attrs' => array($attr('scope', 'col'))));
-    }
-    $rows = array();
-    foreach ($fare_kinds as $kind => $f) {
-        $cells = array($el('th', 'fw-semibold', lang('Table Header'), array(
-            $link($f['title'], '{{page:booking_request}}?' . $query(array('fare' => $f['title'])), 'link-body-emphasis text-decoration-none'),
-            $span($f['note'], 'd-block small fw-normal text-body-secondary', lang('Note')),
-        ), array('_attrs' => array($attr('scope', 'row')))));
-        foreach (array_keys($routes) as $route) {
-            if ($only !== '' && $only !== $route) continue;
-            $text = $fare($kind, $route);
-            $cells[] = $el('td', 'pfy-price text-end text-nowrap', lang('Table Cell'), array(), array('text' => $text !== '' ? $text : '–'));
-        }
-        $rows[] = $el('tr', '', lang('Table Row'), $cells);
-    }
-    return $el('div', 'table-responsive', lang('Fare Table'), array(
-        $el('table', 'table align-middle mb-0', lang('Table'), array(
-            $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Table Row'), $head))),
-            $el('tbody', '', lang('Table Body'), $rows),
+// Ferry: Route Timetable. A route's sailings: its title and facts with the
+// way to book it (?route=), then for each season a card per port of
+// departure with its times as a grid, each a <time>. $title replaces the
+// route's name as the heading (a route's own page); $class is the
+// section's surface.
+$timetable = function ($key, $title = '', $class = 'py-5 bg-body-tertiary', $extra = array())
+    use ($el, $heading, $para, $link, $span, $icon, $container, $row, $col, $attr, $rise, $routes, $ports, $seasons, $query, $line) {
+    $r = $routes[$key];
+    $fact = function ($icon_name, $value, $label) use ($el, $icon, $span) {
+        return $el('div', 'd-flex align-items-center gap-2', $label, array(
+            $icon($icon_name, 'text-primary'),
+            $span($value, 'fw-semibold', lang('Value')),
+            $span($label, 'small text-body-secondary', lang('Label')),
+        ));
+    };
+    $children = array(
+        $el('div', 'd-flex flex-wrap align-items-end justify-content-between gap-3 mb-4', lang('Section Header'), array(
+            $el('div', '', lang('Section Title'), array(
+                $heading('h2', $title !== '' ? $title : $r['title'], 'pfy-display fw-bold mb-2'),
+                $el('div', 'd-flex flex-wrap gap-3', lang('Route Facts'), array(
+                    $fact('bi-clock', $r['duration'], lang('Crossing')),
+                    $fact('bi-signpost', $r['distance'], lang('Distance')),
+                    $fact('bi-water', $r['ship'], lang('Vessel')),
+                )),
+            )),
+            $link(lang('Book this route'), '{{page:booking_request}}?' . $query(array('route' => $r['title'])), 'btn btn-primary rounded-pill px-4'),
         )),
+    );
+    foreach ($seasons as $season => $s) {
+        $cards = array();
+        foreach (array('from' => 'out', 'to' => 'back') as $end => $way) {
+            $times = array();
+            foreach ($r['sailings'][$season][$way] as $n => $t) {
+                $times[] = $el('li', 'col', sprintf(lang('Time %d'), $n + 1), array(
+                    $el('time', 'd-block py-2 rounded-3 bg-body-tertiary text-center fw-semibold', lang('Departure Time'), array(),
+                        array('text' => $t, '_attrs' => array($attr('datetime', $t)))),
+                ));
+            }
+            $cards[] = $col(array(
+                $el('div', 'h-100 p-4 rounded-4 border bg-body', lang('Direction Card'), array(
+                    $el('div', 'd-flex align-items-center gap-2 mb-1', lang('Direction Head'), array(
+                        $icon('bi-geo-alt-fill', 'text-primary'),
+                        $heading('h3', sprintf(lang('Departures from %s'), $ports[$r[$end]]['title']), 'h5 fw-bold mb-0'),
+                    )),
+                    $para($s['title'] . ' · ' . $s['when'], 'small text-body-secondary mb-3'),
+                    $rise($el('ul', 'list-unstyled row row-cols-3 row-cols-sm-4 g-2 mb-0', lang('Departure Times'), $times), 40),
+                )),
+            ), '', '6');
+        }
+        $children[] = $span($s['title'], 'badge rounded-pill text-bg-primary mb-2', lang('Season'));
+        $children[] = $row($cards, '4', '', 'mb-4');
+    }
+    $children[] = $el('div', 'd-flex gap-2 small', lang('Timetable Notes'), array(
+        $icon('bi-car-front', 'text-primary'),
+        $span($line['checkin'] . '.', '', lang('Text')),
     ));
+    return $el('section', $class . ' pg-ferry-figures', $title !== '' ? $title : $r['title'], array($container($children)), $extra);
+};
+
+// Ferry: Fares by Vehicle, its table. A row group per kind of fare (foot
+// passengers, vehicles with their driver, extras) with a row head per kind:
+// its icon, its name opening the booking request with the fare chosen
+// (?fare=) and what it covers. A column per crossing length, or the one
+// route given; a kind a crossing does not offer says so in words.
+$fare_table = function ($only = '') use ($el, $link, $span, $icon, $attr, $routes, $fare_kinds, $fares, $money, $query) {
+    $th = function ($children, $class, $scope, $more = array()) use ($el, $attr) {
+        return $el('th', $class, lang('Header Cell'), $children, array('_attrs' => array_merge(array($attr('scope', $scope)), $more)));
+    };
+    $cols = array();
+    if ($only !== '') {
+        $cols[$routes[$only]['band']] = array($routes[$only]['title'], $routes[$only]['duration']);
+    } else {
+        $long = array();
+        foreach ($routes as $r) if ($r['band'] === 'long') $long[] = $r['title'];
+        $cols['short'] = array(lang('Short crossing'), lang('Up to one hour'));
+        $cols['long'] = array(lang('Long crossing'), implode(', ', $long));
+    }
+    $head = array($th(array($span(lang('Who or what travels'), 'visually-hidden', lang('Text'))), '', 'col'));
+    foreach ($cols as $c) {
+        $head[] = $th(array(
+            $span($c[0], 'd-block fw-bold', lang('Text')),
+            $span($c[1], 'd-block small fw-normal text-body-secondary', lang('Text')),
+        ), 'text-end', 'col');
+    }
+    $groups = array(
+        'foot'    => lang('Foot passengers'),
+        'vehicle' => lang('Vehicles with their driver'),
+        'extra'   => lang('Extras'),
+    );
+    $bodies = array();
+    foreach ($groups as $group => $group_name) {
+        $rows = array($el('tr', '', lang('Group Row'), array(
+            $th(array($span($group_name, '', lang('Text'))), 'pt-4 small text-uppercase text-body-secondary fw-semibold', 'rowgroup',
+                array($attr('colspan', (string)(count($cols) + 1)))),
+        )));
+        foreach ($fare_kinds as $kind => $f) {
+            if ($f['group'] !== $group) continue;
+            $cells = array($th(array(
+                $el('div', 'd-flex align-items-center gap-3', lang('Kind'), array(
+                    $icon($f['icon'], 'fs-4 text-primary flex-shrink-0'),
+                    $el('div', '', lang('Kind Name'), array(
+                        $link($f['title'], '{{page:booking_request}}?' . $query(array('fare' => $f['title'])), 'd-block fw-semibold link-body-emphasis text-decoration-none'),
+                        $span($f['note'], 'd-block small fw-normal text-body-secondary', lang('Note')),
+                    )),
+                )),
+            ), '', 'row'));
+            foreach (array_keys($cols) as $band) {
+                $cells[] = isset($fares[$kind][$band])
+                    ? $el('td', 'text-end text-nowrap', lang('Cell'), array($span($money($fares[$kind][$band]), 'fs-5 fw-bold', lang('Fare'))))
+                    : $el('td', 'text-end text-nowrap', lang('Cell'), array($span(lang('Not offered'), 'small text-body-secondary', lang('Fare'))));
+            }
+            $rows[] = $el('tr', '', $f['title'], $cells);
+        }
+        $bodies[] = $el('tbody', '', $group_name, $rows);
+    }
+    return $el('div', 'table-responsive rounded-4 border bg-body p-2 p-md-3', lang('Table Wrap'), array(
+        $el('table', 'table align-middle mb-0 pg-ferry-figures', lang('Fares Table'), array_merge(array(
+            $el('caption', 'visually-hidden', lang('Table Caption'), array(), array('text' => lang('Single fares by traveller and vehicle'))),
+            $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Head Row'), $head))),
+        ), $bodies)),
+    ), array('_attrs' => array($attr('role', 'region'), $attr('aria-label', lang('Fares')), $attr('tabindex', '0'))));
 };
 
 // The words of a notice's kind and route, the values of its Kind and Route
