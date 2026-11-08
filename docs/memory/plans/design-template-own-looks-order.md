@@ -29,6 +29,8 @@ description: Order of the polishing round after Launch: every shipped template's
 
 - Construction: `-1` #8292 done.
 
+- Museum: `-1` #8306 done.
+
 ## Where do the open template plans come?
 - Their files are not edited here (open PRs hold most). In each, the assembly step (look, fonts, rules) adds no new stock band. Their pages are built, so each one's `-1`, `-2` joins the list once its assembly lands, ahead of unclaimed groups: bakery, brewery, carrental, coworking, drivingschool, ferry, filmstudio, florist, homeservices, library (assembly #7982 open), marina, pharmacy, podcast, recruitment, restaurant, sportsclub, theatre, veterinary.
 - Gallery: step 3 (`pages_public.php`, #7992) predates the rule and lands as is; steps 4 and 5 (artists, exhibitions) are its signature pages: when `gallery-1` (its family) has landed they place its blocks, otherwise its `-2` rebuilds them after the assembly.
