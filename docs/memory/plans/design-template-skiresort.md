@@ -15,7 +15,7 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 - 2 (done, #7986): `cards.php`: shared parts (account bar, notice, header, footer, snow band, staff bar), the record and data cards, form fields, the comment thread, newsletter and blog parts; `tests/design_template_skiresort_cards_test.php`.
 - 3 (done, #8080): `pages_public.php`: home (`home_slopes`, `home_events`, `home_posts` placed as widgets), `conditions`, `passes`, `rental`, `ski_school`, `lodging`, `about`, `faq`; test.
 - 4 (done, #8102): `slopes.php`: the Slopes collection (`slopes` by `?difficulty=` and `?area=`, `slope`, `slope_new`, `home_slopes`), the Lifts collection (`lifts`, `lift_new`); test.
-- 5: `mail.php` and `lessons.php`: lesson requests (`lesson_request` with `?lesson=`, `?level=`, `?age=`, `lesson_view`, `my_lessons`, `staff_lessons`, `privacy`, `email_reply`, `email_lesson_new`, `email_lesson_received`); test.
+- 5 (done, #8118): `mail.php` and `lessons.php`: lesson requests (`lesson_request` with `?lesson=`, `?level=`, `?age=`, `lesson_view`, `my_lessons`, `staff_lessons`, `privacy`, `email_reply`, `email_lesson_new`, `email_lesson_received`); test.
 - 6: `enquiries.php`: lodging and group enquiries (`group_enquiry` with `?stay=` and `?group=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
 - 7: `events.php`: the Events collection by date (`events` from today on, `event`, `event_new`, `home_events`); test.
 - 8: `shop.php`: the catalog (three groups, SKUs `SKI-PASS-`, `SKI-SEASON-`, `SKI-RENT-<key>`), `buy_passes`, `rental_shop`, product, cart, checkout, order, `email_order`; test.
@@ -26,6 +26,7 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 ## Where to start?
 - The lowest step not marked done. Models: `pinegrap-museum/`; `pinegrap-restaurant/` for dated events (`$event_on`, `$bind_date`, `current date` filter). `_test_sk_page_keys()` and `_test_sk_shop_keys()` (step 1 test) list every page key. Lists: `?lesson=` `$lesson_choices`, `?level=` `$level_titles`, `?age=` `$age_titles`, `?stay=` `$stay_choices`, `?group=` `$group_kinds`, `?difficulty=` `$difficulty_titles`, `?area=` `$area_titles`. Never `?view=`.
 - Steps 3-4 place the `skiresort-` family blocks ([[designer-blocks-skiresort]]).
+- The request pieces (`$request_page`, `$request_view`, `$request_detail`, `$request_list`, `$request_row`, `$request_messages`, `$detail_widget`, `$contact_fields`, `$mail_sender`, `$not_before_today`…) live in `lessons.php`; `enquiries.php` is included after it and reuses them. The test of each page file loads the files before it (`tests/design_template_skiresort_lessons_test.php`).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
