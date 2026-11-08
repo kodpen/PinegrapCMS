@@ -15,7 +15,7 @@ description: Plan: the Ferry design template (pinegrap-ferry): routes and ports,
 - 2 (done, #7937): `pages_public.php`; test.
 - 3 (done, #7978): `notices.php` (the Travel Notices collection, `home_notices`); test.
 - 4 (done, #8008): `mail.php` and `bookings.php`: booking requests (`booking_request` with `?route=` and `?fare=`; `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`) and group enquiries (`group_enquiry` with `?route=`; `group_view`, `my_groups`, `staff_groups`); test.
-- 5: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 5 (done, #8031): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 6: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 7: assembly: `pinegrap-ferry.php` (order, search sections, look, fonts, `pfy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-ferry.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
