@@ -125,6 +125,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does
 - design-preview-address.md: design_preview.php, the panel's preview address: a template page, its tour, or a visual design page as a first-time visitor sees it; who may open it, what is left out, caching
 - design-template-appstudio.md: Mobile App Developer template (pinegrap-appstudio): apps and release notes as collections, support and project requests followed from the account, beta sign-up, pma- look, tests.
+- design-template-architecture-pages.md: Architecture template 2.0.0: home, projects and the project page on the Architecture blocks: the builders, each page's composition, motion, what left, the test
 - design-template-architecture.md: Architecture & Interiors Studio template (pinegrap-architecture): projects by type and location, enquiries, consultations and careers followed from the account, no shop, pai- look, tests.
 - design-template-bakery.md: Bakery template (pinegrap-bakery): daily bake and cakes as page content, cake orders and wholesale enquiries as requests, baking classes collection, pickup shop, pbk- look, tests.
 - design-template-blog-cover.md: A design template's blog or article Cover Image input takes image/* and carries _cf.kind = image; templates whose $file helper defaults to documents pass it explicitly (#7513)
@@ -230,6 +231,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-block-theme-surfaces.md: How a ready-made designer block writes a dark navbar, a hero on a photo, buttons and links on tinted or primary surfaces, and carousel slides so they pass contrast in every look, palette and mode.
 - designer-blocks-architecture.md: The Architecture block family (architecture- prefix, own palette group): plate hero, project sheet, material board; general blocks placed instead; rules, test
 - designer-blocks-bikeshop.md: The Bike Shop block family (bikeshop- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-bike-* rules, motion and test
+- designer-blocks-campsite.md: The Campsite block family (campsite- prefix, own palette group): hero with a kind-of-stay chooser, comfort scale, pitch drawing; general and other blocks placed instead; rules, test
 - designer-blocks-cityhall.md: The City Hall block family (cityhall- prefix, own palette group): task hero, service guide, council agenda; general blocks placed instead; rules, test
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test

@@ -174,7 +174,7 @@ $architecture_css = implode("\n", array(
 
 return array(
     'name'        => lang('Architecture & Interiors Studio'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 97,
     'icon'        => 'bi-rulers',
@@ -228,10 +228,10 @@ return array(
         'email_footer' => array('name' => lang('Architecture E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pai- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Architecture blocks' pg-arch- rules and
+    // its pai- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $architecture_css),
+        'css'   => pg_design_template_user_styles(array('architecture-hero', 'architecture-sheet', 'architecture-materials'), $architecture_css),
         'fonts' => json_encode($architecture_fonts),
     ),
 );
