@@ -96,6 +96,12 @@ if ($note === null) {
     output_error(lang('That note could not be found.'), 404);
 }
 
+// A note behind the person's closed notes lock: opened on the notes screen
+// first (note_lock.php).
+if (function_exists('ws_note_lock_closed') && ws_note_lock_closed($viewer, $note)) {
+    output_error(lang('This note is locked. Open it with your PIN.'), 403);
+}
+
 $refs = ws_refs_resolve($viewer, ws_tokens((string) $note['body']));
 $title = ws_note_title($viewer, $note);
 

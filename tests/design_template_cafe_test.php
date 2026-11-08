@@ -188,6 +188,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-ferry' => array('fy-bk-consent', 'fy-gr-consent'),
 		'pinegrap-coworking' => array('cw-tr-consent', 'cw-oe-consent', 'cw-su-consent'),
 		'pinegrap-carrental' => array('cr-bk-consent', 'cr-be-consent', 'cr-contact-consent'),
+		'pinegrap-recruitment' => array('rc-app-consent', 'rc-enq-consent'),
 		'pinegrap-florist' => array('fl-ord-consent', 'fl-evt-consent', 'fl-sub-consent'),
 		'pinegrap-homeservices' => array('hs-bk-consent', 'hs-es-consent'),
 		'pinegrap-veterinary' => array('vt-ap-consent', 'vt-pj-consent'),
@@ -195,6 +196,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-gallery' => array('gl-enq-consent', 'gl-vw-consent'),
 		'pinegrap-brewery' => array('bw-tb-consent'),
 		'pinegrap-skiresort' => array('skr-lr-consent', 'skr-ge-consent'),
+		'pinegrap-bakery' => array('bky-co-consent', 'bky-cb-consent', 'bky-we-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);

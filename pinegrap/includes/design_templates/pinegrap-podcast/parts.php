@@ -788,6 +788,25 @@ $player = function ($title) use ($el, $para, $icon, $span, $attr) {
     ));
 };
 
+// The episode record's own player: the browser's audio player with the
+// record's Audio file as its address (a src binding), loading nothing until
+// it is pressed. A record without a file has no address, so the box goes
+// (pg-hide-if-empty, judged by the player) and the Listen buttons under it
+// stay the way to hear the episode.
+$episode_player = function ($title) use ($el, $para, $icon, $span, $attr, $bind) {
+    return $el('div', 'pg-hide-if-empty ppd-wave p-4 rounded-4 bg-body-tertiary mb-4', lang('Player'), array(
+        $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-3', lang('Player Title'), array(
+            $icon('bi-soundwave', 'text-primary fs-4'),
+            $span($title, '', lang('Episode Title'), $bind('title')),
+        )),
+        $el('audio', 'pg-field-value w-100', lang('Audio'), array(
+            $para(lang('Your browser cannot play this recording.'), 'small mb-0'),
+        ), array('_bindings' => array('src' => 'audio'), '_attrs' => array(
+            $attr('controls', ''), $attr('preload', 'none'),
+        ))),
+    ));
+};
+
 // The way to hear an episode record: its audio file (the Audio field) and
 // the address of the episode in a podcast app (the Listening address), each
 // shown only when the record has it. The file opens in the browser's own

@@ -421,7 +421,11 @@
         head.appendChild(more);
         kit.onContext(head, function () { return groupMenu(ctx, group); });
 
-        if (!notes.length) {
+        // A locked group while the lock is closed lists no notes: its body
+        // offers the PIN instead (ctx.lockedBody, workspace_note_lock.js).
+        if (group.lock_closed && ctx.lockedBody && !notes.length) {
+            body.appendChild(ctx.lockedBody(group));
+        } else if (!notes.length) {
             body.appendChild(kit.el('div', 'ws-nb-section-empty', kit.t('notes_group_empty')));
         }
 

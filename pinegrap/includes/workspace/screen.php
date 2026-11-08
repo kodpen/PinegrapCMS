@@ -757,6 +757,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_notes_js_strings());
     }
 
+    // The notes lock on the My Notes screen (note_lock_screen.php).
+    if (function_exists('ws_note_lock_js_strings')) {
+        $strings = array_merge($strings, ws_note_lock_js_strings());
+    }
+
     if (function_exists('ws_file_edit_js_strings')) {
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
@@ -875,6 +880,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // Note groups as folders in My Notes (note_groups.php,
         // workspace_note_groups.js).
         'notes_groups' => function_exists('ws_note_groups_ready') && ws_note_groups_ready(),
+        // The notes lock on My Notes (note_lock.php, workspace_note_lock.js).
+        'notes_lock'   => function_exists('ws_note_lock_ready') && ws_note_lock_ready(),
         // What one import of notes may send (workspace_notes_import.php): its
         // size, how many files the server takes in one request and the kinds
         // of file it reads; and how many notes a person keeps.

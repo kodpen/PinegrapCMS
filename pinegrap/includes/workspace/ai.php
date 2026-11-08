@@ -3580,7 +3580,8 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
     } elseif ((int) ($row['note_id'] ?? 0) > 0) {
         $note = function_exists('ws_note') ? ws_note($row['note_id']) : null;
 
-        if (!$note) {
+        // A note locked after it asked is not read (note_lock.php).
+        if (!$note || (function_exists('ws_note_locked_by_owner') && ws_note_locked_by_owner($note))) {
             return $fail(lang('The note could not be found.'));
         }
 

@@ -2161,6 +2161,11 @@ function ws_note_claude_ask($viewer, $note, $text)
 {
     $text = trim(mb_substr(str_replace(array("\r", "\n"), ' ', (string) $text), 0, 2000));
 
+    // No assistant reads a locked note, open or not (note_lock.php).
+    if (function_exists('ws_note_locked_by_owner') && ws_note_locked_by_owner($note)) {
+        return array('ok' => false, 'error' => lang('No assistant is asked in a locked note.'), 'request_id' => 0);
+    }
+
     // Pinegrap AI (ai.php) is asked the same way, with its own tag.
     $agent = (function_exists('ws_ai_asked') && ws_ai_schema_ready() && ws_ai_asked($text) && !ws_claude_asked($text)) ? 'ai' : 'claude';
 

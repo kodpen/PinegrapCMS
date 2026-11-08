@@ -785,6 +785,11 @@ function ws_wtable_import_note_read($viewer, $note_id, $block, $max)
         return $fail(lang('That note could not be found.'));
     }
 
+    // Behind the person's closed notes lock (note_lock.php).
+    if (function_exists('ws_note_lock_closed') && ws_note_lock_closed($viewer, $note)) {
+        return $fail(lang('This note is locked. Open it with your PIN.'));
+    }
+
     $tables = ws_wtable_import_note_tables((string) $note['body'], $max);
 
     if (!isset($tables[(int) $block])) {

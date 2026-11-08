@@ -488,6 +488,12 @@
                 error.field = json ? json.field : '';
                 error.code = (json && json.code) ? json.code : '';
                 error.stale = !!(json && json.stale);
+                // The notes lock's refusals: the note behind it, the shares
+                // a lock takes back, the pause left, the lock's state.
+                error.note = (json && json.note) ? json.note : null;
+                error.shares = (json && json.shares) ? json.shares : 0;
+                error.wait = (json && json.wait) ? json.wait : 0;
+                error.lock = (json && json.lock) ? json.lock : null;
                 throw error;
             }
 
@@ -21995,6 +22001,11 @@
             bar.appendChild(importNotes);
         }
 
+        // The notes lock: Lock and its menu (workspace_note_lock.js).
+        if (lockCtx()) {
+            bar.appendChild(window.PGWsNoteLock.button(lockCtx()));
+        }
+
         bar.appendChild(el('div', 'pg-toolbar-grow'));
 
         var searchGroup = el('label', 'form-control form-control-sm form-adorn rounded-pill pg-toolbar-search');
@@ -22023,6 +22034,11 @@
 
             if (mine) {
                 items.push({ icon: note.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle', label: note.pinned ? t('notes_unpin') : t('notes_pin'), action: function () { pin(note); } });
+
+                if (lockCtx()) {
+                    items = items.concat(window.PGWsNoteLock.noteItems(lockCtx(), note));
+                }
+
                 items.push('-');
                 items.push({ icon: 'bi-person-plus', label: t('notes_share_people'), action: function () { sharePeople(note); } });
                 items.push({ icon: 'bi-hash', label: t('notes_share_channel'), action: function () { shareChannel(note); } });
@@ -22110,6 +22126,12 @@
                 top.appendChild(pinMark);
             }
 
+            var lockMark = lockCtx() ? window.PGWsNoteLock.mark(window.PGWsKit, note) : null;
+
+            if (lockMark) {
+                top.appendChild(lockMark);
+            }
+
 
             var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
             more.addEventListener('click', function (event) {
@@ -22189,8 +22211,13 @@
                 // Share the group in an own group's menu
                 // (workspace_note_group_shares.js).
                 groupMenuExtra: function (group) {
-                    return window.PGWsNoteGroupShares ? window.PGWsNoteGroupShares.menuItems(groupsCtx(), group) : [];
+                    var extra = window.PGWsNoteGroupShares ? window.PGWsNoteGroupShares.menuItems(groupsCtx(), group) : [];
+
+                    return lockCtx() ? window.PGWsNoteLock.groupItems(lockCtx(), group).concat(extra) : extra;
                 },
+                // A locked group's folder while the lock is closed: the way
+                // to open it (workspace_note_lock.js).
+                lockedBody: lockCtx() ? function () { return lockListButton(); } : null,
                 title: t('notes_mine'),
                 emptyText: search ? t('notes_empty_search') : t('notes_empty'),
                 drawItem: drawItem,
@@ -22202,6 +22229,94 @@
                 },
                 reload: loadList
             };
+        }
+
+        // What workspace_note_lock.js works with; null while the lock is
+        // not installed or the script is missing.
+        function lockCtx() {
+            if (!CFG.notes_lock || !window.PGWsNoteLock || !window.PGWsKit) {
+                return null;
+            }
+
+            return {
+                kit: window.PGWsKit,
+                ctxMenu: ctxMenu,
+                current: function () { return current; },
+                reload: loadList,
+                // A right PIN: the note asked for opens, or the list shows
+                // the locked groups' notes.
+                opened: function (noteId) {
+                    if (noteId) {
+                        openNote(noteId, true);
+                    } else {
+                        loadList();
+                    }
+                },
+                // Lock now or the time ran out: what is typed is saved first
+                // by lockNow's caller; the list loses its locked notes and an
+                // open note behind the lock gives way to the pane.
+                closed: function () {
+                    loadList().then(function () {
+                        if (current && current.id && window.PGWsNoteLock.behind(current)) {
+                            drawLockPane(current.id, current.name || current.title);
+                        }
+                    });
+                },
+                save: function () { return save(); }
+            };
+        }
+
+        // A note behind the closed lock: the lock pane in its place, under
+        // its group's tabs (workspace_note_lock.js).
+        function drawLockPane(noteId, title) {
+            var known = lists.mine.concat(lists.shared).filter(function (note) { return note.id === noteId; })[0] || {};
+
+            clearTimeout(saveTimer);
+            dirty = false;
+            field = null;
+            current = { id: noteId, name: title || known.name || '', title: title || known.name || '', access: 'locked', lockedPane: true, locked: !!known.locked, lock_group: !!known.lock_group, lock_closed: true, group_id: known.group_id || 0, group_sort: known.group_sort || 0, 'with': [], 'in': [] };
+            remember(noteId);
+            root.classList.add('ws-nb-open');
+            clear(pane);
+            pane.appendChild(lockBack());
+            pane.appendChild(window.PGWsNoteLock.pane(lockCtx(), noteId, current.name));
+            drawList();
+        }
+
+        // Back to the list over the lock pane, on a phone (as a note's head).
+        function lockBack() {
+            var back = button('btn btn-sm btn-text theme-secondary lg:d-none mb-3', t('notes_back'), 'bi-arrow-left');
+
+            back.addEventListener('click', function () {
+                current = null;
+                field = null;
+                remember(0);
+                drawList();
+                placeholder();
+            });
+
+            return back;
+        }
+
+        // The button in a closed locked group's folder: the lock pane for
+        // the list.
+        function lockListButton() {
+            var open = button('btn btn-sm btn-text theme-secondary ws-nb-lock-list', t('nlock_unlock_list'), 'bi-unlock');
+
+            open.addEventListener('click', function () {
+                save().then(function () {
+                    current = null;
+                    field = null;
+                    remember(0);
+                    root.classList.add('ws-nb-open');
+                    clear(pane);
+                    pane.appendChild(lockBack());
+                    pane.appendChild(window.PGWsNoteLock.pane(lockCtx(), 0, ''));
+                    drawList();
+                });
+            });
+
+            return open;
         }
 
         // The open note's group as tabs over it (workspace_note_tabs.js);
@@ -22405,6 +22520,10 @@
 
                 if (error.field === 'conflict') {
                     conflict(error.message);
+                } else if (error.code === 'note_locked' && lockCtx() && note === current) {
+                    // The lock closed meanwhile: what was not saved stays
+                    // unsaved, and the pane asks for the PIN.
+                    drawLockPane(note.id, note.name || note.title);
                 } else {
                     fail(error);
                 }
@@ -22488,7 +22607,7 @@
             clearTimeout(pollTimer);
             pollTimer = setTimeout(poll, claudeWaiting ? 5000 : 15000);
 
-            if (!current || !current.id || dirty || saving || document.hidden) {
+            if (!current || !current.id || current.lockedPane || dirty || saving || document.hidden) {
                 return;
             }
 
@@ -22515,7 +22634,11 @@
                 }
 
                 claudeCheck(fresh.claude || []);
-            }).catch(function () {});
+            }).catch(function (error) {
+                if (error.code === 'note_locked' && lockCtx() && note === current) {
+                    drawLockPane(note.id, note.name || note.title);
+                }
+            });
         }
 
         // ── Claude in the note ──
@@ -24915,7 +25038,15 @@
                 drawList();
                 drawNote();
                 poll();
-            }).catch(fail);
+            }).catch(function (error) {
+                // Behind the closed notes lock: the pane asks for the PIN.
+                if (error.code === 'note_locked' && lockCtx()) {
+                    drawLockPane(noteId, (error.note && error.note.name) || '');
+                    return;
+                }
+
+                fail(error);
+            });
         }
 
         function startNew() {
@@ -25245,6 +25376,13 @@
         // ── start ──
 
         placeholder();
+
+        // The person's lock, then its time-out (workspace_note_lock.js).
+        if (lockCtx()) {
+            window.PGWsNoteLock.load(lockCtx()).then(function () {
+                window.PGWsNoteLock.watch(lockCtx());
+            }).catch(function () {});
+        }
 
         loadList().then(function () {
             var wanted = parseInt(query.note || 0, 10) || 0;

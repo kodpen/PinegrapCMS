@@ -324,6 +324,30 @@ if ($erp_document === false) {
     }
 }
 
+// A file of a note behind its reader's closed notes lock is not served,
+// whatever the folder allows (includes/workspace/note_lock.php). Only a
+// file in a note's folder loads the workspace; before the notes lock the
+// query fails and nothing changes.
+if ((int) $file['folder_id'] > 0) {
+    $ws_lock_result = @mysqli_query(db::$con, "SELECT n.id FROM ws_notes n
+        WHERE n.folder_id = '" . (int) $file['folder_id'] . "' AND EXISTS (SELECT 1 FROM ws_note_locks l LIMIT 1)
+        LIMIT 1");
+
+    if (($ws_lock_result !== false) && (mysqli_num_rows($ws_lock_result) > 0)) {
+        if (defined('USER_LOGGED_IN') == false) {
+            initialize_user();
+        }
+
+        if (USER_LOGGED_IN == true) {
+            require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+            if (ws_note_lock_folder_closed((int) $file['folder_id'], (int) USER_ID)) {
+                output_error(get_file_text('Sorry, the file that you requested does not exist. It might have recently been deleted or the address might be incorrect.'), 404);
+            }
+        }
+    }
+}
+
 // A file a team chat message carries opens only for a side of that
 // conversation or a role-0 administrator, whatever its folder allows: staff
 // conversations may carry personal data. Before the chat tables or the

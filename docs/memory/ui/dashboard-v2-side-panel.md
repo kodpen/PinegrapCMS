@@ -17,5 +17,12 @@ description: New dashboard side panel (#4888): gallery.php data, pg_dash_panel.j
 - Top section switches set `state.top`; a greeting part switched off stays drawn but `hidden` (a part the server did not draw shows after Save's reload).
 - Look picks show at once (`data-widget-theme`, `data-panel-backdrop` with Auto resolved from `choices.auto`, `pg-dash-compact`, `pg-dash-calm`). The look is sent with the layout only once the person picked one, so the site's Appearance values keep reaching them until then; Cancel restores it.
 
+## How do edit mode and the panel look (V3, #8222)?
+- From the drawings (pictures 05-11) on the `--pgd-*` palette: `--pgd-pick` / `-pick-line` (pressed option, cyan), `--pgd-edit-bg` / `-edit-line` / `-edit-dash` (bar, tool row, dashed card frame), `--pgd-check`, `--pgd-tag-new` (fuchsia NEW), `--pgd-live`.
+- One segment look for presets, widths, period, compare and look options (`.pg-dash .pg-dash-segment > .btn`: 34 px, hairline splits, 10 px frame); in the panel it keeps its own width (`align-self: flex-start`). Bar buttons are `.pg-dash-btn`, Save `.pg-dash-btn-main`; the bar carries a pencil chip.
+- The panel is a `pg-dash-card` (it wears the card face); checks are `.pg-dash-check` (native box, `accent-color`), fields `.pg-dash-field` (40 px), small buttons `.pg-dash-btn-sm`. Sketches use the chart colours on a 74 px field.
+- A hidden System Status in edit mode is one dashed line, "System Status hidden" and Show (`.pg-dash-status-off`); Details is hidden while editing.
+- Kept different: the bar is a rounded band inside the page, not a full-width strip (the panel frame has no edge to edge row); preset label and button words are the language file's ("Ön ayar", "İptal Et", "Bitti").
+
 ## What was checked?
 - `tests/dashboard_v2_gallery_test.php`. The bundle ran headless in Chromium on a static page with a stubbed `$.ajax` at 1280 and 390 px, light and dark: gallery, search, Recommended, add/remove with focus kept, top switches, look, cancel. Not on a running panel.
