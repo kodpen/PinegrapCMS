@@ -229,3 +229,63 @@ function test_wedding_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_weddings"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places Real Weddings and the journal');
 }
+
+// The home and the signature pages (timeline, packages, venue) place the
+// Wedding blocks: every pg-wedding- class has its rule in the User
+// Styles, interactions survive pg_fx_normalize(), something rises in on
+// each, and no figures row or ask band is left on them.
+function test_wedding_assembly_pages_on_wedding_blocks()
+{
+	$tpl = _test_wd_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$wanted = array('home' => 'pg-wedding-invite', 'timeline' => 'pg-wedding-rule', 'packages' => '', 'venue' => '');
+	$seen = array();
+	foreach ($tpl['pages'] as $p) {
+		if (!isset($wanted[$p['key']])) continue;
+		$seen[] = $p['key'];
+		$nodes = array();
+		_test_wd_asm_tpl_nodes($p['tree'], $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $p['key'] . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-wedding-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $p['key'] . ': the rule of ' . $class . ' ships');
+		if ($wanted[$p['key']] !== '') pg_assert_contains($wanted[$p['key']], $classes, $p['key'] . ': on the wedding blocks');
+		pg_assert_true($effects >= 1, $p['key'] . ': something rises in');
+		foreach (array('Write to Us', 'Figures', 'Why Choose Us') as $band) pg_assert_false(in_array($band, $labels, true), $p['key'] . ': no ' . $band . ' band');
+	}
+	pg_assert_same(4, count($seen), 'home, timeline, packages, venue');
+
+	$home = null;
+	foreach ($tpl['pages'] as $p) if ($p['key'] === 'home') $home = $p['tree'];
+	$nodes = array();
+	_test_wd_asm_tpl_nodes($home, $nodes);
+	$h1 = 0;
+	$dt = 0;
+	$dd = 0;
+	$mosaic = null;
+	foreach ($nodes as $n) {
+		$tag = isset($n['props']['tag']) ? $n['props']['tag'] : '';
+		if ($tag === 'h1') $h1++;
+		if ($tag === 'dt') $dt++;
+		if ($tag === 'dd') $dd++;
+		if (isset($n['props']['cssClass']) && strpos($n['props']['cssClass'], 'pg-wedding-mosaic') !== false) $mosaic = $n;
+	}
+	pg_assert_same(1, $h1, 'one h1, in the invitation card');
+	pg_assert_true($dt >= 6 && $dt === $dd, 'the card\'s facts and the story\'s suppliers as dt/dd pairs');
+	pg_assert_true($mosaic !== null && count($mosaic['children']) === 3, 'the real wedding story\'s three pictures');
+	$json = json_encode($home, JSON_UNESCAPED_UNICODE);
+	pg_assert_contains('"trigger":"load"', $json, 'the invitation hero comes in on load');
+	pg_assert_contains('"id":"wd-home-story"', $json, 'the story band is a search section');
+}
