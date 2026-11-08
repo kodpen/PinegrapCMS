@@ -167,7 +167,7 @@ $wedding_css = implode("\n", array(
 
 return array(
     'name'        => lang('Wedding Planner and Venue'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 87,
     'icon'        => 'bi-balloon-heart',
@@ -223,10 +223,10 @@ return array(
         'email_footer' => array('name' => lang('Wedding E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pwd- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Wedding blocks' pg-wedding- rules and its
+    // pwd- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $wedding_css),
+        'css'   => pg_design_template_user_styles(array('wedding-hero', 'wedding-story', 'wedding-checklist'), $wedding_css),
         'fonts' => json_encode($wedding_fonts),
     ),
 );

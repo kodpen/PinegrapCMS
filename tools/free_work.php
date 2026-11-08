@@ -4,6 +4,9 @@
  *
  * What a coordinator can give its workers, in one short listing: the plan
  * steps that are not done and that no open PR holds, and the queue count.
+ * The steps of low-priority plans (the design templates) come in a list of
+ * their own, after the others: they are given out only when none of the
+ * others can be.
  * Bug issues and the bug-hunt plan files are not listed: workers are not
  * given them. It stands in for reading docs/memory/plans/README.md and the
  * plan files one by one, which filled a new coordinator's context in its
@@ -50,6 +53,15 @@ function free_work_shelved($description, $file = '')
 {
 	return (bool) preg_match('/not to be started|\bshelved\b|watch list|not before/i', (string) $description)
 		|| (strpos(basename((string) $file), 'shelved') !== false);
+}
+
+// A low-priority plan: a design template plan (a new template or the
+// polishing round of the shipped ones) or one whose description says "low
+// priority". Its steps are listed apart, after the others.
+function free_work_low_priority($file, $description = '')
+{
+	return (strpos(basename((string) $file), 'design-template-') === 0)
+		|| (bool) preg_match('/\blow priority\b/i', (string) $description);
 }
 
 // The step lines of a plan file: "- <ID> …" with an ID such as AP3, BK10,
@@ -234,7 +246,17 @@ foreach ($files as $file => $plan) {
 	}
 }
 
+// A plan is low priority by its own file; its steps files follow it.
+$low = array();
+
+foreach ($files as $file => $plan) {
+	if (free_work_low_priority($file, $plan[1])) {
+		$low[$plan[0]] = true;
+	}
+}
+
 $free = array();
+$free_low = array();
 $held = array();
 
 foreach ($files as $file => $plan) {
@@ -260,6 +282,8 @@ foreach ($files as $file => $plan) {
 
 		if ($holder) {
 			$held[] = "$name $id #$holder";
+		} elseif (isset($low[$name])) {
+			$free_low[] = '  ' . free_work_cut("$name $id $rest");
 		} else {
 			$free[] = '  ' . free_work_cut("$name $id $rest");
 		}
@@ -275,6 +299,8 @@ foreach (free_work_gh_lines('issues?state=open&labels=architect&per_page=100', '
 echo "Queue: $queue of " . FREE_WORK_QUEUE_LIMIT . " open PRs (drafts and merge trains not counted); $drafts drafts.\n";
 echo "Free plan steps (not done, no open PR; read the step's \"After\" before giving it out):\n";
 echo ($free ? implode("\n", $free) : '  none') . "\n";
+echo "Low priority (design templates; only when no step above can be given):\n";
+echo ($free_low ? implode("\n", $free_low) : '  none') . "\n";
 echo 'Architect issues open: ' . ($architect ? implode(' ', $architect) : 'none') . "\n";
 echo 'Held by an open PR: ' . ($held ? implode(', ', $held) : 'none') . "\n";
 echo 'Shelved plans skipped: ' . ($shelved ? implode(', ', array_keys($shelved)) : 'none') . "\n";

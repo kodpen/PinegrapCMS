@@ -4,7 +4,7 @@
  *
  * Tests for the pure parts of tools/free_work.php: which lines of a plan file
  * are steps, when a step is done, which open PR holds it, and which plans
- * are shelved.
+ * are shelved or low priority.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -118,6 +118,15 @@ function test_free_work_shelved_by_description_or_file_name()
 	pg_assert_true(free_work_shelved('Plan (approved 2026-10-19, watch list): visitor-facing AI assistant'));
 	pg_assert_true(free_work_shelved('Team-device API work', 'docs/memory/plans/mobile-api-shelved.md'));
 	pg_assert_false(free_work_shelved('Plan (owner 2026-11-02): appointments with real time slots', 'docs/memory/plans/appointment-booking.md'));
+}
+
+function test_free_work_low_priority_for_design_templates_or_by_description()
+{
+	pg_assert_true(free_work_low_priority('docs/memory/plans/design-template-zoo.md', 'Plan: the Zoo and Aquarium design template (pinegrap-zoo)'));
+	pg_assert_true(free_work_low_priority('design-template-own-looks-order.md', 'Order of the polishing round after Launch'));
+	pg_assert_true(free_work_low_priority('docs/memory/plans/sample-data.md', 'Plan (low priority): more sample rows'));
+	pg_assert_false(free_work_low_priority('docs/memory/plans/agent-channel.md', 'Plan (owner 2026-11-06): agents in the Workspace channel'));
+	pg_assert_false(free_work_low_priority('docs/memory/plans/flows-next.md', 'Plan (owner 2026-11-05): ready templates for flows'));
 }
 
 function test_free_work_cut_keeps_short_lines_and_cuts_long_ones()
