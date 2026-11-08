@@ -12,7 +12,7 @@ description: Plan (owner 2026-11-08): the whole Flows canvas in a full-screen la
 - `PGWsFlow.embed()` draws one flow read-only on a channel page with `flowEmbedKit()` (`CFG.flow_scripts`, panel action `ws_flow_embed_config`); one canvas drawing at a time (`workspace-flow-draft-card-window.md`).
 
 ## Which steps?
-- L1 (M): a mountable editor: `PGWsFlow.mount(root, boot, options)` → `{ destroy(), flush() }`; options `flow`, `box`, `run`, `single` (no flow list, no address change, no `K.viewBack()`, the list's way back calls `onClose`), `onClose`. Window listeners added once and doing nothing while no editor is mounted; destroy saves what is on its way, stops the run poll and the timers, ends any embed first and frees `state.screen`. `start()` becomes `mount()` without `single`. workspace_flow.js only; tests on the wiring and the pure parts.
+- L1 (M, done #8100): a mountable editor: `PGWsFlow.mount(root, boot, options)` → `{ destroy(), flush() }`; options `flow`, `box`, `run`, `single` (no flow list, no address change, no `K.viewBack()`, the list's way back calls `onClose`), `onClose`. Window listeners added once and doing nothing while no editor is mounted; destroy saves what is on its way, stops the run poll and the timers, ends any embed first and frees `state.screen`. `start()` becomes `mount()` without `single`. workspace_flow.js only; tests on the wiring and the pure parts.
 
 - L2 (S): the editor's config on any Workspace page: panel action `ws_flow_editor_config` → the `flows` part of `ws_flow_js_config($viewer, 'flows')` and `ws_flow_js_strings()`, with the Flows screen's rights (`ws_screen_gate()` for flows, the builder kinds); read once a page. actions.php, flows.php.
 
