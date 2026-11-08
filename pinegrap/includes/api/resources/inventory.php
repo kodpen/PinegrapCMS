@@ -31,6 +31,9 @@ if (!defined('PG_API_ENTRY') && !defined('PG_API_PANEL')) {
 
 require_once(dirname(dirname(__FILE__)) . '/outbound/webhooks.php');
 
+// The stock history's filters and the transfer's check and writer.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_moves.php');
+
 // The largest stock level or change one call may name, either way. The route
 // table declares the same bound for the single-product endpoint
 // (inventory.write in includes/api/schema.php), where the router enforces it;
@@ -718,6 +721,156 @@ function api_inventory_list($params) {
 
 }
 
+// One row of the stock history (stock_moves) as the API shows it. $names is
+// location id => name; a location id it lacks keeps a null name.
+function api_stock_move_present(array $row, array $names) {
+
+	$location_id = (int)$row['location_id'];
+
+	return array(
+		'id'             => (int)$row['id'],
+		'product_id'     => (int)$row['product_id'],
+		'product_name'   => (isset($row['product_name']) && $row['product_name'] !== null) ? (string)$row['product_name'] : null,
+		'location_id'    => $location_id,
+		'location_name'  => isset($names[$location_id]) ? (string)$names[$location_id] : null,
+		'delta'          => (int)$row['delta'],
+		'quantity_after' => (int)$row['quantity_after'],
+		'reason'         => (string)$row['reason'],
+		'ref'            => (string)$row['ref'],
+		'note'           => (string)$row['note'],
+		'user_id'        => ((int)$row['user_id'] > 0) ? (int)$row['user_id'] : null,
+		'created_at'     => api_time($row['created_at'])
+	);
+
+}
+
+// The WHERE of GET /inventory/moves: the history screen's filters
+// (pg_stock_move_filters(), pg_stock_move_condition()) for product, location
+// and reason, the period as moments (from and to are unix stamps the router
+// read; a bare day as to counts to its end), and the page's cursor ($before:
+// ids below it). $escape quotes a string value (pg_db_bind()). Pure.
+function api_inventory_moves_where(array $params, array $location_ids, $before, $escape = 'e') {
+
+	$filters = pg_stock_move_filters(array(
+		'product_id'  => isset($params['product_id']) ? (int)$params['product_id'] : 0,
+		'location_id' => isset($params['location']) ? (int)$params['location'] : 0,
+		'reason'      => isset($params['reason']) ? (string)$params['reason'] : ''
+	), $location_ids);
+
+	$condition = pg_stock_move_condition($filters);
+
+	$sql = array($condition['sql']);
+	$values = $condition['params'];
+
+	if (isset($params['from']) && $params['from'] !== null && $params['from'] !== '') {
+
+		$sql[] = 'stock_moves.created_at >= ?';
+		$values[] = (int)$params['from'];
+
+	}
+
+	if (isset($params['to']) && $params['to'] !== null && $params['to'] !== '') {
+
+		$sql[] = 'stock_moves.created_at <= ?';
+		$values[] = (int)$params['to'];
+
+	}
+
+	if ($before) {
+
+		$sql[] = 'stock_moves.id < ?';
+		$values[] = (int)$before;
+
+	}
+
+	return pg_db_bind(implode(' AND ', $sql), $values, $escape);
+
+}
+
+function api_inventory_moves($params) {
+
+	if (!pg_stock_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	$names = array();
+
+	foreach (pg_stock_locations() as $row) {
+
+		$names[(int)$row['id']] = (string)$row['name'];
+
+	}
+
+	// An unknown location is refused, not read as "every location" the way
+	// the screen's filter drops it: a client would take the whole history
+	// for one location's.
+	if (!empty($params['location']) && !isset($names[(int)$params['location']])) {
+
+		api_fail(422, 'location', lang('location is not a stock location of this site.'), 'location');
+
+	}
+
+	$before = 0;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$before = (int)$cursor['i'];
+
+	}
+
+	$where = api_inventory_moves_where($params, array_keys($names), $before);
+
+	if ($where === null) {
+
+		api_fail_server('The stock history filter could not be built.');
+
+	}
+
+	$limit = (int)$params['limit'];
+
+	$rows = api_rows("SELECT stock_moves.id, stock_moves.product_id, stock_moves.location_id, stock_moves.delta,
+			stock_moves.quantity_after, stock_moves.reason, stock_moves.ref, stock_moves.note,
+			stock_moves.user_id, stock_moves.created_at, products.name AS product_name
+		FROM stock_moves
+		LEFT JOIN products ON products.id = stock_moves.product_id
+		WHERE " . $where . "
+		ORDER BY stock_moves.id DESC
+		LIMIT " . ($limit + 1));
+
+	$next = null;
+
+	if (count($rows) > $limit) {
+
+		array_pop($rows);
+
+		$last = end($rows);
+
+		$next = api_cursor_encode((int)$last['id'], (int)$last['id']);
+
+	}
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_stock_move_present($row, $names);
+
+	}
+
+	api_ok_list($out, $limit, $next);
+
+}
+
 // How a refused transfer answers, from pg_stock_transfer()'s and
 // pg_stock_change()'s error words: status, code, field.
 function api_inventory_transfer_refusal($error) {
@@ -870,6 +1023,25 @@ function api_stock_level_schema() {
 			'location_id' => 'integer',
 			'quantity'    => 'integer'
 		))
+	);
+
+}
+
+function api_stock_move_schema() {
+
+	return array(
+		'id'             => 'integer',
+		'product_id'     => 'integer',
+		'product_name'   => 'string?',
+		'location_id'    => 'integer',
+		'location_name'  => 'string?',
+		'delta'          => 'integer',
+		'quantity_after' => 'integer',
+		'reason'         => 'string',
+		'ref'            => 'string',
+		'note'           => 'string',
+		'user_id'        => 'integer?',
+		'created_at'     => 'string?'
 	);
 
 }

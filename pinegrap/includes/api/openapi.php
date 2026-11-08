@@ -703,6 +703,7 @@ function api_openapi_objects()
         'StockLocation'  => 'api_stock_location_schema',
         'StockLevel'     => 'api_stock_level_schema',
         'StockTransfer'  => 'api_stock_transfer_schema',
+        'StockMove'      => 'api_stock_move_schema',
         'PriceBatch'     => 'api_price_batch_schema',
         'PriceHistoryEntry' => 'api_price_history_entry_schema',
         'WishlistItem'      => 'api_wishlist_item_schema',
