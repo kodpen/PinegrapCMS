@@ -2277,6 +2277,10 @@ function ws_ai_finish_fail($row, $reason)
     }
 
     ws_ai_react((int) $row['message_id'], '👀', false);
+
+    if (function_exists('ws_step_agent_request_closed')) {
+        ws_step_agent_request_closed((int) $row['id']);
+    }
 }
 
 /**
@@ -2552,6 +2556,12 @@ function ws_ai_deliver($row, $text, $proposals)
     ws_ai_react((int) $row['message_id'], '✅', true);
 
     ws_ai_log(lang(array('string' => 'Pinegrap AI answered a request in #{var:1}', 'vars' => $channel['name'])));
+
+    // A flow's agent box waiting on a model agent's request goes on
+    // (flow_agent_box.php).
+    if (function_exists('ws_step_agent_request_closed')) {
+        ws_step_agent_request_closed((int) $row['id']);
+    }
 
     return array('ok' => true, 'error' => '');
 }

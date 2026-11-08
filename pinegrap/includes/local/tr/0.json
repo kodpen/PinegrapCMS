@@ -41,6 +41,7 @@
     "1 to 2 people": "1–2 kişi",
     "1 to 3 hours": "1 - 3 saat",
     "1 to 720 hours. Pinegrap AI is asked again every hour until it answers; with no answer by then the box leaves on failed.": "1 ile 720 saat arası. Pinegrap AI yanıt verene kadar her saat yeniden sorulur; o zamana kadar yanıt gelmezse kutu başarısız yolundan çıkar.",
+    "1 to 720 hours. With no answer by then the box leaves on failed.": "1 ile 720 saat. O zamana kadar cevap gelmezse kutu başarısız yolundan çıkar.",
     "1 week": "1 hafta",
     "1 — This page + directly linked pages": "1 — Bu sayfa + doğrudan bağlantılı sayfalar",
     "1,000 to 5,000 people": "1.000 ile 5.000 kişi arası",

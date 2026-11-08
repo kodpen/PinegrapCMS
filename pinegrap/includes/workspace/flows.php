@@ -3163,6 +3163,15 @@ function ws_flow_js_strings()
         'fl_ai_found'         => lang('Found (1 or 0)'),
         'fl_ai_closes'        => lang('Hours to wait for the answer'),
         'fl_ai_closes_help'   => lang('1 to 720 hours. Pinegrap AI is asked again every hour until it answers; with no answer by then the box leaves on failed.'),
+        'fl_kind_agent'       => lang('Ask an agent'),
+        'fl_agent'            => lang('Agent'),
+        'fl_agent_pick'       => lang('Choose an agent'),
+        'fl_agent_help'       => lang('The agents allowed in a channel the flow\'s owner may write in. The agent changes records within the tier it is allowed there.'),
+        'fl_agent_channel'    => lang('Channel it is asked in'),
+        'fl_agent_channel_pick' => lang('Choose a channel'),
+        'fl_agent_channel_help' => lang('The prompt is written there in the owner\'s name, naming the agent; its answer comes there too.'),
+        'fl_agent_prompt_help' => lang('What the agent is asked; values are filled in. The agent\'s answer is the box\'s answer.'),
+        'fl_agent_closes_help' => lang('1 to 720 hours. With no answer by then the box leaves on failed.'),
         'fl_rows_get_row_help' => lang('The row\'s number, or one value, such as {{trigger.row_id}}. A row that is not there gives found 0 and empty cells.'),
         'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
         'fl_rows_row'         => lang('Row'),
@@ -3669,6 +3678,9 @@ function ws_flow_js_config($viewer, $mode)
         // The Pinegrap AI box is offered while the site has it set up
         // (ws_step_ai_check()).
         $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
+        // The agents an agent box may ask, each with the channels the owner
+        // may write in where it is allowed (flow_agent_box.php).
+        $steps['agents'] = function_exists('ws_step_agent_form_list') ? ws_step_agent_form_list($viewer) : array();
 
         // A box on customers who stopped ordering, to whoever reads orders
         // and contacts.

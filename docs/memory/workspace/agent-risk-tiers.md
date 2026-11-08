@@ -16,5 +16,5 @@ description: Agent risk tiers (agent_tiers.php, A7): the tier of a change, when 
 - `ws_agent_change_undo()` (panel action `ws_agent_change_undo`, the card's Undo button): a member who may post in the channel and `ws_change_allowed()` the kind, within 7 days of `decided_at` (`WS_AGENT_UNDO_SECONDS`, `ws_agent_undo_open()`). `ws_agent_undo_reverse()`: an update is written back from `from`, checked against `to`; a create is deleted (only kinds with `delete`); a tier 3 change or a field with no column cannot be undone. The swapped row goes through `ws_change_apply_record_check()`, so a record changed since refuses ("The record changed after this change..."). Claimed by a conditional UPDATE to `undone`, given back to `applied` when the write fails; a locked decision under the answer says it was undone.
 - Not an API route or MCP tool: undoing is a person's act on the card. `GET /workspace/changes` shows status `undone`.
 
-## What is left?
-- The flows part of A7 (an "ask an agent" box, agent-started runs by permission): `plans/agent-channel-steps-2.md`.
+## And in flows?
+- The Ask an agent box and runs an agent starts within its tier: `agent-flows.md`.

@@ -157,6 +157,11 @@ function ws_step_kinds()
         'ai'        => array('label' => lang('Ask Pinegrap AI'), 'type' => 'ai', 'texts' => array('prompt', 'text'), 'lines' => array(),
             'outputs' => array($text('answer', lang('Answer'))),
             'outcomes' => function_exists('ws_step_ai_outcomes') ? ws_step_ai_outcomes() : array('done', 'failed')),
+        // An agent of the registry asked in a channel (flow_agent_box.php):
+        // it waits for the agent's answer.
+        'agent'     => array('label' => lang('Ask an agent'), 'type' => 'agent', 'texts' => array('prompt'), 'lines' => array(),
+            'outputs' => array($text('answer', lang('Answer')), $number('message_id', lang('Message'))),
+            'outcomes' => array('done', 'failed')),
     );
 }
 
@@ -174,7 +179,7 @@ function ws_step_kinds()
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'record_get' => array('*'), 'ai' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'row_get' => array('*'), 'record_get' => array('*'), 'ai' => array('*'), 'agent' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
 }
 
 /**
@@ -619,6 +624,9 @@ function ws_step_config_normalize($kind, $config)
 
         case 'ai':
             return ws_step_ai_normalize($config);
+
+        case 'agent':
+            return ws_step_agent_normalize($config);
     }
 
     return array();
@@ -830,6 +838,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
         case 'ai':
             $problems = ws_step_ai_problems($config, $name);
             break;
+
+        case 'agent':
+            $problems = ws_step_agent_problems($config, $name);
+            break;
     }
 
     return $problems;
@@ -894,6 +906,11 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
     // Nor is a Pinegrap AI box: it asks the model itself (flow_ai_box.php).
     if ($kind === 'ai') {
         return ws_step_ai_check($viewer, $config);
+    }
+
+    // Nor is an agent box: it writes to the agent itself (flow_agent_box.php).
+    if ($kind === 'agent') {
+        return ws_step_agent_check($viewer, $config);
     }
 
     $check = ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
@@ -1283,6 +1300,7 @@ function ws_step_fill_target($kind, $action)
         case 'report':
         case 'checkin':
         case 'approval':
+        case 'agent':
             return 'message';
 
         case 'webhook':
@@ -1709,7 +1727,7 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get', 'record_get', 'ai'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set', 'row_get', 'record_get', 'ai', 'agent'), true) || ((string) $text === '')) {
         return (string) $text;
     }
 
@@ -1717,6 +1735,11 @@ function ws_step_result_shown($kind, $outcome, $text, $edit)
     // reach.
     if ((string) $kind === 'ai') {
         return in_array((string) $outcome, array('', 'failed'), true) ? lang('Pinegrap AI gave no answer.') : lang('Pinegrap AI answered.');
+    }
+
+    // So may what the agent was asked and answered.
+    if ((string) $kind === 'agent') {
+        return in_array((string) $outcome, array('', 'failed'), true) ? lang('The agent gave no answer.') : lang('The agent answered.');
     }
 
     // The record may be one the reader does not reach: its kind and id
@@ -1962,6 +1985,12 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     // only; the box waits for the answer (flow_ai_box.php).
     if ($kind === 'ai') {
         ws_step_ai_wait($step, ws_step_ai_normalize($config), (string) $action['prompt'], (string) $action['text']);
+        return;
+    }
+
+    // An agent is asked in its channel; the box waits for its answer.
+    if ($kind === 'agent') {
+        ws_step_agent_ask($step, $owner, $action, $routed);
         return;
     }
 
@@ -2215,6 +2244,8 @@ function ws_flow_box_try($viewer, $flow, $data)
             $said = ws_step_record_get_text($action);
         } elseif ($kind === 'ai') {
             $said = ws_step_ai_text($action);
+        } elseif ($kind === 'agent') {
+            $said = ws_step_agent_text($action);
         } else {
             $said = ws_scheduled_action_text($owner, $action);
         }

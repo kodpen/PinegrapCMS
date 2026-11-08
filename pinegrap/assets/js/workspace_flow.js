@@ -154,6 +154,7 @@
         // A classifying Pinegrap AI box leaves on its named outcomes instead
         // (kindOf(), ws_step_ai_arrow_outcomes()).
         ai: { name: 'fl_kind_ai', group: 'system', into: true, out: ['done', 'failed'] },
+        agent: { name: 'fl_kind_agent', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
@@ -225,6 +226,7 @@
         ['row_get', 'fl_kind_row_get'],
         ['record_get', 'fl_kind_record_get'],
         ['ai', 'fl_kind_ai'],
+        ['agent', 'fl_kind_agent'],
         ['approval', 'fl_kind_approval'],
         ['end', 'fl_add_end'],
         ['constants', 'fl_kind_constants'],
@@ -589,6 +591,7 @@
             reads: steps.reads || [],
             no_order: !!steps.no_order,
             ai: !!steps.ai,
+            agents: steps.agents || [],
             mcp: steps.mcp || []
         };
     }
@@ -751,6 +754,10 @@
 
         if (node.kind === 'ai') {
             return aiMeta(node);
+        }
+
+        if (node.kind === 'agent') {
+            return agentMeta(node);
         }
 
         if (node.kind === 'join') {
@@ -4302,6 +4309,7 @@
                 && ((item[0] !== 'no_order') || stepLists().no_order)
                 && ((item[0] !== 'record_get') || (stepLists().reads.length > 0))
                 && ((item[0] !== 'ai') || stepLists().ai)
+                && ((item[0] !== 'agent') || (stepLists().agents.length > 0))
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
     }
@@ -6091,6 +6099,10 @@
 
         if (node.kind === 'ai') {
             aiFields(box, node);
+        }
+
+        if (node.kind === 'agent') {
+            agentFields(box, node);
         }
 
         if (node.kind === 'condition') {
@@ -8178,6 +8190,94 @@
         box.appendChild(field(t('fl_ai_closes'), hours, t('fl_ai_closes_help')));
     }
 
+    // The agent an agent box asks, from the list the server sent.
+    function agentOf(config) {
+        return stepLists().agents.filter(function (item) { return item.id === config.agent_id; })[0] || null;
+    }
+
+    // The agent's handle and the channel it is asked in.
+    function agentMeta(node) {
+        var config = node.config;
+        var agent = agentOf(config);
+        var channel = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+        if (!config.agent_id) {
+            return t('fl_agent_pick');
+        }
+
+        return (agent ? '@' + agent.handle : '#' + config.agent_id) + (channel ? ' · ' + t('fl_post_meta', channel.name) : '');
+    }
+
+    // An agent box (flow_agent_box.php): the agent, the channel it is asked
+    // in (one where it is allowed and the owner may write), the prompt,
+    // which takes values, and the hours it waits for the answer.
+    function agentFields(box, node) {
+        var config = node.config;
+        var agents = stepLists().agents;
+        var agent = agentOf(config);
+        var options = [[0, t('fl_agent_pick')]].concat(agents.map(function (item) { return [item.id, '@' + item.handle + (item.name ? ' (' + item.name + ')' : '')]; }));
+
+        if (config.agent_id && !agent) {
+            options.push([config.agent_id, '#' + config.agent_id]);
+        }
+
+        var pick = K.select(options, config.agent_id || 0);
+
+        pick.setAttribute('data-refocus', 'agent-pick-' + node.id);
+        pick.disabled = !state.edit;
+        pick.addEventListener('change', function () {
+            var chosen;
+
+            config.agent_id = parseInt(pick.value, 10) || 0;
+            chosen = agentOf(config);
+
+            // A channel the new agent is not allowed in is no choice.
+            if (!chosen || (chosen.channel_ids.indexOf(config.channel_id) < 0)) {
+                config.channel_id = (chosen && (chosen.channel_ids.length === 1)) ? chosen.channel_ids[0] : 0;
+            }
+
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_agent'), pick, t('fl_agent_help')));
+
+        var ids = agent ? agent.channel_ids : [];
+        var places = [[0, t('fl_agent_channel_pick')]].concat((BOOT.channels || []).filter(function (item) {
+            return ids.indexOf(item.id) >= 0;
+        }).map(function (item) { return [item.id, '#' + item.name]; }));
+
+        if (config.channel_id && (ids.indexOf(config.channel_id) < 0)) {
+            places.push([config.channel_id, '#' + config.channel_id]);
+        }
+
+        var where = K.select(places, config.channel_id || 0);
+
+        where.setAttribute('data-refocus', 'agent-channel-' + node.id);
+        where.disabled = !state.edit;
+        where.addEventListener('change', function () {
+            config.channel_id = parseInt(where.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_agent_channel'), where, t('fl_agent_channel_help')));
+        box.appendChild(valueField(node, t('fl_ai_prompt'), config.prompt || '', 4000, function (value) {
+            config.prompt = value;
+            refreshNode(node);
+        }, true, t('fl_agent_prompt_help')));
+
+        var hours = el('input', 'form-control form-control-sm wsf-number');
+
+        hours.type = 'number';
+        hours.min = '1';
+        hours.max = '720';
+        hours.value = String(config.closes_in || 24);
+        hours.disabled = !state.edit;
+        hours.addEventListener('input', function () {
+            config.closes_in = clamp(parseInt(hours.value, 10) || 24, 1, 720);
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_ai_closes'), hours, t('fl_agent_closes_help')));
+    }
+
     // A box that adds or changes a row: its table, the row a change names,
     // then a field per column. Cells the form cannot show (a table not
     // among those the person changes, or a text that is no JSON object)
@@ -9455,6 +9555,11 @@
             config = { record: '', id: '' };
         } else if (kind === 'ai') {
             config = { mode: 'write', prompt: '', text: '', classes: [], closes_in: 24 };
+        } else if (kind === 'agent') {
+            var agents = stepLists().agents;
+            var only = (agents.length === 1) ? agents[0] : null;
+
+            config = { agent_id: only ? only.id : 0, channel_id: (only && (only.channel_ids.length === 1)) ? only.channel_ids[0] : 0, prompt: '', closes_in: 24 };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };

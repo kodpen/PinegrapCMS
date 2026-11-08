@@ -1458,11 +1458,15 @@ function ws_api_flow_runs_get($params)
 // before it starts one, which the MCP server cannot do yet, so this route is
 // offered to no MCP client as a tool, and the application an assistant works
 // through is refused here as well: Claude's routine calls REST with its key.
+// An application agent of the registry is the exception: a channel manager
+// allowed it a tier in the run's channel, and it starts a run there of a
+// flow within that tier (flow_agent_box.php).
 function ws_api_flow_runs_start($params)
 {
     $viewer = ws_api_viewer();
+    $agent = ws_api_is_assistant() ? ws_flow_start_agent(ws_api_app_id()) : null;
 
-    if (ws_api_is_assistant()) {
+    if (ws_api_is_assistant() && !$agent) {
         api_fail(403, 'forbidden', lang('An assistant does not start or cancel the runs of a flow; the person does.'));
     }
 
@@ -1495,6 +1499,19 @@ function ws_api_flow_runs_start($params)
 
     if (!$checked['ok']) {
         ws_api_flow_refused($checked);
+    }
+
+    // An agent's start: the run's channel and the flow's tier, by the
+    // version the run would follow. A retry its token answers is let
+    // through: the run is there already.
+    if ($agent && ((int) $checked['existing'] <= 0)) {
+        $channel_id = (int) ($checked['channel_id'] ?? 0);
+        $channel_id = ($channel_id > 0) ? $channel_id : (int) $flow['channel_id'];
+        $refusal = ws_flow_agent_start_refusal(ws_flow_start_agent_tier($channel_id, (int) $agent['app_id']), ws_flow_graph_tier($checked['graph']), (string) $agent['handle']);
+
+        if ($refusal !== '') {
+            api_fail(403, 'forbidden', $refusal);
+        }
     }
 
     api_dry_run_stop('started', 'workspace_flow_run', array(

@@ -383,6 +383,11 @@ function ws_api_agent_request_answer($params)
     ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', false);
     ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '✅', true);
 
+    // A flow's agent box waiting on this request goes on (flow_agent_box.php).
+    if (function_exists('ws_step_agent_request_closed')) {
+        ws_step_agent_request_closed((int) $row['id']);
+    }
+
     api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));
 }
 
@@ -416,6 +421,10 @@ function ws_api_agent_request_fail($params)
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
     ws_agent_react((int) $agent['app_id'], (int) $row['message_id'], '👀', false);
+
+    if (function_exists('ws_step_agent_request_closed')) {
+        ws_step_agent_request_closed((int) $row['id']);
+    }
 
     api_ok(ws_api_claude_request_present($viewer, ws_api_agent_request_or_404($agent, $row['id'])));
 }
