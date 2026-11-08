@@ -16,7 +16,7 @@ description: Steps L1-L4, M1-M3 and N9 of plans/workspace-notes-groups-lock.md: 
 
 - M1 (M) Media, read view. Done (#8150). A line holding only a link to a file of this site drawn by `ws_render_body(…, $note = true)` after `ws_file_kind()`: a picture (lazy, bounded height), video and audio players, a PDF or other file as a card (icon, name, size); other hosts stay links; the read-only view and the print page; styles in `backend.src.css`.
 
-- M2 (M) Media, writing box. `free`. `workspace_editor.js`: such a line as a `media` card (contentEditable false, its markup kept) opening `viewImages()` or `previewFile()`; `attach()` and `drawCanvas()` put the file on a line of its own (`insertFile()`); a voice link on a line of its own takes the inline player (`PGWsVoice.player()`), and "Recordings in this note" keeps only the others.
+- M2 (M) Media, writing box. Done (#8178). `workspace_editor.js`: such a line as a `media` card (contentEditable false, its markup kept) opening `viewImages()` or `previewFile()`; `attach()` and `drawCanvas()` put the file on a line of its own (`insertFile()`); a voice link on a line of its own takes the inline player (`PGWsVoice.player()`), and "Recordings in this note" keeps only the others.
 
 - M3 (S) A canvas edited again. After M2. On a canvas picture in a note, Edit the picture opens the editor with its layers (`workspace_file_save.php?note=&file=`); the save replaces the file, the old one kept as an earlier version.
 
