@@ -16,7 +16,7 @@ description: Plan: the Art Gallery design template (pinegrap-gallery): artists, 
 
 - 4 (done, #8017): `artists.php`: the Artists collection (`artists` by `?medium=`, `artist` with the artist's works, `artist_new`, `home_artists`) and the Works collection (`works` by `?artist=` and `?medium=`, `work` with the enquiry link, `work_new`); test.
 
-- 5: `exhibitions.php`: the Exhibitions collection (`exhibitions` by `?status=`, `exhibition` with its works and the opening night, `exhibition_new`, `home_exhibitions`); test.
+- 5 (done, #8034): `exhibitions.php`: the Exhibitions collection (`exhibitions` by `?status=`, `exhibition` with its works and the opening night, `exhibition_new`, `home_exhibitions`); test.
 
 - 6: `mail.php` and `requests.php`: artwork enquiries (`enquire` with `?artwork=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `privacy`, `email_reply`, `email_enquiry_new`, `email_enquiry_received`) and private viewings (`viewing` with `?exhibition=`, `viewing_view`, `my_viewings`, `staff_viewings`, their two e-mails); test.
 
