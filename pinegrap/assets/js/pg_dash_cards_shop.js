@@ -223,13 +223,37 @@
         more(body, data.url, config);
     };
 
+    // Coupons: the figure the offer takes off in a dashed box, the code over
+    // its note and the days left, the whole coupon a link to the offer.
     pgDash.renderers.offers = function (body, data, card, config) {
-        body.appendChild(list(data.rows || [], {
-            name: function (row) { return row.code; },
-            meta: function (row) { return row.note; },
-            value: function () { return ""; },
-            note: function (row) { return row.days; }
-        }));
+        var el = pgDash.el;
+        var box = el("ul", "pg-dash-coupons");
+        (data.rows || []).forEach(function (row) {
+            var item = el("li");
+            var link = el("a", "pg-dash-coupon");
+            link.href = row.url;
+            if (row.off) {
+                link.appendChild(el("span", "pg-dash-coupon-off", row.off));
+            }
+            var main = el("span", "pg-dash-coupon-main");
+            main.appendChild(el("span", "pg-dash-coupon-code", row.code));
+            var meta = el("span", "pg-dash-coupon-meta");
+            if (row.note) {
+                meta.appendChild(el("span", "", row.note));
+            }
+            if (row.days) {
+                var days = el("span", "pg-dash-coupon-days", row.days);
+                if (row.tone) {
+                    days.setAttribute("data-tone", row.tone);
+                }
+                meta.appendChild(days);
+            }
+            main.appendChild(meta);
+            link.appendChild(main);
+            item.appendChild(link);
+            box.appendChild(item);
+        });
+        body.appendChild(box);
         more(body, data.url, config);
     };
 
