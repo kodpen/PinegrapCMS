@@ -2991,10 +2991,10 @@ function ws_api_polls_create($params)
     $viewer = ws_api_viewer();
     $channel = ws_api_channel_or_404($viewer, $params['id']);
 
-    // Asked in the person's own name: an application key and an OAuth
-    // connection write as the application, and a poll asked so could be
-    // neither changed by the person nor closed with its result in their name.
-    ws_api_own_words_only(lang('Only the person\'s own team devices session (POST /auth/login) can ask a poll; an application key or an OAuth connection cannot ask it in their name.'));
+    // A team devices session asks in the person's name; an application key
+    // or an OAuth connection asks as the application (an agent asking the
+    // people), and its result is written in the application's name.
+    $app_id = ws_api_writer_app_id();
 
     if (!ws_interact_ready()) {
         api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
@@ -3038,7 +3038,7 @@ function ws_api_polls_create($params)
         'closes_at'  => api_time($checked['closes_at']),
     ));
 
-    $result = ws_poll_create($viewer, $channel, $data);
+    $result = ws_poll_create($viewer, $channel, $data, $app_id);
 
     if (!$result['ok']) {
         api_fail_validation($result['error'], ($result['field'] !== '') ? $result['field'] : null);
@@ -3159,17 +3159,35 @@ function ws_api_polls_update($params)
 }
 
 /**
+ * Whether the calling application (an agent) asked this poll itself.
+ *
+ * @param array $poll
+ * @return bool
+ */
+function ws_api_poll_is_callers($poll)
+{
+    $app_id = ws_api_writer_app_id();
+
+    return ($app_id > 0) && (ws_message_app_id($poll['message_id']) === $app_id);
+}
+
+/**
  * Closes a poll, the way Close the poll on it does: the asker closes their own,
  * whoever runs the channel any. The result goes into the channel - a clear
  * winner as a decision in the asker's name, a tie or a poll nobody voted in
- * as a line of the workspace's. A poll already closed is not an error.
+ * as a line of the workspace's. An application closes the polls it asked.
+ * A poll already closed is not an error.
  */
 function ws_api_polls_close($params)
 {
     $viewer = ws_api_viewer();
     $poll = ws_api_poll_or_404($viewer, $params['id']);
 
-    ws_api_person_only(lang('Only the person, signed in on a device, can close a poll; an application cannot close it for them.'));
+    // An application closes only the polls it asked itself; the person's
+    // polls are closed by the person, on a device.
+    if (!ws_api_poll_is_callers($poll)) {
+        ws_api_person_only(lang('Only the person, signed in on a device, can close a poll; an application cannot close it for them.'));
+    }
 
     // Already closed: nothing to do.
     if ((int) $poll['closed_at'] > 0) {

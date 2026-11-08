@@ -1031,10 +1031,13 @@ function ws_poll_close($viewer, $poll)
     if (count($winners) === 1) {
         // Written in the asker's name: the decision is the channel's answer to
         // their question, and it is theirs to change if it turns out wrong.
+        // An agent's poll is answered in the agent's name, so the result never
+        // reads as a decision of the person the agent acts for.
         $body = lang(array('string' => 'Poll result: **{var:1}** ({var:2} of {var:3} voters) - {var:4}', 'vars' => array($winners[0], $top, $voters, $question)));
+        $app_id = ws_message_app_id($poll['message_id']);
 
         if ($asker['member'] && ws_can_post_channel($asker, $channel)) {
-            $sent = ws_message_send($asker, $channel, $body, array('kind' => 'decision', 'parent_id' => (int) $poll['message_id']));
+            $sent = ws_message_send($asker, $channel, $body, array('kind' => 'decision', 'parent_id' => (int) $poll['message_id'], 'app_id' => $app_id));
             $result_id = $sent['ok'] ? (int) $sent['message_id'] : 0;
         }
 
