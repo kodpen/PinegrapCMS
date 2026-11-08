@@ -213,6 +213,10 @@ function test_custom_form_rules_templates()
 		array('pinegrap-campsite', 'cp-gr-arrival'),
 		array('pinegrap-campsite', 'cp-gr-departure'),
 		array('pinegrap-library', 'lib-rb-date'),
+		array('pinegrap-marina', 'mn-rq-from'),
+		array('pinegrap-marina', 'mn-rq-to'),
+		array('pinegrap-marina', 'mn-ce-from'),
+		array('pinegrap-marina', 'mn-ce-to'),
 	) as $c) {
 		$node = _test_cf_rules_template_node($c[0], $c[1]);
 		pg_assert_true($node !== null, $c[1] . ' exists');
