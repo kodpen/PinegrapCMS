@@ -46,6 +46,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | note_group_shared, note_group_added (note_group_shares.php)
  *                         | mail_assigned | mail_customer (an e-mail conversation given to one, its
  *                           customer writing again on one held: mail_status.php, mail.php)
+ *                         | canvas_edited (an agent edited one's canvas: canvas_edit.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
  *                         tells many people in a row and calls ws_push_batch_done();
@@ -584,6 +585,12 @@ function ws_inbox_describe($viewer, $row)
                 return ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base);
             }
             break;
+
+        // An agent edited the person's canvas (canvas_edit.php).
+        case 'canvas_edited':
+            require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
+
+            return ws_canvas_inbox_describe($row, $channel_name, $base);
 
         // A message a day old whose read receipt the person has not given
         // (acks.php).

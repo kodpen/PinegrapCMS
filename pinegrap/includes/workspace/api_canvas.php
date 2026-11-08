@@ -25,6 +25,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_svg.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
 
 /**
  * The canvas routes, merged into ws_api_routes().
@@ -66,6 +67,24 @@ function ws_canvas_api_routes()
             'description' => 'The canvas a message carries, drawn by an agent or by a person in the image editor: its artboard, the address of its picture (an agent that sees pictures looks at it too; pending until a member\'s browser has drawn it), the number of its newest version and who made each version kept, and its layers from the bottom up - each with its box on the artboard; a text layer\'s text and colour; an svg layer\'s markup. A message whose picture is no canvas, or was changed outside the editor since, answers 404 not_found.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+            ),
+        ),
+
+        array(
+            'id'           => 'workspace.messages.canvas.edit',
+            'method'       => 'POST',
+            'also_accepts' => array('PATCH'),
+            'path'         => '/workspace/messages/{id}/canvas',
+            'scope'        => 'workspace:write',
+            'handler'      => 'ws_api_canvas_edit',
+            'dry_run'      => true,
+            'returns'      => ws_api_canvas_returns(),
+            'summary'      => 'Edit a canvas in place',
+            'description'  => 'Changes a canvas of the channel - an agent\'s or a person\'s - with operations applied in order to its newest version, all or none: add (svg; x, y, w, h, rot optional: a new layer on top, its own size made to fit and centred when no box is given), replace (layer, svg: an svg layer\'s drawing, its box kept), remove (layer), text (layer, text; color #rrggbb optional: a text layer\'s words), box (layer; any of x, y, w, h, rot: move, resize or turn a layer) and svg (svg; background optional: the whole canvas anew). Layer ids and the version come from GET /workspace/messages/{id}/canvas. version is the newest version you read: when somebody saved since, the call answers 409 conflict; read again and redo. The edit is a new version made by the agent, kept with the original and the last ten; its picture is pending again until a member\'s browser draws it. A person whose canvas an agent edited is told. Only an agent of the channel edits, as for POST /workspace/channels/{id}/canvases (403 forbidden). A refused operation answers 422 validation_failed on operations, its message naming the operation by its place (from 0); a locked layer is not changed. PATCH is accepted as well.',
+            'params'       => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'version', 'in' => 'body', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The newest version you read.'),
+                array('name' => 'operations', 'in' => 'body', 'type' => 'list', 'of' => array('op' => 'string', 'layer' => 'string', 'svg' => 'string', 'text' => 'string', 'color' => 'string', 'background' => 'string', 'x' => 'number', 'y' => 'number', 'w' => 'number', 'h' => 'number', 'rot' => 'number'), 'max_items' => 20, 'required' => true, 'description' => 'Objects of {op, ...}, applied in order; see the description.'),
             ),
         ),
     );
@@ -397,4 +416,84 @@ function ws_api_canvas_get($params)
     }
 
     api_ok($canvas);
+}
+
+/**
+ * The canvas of a message as an agent of its channel edits it: the message,
+ * its channel and the newest document, or the refusal.
+ *
+ * @param array $viewer
+ * @param int   $id
+ * @return array message, channel, agent, doc (decoded as arrays), version
+ */
+function ws_api_canvas_edit_target($viewer, $id)
+{
+    $message = ws_api_message_or_404($viewer, $id);
+    $channel = ws_api_channel_or_404($viewer, $message['channel_id']);
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $agent = ws_api_canvas_agent($channel);
+    $doc = ((int) $message['file_id'] > 0) ? ws_canvas_open_doc((int) $message['file_id']) : null;
+    $newest = $doc ? pg_file_versions_newest((int) $message['file_id']) : null;
+
+    if (!$doc || !$newest) {
+        api_fail_not_found(lang('Canvas'));
+    }
+
+    return array(
+        'message' => $message,
+        'channel' => $channel,
+        'agent'   => $agent,
+        'doc'     => json_decode(json_encode($doc), true),
+        'version' => (int) $newest['version_no'],
+    );
+}
+
+function ws_api_canvas_edit($params)
+{
+    $viewer = ws_api_viewer();
+    $target = ws_api_canvas_edit_target($viewer, $params['id']);
+
+    if ((int) $params['version'] !== $target['version']) {
+        api_fail(409, 'conflict', lang(array('string' => 'The canvas changed since: its newest version is {var:1}. Read it again.', 'vars' => $target['version'])));
+    }
+
+    $edited = ws_canvas_edit_apply($target['doc'], $params['operations'] ?? null);
+
+    if ($edited['error'] !== '') {
+        $where = ($edited['index'] >= 0) ? lang(array('string' => 'Operation {var:1}', 'vars' => $edited['index'])) . ': ' : '';
+
+        api_fail_validation($where . ws_canvas_edit_error_text($edited['error']), 'operations');
+    }
+
+    $doc = json_decode(json_encode($edited['doc']));
+    $doc->by = (object) $target['agent'];
+
+    if (ws_canvas_doc_json($doc) === '') {
+        api_fail_validation(ws_canvas_from_svg_error_text('not_kept'), 'operations');
+    }
+
+    $message = $target['message'];
+
+    api_dry_run_stop('updated', 'workspace_canvas', array(
+        'message_id' => (int) $message['id'],
+        'version'    => $target['version'] + 1,
+        'layers'     => count($doc->layers),
+    ));
+
+    if (!pg_image_editor_canvas_keep((int) $message['file_id'], $doc, (int) $viewer['id'], 'agent')) {
+        api_fail(503, 'service_unavailable', lang('The file could not be saved.'));
+    }
+
+    pg_file_versions_prune((int) $message['file_id']);
+
+    // A person's canvas: its author hears that an agent changed it.
+    if (($message['sender_kind'] === 'user') && ((int) $message['sender_id'] !== (int) $viewer['id'])) {
+        ws_notify((int) $message['sender_id'], 'canvas_edited', array('channel_id' => (int) $message['channel_id'], 'message_id' => (int) $message['id'], 'actor_id' => 0));
+    }
+
+    api_ok(ws_api_canvas_present($message));
 }
