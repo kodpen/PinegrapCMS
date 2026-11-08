@@ -17,8 +17,9 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 ## Which parts are there?
 - `ai`: the assistant panel, `assets/js/designer_ai.js` (#8112, D5 part 1). Handed over only when `sdDesign.ai.enabled`. The toolbar button `#sd-ai-btn` and the canvas menu's "Ask the assistant about this" run it (`_sdAiRun()`); after it ran, its own listener answers the button. It also runs 1.5 s after `init()` (at once for a proposal link, `sdDesign.ai.proposal`), so requests still waiting from an earlier visit keep being carried on (its `ai_state` poll) as when it was a plain script tag.
 - `import` (#8131, D5 part 2): `assets/js/style_designer_import.js`, the HTML / ZIP import dialog and the reply opened as tabs (also the paste-a-page dialog's). Handed to every editor. The core keeps `_pgImportOpen()` and `_pgImportApply(d, projectName)` as stubs.
+- `code` (#8166, D5 part 3): the code view's runtime, `designer-code-view-part.md`.
 - The assistant code that stays in the core is small and needed at open: `_sdAiBridge()` (the part's view of the editor), the "Write with AI" marks of the page fields (`_pgAiMarks*`) and the alt-text button (`_sdAiAltButton()`).
 
 ## What comes next?
-- The rest of D5 (`plans/designer-performance-and-publish.md`): code view, theme panel, Google fonts browser, interactions, one PR each. The code view (about 1,900 lines, `CODE VIEW` to `Shared Context Menu Builder`) uses about 60 core names and is wired in at open: `_sdCodeInit()` from `initBottomPanel()` adds the switch, registers its completion sources (the code dialog uses them too) and reopens a remembered view; `_sdCodeBoundProps()` and `_sdCodePhrases()` serve the output and the dialog. So it is cut in two PRs: the stubs and the open-time pieces stay in the core.
+- The rest of D5: the code view's typed-changes engine (`designer-code-view-part.md`), then theme panel, Google fonts browser, interactions.
 - `open` with `?sd_perf=1` (`designer-performance.md`) still needs a browser on a running site: not measured before or after this part.

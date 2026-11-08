@@ -74,6 +74,7 @@ function test_sportsclub_assembly_template_pages_and_widgets()
 	$tpl = _test_sp_asm_tpl();
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub';
 	include $dir . '/parts.php';
+	include $dir . '/blocks.php';
 	$squad = include $dir . '/squad.php';
 	include $dir . '/mail.php';
 	$parts = array(
@@ -248,4 +249,69 @@ function test_sportsclub_assembly_google_reviews()
 	foreach (array('google_reviews', 'home_fixtures', 'home_results', 'home_events', 'home_posts') as $w) {
 		pg_assert_true(strpos($home, '"templateWidget":"' . $w . '"') !== false, "the home places $w");
 	}
+}
+
+// Home, fixtures, results and teams are built on the palette's blocks
+// (Sports Club: Match Day, League Table, Squad by Position): every pg-
+// class they write is a block rule the template's User Styles ship, their
+// interactions are kept as written by pg_fx_normalize(), the match day is
+// a dark band with two crests and a kick-off time, and no story band or
+// figure row is left on the home.
+function test_sportsclub_assembly_signature_pages_on_blocks()
+{
+	$tpl = _test_sp_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$source = _pg_designer_block_css_source();
+	$want = array('home', 'fixtures', 'results', 'teams');
+	$seen = array();
+	foreach ($tpl['pages'] as $p) {
+		if (!in_array($p['key'], $want, true)) continue;
+		$seen[] = $p['key'];
+		$nodes = array();
+		_test_sp_asm_nodes($p['tree'], $nodes);
+		$effects = array();
+		$classes = '';
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (!isset($n['props']['_fx'])) continue;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			pg_assert_true(is_array($kept), $p['key'] . ': ' . json_encode($n['props']['_fx']) . ' is an interaction');
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $p['key'] . ': ' . $field . ' is kept as written');
+			}
+			$effects[] = $n['props']['_fx']['effect'] . '/' . $n['props']['_fx']['trigger'];
+		}
+		preg_match_all('/(?<![\w-])pg-[a-z0-9-]+/', $classes, $m);
+		$pg = array_values(array_diff(array_unique($m[0]), array('pg-hide-if-empty', 'pg-field-value')));
+		pg_assert_true(!empty($pg), $p['key'] . ': places palette blocks');
+		foreach ($pg as $class) {
+			$rule = '';
+			foreach ($source['rules'] as $text) {
+				if (preg_match('/\.' . preg_quote($class, '/') . '(?![\w-])/', $text)) {
+					$rule = $text;
+					break;
+				}
+			}
+			pg_assert_true($rule !== '' && strpos($css, $rule) !== false, $p['key'] . ": the rule of $class ships with the template");
+		}
+		$json = json_encode($p['tree']);
+		if ($p['key'] === 'home' || $p['key'] === 'fixtures') {
+			pg_assert_same(2, substr_count($json, '"pg-sc-crest"'), $p['key'] . ': a crest for each side');
+			pg_assert_true(strpos($json, '"name":"data-bs-theme","value":"dark"') !== false, $p['key'] . ': the match day is a dark band');
+			pg_assert_true(strpos($json, '"tag":"time"') !== false && strpos($json, '"name":"datetime","value":"15:00"') !== false, $p['key'] . ': the kick-off is a time');
+		}
+		if ($p['key'] === 'home') {
+			foreach (array('slide-up/load', 'fade/load', 'slide-up/view', 'fade/view') as $e) pg_assert_true(in_array($e, $effects, true), "home moves: $e");
+			pg_assert_true(strpos($json, 'pg-sc-up') !== false, 'home: the league table');
+			pg_assert_same(false, strpos($json, '"Figures"'), 'home: no figure row');
+			pg_assert_same(false, strpos($json, 'sp-home-academy'), 'home: no story band');
+		} elseif ($p['key'] === 'results') {
+			pg_assert_same(1, substr_count($json, '"name":"aria-current","value":"true"'), 'results: the club\'s own row in the league table');
+		} elseif ($p['key'] === 'teams') {
+			pg_assert_same(4, substr_count($json, '"pg-sc-number"'), 'teams: a shirt number per first-team player');
+			pg_assert_true(count(array_keys($effects, 'slide-up/view', true)) >= 3, 'teams: the team rows and the squad come in on view');
+		}
+	}
+	pg_assert_same($want, array_values(array_intersect($want, $seen)), 'the four pages are in the template');
 }

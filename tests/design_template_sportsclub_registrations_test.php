@@ -34,6 +34,7 @@ function _test_spr_load()
 	if ($out !== null) return $out;
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub';
 	include $dir . '/parts.php';
+	include $dir . '/blocks.php';
 	include $dir . '/squad.php';
 	include $dir . '/mail.php';
 	$part = include $dir . '/registrations.php';
@@ -171,6 +172,7 @@ function _test_spr_public($dir)
 	static $part = null;
 	if ($part !== null) return $part;
 	include $dir . '/parts.php';
+	include $dir . '/blocks.php';
 	include $dir . '/squad.php';
 	$part = include $dir . '/pages_public.php';
 	return $part;

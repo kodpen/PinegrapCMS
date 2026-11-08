@@ -358,8 +358,9 @@ function ws_handle_action($action, $request)
     }
 
     // The session lock is only needed by the actions that write to it
-    // (connecting an MCP account keeps its pending state there).
-    if (!in_array($action, array('ws_channel_audit', 'ws_mcp_connect'), true)) {
+    // (connecting an MCP account keeps its pending state there; the notes
+    // lock keeps its open state and e-mailed code there, ws_note_lock_*).
+    if (!in_array($action, array('ws_channel_audit', 'ws_mcp_connect'), true) && (strpos((string) $action, 'ws_note_lock_') !== 0)) {
         session_write_close();
     }
 
@@ -1148,6 +1149,49 @@ function ws_handle_action($action, $request)
                 'group_id' => (int) $result['group_id'],
                 'groups'   => ws_note_groups($viewer),
             ));
+
+        // The notes lock (includes/workspace/note_lock.php): the person's
+        // PIN, the time an opened lock stays open, Lock now, a new PIN by the
+        // old one or a code by e-mail. Every answer carries the lock's state
+        // again; a refusal carries its code and the pause left.
+        case 'ws_note_lock':
+        case 'ws_note_lock_setup':
+        case 'ws_note_lock_open':
+        case 'ws_note_lock_now':
+        case 'ws_note_lock_change':
+        case 'ws_note_lock_time':
+        case 'ws_note_lock_off':
+        case 'ws_note_lock_code':
+            $pin = is_string($request['pin'] ?? null) ? $request['pin'] : '';
+            $result = array('ok' => true);
+
+            if ($action === 'ws_note_lock_setup') {
+                $result = ws_note_lock_setup($viewer, $pin, is_string($request['pin2'] ?? null) ? $request['pin2'] : '', $request['minutes'] ?? 5);
+            } elseif ($action === 'ws_note_lock_open') {
+                $result = ws_note_lock_open($viewer, $pin, (int) ($request['note_id'] ?? 0));
+            } elseif ($action === 'ws_note_lock_now') {
+                ws_note_lock_close();
+            } elseif ($action === 'ws_note_lock_change') {
+                $code = is_string($request['code'] ?? null) ? $request['code'] : '';
+                $result = ws_note_lock_change($viewer, ($code !== '') ? 'code' : 'pin', ($code !== '') ? $code : (is_string($request['current'] ?? null) ? $request['current'] : ''),
+                    $pin, is_string($request['pin2'] ?? null) ? $request['pin2'] : '');
+            } elseif ($action === 'ws_note_lock_time') {
+                $result = ws_note_lock_set_time($viewer, $pin, $request['minutes'] ?? '');
+            } elseif ($action === 'ws_note_lock_off') {
+                $result = ws_note_lock_turn_off($viewer, $pin);
+            } elseif ($action === 'ws_note_lock_code') {
+                $result = ws_note_lock_code_send($viewer);
+            }
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']) + array(
+                    'code' => (string) $result['code'],
+                    'wait' => (int) $result['wait'],
+                    'lock' => ws_note_lock_state($viewer),
+                );
+            }
+
+            return ws_action_ok(array('lock' => ws_note_lock_state($viewer)) + (isset($result['email']) ? array('email' => $result['email']) : array()));
 
         // Shared note groups (includes/workspace/note_group_shares.php):
         // who has a group, sharing it with people or in a channel, taking a
