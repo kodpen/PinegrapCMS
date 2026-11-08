@@ -10,7 +10,7 @@ description: Panel transitions (pg_preloader_markup()): arrival curtain after 12
 ## What does arrival show?
 - The light transitions are an owner decision (#6080, `workflow/decisions-made-product-21.md`). The curtain (page background + thin top bar) is transparent for its first 120 ms and fades in over 100 ms; `hide()` on DOM ready pins the reached opacity and fades out in 100 ms. A screen ready within 120 ms shows nothing.
 - A screen still building after DOM ready (Visual Editor, `designer_screen.php`) sets `window.pgPreloaderHold = true` and calls `window.pgPreloaderDone()` when painted; the script marks that curtain `is-hold`, and **only a held curtain draws the mark** (logo, or the dots alone with `PRIVATE_LABEL`), 300 ms late. Everyday transitions never show the logo.
-- A list screen (`table.chart`, hidden until DataTables shows it) is held without `is-hold`: on DOM ready the curtain stays when `table.chart` and `jQuery.fn.DataTable` exist; `pgListCurtainDone()` (`backend.src.js`) lifts it after `fnInitComplete`, on `error.dt` or a throw. Fixed #6073 (lifted 0.7-1.7 s early).
+- No list screen holds the curtain any more: the hold for a hidden `table.chart` until DataTables drew it (#6073) went with DataTables (#8253); the driver prints its first rows with the page.
 - Ways out: DOM ready, `pgPreloaderDone()`, the 9 s timer (stored in `timer`, cleared by the first `hide()`; it ran unstored before and cut exit curtains short, #6056), and the 10 s CSS failsafe animation in case the script never ran (`hide()` removes it).
 - Reduced motion keeps every delay (a delay is not motion) and drops fades and loops (#6057).
 

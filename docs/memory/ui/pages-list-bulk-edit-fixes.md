@@ -16,7 +16,6 @@ description: Pages list and Mass Edit fixes (#5288-#5293): a deleted page in Del
 
 ## What do the Pages list's column names and row labels say?
 - The device toggle in the style column heading is an `<a>` with `aria-label`, its ligature in an `aria-hidden` `material-icons` span.
-- The DataTables Column Visibility `columnText` (`backend.src.js`) names a column by its heading's text without icons, `aria-hidden` parts, links and buttons (the old text if nothing is left), so the list no longer reads "Desktop Page Stylephone_iphone".
 - Turkish "Select {var:1}" is `{var:1} seç` without `|c`: a page name is an address and is not capitalised (#5293).
 
 Tests: `tests/seo_pages_summary_test.php` (`counts_stale_scores`). The screens were not run in a browser.

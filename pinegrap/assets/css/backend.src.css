@@ -792,7 +792,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 
   --bs-body-bg: rgb(var(--pg-body-bg-rgb));
   --bs-card-bg: var(--pg-card-bg);
-  --dt-row-selected-text: unset;
 
   /* Ink printed on every filled accent. The pastel fills below sit between
      0.30 and 0.70 relative luminance, where white text tops out near 2.9:1;
@@ -938,7 +937,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-scrollbar-thumb: #939393;
 
   --pg-body-bg-rgb: 255, 255, 255;
-  --dt-row-selected: 0 102 255 / 24%;
   --pg-navbar-bg-rgb: 248, 248, 248;
   --clock-fallback-color: #0891b2;
   --clock-gradient: linear-gradient(100deg, #0891b2 0%, #6366f1 50%, #db2777 100%);
@@ -1004,7 +1002,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-scrollbar-thumb: #5e5e5e;
 
   --pg-body-bg-rgb: 16, 17, 20;
-  --dt-row-selected: 41 62 141 / 26%;
   --pg-navbar-bg-rgb: 14, 14, 14;
   --clock-fallback-color: #22d3ee;
   --clock-gradient: linear-gradient(100deg, #22d3ee 0%, #818cf8 50%, #f472b6 100%);
@@ -2290,9 +2287,6 @@ tr.uploaded td {
   min-width: 0;
 }
 
-.dt-container {
-  --bs-gutter-x: 0;
-}
 body:not(.toolbar) .software-content {
   padding: 0rem;
 }
@@ -4372,12 +4366,7 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   padding: 1rem;
 }
 
-table.chart tr th {
-  white-space: nowrap;
-  padding-right: 1rem;
-}
-a.link-top-row,
-table.chart thead th {
+a.link-top-row {
   color: var(--pg-fg-2);
 }
 
@@ -4943,8 +4932,8 @@ nav.buttons.navigation .btn .bi {
 }
 
 /* Nothing ticked means nothing to do, so the row actions are absent rather than
-   greyed. chart_checkbox_state_change() toggles the .disabled class on them as
-   the select-all box changes, so this follows the selection for free. A
+   greyed. The screen's select-all code toggles the .disabled class on them as
+   the selection changes, so this follows the selection for free. A
    permanent row of dead buttons under every list promises an action the page
    cannot perform, and greyed over table rows they were unreadable besides.
    Scoped to .enable-on-selected: a Save button that is disabled for some other
@@ -5140,11 +5129,6 @@ body.pg-code-field-open {
   margin-top: 0.25rem;
 }
 
-table.chart .text-truncate.overflow-hidden * {
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-
 /* A long name in a list cell: an inline-block span with .text-truncate,
    so the width holds in an auto-layout table, where max-width on the cell
    itself is ignored. The full text goes in the cell's title. */
@@ -5157,56 +5141,6 @@ table.chart .text-truncate.overflow-hidden * {
    width, so the table's auto layout cannot squeeze it to a sliver. */
 .pg-cell-wrap {
   min-width: 8rem;
-}
-
-table.dataTable.dt-checkboxes-select tbody tr,
-table.dataTable thead th.dt-checkboxes-select-all,
-table.dataTable tbody td.dt-checkboxes-cell {
-  cursor: pointer;
-}
-
-table.dataTable thead th.dt-checkboxes-select-all,
-table.dataTable tbody td.dt-checkboxes-cell {
-  text-align: center;
-}
-
-div.dataTables_wrapper span.select-info,
-div.dataTables_wrapper span.select-item {
-  margin-left: 0.5em;
-}
-
-@media screen and (max-width: 640px) {
-  div.dataTables_wrapper span.select-info,
-  div.dataTables_wrapper span.select-item {
-    margin-left: 0;
-    display: block;
-  }
-}
-
-table.dataTable > tbody > tr:not(.selected) .fakeselectallcheckbox:before {
-  content: "\f28a";
-}
-table.dataTable > tbody > tr.selected .fakeselectallcheckbox:before {
-  content: "\f26b";
-}
-table.dataTable > tbody > tr:not(.selected) .fakeselectallcheckbox {
-  visibility: hidden;
-}
-table.dataTable > tbody > tr:hover .fakeselectallcheckbox {
-  visibility: visible;
-}
-table.table.dataTable.table-striped
-  > tbody
-  > tr:nth-of-type(2n + 1):not(.selected)
-  > .sorting_1 {
-  box-shadow: inset 0 0 0 9999px rgba(var(--dt-row-stripe), 0.07);
-}
-table.table.dataTable > :not(caption) > *:not(.selected) > .sorting_1 {
-  box-shadow: inset 0 0 0 9999px rgba(var(--dt-row-stripe), 0.02);
-}
-table.table.dataTable > tbody > tr.selected > * {
-  color: rgb(255, 255, 255);
-  color: rgb(var(--dt-row-selected-text));
 }
 
 .object-fit,
@@ -5247,11 +5181,7 @@ table.table.dataTable > tbody > tr.selected > * {
   }
 }
 
-.table.dataTable {
-  margin-bottom: 0px !important;
-}
-.table,
-.dataTables_wrapper + .navigation.buttons {
+.table {
   margin-top: 3rem;
   margin-bottom: 2rem;
 }
@@ -5259,21 +5189,6 @@ table.table.dataTable > tbody > tr.selected > * {
 .card .table.pg-find-results {
   margin-top: 0;
   margin-bottom: 0 !important;
-}
-a.dt-button {
-  position: relative;
-}
-.dt-button-collection.fixed.two-column .menu {
-  padding: 1rem;
-  height: 300px;
-  overflow-x: auto;
-}
-
-.dt-button-collection.fixed.two-column
-  .menu
-  .buttons-columnVisibility
-  span {
-  padding-right: 1rem;
 }
 .btn-data-control {
   padding: 0 4px;
@@ -5288,7 +5203,6 @@ a.dt-button {
 .software_warning,
 .dialog,
 .cke_chrome,
-:root[data-bs-theme="dark"] div.menu.dt-button-collection.fixed,
 .dropzone_previews,
 .advanced-filter-bar,
 .input-group-sm > .btn,
@@ -5494,24 +5408,6 @@ table.monthly_calendar .calendar-event .calendar_event_exception a {
   margin-bottom: 0;
 }
 
-table.chart th,
-table.chart td {
-  white-space: nowrap;
-}
-
-table.dataTable td.dataTables_empty,
-table.dataTable th.dataTables_empty {
-  text-align: left;
-}
-
-.dataTables_wrapper .dtable-button-container,
-.dataTables_wrapper .dataTables_length,
-.dataTables_wrapper .dataTables_info,
-.dataTables_wrapper .dataTables_paginate,
-.dataTables_wrapper .dataTables_filter {
-  padding: 1rem;
-}
-
 .advanced_filters .header {
   height: 47px;
 }
@@ -5577,12 +5473,6 @@ html[data-bs-theme="dark"] .cke_inner {
 
 div#software_image_picker_container {
   min-height: 40px;
-}
-
-.dt-paging ul.pagination {
-  justify-content: center;
-  margin-top: 1rem !important;
-  margin-bottom: 1rem !important;
 }
 
 .advanced-visuals:not(.toolbar) .menu.backdrop,
@@ -8938,9 +8828,7 @@ button.no-popover:focus-visible {
    a #fragment, the skip link's #content - was parked at y=0 behind the bar.
    Scroll padding on the root scroller moves that line below the bar.
 
-   Once a list is scrolled, DataTables FixedHeader floats the heading row
-   just under the bar (.dtfh-floatingparent-head), so the line moves below
-   the heading too. At the bottom, the sticky save bar and the marketplace
+   At the bottom, the sticky save bar and the marketplace
    bulk bar cover the control Tab brings in, so the bottom line clears them;
    on a phone the save bar wraps two actions per row and, beside the chat
    bubble, sits --pg-chat-clearance higher (that token lives on the bar, so
@@ -8948,9 +8836,6 @@ button.no-popover:focus-visible {
    inside a :has() is invalid and drops the whole rule. */
 html {
   scroll-padding-top: calc(var(--pg-navbar-h) + 0.5rem);
-}
-html:has(.dtfh-floatingparent-head) {
-  scroll-padding-top: calc(var(--pg-navbar-h) + 3.25rem);
 }
 html:has(nav.buttons.navigation.position-sticky),
 html:has(.position-sticky > nav.buttons.navigation) {
@@ -22757,22 +22642,6 @@ select.pg-list-table-field option.private {
    beats @layer custom, and 1020 falls below the sidebar and the menu backdrop. */
 .software-navbar.fixed-top {
   z-index: 1030;
-}
-
-/* Unlayered: the DataTables stylesheet gives the column chooser a fixed
-   400px width centred with a -200px margin, which @layer custom cannot
-   override. On a phone that runs off both edges, so it takes the screen
-   width less a gutter, and one column. */
-@media (max-width: 575.98px) {
-  div.dt-button-collection.fixed.two-column {
-    width: calc(100vw - 2rem);
-    left: 1rem;
-    margin-left: 0;
-  }
-
-  div.dt-button-collection.fixed.two-column > :last-child {
-    column-count: 1;
-  }
 }
 
 /* Bootstrap 6 bridge: its theme variables read the panel's palette, its

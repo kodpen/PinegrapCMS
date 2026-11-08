@@ -473,7 +473,7 @@ if ($erp_readonly) {
 $status_labels = erp_invoice_status_labels();
 
 // The lines are shown in the order they were written on the document, so this
-// is deliberately not a DataTable: a line number is part of what the document
+// is deliberately not a sortable list: a line number is part of what the document
 // says, and sorting it away would show something the customer never received.
 $output_lines = '';
 
