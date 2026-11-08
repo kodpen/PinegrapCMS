@@ -22,7 +22,7 @@ description: Plan: the Art Gallery design template (pinegrap-gallery): artists, 
 
 - 7 (done, #8092): `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: editions, small works, catalogues); test.
 
-- 8: `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`, filtered by `?topic=`), blog post, help search, error; test.
+- 8 (done, #8110): `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`, filtered by `?topic=`), blog post, help search, error; test.
 
 - 9: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
