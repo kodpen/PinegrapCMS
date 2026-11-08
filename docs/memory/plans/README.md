@@ -16,6 +16,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
+- agent-channel-flag.md: Plan (owner 2026-11-08): a channel becomes an agent channel with /agent-channel, a column of its own; its decisions stay apart from the other channels' decisions; one step AC
+- agent-channel-questions.md: Plan (owner 2026-11-08): agents ask people with a checklist in an agent channel, read the ticks over the API, wake on a tick or a person's message; one step AQ
 - agent-channel-steps-2.md: Steps A5-A9 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, further doors (Claude Code plugin, per-person sessions, chat box), the canvas as an agent tool
 - agent-channel-steps.md: Steps A0-A4 of plans/agent-channel.md: the door experiment, routine hardening, parent_id, the agent registry with doors and wake rules, the request queue with push and scheduled wakes
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
@@ -51,6 +53,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - flows-canvas-in-channel.md: Plan (owner 2026-11-08): the whole Flows canvas in a full-screen layer over a channel, mounted in the page, so a flow is designed without leaving the chat; steps L1-L5
 - flows-next-steps.md: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow boxes, and site events flows can start on; claim as [plan:flows-next] <step>
 - flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, ready templates; steps in flows-next-steps (templates done)
+- github-channel-connection.md: Plan (owner 2026-11-08): connect GitHub with OAuth from Settings › Connections, the site sets its own webhook on chosen repositories and writes CI, pull request and label lines into a channel
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
 - image-editor-video-visuals.md: Screens of plans/image-editor-video.md (V0), 35 to 42 in plans/image-editor/: what each shows and which step builds it
 - image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound, layers over video, export with sound; held by the editor's holder
