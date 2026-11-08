@@ -408,6 +408,7 @@
     "@{var:1} could not be reached: {var:2}": "@{var:1} sunucusuna ulaşılamadı: {var:2}",
     "@{var:1} did not answer in time.": "@{var:1} zamanında yanıt vermedi.",
     "@{var:1} did not finish the work within a day.": "@{var:1} işi bir gün içinde bitirmedi.",
+    "@{var:1} edited your canvas in {var:2}": "@{var:1}, {var:2} kanalındaki tuvalinizi düzenledi",
     "@{var:1} has no account connected for {var:2}. {var:3}": "@{var:1} için {var:2} adına bağlı bir hesap yok. {var:3}",
     "@{var:1} has no account for you yet: connect your own account first.": "@{var:1} üzerinde henüz sizin için bir hesap yok: önce kendi hesabınızı bağlayın.",
     "@{var:1} has no tool turned on yet. An administrator turns them on in Workspace Settings › MCP servers.": "@{var:1} için henüz açık araç yok. Araçları bir yönetici Çalışma Alanı Ayarları › MCP sunucuları altında açar.",

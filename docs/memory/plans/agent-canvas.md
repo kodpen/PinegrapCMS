@@ -1,6 +1,6 @@
 ---
 name: agent-canvas
-description: Plan (owner 2026-11-08): agents create, read and edit Workspace canvases by writing SVG, in any channel with an agent; the channel's browser draws the picture; C1 done (#8236), C2-C4 left
+description: Plan (owner 2026-11-08): agents create, read and edit Workspace canvases by writing SVG in any channel with an agent; the browser draws the picture; C1 done, C3a in work, C2, C3b, C4 left
 ---
 
 ## What is it for?
@@ -21,7 +21,8 @@ description: Plan (owner 2026-11-08): agents create, read and edit Workspace can
 ## Steps (claim as `[plan:agent-canvas] C<n> — <topic>`)
 - C1 (M) Create and read: done in #8236 (`workspace/agent-canvas-svg.md`).
 - C2 (M) The channel draws a pending canvas and posts its picture. After C1; a browser run (the renderer needs one).
-- C3 (M) Edit: `PATCH /workspace/messages/{id}/canvas` with the operations, the mark, Undo, the notification. After C1, beside C2.
+- C3a (M) Edit in the API: `ws_canvas_edit_apply()`, the edit route, the agent version, the author's inbox line: done in #PR (`workspace/agent-canvas-edit.md`).
+- C3b (S) The mark "Edited by @handle" on the message with Undo (the version before as a new one, for whoever may edit the message), in `workspace.js` and its panel action. After C3a; `workspace.js` was held by open PRs when C3a was cut.
 - C4 (S) The built-in assistant and model assistants: the same as `ws_ai_step()` tools. After A4.
 
 ## Open questions
