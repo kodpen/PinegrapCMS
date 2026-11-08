@@ -209,13 +209,14 @@ function test_launch_assembly_models_kept()
 	}
 }
 
-// Home and features are built on the Product Launch blocks: every pg- class
-// they write is a block rule the template's User Styles ship, as a drop of
-// the block writes it; their interactions are kept as written by
+// Home, features, camera, specs and compare are built on the Product Launch
+// blocks: every pg- class they write is a block rule the template's User
+// Styles ship, as a drop of the block writes it; their interactions are kept as written by
 // pg_fx_normalize(); the motion is where the blocks put it (the hero on
 // load, the sticky picture, the parallax camera band, the panels and cards
 // on view); the colour picker has a labelled radio per finish, one checked;
-// and the press quotes and story bands are gone from both pages.
+// the press quotes and the dropped plx- look are gone; camera, specs and
+// compare draw the spec comparison.
 function test_launch_assembly_home_and_features_on_launch_blocks()
 {
 	$tpl = _test_lx_asm_tpl();
@@ -223,7 +224,7 @@ function test_launch_assembly_home_and_features_on_launch_blocks()
 	$css = $styles[0]['content'];
 	$source = _pg_designer_block_css_source();
 	foreach ($tpl['pages'] as $p) {
-		if ($p['key'] !== 'home' && $p['key'] !== 'features') continue;
+		if (!in_array($p['key'], array('home', 'features', 'camera', 'specs', 'compare'), true)) continue;
 		$nodes = array();
 		_test_lx_asm_tpl_nodes($p['tree'], $nodes);
 		$effects = array();
@@ -260,16 +261,29 @@ function test_launch_assembly_home_and_features_on_launch_blocks()
 			}
 			pg_assert_true($rule !== '' && strpos($css, $rule) !== false, $p['key'] . ": the rule of $class ships with the template");
 		}
-		pg_assert_same(4, count($radios), $p['key'] . ': a radio per finish');
-		pg_assert_same(1, $checked, $p['key'] . ': one finish is checked');
-		pg_assert_same(array(), array_values(array_diff($radios, $labels)), $p['key'] . ': every finish has its label');
 		$json = json_encode($p['tree']);
 		pg_assert_false(strpos($json, 'blockquote') !== false, $p['key'] . ': no press quotes');
+		pg_assert_false((bool)preg_match('/plx-(hero|specs)/', $json), $p['key'] . ': no dropped plx- look');
+		if ($p['key'] === 'home' || $p['key'] === 'features') {
+			pg_assert_same(4, count($radios), $p['key'] . ': a radio per finish');
+			pg_assert_same(1, $checked, $p['key'] . ': one finish is checked');
+			pg_assert_same(array(), array_values(array_diff($radios, $labels)), $p['key'] . ': every finish has its label');
+		}
 		if ($p['key'] === 'home') {
 			foreach (array('slide-up/load', 'scale/load', 'parallax', 'slide-up/view') as $e) pg_assert_true(in_array($e, $effects, true), "home moves: $e");
-		} else {
+		} elseif ($p['key'] === 'features') {
 			pg_assert_true(in_array('sticky', $effects, true), 'features: the sticky picture');
 			pg_assert_same(6, count(array_keys($effects, 'slide-up/view', true)), 'features: a panel per highlight comes in on view');
+		} elseif ($p['key'] === 'camera') {
+			foreach (array('parallax', 'sticky') as $e) pg_assert_true(in_array($e, $effects, true), "camera moves: $e");
+			pg_assert_same(5, count(array_keys($effects, 'slide-up/view', true)), 'camera: four panels and the sample photos come in on view');
+		} elseif ($p['key'] === 'compare') {
+			pg_assert_same(array('slide-up/view'), $effects, 'compare: the model heads come in on view');
+		} else {
+			pg_assert_same(array(), $effects, 'specs: a still page');
+		}
+		if ($p['key'] !== 'home' && $p['key'] !== 'features') {
+			pg_assert_contains('pg-launch-specs', $json, $p['key'] . ': the spec comparison');
 		}
 	}
 }

@@ -154,7 +154,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials
 - design-template-hotel.md: Hotel template (pinegrap-hotel): rooms as a collection with rates, booking requests and event enquiries followed from the account, gift vouchers in the shop, pht- look, tests.
 - design-template-launch-home.md: Launch template's home and features pages on the Product Launch blocks: builders, sections, motion, the colour picker's swatch classes, what left
-- design-template-launch.md: Phone Launch Site template (pinegrap-launch): the Orbit in three models, specs and compare from one data file, a buy page that stands without the shop, trade-in and support requests, plx- look, tests.
+- design-template-launch-pages.md: Launch template's camera, specs and compare pages on the Product Launch blocks: the spec comparison from $spec_groups, the differences-only compare, motion, what was dropped
+- design-template-launch.md: Phone Launch Site template (pinegrap-launch, 2.0.0): the Orbit in three models from one data file, pages on the launch- blocks, a buy page without the shop, requests, tests
 - design-template-law.md: Law Firm template (pinegrap-law): practice areas, lawyers, results, fees, a consultation request with a conflict check followed from the account, careers, no shop, plw- look, tests.
 - design-template-library.md: Public Library template (pinegrap-library): branches as data, catalogue and events as collections, card, reservation, place and room requests, no shop, plb- look, tests.
 - design-template-magazine-a11y.md: Magazine accessibility: ink focus rings on links, buttons, fields and the shelf, headings that never repeat, e-mail frames light in the dark theme, the core items left open.

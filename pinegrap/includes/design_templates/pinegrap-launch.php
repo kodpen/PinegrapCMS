@@ -151,16 +151,9 @@ $launch_css = implode("\n", array(
     // of one width, so the prices of a list line up.
     '.plx-figure{font-family:var(--pg-font-heading);letter-spacing:-.03em;font-variant-numeric:tabular-nums}',
     '.plx-price{font-variant-numeric:tabular-nums}',
-    // The dark stage of the camera page: a soft light of the palette's
-    // colour from above (the home page's is the launch hero's glow).
-    '.plx-hero{background-color:var(--bs-body-bg)}',
-    '@supports (background-color:color-mix(in srgb,red 8%,blue)){.plx-hero{background-image:radial-gradient(ellipse 80% 60% at 50% 0%,color-mix(in srgb,var(--bs-primary) 28%,var(--bs-body-bg)) 0%,var(--bs-body-bg) 70%)}}',
     // The launch band: a glow of the palette's two colours from its corners.
     '.plx-glow{background-color:var(--bs-body-bg)}',
     '@supports (background-color:color-mix(in srgb,red 8%,blue)){.plx-glow{background-image:radial-gradient(circle at 0% 100%,color-mix(in srgb,var(--bs-primary) 24%,var(--bs-body-bg)) 0%,transparent 45%),radial-gradient(circle at 100% 0%,color-mix(in srgb,var(--bs-secondary) 18%,var(--bs-body-bg)) 0%,transparent 45%)}}',
-    // The specification tables: the model columns of one width.
-    '.plx-specs th{width:30%}',
-    '.plx-specs td{font-variant-numeric:tabular-nums}',
     // The colour chips: the phone's finishes, the same in both themes.
     '.plx-swatch{display:inline-block;width:2.25rem;height:2.25rem}',
     '.plx-swatch-graphite{background-color:#3f4247}',
@@ -232,10 +225,10 @@ return array(
     ),
 
     // The template's own look: the rules of the Product Launch blocks its
-    // home and features pages place, and its plx- rules, in one User Styles
+    // public pages place, and its plx- rules, in one User Styles
     // entry; and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array('launch-hero', 'launch-showcase', 'launch-camera', 'launch-colours', 'launch-box'), $launch_css),
+        'css'   => pg_design_template_user_styles(array('launch-hero', 'launch-showcase', 'launch-camera', 'launch-colours', 'launch-specs', 'launch-box'), $launch_css),
         'fonts' => json_encode($launch_fonts),
     ),
 );
