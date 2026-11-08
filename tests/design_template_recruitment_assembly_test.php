@@ -50,9 +50,9 @@ function test_recruitment_assembly_template_offered()
 	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-person-workspace', $tpl['icon']);
-	pg_assert_same(135, $tpl['order']);
+	pg_assert_same(137, $tpl['order']);
 	foreach ($all as $id => $other) {
-		if ($id !== 'pinegrap-recruitment' && isset($other['order'])) pg_assert_true($other['order'] !== 135, "order 135 is not also $id's");
+		if ($id !== 'pinegrap-recruitment' && isset($other['order'])) pg_assert_true($other['order'] !== 137, "order 137 is not also $id's");
 	}
 	pg_assert_true(!isset($tpl['requires']), 'the template opens without the shop');
 	pg_assert_true(empty($tpl['catalog']), 'no catalog: the agency sells nothing online');

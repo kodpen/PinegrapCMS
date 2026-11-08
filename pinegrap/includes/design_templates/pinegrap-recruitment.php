@@ -140,7 +140,7 @@ return array(
     'name'        => lang('Recruitment Agency'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 135,
+    'order'       => 137,
     'icon'        => 'bi-person-workspace',
     'description' => lang('A recruitment agency: jobs by sector, city and contract type with a page for each job, applications and CVs, staff requests from employers, both followed from the account, the consultants, Career Advice, job alerts, an inbox, a staff area and a help center that searches the whole site.'),
 

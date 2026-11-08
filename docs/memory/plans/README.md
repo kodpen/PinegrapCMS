@@ -35,8 +35,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-planetarium.md: Plan: the Planetarium and Observatory design template (pinegrap-planetarium): dome shows by date, telescope nights, school visits, tickets and memberships, astronomy news; small steps
 - design-template-podcast-design.md: Design of plans/design-template-podcast.md: what the Podcast template reuses for podcasts, episodes, sponsorship and supporters, what it does not build, its look and Turkish words
 - design-template-podcast.md: Plan: the Podcast Network design template (pinegrap-podcast): podcasts and episodes as collections, hosts, sponsorship enquiries, supporters' membership with bonus episodes; ~1,000-line steps
-- design-template-recruitment-design.md: Design of plans/design-template-recruitment.md: which shipped features the Recruitment template reuses for jobs, applications and employer enquiries, what it does not build, its look and Turkish words
-- design-template-recruitment.md: Plan: the Recruitment Agency design template (pinegrap-recruitment): jobs by sector and city, applications, employer enquiries, career advice; ~1,000-line steps
 - design-template-skiresort-design.md: Design of plans/design-template-skiresort.md: the shipped features the Ski Resort template reuses, what it does not build, its look and Turkish words
 - design-template-skiresort.md: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, lifts, conditions, passes and rental, lesson requests, lodging enquiries, dated events; small steps
 - design-template-zoo-design.md: Design of plans/design-template-zoo.md: the shipped features the Zoo template reuses, what it does not build, its look and Turkish words
