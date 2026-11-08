@@ -138,3 +138,18 @@ function test_dashboard_v2_edit_panel_look()
 	pg_assert_contains('S.status_hidden', $edit, 'the hidden status says so');
 	pg_assert_contains('"pg-dash-btn pg-dash-btn-main", S.save', $edit, 'Save is the drawn main button');
 }
+
+// The new dashboard draws the drawings' backdrops on its own root, so the
+// old dashboard's washes stay as they are; lights off drops the backdrop with
+// the shadows, and compact narrows the grid but not the top row.
+function test_dashboard_v2_backdrops_and_lights()
+{
+	$css = pg_test_dashboard_v2_look_css();
+
+	foreach (array('mesh', 'dusk', 'ember') as $name) {
+		pg_assert_contains('html[data-bs-theme="dark"] #content.pg-dash[data-panel-backdrop="' . $name . '"]', $css, $name . ' has a dark drawing');
+	}
+	pg_assert_contains('linear-gradient(180deg, #1b1440 0%, #0d1024 38%, #070b12 100%)', $css, 'dusk is the drawn vertical wash');
+	pg_assert_true(preg_match('/#content\.pg-dash\.pg-dash-calm\[data-panel-backdrop\] \{[^}]*background-image: none;/', $css) === 1, 'lights off drops the backdrop');
+	pg_assert_false((bool) preg_match('/\.pg-dash-compact \.pg-dash-top\b/', $css), 'compact keeps the top row\'s gaps');
+}
