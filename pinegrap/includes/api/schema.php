@@ -4413,6 +4413,22 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'comments.answer',
+			'method'  => 'POST',
+			'path'    => '/comments/{id}/answer',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_answer',
+			'dry_run' => true,
+			'returns' => 'CommentAnswer',
+			'summary' => 'Answer a product question',
+			'description' => 'Writes, changes or removes the store\'s answer to a product question (a comment of kind question), as the Answer box of the comment screen does. The answer is a published comment of kind answer under the question, shown with the name of the key\'s owner. An empty text removes the answer, so the question waits for one again. When an answer is first written, the asker is mailed if they signed in and left an address; the dry run says whether (detail.email). result: added, changed, removed or unchanged (nothing written); answer is the answer as GET /comments/{id} gives it, null without one. 409 not_a_question for any other comment; 503 service_unavailable before the database update that keeps product questions.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The question.'),
+				array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'required' => true, 'description' => 'The answer, plain text, trimmed. An empty string removes the answer.')
+			)
+		),
+
 		/* ----- Experiments ------------------------------------------------- */
 
 		array(

@@ -11,7 +11,7 @@ description: How far the external API covers what the panel manages (gap list #5
 - On a sandbox with only the installer's sample records (ERP, Workspace on), 245 GET routes and 353 `dry_run` writes ran: no 500, no PHP output in a body. Not called (no `dry_run`): `POST /auth/login`, `/auth/pair`, `/auth/refresh`, `/auth/logout`, `/push/test`, `/experiments/{id}/start`, `/pause`, `/end`. Every `pg_announce()` name is in the event catalogue.
 - Gaps (plan `api-forms-for-agents.md`), screen mirrored -> what to add:
   - G1 `view_stock_moves.php` (`includes/fn/stock_moves.php`) -> `GET /inventory/moves` (product, location, reason, period; `products:read`): every change at a location, all `pg_stock_reasons()`. `/erp/stock/moves` lists only ERP document lines.
-  - G2 `edit_comment.php` Answer box -> `POST /comments/{id}/answer` through `pg_product_question_answer_save()` (`comments:write`).
+  - G2 `edit_comment.php` Answer box -> `POST /comments/{id}/answer` through `pg_product_question_answer_save()` (`comments:write`). Done: `api-product-question-answer.md`.
   - G3 `edit_contact_group.php` -> `by_rule` on ContactGroup, `POST /contact-groups/{id}/refresh` (the audience_refresh action).
   - G4 `edit_submitted_form.php` History -> `GET /forms/{id}/submissions/{submission_id}/revisions` and a restore.
   - G5 `edit_contact.php` suppressed badge, `view_contacts.php` -> `email_suppressed` on Customer, `POST /customers/{id}/allow-mail` (`pg_mail_bounce_allow_contact()`).
