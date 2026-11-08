@@ -79,12 +79,13 @@ $figures_band = function () use ($el, $container, $figure_row) {
     ));
 };
 
-// A section of feature cards under a section header, as a search section.
-$feature_section = function ($id, $name, $header, $items, $lg, $topics, $class = 'py-5') use ($el, $container, $row, $feature_card, $searchable) {
+// A section of feature cards under a section header, as a search section;
+// with $moving the cards rise in one after another on view.
+$feature_section = function ($id, $name, $header, $items, $lg, $topics, $class = 'py-5', $moving = false) use ($el, $container, $row, $feature_card, $searchable, $rise) {
     $cols = array();
     foreach ($items as $item) $cols[] = $feature_card($item, '6', $lg);
     $children = $header ? array($header) : array();
-    $children[] = $row($cols, '4');
+    $children[] = $moving ? $rise($row($cols, '4')) : $row($cols, '4');
     return $el('section', $class, $name, array($container($children)), $searchable($id, $topics));
 };
 
@@ -116,35 +117,13 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('A family-run campsite by a lake and a forest: tent and touring pitches, glamping tents and wooden cabins.'),
     'tree'             => $page(array(
-        // The way in: the park in a sentence, the two ways on and a
-        // picture of the lake.
-        $el('section', 'pcp-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Campsite and holiday park'), 'pcp-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Wake up by the lake'), 'pcp-display display-3 mb-3'),
-                        $para($park['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Request a Stay'), '{{page:book}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                            $link(lang('Places to Stay'), '{{page:stays}}', 'btn btn-outline-secondary btn-lg rounded-pill px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('Tents in a meadow by a lake at sunset, with a forest behind'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
+        // The way in: the park over a wide picture of the lake, the stay
+        // request and the prices, and a way into each kind of stay.
+        $camp_hero(lang('Campsite and holiday park'), lang('Wake up by the lake'), $park['tagline'] . '.',
+            $photo('hero', 1800, 770), lang('Tents in a meadow by a lake at sunset, with a forest behind')),
 
-        $figures_band(),
-
-        $el('section', 'py-5', lang('Places to Stay'), array(
-            $container(array(
-                $section_header(lang('Pitch, park or sleep under wood'), lang('Places to stay'), lang('All Places to Stay'), '{{page:stays}}'),
-                $row($kind_cols, '4'),
-            )),
-        ), $searchable('cp-home-stays', lang('tent, caravan, motorhome, campervan, glamping, cabin, lodge, bungalow'))),
+        // The kinds of stay from the wildest to the cosiest.
+        $comfort_scale('cp-home-stays', 'py-5'),
 
         // The featured pitches and cabins, read from the collection.
         $el('section', 'py-5 bg-body-tertiary', lang('Pitches and Cabins'), array(
@@ -156,7 +135,7 @@ $public_pages[] = array(
 
         $feature_section('cp-home-why', lang('Why Guests Come Back'),
             $section_header(lang('Our promise'), lang('Why guests come back'), lang('About Us'), '{{page:about}}'),
-            $why_us, '3', lang('quiet, spacious, lake, family, nature')),
+            $why_us, '3', lang('quiet, spacious, lake, family, nature'), 'py-5', true),
 
         $story_band('cp-home-activities', lang('Things to do'), lang('Days on the water, evenings by the fire'),
             array(lang('Canoes at the jetty, trails from the gate, bikes for all ages and a campfire every weekend.'), $activities[4]['text']),
@@ -170,7 +149,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
                 $section_header(lang('Our guests'), lang('What guests say')),
-                $row($testimonial_cols, '4'),
+                $rise($row($testimonial_cols, '4'), 120),
                 $widget('google_reviews'),
             )),
         )),
@@ -196,10 +175,13 @@ $public_pages[] = array(
         $page_header(lang('Places to Stay'), lang('Bring your own tent or caravan, or let us make the bed for you.')),
         $el('section', 'py-5', lang('Places to Stay'), array(
             $container(array(
-                $row($kind_cols, '4'),
+                $rise($row($kind_cols, '4')),
             )),
         ), $searchable('cp-stays', lang('tent, caravan, motorhome, campervan, glamping, cabin, lodge, bungalow'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Prices'), array(
+        // What each kind asks of a guest and what it has ready, on the
+        // scale from the wildest to the cosiest.
+        $comfort_scale('cp-stays-comfort'),
+        $el('section', 'py-5', lang('Prices'), array(
             $container(array(
                 $section_header(lang('A night\'s price'), lang('Prices by season'), lang('All Prices'), '{{page:prices}}'),
                 $season_table(),
@@ -227,7 +209,7 @@ foreach ($kinds as $key => $k) {
         'folder'           => 'public',
         'title'            => $k['title'],
         'meta_description' => $k['summary'],
-        'tree'             => $page(array(
+        'tree'             => $page(array_values(array_filter(array(
             $page_header($k['title'], $k['summary'], array($kind_facts($key, 'list-unstyled d-flex flex-wrap gap-3 small text-body-secondary mt-3 mb-0'))),
             $el('section', 'py-5', $k['title'], array(
                 $container(array(
@@ -246,6 +228,9 @@ foreach ($kinds as $key => $k) {
                     ), '4', '', 'g-lg-5 align-items-center'),
                 )),
             ), $searchable('cp-stay-' . $key)),
+            // A tent pitch drawn from above, its points numbered (the other
+            // kinds leave the null out).
+            $key === 'tent' ? $pitch_drawing('cp-stay-tent-pitch', array(), 'py-5 border-top') : null,
             $el('section', 'py-5 bg-body-tertiary', lang('Prices'), array(
                 $container(array(
                     $section_header(lang('A night\'s price'), lang('Prices by season'), lang('All Prices'), '{{page:prices}}'),
@@ -253,7 +238,7 @@ foreach ($kinds as $key => $k) {
                     $para($price_note, 'small text-body-secondary mt-3 mb-0'),
                 )),
             ), $searchable('cp-stay-' . $key . '-prices', lang('price, rate, cost, per night, season'))),
-        )),
+        )))),
     );
 }
 

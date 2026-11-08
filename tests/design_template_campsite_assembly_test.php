@@ -229,3 +229,60 @@ function test_campsite_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_units"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places the units and the News');
 }
+
+// Home, the places to stay and the tent pitches page place the Campsite
+// blocks: every pg-campsite- class's rule ships in the User Styles, the
+// interactions are kept as written and something moves on each; one h1 on
+// each; the home opens on the campsite hero with a way into every kind of
+// stay and has no figures band; the places to stay lay the kinds on the
+// comfort scale; the tent pitches page draws a pitch with its legend.
+function test_campsite_assembly_pages_on_campsite_blocks()
+{
+	$tpl = _test_cp_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'stays', 'stay_tent'), true)) $trees[$p['key']] = $p['tree'];
+	$wanted = array(
+		'home'      => array('pg-campsite-lift', 'pg-campsite-kinds', 'pg-campsite-scale', 'pg-campsite-stop'),
+		'stays'     => array('pg-campsite-scale', 'pg-campsite-stop'),
+		'stay_tent' => array('pg-campsite-plot', 'pg-campsite-area', 'pg-campsite-marker'),
+	);
+	pg_assert_same(3, count($trees), 'home, places to stay, tent pitches');
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_cp_asm_nodes($tree, $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-campsite-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach ($wanted[$key] as $class) pg_assert_contains($class, $classes, $key . ': places ' . $class);
+		pg_assert_true($effects >= 2, $key . ': something moves');
+		pg_assert_same(1, $h1, $key . ': one h1');
+		pg_assert_false(in_array('Figures', $labels, true), $key . ': no figures band');
+	}
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the hero comes in on load');
+	foreach (array('tent', 'touring', 'glamping', 'cabin') as $kind) {
+		pg_assert_contains('{{page:stay_' . $kind . '}}', $home, 'the hero leads into ' . $kind);
+	}
+	pg_assert_contains('{{page:book}}', $home, 'the hero asks for a stay');
+	pg_assert_same(4, substr_count($home, 'pg-campsite-stop '), 'four stops on the scale');
+	$tent = json_encode($trees['stay_tent'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_same(8, substr_count($tent, 'pg-campsite-marker'), 'four points on the pitch, four in its legend');
+	pg_assert_contains('"aria-hidden"', $tent, 'the drawing is hidden from screen readers');
+}
