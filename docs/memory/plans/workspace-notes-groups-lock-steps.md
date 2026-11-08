@@ -20,7 +20,7 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 
 - G6 (M) Shared groups, screen. After G2 and G5. The group's Share dialog (people, read or edit, a channel, who has it, take back), shared groups under Shared with me, the channel card of a group listing its notes, `workspace_notes.php?group=N`.
 
-- G7 (M) API and MCP. After G5. New `includes/workspace/api_note_groups.php`: list, create, change and delete groups, place a note, each with dry run through the panel's `*_check()`, MCP tools as the note routes have; `group_id` on note objects; `check_api_schema.php`. Sharing stays on the screen, as for notes.
+- G7 (M) API and MCP. Done (PR #8114); `workspace/workspace-note-groups-api.md`. New `includes/workspace/api_note_groups.php`: list, create, change and delete groups, place a note, each with dry run through the panel's `*_check()`, MCP tools as the note routes have; `group_id` on note objects; `check_api_schema.php`. Sharing stays on the screen, as for notes.
 
 ## Where does the next session start?
-- N0, G1, G2, G4 done. Free next: G3 (drag and drop, same file `assets/js/workspace_note_groups.js`; the rows come from `drawItem()` in `startNotes()`, placing goes through `ws_note_place` with `position`), G5 (store, new file). Tabs: `workspace/workspace-note-tabs.md`. Screen notes: `workspace/workspace-note-groups-screen.md`; store: `workspace/workspace-note-groups.md`.
+- N0, G1, G2, G4, G5, G7 done; G3 (#8104) and G6 (#8107) open. G3: drag and drop, same file `assets/js/workspace_note_groups.js`; the rows come from `drawItem()` in `startNotes()`, placing goes through `ws_note_place` with `position`. API of groups: `workspace/workspace-note-groups-api.md`. Tabs: `workspace/workspace-note-tabs.md`. Screen notes: `workspace/workspace-note-groups-screen.md`; store: `workspace/workspace-note-groups.md`.
