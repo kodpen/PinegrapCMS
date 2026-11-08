@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
 ## What did the audit (F1) find?
 - 245 GET routes and 353 `dry_run` writes ran on a sandbox: no 500; the 8 writes without `dry_run` were not called. None of the gaps needs a product decision; screen and route of each in `api/api-panel-coverage.md`:
   - G1 `GET /inventory/moves` (stock history). Done (#8097).
-  - G2 no route writes the staff answer to a product question.
+  - G2 no route writes the staff answer to a product question. Done (#8116): `POST /comments/{id}/answer`.
   - G3 done (PR #8098): `by_rule` and `computed_at` on ContactGroup, `POST /contact-groups/{id}/refresh`.
   - G4 no read or restore of a collection item's revisions. Done (#8111): `api/api-form-submission-revisions.md`.
   - G5 Customer has no bounce state; no Allow again. Done (#8121): `email_suppressed`, `POST /customers/{id}/allow-mail`, `api/api-customer-mail-suppression.md`.

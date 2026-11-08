@@ -1884,6 +1884,7 @@
     "The answer has to be a number.": "Cevap bir sayı olmalı.",
     "The answer names another account: the site's address in General settings is not the one the request reached.": "Yanıt başka bir hesabı gösteriyor: Genel ayarlardaki site adresi, isteğin ulaştığı adres değil.",
     "The answer of Pinegrap AI could not be read as a form. Try again with the sentence put a little differently.": "Pinegrap AI'ın yanıtı forma çevrilemedi. Cümleyi biraz farklı yazıp yeniden deneyin.",
+    "The answer to a product question on page ({var:1}) was saved through the API by the application {var:2} (key {var:3}).": "({var:1}) sayfasındaki bir ürün sorusunun yanıtı {var:2} uygulaması (anahtar {var:3}) tarafından API üzerinden kaydedildi.",
     "The answer to {var:1} is longer than the 10000 characters accepted.": "{var:1} alanının cevabı kabul edilen 10000 karakterden uzun.",
     "The answer to {var:1} is longer than the {var:2} characters accepted.": "{var:1} alanının yanıtı kabul edilen {var:2} karakterden uzun.",
     "The answer to {var:1} is not an e-mail address.": "{var:1} alanının cevabı bir e-posta adresi değil.",

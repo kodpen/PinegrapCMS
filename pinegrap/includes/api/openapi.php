@@ -655,6 +655,7 @@ function api_openapi_objects()
         'Menu'         => 'api_menu_schema',
         'MenuItem'     => 'api_menu_item_schema',
         'Comment'      => 'api_comment_schema',
+        'CommentAnswer' => 'api_comment_answer_schema',
         'ShortLink'    => 'api_short_link_schema',
         'Experiment'   => 'api_experiment_schema',
         'ExperimentVariant' => 'api_experiment_variant_schema',
