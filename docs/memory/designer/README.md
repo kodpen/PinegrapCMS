@@ -209,6 +209,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-block-style.md: Where CSS for ready-made designer blocks may live: Bootstrap classes, _SD_BLOCK_CSS in the Styles panel, never inline style or a <style> element; how a design template ships them.
 - designer-block-theme-colours.md: Which classes keep a ready-made designer block in step with the design's look and colour palette, which ones break it, and the contrast traps measured on the ready-made blocks.
 - designer-block-theme-surfaces.md: How a ready-made designer block writes a dark navbar, a hero on a photo, buttons and links on tinted or primary surfaces, and carousel slides so they pass contrast in every look, palette and mode.
+- designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the two added in general family files (hours-seasons, locations-spaces)
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 - designer-blocks-news-maintenance-creative.md: Maintenance, news and creative blocks (2026.11.0): palette groups, the family branch and helpers, maintenance blocks without site links, attribute-dropping nodes, block details, the palette test.
 - designer-blocks-skiresort.md: The Ski Resort block family (skiresort- prefix, its own palette group): the five blocks, what each draws, its pg-ski-* rules, why the pass cards are not a pricing or compare block, its test
