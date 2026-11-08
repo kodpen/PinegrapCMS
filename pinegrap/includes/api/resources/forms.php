@@ -305,6 +305,76 @@ function api_form_classic_record_page($form_page_id) {
 
 }
 
+// The folder a picture for a form's posts is filed in (POST /files with
+// form_id): the upload folder of the form's own file upload field, the one
+// that feeds the record's media (rss_field media) first, then in form order,
+// and only a folder every visitor may open - a picture inside a published
+// post must load for its readers. 0 when the form has none; the caller then
+// uses the applications' folder. Pure: $fields are form_fields rows
+// (upload_folder_id, rss_field) in form order, $public says whether a folder
+// id is public.
+function api_form_picture_folder_pick($fields, $public) {
+
+	$ordered = array();
+
+	foreach ((array)$fields as $field) {
+
+		if ((string)$field['rss_field'] === 'media') {
+
+			$ordered[] = $field;
+
+		}
+
+	}
+
+	foreach ((array)$fields as $field) {
+
+		if ((string)$field['rss_field'] !== 'media') {
+
+			$ordered[] = $field;
+
+		}
+
+	}
+
+	foreach ($ordered as $field) {
+
+		$folder_id = (int)$field['upload_folder_id'];
+
+		if (($folder_id > 0) && call_user_func($public, $folder_id)) {
+
+			return $folder_id;
+
+		}
+
+	}
+
+	return 0;
+
+}
+
+// api_form_picture_folder_pick() on a form's file upload fields, with folders
+// that still exist, outside the bin.
+function api_form_picture_folder($form_page_id) {
+
+	$binned = function_exists('pg_designer_not_binned_sql') ? pg_designer_not_binned_sql('folder.folder_id') : '';
+
+	$fields = api_rows("SELECT form_fields.upload_folder_id, form_fields.rss_field
+		FROM form_fields
+		INNER JOIN folder ON folder.folder_id = form_fields.upload_folder_id
+		WHERE form_fields.page_id = '" . (int)$form_page_id . "'
+			AND form_fields.type = 'file upload'
+			AND folder.folder_archived = '0'" . $binned . "
+		ORDER BY form_fields.sort_order ASC, form_fields.id ASC");
+
+	return api_form_picture_folder_pick($fields, function ($folder_id) {
+
+		return get_access_control_type($folder_id) === 'public';
+
+	});
+
+}
+
 // A record's address on the page that shows it, with the record's part as a
 // placeholder: {address_name} when the form names its records in their
 // addresses, {reference_code} otherwise. The same shape pg_sw_record_url()

@@ -455,3 +455,55 @@ function test_api_forms_submission_url()
 	pg_assert_contains("\$row['record_url'] = api_form_submission_url(\$row)", api_forms_test_function_source('api_form_submission_owned'), 'one submission');
 	pg_assert_contains("\$row['record_url'] = api_form_submission_url(\$row)", api_forms_test_function_source('api_form_submissions'), 'the list');
 }
+
+// A picture for a form's posts goes to the public upload folder of the form's
+// own file field, the media field first; none gives 0 (the applications'
+// folder).
+function test_api_forms_picture_folder_pick()
+{
+	$fields = array(
+		array('upload_folder_id' => 5, 'rss_field' => ''),
+		array('upload_folder_id' => 8, 'rss_field' => 'media'),
+		array('upload_folder_id' => 9, 'rss_field' => ''),
+	);
+	$all_public = function ($id) { return true; };
+
+	pg_assert_same(8, api_form_picture_folder_pick($fields, $all_public), 'the media field first');
+	pg_assert_same(5, api_form_picture_folder_pick($fields, function ($id) { return $id !== 8; }), 'a private media folder is passed over');
+	pg_assert_same(0, api_form_picture_folder_pick($fields, function ($id) { return false; }), 'no public folder');
+	pg_assert_same(0, api_form_picture_folder_pick(array(), $all_public), 'no file field');
+	pg_assert_same(9, api_form_picture_folder_pick(array(array('upload_folder_id' => 0, 'rss_field' => 'media'), array('upload_folder_id' => 9, 'rss_field' => '')), $all_public), 'a field without a folder is skipped');
+}
+
+// POST /files with form_id: the form is checked under forms:read before the
+// rehearsal stop, only images are taken, and the form's folder is used.
+function test_api_forms_picture_upload_route()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/files.php');
+
+	$create = api_forms_test_function_source('api_files_create');
+	pg_assert_contains("api_require_scope('forms:read')", $create, 'forms:read');
+	pg_assert_contains("api_form_owner_filter(\$app['owner']", $create, 'the form rule');
+	pg_assert_true(strpos($create, 'api_files_picture_types()') < strpos($create, 'api_dry_run_stop('), 'the type is checked in a rehearsal');
+	pg_assert_contains('api_form_picture_folder($form_id)', $create, 'the form\'s folder');
+	pg_assert_false(in_array('pdf', api_files_picture_types(), true), 'a PDF is no picture');
+
+	$route = null;
+	foreach (api_schema() as $row) {
+		if ($row['id'] === 'files.create') { $route = $row; }
+	}
+	$names = array();
+	foreach ($route['params'] as $param) { $names[] = $param['name']; }
+	pg_assert_true(in_array('form_id', $names, true), 'declared');
+}
+
+// The uploaded picture's address in a rich text answer is kept and stored
+// relative to the site, as the page keeps its own pictures.
+function test_api_forms_uploaded_picture_kept_in_rich_text()
+{
+	$field = array('id' => 7, 'name' => 'body', 'type' => 'text area', 'multiple' => 0, 'wysiwyg' => 1);
+	$checked = api_form_answer_check($field, '<p><img src="/site/harbour.jpg" alt="Harbour"></p>', array(), api_forms_test_site());
+
+	pg_assert_contains('src="{path}harbour.jpg"', $checked['value'], 'kept, relative to the site');
+	pg_assert_contains('alt="Harbour"', $checked['value'], 'alt kept');
+}

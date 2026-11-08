@@ -47,6 +47,14 @@ function api_files_allowed_types() {
 
 // The image dimension columns arrive with an upgrade, so they are named only
 // when they are there.
+// What a picture for a form's posts may be (POST /files with form_id): the
+// image types, as an <img> in a rich text answer shows them.
+function api_files_picture_types() {
+
+	return array('jpg', 'jpeg', 'png', 'gif', 'webp');
+
+}
+
 function api_files_dimensions_ready() {
 
 	return pg_schema_has('files', 'image_width');
@@ -386,6 +394,26 @@ function api_files_create($params) {
 
 	}
 
+	// A picture for a form's posts: filed where the form's pictures go
+	// (api_form_picture_folder()), for a form the caller may read.
+	$form_id = isset($params['form_id']) ? (int)$params['form_id'] : 0;
+
+	if ($form_id > 0) {
+
+		api_require_scope('forms:read');
+
+		$reach = api_form_owner_filter($app['owner'], 'form_fields.page_id');
+
+		if (api_row("SELECT form_fields.page_id FROM form_fields
+			WHERE form_fields.page_id = '" . $form_id . "'" . (($reach !== '') ? " AND " . $reach : '') . "
+			LIMIT 1") === null) {
+
+			api_fail_not_found(lang('Form'));
+
+		}
+
+	}
+
 	$limit = api_files_size_limit();
 
 	$bytes = '';
@@ -503,6 +531,15 @@ function api_files_create($params) {
 		api_fail_validation(lang(array(
 			'string' => 'Only these file types are accepted: {var:1}',
 			'vars'   => implode(', ', api_files_allowed_types())
+		)), 'name');
+
+	}
+
+	if (($form_id > 0) && !in_array($extension, api_files_picture_types(), true)) {
+
+		api_fail_validation(lang(array(
+			'string' => 'A picture for a form takes only these file types: {var:1}',
+			'vars'   => implode(', ', api_files_picture_types())
 		)), 'name');
 
 	}
@@ -639,7 +676,13 @@ function api_files_create($params) {
 
 	@clearstatcache(true, $destination);
 
-	$folder = api_files_upload_folder();
+	$folder = ($form_id > 0) ? api_form_picture_folder($form_id) : 0;
+
+	if ($folder <= 0) {
+
+		$folder = api_files_upload_folder();
+
+	}
 
 	$columns = "name, folder, description, type, size, user, timestamp";
 
