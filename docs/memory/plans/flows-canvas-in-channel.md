@@ -26,8 +26,7 @@ description: Plan (owner 2026-11-08): the whole Flows canvas in a full-screen la
 - Unit tests for the wiring and the pure helpers; each of L3-L5 is also tried in headless Chromium on a channel page (desktop and a phone size): open, add a box, change a setting, try, publish, close, the chat as it was. The PR says why a browser run was needed.
 
 ## Where to start (L4)?
-- `flowLayer(flowId, { box, run, opener })` in workspace.js (`workspace-flow-layer.md`) is ready and lent as `PGWsKit.flowLayer`; L4 calls it from the ways in listed above (they set `window.location.href` to `CFG.urls.flows` today: `flowCardBox()` link, the scheduled window's Open, the run card's Open the run, `flowOpened()`).
-- Browser checks: the two layer scenarios at the end of `tests/js/flows_canvas_scenarios.js` run on the Flows screen page; a channel page needs the channel app's stand-ins, which the harness lacks.
+- Call `PGWsKit.flowLayer(flowId, { box, run, opener })` (`workspace-flow-layer.md`) from the ways in above, which go to `CFG.urls.flows` today. Its harness scenarios run on the Flows screen page, not a channel page.
 
 ## Open questions
 - None: the layout inside the layer is the Flows screen's (palette, canvas, side panel, outline on a phone).
