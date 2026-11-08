@@ -18,15 +18,15 @@ description: Plan (owner 2026-11-08): the whole Flows canvas in a full-screen la
 
 - L3 (M, done #8141): the layer (`flowLayer(flowId, options)` in workspace.js): `position: fixed`, full screen on every width; its bar: the flow's name, "Open on the Flows screen", Close. Focus moves in and back to the opener; Escape closes only when no editor dialog or field holds it; closing calls `flush()` and, after a failed save or a newer draft, asks first as `beforeunload` does; the channel's own keys and composer stay idle while it is open; the chat stays as it was beneath. backend.src.css, workspace.js.
 
-- L4 (S): the ways in open the layer instead of the Flows screen: Add › Scheduled flow's Open on the canvas, a draft card's Open on the canvas (`?box=`), a run card's Open the run (`?run=`), `flowOpened()` after a card's Edit or Duplicate; each keeps the Flows screen link in the layer's bar.
+- L4 (S, done #8165): the ways in open the layer instead of the Flows screen: Add › Scheduled flow's Open on the canvas, a draft card's Open on the canvas (`?box=`), a run card's Open the run (`?run=`), `flowOpened()` after a card's Edit or Duplicate; each keeps the Flows screen link in the layer's bar.
 
 - L5 (S): Add › Flow in the composer (staff, not in a thread, where `CFG.flows.nav`): the layer opens on a new flow whose home is this channel, the template gallery first, as New flow on the Flows screen.
 
 ## How is it tested?
 - Unit tests for the wiring and the pure helpers; each of L3-L5 is also tried in headless Chromium on a channel page (desktop and a phone size): open, add a box, change a setting, try, publish, close, the chat as it was. The PR says why a browser run was needed.
 
-## Where to start (L4)?
-- Call `PGWsKit.flowLayer(flowId, { box, run, opener })` (`workspace-flow-layer.md`) from the ways in above, which go to `CFG.urls.flows` today. Its harness scenarios run on the Flows screen page, not a channel page.
+## Where to start (L5)?
+- The composer's Add list (`insert` menu near `sa_flow_new` in workspace.js): a new flow made with this channel as home (the Flows screen's New flow and template gallery), then `flowGo(flowId)` (`workspace-flow-layer.md`, "Which ways in open it?").
 
 ## Open questions
 - None: the layout inside the layer is the Flows screen's (palette, canvas, side panel, outline on a phone).

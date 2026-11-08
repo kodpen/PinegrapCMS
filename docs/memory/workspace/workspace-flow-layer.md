@@ -7,6 +7,10 @@ description: flowLayer() in workspace.js: the whole Flows editor in a full-scree
 - `flowLayer(flowId, { box, run, opener })` in workspace.js (lent as `PGWsKit.flowLayer`): a `.ws-flow-layer` (`position: fixed; inset: 0`, z-index 1035) appended to `body`, with the whole editor mounted in it by `PGWsFlow.mount(body, BOOT, { flow, box, run, single: true, onShow, onClose })` (`workspace-flow-mount.md`). Owner decision 2026-11-08 (`plans/flows-canvas-in-channel.md`): the canvas over the channel, not a second editor.
 - Bar: the flow's name (`onShow`, also as it is renamed), "Open on the Flows screen" (`fl_layer_screen`, `flowScreenAddress()` with `?box=` / `?run=`), Close. One layer at a time: a second call while one is open does nothing.
 
+## Which ways in open it? (L4)
+- `flowGo(flowId, options)`: the layer, or on the Flows screen itself (`CFG.mode === 'flows'`) the address, since the layer would replace the screen's own editor. `flowLinkOpens(link, flowId, options)` keeps a link's Flows screen `href` (new tab, Ctrl/Meta/Shift/Alt, middle click) and opens the layer on a plain click.
+- Through them: Add › Scheduled flow's Open on the canvas (`flowOpened(result, null, leave)`: the drawer hidden first, `hideOffcanvas(node, next)`, so the layer is not beneath it), a draft card's box link (`box`), an applied draft's flow link, a run card's Open the run (`run`), a scheduled action's Edit (converted or converted now, `scheduledEdit()`), Duplicate and Open a drafted action (`flowOpened()`). The layer's bar keeps "Open on the Flows screen".
+
 ## What does it load?
 - `flowScripts()`: `CFG.flow_scripts` once a page (shared with the draft card's `flowEmbedKit()`). `flowEditorConfig()`: panel action `ws_flow_editor_config` once a page; its `flows` replaces `CFG.flows` (a superset of the channel page's `nav`/`scheduled`), its `strings` fill keys the page lacks.
 
