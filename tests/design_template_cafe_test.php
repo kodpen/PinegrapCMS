@@ -182,6 +182,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-marina' => array('mn-rq-consent', 'mn-ce-consent', 'mn-ev-consent'),
 		'pinegrap-theatre' => array('th-hire-consent', 'th-sg-consent', 'th-yp-consent'),
 		'pinegrap-restaurant' => array('rt-rs-consent', 'rt-pd-consent'),
+		'pinegrap-coworking' => array('cw-tr-consent', 'cw-oe-consent', 'cw-su-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);
