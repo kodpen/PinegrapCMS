@@ -399,6 +399,7 @@ if ($_POST) {
         // The agent registry (includes/workspace/agents_settings.php).
         case 'agent_save':
         case 'agent_delete':
+        case 'agent_test':
             ws_agents_settings_post($viewer, $action, $liveform);
             $anchor = '#ws-agents';
             break;

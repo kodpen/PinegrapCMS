@@ -15,7 +15,7 @@ description: Model assistants (ws_agents kind 'model'): providers and their data
 
 ## Who sets it up?
 - The Agents card of A3b (`agents_settings.php`) keeps the row: handle, name, provider, model, sealed key, application. `ws_model_base_problem()` checks the chat API address (only azure and custom take one, in `door_url`; only custom may be http). `ws_model_agent_test($id)` gives the card's Try a sentence; `ws_model_agent_missing()` says what still keeps it from answering (paused, address, key, application).
-- Step A6b puts the provider select of `ws_model_providers()`, the address field, the terms and Try on that card once A3b has landed.
+- On the card (step A6b): the provider is a select of `ws_model_providers()` with the model hints under the model field; its own Address field (`agent_base`, saved to `door_url` for a model agent, so it never clashes with a push door's address on the new-agent form); the provider's terms under the select; Try (`agent_test`). `ws_agent_save_check()` refuses an unknown provider and an address `ws_model_base_problem()` refuses; a provider whose `key` is true needs a stored or typed key.
 
 ## What do the providers do with the words? (checked 2026-11-08)
 - On the card per provider (`ws_model_providers()['terms']`, for the card; `ws_model_provider_terms()` for the channel question A3b/A4 show): OpenAI no training by default, 30 days abuse log; Gemini free tier may train and be read by people, paid not; Mistral free Experiment plan may train; DeepSeek stores in the PRC; OpenRouter passes to the model's provider; Azure no training, the resource's region; custom unknown.
