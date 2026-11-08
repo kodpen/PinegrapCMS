@@ -1529,6 +1529,48 @@ function pg_comment_return_url($path, $comment_id, $featured)
 }
 
 /**
+ * The classic comments block's view switch link, without the fragment:
+ * the request's path and query with comments=all set last ($view 'all',
+ * "Show All") or the comments parameter removed (any other $view, "Show
+ * Featured"). The query is read with parse_str() and written again with
+ * http_build_query(), so an array parameter (x[]=1) keeps working and an
+ * absent query gives no '?'. The URI is split at its first '?' rather than
+ * read with parse_url(), which takes '//name' for a host; a leading run
+ * of slashes is written as one, so the link never leaves the site. Not escaped:
+ * the caller wraps it in h(). Pure.
+ *
+ * @param mixed  $request_uri
+ * @param string $view
+ * @return string
+ */
+function pg_comment_view_switch_url($request_uri, $view)
+{
+    $uri = (is_scalar($request_uri) && !is_bool($request_uri)) ? (string) $request_uri : '';
+    $hash = strpos($uri, '#');
+
+    if ($hash !== false) {
+        $uri = substr($uri, 0, $hash);
+    }
+
+    $mark = strpos($uri, '?');
+    $path = ($mark === false) ? $uri : substr($uri, 0, $mark);
+    // A leading run of slashes or backslashes becomes one slash: '//name'
+    // in an href is a link to the host "name", not to this site.
+    $path = (string) preg_replace('#^[/\\\\]{2,}#', '/', $path);
+    $query = array();
+    parse_str(($mark === false) ? '' : substr($uri, $mark + 1), $query);
+    unset($query['comments']);
+
+    if ($view === 'all') {
+        $query['comments'] = 'all';
+    }
+
+    $query_string = http_build_query($query, '', '&');
+
+    return $path . (($query_string === '') ? '' : '?' . $query_string);
+}
+
+/**
  * The WHERE fragment that leaves out comments on pages in the Recycle Bin:
  * the moderation queue, its count and the greeting show only work someone
  * can act on, and a binned page is not shown on the site. $bin_folder_ids is

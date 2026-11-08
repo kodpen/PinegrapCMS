@@ -61,6 +61,8 @@ function designer_attrs_undo_node($script)
 		. 'function saveState() { log.push("save " + JSON.stringify(n.props)); }' . "\n"
 		. 'function _writeInlineStyleValue(node, v) { log.push("style " + v); }' . "\n"
 		. 'function noop() {}' . "\n"
+		. 'function _sdRenderNode(node, fn) { fn(); }' . "\n"
+		. 'function _sdScopeFullProp() { return false; }' . "\n"
 		. 'var renderCanvas = noop, renderHtmlTree = noop, renderProperties = noop, renderAttrsPanel = noop,' . "\n"
 		. '    _sdSchedulePropsRefresh = noop, _sdRetargetLabels = noop, _attachClassAutocomplete = noop, focusClassControl = noop;' . "\n"
 		. 'function field(cls, data, value) {' . "\n"

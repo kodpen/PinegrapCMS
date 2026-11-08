@@ -96,3 +96,19 @@ function test_api_sms_campaigns_sent_event()
 		pg_assert_same(1, substr_count($source, "pg_announce('campaign.sent'"), $file . ' announces once');
 	}
 }
+
+// includes/fn/sms_campaigns.php is not among the modules functions.php loads,
+// so the handler requires it: without it the readiness check found no
+// function and GET /campaigns/sms answered 503 on every site.
+function test_api_sms_campaigns_list_loads_its_module()
+{
+	$functions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/functions.php');
+	pg_assert_false(strpos($functions, "/includes/fn/sms_campaigns.php'") !== false, 'functions.php does not load the module');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/resources/campaigns.php');
+	$start = strpos($source, 'function api_campaigns_sms_list(');
+	$require = strpos($source, "require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');", (int) $start);
+	$ready = strpos($source, 'pg_sms_campaigns_ready()', (int) $start);
+
+	pg_assert_true(($start !== false) && ($require !== false) && ($ready !== false) && ($require < $ready), 'required above the readiness check');
+}

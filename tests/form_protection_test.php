@@ -6,7 +6,8 @@
  * (pg_cf_issued_token() / pg_cf_issued_verdict()), the counters a submission
  * is held against (pg_cf_throttle_subjects()), the submitter address worked
  * out before the form row is written, the staff rule
- * (waf_panel_access_from_row()) and the sweep that keeps day-long counters.
+ * (waf_panel_access_from_row()) and the sweep that keeps day-long counters
+ * and the sign-in throttle's buckets (waf_rate_retention_seconds()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -212,6 +213,18 @@ function test_form_protection_sweep_keeps_day_counters()
 	pg_assert_same(array(
 		"DELETE FROM waf_rate WHERE window_start < 0 LIMIT 5000",
 	), waf_rate_sweep_queries(100000, 100000), 'retention past a day');
+}
+
+// The shared retention outlives the sign-in throttle's lockout and its
+// failure window, with the throttle's own clamps, read without auth.php.
+function test_form_protection_retention_covers_sign_in_throttle()
+{
+	pg_assert_same(3600, waf_rate_retention_seconds(60, 15), 'defaults: the hour');
+	pg_assert_same(86400, waf_rate_retention_seconds(1440, 15), 'a day-long lockout');
+	pg_assert_same(86400, waf_rate_retention_seconds(60, 1440), 'a day-long failure window');
+	pg_assert_same(43200 * 60, waf_rate_retention_seconds(999999, 15), 'the lockout clamped to a month');
+	pg_assert_same(86400, waf_rate_retention_seconds(1, 999999), 'the window clamped to a day');
+	pg_assert_same(3600, waf_rate_retention_seconds(0, -5), 'nonsense settings');
 }
 
 // The day counters: the custom form's per-address limit and E-mail a

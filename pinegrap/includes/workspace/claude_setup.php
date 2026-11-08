@@ -249,7 +249,8 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
                 array('claude.ai/code/routines', 'New routine', 'Pinegrap Workspace', 'Instructions')
             ),
             'extra' => '<a class="btn btn-sm btn-outline theme-secondary mb-3" href="https://claude.ai/code/routines" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>claude.ai/code/routines</a>'
-                . $copy('ws-claude-prompt', $prompt, 8, lang('The prompt for the routine')),
+                . $copy('ws-claude-prompt', $prompt, 8, lang('The prompt for the routine'))
+                . '<div class="alert theme-warning small py-3 mt-3 mb-0"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h(lang('Paste the prompt as it is and add no instructions of your own: a run that does not read this site\'s current instructions cannot take a request, and the channel it was asked in is told so.')) . '</div>',
         ),
         array(
             'art'   => 'environment',

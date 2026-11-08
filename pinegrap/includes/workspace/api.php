@@ -49,6 +49,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_saved_replies.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_note_groups.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -187,6 +188,7 @@ function ws_openapi_objects()
         'WorkspaceAssistantRequest' => 'ws_api_assistant_request_schema',
         'WorkspaceNote'           => 'ws_api_note_schema',
         'WorkspaceNoteRemoval'    => 'ws_api_note_removal_schema',
+        'WorkspaceNoteGroup'      => 'ws_api_note_group_schema',
         'WorkspaceTemplate'        => 'ws_api_template_schema',
         'WorkspaceTemplateApplied' => 'ws_api_template_applied_schema',
         'WorkspaceCommand'         => 'ws_api_command_schema',
@@ -545,12 +547,13 @@ function ws_api_routes()
             'returns'     => 'WorkspaceMessage',
             'status'      => 201,
             'summary'     => 'Write in a channel',
-            'description' => 'Writes a message into a channel the owner may post in. Written with an application key or through an OAuth connection, readers see it as written by the application. Written by a person signed in on their own device (POST /auth/login), it is theirs, as if written in the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it), joins them to a public channel they were not in and marks the channel read for them; a message (kind message) of theirs that names @Claude, @ai or an MCP server\'s alias asks that assistant, with the same rules as the panel (a channel where it may not be asked gets a line saying why). Claude is started at once; Pinegrap AI and an MCP server\'s own agent are carried on right after the answer where the server can send the answer first, otherwise by the app\'s next GET /workspace/sync with the channel open, the screens that have it open and the hourly job. Follow the request with GET /workspace/assistant-requests. Tags are written as tokens - <@user:12> mentions a person (they are told), <@app:7> an application (its subscriptions to workspace.app.mentioned hear it), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; the writer of a message or staff may ask, so for a message written as the application only an owner who is staff may, and anybody else is refused with 403 before anything is written. A dry run makes every check, the person\'s limit included, and its detail.joins says whether the message would join the person to the channel. Send an Idempotency-Key so a retried call does not post twice.',
+            'description' => 'Writes a message into a channel the owner may post in. Written with an application key or through an OAuth connection, readers see it as written by the application. Written by a person signed in on their own device (POST /auth/login), it is theirs, as if written in the panel: it carries their name, counts against their limit of twenty messages a minute (422 beyond it), joins them to a public channel they were not in and marks the channel read for them; a message (kind message) of theirs that names @Claude, @ai or an MCP server\'s alias asks that assistant, with the same rules as the panel (a channel where it may not be asked gets a line saying why). Claude is started at once; Pinegrap AI and an MCP server\'s own agent are carried on right after the answer where the server can send the answer first, otherwise by the app\'s next GET /workspace/sync with the channel open, the screens that have it open and the hourly job. Follow the request with GET /workspace/assistant-requests. Tags are written as tokens - <@user:12> mentions a person (they are told), <@app:7> an application (its subscriptions to workspace.app.mentioned hear it), <#order:1045> points at an order. kind decision or note keeps the message on the channel\'s Decisions tab. id may also be a discussion\'s the owner is in: a decision, a note or a task card written there is copied into its channel as well. ack true asks the channel\'s members to say they read it; the writer of a message or staff may ask, so for a message written as the application only an owner who is staff may, and anybody else is refused with 403 before anything is written. A dry run makes every check, the person\'s limit included, and its detail.joins says whether the message would join the person to the channel. parent_id makes the message an answer to a message, as Reply does in the panel: the message must be one of this channel or discussion, not deleted and not in an earlier version of the conversation, or the call is refused with 422 on parent_id; a dry run checks it the same way and its detail gives parent_id. Send an Idempotency-Key so a retried call does not post twice.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true),
                 array('name' => 'kind', 'in' => 'body', 'type' => 'enum', 'values' => array('message', 'note', 'decision')),
                 array('name' => 'ack', 'in' => 'body', 'type' => 'bool', 'description' => 'Ask for read receipts on the message once it is written.'),
+                array('name' => 'parent_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The message this one answers (GET /workspace/channels/{id}/messages), in the same channel or discussion. Left out, the message is one of its own.'),
             ),
         ),
 
@@ -2619,7 +2622,7 @@ function ws_api_routes()
 
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables
-    // (api_wtables.php), e-mail conversations (api_mail.php) and saved
-    // replies (api_saved_replies.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes());
+    // (api_wtables.php), e-mail conversations (api_mail.php), saved
+    // replies (api_saved_replies.php) and note groups (api_note_groups.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes());
 }

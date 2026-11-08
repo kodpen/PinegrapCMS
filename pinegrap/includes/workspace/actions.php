@@ -715,6 +715,12 @@ function ws_handle_action($action, $request)
         case 'ws_flow_embed_config':
             return ws_action_ok(array('config' => ws_flow_embed_config($viewer)));
 
+        // What the whole Flows editor needs on a page other than the Flows
+        // screen (the layer over a channel, flows.php), read once per page:
+        // the screen's own config and texts, with its rights.
+        case 'ws_flow_editor_config':
+            return ws_action_ok(ws_flow_editor_config($viewer));
+
         // Add › Scheduled flow in a channel's composer (scheduled_convert.php):
         // with sketch, the two boxes its mini window draws with what the form
         // holds so far, each with its dry run, nothing written;
@@ -1069,6 +1075,142 @@ function ws_handle_action($action, $request)
                 'menu'  => array('ready' => ws_notes_menu_ready(), 'pinned' => ws_notes_menu_pinned((int) $viewer['id'])),
             ) + ws_notes_list($viewer, (string) ($request['search'] ?? '')));
 
+        // Note groups (includes/workspace/note_groups.php): the person's own
+        // folders in My Notes and where they keep each note. Every answer
+        // carries the groups again, so the screen redraws the folders.
+        case 'ws_note_groups':
+            return ws_action_ok(array('groups' => ws_note_groups($viewer)));
+
+        case 'ws_note_group_save':
+            $group = null;
+
+            if ((int) ($request['group_id'] ?? 0) > 0) {
+                $group = ws_note_group_for($viewer, (int) $request['group_id']);
+
+                if (!$group) {
+                    return ws_action_error(lang('That group could not be found.'));
+                }
+            }
+
+            $data = array();
+
+            foreach (array('name', 'color') as $key) {
+                if (array_key_exists($key, $request)) {
+                    $data[$key] = $request[$key];
+                }
+            }
+
+            $result = ws_note_group_save($viewer, $data, $group);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            return ws_action_ok(array('group_id' => (int) $result['group_id'], 'groups' => ws_note_groups($viewer)));
+
+        case 'ws_note_group_order':
+            $result = ws_note_groups_order($viewer, array_map('intval', (array) ($request['group_ids'] ?? array())));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('groups' => ws_note_groups($viewer)));
+
+        case 'ws_note_group_delete':
+            $result = ws_note_group_delete($viewer, ws_note_group_for($viewer, (int) ($request['group_id'] ?? 0)));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('groups' => ws_note_groups($viewer)));
+
+        // A note kept in one of the person's groups at a place in its order
+        // (position: 0 the first, -1 the last), or in no group (group_id 0).
+        case 'ws_note_place':
+            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'view');
+
+            if (!$note) {
+                return ws_action_error(lang('That note could not be found.'));
+            }
+
+            $result = ws_note_place($viewer, $note, (int) ($request['group_id'] ?? 0), (int) ($request['position'] ?? -1));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            return ws_action_ok(array(
+                'note_id'  => (int) $note['id'],
+                'group_id' => (int) $result['group_id'],
+                'groups'   => ws_note_groups($viewer),
+            ));
+
+        // Shared note groups (includes/workspace/note_group_shares.php):
+        // who has a group, sharing it with people or in a channel, taking a
+        // share back or leaving, and a note taken out of a group by whoever
+        // may.
+        case 'ws_note_group_shares':
+            $group = ws_note_group_reached($viewer, (int) ($request['group_id'] ?? 0));
+
+            if (!$group) {
+                return ws_action_error(lang('That group could not be found.'));
+            }
+
+            return ws_action_ok(array('group_id' => (int) $group['id'], 'reach' => $group['reach'], 'shares' => ws_note_group_shares_present($viewer, $group)));
+
+        case 'ws_note_group_share':
+            $group = ws_note_group_for($viewer, (int) ($request['group_id'] ?? 0));
+
+            if (!$group) {
+                return ws_action_error(lang('Only the owner of a group can share it.'));
+            }
+
+            if ((int) ($request['channel_id'] ?? 0) > 0) {
+                $channel = ws_action_channel($viewer, $request, 'post');
+
+                if (!is_array($channel)) {
+                    return ws_action_error($channel);
+                }
+
+                $result = ws_note_group_share_channel($viewer, $group, $channel);
+            } else {
+                $result = ws_note_group_share_people($viewer, $group, (array) ($request['user_ids'] ?? array()), !empty($request['can_edit']));
+            }
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('group_id' => (int) $group['id'], 'shares' => ws_note_group_shares_present($viewer, $group + array('reach' => 'owner'))));
+
+        case 'ws_note_group_unshare':
+            $group = ws_note_group_reached($viewer, (int) ($request['group_id'] ?? 0));
+            $result = ws_note_group_unshare($viewer, $group, (int) ($request['share_id'] ?? 0));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('groups' => ws_note_groups($viewer)));
+
+        case 'ws_note_group_take_out':
+            $group = ws_note_group_reached($viewer, (int) ($request['group_id'] ?? 0));
+            $note = ws_note_for($viewer, (int) ($request['note_id'] ?? 0), 'view');
+
+            if (!$group || !$note) {
+                return ws_action_error(lang('That note is not in the group.'));
+            }
+
+            $result = ws_note_group_take_out($viewer, $group, $note);
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            return ws_action_ok(array('note_id' => (int) $note['id'], 'groups' => ws_note_groups($viewer)));
+
         // My Notes pinned to the panel menu, right under the workspace, or
         // taken off it: the person's own choice.
         case 'ws_note_menu_pin':
@@ -1106,6 +1248,7 @@ function ws_handle_action($action, $request)
             }
 
             $present = ws_note_present($viewer, $note);
+            $present = ws_note_places_add($viewer, array($present))[0];
             $present['scheduled'] = function_exists('ws_scheduled_for_note') ? ws_scheduled_for_note($viewer, $note['id']) : array();
 
             return ws_action_ok(array('note' => $present));

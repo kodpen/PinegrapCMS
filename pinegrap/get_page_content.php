@@ -4135,43 +4135,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         h(get_comment_label(array(
                             'label' => $system_region_properties['comments_label'],
                             'number' => count($comments))));
-                        // Get current URL parts in order to prepare URL for switch.
-                        $url_parts = parse_url(get_request_uri());
-                        
-                        // Put query string parameters into an array in order to prepare new query string.
-                        parse_str($url_parts['query'], $query_string_parameters);
-
-                        $query_string = '';
-
-                        // Loop through the query string parameters in order to build query string for view links.
-                        foreach ($query_string_parameters as $name => $value) {
-                            // If this is not the comments view query string parameter, then add it.
-                            if ($name != 'comments') {
-                                // If this is the first item that is being added to the query string, then add question mark.
-                                if ($query_string == '') {
-                                    $query_string = '?';
-                                    
-                                // Otherwise this is not the first item that is being added to the query string, so add ampersand.
-                                } else {
-                                    $query_string .= '&';
-                                }
-                                
-                                $query_string .= urlencode($name) . '=' . urlencode($value);
-                            }
-                        }
-
-                        $output_switch_url = h($url_parts['path'] . $query_string);
-
-                        // If the query string is empty, then add ? before comments query string parameter.
-                        if ($query_string == '') {
-                            $output_switch_url .= '?';
-                            
-                        // Otherwise the query string is not empty, so add & before comments query string parameter.
-                        } else {
-                            $output_switch_url .= '&amp;';
-                        }
-						$output_switch ='';
-                        $output_switch_url .= 'comments=all#software_comments';
+                        // Same address with comments=all; the rest of the query is kept.
+                        $output_switch_url = h(pg_comment_view_switch_url(get_request_uri(), 'all') . '#software_comments');
                         $output_switch = '<a href="' . $output_switch_url . '" class="show_all">' . lang('Show All') . ' (' . pg_format_number($number_of_comments, 0) . ')</a> &nbsp; &nbsp; ';
 						
 
@@ -4187,32 +4152,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
 
                         // If there are featured comments, then output switch for that.
                         if ($featured_comments_exist == true) {
-                            // Get current URL parts in order to prepare URL for switch.
-                            $url_parts = parse_url(get_request_uri());
-                            
-                            // Put query string parameters into an array in order to prepare new query string.
-                            parse_str($url_parts['query'], $query_string_parameters);
-
-                            $query_string = '';
-
-                            // Loop through the query string parameters in order to build query string for view links.
-                            foreach ($query_string_parameters as $name => $value) {
-                                // If this is not the comments view query string parameter, then add it.
-                                if ($name != 'comments') {
-                                    // If this is the first item that is being added to the query string, then add question mark.
-                                    if ($query_string == '') {
-                                        $query_string = '?';
-                                        
-                                    // Otherwise this is not the first item that is being added to the query string, so add ampersand.
-                                    } else {
-                                        $query_string .= '&';
-                                    }
-                                    
-                                    $query_string .= urlencode($name) . '=' . urlencode($value);
-                                }
-                            }
-
-                            $output_switch_url = h($url_parts['path'] . $query_string . '#software_comments');
+                            // Same address without the comments parameter.
+                            $output_switch_url = h(pg_comment_view_switch_url(get_request_uri(), '') . '#software_comments');
                             $output_switch = '<a href="' . $output_switch_url . '" class="show_featured">' . lang('Show Featured') . '</a> &nbsp; &nbsp; ';
 							
                            

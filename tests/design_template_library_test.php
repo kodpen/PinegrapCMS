@@ -146,6 +146,7 @@ function _test_lb_page_keys()
 		'reserve', 'reservation_view', 'my_reservations', 'staff_reservations', 'email_reservation_new', 'email_reservation_received',
 		'room_booking', 'room_booking_view', 'my_room_bookings', 'staff_room_bookings', 'email_room_booking_new', 'email_room_booking_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome', 'email_account_welcome', 'email_password_reset',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	);

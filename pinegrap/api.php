@@ -120,13 +120,6 @@ if (($request === null) && ($raw_request === '') && ($_SERVER['REQUEST_METHOD'] 
 // turned away as too large today.
 $GLOBALS['pg_request_body_bytes'] = strlen($raw_request);
 
-// A request from a page drawn in another language says so (pg_lang, in the
-// query string or the body), so what it is answered with - a product's
-// description, a shipping method's name - is in that language too.
-if (function_exists('pg_tr_define_from_request')) {
-    pg_tr_define_from_request($request);
-}
-
 unset($raw_request);
 
 // If login info was included in the request, then store it, so that initialize_user() can login user.
@@ -142,6 +135,15 @@ if (isset($request['username']) && is_string($request['username']) && ($request[
 }
 
 include('init.php');
+
+// A request from a page drawn in another language says so (pg_lang, in the
+// query string or the body), so what it is answered with - a product's
+// description, a shipping method's name - is in that language too. After
+// init.php: the function, its schema flag and the language rows come with it,
+// and init.php reads only $_REQUEST, which a JSON body never fills. A
+// ?pg_lang= init.php already applied stays (the function returns once
+// FRONTEND_LANGUAGE is defined).
+pg_tr_define_from_request($request);
 
 // Add header in order to start response.
 header('Content-Type: application/json');

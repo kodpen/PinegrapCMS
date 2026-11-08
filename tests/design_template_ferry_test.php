@@ -138,6 +138,7 @@ function _test_fy_page_keys()
 		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
+		'email_account_welcome', 'email_password_reset',
 	);
 	foreach (array('bay_gull', 'bay_cedar', 'north_cedar', 'gull_cedar') as $key) $keys[] = 'route_' . $key;
 	return $keys;

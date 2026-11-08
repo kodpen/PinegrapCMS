@@ -178,6 +178,18 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-architecture' => array('ai-enq-consent', 'ai-con-consent', 'ai-app-consent'),
 		'pinegrap-campsite' => array('cp-rq-consent', 'cp-gr-consent'),
 		'pinegrap-cityhall' => array('cy-rq-consent', 'cy-mt-consent'),
+		'pinegrap-library' => array('lib-eb-consent', 'lib-mb-consent', 'lib-rs-consent', 'lib-rb-consent'),
+		'pinegrap-marina' => array('mn-rq-consent', 'mn-ce-consent', 'mn-ev-consent'),
+		'pinegrap-theatre' => array('th-hire-consent', 'th-sg-consent', 'th-yp-consent'),
+		'pinegrap-restaurant' => array('rt-rs-consent', 'rt-pd-consent'),
+		'pinegrap-drivingschool' => array('drv-en-consent', 'drv-ls-consent'),
+		'pinegrap-sportsclub' => array('sp-rg-consent', 'sp-tr-consent', 'sp-sp-consent'),
+		'pinegrap-pharmacy' => array('rx-pr-consent', 'rx-aq-consent'),
+		'pinegrap-ferry' => array('fy-bk-consent', 'fy-gr-consent'),
+		'pinegrap-coworking' => array('cw-tr-consent', 'cw-oe-consent', 'cw-su-consent'),
+		'pinegrap-florist' => array('fl-ord-consent', 'fl-evt-consent', 'fl-sub-consent'),
+		'pinegrap-homeservices' => array('hs-bk-consent', 'hs-es-consent'),
+		'pinegrap-veterinary' => array('vt-ap-consent', 'vt-pj-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);

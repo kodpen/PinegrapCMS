@@ -3055,7 +3055,10 @@ function pg_sfv_backfill_step($budget_seconds = 3, $recheck = false)
  * A row whose item no longer exists keeps its page name, so deleting a product
  * does not erase the traffic it once had.
  *
- * @param  array $rows Rows carrying item_type, item_id and page_name
+ * A row marked 'deleted' (its page row is gone) is labelled as a deleted
+ * page with no link, never as the home page its empty name would suggest.
+ *
+ * @param  array $rows Rows carrying item_type, item_id and page_name, optionally deleted
  * @return array       Same rows with 'label' and 'url' filled in
  */
 function pg_visitor_label_content_rows($rows)
@@ -3216,6 +3219,13 @@ function pg_visitor_label_content_rows($rows)
                 // that is the page recorded on the row.
                 $url = $base . encode_url_path($page_name) . '/' . encode_url_path($item['address_name']);
             }
+        }
+
+        // A caller that knows the page row is gone says so: its empty name
+        // is not the home page's, and there is nothing left to link to.
+        if (!empty($row['deleted'])) {
+            $label = lang('Deleted page');
+            $url   = '';
         }
 
         $rows[$key]['label'] = $label;

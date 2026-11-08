@@ -155,7 +155,7 @@ function test_merge_train_branch_name()
 	pg_assert_same('merge-train/20261026-2105', merge_train_branch_name(gmmktime(21, 5, 0, 10, 26, 2026)));
 }
 
-// Docs-only PRs land alone; the rest smaller first, up to twelve; a PR over
+// Docs-only PRs land alone; the rest (no wait known) smaller first, up to twelve; a PR over
 // the size limit rides only a train of its own.
 function test_merge_train_order()
 {
@@ -186,6 +186,61 @@ function test_merge_train_order_caps_the_train()
 	$order = merge_train_order($prs);
 	pg_assert_same(12, count($order['train']));
 	pg_assert_same(array(2013, 2014), $order['later']);
+}
+
+// PRs within the limit ride longest-waiting first, so a large one under the
+// limit is not starved by smaller ones that keep arriving; equal waits
+// smaller first, an unknown wait after the known ones.
+function test_merge_train_order_small_longest_waiting_first()
+{
+	$now = strtotime('2026-11-07T17:00:00Z');
+	$prs = array(
+		array('number' => 1930, 'product_lines' => 20, 'docs_only' => false, 'eligible_since' => $now - 600),
+		array('number' => 1931, 'product_lines' => 979, 'docs_only' => false, 'eligible_since' => $now - 10800),
+		array('number' => 1932, 'product_lines' => 5, 'docs_only' => false, 'eligible_since' => null),
+		array('number' => 1933, 'product_lines' => 818, 'docs_only' => false, 'eligible_since' => $now - 9000),
+		array('number' => 1934, 'product_lines' => 100, 'docs_only' => false, 'eligible_since' => $now - 600),
+		array('number' => 1935, 'product_lines' => 1500, 'docs_only' => false, 'eligible_since' => $now - 60),
+	);
+
+	$expected = array('alone' => array(), 'train' => array(1931, 1933, 1930, 1934, 1932), 'later' => array(1935));
+	pg_assert_same($expected, merge_train_order($prs, $now));
+	pg_assert_same($expected, merge_train_order($prs));
+
+	// The cap keeps the longest-waiting twelve.
+	$prs = array();
+
+	for ($i = 1; $i <= 14; $i++) {
+		$prs[] = array('number' => 2100 + $i, 'product_lines' => 15 - $i, 'docs_only' => false, 'eligible_since' => $now - (1000 * $i));
+	}
+
+	$order = merge_train_order($prs, $now);
+	pg_assert_same(array(2114, 2113, 2112), array_slice($order['train'], 0, 3));
+	pg_assert_same(12, count($order['train']));
+	pg_assert_same(array(2102, 2101), $order['later']);
+}
+
+// Together the train stays within MERGE_TRAIN_TOTAL_LIMIT product lines: a
+// PR that does not fit waits at the head of the next train, while a smaller
+// one behind it still rides.
+function test_merge_train_order_total_limit()
+{
+	$now = strtotime('2026-11-07T22:00:00Z');
+	$prs = array(
+		array('number' => 2201, 'product_lines' => 660, 'docs_only' => false, 'eligible_since' => $now - 5000),
+		array('number' => 2202, 'product_lines' => 522, 'docs_only' => false, 'eligible_since' => $now - 4000),
+		array('number' => 2203, 'product_lines' => 499, 'docs_only' => false, 'eligible_since' => $now - 3000),
+		array('number' => 2204, 'product_lines' => 781, 'docs_only' => false, 'eligible_since' => $now - 2000),
+		array('number' => 2205, 'product_lines' => 246, 'docs_only' => false, 'eligible_since' => $now - 1000),
+	);
+
+	pg_assert_same(2000, MERGE_TRAIN_TOTAL_LIMIT);
+	pg_assert_same(array('alone' => array(), 'train' => array(2201, 2202, 2203, 2205), 'later' => array(2204)), merge_train_order($prs, $now));
+
+	// The next train starts with the one left behind.
+	$prs = array($prs[3], array('number' => 2206, 'product_lines' => 990, 'docs_only' => false, 'eligible_since' => $now - 500),
+		array('number' => 2207, 'product_lines' => 300, 'docs_only' => false, 'eligible_since' => $now - 100));
+	pg_assert_same(array('alone' => array(), 'train' => array(2204, 2206), 'later' => array(2207)), merge_train_order($prs, $now));
 }
 
 // With only oversized PRs waiting, the smallest of them is a train alone.

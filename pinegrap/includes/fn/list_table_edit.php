@@ -446,7 +446,7 @@ function pg_page_quick_stored($page_id, $choices)
 {
     $result = db_q(
         "SELECT
-            page.page_name, page.page_folder, page.page_style, page.mobile_style_id,
+            page.page_name, page.page_folder, page.page_type, page.page_style, page.mobile_style_id,
             page.page_search, page.comments, page.sitemap,
             custom_form_pages.form_name, custom_form_pages.enabled
         FROM page

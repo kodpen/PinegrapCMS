@@ -550,7 +550,7 @@ function get_billing_information($properties) {
             }
             
             // Get form info (form content, wysiwyg fields).
-            $form_info = get_form_info($page_id, 0, 0, 0, $form_label_column_width, $office_use_only = false, $form, 'frontend', false, $device_type, $folder_id_for_default_value);
+            $form_info = get_form_info($page_id, 0, 0, 0, $form_label_column_width, false, $form, 'frontend', false, $device_type, $folder_id_for_default_value);
             
             $output_wysiwyg_javascript = '';
             

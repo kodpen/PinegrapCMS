@@ -1653,7 +1653,7 @@ function get_express_order($properties) {
                             }
                             
                             // get form info (form content, wysiwyg fields, file upload)
-                            $form_info = get_form_info(0, $product_id, $order_item_id, $quantity_number, $form_label_column_width, $office_use_only = false, $form, 'frontend', false, $device_type, $folder_id_for_default_value, $reference_code_field_id);
+                            $form_info = get_form_info(0, $product_id, $order_item_id, $quantity_number, $form_label_column_width, false, $form, 'frontend', false, $device_type, $folder_id_for_default_value, $reference_code_field_id);
                             
                             $wysiwyg_fields = array_merge($wysiwyg_fields, $form_info['wysiwyg_fields']);
                             
@@ -1938,7 +1938,7 @@ function get_express_order($properties) {
                         if ($custom_shipping_form) {
                             
                             // Get form info (form content, wysiwyg fields).
-                            $form_info = get_form_info($page_id, 0, 0, 0, 0, $office_use_only = false, $form, 'frontend', false, $device_type, $folder_id_for_default_value, 0, 'shipping', $prefix);
+                            $form_info = get_form_info($page_id, 0, 0, 0, 0, false, $form, 'frontend', false, $device_type, $folder_id_for_default_value, 0, 'shipping', $prefix);
                             
                             $output_custom_shipping_form =
                                 '<div class="data">
@@ -2430,13 +2430,6 @@ function get_express_order($properties) {
                 
                 // if the total is greater than 0 and there is at least 1 applied gift card, then prepare to output gift card discount
                 if (($grand_total > 0) && (count($applied_gift_cards) > 0)) {
-                    $output_gift_card_label_plural_suffix = '';
-                    
-                    // if there is more than 1 applied gift card, then prepare to output gift card label plural suffix
-                    if (count($applied_gift_cards) > 1) {
-                        $output_gift_card_label_plural_suffix = 's';
-                    }
-                    
                     // if the total gift card balance is less than the grand total, then set the gift card discount to the total gift card balance
                     if ($total_gift_card_balance < $grand_total) {
                         $gift_card_discount = $total_gift_card_balance;
@@ -2451,7 +2444,7 @@ function get_express_order($properties) {
                     
                     $output_gift_card_discount =
                         '<tr class="gift_card_discount">
-                            <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Gift Card')) . $output_gift_card_label_plural_suffix . ':</td>
+                            <td class="mobile_left" colspan="4" style="text-align: right">' . h((count($applied_gift_cards) > 1) ? lang('Gift Cards') : lang('Gift Card')) . ':</td>
                             <td class="mobile_right" style="text-align: right">-' . prepare_price_for_output($gift_card_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         </tr>';
                 }
@@ -3024,7 +3017,7 @@ function get_express_order($properties) {
                 }
                 
                 // Get form info (form content, wysiwyg fields).
-                $form_info = get_form_info($page_id, 0, 0, 0, $custom_billing_form_label_column_width, $office_use_only = false, $form, 'frontend', false, $device_type, $folder_id_for_default_value, 0, 'billing');
+                $form_info = get_form_info($page_id, 0, 0, 0, $custom_billing_form_label_column_width, false, $form, 'frontend', false, $device_type, $folder_id_for_default_value, 0, 'billing');
                 
                 $output_custom_billing_form =
                     $output_form_name . '

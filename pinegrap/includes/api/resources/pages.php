@@ -804,13 +804,10 @@ function api_pages_delete($params) {
 
 		}
 
-		$bin_id = (int)pg_recycle_folder_id(true);
-
-		if ($bin_id <= 0) {
-
-			api_fail(409, 'recycle_bin_unavailable', lang('This site has no recycle bin. Send permanent=true to delete the page outright.'));
-
-		}
+		// The bin folder is made on the first real delete, below the stop: a
+		// rehearsal writes nothing, so it reports folder_id null while no bin
+		// exists yet.
+		$bin_id = (int)pg_recycle_folder_id(false);
 
 		if (pg_recycle_is_inside($page['page_folder'])) {
 
@@ -818,7 +815,19 @@ function api_pages_delete($params) {
 
 		}
 
-		api_dry_run_stop('recycled', 'page', array('id' => $id, 'name' => $page['page_name'], 'folder_id' => $bin_id));
+		api_dry_run_stop('recycled', 'page', array('id' => $id, 'name' => $page['page_name'], 'folder_id' => ($bin_id > 0) ? $bin_id : null));
+
+		if ($bin_id <= 0) {
+
+			$bin_id = (int)pg_recycle_folder_id(true, array('id' => (int)$app['owner']['id'], 'username' => (string)$app['owner']['username']));
+
+		}
+
+		if ($bin_id <= 0) {
+
+			api_fail(409, 'recycle_bin_unavailable', lang('This site has no recycle bin. Send permanent=true to delete the page outright.'));
+
+		}
 
 		$audit_before = pg_audit_fetch('page', $id);
 

@@ -42,6 +42,16 @@ function test_repeat_placement_loop_row_ids()
 	pg_assert_contains('aria-controls="more_pgw5r3_pgw5r1002"', $again, 'aria-controls too');
 }
 
+// Only a real id or for attribute takes the row suffix: data-id,
+// data-product-id and data-for carry bound values a page script reads.
+function test_repeat_placement_row_ids_skip_data_attributes()
+{
+	$out = pg_sw_uniquify_row_ids('<span data-id="x" data-product-id="7" id="a">', 5, 3);
+	pg_assert_same('<span data-id="x" data-product-id="7" id="a_pgw5r3">', $out, 'only id changes');
+	pg_assert_same('<label for="a_pgw5r3">', pg_sw_uniquify_row_ids('<label for="a">', 5, 3), 'for follows the id');
+	pg_assert_same('<b data-for="a">', pg_sw_uniquify_row_ids('<b data-for="a">', 5, 3), 'data-for unchanged');
+}
+
 // A Google reviews widget whose review rows carry a collapse, drawn twice:
 // the two copies share no id.
 function test_repeat_placement_google_reviews_render()

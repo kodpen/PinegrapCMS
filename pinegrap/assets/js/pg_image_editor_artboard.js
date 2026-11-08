@@ -1040,7 +1040,9 @@
                 this.selectPicture(true);
             }
 
-            this.drag = { kind: 'picture', h: null, at: p, start: box, doc: M.clone(this.doc) };
+            // A click on the picture outside the selected area deselects it
+            // as anywhere else (endDrag()).
+            this.drag = { kind: 'picture', h: null, at: p, start: box, doc: M.clone(this.doc), click: this.pressClick(e) };
         }
 
         e.preventDefault();
@@ -1063,6 +1065,7 @@
             return moveDrag.call(this, e);
         }
 
+        this.dragAway(e);
         p = this.toDoc(e.clientX, e.clientY);
 
         if (d.h) {

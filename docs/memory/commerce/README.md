@@ -91,6 +91,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - checkout-requested-arrival-date.md: Requested arrival date at checkout: which one a visitor may post, how the designed checkout refills and bounds the custom date box, where an unusable date is reported
 - checkout-state-list.md: The checkout's state as a text box and a pick list (_eo_fit_state_lists(), #6146), one state script per address (data-pg-sa-for), the order screen's İlçe/İl billing labels
 - classic-order-pages-language.md: The classic order view, receipt and preview write every label through lang(): billing Phone/Fax/PO Number, shipping method and arrival date, the order view's headings and totals (PR #5202)
+- classic-screens-fixes-2026-11.md: Classic (system-layout) storefront screen fixes: shipping method warnings, cart edit buttons and payments asterisk, catalog RSS top group, comments switch links, receipt labels and currency
 - classic-store-pages-language.md: Classic store pages and checkout steps (cart, express order, receipt, order preview, shipping, billing) print every visitor text through lang(); {var:n} keys (PR #4472, #4795)
 - commission-list-affiliate-join.md: Commission and recurring profile lists join one contact per affiliate code (the oldest); the status totals read commissions alone
 - counter-sale-cart-session.md: Counter sale (add_order.php) cart in its own session key and born a local order; what completion writes (order date, buyer name, no recipient); typed quantity 0 to 9999 only

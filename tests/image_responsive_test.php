@@ -189,6 +189,22 @@ function test_img_responsive_html_adds_srcset_and_sizes()
 	pg_assert_same('<img src="/p.jpg">', pg_img_responsive_html('<img src="/p.jpg">'), 'no database: nothing added');
 }
 
+// An apostrophe inside a double-quoted value, or a double quote inside a
+// single-quoted one, is part of the value: the tag still gets its srcset.
+// Only a tag whose match ended inside a value is left as written.
+function test_img_responsive_html_quotes_inside_values()
+{
+	$resolve = function ($src) {
+		return ($src === 'a.jpg') ? array('srcset' => 'a.jpg?w=480 480w, a.jpg 1200w', 'sources' => array(), 'width' => 1200) : null;
+	};
+	$add = ' srcset="a.jpg?w=480 480w, a.jpg 1200w" sizes="(max-width: 1200px) 100vw, 1200px"';
+
+	pg_assert_same('<img src="a.jpg" alt="İstanbul\'da gün batımı"' . $add . '>', pg_img_responsive_html('<img src="a.jpg" alt="İstanbul\'da gün batımı">', $resolve), 'apostrophe in a double-quoted alt');
+	pg_assert_same('<img src="a.jpg" alt="Men\'s"' . $add . '>', pg_img_responsive_html('<img src="a.jpg" alt="Men\'s">', $resolve), 'possessive in a double-quoted alt');
+	pg_assert_same('<img src="a.jpg" alt=\'say "hi"\'' . $add . '>', pg_img_responsive_html('<img src="a.jpg" alt=\'say "hi"\'>', $resolve), 'double quotes in a single-quoted alt');
+	pg_assert_same('<img src="a.jpg" alt="a > b', pg_img_responsive_html('<img src="a.jpg" alt="a > b', $resolve), 'match ended inside a value');
+}
+
 function test_img_picture_wraps_sources()
 {
 	$html = pg_img_picture('<img src="/p.jpg" alt="">', array('image/webp' => '/p.jpg?f=webp 300w'), '100vw');

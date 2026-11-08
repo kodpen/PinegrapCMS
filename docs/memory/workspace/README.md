@@ -59,6 +59,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
 - workspace-agent-preamble.md: The site preamble an MCP agent (switch ws_mcp_servers.agent_preamble, 11.0.111, off by default) and an outside app (GET /workspace/messages/{id}/preamble) get, and what stays out
+- workspace-agent-replies.md: Replies over the API (parent_id on workspace.messages.create, parent_id on the message object) and "no answer needed" on Claude's answer route (no_answer): what each takes and refuses
 - workspace-ai-call-timeout.md: How long one Pinegrap AI model call may take (500 s, PG_AI_CALL_TIMEOUT 20-600), why it is no longer 55 s, what still cuts a call off
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools
@@ -111,6 +112,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-checklist-to-task.md: A checklist item of a Workspace message made into a task (ws_checklist_item_task(), step 9b): read as /task reads it, item tied by message + words, button, tag, edits, rights, API
 - workspace-claude-bootstrap.md: Claude's routine reads its instructions and each request's briefing (ws_ai_briefing()) from the site; the short versioned bootstrap pasted on claude.ai and the card's warning
 - workspace-claude-daily-summary.md: The daily summary Claude writes for the dashboard's Assistant card: its setting, how its request is queued and told apart, where the card finds the message, why config holds no message id
+- workspace-claude-instructions-version.md: Claude's claim refuses a run that has not read the site's current instructions (409 instructions_outdated): the hashed instructions version, the system line, the card and the guide warning
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-colon-emoji.md: ":" and two letters in a Workspace writing box with the emoji button suggest matching emoji (colonEmojiAt(), colonEmojiList()): where it opens, order, keys, undo, which boxes
@@ -149,6 +151,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flow-draft-card-window.md: The flow draft card (D8b #3032, V7a #3393, K3 #6630): a still picture at rest, a click or Enter opens the read-only Flows canvas in a 20 rem pane; the strip below with link and try
 - workspace-flow-draft-proposals.md: An application, or Claude in a channel answer, proposes a flow as a draft card ({type: flow}, A8): what is sent, checked, kept, how the card opens it, {type: scheduled}
 - workspace-flow-embed.md: PGWsFlow.embed(host, boot) in workspace_flow.js: the Flows canvas drawn read-only elsewhere (the flow draft card), one at a time; boot fields, focus-gated wheel, keys, onSelect, destroy
+- workspace-flow-mount.md: PGWsFlow.mount(root, boot, options) in workspace_flow.js: the Flows editor drawn into any element, single-flow mode for a layer over a channel, destroy() and flush(), window listeners bound once
 - workspace-flows-ai-box-canvas.md: The Pinegrap AI box on the flow canvas (B2's second PR): KINDS.ai, a classifying box's named arrows through kindOf(), the palette gate, aiFields(), extract's values
 - workspace-flows-ai-box.md: The Pinegrap AI box of flows (kind ai, B2): modes, settings, classify's named outcomes as arrows, what is sent, the wait on its own step, the call after the response, the hourly look and the deadline
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists
@@ -261,6 +264,12 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
 - workspace-nested-controls.md: Why the channel list's pin and the search palette's account link are aria-hidden mouse shortcuts inside their link/option, and the keyboard routes to the same actions (Shift+F10 menu, Shift+Enter)
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
+- workspace-note-group-shares.md: Shared note groups (note_group_shares.php, G5): group shares written as ws_note_shares rows with via_group, the sync, who puts notes in, leaving, bell lines, the hooks the lock calls
+- workspace-note-groups-api.md: Note groups in the external API and MCP (includes/workspace/api_note_groups.php): routes, access, refusals, dry run, group_id on note objects; sharing stays on the screen
+- workspace-note-groups-screen.md: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
+- workspace-note-groups-shared-screen.md: Shared note groups on the screen (G6) — workspace_note_group_shares.js (Share dialog, Shared with me folders, channel group card, ?group=N) and the list fields shared_groups / shared_group
+- workspace-note-groups.md: Workspace note groups and the notes lock — tables of step 11.0.119, readiness probes ws_note_groups_ready() / ws_note_lock_ready()
+- workspace-note-tabs.md: Note tabs over an open note on My Notes — workspace_note_tabs.js (group as ARIA tablist, marks, +, keys, drag to reorder via ws_note_place) and drawTabs() in startNotes()
 - workspace-notes-deletions.md: Deleting a note over the API (PR #1674) and ws_note_deletions (schema 11.0.85): who may, whom a deletion or a person share taken back is kept for, how long, deleted in the changes listing, no MCP tool
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become
 - workspace-notes-import-enex.md: Evernote exports (.enex) as notes (notes_enex.php, PR #644): laid out in the stage as Markdown and attachment files, ENML to Markdown, limits and refusals

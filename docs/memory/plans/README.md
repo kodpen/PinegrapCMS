@@ -16,7 +16,10 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- agent-channel.md: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
+- agent-channel-steps-2.md: Steps A5-A9 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, further doors (Claude Code plugin, per-person sessions, chat box), the canvas as an agent tool
+- agent-channel-steps.md: Steps A0-A4 of plans/agent-channel.md: the door experiment, routine hardening, parent_id, the agent registry with doors and wake rules, the request queue with push and scheduled wakes
+- agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
+- api-forms-for-agents.md: Plan (owner 2026-11-06): the external API and MCP let Claude Desktop and other clients send designed forms and collection records (a blog post with rich text) completely; steps F1-F5
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
@@ -24,7 +27,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-redesign-screens-1.md: The first legacy edit screens redone in step B11 of plans/bootstrap-6-redesign.md, each with its PR; the later ones are listed in that plan
 - bootstrap-6-redesign-screens-2.md: Legacy edit screens redone in step B11 of plans/bootstrap-6-redesign.md after screens-1 closed, each with its PR; new ones are added here
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (owner, 2026-11-01)
-- claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
 - design-template-bakery-design.md: Design of plans/design-template-bakery.md: which shipped features the Bakery template reuses for the pickup shop, cake orders, wholesale and classes, what it does not build, its look and Turkish words
 - design-template-bakery.md: Plan: the Bakery design template (pinegrap-bakery): daily bake, cakes, a pickup shop, custom cake orders, wholesale enquiries, baking classes; ~1,000-line steps
@@ -32,42 +34,28 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-brewery.md: Plan: the Craft Brewery design template (pinegrap-brewery): beers, taproom events, brewery tour bookings, a shop and the Beer Club, built from existing features in ~1,000-line steps
 - design-template-carrental-design.md: Design of plans/design-template-carrental.md: which shipped features the Car Rental template reuses for the fleet, bookings and business rentals, what it does not build, its look and Turkish words
 - design-template-carrental.md: Plan: the Car Rental design template (pinegrap-carrental), fleet collection, locations, booking requests with extras, deals and business rentals, in ~1,000-line steps
-- design-template-coworking-design.md: Design of plans/design-template-coworking.md: which shipped features the Coworking template reuses for spaces, bookings, memberships and events, what it does not build, its look and Turkish words
-- design-template-coworking.md: Plan: the Coworking design template (pinegrap-coworking): desks, offices and meeting rooms, memberships and day passes, tours, community events; ~1,000-line steps
-- design-template-drivingschool-design.md: Design of plans/design-template-drivingschool.md: what the Driving School template reuses, what it does not build, its look and Turkish words
-- design-template-drivingschool.md: Plan: the Driving School design template (pinegrap-drivingschool): licences, priced courses, instructors, lesson requests, pass stories; ~1,000-line steps
-- design-template-ferry-design.md: Design of plans/design-template-ferry.md: which shipped features the Ferry template reuses for routes, timetables, fares, bookings and notices, what it does not build, its look and Turkish words
-- design-template-ferry.md: Plan: the Ferry design template (pinegrap-ferry): routes and ports, timetables and fares as words, booking requests, travel notices, onboard services; ~1,000-line steps
 - design-template-filmstudio-design.md: Design of plans/design-template-filmstudio.md: which shipped features the Film Studio template reuses, what it does not build, its look and Turkish words
 - design-template-filmstudio.md: Plan: the Film Studio design template (pinegrap-filmstudio): showreel, projects by industry and service, services, the studio's stages for hire, crew, project enquiries, crew calls
-- design-template-florist-design.md: Design of plans/design-template-florist.md: shipped features reused for bouquets, delivery dates, subscriptions and enquiries, what is not built, look and Turkish words
-- design-template-florist.md: Plan: the Florist design template (pinegrap-florist): bouquets, occasions, delivery, subscriptions, wedding and event flowers; ~1,000-line steps
-- design-template-homeservices-design.md: Design of plans/design-template-homeservices.md: shipped features it reuses for services, estimates, visits and areas, what it does not build, its look and Turkish words
-- design-template-homeservices.md: Plan: the Home Services design template (pinegrap-homeservices): services, price guide, estimates, visit bookings, service areas, team, reviews; ~1,000-line steps
-- design-template-library-design.md: Design of plans/design-template-library.md: which shipped features the Library template reuses for the catalogue, events, membership and rooms, what it does not build, its look and Turkish words
-- design-template-library.md: Plan: the Public Library design template (pinegrap-library): catalogue and new arrivals, events and reading clubs, membership and room booking requests, branches and hours, news; ~1,000-line steps
-- design-template-marina-design.md: Design of plans/design-template-marina.md: which shipped features the Marina template reuses for berths, charters and requests, what it does not build, its look and Turkish words
-- design-template-marina.md: Plan: the Marina design template (pinegrap-marina): berths and rates as words, berth requests, Charter Boats, services, events; ~1,000-line steps
-- design-template-pharmacy-design.md: Design of plans/design-template-pharmacy.md: the shipped features it reuses, what it does not build, its look and Turkish words
-- design-template-pharmacy.md: Plan: the Pharmacy design template (pinegrap-pharmacy): services, prescription requests, vaccinations and health checks, on-duty info, health products shop, health advice, team; ~1,000-line steps
+- design-template-gallery-design.md: Design of plans/design-template-gallery.md: the shipped features it reuses, what it does not build, its look and Turkish words
+- design-template-gallery.md: Plan: the Art Gallery design template (pinegrap-gallery): artists, exhibitions, works, artwork and private-viewing enquiries, editions in the shop, the journal; small steps
+- design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, and where the open template plans (Skiresort, Gallery and the rest) take theirs
+- design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - design-template-podcast-design.md: Design of plans/design-template-podcast.md: what the Podcast template reuses for podcasts, episodes, sponsorship and supporters, what it does not build, its look and Turkish words
 - design-template-podcast.md: Plan: the Podcast Network design template (pinegrap-podcast): podcasts and episodes as collections, hosts, sponsorship enquiries, supporters' membership with bonus episodes; ~1,000-line steps
 - design-template-recruitment-design.md: Design of plans/design-template-recruitment.md: which shipped features the Recruitment template reuses for jobs, applications and employer enquiries, what it does not build, its look and Turkish words
 - design-template-recruitment.md: Plan: the Recruitment Agency design template (pinegrap-recruitment): jobs by sector and city, applications, employer enquiries, career advice; ~1,000-line steps
-- design-template-restaurant-design.md: Design of plans/design-template-restaurant.md: the shipped features the Restaurant template reuses, what it does not build, its look and Turkish words
-- design-template-restaurant.md: Plan: the Restaurant design template (pinegrap-restaurant), one chef-led restaurant with menu, reservations, chef's table, events, private dining and gift vouchers, in ~1,000-line steps
-- design-template-sportsclub-design.md: Design of plans/design-template-sportsclub.md: shipped features it reuses for squads, fixtures, registrations, membership and kit, what it does not build, its look and words
-- design-template-sportsclub.md: Plan: the Sports Club design template (pinegrap-sportsclub): teams, squads, fixtures and results, academy and trials, membership, season tickets, kit and sponsors; ~1,000-line steps
-- design-template-theatre-design.md: Design of plans/design-template-theatre.md: the shipped features the Theatre template reuses, what it does not build, its look and Turkish words
-- design-template-theatre.md: Plan: the Theatre design template (pinegrap-theatre): season of productions, performance dates, tickets, friends membership, learning, venue hire, news; ~1,000-line steps
-- design-template-veterinary-design.md: Design of plans/design-template-veterinary.md: which shipped features the Veterinary template reuses for appointments, vets and health plans, what it does not build, its look and Turkish words
-- design-template-veterinary.md: Plan: the Veterinary Practice design template (pinegrap-veterinary): services, vets, appointment requests, pet health plans, emergencies, pet care articles; ~1,000-line steps
+- design-template-skiresort-design.md: Design of plans/design-template-skiresort.md: the shipped features the Ski Resort template reuses, what it does not build, its look and Turkish words
+- design-template-skiresort.md: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, lifts, conditions, passes and rental, lesson requests, lodging enquiries, dated events; small steps
+- design-template-zoo-design.md: Design of plans/design-template-zoo.md: the shipped features the Zoo template reuses, what it does not build, its look and Turkish words
+- design-template-zoo.md: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals by habitat, feeding times, park map, tickets, adoptions, visit requests, events; small steps
+- designer-performance-and-publish.md: Plan (owner 2026-11-06): the visual designer stops rebuilding everything on every edit and opens faster, and Publish lists the pages to put on the site; steps D1-D7, one worker at a time on the script
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): web orders invoiced on their own once paid or shipped, with two filters, the e-Fatura threshold warning and the internet-sale UBL fields of an e-Arşiv invoice
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442); where to start
 - feature-plans-2026-11.md: The eleven feature plans approved 2026-11-02: index and order, how one coordinator and its five workers hold a plan, the shared rules
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
+- flows-canvas-in-channel.md: Plan (owner 2026-11-08): the whole Flows canvas in a full-screen layer over a channel, mounted in the page, so a flow is designed without leaving the chat; steps L1-L5
 - flows-next-steps.md: Steps A1-C4 of plans/flows-next.md: answers and formulas, new flow boxes, and site events flows can start on; claim as [plan:flows-next] <step>
 - flows-next.md: Plan (owner 2026-11-05): flow boxes other automation tools have and Pinegrap lacks, flows reaching the site's other areas, ready templates; steps in flows-next-steps (templates done)
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
@@ -115,7 +103,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - table-driver.md: Plan (owner 2026-11-03): the panel's own list table driver replacing DataTables, and the move of every table.chart screen to it, screen by screen (TD1-TD14)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions in visitor_stats_daily, added only when a real report needs one
-- workspace-agent-handles.md: Plan (2026-10-21): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged
 - workspace-notes-groups-lock-design.md: Screens and words of plans/workspace-notes-groups-lock.md: My Notes with folders, tabs over a note, what a move asks, the lock set-up and lock pane, the e-mail, media blocks

@@ -58,6 +58,7 @@ define('MERGE_TRAIN_IDENTITY_NAME', 'Erdal Güral');
 define('MERGE_TRAIN_IDENTITY_EMAIL', 'erdaltyy@gmail.com');
 define('MERGE_TRAIN_SIZE_LIMIT', 1000);
 define('MERGE_TRAIN_MAX_PRS', 12);
+define('MERGE_TRAIN_TOTAL_LIMIT', 2000);
 define('MERGE_TRAIN_QUIET_SECONDS', 3600);
 define('MERGE_TRAIN_OVERSIZED_WAIT_SECONDS', 3600);
 define('MERGE_TRAIN_FIX_LINE', '[FIX] Miscellaneous bug fixes and new features.');
@@ -194,8 +195,11 @@ function merge_train_eligible_since(array $runs, $ready)
 
 // The train order of eligible PRs, each array('number', 'product_lines',
 // 'docs_only', optional 'eligible_since'): 'alone' the docs-only PRs,
-// 'train' the others smaller first up to MERGE_TRAIN_MAX_PRS within the size
-// limit, 'later' the rest. A PR over the limit rides only a train of its
+// 'train' the others within the size limit, longest-waiting first (equal
+// waits smaller first) up to MERGE_TRAIN_MAX_PRS and, together, within
+// MERGE_TRAIN_TOTAL_LIMIT product lines, 'later' the rest: one that does not
+// fit waits at the head of the next train while a smaller one behind it
+// rides. A PR over the limit rides only a train of its
 // own, so a red train is easy to blame: it is the train when no PR within
 // the limit waits, or, given $now, when it has been eligible for
 // MERGE_TRAIN_OVERSIZED_WAIT_SECONDS or more (the longest-waiting one, ahead
@@ -234,8 +238,30 @@ function merge_train_order(array $prs, $now = null)
 		return $out;
 	};
 
+	// Longest-waiting first: by size alone, small PRs that keep arriving
+	// would starve the larger ones under the limit. Equal waits fall back to
+	// the size order; an unknown wait goes after the known ones.
+	$by_wait = function ($a, $b) use ($by_size) {
+		$a_since = isset($a['eligible_since']) ? $a['eligible_since'] : null;
+		$b_since = isset($b['eligible_since']) ? $b['eligible_since'] : null;
+
+		if ($a_since !== $b_since) {
+			if ($a_since === null) {
+				return 1;
+			}
+
+			if ($b_since === null) {
+				return -1;
+			}
+
+			return ($a_since < $b_since) ? -1 : 1;
+		}
+
+		return $by_size($a, $b);
+	};
+
 	usort($alone, $by_size);
-	usort($small, $by_size);
+	usort($small, $by_wait);
 	usort($large, $by_size);
 
 	$overdue = array();
@@ -270,8 +296,20 @@ function merge_train_order(array $prs, $now = null)
 
 		$later = array_merge($small, $rest);
 	} elseif ($small) {
-		$train = array_slice($small, 0, MERGE_TRAIN_MAX_PRS);
-		$later = array_merge(array_slice($small, MERGE_TRAIN_MAX_PRS), $large);
+		$train = array();
+		$later = array();
+		$lines = 0;
+
+		foreach ($small as $pr) {
+			if ((count($train) < MERGE_TRAIN_MAX_PRS) && (($lines + $pr['product_lines']) <= MERGE_TRAIN_TOTAL_LIMIT)) {
+				$train[] = $pr;
+				$lines += $pr['product_lines'];
+			} else {
+				$later[] = $pr;
+			}
+		}
+
+		$later = array_merge($later, $large);
 	} else {
 		$train = array_slice($large, 0, 1);
 		$later = array_slice($large, 1);

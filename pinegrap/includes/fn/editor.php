@@ -940,6 +940,84 @@ function prepare_rich_text_editor_content_for_input($content, $path = null)
     $content = str_replace('value="' . $path, 'value="{path}', $content);
     return $content;
 }
+
+// What pg_sanitize_rich_text() keeps, as data: the sanitiser reads its lists
+// here, and the external API hands the same lists to a client that writes
+// rich text (GET /forms/{id}/fields, html_allowed), so the two never drift.
+// Lists are keyed by name for isset() lookups.
+//
+//   dropped_tags              removed with everything inside them
+//   tags                      kept; any other tag is unwrapped (its text stays)
+//   attributes                kept on every kept tag (the visitor profile
+//                             removes class and narrows style)
+//   tag_attributes            the attributes one tag keeps besides those
+//   visitor_style_properties  the style properties visitor text keeps
+//   url_schemes               the schemes a link or image address may use
+//                             (a relative address and {path} always pass)
+function pg_rich_text_allow_list()
+{
+    return array(
+        // Elements whose content is code or a foreign document: removed with
+        // everything inside them.
+        'dropped_tags' => array(
+            'script' => 1, 'style' => 1, 'iframe' => 1, 'frame' => 1, 'frameset' => 1,
+            'object' => 1, 'embed' => 1, 'applet' => 1, 'noscript' => 1, 'noembed' => 1,
+            'noframes' => 1, 'template' => 1, 'svg' => 1, 'math' => 1, 'xmp' => 1,
+            'plaintext' => 1, 'meta' => 1, 'link' => 1, 'base' => 1, 'title' => 1,
+            'head' => 1, 'form' => 1, 'input' => 1, 'button' => 1, 'select' => 1,
+            'option' => 1, 'textarea' => 1,
+        ),
+
+        // Formatting the rich-text editor produces. Anything else is unwrapped:
+        // the tag goes, its content stays.
+        'tags' => array(
+            'p' => 1, 'br' => 1, 'div' => 1, 'span' => 1, 'b' => 1, 'strong' => 1,
+            'i' => 1, 'em' => 1, 'u' => 1, 's' => 1, 'strike' => 1, 'del' => 1,
+            'ins' => 1, 'sub' => 1, 'sup' => 1, 'small' => 1, 'mark' => 1, 'abbr' => 1,
+            'cite' => 1, 'q' => 1, 'code' => 1, 'pre' => 1, 'blockquote' => 1,
+            'h1' => 1, 'h2' => 1, 'h3' => 1, 'h4' => 1, 'h5' => 1, 'h6' => 1,
+            'ul' => 1, 'ol' => 1, 'li' => 1, 'dl' => 1, 'dt' => 1, 'dd' => 1,
+            'a' => 1, 'img' => 1, 'hr' => 1, 'font' => 1, 'center' => 1,
+            'table' => 1, 'caption' => 1, 'thead' => 1, 'tbody' => 1, 'tfoot' => 1,
+            'tr' => 1, 'td' => 1, 'th' => 1, 'colgroup' => 1, 'col' => 1,
+        ),
+
+        // Attributes kept on every allowed element. Event handlers, id and name
+        // (DOM clobbering) and data-* hooks are not on the list and so are removed.
+        'attributes' => array(
+            'class' => 1, 'style' => 1, 'title' => 1, 'dir' => 1, 'lang' => 1,
+            'align' => 1, 'valign' => 1, 'width' => 1, 'height' => 1, 'border' => 1,
+            'cellpadding' => 1, 'cellspacing' => 1, 'colspan' => 1, 'rowspan' => 1,
+            'color' => 1, 'face' => 1, 'size' => 1, 'start' => 1, 'alt' => 1,
+        ),
+
+        // What one tag keeps besides those. href and src must pass
+        // _pg_rich_text_url_is_safe(); the visitor profile replaces rel.
+        'tag_attributes' => array(
+            'a'   => array('href' => 1, 'target' => 1, 'rel' => 1),
+            'img' => array('src' => 1),
+            'ol'  => array('type' => 1),
+            'ul'  => array('type' => 1),
+            'li'  => array('type' => 1),
+        ),
+
+        // The style properties visitor text keeps (_pg_rich_text_visitor_style()).
+        'visitor_style_properties' => array(
+            'color' => 1, 'background-color' => 1, 'font-family' => 1, 'font-size' => 1,
+            'font-style' => 1, 'font-weight' => 1, 'font-variant' => 1, 'text-align' => 1,
+            'text-decoration' => 1, 'text-decoration-line' => 1, 'text-decoration-color' => 1,
+            'text-decoration-style' => 1, 'text-transform' => 1, 'text-indent' => 1,
+            'line-height' => 1, 'vertical-align' => 1, 'margin-left' => 1, 'margin-right' => 1,
+            'padding-left' => 1, 'padding-right' => 1, 'list-style-type' => 1, 'direction' => 1,
+            'border' => 1, 'border-width' => 1, 'border-style' => 1, 'border-color' => 1,
+            'border-collapse' => 1,
+        ),
+
+        // The schemes an address may use (_pg_rich_text_url_is_safe()).
+        'url_schemes' => array('http' => 1, 'https' => 1, 'mailto' => 1, 'tel' => 1),
+    );
+}
+
 /**
  * Reduce rich text that came from an untrusted browser to an allow-list of
  * harmless HTML.
@@ -1025,39 +1103,15 @@ function pg_sanitize_rich_text($content, $profile = 'visitor')
 // shared allow-list.
 function _pg_sanitize_rich_text_children($parent, $visitor = true)
 {
-    // Elements whose content is code or a foreign document: removed with
-    // everything inside them.
-    static $dropped_tags = array(
-        'script' => 1, 'style' => 1, 'iframe' => 1, 'frame' => 1, 'frameset' => 1,
-        'object' => 1, 'embed' => 1, 'applet' => 1, 'noscript' => 1, 'noembed' => 1,
-        'noframes' => 1, 'template' => 1, 'svg' => 1, 'math' => 1, 'xmp' => 1,
-        'plaintext' => 1, 'meta' => 1, 'link' => 1, 'base' => 1, 'title' => 1,
-        'head' => 1, 'form' => 1, 'input' => 1, 'button' => 1, 'select' => 1,
-        'option' => 1, 'textarea' => 1,
-    );
+    static $rules = null;
 
-    // Formatting the rich-text editor produces. Anything else is unwrapped:
-    // the tag goes, its content stays.
-    static $allowed_tags = array(
-        'p' => 1, 'br' => 1, 'div' => 1, 'span' => 1, 'b' => 1, 'strong' => 1,
-        'i' => 1, 'em' => 1, 'u' => 1, 's' => 1, 'strike' => 1, 'del' => 1,
-        'ins' => 1, 'sub' => 1, 'sup' => 1, 'small' => 1, 'mark' => 1, 'abbr' => 1,
-        'cite' => 1, 'q' => 1, 'code' => 1, 'pre' => 1, 'blockquote' => 1,
-        'h1' => 1, 'h2' => 1, 'h3' => 1, 'h4' => 1, 'h5' => 1, 'h6' => 1,
-        'ul' => 1, 'ol' => 1, 'li' => 1, 'dl' => 1, 'dt' => 1, 'dd' => 1,
-        'a' => 1, 'img' => 1, 'hr' => 1, 'font' => 1, 'center' => 1,
-        'table' => 1, 'caption' => 1, 'thead' => 1, 'tbody' => 1, 'tfoot' => 1,
-        'tr' => 1, 'td' => 1, 'th' => 1, 'colgroup' => 1, 'col' => 1,
-    );
+    if ($rules === null) {
+        $rules = pg_rich_text_allow_list();
+    }
 
-    // Attributes kept on every allowed element. Event handlers, id and name
-    // (DOM clobbering) and data-* hooks are not on the list and so are removed.
-    static $allowed_attributes = array(
-        'class' => 1, 'style' => 1, 'title' => 1, 'dir' => 1, 'lang' => 1,
-        'align' => 1, 'valign' => 1, 'width' => 1, 'height' => 1, 'border' => 1,
-        'cellpadding' => 1, 'cellspacing' => 1, 'colspan' => 1, 'rowspan' => 1,
-        'color' => 1, 'face' => 1, 'size' => 1, 'start' => 1, 'alt' => 1,
-    );
+    $dropped_tags = $rules['dropped_tags'];
+    $allowed_tags = $rules['tags'];
+    $allowed_attributes = $rules['attributes'];
 
     // The live child list shifts while nodes are removed, so a copy is walked.
     $children = array();
@@ -1123,14 +1177,8 @@ function _pg_sanitize_rich_text_children($parent, $visitor = true)
                 }
             } elseif (isset($allowed_attributes[$name])) {
                 $keep = ($name != 'style') || _pg_rich_text_style_is_safe($value);
-            } elseif (($name == 'href') && ($tag == 'a')) {
-                $keep = _pg_rich_text_url_is_safe($value);
-            } elseif (($name == 'src') && ($tag == 'img')) {
-                $keep = _pg_rich_text_url_is_safe($value);
-            } elseif ((($name == 'target') || ($name == 'rel')) && ($tag == 'a')) {
-                $keep = true;
-            } elseif (($name == 'type') && (($tag == 'ol') || ($tag == 'ul') || ($tag == 'li'))) {
-                $keep = true;
+            } elseif (isset($rules['tag_attributes'][$tag][$name])) {
+                $keep = (($name != 'href') && ($name != 'src')) || _pg_rich_text_url_is_safe($value);
             }
 
             if (!$keep) {
@@ -1153,16 +1201,12 @@ function _pg_sanitize_rich_text_children($parent, $visitor = true)
 // stay, or '' when none do.
 function _pg_rich_text_visitor_style($style)
 {
-    static $allowed_properties = array(
-        'color' => 1, 'background-color' => 1, 'font-family' => 1, 'font-size' => 1,
-        'font-style' => 1, 'font-weight' => 1, 'font-variant' => 1, 'text-align' => 1,
-        'text-decoration' => 1, 'text-decoration-line' => 1, 'text-decoration-color' => 1,
-        'text-decoration-style' => 1, 'text-transform' => 1, 'text-indent' => 1,
-        'line-height' => 1, 'vertical-align' => 1, 'margin-left' => 1, 'margin-right' => 1,
-        'padding-left' => 1, 'padding-right' => 1, 'list-style-type' => 1, 'direction' => 1,
-        'border' => 1, 'border-width' => 1, 'border-style' => 1, 'border-color' => 1,
-        'border-collapse' => 1,
-    );
+    static $allowed_properties = null;
+
+    if ($allowed_properties === null) {
+        $allowed_properties = pg_rich_text_allow_list();
+        $allowed_properties = $allowed_properties['visitor_style_properties'];
+    }
 
     $kept = array();
 
@@ -1257,7 +1301,9 @@ function _pg_rich_text_url_is_safe($url)
         return true;
     }
 
-    return in_array(substr($probe, 0, $colon), array('http', 'https', 'mailto', 'tel'), true);
+    $rules = pg_rich_text_allow_list();
+
+    return isset($rules['url_schemes'][substr($probe, 0, $colon)]);
 }
 
 // Inline styles from the editor are colours, alignment and sizes. Anything

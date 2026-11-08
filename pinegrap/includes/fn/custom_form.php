@@ -2630,6 +2630,22 @@ function pg_cf_private_expiry_date($today, $days)
     return gmdate('Y-m-d', gmmktime(0, 0, 0, (int) $m[2], (int) $m[3] + $days, (int) $m[1]));
 }
 
+/**
+ * The PCRE the server checks a field's validation pattern (the input's HTML
+ * pattern attribute) with: anchored on both ends like HTML's pattern, UTF-8,
+ * '/' as the delimiter. Only a bare slash is escaped; an escaped pair
+ * (`\/`, `\\`) is kept, so a pattern that already escapes its slashes
+ * still compiles.
+ *
+ * @param string $pattern the field's validation_regex
+ * @return string
+ */
+function pg_cf_field_pattern_regex($pattern)
+{
+    $pattern = preg_replace('#\\\\.(*SKIP)(*FAIL)|/#s', '\\/', trim((string) $pattern));
+    return '/^(?:' . $pattern . ')$/u';
+}
+
 // Today as Y-m-d in the site's time zone, the default init.php sets from
 // TIMEZONE.
 function pg_cf_rules_today()

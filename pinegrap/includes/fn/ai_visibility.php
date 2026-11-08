@@ -228,6 +228,7 @@ function pg_ai_top_pages($first, $last, $limit = 10)
             'item_type' => '',
             'item_id'   => 0,
             'views'     => $row['fetches'],
+            'deleted'   => !isset($names[$row['page_id']]),
         );
     }
 

@@ -100,9 +100,10 @@ function ws_claude_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Take a request',
-            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel. 409 when another run has taken it or it is closed.',
+            'description' => 'Marks the request as being worked on and leaves an eye on it in the channel. 409 when another run has taken it or it is closed. 409 instructions_outdated when instructions is not the version of the instructions the site serves now (GET /workspace/claude/instructions): the run has not read them, or read them before they changed, and reads them again; a run that sends none is told so in the channel once and in the Workspace Settings.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'instructions', 'in' => 'body', 'type' => 'string', 'max_length' => 40, 'description' => 'The version of the instructions the run follows, as their claim step writes it (instructions_version of GET /workspace/claude/instructions).'),
             ),
         ),
 
@@ -116,10 +117,11 @@ function ws_claude_api_routes()
             'dry_run' => true,
             'returns'     => 'WorkspaceClaudeRequest',
             'summary'     => 'Answer a request',
-            'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. In a channel or a discussion the owner of the application is not in, it is posted as long as the person who asked may still write there. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. A request whose task block has an id is a run on a task: the words are kept on the task, it takes no tasks, and its changes wait on the task until the person who asked applies or sets them aside. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept.',
+            'description' => 'Writes the answer under the request, as the application, with the person who asked mentioned (they are told), and swaps the eye for a tick. In a channel or a discussion the owner of the application is not in, it is posted as long as the person who asked may still write there. A request whose design block says from_editor came from the Visual Page Editor: it has no channel, takes text only, and its page change is proposed first with POST /design/pages/{id}/proposals and request_id; proposals made that way for a channel request are shown under this answer. A request whose task block has an id is a run on a task: the words are kept on the task, it takes no tasks, and its changes wait on the task until the person who asked applies or sets them aside. tasks are proposals, not tasks: they wait under the answer until somebody in the channel opens or sets them aside. changes are proposals too, for changing, adding and deleting records: a record is never written here; the person who asked applies the change with one click, with their own rights, and it is kept among the channel\'s decisions. The whole answer is refused (422, the change named) when a change cannot be made: a field that does not exist, a value of the wrong kind, a record that is not there, nothing that differs from what the record holds, an action the kind of record does not take, or a person who asked who may not change that kind of record. Tags such as <@user:12> and <#order:1045> are kept. no_answer true closes a request asked in a channel or a discussion, or the daily summary, when it needs no answer (a message that only thanks, a line in a discussion that asks nothing): nothing is written in the channel, the eye is swapped for a tick and the request reads answered with reply_message_id null; it takes no text, tasks or changes (422 on the one sent), and a request from the Visual Page Editor, a note or a task run, where somebody waits for words, refuses it with 422. Without no_answer, text is required.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
-                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'required' => true),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'description' => 'The answer; required unless no_answer is true.'),
+                array('name' => 'no_answer', 'in' => 'body', 'type' => 'bool', 'description' => 'Close the request without writing anything: it needs no answer.'),
                 array('name' => 'tasks', 'in' => 'body', 'type' => 'list', 'of' => array('title' => 'string', 'description' => 'string', 'assignees' => 'integer[]', 'due_date' => 'string', 'priority' => 'string'), 'max_items' => 10, 'description' => 'Proposed tasks, as objects of {title, description, assignees (user ids), due_date (YYYY-MM-DD), priority (low, normal, high, urgent)}.'),
                 ws_api_changes_param('the person who asked'),
             ),
@@ -656,6 +658,7 @@ function ws_api_claude_instructions($params)
     api_ok(array(
         'version'  => WS_CLAUDE_BOOTSTRAP_VERSION,
         'site'     => ws_claude_api_base(),
+        'instructions_version' => ws_claude_instructions_version(),
         'outdated' => (ws_claude_version_state($sent, WS_CLAUDE_BOOTSTRAP_VERSION) !== 'current')
             || (ws_claude_site_state($site, ws_claude_api_base()) === 'other'),
         'text'     => ws_claude_routine_prompt(),
@@ -665,7 +668,7 @@ function ws_api_claude_instructions($params)
 // What ws_api_claude_instructions() returns.
 function ws_api_claude_instructions_schema()
 {
-    return array('version' => 'integer', 'site' => 'string', 'outdated' => 'boolean', 'text' => 'string');
+    return array('version' => 'integer', 'site' => 'string', 'instructions_version' => 'string', 'outdated' => 'boolean', 'text' => 'string');
 }
 
 function ws_api_claude_brief($params)
@@ -750,10 +753,12 @@ function ws_api_claude_claim($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    ws_api_claude_instructions_check($row, $params['instructions'] ?? null);
+
     api_dry_run_stop('claimed', 'workspace_claude_request', array('id' => (int) $row['id']));
 
     // One run wins when two reach for the same request.
-    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "'
+    db("UPDATE ws_ai_requests SET status = 'running', claimed_at = '" . time() . "', error = ''
         WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent')");
 
     if (mysqli_affected_rows(db::$con) < 1) {
@@ -763,6 +768,42 @@ function ws_api_claude_claim($params)
     ws_claude_react((int) $row['message_id'], '👀', true);
 
     api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
+}
+
+/**
+ * Refuses a claim made by a run that has not read the instructions the site
+ * serves now (409 instructions_outdated): the request keeps its status for a run
+ * that has. A run that sent no version at all runs a prompt that never reads
+ * the site's instructions and cannot put itself right: the request's channel
+ * is told once, by a system line marked on the request's error, and the
+ * Workspace Settings card shows the long-prompt warning. A run that read an
+ * earlier text is only told to read it again.
+ *
+ * @param array $row  the request
+ * @param mixed $sent the version the claim sent, null when none
+ */
+function ws_api_claude_instructions_check($row, $sent)
+{
+    $state = ws_claude_instructions_state($sent, ws_claude_instructions_version());
+
+    if ($state === 'current') {
+        return;
+    }
+
+    if (($state === 'none') && !api_dry_run_requested()) {
+        ws_claude_note_version(null);
+
+        if (((int) ($row['channel_id'] ?? 0) > 0) && ((string) ($row['error'] ?? '') !== 'instructions_outdated')) {
+            db("UPDATE ws_ai_requests SET error = 'instructions_outdated'
+                WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent') AND error <> 'instructions_outdated'");
+
+            if (mysqli_affected_rows(db::$con) > 0) {
+                ws_message_system((int) $row['channel_id'], lang('Claude could not take this request: its routine does not read the instructions this site gives it. An administrator copies the prompt again from Claude in the channels in the Workspace Settings.'));
+            }
+        }
+    }
+
+    api_fail(409, 'instructions_outdated', lang('These are not the instructions the site gives out now. Read them again with GET /workspace/claude/instructions and follow the new text.'));
 }
 
 /**
@@ -834,6 +875,90 @@ function ws_api_claude_channel($viewer, $row)
     return array('channel' => $channel, 'writer' => $writer);
 }
 
+/**
+ * Where a request to Claude came from, as its answer is written: the Visual
+ * Page Editor, a note, a run on a task, the daily summary, or a channel or
+ * discussion message.
+ *
+ * @param array $row ws_ai_requests row
+ * @return string editor | note | task | summary | channel
+ */
+function ws_api_claude_answer_origin($row)
+{
+    if (((int) ($row['page_id'] ?? 0) > 0) && function_exists('ws_design_ai') && ws_design_ai() && pg_design_ai_is_design_request($row)) {
+        return 'editor';
+    }
+
+    if ((int) ($row['note_id'] ?? 0) > 0) {
+        return 'note';
+    }
+
+    if ((int) ($row['task_id'] ?? 0) > 0) {
+        return 'task';
+    }
+
+    return ws_claude_is_summary_request($row) ? 'summary' : 'channel';
+}
+
+/**
+ * Why an answer's body is refused before anything else is read: no_answer
+ * closes the request without a message, so it carries no words, tasks or
+ * changes, and it is only for a channel request or the daily summary - the
+ * editor, a note and a task run wait for words in a place no message
+ * reaches. Without no_answer the words are required. Pure.
+ *
+ * @param string $origin ws_api_claude_answer_origin()
+ * @param array  $params the route's body
+ * @return array field ('' when the body may be taken), error
+ */
+function ws_api_claude_answer_input_refusal($origin, $params)
+{
+    $text = trim((string) ($params['text'] ?? ''));
+
+    if (empty($params['no_answer'])) {
+        return ($text === '')
+            ? array('field' => 'text', 'error' => lang('The message is empty.'))
+            : array('field' => '', 'error' => '');
+    }
+
+    if (!in_array((string) $origin, array('channel', 'summary'), true)) {
+        return array('field' => 'no_answer', 'error' => lang('Only a request asked in a channel, a discussion or the daily summary can be closed without an answer.'));
+    }
+
+    foreach (array('text' => ($text !== ''), 'tasks' => !empty($params['tasks']), 'changes' => !empty($params['changes'])) as $field => $sent) {
+        if ($sent) {
+            return array('field' => $field, 'error' => lang('A request closed without an answer takes no text, tasks or changes.'));
+        }
+    }
+
+    return array('field' => '', 'error' => '');
+}
+
+/**
+ * Closes a request that needs no answer: answered, with no message written
+ * and the eye swapped for a tick, as an answer leaves it.
+ *
+ * @param array $viewer the owner of the application
+ * @param array $row
+ */
+function ws_api_claude_close_unanswered($viewer, $row)
+{
+    api_dry_run_stop('answered', 'workspace_claude_request', array('id' => (int) $row['id'], 'origin' => ws_api_claude_answer_origin($row), 'no_answer' => true));
+
+    $now = time();
+
+    db("UPDATE ws_ai_requests SET status = 'answered', reply_message_id = 0,
+            answered_at = '" . $now . "', claimed_at = IF(claimed_at = 0, '" . $now . "', claimed_at), error = ''
+        WHERE id = '" . (int) $row['id'] . "' AND status IN ('queued', 'sent', 'running')");
+
+    if ((int) $row['message_id'] > 0) {
+        ws_claude_react((int) $row['message_id'], '👀', false);
+        ws_claude_react((int) $row['message_id'], '✅', true);
+    }
+
+    api_ok(ws_api_claude_request_present($viewer, ws_api_claude_request_or_404($row['id'])));
+}
+
 function ws_api_claude_answer($params)
 {
     $viewer = ws_api_claude_guard();
@@ -843,10 +968,21 @@ function ws_api_claude_answer($params)
         api_fail(409, 'closed', lang('This request is already closed.'));
     }
 
+    $origin = ws_api_claude_answer_origin($row);
+    $refused = ws_api_claude_answer_input_refusal($origin, $params);
+
+    if ($refused['field'] !== '') {
+        api_fail_validation($refused['error'], $refused['field']);
+    }
+
+    if (!empty($params['no_answer'])) {
+        ws_api_claude_close_unanswered($viewer, $row);
+    }
+
     // Asked from the Visual Page Editor: the words go on the request, where
     // the editor shows them beside the page proposals made with
     // POST /design/pages/{id}/proposals and this request's id.
-    if (((int) ($row['page_id'] ?? 0) > 0) && function_exists('ws_design_ai') && ws_design_ai() && pg_design_ai_is_design_request($row)) {
+    if ($origin === 'editor') {
         if (!empty($params['tasks']) || !empty($params['changes'])) {
             api_fail_validation(lang('A request from the Visual Page Editor is answered with text only; the page change is proposed with POST /design/pages/{id}/proposals.'), empty($params['tasks']) ? 'changes' : 'tasks');
         }

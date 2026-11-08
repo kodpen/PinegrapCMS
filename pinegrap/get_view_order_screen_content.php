@@ -1348,7 +1348,7 @@ function get_view_order_screen_content($properties)
             $output_installment_charges =
                 '<tr class="order_totals data">
                     <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Installment Charge')) . ':</td>
-                    <td class="mobile_right" style="text-align: right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td>
+                    <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($installment_charges * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
 

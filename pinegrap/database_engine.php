@@ -297,19 +297,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // started from here: every table, InnoDB included.
             $engine_report = check_and_repair_database_tables(true);
 
-            $engine_issues = 0;
-            $engine_repairs = 0;
-
-            foreach ($engine_report as $engine_report_messages) {
-                foreach ($engine_report_messages as $engine_report_message) {
-                    if ($engine_report_message === 'error') {
-                        $engine_issues++;
-                    }
-                    if ($engine_report_message === 'repaired') {
-                        $engine_repairs++;
-                    }
-                }
-            }
+            $engine_summary = pg_db_check_summary($engine_report);
+            $engine_issues = $engine_summary['issues'];
+            $engine_repairs = $engine_summary['repaired'];
 
             // The status widget renders from a cache of its own.
             $engine_status_cache = PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json';

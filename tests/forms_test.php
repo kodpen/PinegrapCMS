@@ -42,6 +42,21 @@ function test_forms_date_and_time_iso()
 	pg_assert_false(validate_date_and_time('2026-10-26'), 'a date alone, without a warning');
 }
 
+// An ISO date with a 12-hour time is valid (validate_date_and_time()), so its
+// AM/PM is read too, never dropped after the hour.
+function test_forms_date_and_time_iso_twelve_hour()
+{
+	forms_test_date_format();
+
+	pg_assert_true(validate_date_and_time('2026-10-26 5:00 PM'), 'valid');
+	pg_assert_same('2026-10-26 17:00', prepare_form_data_for_input('2026-10-26 5:00 PM', 'date and time'));
+	pg_assert_same('2026-10-26 00:00', prepare_form_data_for_input('2026-10-26 12:00 AM', 'date and time'));
+	pg_assert_same('2026-10-26 12:30', prepare_form_data_for_input('2026-10-26 12:30 pm', 'date and time'));
+	pg_assert_same('2026-01-05 09:15', prepare_form_data_for_input('2026-1-5 9:15 AM', 'date and time'));
+	pg_assert_same('2026-10-26 17:00', prepare_form_data_for_input('2026-10-26T17:00', 'date and time'), '24-hour unchanged');
+	pg_assert_same('2026-10-26 17:00', prepare_form_data_for_input('26/10/2026 5:00 PM', 'date and time'), 'site format unchanged');
+}
+
 // The value a native date, date-and-time or time input takes: ISO, from a
 // stored value or a default in the site's format; other text stays.
 function test_forms_native_date_value()
