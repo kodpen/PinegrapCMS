@@ -34,8 +34,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-brewery.md: Plan: the Craft Brewery design template (pinegrap-brewery): beers, taproom events, brewery tour bookings, a shop and the Beer Club, built from existing features in ~1,000-line steps
 - design-template-carrental-design.md: Design of plans/design-template-carrental.md: which shipped features the Car Rental template reuses for the fleet, bookings and business rentals, what it does not build, its look and Turkish words
 - design-template-carrental.md: Plan: the Car Rental design template (pinegrap-carrental), fleet collection, locations, booking requests with extras, deals and business rentals, in ~1,000-line steps
-- design-template-coworking-design.md: Design of plans/design-template-coworking.md: which shipped features the Coworking template reuses for spaces, bookings, memberships and events, what it does not build, its look and Turkish words
-- design-template-coworking.md: Plan: the Coworking design template (pinegrap-coworking): desks, offices and meeting rooms, memberships and day passes, tours, community events; ~1,000-line steps
 - design-template-filmstudio-design.md: Design of plans/design-template-filmstudio.md: which shipped features the Film Studio template reuses, what it does not build, its look and Turkish words
 - design-template-filmstudio.md: Plan: the Film Studio design template (pinegrap-filmstudio): showreel, projects by industry and service, services, the studio's stages for hire, crew, project enquiries, crew calls
 - design-template-florist-design.md: Design of plans/design-template-florist.md: shipped features reused for bouquets, delivery dates, subscriptions and enquiries, what is not built, look and Turkish words

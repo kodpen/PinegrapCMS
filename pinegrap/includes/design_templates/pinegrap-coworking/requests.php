@@ -169,6 +169,13 @@ $request_pages[] = array(
                 $para(lang('Tell us how many you are and when you want to move in; we send an offer for a furnished office.'), 'small text-body-secondary mb-3'),
                 $link(lang('Ask About an Office'), '{{page:office_enquiry}}', 'btn btn-sm btn-outline-primary px-3'),
             )),
+            // A meeting for a few hours needs no tour: the room is booked at
+            // a free time.
+            $el('div', 'p-4 rounded-3 border mt-4', lang('Meeting Rooms'), array(
+                $heading('h2', lang('Only need a meeting room?'), 'pcw-display h5 mb-2'),
+                $para(lang('Book a meeting room by the hour at a free time.'), 'small text-body-secondary mb-3'),
+                $link(lang('Book a meeting room'), '{{page:book_online}}', 'btn btn-sm btn-outline-primary px-3'),
+            )),
         ))),
 );
 

@@ -186,6 +186,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-sportsclub' => array('sp-rg-consent', 'sp-tr-consent', 'sp-sp-consent'),
 		'pinegrap-pharmacy' => array('rx-pr-consent', 'rx-aq-consent'),
 		'pinegrap-ferry' => array('fy-bk-consent', 'fy-gr-consent'),
+		'pinegrap-coworking' => array('cw-tr-consent', 'cw-oe-consent', 'cw-su-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);
