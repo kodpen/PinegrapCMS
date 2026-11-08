@@ -16,7 +16,7 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 
 ## Which parts are there?
 - `ai`: the assistant panel, `assets/js/designer_ai.js` (#8112, D5 part 1). Handed over only when `sdDesign.ai.enabled`. The toolbar button `#sd-ai-btn` and the canvas menu's "Ask the assistant about this" run it (`_sdAiRun()`); after it ran, its own listener answers the button. It also runs 1.5 s after `init()` (at once for a proposal link, `sdDesign.ai.proposal`), so requests still waiting from an earlier visit keep being carried on (its `ai_state` poll) as when it was a plain script tag.
-- `import` (#PR2, D5 part 2): `assets/js/style_designer_import.js`, the HTML / ZIP import dialog and the reply opened as tabs (also the paste-a-page dialog's). Handed to every editor. The core keeps `_pgImportOpen()` and `_pgImportApply(d, projectName)` as stubs.
+- `import` (#8131, D5 part 2): `assets/js/style_designer_import.js`, the HTML / ZIP import dialog and the reply opened as tabs (also the paste-a-page dialog's). Handed to every editor. The core keeps `_pgImportOpen()` and `_pgImportApply(d, projectName)` as stubs.
 - The assistant code that stays in the core is small and needed at open: `_sdAiBridge()` (the part's view of the editor), the "Write with AI" marks of the page fields (`_pgAiMarks*`) and the alt-text button (`_sdAiAltButton()`).
 
 ## What comes next?
