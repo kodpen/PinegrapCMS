@@ -955,6 +955,7 @@
     "Messages cannot be forwarded into a room with a guest.": "Misafirin bulunduğu odaya mesaj iletilemez.",
     "Messages sent from the contact page are collected in the panel, ready to answer.": "İletişim sayfasından gönderilen mesajlar panelde toplanır, yanıtlamaya hazır bekler.",
     "Messages set to be sent later, on their own.": "Daha sonra kendiliğinden gönderilecek mesajlar.",
+    "Messages starting with a prefix": "Bir önekle başlayan mesajlar",
     "Messages wait in a queue that the scheduled general job sends; they are listed on the SMS tab of the {var:1}.": "Mesajlar kuyrukta bekler ve zamanlanmış genel iş onları gönderir; {var:1} ekranının SMS sekmesinde listelenirler.",
     "Messages waiting for your read receipt": "Onayını bekleyen duyurular",
     "Messages with the desk": "Masayla yazışmalar",
