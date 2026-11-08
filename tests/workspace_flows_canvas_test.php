@@ -1956,7 +1956,7 @@ function ws_flows_canvas_test_groups()
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'record_get', 'ai'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'record_get', 'ai', 'agent'))
 	);
 }
 
