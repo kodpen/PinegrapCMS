@@ -113,3 +113,20 @@ function test_workspace_editor_media_wiring()
 	pg_assert_true(strpos($screen, '!inline[match[2]]') !== false, 'a lone recording is not listed again');
 	pg_assert_true(strpos($config, "'files'     => URL_SCHEME . HOSTNAME_SETTING . PATH") !== false, 'the site\'s file address is in the config');
 }
+
+// A canvas of a note opens again with its layers: the card's action, the
+// link put in the old one's place, and the save endpoint's note branch,
+// which reads only a file of the note's own folder.
+function test_workspace_editor_media_canvas_edit_wiring()
+{
+	$editor = workspace_editor_lists_test_source();
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_file_save.php');
+
+	pg_assert_true(strpos($editor, "go.setAttribute('data-ws-media-action', '1');") !== false, 'a media card draws its action');
+	pg_assert_true(strpos($editor, 'replaceFile: function (oldUrl, name, url)') !== false, 'the box can put a file in another\'s place');
+	pg_assert_true(strpos($screen, "field.rich.replaceFile(media.url, result.file.name, result.file.url);") !== false, 'the canvas drawn again replaces the link');
+	pg_assert_true(strpos($screen, "'&file=' + encodeURIComponent(media.name)") !== false, 'the save names the note\'s file');
+	pg_assert_true(strpos($save, "AND folder = '\" . (int) \$folder_id . \"'\"") !== false, 'only a file of the note\'s folder');
+	pg_assert_true(strpos($save, "'mode' => \$edited ? 'replace' : 'new'") !== false, 'a replacing save says so');
+}
