@@ -132,6 +132,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates
 - design-template-brewery.md: Craft Brewery template (pinegrap-brewery): beers and taproom events as collections, tour booking requests, private tastings booked online, packs and Beer Club terms in the shop, pbw- look, tests.
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
+- design-template-campsite-pages.md: Campsite template 2.0.0: home, places to stay and the tent pitches page on the Campsite blocks: the builders, each page's composition, motion, the test
 - design-template-campsite.md: Campsite template (pinegrap-campsite): kinds of stay, Pitches and Cabins collection, prices as words, stay requests and group enquiries, no shop, pcp- look, tests.
 - design-template-carrental.md: Car Rental template (pinegrap-carrental): the fleet as a collection, booking requests with extras and deals, business rentals, desks, extras, deals and terms as fixed content, pcr- look, tests.
 - design-template-charity.md: Charity template (pinegrap-charity): causes and campaigns with progress, gifts as donation products, pledges and volunteers followed from the account, events, reports, News, pch- look, tests.

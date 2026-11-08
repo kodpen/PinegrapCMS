@@ -175,7 +175,7 @@ $campsite_css = implode("\n", array(
 
 return array(
     'name'        => lang('Campsite'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 99,
     'icon'        => 'bi-tree',
@@ -229,10 +229,10 @@ return array(
         'email_footer' => array('name' => lang('Campsite E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pcp- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Campsite blocks' pg-campsite- rules and
+    // its pcp- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $campsite_css),
+        'css'   => pg_design_template_user_styles(array('campsite-hero', 'campsite-comfort', 'campsite-pitch'), $campsite_css),
         'fonts' => json_encode($campsite_fonts),
     ),
 );

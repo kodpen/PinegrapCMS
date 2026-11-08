@@ -116,6 +116,18 @@ $lang_switcher = function ($class = '', $variant = 'secondary') {
 
 // A sample picture with a fixed seed, so the same picture comes back on
 
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 80) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
 // A sample picture with a fixed seed, so the same picture comes back on
 // every opening until the park puts its own photographs in its place.
 $photo = function ($seed, $width, $height) {
@@ -154,22 +166,30 @@ $kinds = array(
         'sleeps'  => lang('Room for a tent, a car and up to six people'),
         'summary' => lang('Grass pitches in the meadow and by the lake, with or without electricity.'),
         'text'    => lang('Our tent pitches are wide and flat, marked by hedges and young trees so every family has its own corner. Choose a quiet spot at the forest edge, a sunny one in the meadow or one a few steps from the water.'),
-        'points'  => array(lang('Pitches of 80 to 120 m²'), lang('Electric hook-up on most pitches'), lang('Car parked beside the tent'), lang('Washing block within two minutes\' walk'))),
+        'points'  => array(lang('Pitches of 80 to 120 m²'), lang('Electric hook-up on most pitches'), lang('Car parked beside the tent'), lang('Washing block within two minutes\' walk')),
+        'bring'   => array(lang('Your tent and sleeping bags'), lang('A camping stove')),
+        'ready'   => array(lang('Electric hook-up on most pitches'), lang('Washing block within two minutes\' walk'))),
     'touring' => array('icon' => 'bi-truck', 'title' => lang('Touring Pitches'),
         'sleeps'  => lang('For a caravan or a motorhome and up to six people'),
         'summary' => lang('Level hardstanding and grass pitches for caravans, motorhomes and campervans.'),
         'text'    => lang('Touring pitches have a level base, an electric hook-up and a water tap close by. Motorhomes empty and fill at the service point by the gate, and long outfits find pitches that need no reversing.'),
-        'points'  => array(lang('Hardstanding or grass, all level'), lang('Electric hook-up on every pitch'), lang('Fresh water and waste point'), lang('Pull-through pitches for long outfits'))),
+        'points'  => array(lang('Hardstanding or grass, all level'), lang('Electric hook-up on every pitch'), lang('Fresh water and waste point'), lang('Pull-through pitches for long outfits')),
+        'bring'   => array(lang('Your caravan or motorhome')),
+        'ready'   => array(lang('Electric hook-up on every pitch'), lang('Fresh water and waste point'))),
     'glamping' => array('icon' => 'bi-stars', 'title' => lang('Glamping Tents'),
         'sleeps'  => lang('Sleeps two to five, beds made'),
         'summary' => lang('Bell tents and safari tents with real beds, a wood stove and a deck under the trees.'),
         'text'    => lang('For camping without the tent pegs: our glamping tents stand on wooden decks, with proper beds, bed linen, a wood stove for cool nights, lanterns and a picnic table. Some have their own kitchen and shower.'),
-        'points'  => array(lang('Real beds with linen'), lang('Wood stove and lanterns'), lang('A deck with a table and chairs'), lang('Fire pit beside the tent'))),
+        'points'  => array(lang('Real beds with linen'), lang('Wood stove and lanterns'), lang('A deck with a table and chairs'), lang('Fire pit beside the tent')),
+        'bring'   => array(lang('Towels and a torch')),
+        'ready'   => array(lang('Real beds with linen'), lang('Wood stove and lanterns'))),
     'cabin' => array('icon' => 'bi-house', 'title' => lang('Cabins and Lodges'),
         'sleeps'  => lang('Sleeps two to six, open all year'),
         'summary' => lang('Wooden cabins with a kitchen, a shower and a terrace looking over the lake or into the forest.'),
         'text'    => lang('Our cabins are built of local pine. Each has a kitchen, a shower room, heating for the cold months and a terrace with a barbecue. They are the way to stay with us out of season, when the lake is quiet and the forest turns gold.'),
-        'points'  => array(lang('Kitchen, shower and heating'), lang('Terrace with a barbecue'), lang('Bed linen and towels included'), lang('Open all year round'))),
+        'points'  => array(lang('Kitchen, shower and heating'), lang('Terrace with a barbecue'), lang('Bed linen and towels included'), lang('Open all year round')),
+        'bring'   => array(lang('Only yourselves')),
+        'ready'   => array(lang('Kitchen, shower and heating'), lang('Bed linen and towels included'))),
 );
 
 // The settings of a pitch or a cabin, the unit list's second filter.
@@ -721,6 +741,164 @@ $stay_band = function () use ($el, $heading, $para, $link, $container, $row, $co
             ), '4', '', 'align-items-center'),
         )),
     ));
+};
+
+// ── The Campsite blocks ─────────────────────────────────────────────────
+
+// The Campsite: Hero block (pg-campsite-lift, pg-campsite-kinds): one wide
+// picture, then a card lying over its lower edge from md up with the
+// eyebrow, the page's only h1, a line, the stay request and the prices with
+// the arrival times and the season beside them, and a way into each kind
+// of stay (its page). The picture fades and the card rises on load; the
+// picture is the first thing the page shows, so it is not lazy.
+$camp_hero = function ($eyebrow, $title, $lead, $src, $alt) use ($el, $heading, $para, $link, $span, $icon, $image, $container, $attr, $fx, $kinds, $park) {
+    $fact = function ($icon_name, $text, $name) use ($el, $icon, $span) {
+        return $el('li', 'd-flex align-items-center gap-2', $name, array(
+            $icon($icon_name, 'text-primary flex-shrink-0'),
+            $span($text, '', lang('Text')),
+        ));
+    };
+    $tiles = array();
+    foreach ($kinds as $key => $k) {
+        $tiles[] = $el('li', 'col position-relative d-flex align-items-center gap-3 p-3', $k['title'], array(
+            $icon($k['icon'], 'fs-4 text-primary flex-shrink-0'),
+            $el('div', '', lang('Kind Text'), array(
+                $link($k['title'], '{{page:stay_' . $key . '}}', 'stretched-link d-block fw-semibold text-body text-decoration-none'),
+                $span($k['sleeps'], 'd-block small text-body-secondary', lang('Sleeps')),
+            )),
+        ));
+    }
+    $picture = $el('div', 'ratio ratio-21x9 rounded-4 overflow-hidden bg-body-tertiary', lang('Hero Picture'), array(
+        $image($src, $alt, 'object-fit-cover'),
+    ));
+    $card = $el('div', 'pg-campsite-lift col-lg-10 mx-auto p-4 p-lg-5 rounded-4 bg-body shadow', lang('Hero Card'), array(
+        $para($eyebrow, 'pcp-eyebrow small text-uppercase fw-semibold text-primary mb-3'),
+        $heading('h1', $title, 'pcp-display display-5 mb-3'),
+        $para($lead, 'lead text-body-secondary mb-4'),
+        $el('div', 'd-flex flex-wrap align-items-center gap-3 mb-4', lang('Buttons'), array(
+            $link(lang('Request a Stay'), '{{page:book}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+            $link(lang('Prices and Seasons'), '{{page:prices}}', 'btn btn-outline-secondary btn-lg rounded-pill px-4'),
+            $el('ul', 'list-unstyled d-flex flex-wrap gap-3 small mb-0', lang('Stay Facts'), array(
+                $fact('bi-clock', $park['arrival'], lang('Arrival')),
+                $fact('bi-calendar-range', $park['opening'], lang('Opening')),
+            )),
+        )),
+        $el('nav', 'pg-campsite-kinds', lang('Kinds of Stay'), array(
+            $para(lang('Choose how you want to stay'), 'small fw-semibold mb-2'),
+            $el('ul', 'list-unstyled row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-2 mb-0', lang('Kinds'), $tiles),
+        ), array('_attrs' => array($attr('aria-label', lang('Kinds of Stay'))))),
+    ));
+    return $el('section', 'pcp-hero py-5 overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $fx($picture, array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1000)),
+            $fx($card, array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700, 'delay' => 200)),
+        )),
+    ));
+};
+
+// The Campsite: Comfort Scale block (pg-campsite-scale, pg-campsite-stop):
+// the kinds of stay from the wildest to the cosiest on a line that fills
+// with the theme colour, each a card with who it sleeps, what a guest
+// brings, what is ready and a link to its page; the cards rise in one
+// after another on view. A search section under its anchor $id.
+$comfort_scale = function ($id, $class = 'py-5 bg-body-tertiary') use ($el, $heading, $para, $link, $span, $icon, $container, $attr, $rise, $kinds, $searchable) {
+    $hidden = array('_attrs' => array($attr('aria-hidden', 'true')));
+    $list = function ($title, $icon_name, $items) use ($el, $heading, $icon, $span) {
+        $lis = array();
+        foreach ($items as $t) {
+            $lis[] = $el('li', 'd-flex gap-2 mb-1', lang('List Item'), array(
+                $icon($icon_name, 'text-primary flex-shrink-0'),
+                $span($t, '', lang('Text')),
+            ));
+        }
+        return $el('div', 'mb-3', $title, array(
+            $heading('h4', $title, 'small text-uppercase fw-semibold text-body-secondary mb-2'),
+            $el('ul', 'list-unstyled small mb-0', lang('Items'), $lis),
+        ));
+    };
+    $stops = array();
+    foreach ($kinds as $key => $k) {
+        $stops[] = $el('li', 'col d-flex', $k['title'], array(
+            $el('div', 'pg-campsite-stop d-flex flex-column w-100 p-4 rounded-4 border bg-body', lang('Stay Card'), array(
+                $icon($k['icon'], 'd-block fs-3 text-primary mb-2'),
+                $heading('h3', $k['title'], 'pcp-display h5 mb-1'),
+                $para($k['sleeps'], 'small text-body-secondary mb-3'),
+                $list(lang('You bring'), 'bi-backpack', $k['bring']),
+                $list(lang('Ready for you'), 'bi-check-lg', $k['ready']),
+                $link(str_replace('{var}', $k['title'], lang('See the {var}')), '{{page:stay_' . $key . '}}', 'link-primary fw-semibold small mt-auto'),
+            )),
+        ));
+    }
+    return $el('section', $class, lang('Ways to Stay'), array(
+        $container(array(
+            $el('div', 'text-center col-lg-8 mx-auto mb-5', lang('Section Header'), array(
+                $para(lang('Ways to stay'), 'pcp-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', lang('From a tent in the meadow to a cabin with a stove'), 'pcp-display h2 mb-3'),
+                $para(lang('Every way to stay with us, from the wildest to the cosiest: what you bring, and what is ready when you arrive.'), 'lead text-body-secondary mb-0'),
+            )),
+            $el('div', 'd-none d-lg-flex justify-content-between small fw-semibold text-body-secondary mb-2', lang('Scale Ends'), array(
+                $span(lang('Closest to nature'), '', lang('Text')),
+                $span(lang('Most comfort'), '', lang('Text')),
+            ), $hidden),
+            $el('div', 'pg-campsite-scale d-none d-lg-block mb-5', lang('Scale'), array(), $hidden),
+            $rise($el('ol', 'list-unstyled row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-0', lang('Kinds'), $stops), 120),
+        )),
+    ), $searchable($id, lang('tent, caravan, motorhome, campervan, glamping, cabin, lodge, bungalow')));
+};
+
+// The Campsite: Pitch Drawing block (pg-campsite-plot, pg-campsite-area,
+// pg-campsite-marker): a tent pitch seen from above, its car place and
+// tent area and four numbered points drawn with position utilities (hidden
+// from screen readers, the legend says it all), and beside it the legend
+// of the same numbers. The drawing scales in and the legend rises on view.
+$pitch_drawing = function ($id, $more = array(), $class = 'py-5') use ($el, $heading, $para, $span, $container, $row, $col, $attr, $fx, $rise, $searchable) {
+    $marker = function ($n, $place) use ($span) {
+        return $span((string)$n, 'pg-campsite-marker position-absolute translate-middle shadow-sm ' . $place, lang('Number'));
+    };
+    $points = array(
+        array(lang('Car beside the tent'), lang('One car parks on the pitch; a second car parks at the gate.')),
+        array(lang('Electric hook-up'), lang('A post at the pitch\'s edge; bring a long cable with a campsite plug.')),
+        array(lang('The park road'), lang('Walking pace on the park roads.')),
+        array(lang('Hedges between the pitches'), lang('Hedges and young trees give every family its own corner.')),
+    );
+    $legend = array();
+    foreach ($points as $i => $p) {
+        $legend[] = $el('li', 'd-flex gap-3 mb-3', $p[0], array(
+            $span((string)($i + 1), 'pg-campsite-marker', lang('Number')),
+            $el('div', '', lang('Point Text'), array(
+                $heading('h3', $p[0], 'h6 mb-1'),
+                $para($p[1], 'small text-body-secondary mb-0'),
+            )),
+        ));
+    }
+    $drawing = $el('div', 'ratio ratio-4x3', lang('Drawing'), array(
+        $el('div', 'pg-campsite-plot', lang('Pitch'), array(
+            $el('div', 'pg-campsite-area position-absolute top-0 bottom-0 start-0 m-3 w-25', lang('Car Place'), array($span(lang('Car'), '', lang('Text')))),
+            $el('div', 'pg-campsite-area position-absolute top-0 end-0 m-3 w-50 h-75', lang('Tent Area'), array($span(lang('Tent or caravan'), '', lang('Text')))),
+            $marker(1, 'top-0 start-0 mt-3 ms-3'),
+            $marker(2, 'top-0 start-50'),
+            $marker(3, 'top-100 start-50'),
+            $marker(4, 'top-50 start-100'),
+        ), array('_attrs' => array($attr('aria-hidden', 'true')))),
+    ));
+    return $el('section', $class, lang('Pitch Drawing'), array(
+        $container(array(
+            $row(array(
+                $fx($col(array(
+                    $el('figure', 'mb-0 p-3', lang('Pitch Drawing'), array(
+                        $drawing,
+                        $el('figcaption', 'small text-body-secondary text-center mt-4', lang('Caption'), array(), array('text' => lang('A meadow pitch of about 100 m², seen from above'))),
+                    )),
+                ), '', '6'), array('effect' => 'scale', 'trigger' => 'view', 'duration' => 700)),
+                $col(array_merge(array(
+                    $para(lang('Your pitch'), 'pcp-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', lang('What a pitch holds'), 'pcp-display h2 mb-3'),
+                    $para(lang('Our tent pitches are wide and flat, marked by hedges and young trees so every family has its own corner.'), 'text-body-secondary mb-4'),
+                    $rise($el('ol', 'list-unstyled ' . ($more ? 'mb-4' : 'mb-0'), lang('Legend'), $legend), 100),
+                ), $more), '', '6'),
+            ), '4', '', 'align-items-center g-lg-5'),
+        )),
+    ), $searchable($id, lang('pitch, hook-up, electricity, car, hedge, size')));
 };
 
 // The facts of a kind of stay in one list: who it sleeps and its lowest
