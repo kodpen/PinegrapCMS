@@ -239,6 +239,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors)
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
+- designer-blocks-museum.md: The Museum block family (museum- prefix, own palette group): exhibition hero, look closer, highlights trail; general blocks placed instead; rules, test
 - designer-blocks-news-maintenance-creative.md: Maintenance, news and creative blocks (2026.11.0): palette groups, the family branch and helpers, maintenance blocks without site links, attribute-dropping nodes, block details, the palette test.
 - designer-blocks-pharmacy.md: The Pharmacy block family (pharmacy- prefix): duty panel, reference readings, travel vaccines, medicine schedule; general blocks reused instead; no motion; rule and test
 - designer-blocks-photo.md: The Photo block family (photo- prefix, its own palette group): filmstrip hero, proof contact sheet, behind the shot; the general blocks a photography site places instead; rules and test
