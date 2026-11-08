@@ -13,10 +13,10 @@ description: Steps A5-A9 of plans/agent-channel.md: channel memory and decision 
 - A7 (M) Risk tiers. Done in #8242: tiers on `ws_change_types()` (`includes/workspace/agent_tiers.php`), the execution policy from the channel-agent row (an application agent's changes within its tier applied at once), the undo journal in `ws_ai_changes` (step 11.0.174) and the card's Undo (`workspace/agent-risk-tiers.md`).
 - A7b (S) Flows part of the tiers. After A7. An "ask an agent" box and agent-started runs by permission (`plans/flows-next.md` shape).
 - A8 (M) Further doors. After A4. The Claude Code channel plugin in a separate repository (`kodpen/pinegrap-claude-channel`: poll, claim, push the event, tools reply, fail, context, record, react, post), applied to Anthropic's channel list, under the shelved plan's security rules; per-person sessions over OAuth with the "via" badge; a chat box on the dashboard on the same catalogue.
-- The canvas as an agent tool (A9): moved to `plans/agent-canvas.md` (owner 2026-11-08: the agent writes SVG); its routes C1-C3 start now, the built-in assistant's tools (C4) after A4. Workflow tables need nothing: their routes are complete (`workspace/workflow-tables-api.md`).
+- The canvas as an agent tool (A9): `done` (#8236, #8254, #8252, #8299, #8293; owner 2026-11-08: the agent writes SVG, `workspace/agent-canvas-svg.md`). Workflow tables need nothing: their routes are complete (`workspace/workflow-tables-api.md`).
 
 ## Which run side by side?
-- A5 and A6 beside A4 after A3; A5b after A5; A7, A8 and A9 together after A4.
+- A5 and A6 beside A4 after A3; A5b after A5; A7 and A8 together after A4.
 
 ## What did the plan take over? (2026-11-06)
 - `workspace-agent-handles` (slices 1a, 1b, 5a, 5b landed): the one registry of askable agents (kind, handle, name, avatar, application id, provider, model, sealed key, status; keys `app:<id>`, `model:<id>`) is step A3, the model assistants (`@chatgpt`) step A6; a handle equal to a user name is refused (#2418). `claude-code-channel` (shelved): its security rules hold for A8 (no secrets in the folder, default permission mode, approvals only to the connection's owner, channel text as plain text).
