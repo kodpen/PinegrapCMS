@@ -1,6 +1,6 @@
 ---
 name: designer-parts-on-demand
-description: The visual designer's parts not needed to open a page: their own bundles (pg_designer_parts()), sdDesign.parts, the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the ai and import parts (D5)
+description: The designer's parts not needed to open a page: own bundles (pg_designer_parts()), the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the ai and import parts (D5)
 ---
 
 ## How does a part of the editor load on first use?
