@@ -154,7 +154,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flow-draft-card-window.md: The flow draft card (D8b #3032, V7a #3393, K3 #6630): a still picture at rest, a click or Enter opens the read-only Flows canvas in a 20 rem pane; the strip below with link and try
 - workspace-flow-draft-proposals.md: An application, or Claude in a channel answer, proposes a flow as a draft card ({type: flow}, A8): what is sent, checked, kept, how the card opens it, {type: scheduled}
 - workspace-flow-embed.md: PGWsFlow.embed(host, boot) in workspace_flow.js: the Flows canvas drawn read-only elsewhere (the flow draft card), one at a time; boot fields, focus-gated wheel, keys, onSelect, destroy
-- workspace-flow-layer.md: flowLayer() in workspace.js: the whole Flows editor in a full-screen layer over a channel (L3); bar, inert page, Escape, Close with flush, config once a page
+- workspace-flow-layer.md: flowLayer() in workspace.js: the whole Flows editor in a full-screen layer over a channel; ways in, Add › New flow, bar, inert page, Escape, Close with flush
 - workspace-flow-mount.md: PGWsFlow.mount(root, boot, options) in workspace_flow.js: the Flows editor drawn into any element, single-flow mode for a layer over a channel, destroy() and flush(), window listeners bound once
 - workspace-flows-ai-box-canvas.md: The Pinegrap AI box on the flow canvas (B2's second PR): KINDS.ai, a classifying box's named arrows through kindOf(), the palette gate, aiFields(), extract's values
 - workspace-flows-ai-box.md: The Pinegrap AI box of flows (kind ai, B2): modes, settings, classify's named outcomes as arrows, what is sent, the wait on its own step, the call after the response, the hourly look and the deadline

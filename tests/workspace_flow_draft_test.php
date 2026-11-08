@@ -1121,6 +1121,12 @@ function test_ws_flow_ai_sketch_wiring()
 	pg_assert_contains('ws_flow_ai_sketch(', $code, 'drafted by the server function');
 	pg_assert_contains('ws_flow_ai_catalogue()', workspace_flow_draft_code('ws_flow_ai_sketch'), 'the catalogue with its hints');
 	pg_assert_false(strpos($code, 'publish') !== false, 'never published');
+	pg_assert_contains("(int) (\$request['channel_id'] ?? 0)", $code, 'a new flow\'s home passed on (Add › Flow in a channel)');
+
+	$sketch = workspace_flow_draft_code('ws_flow_ai_sketch');
+	$home = strpos($sketch, 'ws_can_read_channel($viewer, $home)');
+	pg_assert_true($home !== false, 'the home checked as ws_flow_save() checks it');
+	pg_assert_true(($home !== false) && ($home < strpos($sketch, 'ws_flow_ai_sketch_draft(')), 'before the model is asked');
 
 	$config = workspace_flow_draft_code('ws_flow_js_config');
 	pg_assert_contains("'ai_sketch'", $config, 'flag in the screen config');
