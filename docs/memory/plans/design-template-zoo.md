@@ -24,7 +24,7 @@ description: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals 
 - 5 (done, #8251): `animals.php`: the Animals collection (`animals` by `?habitat=` and `?class=`, `animal`, `animal_new`, `home_animals`); test.
 - 6 (done, #8262): `mail.php` and `visits.php`: school and group visit requests (`visit_request` with `?visit=`, `?group=`, `?age=`, `visit_view`, `my_visits`, `staff_visits`, `privacy`, `email_reply`, `email_visit_new`, `email_visit_received`); test.
 - 7 (done, #8275): `events.php`: the Events collection by date (`events` from today on, `event`, `event_new`, `home_events`); test.
-- 8: `shop.php`: the catalog (three groups, SKUs `ZOO-TICKET-`, `ZOO-MEMBER-`, `ZOO-ADOPT-<key>`), `buy_tickets`, `adopt_shop`, product, cart, checkout, order, `email_order`; test.
+- 8 (done, #8290): `shop.php`: catalog of three groups, `buy_tickets`, `adopt_shop`, shop pages, `email_order`; test.
 - 9: `standard.php`: contact, inbox, conversation, newsletter, News (`blog`, conservation news), blog post, help search, error ([[design-templates-standard-pages]]); test.
 - 10: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the account e-mail pages; test.
 - 11: assembly: `pinegrap-zoo.php` (order, search sections, look, fonts, `pzo-` rules, folders), assembly test, the shared test lists, `designer/design-template-zoo.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.

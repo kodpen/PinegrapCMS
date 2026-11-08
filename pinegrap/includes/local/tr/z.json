@@ -73,5 +73,6 @@
     "Zooming": "Yakınlaşma",
     "zone": "bölge",
     "zone_ids names a zone that does not exist (GET /store/zones).": "zone_ids var olmayan bir bölgeyi gösteriyor (GET /store/zones).",
+    "zoo ticket, day ticket, entry, aquarium, family": "hayvanat bahçesi bileti, günlük bilet, giriş, akvaryum, aile",
     "zoom, telephoto, periscope, concert": "yakınlaştırma, telefoto, periskop, konser"
 }
