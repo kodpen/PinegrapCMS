@@ -1190,6 +1190,7 @@
     "Lockers": "Dolaplar",
     "Lockers open with a code you choose; empty yours when your membership ends.": "Dolaplar seçtiğiniz bir kodla açılır; üyeliğiniz bitince dolabınızı boşaltın.",
     "Lockers with your own code for the laptop, the bike helmet or the gym bag.": "Dizüstü bilgisayar, bisiklet kaskı ya da spor çantası için kendi şifrenizle açılan dolaplar.",
+    "Locking notes needs the latest database update.": "Notları kilitlemek için son veritabanı güncellemesi gerekir.",
     "Locks repaired or changed": "Kilitlerin onarılması ya da değiştirilmesi",
     "Locks this session: the device limit cannot sign it out and the member cannot sign it out from their own screen. Different from the setting \"Refuse new sign-ins when the limit is full\", which only stops new devices.": "Bu oturumu kilitler: cihaz sınırı onu kapatamaz, üye de kendi ekranından kapatamaz. \"Sınır doluyken yeni girişi reddet\" ayarından farklıdır; o ayar yalnız yeni cihazları durdurur.",
     "Lodging": "Konaklama",
