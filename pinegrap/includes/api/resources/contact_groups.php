@@ -85,6 +85,10 @@ function api_contact_group_present($row, $members) {
 
 	$subscription = ((int)$row['email_subscription'] === 1);
 
+	// The kind column comes with the database update that adds rules; before
+	// it every group is filled by hand.
+	$by_rule = (isset($row['kind']) && ((string)$row['kind'] === 'dynamic'));
+
 	return array(
 		'id'                => (int)$row['id'],
 		'name'              => (string)$row['name'],
@@ -98,6 +102,13 @@ function api_contact_group_present($row, $members) {
 		// closed: shown there only to its members.
 		'subscription_type' => $subscription ? (string)$row['email_subscription_type'] : null,
 		'members'           => (int)$members,
+		// Filled by its rules alone: members change only through them (a
+		// members change is refused), and POST /contact-groups/{id}/refresh
+		// runs them now.
+		'by_rule'           => $by_rule,
+		// When the rules last ran to the end; null for a hand group or one
+		// whose first pass has not finished.
+		'computed_at'       => ($by_rule && isset($row['computed_at'])) ? api_time((int)$row['computed_at']) : null,
 		'created_by'        => ((string)$row['created_username'] !== '') ? (string)$row['created_username'] : null,
 		'created_at'        => api_time($row['created_timestamp']),
 		'updated_by'        => ((string)$row['last_modified_username'] !== '') ? (string)$row['last_modified_username'] : null,
@@ -116,6 +127,8 @@ function api_contact_group_schema() {
 		'email_subscription' => 'boolean',
 		'subscription_type'  => 'string?',
 		'members'            => 'integer',
+		'by_rule'            => 'boolean',
+		'computed_at'        => 'string?',
 		'created_by'         => 'string?',
 		'created_at'         => 'string?',
 		'updated_by'         => 'string?',
@@ -165,6 +178,76 @@ function api_contact_group_hand_or_fail($id) {
 		api_fail(409, 'contact_group_by_rule', pg_audience_door_message());
 
 	}
+
+}
+
+// Seconds of one refresh call, as the screen's Refresh now takes.
+if (!defined('API_CONTACT_GROUP_REFRESH_SECONDS')) {
+	define('API_CONTACT_GROUP_REFRESH_SECONDS', 5);
+}
+
+// What one refresh call answers, as the screen's action answers it: a pass
+// that is not done goes on from where it stopped on the next call.
+function api_contact_group_refresh_answer($id, $run, $members) {
+
+	return array(
+		'id'      => (int)$id,
+		'done'    => (bool)$run['done'],
+		'added'   => (int)$run['added'],
+		'removed' => (int)$run['removed'],
+		'members' => (int)$members
+	);
+
+}
+
+// Refresh now on the group's screen: its rules run for a few seconds, and the
+// members they no longer select are taken out, the new ones put in. A large
+// group takes several calls; each answers done once the pass has reached the
+// last contact, and the whole change is announced once then, as the hourly
+// job does.
+function api_contact_groups_refresh($params) {
+
+	$app = api_current_app();
+
+	$row = api_contact_group_load_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	if (!pg_audience_group_is_dynamic($id)) {
+
+		api_fail(409, 'contact_group_not_by_rule', lang('This contact group is not filled by rules, or it could not be refreshed.'));
+
+	}
+
+	api_dry_run_stop('refreshed', 'contact_group', array('id' => $id, 'name' => (string)$row['name']));
+
+	$run = pg_audience_recompute($id, API_CONTACT_GROUP_REFRESH_SECONDS);
+
+	if ($run === null) {
+
+		// Switched to a hand group while the pass ran, or a query failed.
+		if (pg_audience_still_dynamic($id) === false) {
+
+			api_fail(409, 'contact_group_not_by_rule', lang('This contact group is not filled by rules, or it could not be refreshed.'));
+
+		}
+
+		api_fail_server();
+
+	}
+
+	if ($run['done']) {
+
+		log_activity(lang(array(
+			'string' => 'Contact group ({var:1}) was refreshed through the API by the application {var:2} (key {var:3}).',
+			'vars'   => array((string)$row['name'], $app['name'], $app['api_key'])
+		)), $app['owner']['username']);
+
+	}
+
+	$counts = api_contact_group_member_counts(array($id));
+
+	api_ok(api_contact_group_refresh_answer($id, $run, $counts[$id]));
 
 }
 
