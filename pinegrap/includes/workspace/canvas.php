@@ -385,12 +385,15 @@ function ws_canvas_picture_take($viewer, $message, $channel, $version, $picture)
 
     $file_id = (int) $message['file_id'];
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'");
-    $path = FILE_DIRECTORY_PATH . '/' . basename($stored);
+    $name = basename($stored);
+    // Written in the file directory; read through the object store's copy
+    // when the file was moved there.
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
     $newest = ($stored !== '') ? pg_file_versions_newest($file_id) : null;
     $doc = $newest ? json_decode((string) $newest['doc_json'], true) : null;
 
     if (!$newest || ((int) $newest['version_no'] !== (int) $version) || !ws_canvas_doc_pending($doc, $newest['source'])
-        || !pg_file_versions_matches_file($newest, $path)) {
+        || !pg_file_versions_matches_file($newest, pg_file_local_copy($file_id))) {
         return $refuse(lang('Invalid request.'), 409);
     }
 

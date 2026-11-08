@@ -1,6 +1,6 @@
 ---
 name: agent-canvas
-description: Plan (owner 2026-11-08): agents create, read and edit Workspace canvases by writing SVG, in any channel with an agent; the channel's browser draws the picture; C1 done (#8236), C2-C4 left
+description: Plan (owner 2026-11-08): agents create, read and edit Workspace canvases by writing SVG; the channel's browser draws the picture; C1 (#8236), C2 (#PRNUM) done, C3-C4 left
 ---
 
 ## What is it for?
@@ -20,7 +20,7 @@ description: Plan (owner 2026-11-08): agents create, read and edit Workspace can
 
 ## Steps (claim as `[plan:agent-canvas] C<n> — <topic>`)
 - C1 (M) Create and read: done in #8236 (`workspace/agent-canvas-svg.md`).
-- C2 (M) The channel draws a pending canvas and posts its picture. After C1; a browser run (the renderer needs one).
+- C2 (M) The channel draws a pending canvas and posts its picture: done in #PRNUM (`workspace/agent-canvas-picture.md`).
 - C3 (M) Edit: `PATCH /workspace/messages/{id}/canvas` with the operations, the mark, Undo, the notification. After C1, beside C2.
 - C4 (S) The built-in assistant and model assistants: the same as `ws_ai_step()` tools. After A4.
 
