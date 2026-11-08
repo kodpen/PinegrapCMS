@@ -19,7 +19,7 @@ description: Plan: the Planetarium and Observatory design template (pinegrap-pla
 
 ## Steps (claim as `[plan:design-template-planetarium] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #8172): the `planetarium-` block family `assets/js/style_designer_blocks_planetarium.js`, its test, `designer/designer-blocks-planetarium.md`.
-- 2: `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$show_on`, page shell, helpers; test.
+- 2 (done, #8216): `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$show_on`, page shell, helpers; test.
 - 3: `cards.php`: shared parts (header, footer, account and staff bars), cards, form fields, comment thread, newsletter and blog parts; test.
 - 4: `pages_public.php`: home (`home_shows`, `home_nights`, `home_posts` placed as widgets), `tonight`, `visit`, `tickets`, `memberships`, `observatory`, `faq`; places the `planetarium-` blocks; test.
 - 5: `shows.php`: the Dome Shows collection by date (`shows` from today on, by `?audience=`, `show`, `show_new`, `home_shows`); test.
