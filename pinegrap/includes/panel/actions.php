@@ -356,7 +356,7 @@ function pg_panel_actions()
         'ws_flow_template_save', 'ws_flow_template_update', 'ws_flow_template_bin',
         'ws_flow_ai_sketch',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove', 'ws_flow_web_address',
-        'ws_flow_from_draft', 'ws_flow_draft_graph', 'ws_flow_draft_view', 'ws_flow_embed_config', 'ws_flow_scheduled_new', 'ws_flow_scheduled_copy',
+        'ws_flow_from_draft', 'ws_flow_draft_graph', 'ws_flow_draft_view', 'ws_flow_embed_config', 'ws_flow_editor_config', 'ws_flow_scheduled_new', 'ws_flow_scheduled_copy',
         'ws_flow_scheduled_edit',
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',
