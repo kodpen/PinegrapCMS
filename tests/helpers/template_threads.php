@@ -310,7 +310,10 @@ function _tpl_threads_check_draws($id, $key, $t)
 	}
 	if ($t['options']['layout'] === 'threaded') {
 		pg_assert_contains('id="c-2" data-pg-comment-depth="1"', $html, $at . 'an answer under its comment');
-		pg_assert_contains('id="c-3" data-pg-comment-depth="2"', $html, $at . 'one level more');
+		// An answer to an answer goes one level deeper only where the
+		// thread allows two levels; with one it stays beside its parent.
+		$deep = $t['options']['max_depth'] >= 2 ? '2' : '1';
+		pg_assert_contains('id="c-3" data-pg-comment-depth="' . $deep . '"', $html, $at . ($deep === '2' ? 'one level more' : 'no deeper than one level'));
 	} else {
 		pg_assert_contains('id="c-3" data-pg-comment-depth="0"', $html, $at . 'one after another');
 		pg_assert_true(strpos($html, 'id="c-4"') < strpos($html, 'id="c-1"') && strpos($html, 'id="c-2"') < strpos($html, 'id="c-3"'), $at . 'in the order written');
