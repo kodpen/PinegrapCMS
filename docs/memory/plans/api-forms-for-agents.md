@@ -29,7 +29,7 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
   - G4 no read or restore of a collection item's revisions.
   - G5 Customer has no bounce state; no Allow again.
   - G6 experiments start/pause/end take no `dry_run`.
-  - G7 a dry-run page or file delete creates the Recycle Bin before its stop (`pg_recycle_folder_id(true)`), warning `sessionusername` on the API path.
+  - G7 done (#8106): a dry-run page or file delete no longer creates the Recycle Bin; the real delete makes it as the key's owner.
 
 ## Where does it start?
 - F1-F5 done. Left: G1-G7 (free work, one small PR each); then delete this file.
