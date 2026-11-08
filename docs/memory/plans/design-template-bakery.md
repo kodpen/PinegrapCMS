@@ -23,7 +23,7 @@ description: Plan: the Bakery design template (pinegrap-bakery): daily bake, cak
 
 - 6: `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (Breads, Pastries, Cakes, Gift Boxes and Baking Classes groups; class places `shippable => false`); test.
 
-- 7: `standard.php`: contact, inbox, conversation, newsletter, Journal (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 7 (done, #8161): `standard.php`: contact, inbox, conversation, newsletter, Journal (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
