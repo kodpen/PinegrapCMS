@@ -19119,6 +19119,23 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
     flex: none;
     color: var(--pg-fg-2);
 }
+/* The notes lock (workspace_note_lock.js): the pane drawn in place of a
+   locked note, its narrow form, and the button in a closed locked folder. */
+.ws-nb-lock-pane .ws-nb-lock-icon {
+    font-size: 2rem;
+    color: var(--pg-fg-2);
+}
+.ws-nb-lock-pane .ws-nb-lock-form {
+    width: 100%;
+    max-width: 18rem;
+    text-align: start;
+}
+.ws-nb-lock-pin {
+    letter-spacing: .3em;
+}
+.ws-nb-lock-list {
+    align-self: flex-start;
+}
 .ws-nb-group-body {
     display: none;
     flex-direction: column;

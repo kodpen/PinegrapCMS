@@ -572,12 +572,19 @@
     }
 
     // Whether an element shows anything inside it (a picture: whether it
-    // has an address): words, a picture with an address, a video, a frame,
-    // a drawing, a link or a form control (pg_sw_has_content()). What is
-    // hidden does not count.
-    var SHOWN_TAGS = /^(VIDEO|AUDIO|IFRAME|OBJECT|EMBED|SVG|CANVAS|A|INPUT|SELECT|TEXTAREA|BUTTON)$/;
+    // has an address): words, a picture with an address, a player with an
+    // address of its own or of a <source>, a frame, a drawing, a link or a
+    // form control (pg_sw_has_content()). What is hidden does not count.
+    var SHOWN_TAGS = /^(IFRAME|OBJECT|EMBED|SVG|CANVAS|A|INPUT|SELECT|TEXTAREA|BUTTON)$/;
+    function playerHasAddress(el) {
+        if (el.getAttribute('src')) return true;
+        var sources = el.getElementsByTagName('source');
+        for (var i = 0; i < sources.length; i++) if (sources[i].getAttribute('src')) return true;
+        return false;
+    }
     function showsSomething(el) {
         if (el.tagName === 'IMG') return !!el.getAttribute('src');
+        if (el.tagName === 'AUDIO' || el.tagName === 'VIDEO') return playerHasAddress(el);
         for (var c = el.firstChild; c; c = c.nextSibling) {
             if (c.nodeType === 3) {
                 if (c.nodeValue.replace(/\u00a0/g, ' ').trim() !== '') return true;
@@ -587,6 +594,10 @@
             var tag = String(c.tagName).toUpperCase();
             if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'TEMPLATE') continue;
             if (SHOWN_TAGS.test(tag)) return true;
+            if (tag === 'AUDIO' || tag === 'VIDEO') {
+                if (playerHasAddress(c)) return true;
+                continue;
+            }
             if (tag === 'IMG') {
                 if (c.getAttribute('src')) return true;
                 continue;

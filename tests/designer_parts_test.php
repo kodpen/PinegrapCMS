@@ -331,5 +331,34 @@ function test_designer_code_part_hands_back_its_entry_points()
 	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
 	@unlink($file);
 	pg_assert_same(0, $code, 'the code part runs: ' . implode("\n", $lines));
-	pg_assert_same(array('dregionOpen', 'findShow', 'layoutOpen', 'refresh', 'saveShortcut', 'tabActivate', 'tabClose', 'tabOpen', 'tabSave', 'toggle'), json_decode($lines[0], true), 'its entry points');
+	pg_assert_same(array('bindingCompletion', 'dregionOpen', 'findShow', 'flush', 'layoutOpen', 'refresh', 'saveShortcut', 'tabActivate', 'tabClose', 'tabOpen', 'tabSave', 'toggle'), json_decode($lines[0], true), 'its entry points');
+}
+
+// The code view's typed-changes engine (what is typed read back into the
+// tree, the {{token}} bindings, the locks of the document) is in the part:
+// nothing is typed before the view ran. The core keeps the bound props of
+// the output and two stubs: the flush before a save and the binding
+// completion the editor asks for.
+function test_designer_code_view_typed_changes_are_in_the_part()
+{
+	$core = _test_blocks_js();
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
+	$moved = array('_sdCodeApply', '_sdCodeOnChange', '_sdCodeReconcileChildren', '_sdCodeSetAttr', '_sdCodeTextFromTyped',
+		'_sdCodeApplyBoundValue', '_sdCodeLockOf', '_sdCodeOpenTag', '_sdCodeTextKind', '_sdCodeLockTitle', '_sdCodeOnLockHit');
+
+	foreach ($moved as $name) {
+		pg_assert_false(strpos($core, 'function ' . $name . '(') !== false, $name . ' left the core');
+		pg_assert_true(strpos($part, 'function ' . $name . '(') !== false, 'the part holds ' . $name);
+		pg_assert_false(strpos($part, 'K.' . $name . ';') !== false, 'the part no longer takes ' . $name . ' from the kit');
+	}
+
+	pg_assert_false(strpos($core, '_SD_CODE_APPLY_MS') !== false, 'the pause before an apply is the part\'s');
+
+	foreach (array('_sdCodeBoundProps', '_sdCodeAttrsWith', '_sdCodeBindToken', '_sdCodeFlush', '_sdCodeBindingCompletion') as $kept) {
+		pg_assert_true(strpos($core, 'function ' . $kept . '(') !== false, $kept . ' stays in the core');
+	}
+
+	foreach (array('_sdCodeLockOf', '_sdCodeOpenTag', '_sdCodeOnChange', '_sdCodeTextKind') as $gone) {
+		pg_assert_false(isset(designer_parts_kit_keys()[$gone]), $gone . ' is no longer in the kit');
+	}
 }

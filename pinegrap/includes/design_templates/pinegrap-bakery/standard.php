@@ -416,6 +416,59 @@ $standard_widgets = array(
         )),
     ),
 
+    // The bakery's rating and newest reviews on Google, under the sample
+    // words of the home page. The widget draws nothing until a Places key
+    // and the bakery's Place ID are saved, and this layout shows only while
+    // Google returns reviews. Google asks for each review's author and its
+    // link, and for "Google Maps" beside what is shown without a map.
+    'google_reviews' => array(
+        'page'   => 'home',
+        'slug'   => lang('google-reviews'),
+        'config' => array('regionType' => 'google_reviews'),
+        'tree'   => $widget_root(array(
+            $el('div', 'mt-5 pt-4 border-top', lang('Google Reviews'), array(
+                $el('div', 'd-flex flex-wrap align-items-center gap-2 mb-4', lang('Rating'), array(
+                    $heading('h3', lang('Reviews on Google'), 'pbk-display h5 mb-0 me-2'),
+                    $icon('bi-star-fill', 'text-warning'),
+                    $span(lang('4.9'), 'fw-bold', lang('Average Rating'), $bind('__place_rating')),
+                    $el('span', 'small text-body-secondary', lang('Number of ratings'), array(
+                        $span('120', '', lang('Number'), $bind('__place_review_count')),
+                        $span(' ' . lang('ratings'), '', lang('Label')),
+                    )),
+                )),
+                $row(array($loop(array($col(array(
+                    $el('article', 'd-flex flex-column h-100 p-4 rounded-4 border bg-body', lang('Review'), array(
+                        $el('div', 'd-flex align-items-center gap-2 mb-3', lang('Author'), array(
+                            $image('', '', 'rounded-circle flex-shrink-0 object-fit-cover', array('width' => '40', 'height' => '40',
+                                '_attrs' => array($attr('referrerpolicy', 'no-referrer')),
+                                '_bindings' => array('src' => '__review_author_photo', 'eo_visible_if' => 'review_has_photo'))),
+                            $el('div', 'small', lang('Name and time'), array(
+                                $link(lang('Author name'), '#', 'd-block fw-semibold text-body text-decoration-none', array(),
+                                    array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__review_author_url', 'text' => '__review_author_name'))),
+                                $span(lang('2 weeks ago'), 'text-body-secondary', lang('When'), $bind('__review_relative_time')),
+                            )),
+                        )),
+                        $el('p', 'small mb-2', lang('Review rating'), array(
+                            $icon('bi-star-fill', 'text-warning'),
+                            $span('5', 'ms-1', lang('Rating'), $bind('__review_rating')),
+                            $span('/5', '', lang('Out of')),
+                        )),
+                        $el('p', 'mb-3', lang('Review text'), array(), array('text' => lang('Review text'),
+                            '_bindings' => array('text' => '__review_text', 'eo_visible_if' => 'review_has_text'))),
+                        $link(lang('Read on Google Maps'), '#', 'small mt-auto', array(),
+                            array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__review_url'))),
+                    )),
+                ), '6', '4')))), '4'),
+                $el('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 small', lang('Attribution'), array(
+                    $link(lang('See all reviews on Google Maps'), '#', '', array(),
+                        array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__place_maps_url'))),
+                    $span('Google Maps', 'text-body-secondary notranslate', lang('Google attribution'),
+                        array('_attrs' => array($attr('translate', 'no')), '_bindings' => array('text' => '__google_attribution'))),
+                )),
+            ), $show_when('has_reviews')),
+        )),
+    ),
+
     // The three newest posts on the home page.
     'home_posts' => array(
         'page'   => 'home',

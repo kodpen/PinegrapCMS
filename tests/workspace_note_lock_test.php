@@ -184,3 +184,14 @@ function test_workspace_note_lock_groups_redact()
 	pg_assert_same(2, $closed[1]['count'], 'others keep theirs');
 	pg_assert_same(4, ws_note_lock_groups_redact($groups, true)[0]['count'], 'open: the count is back');
 }
+
+function test_workspace_note_lock_leave_out()
+{
+	$rows = array(array('id' => 1, 'user_id' => 7, 'locked' => 1), array('id' => 2, 'user_id' => 7, 'locked' => 0), array('id' => 3, 'user_id' => 9, 'locked' => 0));
+	$view = array('has' => true, 'group_note_ids' => array(3));
+	$kept = ws_note_lock_leave_out($rows, 7, $view);
+
+	pg_assert_same(array(2), array_column($kept['rows'], 'id'), 'locked and in a locked group left out');
+	pg_assert_same(2, $kept['left_out'], 'counted');
+	pg_assert_same(3, count(ws_note_lock_leave_out($rows, 7, array('has' => false))['rows']), 'without a PIN nothing is left out');
+}

@@ -25,7 +25,7 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 
 - 7 (done, #8176): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
-- 8: the episode page's player bound to the episode's `audio` field (`_bindings.src`, decided A in #7654, `designer/bound-media-src.md`) once that binding lands; the Listen link stays as fallback.
+- 8 (done, #8211): the episode page's player bound to the episode's `audio` field (`$episode_player`, `_bindings.src`, `preload="none"`, `designer/bound-media-src.md`); the Listen buttons stay as fallback.
 
 - 9: assembly: `pinegrap-podcast.php` (order, look, fonts, `ppd-` rules, folders `supporters` (membership) and `episodes`, groups, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text), `designer/design-template-podcast.md`; the PR body names `[NEW] Added the Podcast Network design template`; this plan and its design file are deleted.
 

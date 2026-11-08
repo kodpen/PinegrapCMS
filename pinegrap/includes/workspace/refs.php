@@ -665,7 +665,8 @@ function ws_ref_notes_open($viewer, $ids, $before = 0)
         return $out;
     }
 
-    $rows = (array) db_items("SELECT id, user_id, title, LEFT(body, " . (int) WS_NOTE_LIST_BODY . ") AS body, created_at, updated_at
+    $rows = (array) db_items("SELECT id, user_id, title, LEFT(body, " . (int) WS_NOTE_LIST_BODY . ") AS body, created_at, updated_at"
+            . ((function_exists('ws_note_lock_ready') && ws_note_lock_ready()) ? ', locked' : '') . "
         FROM ws_notes
         WHERE id IN (" . implode(',', $ids) . ")" . (((int) $before > 0) ? " AND updated_at < '" . (int) $before . "'" : '') . "
         ORDER BY updated_at DESC, id DESC");
@@ -674,9 +675,17 @@ function ws_ref_notes_open($viewer, $ids, $before = 0)
     foreach ($rows as $row) {
         $row['access'] = ws_note_access($viewer, $row, $shares[(int) $row['id']] ?? array());
 
-        if ($row['access'] !== '') {
-            $out[] = $row;
+        if ($row['access'] === '') {
+            continue;
         }
+
+        // Behind the reader's closed notes lock: the title alone.
+        if (function_exists('ws_note_lock_closed') && ws_note_lock_closed($viewer, $row)) {
+            $row['body'] = '';
+            $row['lock_closed'] = true;
+        }
+
+        $out[] = $row;
     }
 
     return $out;

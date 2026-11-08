@@ -16,8 +16,9 @@
  * at it. The day it comes out is a date: the lists show only the episodes
  * already out (on or before today), so one dated ahead waits for its day.
  * The recording is a file of the Audio field (kept in the episodes
- * folder) and the episode's address in a podcast app is optional; each
- * button leaves when the episode has none. Featured is the network's own
+ * folder): the episode page plays it in its own player, which loads
+ * nothing until pressed. The episode's address in a podcast app is
+ * optional; the player and each button leave when the episode has none. Featured is the network's own
  * choice (office use only): the home page shows the featured episodes.
  *
  * @author      Erdal Güral (Kodpen)
@@ -296,6 +297,7 @@ $episode_widgets['episode_detail'] = array(
                             )),
                         )),
                         $para($episode_sample['summary'], 'lead text-body-secondary mb-4', $bind('summary')),
+                        $episode_player($episode_sample['title']),
                         $listen_buttons(),
                     ), '', '8'),
                 ), '4', '', 'g-lg-5 mb-4'),

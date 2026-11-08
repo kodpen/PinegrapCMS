@@ -32,7 +32,8 @@ function designer_code_view_attrs_test_run($steps)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	// The code view's typed-changes engine is in its part (style_designer_code.js).
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js') . "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
 	$parts = array(
 		array('function _sdCodeSetAttr(', "// Where a plain element's single text sits"),
 		array('function _sdInlineStyleProps(', 'function _toggleInlineDecl('),

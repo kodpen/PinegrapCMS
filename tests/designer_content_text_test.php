@@ -68,7 +68,8 @@ function designer_content_text_test_run($script)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	// The code view's typed-changes engine is in its part (style_designer_code.js).
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js') . "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
 	$functions = '';
 
 	foreach (array('_sdCanEditNode', '_sdIsTextNode', '_sdCodeLockOf', '_sdCodeTextKind', '_sdIsSentence') as $name) {

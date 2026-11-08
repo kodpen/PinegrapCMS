@@ -285,7 +285,7 @@ function ws_note_export_attachments($note)
  *
  * @param array  $viewer
  * @param string $zip_path where the zip is written
- * @return array ok, error, count
+ * @return array ok, error, count (notes behind the person's lock left out)
  */
 function ws_note_export_vault($viewer, $zip_path)
 {
@@ -296,6 +296,20 @@ function ws_note_export_vault($viewer, $zip_path)
     // libzip writes no file for an archive without entries (close() deletes
     // it), so a person with no notes of their own and none shared is told so.
     $rows = ws_note_export_rows($viewer);
+
+    // Notes behind the person's lock stay out, open or not; the zip says
+    // how many (note_lock.php).
+    $left_out = 0;
+
+    if (function_exists('ws_note_lock_view')) {
+        $view = ws_note_lock_view((int) $viewer['id']);
+
+        foreach (array('mine', 'shared') as $set) {
+            $kept = ws_note_lock_leave_out($rows[$set], (int) $viewer['id'], $view);
+            $rows[$set] = $kept['rows'];
+            $left_out += $kept['left_out'];
+        }
+    }
 
     if (empty($rows['mine']) && empty($rows['shared'])) {
         return array('ok' => false, 'error' => lang('There are no notes to export.'), 'count' => 0);
@@ -337,6 +351,10 @@ function ws_note_export_vault($viewer, $zip_path)
             $zip->addFromString($folder . $name . '.md', ws_note_export_markdown($viewer, $note, $refs, $map, $extra));
             $count++;
         }
+    }
+
+    if ($left_out > 0) {
+        $zip->addFromString(lang('Locked notes') . '.txt', lang(array('string' => '{var:1} locked notes were left out of this export. Export a locked note on its own with the lock open.', 'vars' => $left_out)) . "\n");
     }
 
     // close() is where the archive is written: a failed write, or one that

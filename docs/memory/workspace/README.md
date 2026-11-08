@@ -275,6 +275,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-note-groups-shared-screen.md: Shared note groups on the screen (G6) — workspace_note_group_shares.js (Share dialog, Shared with me folders, channel group card, ?group=N) and the list fields shared_groups / shared_group
 - workspace-note-groups.md: Workspace note groups and the notes lock — tables of step 11.0.119, readiness probes ws_note_groups_ready() / ws_note_lock_ready()
 - workspace-note-lock-gate.md: Notes lock gate: ws_note_behind_lock(), code note_locked on the screen's note actions, list and presenter while closed, locking notes and groups, shares refused
+- workspace-note-lock-readers.md: Notes lock beyond the notes screen: API and MCP (locked, 423 note_locked), assistants, get_file.php, export, blocks, record history, table import; the readers guard test
+- workspace-note-lock-screen.md: Notes lock on My Notes (workspace_note_lock.js): toolbar Lock and dialogs, Lock/Unlock in menus, list marks, the lock pane and e-mailed code, the time-out, note_locked answers
 - workspace-note-lock.md: Notes lock store (note_lock.php): PIN set-up and checks, open lock in the session, times, wrong-PIN pause, e-mailed code, actions ws_note_lock_*; the gate in workspace-note-lock-gate.md
 - workspace-note-tabs.md: Note tabs over an open note on My Notes — workspace_note_tabs.js (group as ARIA tablist, marks, +, keys, drag to reorder via ws_note_place) and drawTabs() in startNotes()
 - workspace-notes-deletions.md: Deleting a note over the API (PR #1674) and ws_note_deletions (schema 11.0.85): who may, whom a deletion or a person share taken back is kept for, how long, deleted in the changes listing, no MCP tool

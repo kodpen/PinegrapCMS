@@ -90,17 +90,24 @@ function test_bakery_public_pages_are_the_plans()
 }
 
 // Every link names a page the finished template carries; none names a
-// page that only the shop makes.
+// page that only the shop makes, but the order and collect page's link to
+// the shop, there only while the shop is on.
 function test_bakery_public_links_name_template_pages()
 {
 	$known = array_flip(_test_bk_page_keys());
-	$json = json_encode(_test_bkp_pages());
+	$pages = _test_bkp_pages();
+	$json = json_encode($pages);
 	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', $json, $m);
 	pg_assert_true(count(array_unique($m[1])) > 8, 'links found');
 	foreach (array_unique($m[1]) as $key) pg_assert_true(isset($known[$key]), "page link {{page:$key}} names a template page");
+	$order = json_encode($pages['how_to_order']);
+	unset($pages['how_to_order']);
+	$json = json_encode($pages);
 	foreach (_test_bk_shop_keys() as $key) {
 		pg_assert_false(strpos($json, '{{page:' . $key . '}}') !== false, "no public page links $key");
+		if ($key !== 'shop') pg_assert_false(strpos($order, '{{page:' . $key . '}}') !== false, "how_to_order does not link $key");
 	}
+	pg_assert_same(defined('ECOMMERCE') && ECOMMERCE, strpos($order, '{{page:shop}}') !== false, 'how_to_order links the shop only with the shop on');
 }
 
 // The home places the classes list, the Google reviews and the notes, the

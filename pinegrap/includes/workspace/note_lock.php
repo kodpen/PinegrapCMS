@@ -1188,3 +1188,64 @@ function ws_note_lock_groups_redact($groups, $list_open)
 
     return $groups;
 }
+
+// ── Every other reader ──────────────────────────────────────────────────────
+
+/**
+ * Whether a note is behind its owner's lock, open or not: what no assistant
+ * is asked about, no export of everything carries and no API client reads
+ * (they never hold the session's open lock).
+ *
+ * @param array $note
+ * @return bool
+ */
+function ws_note_locked_by_owner($note)
+{
+    return is_array($note) && ws_note_behind_lock((int) $note['user_id'], $note);
+}
+
+/**
+ * The notes of a list behind the reader's lock, left out (export of
+ * everything): the rest, and how many were left out. Pure.
+ *
+ * @param array[] $rows    note rows (id, user_id, locked)
+ * @param int     $user_id
+ * @param array   $view    ws_note_lock_view()
+ * @return array rows, left_out
+ */
+function ws_note_lock_leave_out($rows, $user_id, $view)
+{
+    $out = array();
+    $left = 0;
+
+    foreach ((array) $rows as $row) {
+        if (ws_note_lock_behind($row, $user_id, !empty($view['has']), (array) ($view['group_note_ids'] ?? array()))) {
+            $left++;
+            continue;
+        }
+
+        $out[] = $row;
+    }
+
+    return array('rows' => $out, 'left_out' => $left);
+}
+
+/**
+ * Whether the person reading a file of a note's folder (get_file.php) meets
+ * the note behind their closed lock. The folder's own access decides the
+ * rest.
+ *
+ * @param int $folder_id
+ * @param int $user_id
+ * @return bool
+ */
+function ws_note_lock_folder_closed($folder_id, $user_id)
+{
+    if (((int) $folder_id <= 0) || ((int) $user_id <= 0) || !function_exists('ws_note_lock_ready') || !ws_note_lock_ready()) {
+        return false;
+    }
+
+    $note = db_item("SELECT id, user_id, locked FROM ws_notes WHERE folder_id = '" . (int) $folder_id . "' LIMIT 1");
+
+    return is_array($note) && ws_note_behind_lock((int) $user_id, $note) && !ws_note_lock_is_open((int) $user_id, (int) $note['id']);
+}
