@@ -189,6 +189,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-school.md: Private School template (pinegrap-school): programmes with a page each, events collection, admission applications and visit requests followed from the account, News, no shop, psh- look, tests.
 - design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
 - design-template-social.md: Social Community template (pinegrap-social): member photo posts and profiles as collections, comments, tags, saved posts, reports and the live rule, psc- look, tests.
+- design-template-sportsclub-pages.md: Sports Club template 2.0.0: home, fixtures, results and teams on its palette blocks (match day, league table, squad by position), blocks.php, motion, tests
 - design-template-sportsclub.md: Sports Club template (pinegrap-sportsclub): teams as data, players, matches and events as collections, academy and trial requests, kit, tickets and memberships, psp- look, tests.
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
 - design-template-theatre.md: Theatre template (pinegrap-theatre): productions and performances as collections, hire, school group and youth place requests, tickets, friends and vouchers in the shop, pth- look, tests.
@@ -248,6 +249,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-code-view-bindings.md: Data bindings in the designer's code view: a bound text, href, src or alt prints as {{token}}, typing a token binds, a literal unbinds, {{ offers the widget's tokens; where the rules live
 - designer-code-view-editing.md: How a change typed in the designer's code view reaches the tree: dirty span, scope, owner rule, in-place rules per node kind, new elements as holders through the converter, undo, flush, file tabs
 - designer-code-view-model.md: The designer's code view: range map from one emitter, the document and its lock levels, head/foot rows shared with the HTML tree, what lives in the facade and what in the designer
+- designer-code-view-part.md: The code view cut out of the designer's core as the part 'code' (style_designer_code.js): what moved, what stays at open, the stubs, the engine still to move (D5)
 - designer-code-view-style.md: A style typed in the designer's code view: which declarations go back to the font, image and Display & Sizing props, which stay the Attributes panel's style, and why (sizing printed twice before)
 - designer-collab-locking.md: Two people in the visual designer: designer_presence / designer_page_lock tables, atomic lock claim, staleness, same-user takeover, and why the lock is enforced on the save path.
 - designer-collab-notes-sync.md: How a note left in the designer reaches the other editor without a reload: presence notes map, page_notes_at counter, notes_fetch, merge rules.

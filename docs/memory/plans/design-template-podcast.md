@@ -23,7 +23,7 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 
 - 6 (done, #8154): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
-- 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 7 (done, #8176): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
 - 8: the episode page's player bound to the episode's `audio` field (`_bindings.src`, decided A in #7654, `designer/bound-media-src.md`) once that binding lands; the Listen link stays as fallback.
 

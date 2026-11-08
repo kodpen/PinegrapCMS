@@ -51,7 +51,7 @@ function ws_note_media_line($line, $base)
 {
     $base = strtolower((string) $base);
 
-    if (($base === '') || !preg_match('#^[ \t]*\[([^\]\n]{1,300})\]\((https?://([^\s()<>"]{1,1000}))\)[ \t]*$#i', (string) $line, $match)) {
+    if (($base === '') || !preg_match('#^[ \t]*\[([^\]\n]{1,300})\]\((https?://([^\s()<>"\']{1,1000}))\)[ \t]*$#i', (string) $line, $match)) {
         return null;
     }
 

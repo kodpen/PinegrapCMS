@@ -123,7 +123,7 @@ function _test_ppd_page_keys()
 		'email_enquiry_new', 'email_enquiry_received', 'email_pitch_new', 'email_pitch_received',
 		'support', 'supporters_home', 'bonus_outtakes', 'bonus_askus', 'bonus_live',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
-		'email_new_message', 'email_message_received', 'email_welcome',
+		'email_new_message', 'email_message_received', 'email_welcome', 'email_account_welcome', 'email_password_reset',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	), _test_ppd_shop_keys());
