@@ -107,6 +107,23 @@ function test_dashboard_v2_shop_offer_rows()
 	pg_assert_same(1, count(pg_dashboard_v2_offer_rows($lists, '2026-03-10', 1)), 'the limit holds');
 }
 
+// The coupon's figure: what the first action takes off.
+function test_dashboard_v2_shop_offer_off()
+{
+	$pct = function ($n) {
+		return lang(array('string' => '{var:1}%', 'vars' => $n));
+	};
+
+	pg_assert_same($pct('15'), pg_dashboard_v2_offer_off(array('type' => 'discount order', 'discount_order_percentage' => 15, 'discount_order_amount' => 0)));
+	pg_assert_same(pg_dashboard_v2_money(500), pg_dashboard_v2_offer_off(array('type' => 'discount product', 'discount_product_percentage' => 0, 'discount_product_amount' => 500)));
+	pg_assert_same($pct('10'), pg_dashboard_v2_offer_off(array('type' => 'add product', 'add_product_discount_percentage' => 10)));
+	pg_assert_same('$0', pg_dashboard_v2_offer_off(array('type' => 'discount shipping', 'discount_shipping_percentage' => 100)), 'free shipping');
+	pg_assert_same($pct('50'), pg_dashboard_v2_offer_off(array('type' => 'discount shipping', 'discount_shipping_percentage' => 50)));
+	pg_assert_same('', pg_dashboard_v2_offer_off(array('type' => 'add product', 'add_product_discount_percentage' => 0, 'add_product_discount_amount' => 0)), 'a free gift has no figure');
+	pg_assert_same('', pg_dashboard_v2_offer_off(array('type' => null)));
+	pg_assert_same(array(), pg_dashboard_v2_offer_offs(array()), 'no offers, no query');
+}
+
 function test_dashboard_v2_shop_fx_rows_carry_the_last_rate()
 {
 	$currencies = array(
