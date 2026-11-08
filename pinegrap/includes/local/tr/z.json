@@ -3,6 +3,7 @@
     "Z to A": "Z'den A'ya",
     "ZIP creation failed or resulted in empty archive.": "ZIP oluşturulamadı ya da arşiv boş çıktı.",
     "ZIP file not readable.": "ZIP dosyası okunamıyor.",
+    "ZIP, print and screen sizes": "ZIP, baskı ve ekran boyutları",
     "ZIP, {var:1} MB. The link works until {var:2}; ask for a new one after that.": "ZIP, {var:1} MB. Bağlantı {var:2} tarihine kadar çalışır; sonrasında yenisini isteyin.",
     "ZIP, {var:1}. The link works until {var:2}; ask for a new one after that.": "ZIP, {var:1}. Bağlantı {var:2} tarihine kadar çalışır; sonrasında yenisini isteyin.",
     "ZPL (thermal printer)": "ZPL (termal yazıcı)",
