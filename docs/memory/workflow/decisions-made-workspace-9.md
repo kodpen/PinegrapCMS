@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-9
-description: Decisions list, workspace part 9 (2026-11-08 on): an agent channel made with a slash command, its decisions kept apart; agents' messages may be marked; channel memory read by title; GitHub by OAuth
+description: Decisions list, workspace part 9 (2026-11-08 on): agent channels by a slash command, their decisions apart; agents' messages markable; channel memory read by title; GitHub by OAuth; SVG canvases
 ---
 
 ## Where are the rules and the earlier parts?
@@ -22,3 +22,8 @@ description: Decisions list, workspace part 9 (2026-11-08 on): an agent channel 
 
 ## How do users connect GitHub to a channel? (owner, 2026-11-08, in the architect's window)
 - With OAuth from Settings › Connections and a repository webhook the site sets itself: no repository secrets, no workflow file. Chosen over keyless GitHub Actions (OIDC), which still needs a workflow file. Plan: `plans/github-channel-connection.md`.
+
+## How do agents make and change canvases? (owner, 2026-11-08, in the architect's window)
+- By writing SVG: the site sanitizes it and makes an image editor canvas with layers; the channel's browser draws the picture. It replaces the 2026-11-07 route taking the editor's document and a PNG (`decisions-made-workspace-7.md`). Reason: as Claude's artifacts, and every agent writes SVG (Claude, the built-in assistant, model assistants) while few can draw a PNG.
+- An agent edits a person's canvas in place: a new version, "Edited by @handle" with Undo on the message, its author notified; its own canvas likewise.
+- Started now as a free plan (`plans/agent-canvas.md`), not after A4; the built-in assistant's tools come with A4.
