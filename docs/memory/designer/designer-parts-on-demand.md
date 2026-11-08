@@ -19,7 +19,7 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `import` (#8131, D5 part 2): `assets/js/style_designer_import.js`, the HTML / ZIP import dialog and the reply opened as tabs (also the paste-a-page dialog's). Handed to every editor. The core keeps `_pgImportOpen()` and `_pgImportApply(d, projectName)` as stubs.
 - `code` (#8166, D5 part 3; #8213, part 4): the code view's runtime and its typed-changes engine, `designer-code-view-part.md`.
 - `theme` (#8245, D5 part 5): the Themes tab of the assets panel, `designer-theme-part.md`.
-- `fonts` (D5 part 6): the Google Fonts browser, `designer-fonts-part.md`.
+- `fonts` (#8268, D5 part 6): the Google Fonts browser, `designer-fonts-part.md`.
 - The assistant code that stays in the core is small and needed at open: `_sdAiBridge()` (the part's view of the editor), the "Write with AI" marks of the page fields (`_pgAiMarks*`) and the alt-text button (`_sdAiAltButton()`).
 
 ## What comes next?
