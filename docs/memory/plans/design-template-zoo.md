@@ -26,7 +26,7 @@ description: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals 
 - 7 (done, #8275): `events.php`: the Events collection by date (`events` from today on, `event`, `event_new`, `home_events`); test.
 - 8 (done, #8290): `shop.php`: catalog of three groups, `buy_tickets`, `adopt_shop`, shop pages, `email_order`; test.
 - 9 (done, #8297): `standard.php`: contact, inbox, conversation, newsletter, News (`blog`, conservation news), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 10: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the account e-mail pages; test.
+- 10 (done, #8321): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the account e-mail pages; test.
 - 11: assembly: `pinegrap-zoo.php` (order, search sections, look, fonts, `pzo-` rules, folders), assembly test, the shared test lists, `designer/design-template-zoo.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
