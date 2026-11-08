@@ -89,7 +89,7 @@ $standard_pages[] = array(
                             $contact_line('bi-telephone', $link($agency['phone'], 'tel:' . str_replace(' ', '', $agency['phone']), 'link-body-emphasis text-decoration-none'), lang('Phone')),
                             $contact_line('bi-envelope', $link($agency['email'], 'mailto:' . $agency['email'], 'link-body-emphasis text-decoration-none'), lang('Email')),
                             $contact_line('bi-clock', $span($agency['hours'], '', lang('Text')), lang('Office hours'), 'mb-0'),
-                        )),
+                        ), $searchable('rc-office', lang('contact, address, phone, e-mail, office, opening hours, visit'))),
                         $el('div', 'p-4 rounded-4 border mt-4', lang('Inbox Note'), array(
                             $el('p', 'd-flex align-items-center gap-2 fw-semibold mb-2', lang('Title'), array(
                                 $icon('bi-inbox', 'text-primary'),
