@@ -27,6 +27,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 ## Files
 
 - agent-canvas-edit.md: An agent edits any canvas of its channel in place (POST|PATCH /workspace/messages/{id}/canvas): the operations, 409 on a stale version, the agent version, the author's inbox line
+- agent-canvas-picture.md: How an agent's pending canvas gets its picture: the channel's browser draws it with the image editor's renderer and posts it once (action canvas_picture), the take's checks, the versioned address
 - agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes
 - agent-questions.md: How an agent asks the people with a poll or an approval, and why the outcome is written in the agent's name (never as the owner's decision)
