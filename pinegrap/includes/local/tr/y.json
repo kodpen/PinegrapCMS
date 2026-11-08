@@ -1097,6 +1097,7 @@
     "Your receipt is your ticket at the door of the dome or the observatory.": "Makbuzunuz, kubbenin ya da gözlemevinin kapısında biletinizdir.",
     "Your receipt is your ticket: show it at the door of the dome or the observatory on your phone or on paper.": "Makbuzunuz biletinizdir: kubbenin ya da gözlemevinin kapısında telefonunuzda veya kâğıt üzerinde gösterin.",
     "Your receipt is your ticket: show it at the door on your phone or on paper.": "Makbuzunuz biletinizdir: kapıda telefonunuzda ya da kâğıt üzerinde gösterin.",
+    "Your receipt is your ticket: show it at the door, on paper or on your phone.": "Makbuzunuz biletinizdir: kapıda kâğıtta ya da telefonunuzda gösterin.",
     "Your refund for order #{var:1}": "#{var:1} numaralı siparişinizin ücret iadesi",
     "Your refund was made": "Ücret iadeniz yapıldı",
     "Your registration opens its own page, and an account for you if you have none.": "Kaydınız kendi sayfasını açar; hesabınız yoksa sizin için bir hesap da açılır.",

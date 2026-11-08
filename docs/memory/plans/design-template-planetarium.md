@@ -18,16 +18,26 @@ description: Plan: the Planetarium and Observatory design template (pinegrap-pla
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-planetarium-design]].
 
 ## Steps (claim as `[plan:design-template-planetarium] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1 (done, #8172): the `planetarium-` block family `assets/js/style_designer_blocks_planetarium.js`, its test, `designer/designer-blocks-planetarium.md`.
+- 1 (done, #8172): the `planetarium-` block family `assets/js/style_designer_blocks_planetarium.js`, test, [[designer-blocks-planetarium]].
+
 - 2 (done, #8216): `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$show_on`, page shell, helpers; test.
+
 - 3 (done, #8249): `cards.php`: shared parts (header, footer, account and staff bars), cards, form fields, comment thread, newsletter and blog parts; test.
+
 - 4 (done, #8263): `pages_public.php`: home (`home_shows`, `home_nights`, `home_posts` placed as widgets), `tonight`, `visit`, `tickets`, `memberships`, `observatory`, `faq`; places the `planetarium-` blocks; test.
+
 - 5 (done, #8277): `shows.php`: the Dome Shows collection by date (`shows` from today on, by `?audience=`, `show`, `show_new`, `home_shows`); test.
+
 - 6 (done, #8285): `nights.php`: Telescope Nights by date (`nights`, `night` with its office status, `night_new`, `home_nights`); test.
+
 - 7 (done, #8294): `mail.php`, `visits.php`: visit requests (`visit_request` with `?visit=`, `?grade=`, `visit_view`, `my_visits`, `staff_visits`, `privacy`, the visit e-mails); test.
+
 - 8 (done, #8304): `shop.php`: catalog (SKUs `PLM-TICKET-`, `PLM-MEMBER-`), `buy_tickets`, product, cart, checkout, order mail; test.
-- 9: `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), post, search, error ([[design-templates-standard-pages]]); test.
+
+- 9 (done, #8305): `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), post, search, error ([[design-templates-standard-pages]]); test.
+
 - 10: `account.php`: sign-in, My Account, `staff`, `blog_new`, `staff_directory`, `staff_entry`, account e-mails; test.
+
 - 11: assembly: `pinegrap-planetarium.php` (order 145, search sections, look, fonts, `ppm-` rules, folders), assembly test, the shared test lists, `designer/design-template-planetarium.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
