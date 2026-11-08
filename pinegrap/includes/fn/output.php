@@ -7386,6 +7386,7 @@ function pg_js_bundles()
             'assets/js/workspace_task_approval.js',
             'assets/js/workspace_approvals.js',
             'assets/js/workspace_acks.js',
+            'assets/js/workspace_canvas_picture.js',
             'assets/js/workspace_mail.js',
             'assets/js/workspace_status.js',
             'assets/js/workspace_voice.js',

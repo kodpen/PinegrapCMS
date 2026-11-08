@@ -210,7 +210,9 @@ function ws_canvas_read($doc, $versions)
             'height'     => (int) ($board['height'] ?? 0),
             'background' => (isset($board['background']) && is_string($board['background'])) ? $board['background'] : '#ffffff',
         ),
-        'picture'  => (($doc['picture'] ?? '') === 'pending') ? 'pending' : 'drawn',
+        // A person's save may carry the mark of the agent's document it
+        // opened; only an agent's version waits for a browser.
+        'picture'  => ws_canvas_doc_pending($doc, $last ? (string) $last['source'] : 'agent') ? 'pending' : 'drawn',
         'version'  => $last ? (int) $last['version_no'] : 0,
         'layers'   => $layers,
         'versions' => $made,

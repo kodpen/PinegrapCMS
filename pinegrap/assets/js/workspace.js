@@ -10586,6 +10586,12 @@
                     self.showImage(file.url);
                 });
 
+                // An agent's canvas still blank: this browser draws its
+                // picture (assets/js/workspace_canvas_picture.js).
+                if (file.canvas_pending && window.PGWsCanvasPicture) {
+                    window.PGWsCanvasPicture.mount(message, img, link, featureHelpers());
+                }
+
                 return link;
             }
 
