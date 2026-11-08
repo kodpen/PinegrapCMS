@@ -26,6 +26,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
+- agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 - agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 - agent-questions.md: How an agent asks the people with a poll or an approval, and why the outcome is written in the agent's name (never as the owner's decision)
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, the membership routes, the depth and hourly brakes
