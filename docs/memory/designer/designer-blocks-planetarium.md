@@ -4,7 +4,7 @@ description: The Planetarium block family (planetarium- prefix, its own palette 
 ---
 
 ## Where does it live?
-- `assets/js/style_designer_blocks_planetarium.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `planetarium-`, palette group "Planetarium" (`bi-stars`). Built for the Planetarium template ([[design-template-planetarium-design]]), usable by any planetarium, public observatory, science centre or astronomy club.
+- `assets/js/style_designer_blocks_planetarium.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `planetarium-`, palette group "Planetarium" (`bi-stars`). Built for the Planetarium template ([[design-template-planetarium]]), usable by any planetarium, public observatory, science centre or astronomy club.
 
 ## Which blocks does it hold?
 - `planetarium-tonight`: the telescope status pill ("Telescopes open tonight"), the dark hours as a `dl` of `<time>` values (sunset, full darkness, moonrise, dome closes), five cloud cover steps as an `ol` (tonight's `aria-current`, the others' names `visually-hidden`), the planets up tonight as a list group (an `h4`, where to look, a rise and a set `<time>`, a seen-with pill).
@@ -24,4 +24,4 @@ description: The Planetarium block family (planetarium- prefix, its own palette 
 ## How is it tested?
 - `tests/designer_blocks_test.php` checks the file like every family file; `tests/designer_blocks_planetarium_test.php` runs it under Node: one `h2` and no skipped level per block, no fixed colour or template class, `{var}` filled, no year, interactions kept by `_sdFxNormalize()`, pills of icon plus word, only the orbs hidden, the cover step and day marked current, the time elements, the telescope nights, the rules reaching the block stylesheet.
 
-Related: docs/memory/designer/design-template-own-look.md, docs/memory/plans/design-template-planetarium.md
+Related: docs/memory/designer/design-template-own-look.md, docs/memory/designer/design-template-planetarium.md
