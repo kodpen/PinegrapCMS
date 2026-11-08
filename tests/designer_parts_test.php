@@ -516,3 +516,81 @@ function test_designer_fonts_part_lists_adds_and_removes_through_the_host()
 	pg_assert_same(array(1, 2, array(400, 700), true), json_decode($lines[1] ?? '', true), 'Add writes the font with its weights');
 	pg_assert_same(array(2, array('Lato')), json_decode($lines[2] ?? '', true), 'Remove takes it out');
 }
+
+// The Interactions section's rows and fields are a part: the core draws the
+// section (its header and an empty body) and keeps what the page and the
+// canvas need at open (_sdFxSpec(), _sdFxNormalize(), _sdFxAttrs(),
+// _sdFxTakes(), _sdFxCanvas()); the part fills the body the first time an
+// element's open section is shown.
+function test_designer_interactions_are_a_part()
+{
+	$parts = pg_designer_parts();
+	pg_assert_same('assets/js/style_designer_interactions.min.js', $parts['interactions'] ?? '', 'the interactions are a part');
+	pg_assert_same(array('assets/js/style_designer_interactions.js'), pg_js_bundles()['assets/js/style_designer_interactions.min.js'] ?? array(), 'built from its file');
+	$core = _test_blocks_js();
+	$part = (string) @file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_interactions.js');
+
+	foreach (array('_sdFxSet', '_sdFxReplay', '_sdFxRows') as $name) {
+		pg_assert_false(strpos($core, 'function ' . $name . '(') !== false, $name . ' left the core');
+		pg_assert_true(strpos($part, 'function ' . $name . '(') !== false, 'the part holds ' . $name);
+	}
+
+	pg_assert_false(strpos($core, 'data-fx-play') !== false, 'the Play button is drawn by the part');
+
+	foreach (array('_sdFxSpec', '_sdFxNormalize', '_sdFxAttrs', '_sdFxTakes', '_sdFxCanvas', '_sdFxIntoFirstTag', 'propsInteractions', '_sdFxBind') as $kept) {
+		pg_assert_true(strpos($core, 'function ' . $kept . '(') !== false, $kept . ' stays in the core');
+	}
+
+	pg_assert_true(strpos($core, "_sdPartCall('interactions', 'fill'") !== false, 'the core runs the part to fill the section');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_true(strpos($screen, "'interactions'") !== false, 'the screen hands the interactions part over');
+}
+
+// The interactions part under Node, handed a kit with every key the core's
+// has: fill() draws the rows into the section's body; a chosen effect is
+// one undo step, written to props._fx and redrawn; a cleared effect takes
+// _fx away; Play replays the node on the canvas.
+function test_designer_interactions_part_fills_and_writes()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$keys = array_keys(designer_parts_kit_keys());
+	$js = 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "interactions") factory = f; } };'
+		. 'var K = {}; ' . json_encode($keys) . '.forEach(function (k) { K[k] = function () {}; });'
+		. 'var calls = []; ["saveState", "render", "renderCanvas"].forEach(function (k) { K[k] = function () { calls.push(k); }; });'
+		. 'K._sdT = function (s) { return s; }; K.esc = function (s) { return String(s); };'
+		. 'K.row = function (l, c) { return "<row " + l + ">" + c; }; K.swAttr = function (a) { return "<sw " + a + ">"; };'
+		. 'K._sdFxSpec = function () { return { effects: ["fade", "slide-up"], triggers: ["view", "hover"], easings: ["ease-out"], numbers: { duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0], distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20] } }; };'
+		. 'K._sdFxNormalize = function (fx) { return fx && fx.effect ? { effect: fx.effect, trigger: "view", duration: 600, delay: 0, easing: "ease-out", stagger: 0, repeat: false } : null; };'
+		. 'K._sdFxTakes = function () { return true; };'
+		. 'var replayed = 0; K._sdCanvasInnerOf = function () { return { hasAttribute: function () { return true; } }; };'
+		. 'var fakeWin = { pgFx: { replay: function () { replayed++; } } };'
+		. 'Object.defineProperty(K, "canvasDoc", { get: function () { return { defaultView: fakeWin }; } });'
+		. 'function field(name, type) { return { type: type || "select-one", value: "", checked: false, listeners: {}, getAttribute: function (a) { return a === "data-fx" ? name : null; },'
+		. ' addEventListener: function (t, f) { this.listeners[t] = f; } }; }'
+		. 'var effect = field("effect"); var play = { listeners: {}, addEventListener: function (t, f) { this.listeners[t] = f; } };'
+		. 'var body = { innerHTML: "", querySelector: function (s) { return s === "[data-fx-play]" ? play : null; }, querySelectorAll: function (s) { return s === "[data-fx]" ? [effect] : []; } };'
+		. 'var n = { type: "semantic", props: {} };'
+		. "\n" . (string) @file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_interactions.js') . "\n"
+		. 'var api = factory(K); api.fill(body, n);'
+		. 'console.log(JSON.stringify([Object.keys(api).sort(), (body.innerHTML.match(/<row /g) || []).length, typeof effect.listeners.change]));'
+		. 'effect.value = "fade"; effect.listeners.change();'
+		. 'console.log(JSON.stringify([calls, n.props._fx ? n.props._fx.effect : null]));'
+		. 'play.listeners.click(); effect.value = ""; effect.listeners.change();'
+		. 'console.log(JSON.stringify([replayed, "_fx" in n.props, calls.length]));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfx') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the interactions part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(array('fill', 'rows', 'set'), 1, 'function'), json_decode($lines[0] ?? '', true), 'its entry points; the effect row drawn and bound');
+	pg_assert_same(array(array('saveState', 'render'), 'fade'), json_decode($lines[1] ?? '', true), 'one undo step, the effect written, the panel redrawn');
+	pg_assert_same(array(1, false, 4), json_decode($lines[2] ?? '', true), 'Play replays; a cleared effect takes _fx away');
+}

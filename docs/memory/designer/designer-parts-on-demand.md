@@ -20,8 +20,9 @@ description: The designer's parts not needed to open a page: own bundles (pg_des
 - `code` (#8166, D5 part 3; #8213, part 4): the code view's runtime and its typed-changes engine, `designer-code-view-part.md`.
 - `theme` (#8245, D5 part 5): the Themes tab of the assets panel, `designer-theme-part.md`.
 - `fonts` (#8268, D5 part 6): the Google Fonts browser, `designer-fonts-part.md`.
+- `interactions` (#8281, D5 part 7): the Interactions section's rows and fields, `designer-interactions-part.md`.
 - The assistant code that stays in the core is small and needed at open: `_sdAiBridge()` (the part's view of the editor), the "Write with AI" marks of the page fields (`_pgAiMarks*`) and the alt-text button (`_sdAiAltButton()`).
 
 ## What comes next?
-- The rest of D5: interactions.
+- D5 is complete: every part the plan named (AI, import, code view, theme panel, Google Fonts browser, interactions) loads on first use.
 - `open` with `?sd_perf=1` (`designer-performance.md`) still needs a browser on a running site: not measured before or after this part.
