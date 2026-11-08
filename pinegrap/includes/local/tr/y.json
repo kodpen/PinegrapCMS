@@ -270,6 +270,7 @@
     "You can export within 30 days, after which it is deleted for good.": "30 gün içinde export alabilir, ardından kalıcı olarak silinir.",
     "You can have unlimited applications.": "Sınırsız uygulama oluşturulabilir.",
     "You can keep at most {var:1} flows.": "En fazla {var:1} akış tutabilirsiniz.",
+    "You can keep at most {var:1} groups.": "En fazla {var:1} grup tutabilirsiniz.",
     "You can keep at most {var:1} notes.": "En fazla {var:1} not tutabilirsiniz.",
     "You can leave this screen: the general job carries the move on.": "Bu ekrandan ayrılabilirsiniz: genel iş taşımayı sürdürür.",
     "You can leave this screen; the general job carries on.": "Bu ekrandan ayrılabilirsiniz; genel görev devam eder.",
