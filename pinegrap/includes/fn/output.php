@@ -7378,6 +7378,7 @@ function pg_js_bundles()
             'assets/js/workspace_note_group_shares.js',
             'assets/js/workspace_note_lock.js',
             'assets/js/workspace_memory.js',
+            'assets/js/workspace_channel_agents.js',
             'assets/js/workspace_replies.js',
             'assets/js/workspace.js',
         ),
@@ -7442,6 +7443,8 @@ function pg_js_bundles()
         'assets/js/style_designer_import.min.js'   => array('assets/js/style_designer_import.js'),
         'assets/js/style_designer_code.min.js'     => array('assets/js/style_designer_code.js'),
         'assets/js/style_designer_theme.min.js'    => array('assets/js/style_designer_theme.js'),
+        'assets/js/style_designer_fonts.min.js'    => array('assets/js/style_designer_fonts.js'),
+        'assets/js/style_designer_interactions.min.js' => array('assets/js/style_designer_interactions.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -7500,6 +7503,12 @@ function pg_designer_parts()
         // The Themes tab of the assets panel: the Bootstrap variable rows,
         // their cascade rules and "save these colours as a theme".
         'theme'  => 'assets/js/style_designer_theme.min.js',
+        // The Google Fonts browser: the catalogue's list, the preview and
+        // the weights of a font added to the design.
+        'fonts'  => 'assets/js/style_designer_fonts.min.js',
+        // The Interactions section's rows of the properties panel: the
+        // effect, trigger and timing fields and the Play button.
+        'interactions' => 'assets/js/style_designer_interactions.min.js',
     );
 }
 

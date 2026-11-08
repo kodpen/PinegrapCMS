@@ -21,10 +21,10 @@ description: Plan: the Planetarium and Observatory design template (pinegrap-pla
 - 1 (done, #8172): the `planetarium-` block family `assets/js/style_designer_blocks_planetarium.js`, its test, `designer/designer-blocks-planetarium.md`.
 - 2 (done, #8216): `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$show_on`, page shell, helpers; test.
 - 3 (done, #8249): `cards.php`: shared parts (header, footer, account and staff bars), cards, form fields, comment thread, newsletter and blog parts; test.
-- 4: `pages_public.php`: home (`home_shows`, `home_nights`, `home_posts` placed as widgets), `tonight`, `visit`, `tickets`, `memberships`, `observatory`, `faq`; places the `planetarium-` blocks; test.
-- 5: `shows.php`: the Dome Shows collection by date (`shows` from today on, by `?audience=`, `show`, `show_new`, `home_shows`); test.
-- 6: `nights.php`: the Telescope Nights collection by date (`nights` from today on, `night` with its office status On / Called Off, `night_new`, `home_nights`); test.
-- 7: `mail.php`, `visits.php`: visit requests (`visit_request` with `?visit=`, `?grade=`, `visit_view`, `my_visits`, `staff_visits`, `privacy`, the visit e-mails); test.
+- 4 (done, #8263): `pages_public.php`: home (`home_shows`, `home_nights`, `home_posts` placed as widgets), `tonight`, `visit`, `tickets`, `memberships`, `observatory`, `faq`; places the `planetarium-` blocks; test.
+- 5 (done, #8277): `shows.php`: the Dome Shows collection by date (`shows` from today on, by `?audience=`, `show`, `show_new`, `home_shows`); test.
+- 6 (done, #8285): `nights.php`: Telescope Nights by date (`nights`, `night` with its office status, `night_new`, `home_nights`); test.
+- 7 (done, #8294): `mail.php`, `visits.php`: visit requests (`visit_request` with `?visit=`, `?grade=`, `visit_view`, `my_visits`, `staff_visits`, `privacy`, the visit e-mails); test.
 - 8: `shop.php`: catalog (SKUs `PLM-TICKET-`, `PLM-MEMBER-`), `buy_tickets`, product, cart, checkout, order mail; test.
 - 9: `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), post, search, error ([[design-templates-standard-pages]]); test.
 - 10: `account.php`: sign-in, My Account, `staff`, `blog_new`, `staff_directory`, `staff_entry`, account e-mails; test.

@@ -1407,6 +1407,22 @@ function ws_channel_news($channel_id, $held_id, $since, $options = array())
 }
 
 /**
+ * Is a message the writer's own: a person's by them, or, with $as_app, the
+ * application's. Pure.
+ *
+ * @param array $message sender_kind, sender_id
+ * @param int   $user_id
+ * @param int   $as_app  the application writing as itself, 0 for a person
+ * @return bool
+ */
+function ws_message_is_own($message, $user_id, $as_app = 0)
+{
+    return ((int) $as_app > 0)
+        ? (((string) $message['sender_kind'] === 'app') && ((int) $message['sender_id'] === (int) $as_app))
+        : (((string) $message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $user_id));
+}
+
+/**
  * Whether a message may be changed to this text: the checks of
  * ws_message_edit(), made on their own so that the API's dry run meets the
  * same refusals.
@@ -1414,11 +1430,13 @@ function ws_channel_news($channel_id, $held_id, $since, $options = array())
  * @param array  $viewer
  * @param array  $message
  * @param string $body
+ * @param int    $as_app an agent's application changing its own message
+ *                       (ws_api_agent_own_app()), 0 for a person
  * @return array ok, error, body (the new text as it would be stored), channel
  */
-function ws_message_edit_check($viewer, $message, $body)
+function ws_message_edit_check($viewer, $message, $body, $as_app = 0)
 {
-    if (($message['sender_kind'] !== 'user') || ((int) $message['sender_id'] !== (int) $viewer['id'])
+    if (!ws_message_is_own($message, $viewer['id'], $as_app)
         || ((int) $message['deleted_at'] > 0) || !in_array($message['kind'], array('message', 'note', 'decision'), true)) {
         return array('ok' => false, 'error' => lang('You can only change your own messages.'));
     }
@@ -1456,11 +1474,12 @@ function ws_message_edit_check($viewer, $message, $body)
  * @param array  $viewer
  * @param array  $message
  * @param string $body
+ * @param int    $as_app an agent's application changing its own message, 0 for a person
  * @return array ok, error
  */
-function ws_message_edit($viewer, $message, $body)
+function ws_message_edit($viewer, $message, $body, $as_app = 0)
 {
-    $checked = ws_message_edit_check($viewer, $message, $body);
+    $checked = ws_message_edit_check($viewer, $message, $body, $as_app);
 
     if (!$checked['ok']) {
         return array('ok' => false, 'error' => $checked['error']);
@@ -1477,7 +1496,7 @@ function ws_message_edit($viewer, $message, $body)
     db("UPDATE ws_messages SET body = '" . e($body) . "', edited_at = '" . time() . "' WHERE id = '" . (int) $message['id'] . "'");
 
     if (function_exists('ws_blocks_index')) {
-        ws_blocks_index('message', (int) $message['id'], $body, (int) $message['sender_id'], (int) $message['channel_id']);
+        ws_blocks_index('message', (int) $message['id'], $body, ((int) $as_app > 0) ? 0 : (int) $message['sender_id'], (int) $message['channel_id']);
     }
 
     ws_checks_remap($message['id'], $message['body'], $body);
@@ -1514,11 +1533,24 @@ function ws_message_edit($viewer, $message, $body)
  *
  * @param array $viewer
  * @param array $message
+ * @param int   $as_app an agent's application deleting its own message
+ *                      (ws_api_agent_own_app()), 0 for a person
  * @return array ok, error, mine
  */
-function ws_message_delete_check($viewer, $message)
+function ws_message_delete_check($viewer, $message, $as_app = 0)
 {
-    $mine = ($message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id']);
+    $mine = ws_message_is_own($message, $viewer['id'], $as_app);
+
+    // An agent deletes only its own messages, and no locked decision.
+    if ((int) $as_app > 0) {
+        if (!$mine || !empty($message['locked'])) {
+            return array('ok' => false, 'error' => lang('You can only delete your own messages.'), 'mine' => $mine);
+        }
+
+        return ws_can_read_channel($viewer, ws_channel($message['channel_id']))
+            ? array('ok' => true, 'error' => '', 'mine' => true)
+            : array('ok' => false, 'error' => lang('Access denied.'), 'mine' => true);
+    }
 
     // A guest's message is taken out by staff.
     if (!in_array($message['sender_kind'], array('user', 'guest'), true) || (!$mine && ($viewer['role'] >= 3))) {
@@ -1543,11 +1575,12 @@ function ws_message_delete_check($viewer, $message)
  *
  * @param array $viewer
  * @param array $message
+ * @param int   $as_app an agent's application deleting its own message, 0 for a person
  * @return array ok, error
  */
-function ws_message_delete($viewer, $message)
+function ws_message_delete($viewer, $message, $as_app = 0)
 {
-    $checked = ws_message_delete_check($viewer, $message);
+    $checked = ws_message_delete_check($viewer, $message, $as_app);
 
     if (!$checked['ok']) {
         return array('ok' => false, 'error' => $checked['error']);

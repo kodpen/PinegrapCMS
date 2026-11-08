@@ -1,6 +1,6 @@
 ---
 name: agent-doors
-description: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes
+description: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 ---
 
 ## When does a message make an agent's request?
@@ -18,6 +18,6 @@ description: The agents' request queue: wake rules make one ws_ai_requests row p
 - `api_agent_requests.php`, `'mcp' => false` (the key used as itself, `ws_api_agent_caller()`: an active `app` row whose `app_id` is the caller, no device): `GET /workspace/agent-requests` (open, or a status, or all), `POST …/{id}/claim` (409 already_claimed / closed; 👀 by the agent's application), `…/answer` (text under the asking message with the asker mentioned, or `no_answer`; written through `ws_assistant_writer()`; 403 when the channel row no longer allows the agent or the asker cannot write there; ✅), `…/fail` (reason told under the message when it can be). Requests are shown as Claude's are (`WorkspaceClaudeRequest`). Everything else the agent does goes through the API's own routes and MCP tools.
 - A model agent's request is answered by the site (`model-assistants.md`); the screen and `ws_api_assistants_carry_on()` carry it on as Pinegrap AI's (`models` in the ask's result).
 
-## What is still to come (A4b)?
-- Wake rows for schedules and `at <time>` from the general cron job, `/wake @agent …` in the channel and the API, the full brief (preamble, context, memory digest, loop-guard text, MCP address and scopes), the request shown on the message, own-message edits with an edited mark, `ws_assistants()` taking the registry agents (picker, tags, follow).
+## What is still to come?
+- How an agent shows (its request line, tag, picker entry, own-message edits): `agent-shown.md` (A4b2).
 - Never tried live: a knock against a real receiver, the routes with a real key.
