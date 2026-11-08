@@ -19,7 +19,7 @@ description: Plan: the Podcast Network design template (pinegrap-podcast): podca
 
 - 4 (done, #7922): `mail.php` (the e-mail builders) and `sponsors.php`: `sponsor` (audience, packages, past sponsors' words), the sponsorship enquiry (`sponsor_enquiry`, `enquiry_view`, `my_enquiries`, `staff_enquiries`), the guest pitch (`guest_pitch`, its view and staff list), `privacy`, `email_reply`; test.
 
-- 5: `supporters.php`: `support` (tiers, what supporters get), the supporters' area in the `supporters` folder (`supporters_home`, three bonus episode pages with the static player), and with the shop the tier products (`membership_days`), product, cart, checkout, order, `email_order`, gift memberships; test.
+- 5 (done, #8133): `supporters.php`: `support` (tiers, what supporters get), the supporters' area in the `supporters` folder (`supporters_home`, three bonus episode pages with the static player), and with the shop the tier products (`membership_days`), product, cart, checkout, order, `email_order`, gift memberships; test.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
