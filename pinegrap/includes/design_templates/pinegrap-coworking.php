@@ -180,7 +180,7 @@ return array(
     'name'        => lang('Coworking'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 115,
+    'order'       => 119,
     'icon'        => 'bi-laptop',
     'description' => lang('A coworking space: hot desks, fixed desks, private offices and meeting rooms with a page each, meeting rooms booked by the hour, membership plans and day passes, tour requests and office enquiries the visitor follows from their account, community events with sign-ups, memberships sold in the shop with a members\' area, a blog, a newsletter, an inbox, a staff area and a help center that searches the whole site.'),
 

@@ -18,7 +18,7 @@ description: Coworking template (pinegrap-coworking): spaces and events as colle
 - Not built: live desk availability, door access, meeting room credits, hourly invoicing, member profiles, virtual office mail.
 
 ## What is the pcw- look?
-- `pcw-brand`, `pcw-display`, `pcw-eyebrow`, `pcw-hero`, `pcw-lift`, `pcw-price`; field ids `cw-`. Space Grotesk headings, Inter body. Look `modern-sharp`, palette `coral`, order 115 (99, 111, 113 taken), icon `bi-laptop`. No `opacity-*` on text ([[design-template-text-contrast]]). No fixed date, year or month in the sample.
+- `pcw-brand`, `pcw-display`, `pcw-eyebrow`, `pcw-hero`, `pcw-lift`, `pcw-price`; field ids `cw-`. Space Grotesk headings, Inter body. Look `modern-sharp`, palette `coral`, order 119 (115 is Pharmacy's), icon `bi-laptop`. No `opacity-*` on text ([[design-template-text-contrast]]). No fixed date, year or month in the sample.
 - Turkish: "ortak çalışma alanı", "masa" (hot desk "esnek masa", fixed desk "sabit masa"), "toplantı odası", "üyelik", "günlük bilet" (the shipped `Day Pass`), "tur", "etkinlik". `Space` reads "Boşluk" and `Seats` "Koltuklar": use `Workspace` and `Number of Seats`.
 
 ## Which tests cover it?
