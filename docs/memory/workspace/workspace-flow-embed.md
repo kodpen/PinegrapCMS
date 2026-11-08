@@ -9,7 +9,7 @@ description: PGWsFlow.embed(host, boot) in workspace_flow.js: the Flows canvas d
 - Needs `window.PGWsKit` (workspace.js) and both bundles on the page; returns null without them.
 
 ## Why one at a time?
-- The canvas keeps one module `state` and one core `canvas` (decided #4967, answer 1). A second `embed()` calls the first's `destroy()`: its host gets back the nodes it held before. `embed()` returns null while the Flows screen runs on the page (`state.screen`, set by `start()`); `start()` ends an embed first.
+- The canvas keeps one module `state` and one core `canvas` (decided #4967, answer 1). A second `embed()` calls the first's `destroy()`: its host gets back the nodes it held before. `embed()` returns null while an editor is mounted (`state.screen`, set by `mount()`, freed by its `destroy()`); `mount()` ends an embed first (`workspace-flow-mount.md`).
 
 ## What does boot carry?
 - `graph` `{ nodes, edges }` at its real places; a node may carry `said`/`failed` (dry run) and `mark`.

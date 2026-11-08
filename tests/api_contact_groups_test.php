@@ -168,6 +168,71 @@ function test_api_contact_groups_opt_in_is_recorded_only_with_contacts_to_add()
 	pg_assert_same(null, api_contact_group_opt_in_choice(array('opt_in' => false), 1, array()), 'remove only, opt out');
 }
 
+// A group filled by rules says so, with the moment its last pass finished; a
+// site before the database update that adds rules has hand groups only.
+function test_api_contact_groups_answer_says_whether_rules_fill_the_group()
+{
+	$row = array(
+		'id' => '4', 'name' => 'Lapsed buyers', 'description' => '', 'email_subscription' => '0',
+		'email_subscription_type' => 'open', 'created_username' => '', 'created_timestamp' => '0',
+		'last_modified_username' => '', 'last_modified_timestamp' => '0',
+	);
+
+	$before = api_contact_group_present($row, 0);
+
+	pg_assert_false($before['by_rule'], 'no kind column: a hand group');
+	pg_assert_same(null, $before['computed_at'], 'no kind column: never computed');
+
+	$hand = api_contact_group_present($row + array('kind' => 'static', 'computed_at' => '1700000000'), 0);
+
+	pg_assert_false($hand['by_rule'], 'static');
+	pg_assert_same(null, $hand['computed_at'], 'a hand group has no pass');
+
+	$dynamic = api_contact_group_present($row + array('kind' => 'dynamic', 'computed_at' => '0'), 3);
+
+	pg_assert_true($dynamic['by_rule'], 'dynamic');
+	pg_assert_same(null, $dynamic['computed_at'], 'not computed yet');
+
+	$done = api_contact_group_present($row + array('kind' => 'dynamic', 'computed_at' => '1700000000'), 3);
+
+	pg_assert_same(api_time(1700000000), $done['computed_at'], 'last pass');
+
+	$schema = api_contact_group_schema();
+
+	pg_assert_same('boolean', $schema['by_rule'], 'by_rule in the schema');
+	pg_assert_same('string?', $schema['computed_at'], 'computed_at in the schema');
+}
+
+// Refresh now answers as the screen's action does, so a client asks again
+// until done is true.
+function test_api_contact_groups_refresh_answer_follows_the_pass()
+{
+	pg_assert_same(array(
+		'id' => 4, 'done' => false, 'added' => 10, 'removed' => 2, 'members' => 58,
+	), api_contact_group_refresh_answer(4, array('done' => false, 'added' => 10, 'removed' => 2, 'cursor' => 10000), '58'), 'a pass under way');
+
+	pg_assert_same(array(
+		'id' => 4, 'done' => true, 'added' => 0, 'removed' => 0, 'members' => 0,
+	), api_contact_group_refresh_answer(4, array('done' => true, 'added' => 0, 'removed' => 0, 'cursor' => 0), null), 'done, empty');
+}
+
+function test_api_contact_groups_refresh_route_is_a_rehearsable_write()
+{
+	$route = null;
+
+	foreach (api_schema() as $row) {
+		if ($row['id'] === 'contact_groups.refresh') {
+			$route = $row;
+		}
+	}
+
+	pg_assert_true($route !== null, 'contact_groups.refresh is a route');
+	pg_assert_same('POST', $route['method'], 'method');
+	pg_assert_same('/contact-groups/{id}/refresh', $route['path'], 'path');
+	pg_assert_same('api_contact_groups_refresh', $route['handler'], 'handler');
+	pg_assert_true(!empty($route['dry_run']), 'takes dry_run');
+}
+
 function test_api_contact_groups_routes_reach_a_handler_under_the_contact_groups_scope()
 {
 	$found = 0;
@@ -190,7 +255,7 @@ function test_api_contact_groups_routes_reach_a_handler_under_the_contact_groups
 		}
 	}
 
-	pg_assert_same(8, $found, 'list, get, create, update, delete and its POST form, members and the members change');
+	pg_assert_same(9, $found, 'list, get, create, update, delete and its POST form, members, the members change and the refresh');
 }
 
 // The router takes the first route that matches.

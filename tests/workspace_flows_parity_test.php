@@ -2838,7 +2838,11 @@ function test_workspace_flows_parity_scheduled_section_new_is_a_flow()
 
 	$body = substr($flow, $start, strpos($flow, "\n    }\n", $start) - $start);
 
-	pg_assert_true(strpos($body, 'newFlowButton();') !== false, 'New flow in the flow list\'s toolbar');
+	$clear = strpos($flow, 'function clearScreen(');
+	$cleared = ($clear !== false) ? substr($flow, $clear, strpos($flow, "\n    }\n", $clear) - $clear) : '';
+
+	pg_assert_true(strpos($body, 'clearScreen();') !== false, 'the list starts from the screen cleared');
+	pg_assert_true(strpos($cleared, 'newFlowButton();') !== false, 'New flow in the flow list\'s toolbar');
 	pg_assert_true(strpos($body, 'drawFlows();') !== false, 'the flow list, with its scheduled groups');
 	pg_assert_true(strpos($flow, 'K.scheduledList(cards);') !== false, 'the not converted group: the list without its New');
 
