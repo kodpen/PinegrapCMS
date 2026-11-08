@@ -155,6 +155,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-magazine-layout.md: Magazine look and shapes: pm- User Styles, fonts and serif body, color-mix() paper, rust accent, sticky pull quote, drop cap resets, vanishing bands, preview placeholders.
 - design-template-magazine-publishing.md: Magazine template publishing: the shared live rule and leak closures, the desk lists, letter names (the contact's display name), author HTML and photos, the staff note's rules for renaming fields.
 - design-template-magazine.md: Long-Read Magazine template (pinegrap-magazine): what it ships, the contract shared with news, what it adds or drops, samples, no "haber", platform limits.
+- design-template-marina.md: Marina template (pinegrap-marina): kinds of berth, rates as words, Charter Boats and Events collections, berth requests, charter enquiries, event entries, no shop, pmn- look, tests.
 - design-template-market.md: Marketplace template (pinegrap-market): makers as a Sellers collection beside the store's catalog, one cart, maker applications and order help followed from the account, pmk- look, tests.
 - design-template-museum.md: Museum template (pinegrap-museum): exhibitions and highlights as collections, event place and school visit requests, tickets and membership in the shop, timed entry, pmz- look, tests.
 - design-template-music.md: Music Artist template (pinegrap-music): shows and releases as collections, press kit with a public press folder, booking enquiries, merch and gift cards in the shop, pmu- look, tests.
@@ -166,12 +167,14 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
+- design-template-restaurant.md: Restaurant template (pinegrap-restaurant): menu and events as collections, reservation requests, chef's table, private dining enquiries, gift vouchers in the shop, prt- look, tests.
 - design-template-salon-words.md: Beauty Salon template wording (1.1.1, #4807): hizmet and randevu, own keys for the booking field, staff shortcut and statuses, e-posta page names; sample days and times fit the opening hours (#4944).
 - design-template-salon.md: Beauty Salon template (pinegrap-salon): its parts folder, the booking on the Clinic's request pattern, what is not built, the psl- look, tests.
 - design-template-school.md: Private School template (pinegrap-school): programmes with a page each, events collection, admission applications and visit requests followed from the account, News, no shop, psh- look, tests.
 - design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
 - design-template-social.md: Social Community template (pinegrap-social): member photo posts and profiles as collections, comments, tags, saved posts, reports and the live rule, psc- look, tests.
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
+- design-template-theatre.md: Theatre template (pinegrap-theatre): productions and performances as collections, hire, school group and youth place requests, tickets, friends and vouchers in the shop, pth- look, tests.
 - design-template-threads.md: Café, Clinic, Playground and Salon 1.1.0 comment threads on the Comments widget, the comment e-mail cards before the System region, Google Reviews beside the sample testimonials
 - design-template-travel.md: Travel Agency template (pinegrap-travel): tours and destinations as collections, reviews, booking requests and tailor-made enquiries, deposits and gift cards in the shop, ptv- look, tests.
 - design-template-wedding.md: Wedding template (pinegrap-wedding): packages, spaces, Real Weddings collection, enquiries from the account, venue visits by the booking widget, deposits and gift cards, pwd- look, tests.
@@ -189,6 +192,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-audit-form-action.md: Designer audit hint form_no_action: a form outside every system widget with no action is sent nowhere; what counts as wired, why it is a hint and not a ban, and the test.
 - designer-audit-targets-entry.md: Designer audit's target size (WCAG 2.5.8, 24px with the spacing exception) and redundant entry (3.3.7) hints: measured on the canvas, exemptions
 - designer-audit-tree-rules.md: Designer audit's tree rules for empty links/buttons, image alt, form submit and empty headings: what counts as a name, an alt decision, a submit and a heading, and the test
+- designer-block-family-files.md: Block families in their own files (style_designer_blocks_<family>.js): the registration call, the kit, how the palette, drop, block rules and PHP readers take them, the checks (B0)
 - designer-block-forms.md: How a ready-made designer block writes a form that can be sent and read aloud: a label for every field, a real submit button, POST unless search, and what the audit and the block test check.
 - designer-block-markup.md: Heading levels and inline content in ready-made designer blocks: no skipped level, size from an h-class, no paragraph or block inside a button, label, span or heading.
 - designer-block-motion.md: Motion in designer blocks without JS: the shared pg-marquee contract (loop, pause by hover, focus and a CSS-only button, reduced motion, RTL), no carousel autoplay, no countdowns.

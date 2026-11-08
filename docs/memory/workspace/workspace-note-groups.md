@@ -11,3 +11,11 @@ description: Workspace note groups and the notes lock — tables of step 11.0.11
 
 ## Why are a group's shares written as note shares?
 - A group's share writes `ws_note_shares` rows with `via_group` = the group, so every reader of note shares (access, files, list, sync, deletions) stays as it is, and taking the group back deletes only its rows; a direct share (`via_group` 0) stays.
+
+## What does the groups store do?
+- `includes/workspace/note_groups.php`: `ws_note_groups()` (own groups in order with note counts), `ws_note_group_save()` / `_check()` (make last in order, rename, recolour with a `ws_palette_place()`; names via `ws_note_group_name()`, at most `WS_NOTE_GROUPS_MAX` 200 groups of `WS_NOTE_GROUP_NAME_MAX` 100 characters), `ws_note_groups_order()`, `ws_note_group_delete()` (its notes go back to no group, none deleted), `ws_note_place()` / `_check()` (a note one owns or has shared with them by name, into an own group at a position, or out of every group).
+- Order: `ws_note_group_order_insert()` and `ws_note_group_order_merge()` are pure (tests in `tests/workspace_note_groups_test.php`); an asked order missing some ids keeps the rest after it, so a stale screen loses nothing.
+- `ws_notes_list()` answers `groups` and each note's `group_id` / `group_sort`; `ws_note_get` carries the same two fields.
+- Cleanup: `ws_note_delete()` drops every place of the note (`ws_note_places_forget_note()`); `ws_note_unshare()` drops the reader's place once no share by name is left (`ws_note_places_forget_reader()`).
+- Panel actions: `ws_note_groups`, `ws_note_group_save`, `ws_note_group_order`, `ws_note_group_delete`, `ws_note_place`; each answers the groups again.
+- Not yet: shared groups and their cleanup on group delete (G5), the lock hiding a locked group's count (L steps), the API (G7).

@@ -7446,8 +7446,9 @@ function pg_js_bundles()
         // The explorer's tree in the File Manager and Catalog Manager panels.
         'assets/js/explorer_side.min.js'           => array('assets/js/explorer_side.js'),
         // The visual designer. Loaded without defer, before the inline
-        // script that starts it and the scripts that extend it.
-        'assets/js/style_designer.min.js'          => array('assets/js/pg_google_fonts.js', 'assets/js/style_designer.src.js'),
+        // script that starts it and the scripts that extend it. Its block
+        // family files come after the core, whose registration call they use.
+        'assets/js/style_designer.min.js'          => array_merge(array('assets/js/pg_google_fonts.js'), pg_designer_js_sources()),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
@@ -7456,6 +7457,32 @@ function pg_js_bundles()
         // The Visitors overview (visitors.php): its period bar and charts.
         'assets/js/pg_visitors.min.js'            => array('assets/js/pg_visitors.src.js'),
     );
+}
+
+/**
+ * The visual designer's own sources, in the order they run: the core
+ * (assets/js/style_designer.src.js), then every block family file
+ * (assets/js/style_designer_blocks_<family>.js) sorted by name. A family file
+ * registers its palette group, blocks, builders and block rules with
+ * StyleDesigner.registerBlockFamily(), so adding one edits neither the core
+ * nor this list. The readers of the core's _sdT() keys and block rules
+ * (pg_designer_i18n_keys(), _pg_designer_block_css_source(),
+ * tools/check_lang.php) read the same list.
+ *
+ * @return array paths under the software directory
+ */
+function pg_designer_js_sources()
+{
+    $families = glob(PG_FUNCTIONS_DIR . '/assets/js/style_designer_blocks_*.js');
+    $out = array();
+    foreach (is_array($families) ? $families : array() as $path) {
+        $name = basename($path);
+        if (preg_match('/^style_designer_blocks_[a-z0-9_]+\.js$/', $name)) {
+            $out[] = 'assets/js/' . $name;
+        }
+    }
+    sort($out, SORT_STRING);
+    return array_merge(array('assets/js/style_designer.src.js'), $out);
 }
 
 /**

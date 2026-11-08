@@ -1202,7 +1202,9 @@ function bs6_scope_kind($path)
 		'assets/js/pg_theme_switcher.js', 'assets/js/pg_booking.js', 'assets/css/pg_carousel_layout.css', 'assets/css/pg_consent.css',
 		'assets/css/pg_lightbox.css', 'assets/css/pg_datetime_site.css',
 	);
-	if (in_array($path, $site_assets, true) || preg_match('/^(frontend|chat_site)\.(src|min)\.js$/', $base) || preg_match('#^assets/js/chat_site#', $path)) {
+	// The designer's block family files build palette blocks: site markup.
+	if (in_array($path, $site_assets, true) || preg_match('/^(frontend|chat_site)\.(src|min)\.js$/', $base) || preg_match('#^assets/js/chat_site#', $path)
+		|| preg_match('#^assets/js/style_designer_blocks_[a-z0-9_]+\.js$#', $path)) {
 		return 'site';
 	}
 

@@ -933,7 +933,7 @@ function ws_notes_filter_sql($search, $updated_since = 0, $shared_at = '')
 function ws_notes_list($viewer, $search = '')
 {
     if (!ws_notes_ready()) {
-        return array('mine' => array(), 'shared' => array());
+        return array('mine' => array(), 'shared' => array(), 'groups' => array());
     }
 
     $me = (int) $viewer['id'];
@@ -952,9 +952,12 @@ function ws_notes_list($viewer, $search = '')
         $mine[$index]['access'] = 'owner';
     }
 
+    // The person's groups, and the group each note is kept in (group_id,
+    // group_sort; note_groups.php).
     return array(
-        'mine'   => ws_notes_present($viewer, $mine),
-        'shared' => ws_notes_present($viewer, $shared),
+        'mine'   => ws_note_places_add($viewer, ws_notes_present($viewer, $mine)),
+        'shared' => ws_note_places_add($viewer, ws_notes_present($viewer, $shared)),
+        'groups' => ws_note_groups($viewer),
     );
 }
 
@@ -1450,6 +1453,7 @@ function ws_note_delete($viewer, $note)
 
     db("DELETE FROM ws_note_shares WHERE note_id = '" . $id . "'");
     db("DELETE FROM ws_notes WHERE id = '" . $id . "'");
+    ws_note_places_forget_note($id);
     ws_ref_source_write('note', array($id => array()));
 
     // The same file brought in again is a new note.
@@ -1657,6 +1661,9 @@ function ws_note_unshare($viewer, $note, $share_id = 0)
     }
 
     db("DELETE FROM ws_note_shares WHERE id = '" . (int) $share['id'] . "'");
+
+    // Without a share by name left, the note leaves the person's group.
+    ws_note_places_forget_reader((int) $share['user_id'], (int) $note['id']);
 
     if (((int) $share['user_id'] > 0) && ws_notes_inbox_ready()) {
         ws_inbox_delete("user_id = '" . (int) $share['user_id'] . "' AND note_id = '" . (int) $note['id'] . "'");

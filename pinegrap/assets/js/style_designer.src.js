@@ -17172,9 +17172,16 @@ const StyleDesigner = (function () {
             case 'widget_part': return _sdPaletteCreate(extra);
             case 'component':
                 var ctype = extra.componentType;
+                // A family file's block: its rules join _SD_BLOCK_CSS_NEEDS
+                // when the families are read, before the line below.
+                var _ctFamily = _sdBlockFamilyOf(ctype);
                 // Rules this block needs go to the Styles panel, not inline;
                 // not while the drop rules only look at the block's shape.
                 if (!_sdPaletteDry) _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
+                if (_ctFamily) {
+                    var _ctFamilyNode = _ctFamily.build(ctype);
+                    if (_ctFamilyNode) return _ctFamilyNode;
+                }
                 
                 // Nested Component Expansion (Bootstrap Studio Style)
                 
@@ -19932,50 +19939,12 @@ const StyleDesigner = (function () {
                 // legal blocks at the end of the branch share them, and so do
                 // the maintenance/launch, news and creative blocks after them.
                 if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal|maintenance|coming-soon|news|bento|marquee|showcase|quote|gallery|scroller)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
-                    var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
-                    var _bkDiv = function (cls, name, kids, attrs) {
-                        var p = { tag: 'div', cssClass: cls, customName: name };
-                        if (attrs) p._attrs = attrs;
-                        return createNode('semantic', p, kids || []);
-                    };
-                    var _bkTag = function (tag, cls, name, kids, attrs) {
-                        var p = { tag: tag, cssClass: cls, customName: name };
-                        if (attrs) p._attrs = attrs;
-                        return createNode('semantic', p, kids || []);
-                    };
-                    var _bkSection = function (cls, name, kids) {
-                        return createNode('semantic', { tag: 'section', cssClass: cls, customName: name }, [
-                            createNode('container', { fluid: false, cssClass: '' }, kids)
-                        ]);
-                    };
-                    var _bkRow = function (name, kids, cls) {
-                        return createNode('row', { gutter: '4', justify: '', align: '', cssClass: cls || '', customName: name }, kids);
-                    };
-                    var _bkCol = function (name, kids, lg, md, sm, cls) {
-                        return createNode('col', { xs: '12', sm: sm || '', md: md || '', lg: lg || '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
-                    };
-                    var _bkH = function (tag, text, cls) { return createNode('content', { contentType: 'heading', tag: tag, text: text, cssClass: cls || '' }); };
-                    var _bkP = function (text, cls) { return createNode('content', { contentType: 'paragraph', text: text, cssClass: cls || '' }); };
-                    var _bkIcon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
-                    var _bkBtn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
-                    var _bkLink = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
-                    // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
-                    var _bkTime = function (datetime, text, cls, name) {
-                        return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
-                    };
-                    // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
-                    var _bkRegion = function (label) {
-                        return [
-                            { name: 'role',       value: 'region' },
-                            { name: 'aria-label', value: label },
-                            { name: 'tabindex',   value: '0' }
-                        ];
-                    };
-                    // An icon-only link (social, share, email), named by its aria-label.
-                    var _bkIconLink = function (icon, label, cls, href) {
-                        return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
-                            _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon) ]);
-                    };
+                    // The shared builders (_sdBlockKit()), the ones a family file gets too.
+                    var _bkKit = _sdBlockKit();
+                    var _bkUid = _bkKit.uid, _bkDiv = _bkKit.div, _bkTag = _bkKit.tag, _bkSection = _bkKit.section;
+                    var _bkRow = _bkKit.row, _bkCol = _bkKit.col, _bkH = _bkKit.h, _bkP = _bkKit.p, _bkIcon = _bkKit.icon;
+                    var _bkBtn = _bkKit.btn, _bkLink = _bkKit.link, _bkTime = _bkKit.time, _bkRegion = _bkKit.region;
+                    var _bkIconLink = _bkKit.iconLink, _bkImg = _bkKit.img, _bkIntro = _bkKit.intro;
                     // Pause control of a pg-marquee block: one wrapper (hidden
                     // under reduced motion) around a btn-check and its label.
                     // The label must follow the input: Bootstrap styles it
@@ -19993,13 +19962,6 @@ const StyleDesigner = (function () {
                                 _bkIcon('bi-play-fill'),
                                 _bkH('span', label, 'visually-hidden')
                             ], [{ name: 'for', value: id }])
-                        ]);
-                    };
-                    var _bkImg = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
-                    var _bkIntro = function (title, lead) {
-                        return _bkDiv('text-center mb-5', _sdT('Section Header'), [
-                            _bkH('h2', title, 'fw-bold mb-2'),
-                            _bkP(lead, 'lead text-body-secondary mb-0')
                         ]);
                     };
                     // One menu line: name, a rule that leads the eye to the
@@ -46883,7 +46845,8 @@ const StyleDesigner = (function () {
                                      'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
                                      'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
                                      'events-cards', 'notice-promo', 'legal-accessibility-statement'];
-                if (_noWrapCtypes.indexOf((payload.extra || {}).componentType || '') === -1) {
+                var _nwCtype = (payload.extra || {}).componentType || '';
+                if (_noWrapCtypes.indexOf(_nwCtype) === -1 && !_sdBlockFamilyOf(_nwCtype)) {
                     n = createNode('container', { fluid: false, cssClass: '' }, [n]);
                 }
             }
@@ -75517,13 +75480,129 @@ const StyleDesigner = (function () {
         try { localStorage.removeItem(RECENT_COMPS_KEY); } catch(e) {}
     }
 
+    // ── Block families in their own files ───────────────────────────────
+    // A block family (a template's sector sections, or general blocks under
+    // a core group's prefix) lives in assets/js/style_designer_blocks_<family>.js,
+    // bundled after this file by pg_js_bundles(), and hands itself over with
+    // StyleDesigner.registerBlockFamily(factory). The factory runs once, on
+    // first use, with _sdBlockKit(), and returns:
+    //   prefix  the componentType prefix of its blocks ('launch-')
+    //   group   { title, icon }: its own palette group; left out when its
+    //           blocks sit in a core group under that group's prefix
+    //   items   its palette items, the shape of _sdBlockPaletteItems()
+    //   build   function (ctype) -> the block's node tree, or null
+    //   css     rule name -> CSS text, added to _SD_BLOCK_CSS
+    //   needs   ctype -> rule names, added to _SD_BLOCK_CSS_NEEDS
+    // A core entry of the same name wins. A family block is a whole section:
+    // dropped on the page root, it is not wrapped in a container.
+    var _sdBlockFamilyFactories = [];
+    var _sdBlockFamilyList = null;
+    var _sdBlockFamilyByType = {};
+
+    function _sdRegisterBlockFamily(factory) {
+        if (typeof factory !== 'function') return;
+        _sdBlockFamilyFactories.push(factory);
+        _sdBlockFamilyList = null;
+    }
+
+    function _sdBlockFamilies() {
+        if (_sdBlockFamilyList) return _sdBlockFamilyList;
+        var list = [], byType = {}, kit = _sdBlockKit();
+        _sdBlockFamilyFactories.forEach(function (factory) {
+            var fam = null;
+            try { fam = factory(kit); } catch (e) { console.error('[SD] block family', e); }
+            if (!fam || typeof fam.prefix !== 'string' || !fam.prefix || typeof fam.build !== 'function') return;
+            // A type another family already lists stays with that family.
+            fam.items = (Array.isArray(fam.items) ? fam.items : []).filter(function (it) {
+                var ct = (it && it.extra && it.extra.componentType) || '';
+                if (!ct || byType[ct]) return false;
+                byType[ct] = fam;
+                return true;
+            });
+            [[fam.css, _SD_BLOCK_CSS], [fam.needs, _SD_BLOCK_CSS_NEEDS]].forEach(function (pair) {
+                Object.keys(pair[0] || {}).forEach(function (k) {
+                    if (!Object.prototype.hasOwnProperty.call(pair[1], k)) pair[1][k] = pair[0][k];
+                });
+            });
+            list.push(fam);
+        });
+        _sdBlockFamilyByType = byType;
+        _sdBlockFamilyList = list;
+        return list;
+    }
+
+    // The family that builds this componentType, or null for a core block.
+    function _sdBlockFamilyOf(ctype) {
+        _sdBlockFamilies();
+        return Object.prototype.hasOwnProperty.call(_sdBlockFamilyByType, ctype) ? _sdBlockFamilyByType[ctype] : null;
+    }
+
+    // The builders the ready-made blocks share, handed to every family
+    // factory; createFromPalette()'s block branch takes the same ones.
+    /* @pg-site-output */
+    function _sdBlockKit() {
+        var kit = { _sdT: _sdT, createNode: createNode };
+        kit.uid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
+        kit.div = function (cls, name, kids, attrs) {
+            var p = { tag: 'div', cssClass: cls, customName: name };
+            if (attrs) p._attrs = attrs;
+            return createNode('semantic', p, kids || []);
+        };
+        kit.tag = function (tag, cls, name, kids, attrs) {
+            var p = { tag: tag, cssClass: cls, customName: name };
+            if (attrs) p._attrs = attrs;
+            return createNode('semantic', p, kids || []);
+        };
+        kit.section = function (cls, name, kids) {
+            return createNode('semantic', { tag: 'section', cssClass: cls, customName: name }, [
+                createNode('container', { fluid: false, cssClass: '' }, kids)
+            ]);
+        };
+        kit.row = function (name, kids, cls) {
+            return createNode('row', { gutter: '4', justify: '', align: '', cssClass: cls || '', customName: name }, kids);
+        };
+        kit.col = function (name, kids, lg, md, sm, cls) {
+            return createNode('col', { xs: '12', sm: sm || '', md: md || '', lg: lg || '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
+        };
+        kit.h = function (tag, text, cls) { return createNode('content', { contentType: 'heading', tag: tag, text: text, cssClass: cls || '' }); };
+        kit.p = function (text, cls) { return createNode('content', { contentType: 'paragraph', text: text, cssClass: cls || '' }); };
+        kit.icon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
+        kit.btn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
+        kit.link = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
+        // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
+        kit.time = function (datetime, text, cls, name) {
+            return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
+        };
+        // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
+        kit.region = function (label) {
+            return [
+                { name: 'role',       value: 'region' },
+                { name: 'aria-label', value: label },
+                { name: 'tabindex',   value: '0' }
+            ];
+        };
+        // An icon-only link (social, share, email), named by its aria-label.
+        kit.iconLink = function (icon, label, cls, href) {
+            return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
+                _attrs: [{ name: 'aria-label', value: label }] }, [ kit.icon(icon) ]);
+        };
+        kit.img = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
+        kit.intro = function (title, lead) {
+            return kit.div('text-center mb-5', _sdT('Section Header'), [
+                kit.h('h2', title, 'fw-bold mb-2'),
+                kit.p(lead, 'lead text-body-secondary mb-0')
+            ]);
+        };
+        return kit;
+    }
+
     // Ready-made blocks. These are whole page sections, not building
     // elements, so they live in their own palette tab; the component tab
     // keeps the primitives. The list stays flat and the palette buckets it
     // by the prefix of the component type, so a new block only has to name
     // itself — nothing here is edited when one is added.
     function _sdBlockPaletteItems() {
-        return [
+        var items = [
             { label: _sdT('Navbar: Brand + Links + CTA'), type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-light-cta' } },
             { label: _sdT('Navbar: Search + Dropdown'),   type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-search' } },
             { label: _sdT('Navbar: Dark, Center Links'),  type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-dark-center' } },
@@ -75651,6 +75730,9 @@ const StyleDesigner = (function () {
             { label: _sdT('Scroller: Snap Cards'),         type: 'component', icon: 'bi-collection',             extra: { componentType: 'scroller-cards' } },
             { label: _sdT('Legal: Accessibility Statement'), type: 'component', icon: 'bi-universal-access',   extra: { componentType: 'legal-accessibility-statement' } }
         ];
+        // Then each family file's blocks, in bundle order.
+        _sdBlockFamilies().forEach(function (fam) { items = items.concat(fam.items); });
+        return items;
     }
 
     // Prefix -> group. A type that matches nothing still shows up, under
@@ -75672,6 +75754,9 @@ const StyleDesigner = (function () {
             { title: _sdT('Maintenance & Launch'), icon: 'bi-cone-striped',   match: ['maintenance-', 'coming-soon-'] },
             { title: _sdT('Legal'),            icon: 'bi-universal-access',   match: ['legal-'] }
         ];
+        _sdBlockFamilies().forEach(function (fam) {
+            if (fam.group && fam.group.title) groups.push({ title: fam.group.title, icon: fam.group.icon || 'bi-box', match: [fam.prefix] });
+        });
         var other = { title: _sdT('Other'), icon: 'bi-box', match: [], items: [] };
         groups.forEach(function (g) { g.items = []; });
 
@@ -78642,6 +78727,8 @@ const StyleDesigner = (function () {
         // touch the page, so a screen other than the editor can load this
         // file to build a design template's widgets: the installer does, for
         // an installation made with a template (install/index.php).
+        // A block family file's hand-over (_sdRegisterBlockFamily()).
+        registerBlockFamily: _sdRegisterBlockFamily,
         starterTree: function (regionType) {
             return _swIsType(regionType) ? _buildStarterTree(regionType) : null;
         }
