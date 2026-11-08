@@ -574,6 +574,180 @@ $tel = function ($number) {
     return 'tel:' . preg_replace('/[^0-9+]/', '', $number);
 };
 
+// ── The City Hall blocks ────────────────────────────────────────────────
+// The home, the council page and the service-area pages place the City
+// Hall blocks (task hero, service guide, council agenda); their pg-cityhall-
+// rules ship in the template's User Styles.
+
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 80) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
+// The items of the next council session (the council agenda on the home
+// and the council page): the subject, the committee that brought it and
+// where it stands. The session's own notice gives its date.
+$agenda_statuses = array(
+    'decided' => array('icon' => 'bi-check2-circle', 'title' => lang('Decided'), 'class' => 'text-bg-success'),
+    'back'    => array('icon' => 'bi-arrow-repeat', 'title' => lang('Sent back to committee'), 'class' => 'text-bg-warning'),
+    'open'    => array('icon' => 'bi-chat-left-text', 'title' => lang('To be discussed'), 'class' => 'text-bg-secondary'),
+);
+$agenda = array(
+    array('title' => lang('A new playground in Linden Park'), 'committee' => 'culture', 'status' => 'decided'),
+    array('title' => lang('A zoning plan change in the Station neighbourhood'), 'committee' => 'planning', 'status' => 'back'),
+    array('title' => lang('Home care for older residents in the outer neighbourhoods'), 'committee' => 'social', 'status' => 'open'),
+    array('title' => lang('The accounts of the past year'), 'committee' => 'budget', 'status' => 'open'),
+);
+
+// The City Hall: Task Hero block (pg-cityhall-task): the eyebrow, the
+// page's only h1 and a line in eight columns, then a nav named "Common
+// tasks" of six tiles, each a whole-tile link, and under a hairline the
+// citizen line with its hours. The words rise, then the tiles one after
+// another, on load. $tasks: list of array(icon, title, text, href).
+$task_hero = function ($eyebrow, $title, $lead, $tasks) use ($el, $heading, $para, $link, $icon, $span, $container, $attr, $fx, $city, $tel) {
+    $tiles = array();
+    foreach ($tasks as $t) {
+        $tiles[] = $el('li', 'col', $t[1], array(
+            $el('div', 'pg-cityhall-task h-100 d-flex align-items-start gap-3 p-3', lang('Task'), array(
+                $icon($t[0], 'fs-4 text-primary flex-shrink-0'),
+                $el('div', 'flex-grow-1', lang('Task Text'), array(
+                    $link($t[1], $t[3], 'stretched-link fw-semibold link-body-emphasis text-decoration-none'),
+                    $para($t[2], 'small text-body-secondary mb-0 mt-1'),
+                )),
+                $icon('bi-arrow-right', 'pg-cityhall-go flex-shrink-0'),
+            )),
+        ));
+    }
+    return $el('section', 'pcy-hero py-5', lang('Hero'), array(
+        $container(array(
+            $fx($el('div', 'col-lg-8 px-0 mb-4 mb-lg-5', lang('Hero Title'), array(
+                $para($eyebrow, 'pcy-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+                $heading('h1', $title, 'pcy-display display-5 mb-3'),
+                $para($lead, 'lead text-body-secondary mb-0'),
+            )), array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700)),
+            $el('nav', '', lang('Common tasks'), array(
+                $fx($el('ul', 'list-unstyled row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-3 mb-0', lang('Tasks'), $tiles),
+                    array('effect' => 'slide-up', 'trigger' => 'load', 'stagger' => 80, 'delay' => 200)),
+            ), array('_attrs' => array($attr('aria-label', lang('Common tasks'))))),
+            $el('div', 'd-flex flex-wrap align-items-center gap-2 gap-sm-3 mt-4 pt-4 border-top', lang('Citizen line'), array(
+                $icon('bi-headset', 'fs-4 text-primary flex-shrink-0'),
+                $span(lang('Citizen line'), 'fw-semibold', lang('Label')),
+                $link($city['line'], $tel($city['line']), 'pcy-stat fw-semibold link-primary'),
+                $span($city['line_hours'], 'small text-body-secondary', lang('Hours')),
+            )),
+        )),
+    ));
+};
+
+// The City Hall: Service Guide block (pg-cityhall-guide) for a service
+// area: each of its services as a resident reads it before going (its
+// name, what it is, where to apply and what to bring, and the request
+// form on the area), beside the department in charge in an aside card.
+// The facts rise and the card fades on view. A search section under the
+// anchor cy-area-<key>-services.
+$service_guide = function ($key) use ($el, $heading, $para, $link, $icon, $span, $container, $row, $col, $fx, $rise, $searchable, $query, $tel, $service_areas, $departments, $city) {
+    $a = $service_areas[$key];
+    $d = $departments[$a['department']];
+    $fact = function ($label, $value) use ($el, $span) {
+        return $el('div', '', $label, array(
+            $el('dt', '', lang('Label'), array(), array('text' => $label)),
+            $el('dd', '', $label, array($span($value, '', lang('Value')))),
+        ));
+    };
+    $services = array();
+    $last = count($a['services']) - 1;
+    foreach (array_values($a['services']) as $n => $s) {
+        $services[] = $el('article', $n === $last ? '' : 'pb-4 mb-4 border-bottom', lang('Service'), array(
+            $para($a['title'], 'pcy-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+            $heading('h2', $s['title'], 'pcy-display h3 mb-2'),
+            $para($s['text'], 'text-body-secondary mb-3'),
+            $rise($el('dl', 'pg-cityhall-guide border-top mb-3', lang('Facts'), array(
+                $fact(lang('Where to apply'), $d['title'] . ', ' . $d['floor']),
+                $fact(lang('What to bring'), $s['docs']),
+            ))),
+            $link(lang('Make a Request'), '{{page:request}}?' . $query(array('topic' => $a['title'])), 'btn btn-primary px-4'),
+        ));
+    }
+    $line = function ($icon_name, $child, $name, $class = 'mb-2') use ($el, $icon) {
+        return $el('li', 'd-flex gap-2 ' . $class, $name, array($icon($icon_name, 'text-primary flex-shrink-0'), $child));
+    };
+    $desk = $el('aside', 'card border-0 shadow-sm sticky-lg-top', lang('Department Card'), array(
+        $el('div', 'card-body p-4', lang('Card Body'), array(
+            $icon($d['icon'], 'fs-2 text-primary d-block mb-3'),
+            $para(lang('Responsible Department'), 'pcy-eyebrow text-uppercase fw-semibold text-body-secondary mb-1'),
+            $heading('h3', $d['title'], 'pcy-display h5 mb-2'),
+            $para($d['text'], 'text-body-secondary mb-3'),
+            $el('ul', 'list-unstyled small mb-3', lang('Department Details'), array(
+                $line('bi-person-badge', $span($d['head'], 'fw-semibold', lang('Head of Department')), lang('Head of Department')),
+                $line('bi-building', $span($d['floor'], '', lang('Where')), lang('Where')),
+                $line('bi-telephone', $link($d['phone'], $tel($d['phone']), 'link-body-emphasis'), lang('Phone')),
+                $line('bi-clock', $span($city['hours'], '', lang('Hours')), lang('Hours'), ''),
+            )),
+            $link(lang('City Departments'), '{{page:departments}}', 'btn btn-outline-secondary btn-sm px-3'),
+        )),
+    ));
+    return $el('section', 'py-5', lang('Our Services'), array(
+        $container(array(
+            $row(array(
+                $col($services, '', '7'),
+                $fx($col(array($desk), '', '5'), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900)),
+            ), '4', '', 'g-lg-5'),
+        )),
+    ), $searchable('cy-area-' . $key . '-services', lang('office, contact, phone, floor')));
+};
+
+// The City Hall: Council Agenda block (pg-cityhall-agenda): the next
+// session (when, where, open to the public, and $buttons) beside its
+// numbered agenda items ($agenda), each with the committee that brought it
+// and where it stands as an icon and a word. The session fades and the
+// items rise one after another on view. A search section under $id.
+$council_agenda = function ($id, $buttons, $class = 'py-5') use ($el, $heading, $para, $icon, $span, $container, $row, $col, $fx, $rise, $searchable, $council_meetings, $committees, $agenda, $agenda_statuses) {
+    $detail = function ($icon_name, $text, $name, $class = 'mb-2') use ($el, $icon, $span) {
+        return $el('li', 'd-flex gap-2 ' . $class, $name, array($icon($icon_name, 'text-primary flex-shrink-0'), $span($text, '', lang('Text'))));
+    };
+    $items = array();
+    foreach ($agenda as $n => $item) {
+        $st = $agenda_statuses[$item['status']];
+        $items[] = $el('li', '', $item['title'], array(
+            $span((string)($n + 1), 'pg-cityhall-no small fw-bold', lang('Number')),
+            $heading('h3', $item['title'], 'h6 fw-semibold mb-1'),
+            $para($committees[$item['committee']]['title'], 'small text-body-secondary mb-2'),
+            $el('div', 'badge rounded-pill d-inline-flex align-items-center gap-1 ' . $st['class'], lang('Status'), array(
+                $icon($st['icon']),
+                $span($st['title'], '', lang('Status')),
+            )),
+        ));
+    }
+    return $el('section', $class, lang('Council Agenda'), array(
+        $container(array(
+            $row(array(
+                $fx($col(array(
+                    $para(lang('City Council'), 'pcy-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading('h2', lang('The next council session'), 'pcy-display h2 mb-3'),
+                    $para($council_meetings, 'text-body-secondary mb-4'),
+                    $el('ul', 'list-unstyled mb-4', lang('Session Details'), array(
+                        $detail('bi-calendar-event', lang('First Tuesday of the month, 14:00'), lang('When')),
+                        $detail('bi-bank', lang('Council hall, Republic Square 1'), lang('Where')),
+                        $detail('bi-door-open', lang('Open to every resident; seats are first come, first served'), lang('Open to the Public'), ''),
+                    )),
+                    $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), $buttons),
+                ), '', '5'), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 800)),
+                $col(array(
+                    $heading('h3', lang('On the agenda'), 'pcy-display h5 mb-4'),
+                    $rise($el('ol', 'pg-cityhall-agenda list-unstyled mb-0', lang('Agenda Items'), $items), 100),
+                ), '', '7'),
+            ), '4', '', 'g-lg-5'),
+        )),
+    ), $searchable($id, lang('council meeting, agenda, session, decision, committee')));
+};
+
 // ── The parts every page repeats ────────────────────────────────────────
 
 // The line in the account bar: the citizen line and the way to make a

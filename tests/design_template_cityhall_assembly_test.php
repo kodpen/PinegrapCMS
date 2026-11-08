@@ -222,3 +222,67 @@ function test_cityhall_assembly_samples()
 		pg_assert_true(in_array($key, $keys, true), $key . ': a page');
 	}
 }
+
+// Home, the council page and a service area's page place the City Hall
+// blocks: every pg-cityhall- class's rule ships in the User Styles, the
+// interactions are kept as written and something moves on each, one h1 on
+// each; the home opens on six task tiles in a named nav with the citizen
+// line, its figures and commitments bands left for the city page; the
+// agenda numbers its items with an icon and a word for each status; each
+// service of an area is a guide beside its department.
+function test_cityhall_assembly_pages_on_cityhall_blocks()
+{
+	$tpl = _test_cy_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	pg_assert_same('2.0.0', $tpl['version'], 'version raised');
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'council', 'service_building'), true)) $trees[$p['key']] = $p['tree'];
+	$wanted = array(
+		'home'             => array('pg-cityhall-task', 'pg-cityhall-go', 'pg-cityhall-agenda', 'pg-cityhall-no'),
+		'council'          => array('pg-cityhall-agenda', 'pg-cityhall-no'),
+		'service_building' => array('pg-cityhall-guide'),
+	);
+	pg_assert_same(3, count($trees), 'home, council, a service area');
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_cy_asm_nodes($tree, $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-cityhall-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach ($wanted[$key] as $class) pg_assert_contains($class, $classes, $key . ': places ' . $class);
+		pg_assert_true($effects >= 2, $key . ': something moves');
+		pg_assert_same(1, $h1, $key . ': one h1');
+		if ($key === 'home') {
+			foreach (array('Figures', 'Our Commitments', 'Quick Links') as $band) pg_assert_false(in_array($band, $labels, true), 'home: no ' . $band . ' band');
+		}
+	}
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the task hero comes in on load');
+	pg_assert_same(6, substr_count($home, 'pg-cityhall-task '), 'six task tiles');
+	pg_assert_same(6, substr_count($home, 'stretched-link fw-semibold'), 'each tile one link');
+	pg_assert_contains('"name":"aria-label","value":"Common tasks"', $home, 'the tasks nav is named');
+	pg_assert_contains('"href":"tel:+905550000153"', $home, 'the citizen line can be called');
+	pg_assert_contains('"id":"cy-home-council"', $home, 'the agenda is a search section');
+	foreach (array('Decided', 'Sent back to committee', 'To be discussed') as $status) pg_assert_contains('"text":"' . $status . '"', $home, 'the status ' . $status . ' in words');
+	$council = json_encode($trees['council'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_same(4, substr_count($council, 'pg-cityhall-no '), 'four numbered agenda items');
+	$area = json_encode($trees['service_building'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_same(3, substr_count($area, 'pg-cityhall-guide '), 'a guide per service');
+	pg_assert_contains('"tag":"aside"', $area, 'the department beside the services');
+}
