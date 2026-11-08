@@ -35,6 +35,7 @@ function _test_spa_load()
 	if ($out !== null) return $out;
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub';
 	include $dir . '/parts.php';
+	include $dir . '/blocks.php';
 	include $dir . '/mail.php';
 	$others = array();
 	foreach (array('pages_public', 'squad', 'matches', 'registrations', 'events', 'shop', 'standard') as $name) {

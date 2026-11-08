@@ -15026,6 +15026,18 @@ a.ws-chip:hover {
 .ws-rich-block-view > :last-child {
   margin-bottom: 0;
 }
+/* A media card in a note's writing box: the picture or player the server
+   drew is only shown (a click opens the viewer or the preview); a
+   recording's own player is used where it is. */
+.ws-rich-block-view video,
+.ws-rich-block-view audio {
+  pointer-events: none;
+}
+.ws-rich-block-player {
+  display: block;
+  min-width: 0;
+  cursor: auto;
+}
 /* The panel gives every table in a card a bottom margin (important). */
 .card .ws-table-wrap .table.ws-table,
 .card .ws-calc-block .table.ws-table {

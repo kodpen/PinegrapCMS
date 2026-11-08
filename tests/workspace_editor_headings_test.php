@@ -96,7 +96,7 @@ function test_workspace_editor_headings_wiring()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	$strings = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
 
-	pg_assert_true(strpos($editor, 'parseBlocks(markup, !!this.options.headings)') !== false, 'a stored text is read with the box\'s own choice');
+	pg_assert_true(strpos($editor, 'parseBlocks(markup, !!this.options.headings, this.mediaOf)') !== false, 'a stored text is read with the box\'s own choice');
 	pg_assert_true(strpos($screen, "headings: !!options.headings") !== false, 'richField() passes the choice on');
 	pg_assert_true(strpos($screen, "headings: true,") !== false, 'the note\'s box makes it');
 	pg_assert_true(strpos($screen, "['heading1', 'heading2', 'heading3', 'rule']") !== false, 'the note\'s row has the tools');

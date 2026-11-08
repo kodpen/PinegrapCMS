@@ -25,8 +25,8 @@ description: Order of the polishing round after Launch: every shipped template's
 - Drivingschool: `-1` (family, #8117) and `-2` (pages, 1.1.0, #8138) done.
 - Marina: `-1` (family) done (#8159).
 - Ferry: `-1` ([[designer-blocks-ferry]], #8123) and `-2` ([[design-template-ferry-pages]], #8142) done.
-- Sportsclub: `-1` ([[designer-blocks-sportsclub]], #8140) done; `-2` rebuilds home, fixtures, teams, membership on it.
-- Pharmacy: `-1` ([[designer-blocks-pharmacy]], #8160) done; `-2` places it on home, duty and service pages.
+- Sportsclub: `-1` (#8140) and `-2` ([[design-template-sportsclub-pages]], #8175) done.
+- Pharmacy: `-1` (#8160) and `-2` ([[design-template-pharmacy-pages]], #8181) done.
 - A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
 ## Who claims what?

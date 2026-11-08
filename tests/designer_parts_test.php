@@ -277,3 +277,59 @@ function test_designer_import_part_runs_on_the_kit()
 	pg_assert_same(array('function', array('p1'), array(array('About', 'p1')), 1, true, 1), json_decode($lines[0], true), 'the page opened as a tab after the open one, the blank tab dropped');
 	pg_assert_same(1, json_decode($lines[1], true), 'a header on both pages is offered as shared');
 }
+
+// The code view's runtime is a part: switching the view on, the document and
+// the selection both ways, the file tabs and the search in all tabs run when
+// the view is first used. The core keeps what a page needs at open (the
+// switch, the tab strip, the completion sources the code dialog uses too,
+// the bound props of the output) and stubs for the entry points.
+function test_designer_code_view_runtime_is_a_part()
+{
+	$parts = pg_designer_parts();
+	pg_assert_same('assets/js/style_designer_code.min.js', $parts['code'] ?? '', 'the code view is a part');
+	pg_assert_same(array('assets/js/style_designer_code.js'), pg_js_bundles()['assets/js/style_designer_code.min.js'] ?? array(), 'built from its file');
+	$core = _test_blocks_js();
+
+	foreach (array('_sdCodeDocument', '_sdCodeOnSelection', '_sdCodeTabsFlush', '_sdCodeFindRun') as $moved) {
+		pg_assert_false(strpos($core, 'function ' . $moved . '(') !== false, $moved . ' left the core');
+	}
+
+	foreach (array('_sdCodeInit', '_sdCodePhrases', '_sdCodeBoundProps', '_sdCodeClassCompletion', '_sdCodeTabsRender') as $kept) {
+		pg_assert_true(strpos($core, 'function ' . $kept . '(') !== false, $kept . ' stays in the core');
+	}
+
+	foreach (array('toggle', 'tabOpen', 'layoutOpen', 'dregionOpen') as $entry) {
+		pg_assert_true(strpos($core, "_sdPartCall('code', '" . $entry . "'") !== false, 'the core runs the part for ' . $entry);
+	}
+
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
+	pg_assert_true(strpos($part, 'function _sdCodeDocument(') !== false, 'the part holds the document');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_true(strpos($screen, "'code'") !== false, 'the screen hands the code part over');
+}
+
+// The code part's factory runs on a kit with every key the core's has and
+// hands back the entry points the core's stubs call.
+function test_designer_code_part_hands_back_its_entry_points()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$keys = array_keys(designer_parts_kit_keys());
+	$js = 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "code") factory = f; } };'
+		. 'var K = {}; ' . json_encode($keys) . '.forEach(function (k) { K[k] = function () {}; });'
+		. "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js') . "\n"
+		. 'var api = factory(K); console.log(JSON.stringify(Object.keys(api).filter(function (k) { return typeof api[k] === "function"; }).sort()));';
+	$file = tempnam(sys_get_temp_dir(), 'sdcode') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the code part runs: ' . implode("\n", $lines));
+	pg_assert_same(array('dregionOpen', 'findShow', 'layoutOpen', 'refresh', 'saveShortcut', 'tabActivate', 'tabClose', 'tabOpen', 'tabSave', 'toggle'), json_decode($lines[0], true), 'its entry points');
+}
