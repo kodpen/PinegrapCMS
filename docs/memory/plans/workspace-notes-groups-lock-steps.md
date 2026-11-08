@@ -12,7 +12,7 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 
 - G2 (M) Groups on the screen. Done (PR #8065). New `assets/js/workspace_note_groups.js`: folders in My Notes as `-design.md` draws them, open or closed kept in the browser, New group, the group's menu, the note menu's Move to group, search answered inside groups, phone.
 
-- G3 (M) Drag and drop. Done (PR #PRNUM). Same file: notes into, out of, along and between groups; groups in the list; the questions a shared or a locked group asks (`-design.md`); Move to group and a long press as the keyboard and touch ways.
+- G3 (M) Drag and drop. Done (PR #8104). Same file: notes into, out of, along and between groups; groups in the list; the questions a shared or a locked group asks (`-design.md`); Move to group and a long press as the keyboard and touch ways.
 
 - G4 (M) Tabs. After G2, beside G3. New `assets/js/workspace_note_tabs.js`: an open note's group as tabs over it (tablist, the group's order, lock and shared marks, + for a new note in the group, arrow keys, a tab dragged along changes the order, sideways scroll on a phone); the note is saved before switching, as a list click does.
 
