@@ -4573,7 +4573,9 @@ function waf_address_has_staff_sign_in($ip)
  * with the endpoint's secret; a carrier label service's servers post parcel
  * statuses to carrier_webhook.php with a secret key in the address, and a
  * mail sending service's servers post bounce and complaint reports to
- * mail_webhook.php the same way. Fediverse servers post signed activities
+ * mail_webhook.php the same way; GitHub's servers post a linked
+ * repository's events to github_webhook.php signed with the link's secret.
+ * Fediverse servers post signed activities
  * to ap_inbox.php from wherever they run, under their own software's name,
  * counted on the inbox's own allowance (waf_handle_rate_ap_inbox()). The
  * ShipWorks client posts to shipworks.php with a password the sign-in
@@ -4612,7 +4614,7 @@ function waf_is_api_request()
     static $answer = null;
 
     if ($answer === null) {
-        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php');
+        $names = array('integration.php', 'api.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php', 'github_webhook.php');
 
         // ShipWorks is spared the counters sized for a sign-in screen only
         // while the sign-in throttle counts its password; with the throttle
@@ -5650,7 +5652,7 @@ function waf_country_staff_signed_in()
  */
 function waf_country_api_scripts()
 {
-    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php');
+    return array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php', 'mail_webhook.php', 'ap_inbox.php', 'flow_start.php', 'github_webhook.php');
 }
 
 function waf_country_request_exempt()

@@ -131,3 +131,22 @@ function test_github_label_prefix()
 	pg_assert_same('', pg_github_label_prefix('!!!'), 'nothing left');
 	pg_assert_same(40, strlen(pg_github_label_prefix(str_repeat('a', 60))), 'clipped');
 }
+
+function test_github_labels_clean_folds_and_caps()
+{
+	pg_assert_same(array('ready', 'needs-review'), pg_github_labels_clean('Ready, needs review,READY,,'), 'folded, no repeats');
+	pg_assert_same(10, count(pg_github_labels_clean(implode(',', range(1, 15)))), 'at most 10');
+	pg_assert_same(array(), pg_github_labels_clean(null), 'nothing');
+}
+
+function test_github_hook_url_names_the_link()
+{
+	pg_assert_same('https://example.com/pinegrap/github_webhook.php?link=7', pg_github_hook_url('https://example.com/pinegrap/', '7'), 'one slash, the id');
+}
+
+function test_github_api_problem_reads_the_status()
+{
+	pg_assert_true(strpos(pg_github_api_problem(422, array('message' => 'Hook already exists')), 'Hook already exists') !== false, 'GitHub\'s message on 422');
+	pg_assert_same(pg_github_api_problem(403, null), pg_github_api_problem(404, null), 'no access reads as not found');
+	pg_assert_same('timeout', pg_github_api_problem(0, null, 'timeout'), 'the transport\'s words');
+}

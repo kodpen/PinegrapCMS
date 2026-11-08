@@ -335,3 +335,77 @@ function pg_github_line_join($parts)
         return $part !== '';
     })));
 }
+
+/**
+ * The label names a link follows, from a comma separated text: each folded
+ * as pg_github_label_prefix() writes it, without repeats, at most 10.
+ *
+ * @param array|string $labels
+ * @return array
+ */
+function pg_github_labels_clean($labels)
+{
+    if (is_string($labels)) {
+        $labels = explode(',', $labels);
+    }
+
+    $clean = array();
+
+    foreach ((array) $labels as $label) {
+        $label = is_string($label) ? pg_github_label_prefix($label) : '';
+
+        if (($label !== '') && !in_array($label, $clean, true)) {
+            $clean[] = $label;
+        }
+
+        if (count($clean) >= 10) {
+            break;
+        }
+    }
+
+    return $clean;
+}
+
+/**
+ * The receiver address a link's hook points at.
+ *
+ * @param string $base    the site's software address, no trailing slash
+ * @param int    $link_id
+ * @return string
+ */
+function pg_github_hook_url($base, $link_id)
+{
+    return rtrim((string) $base, '/') . '/github_webhook.php?link=' . (int) $link_id;
+}
+
+/**
+ * What a refused GitHub hook call means, for the link's card.
+ *
+ * @param int   $status the HTTP status, 0 when GitHub was not reached
+ * @param mixed $data   the decoded answer
+ * @param string $error the transport's or the connection's own words
+ * @return string
+ */
+function pg_github_api_problem($status, $data, $error = '')
+{
+    $status = (int) $status;
+    $message = (is_array($data) && isset($data['message']) && is_string($data['message'])) ? pg_github_line_text($data['message'], 150) : '';
+
+    if ($status === 0) {
+        return ($error !== '') ? pg_github_line_text($error, 200) : lang('GitHub could not be reached.');
+    }
+
+    if ($status === 401) {
+        return lang('GitHub no longer accepts the connected account. Connect it again under Settings › Connections.');
+    }
+
+    if (($status === 403) || ($status === 404)) {
+        return lang('The repository was not found, or the connected account may not manage its webhooks.');
+    }
+
+    if ($status === 422) {
+        return lang('GitHub refused the webhook:') . ' ' . (($message !== '') ? $message : lang('Validation Failed'));
+    }
+
+    return lang(array('string' => 'GitHub answered with status {var:1}.', 'vars' => $status)) . (($message !== '') ? ' ' . $message : '');
+}
