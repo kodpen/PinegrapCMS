@@ -16,7 +16,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- agent-canvas.md: Plan (owner 2026-11-08): agents create, read and edit Workspace canvases by writing SVG in any channel with an agent; the channel's browser draws the picture; C1, C2, C3a, C3b done, C4 left
+- agent-canvas.md: Plan (owner 2026-11-08): agents create, read and edit Workspace canvases by writing SVG in any channel with an agent; the channel's browser draws the picture; C1-C4 done
 - agent-channel-flag.md: Plan (owner 2026-11-08): a channel becomes an agent channel with /agent-channel, a column of its own; its decisions stay apart from the other channels' decisions; one step AC
 - agent-channel-questions.md: Plan (owner 2026-11-08): agents ask people with a checklist in an agent channel, read the ticks over the API, wake on a tick or a person's message; one step AQ
 - agent-channel-steps-2.md: Steps A5-A9 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, further doors (Claude Code plugin, per-person sessions, chat box), the canvas as an agent tool
