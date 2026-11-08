@@ -13845,6 +13845,13 @@
                     // tasks in this channel and leaves its card in it.
                     (CFG.flows && CFG.flows.nav && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))
                         ? { icon: 'bi-play-circle', label: t('fl_here_start'), action: function () { self.flowStarter(); } } : null,
+                    // A new flow whose home is this channel, designed in the
+                    // layer over it: staff who build flows (CFG.flows.scheduled,
+                    // ws_flows_scheduled()), the home a channel they read.
+                    (CFG.flows && CFG.flows.nav && CFG.flows.scheduled && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))
+                        ? { icon: 'bi-diagram-3', label: t('fl_new'), action: function () {
+                            flowLayer(0, { home: self.channel.id, opener: insert });
+                        } } : null,
                     // A scheduled job is a flow with a time start: a new one
                     // posting here, filled in its mini window.
                     (CFG.scheduled && !self.isThread) ? { icon: 'bi-alarm', label: t('sa_flow_new'), action: function () {
@@ -25293,12 +25300,18 @@
     // a field or a dialog of the editor holds it. Closing saves first and,
     // when changes stay unsaved, asks as leaving the page does. options:
     // box, run (opened with the flow), opener (the control the focus goes
-    // back to, else the one focused now). One at a time: while one is open
-    // it stays.
+    // back to, else the one focused now), home (with flowId 0: a new flow
+    // made with this channel as its home, the ways to start one first, as
+    // New flow on the Flows screen). One at a time: while one is open it
+    // stays.
     function flowLayer(flowId, options) {
         options = options || {};
 
-        if (flowLayerOpen || !(parseInt(flowId, 10) > 0)) {
+        var home = parseInt(options.home, 10) || 0;
+
+        flowId = parseInt(flowId, 10) || 0;
+
+        if (flowLayerOpen || !((flowId > 0) || (home > 0))) {
             return;
         }
 
@@ -25319,7 +25332,7 @@
         open.layer.setAttribute('aria-modal', 'true');
         open.layer.setAttribute('aria-labelledby', 'ws-flow-layer-title');
         open.title.id = 'ws-flow-layer-title';
-        open.link.href = flowScreenAddress(flowId, options);
+        open.link.href = flowId ? flowScreenAddress(flowId, options) : CFG.urls.flows;
         open.link.appendChild(icon('bi-box-arrow-up-right'));
         open.link.appendChild(document.createTextNode(' ' + t('fl_layer_screen')));
         close.setAttribute('data-ws-flow-layer-close', '');
@@ -25383,12 +25396,18 @@
 
             clear(open.body);
             open.instance = window.PGWsFlow.mount(open.body, BOOT || {}, {
-                flow: parseInt(flowId, 10),
+                flow: flowId,
                 box: options.box || '',
                 run: parseInt(options.run, 10) || 0,
+                home: flowId ? 0 : home,
                 single: true,
                 onShow: function (flow) {
                     open.title.textContent = flow.name || t('fl_nav');
+
+                    // A new flow, once made, is the one the bar's link opens.
+                    if (!flowId) {
+                        open.link.href = flowScreenAddress(flow.id);
+                    }
                 },
                 onClose: function () {
                     flowLayerEnd(open);

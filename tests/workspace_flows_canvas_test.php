@@ -3171,6 +3171,8 @@ function openLastRun(run) { log.push('run ' + run.id); }
 function drawList() { log.push('list'); }
 function drawFlows() {}
 function showGallery(into) { log.push('gallery ' + into); }
+var drops = 0;
+function dropUntouched() { drops++; }
 function closeSetup() {}
 function endRun() {}
 function graphOf() { return { nodes: [], edges: [] }; }
@@ -3211,7 +3213,7 @@ state = { embed: null, mounted: null, screen: false, poll: { timer: 0, delay: 0,
 
     calls = []; opened = []; log = []; backs = []; addressed = []; cleared = [];
     var done = full.destroy();
-    out.destroyed = { promise: !!(done && done.then), flushes: flushes, polls: polls, canvas: destroyed, cleared: cleared.sort(), root: root.children.length, screen: state.screen, mounted: state.mounted, backs: backs.slice() };
+    out.destroyed = { promise: !!(done && done.then), drops: drops, flushes: flushes, polls: polls, canvas: destroyed, cleared: cleared.sort(), root: root.children.length, screen: state.screen, mounted: state.mounted, backs: backs.slice() };
     out.after = { asks: unload() };
     listeners.window.pagehide[0]();
     listeners.window.blur[0]();
@@ -3223,7 +3225,7 @@ state = { embed: null, mounted: null, screen: false, poll: { timer: 0, delay: 0,
     backs = [];
     var one = mount(root, {}, { flow: 9, box: 'task_1', single: true, onClose: function () { closes++; } });
     await settle(); await settle();
-    out.single = { calls: calls.slice(), opened: opened.slice(), log: log.slice(), backs: backs.slice(), addressed: addressed.slice() };
+    out.single = { home: state.mounted.home, calls: calls.slice(), opened: opened.slice(), log: log.slice(), backs: backs.slice(), addressed: addressed.slice() };
     backToList();
     viewBack('fl_tpl_back', function () {}, 'tpl-back');
     showNone();
@@ -3235,9 +3237,10 @@ state = { embed: null, mounted: null, screen: false, poll: { timer: 0, delay: 0,
     out.listeners = counts();
 
     log = [];
-    var two = mount(root, {}, { single: true });
-    out.replaced = { flushes: flushes, log: log.slice() };
+    var two = mount(root, {}, { single: true, home: '6' });
+    out.replaced = { drops: drops, home: state.mounted.home, flushes: flushes, log: log.slice() };
     two.destroy();
+    out.replaced.dropsAfter = drops;
     log = [];
     FL.build = false;
     K.cfg = { flows: { ready: true, build: false } };
@@ -3271,6 +3274,7 @@ JS
 	pg_assert_same(2, $result['full']['leaves'], 'beforeunload and pagehide save while mounted');
 
 	pg_assert_true($result['destroyed']['promise'], 'destroy() gives the save on its way');
+	pg_assert_same(0, $result['destroyed']['drops'], 'the Flows screen\'s editor keeps a blank flow on destroy (its list holds it)');
 	pg_assert_same(1, $result['destroyed']['flushes'], 'destroy() saves what is unsaved');
 	pg_assert_same(1, $result['destroyed']['polls'], 'destroy() stops the run\'s looks');
 	pg_assert_same(1, $result['destroyed']['canvas'], 'the canvas lets its listeners go');
@@ -3298,6 +3302,10 @@ JS
 	pg_assert_same(array('document keydown' => 1, 'document visibilitychange' => 1, 'window beforeunload' => 1, 'window blur' => 1, 'window pagehide' => 1), $result['listeners'], 'the window listeners are added once');
 
 	pg_assert_same(4, $result['replaced']['flushes'], 'mounting again destroys the editor mounted');
+	pg_assert_same(0, $result['replaced']['drops'], 'a single editor opened on a flow keeps it when destroyed');
+	pg_assert_same(1, $result['replaced']['dropsAfter'], 'one opened for a new flow drops its blank flow when destroyed');
+	pg_assert_same(0, $result['single']['home'], 'no home unless one is given');
+	pg_assert_same(6, $result['replaced']['home'], 'as a number');
 	pg_assert_same(array('bindCanvas', 'gallery null'), $result['replaced']['log'], 'a single editor with no flow starts at the ways to start one');
 	pg_assert_same(2, $result['noBuild']['closes'], 'and closes for somebody who cannot build');
 }
@@ -3404,4 +3412,34 @@ function test_workspace_flows_canvas_layer_ways_in()
 	foreach (['flowOpened', 'scheduledEdit'] as $name) {
 		pg_assert_true(strpos(ws_flows_canvas_test_script_function($kit, $name), 'window.location.href') === false, $name . '() leaves the page no more');
 	}
+}
+
+/**
+ * Add › New flow in a channel's composer: staff who build flows, outside a
+ * thread, in a public or private channel; the layer opens with no flow and
+ * this channel as the home, the ways to start one first; every way to make
+ * the flow (empty canvas, template, Pinegrap AI) sends that home, never for
+ * a role-3 member's own flow; a blank one left untouched is not kept.
+ */
+function test_workspace_flows_canvas_layer_new_flow()
+{
+	$kit = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	$layer = ws_flows_canvas_test_script_function($kit, 'flowLayer');
+
+	pg_assert_contains("(CFG.flows && CFG.flows.nav && CFG.flows.scheduled && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))", $kit, 'the Add item\'s gate');
+	pg_assert_contains("flowLayer(0, { home: self.channel.id, opener: insert });", $kit, 'the layer on a new flow homed here');
+	pg_assert_contains('!((flowId > 0) || (home > 0))', $layer, 'no flow needs a home');
+	pg_assert_contains('home: flowId ? 0 : home,', $layer, 'the home handed to the editor');
+	pg_assert_contains('open.link.href = flowScreenAddress(flow.id);', $layer, 'the bar\'s link follows the flow made');
+
+	$flow = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$mount = ws_flows_canvas_test_script_function($flow, 'mount');
+
+	pg_assert_contains("home: options.single ? (parseInt(options.home, 10) || 0) : 0", $mount, 'a home only for a single editor');
+	pg_assert_contains('showGallery(null);', $mount, 'the ways to start a flow first');
+	pg_assert_contains('(home > 0) && !FL.member ? { channel_id: home } : {}', ws_flows_canvas_test_script_function($flow, 'newHome'), 'no home for a member\'s own flow');
+	pg_assert_contains('newHome()', ws_flows_canvas_test_script_function($flow, 'createFlow'), 'the empty canvas');
+	pg_assert_contains('newHome()', ws_flows_canvas_test_script_function($flow, 'useTemplate'), 'a template');
+	pg_assert_contains("K.api('ws_flow_ai_sketch', Object.assign({ sentence: sentence }, newHome()))", ws_flows_canvas_test_script_function($flow, 'sketchCard'), 'Pinegrap AI');
+	pg_assert_contains('dropUntouched();', ws_flows_canvas_test_script_function($flow, 'unmount'), 'a blank one left as made is not kept');
 }

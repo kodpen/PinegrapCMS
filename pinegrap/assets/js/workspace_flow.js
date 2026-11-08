@@ -833,6 +833,8 @@
     //            flow deleted, or one that cannot be opened)
     //   onShow   called with { id, name } each time a flow is shown and as
     //            its name is changed (the layer's title)
+    //   home     with single and no flow: the channel a new flow is made
+    //            with as its home (Add › Flow in a channel's composer)
     // Returns { destroy(), flush() }, null without the Workspace kit:
     // destroy() stops the run's looks and the timers, saves what is unsaved
     // and empties root, giving the save's promise; flush() saves what is
@@ -883,7 +885,7 @@
         });
         mountState();
         state.screen = true;
-        state.mounted = { root: root, single: !!options.single, onClose: (typeof options.onClose === 'function') ? options.onClose : null, onShow: (typeof options.onShow === 'function') ? options.onShow : null, instance: instance, ready: !!FL.ready };
+        state.mounted = { root: root, single: !!options.single, onClose: (typeof options.onClose === 'function') ? options.onClose : null, onShow: (typeof options.onShow === 'function') ? options.onShow : null, home: options.single ? (parseInt(options.home, 10) || 0) : 0, instance: instance, ready: !!FL.ready };
         K.clear(root);
 
         if (!FL.ready) {
@@ -1009,6 +1011,14 @@
         state.settleTimer = 0;
         state.arriving = 0;
         state.saveTimer = 0;
+
+        // A blank flow made in a single editor opened for a new one (home),
+        // left as it was made, is not kept, as leaving it on the Flows
+        // screen does not keep it; a flow it was opened on stays.
+        if (mounted.ready && mounted.home) {
+            dropUntouched();
+        }
+
         saved = mounted.ready ? flush().catch(function () {}) : Promise.resolve();
 
         if (mounted.ready) {
@@ -1845,7 +1855,7 @@
             card.setAttribute('aria-busy', 'true');
             say(t('fl_ai_sketch_working'), false);
 
-            K.api('ws_flow_ai_sketch', { sentence: sentence }).then(function (data) {
+            K.api('ws_flow_ai_sketch', Object.assign({ sentence: sentence }, newHome())).then(function (data) {
                 state.sketch = { flow: data.flow.id, notes: data.notes || [] };
                 state.refocus = 'ai-sketch';
                 show(data.flow);
@@ -2189,7 +2199,7 @@
         };
 
         var create = function () {
-            return K.api('ws_flow_create', { name: template.title, graph: graphOf(template.graph) }).then(function (data) {
+            return K.api('ws_flow_create', Object.assign({ name: template.title, graph: graphOf(template.graph) }, newHome())).then(function (data) {
                 state.refocus = 'box-' + template.graph.nodes[0].id;
                 show(data.flow);
                 refocus();
@@ -2751,13 +2761,22 @@
         fit();
     }
 
+    // What a new flow is made with beyond its name and boxes: the home
+    // channel of a single editor opened from a channel (mount()'s home); a
+    // role-3 member's own flow has none (ws_flow_member_flow_refusal()).
+    function newHome() {
+        var home = state.mounted ? state.mounted.home : 0;
+
+        return (home > 0) && !FL.member ? { channel_id: home } : {};
+    }
+
     function createFlow() {
         leaveFlow().then(function (go) {
             if (!go) {
                 return null;
             }
 
-            return K.api('ws_flow_create', { name: t('fl_untitled'), graph: graphOf(null) }).then(function (data) {
+            return K.api('ws_flow_create', Object.assign({ name: t('fl_untitled'), graph: graphOf(null) }, newHome())).then(function (data) {
                 show(data.flow);
 
                 if (ui.name) {
