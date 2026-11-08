@@ -93,12 +93,8 @@ $figures_band = function () use ($el, $container, $figure_row) {
 // The cards and tiles of the shared data, in their order.
 $why_tiles = array();
 foreach ($why_us as $w) $why_tiles[] = $feature_tile($w['icon'], $w['title'], $w['text']);
-$licence_cols = array();
-foreach (array_keys($licences) as $key) $licence_cols[] = $licence_card($key);
 $instructor_cols = array();
 foreach (array_keys($instructors) as $n) $instructor_cols[] = $instructor_card($n);
-$topic_tiles = array();
-foreach ($theory_topics as $t) $topic_tiles[] = $feature_tile($t['icon'], $t['title'], $t['text'], '4');
 $test_day_items = array();
 foreach ($test_day as $n => $s) $test_day_items[] = $step($n + 1, $s['title'], $s['text']);
 $branch_tiles = array();
@@ -108,7 +104,253 @@ foreach ($branches as $b) {
     ));
 }
 
+// ── The palette blocks, with the school's data ──────────────────────────
+
+// An entrance the operator can change in the Interactions section: the
+// children of the node rise one after another, as it scrolls into view or
+// as the page opens. pg_fx keeps them still under reduced motion.
+$rise = function ($node, $trigger = 'view', $stagger = 90) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => $trigger, 'stagger' => $stagger);
+    return $node;
+};
+
+// A picture with its corners rounded, loaded lazily unless it is the first
+// thing a page shows.
+$picture = function ($src, $alt, $lazy = true) use ($image, $attr) {
+    return $image($src, $alt, 'img-fluid w-100 rounded-4 shadow-sm', $lazy ? array('_attrs' => array($attr('loading', 'lazy'))) : array());
+};
+
+// The licence classes (drivingschool-licences): a card per class, the
+// letter as a number plate, what it covers, its facts as a description
+// list, the class's page and its courses (?licence=).
+$ds_gearbox = array(
+    'car'         => lang('Manual or automatic'),
+    'automatic'   => lang('Automatic'),
+    'motorcycle'  => lang('Manual'),
+    'light_truck' => lang('Manual'),
+    'trailer'     => lang('Manual or automatic'),
+);
+$licence_board = function ($id, $title, $lead, $class = 'py-5 bg-body-tertiary')
+    use ($el, $heading, $para, $span, $icon, $link, $container, $row, $col, $searchable, $licences, $query, $ds_gearbox, $rise) {
+    $fact = function ($label, $value) use ($el, $span) {
+        return $el('div', 'd-flex justify-content-between gap-3 py-2 border-top', $label, array(
+            $el('dt', 'fw-normal text-body-secondary', lang('Label'), array(), array('text' => $label)),
+            $el('dd', 'fw-semibold text-end mb-0', lang('Value'), array(), array('text' => $value)),
+        ));
+    };
+    $cols = array();
+    foreach ($licences as $key => $l) {
+        $cols[] = $col(array(
+            $el('article', 'card h-100 border-0 shadow-sm pdr-lift', lang('Licence Card'), array(
+                $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
+                    $el('div', 'd-flex align-items-center justify-content-between gap-3 mb-3', lang('Card Head'), array(
+                        $span($l['code'], 'pg-drv-plate pdr-display fs-4', lang('Licence Class')),
+                        $icon($l['icon'], 'fs-2 text-primary'),
+                    )),
+                    $heading('h3', $l['title'], 'pdr-display h5 mb-2'),
+                    $para($l['summary'], 'small text-body-secondary mb-3'),
+                    $el('dl', 'small mb-4', lang('Licence Facts'), array(
+                        $fact(lang('Minimum age'), $l['age']),
+                        $fact(lang('Lessons'), $l['lessons']),
+                        $fact(lang('Gearbox'), $ds_gearbox[$key]),
+                    )),
+                    $el('div', 'd-flex flex-wrap align-items-center gap-3 mt-auto', lang('Buttons'), array(
+                        $link(lang('See the class'), '{{page:licence_' . $key . '}}', 'btn btn-outline-primary'),
+                        $link(lang('See the courses'), '{{page:courses}}?' . $query(array('licence' => $l['title'])), 'link-primary fw-semibold small'),
+                    )),
+                )),
+            )),
+        ), '6', '4');
+    }
+    return $el('section', $class, lang('Licence Classes'), array(
+        $container(array(
+            $el('div', 'd-flex flex-wrap align-items-end justify-content-between gap-3 mb-4', lang('Section Header'), array(
+                $el('div', '', lang('Section Title'), array(
+                    $heading('h2', $title, 'pdr-display h2 mb-1'),
+                    $para($lead, 'text-body-secondary mb-0'),
+                )),
+                $link(lang('Book a Lesson'), '{{page:lesson_request}}', 'btn btn-primary'),
+            )),
+            $rise($row($cols, '4')),
+            $para(lang('Driving only automatics? Class B can be learned and tested in an automatic car.'), 'small text-body-secondary text-center mt-4 mb-0'),
+        )),
+    ), $searchable($id, lang('car licence, automatic, motorcycle, truck, trailer, licence class, minimum age')));
+};
+
+// The road to the licence (the palette's steps-numbered): four numbered
+// cards from the assessment drive to the test.
+$road_steps = array(
+    array('icon' => 'bi-person-check', 'title' => lang('An assessment drive'), 'text' => lang('Your instructor sees how you drive today and writes your lesson plan.')),
+    array('icon' => 'bi-journal-check', 'title' => lang('Theory classes and test'), 'text' => lang('Evening classes and the practice app until the questions feel easy.')),
+    array('icon' => 'bi-car-front-fill', 'title' => lang('Lessons with one instructor'), 'text' => lang('Town, country and motorway, in a dual-control car, with the same face every time.')),
+    array('icon' => 'bi-clipboard-check', 'title' => lang('Mock test, then the real one'), 'text' => lang('A mock test timed like the real one, then the test in the car you learned in.')),
+);
+$road = function ($id, $title, $lead, $class = 'py-5') use ($el, $heading, $para, $span, $icon, $container, $row, $col, $searchable, $road_steps, $rise) {
+    $cols = array();
+    foreach ($road_steps as $n => $s) {
+        $cols[] = $col(array(
+            $el('div', 'h-100 p-4 rounded-4 border bg-body', lang('Step Card'), array(
+                $el('div', 'd-flex align-items-center gap-3 mb-3', lang('Step Head'), array(
+                    $span((string)($n + 1), 'badge rounded-pill text-bg-primary fs-6 px-3 py-2', lang('Step Number')),
+                    $icon($s['icon'], 'fs-4 text-primary'),
+                )),
+                $heading('h3', $s['title'], 'h6 fw-bold mb-2'),
+                $para($s['text'], 'small text-body-secondary mb-0'),
+            )),
+        ), '6', '3');
+    }
+    return $el('section', $class, lang('Steps (Numbered)'), array(
+        $container(array(
+            $el('div', 'text-center mb-5', lang('Section Header'), array(
+                $heading('h2', $title, 'pdr-display h2 mb-2'),
+                $para($lead, 'lead text-body-secondary mb-0'),
+            )),
+            $rise($row($cols, '4')),
+        )),
+    ), $searchable($id, lang('how to get a driving licence, first lesson, assessment, steps')));
+};
+
+// The theory topics as road signs (drivingschool-signs): the practice app
+// beside six topic cards, each led by a sign drawn in CSS. The sign is
+// decoration; the topic is named in its heading.
+$theory_signs = function ($id, $title, $lead, $class = 'py-5')
+    use ($el, $heading, $para, $span, $icon, $link, $attr, $container, $row, $col, $searchable, $theory_topics, $rise) {
+    $shapes = array(
+        'warn' => 'pg-drv-sign pg-drv-sign-warn',
+        'ban'  => 'pg-drv-sign pg-drv-sign-ban',
+        'info' => 'pg-drv-sign text-bg-primary rounded-3',
+    );
+    $cards = array();
+    foreach ($theory_topics as $t) {
+        $mark = isset($t['mark']) ? $span($t['mark'], '', lang('Text')) : $icon($t['sign_icon']);
+        $cards[] = $el('div', 'col', $t['title'], array(
+            $el('div', 'd-flex gap-3 h-100 p-3 rounded-3 border bg-body', lang('Topic Card'), array(
+                $el('div', $shapes[$t['sign']], lang('Road Sign'), array($mark), array('_attrs' => array($attr('aria-hidden', 'true')))),
+                $el('div', '', lang('Topic Copy'), array(
+                    $heading('h3', $t['title'], 'h6 fw-bold mb-1'),
+                    $para($t['text'], 'small text-body-secondary mb-0'),
+                )),
+            )),
+        ));
+    }
+    return $el('section', $class, lang('Theory Topics'), array(
+        $container(array(
+            $row(array(
+                $col(array(
+                    $heading('h2', $title, 'pdr-display h2 mb-2'),
+                    $para($lead, 'text-body-secondary mb-4'),
+                    $el('div', 'p-4 rounded-4 border border-primary border-2 mb-4', lang('Practice App'), array(
+                        $span(lang('Practice questions'), 'd-block small fw-semibold text-uppercase text-primary mb-1', lang('Label')),
+                        $span('1,000+', 'pdr-stat d-block display-5 fw-bold lh-1 mb-2', lang('Value')),
+                        $para(lang('In the practice app every course learner gets, with a mock test timed like the real one.'), 'small text-body-secondary mb-0'),
+                    )),
+                    $link(lang('Enrol Now'), '{{page:enrol}}', 'btn btn-primary px-4'),
+                ), '', '4'),
+                $col(array(
+                    $rise($el('div', 'row row-cols-1 row-cols-sm-2 g-3', lang('Topics'), $cards)),
+                ), '', '8'),
+            ), '4', '', 'g-lg-5 align-items-center'),
+        )),
+    ), $searchable($id, lang('road signs, highway code, hazard perception, first aid, questions')));
+};
+
+// The practical test sheet (drivingschool-test-sheet): the day's stages
+// with their time beside a sample of the examiner's sheet, the faults
+// counted per skill and the three levels of fault.
+$sheet_skills = array(
+    array(lang('Mirrors'), '2'), array(lang('Signals'), '1'), array(lang('Junctions'), '0'),
+    array(lang('Speed'), '1'), array(lang('Road position'), '0'), array(lang('Manoeuvre'), '0'),
+);
+$test_sheet = function ($id, $title, $lead, $class = 'py-5')
+    use ($el, $heading, $para, $span, $icon, $attr, $container, $row, $col, $searchable, $test_day, $sheet_skills, $rise) {
+    $cell = function ($tag, $text, $cls = '', $scope = '') use ($el, $attr) {
+        $extra = array('text' => $text);
+        if ($scope !== '') $extra['_attrs'] = array($attr('scope', $scope));
+        return $el($tag, $cls, $tag === 'th' ? lang('Header Cell') : lang('Cell'), array(), $extra);
+    };
+    $stages = array();
+    foreach ($test_day as $n => $s) {
+        $stages[] = $el('li', 'd-flex gap-3 pb-3', lang('Stage'), array(
+            $span($s['time'], 'badge rounded-pill text-bg-primary align-self-start text-nowrap', lang('Time')),
+            $el('div', '', lang('Text'), array(
+                $heading('h3', $s['title'], 'h6 fw-bold mb-1'),
+                $para($s['text'], 'small text-body-secondary mb-0'),
+            )),
+        ));
+    }
+    $rows = array();
+    foreach ($sheet_skills as $s) {
+        $rows[] = $el('tr', '', $s[0], array(
+            $cell('th', $s[0], 'fw-normal', 'row'),
+            $cell('td', $s[1], 'text-center fw-semibold'),
+            $cell('td', '0', 'text-center fw-semibold'),
+            $cell('td', '0', 'text-center fw-semibold'),
+        ));
+    }
+    $level = function ($icon_name, $cls, $name, $rule) use ($el, $icon, $span) {
+        return $el('li', 'd-flex align-items-center gap-2', $name, array(
+            $icon($icon_name, $cls . ' flex-shrink-0'),
+            $span($name, 'fw-semibold', lang('Text')),
+            $span($rule, 'text-body-secondary', lang('Text')),
+        ));
+    };
+    $table = $el('table', 'table align-middle mb-0', lang('Faults Table'), array(
+        $el('caption', 'visually-hidden', lang('Table Caption'), array(), array('text' => lang('Faults marked on a sample test sheet'))),
+        $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Head Row'), array(
+            $cell('th', lang('Skill'), '', 'col'),
+            $cell('th', lang('Driving faults'), 'text-center', 'col'),
+            $cell('th', lang('Serious faults'), 'text-center', 'col'),
+            $cell('th', lang('Dangerous faults'), 'text-center', 'col'),
+        )))),
+        $el('tbody', '', lang('Table Body'), $rows),
+    ));
+    return $el('section', $class, lang('Test Sheet'), array(
+        $container(array(
+            $el('div', 'mb-4', lang('Section Header'), array(
+                $heading('h2', $title, 'pdr-display h2 mb-1'),
+                $para($lead, 'text-body-secondary mb-0'),
+            )),
+            $row(array(
+                $col(array($rise($el('ol', 'list-unstyled mb-0', lang('Test Stages'), $stages), 'view', 70)), '', '5'),
+                $col(array(
+                    $el('div', 'card border-0 shadow-sm pg-drv-sheet', lang('Test Sheet'), array(
+                        $el('div', 'card-body p-4', lang('Card Body'), array(
+                            $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-3', lang('Card Head'), array(
+                                $heading('h3', lang('What the examiner marks'), 'pdr-display h5 mb-0'),
+                                $el('span', 'badge rounded-pill text-wrap bg-success-subtle text-success-emphasis', lang('Status Badge'), array(
+                                    $icon('bi-check-circle-fill', 'me-1'),
+                                    $span(lang('Passed'), '', lang('Text')),
+                                )),
+                            )),
+                            $el('div', 'table-responsive mb-3', lang('Table Wrap'), array($table), array('_attrs' => array(
+                                $attr('role', 'region'), $attr('aria-label', lang('Faults marked on a sample test sheet')), $attr('tabindex', '0'),
+                            ))),
+                            $el('ul', 'list-unstyled d-grid gap-2 small mb-3', lang('Fault Levels'), array(
+                                $level('bi-dash-circle', 'text-body-secondary', lang('Driving fault'), lang('a few are allowed')),
+                                $level('bi-exclamation-circle-fill', 'text-warning', lang('Serious fault'), lang('one means a retake')),
+                                $level('bi-x-octagon-fill', 'text-danger', lang('Dangerous fault'), lang('one means a retake')),
+                            )),
+                            $para(lang('This sheet: four driving faults, none serious or dangerous.'), 'small fw-semibold mb-0'),
+                        )),
+                    )),
+                ), '', '7'),
+            ), '4', '', 'g-lg-5'),
+        )),
+    ), $searchable($id, lang('driving test, test day, examiner, faults, result')));
+};
+
 // ── Home ────────────────────────────────────────────────────────────────
+
+// The classes as plates under the opening: one tap to a class's page.
+$plate_links = array();
+foreach ($licences as $key => $l) {
+    $plate_links[] = $el('li', '', $l['title'], array(
+        $el('a', 'd-inline-flex align-items-center gap-2 btn btn-outline-light', lang('Licence Link'), array(
+            $span($l['code'], 'pg-drv-plate pdr-display', lang('Licence Class')),
+            $span($l['title'], '', lang('Text')),
+        ), array('href' => '{{page:licence_' . $key . '}}')),
+    ));
+}
 
 $public_pages[] = array(
     'key'              => 'home',
@@ -118,33 +360,33 @@ $public_pages[] = array(
     'meta_description' => lang('A driving school for cars, automatics, motorcycles, light trucks and trailers: courses with clear prices and patient instructors.'),
     'tree'             => $page(array(
         // The way in, on a dark band: the school in a sentence, the two
-        // ways on, and a lesson in the car.
+        // ways on, every class as a plate, and a lesson in the car. The
+        // words rise in as the page opens.
         $el('section', 'pdr-hero py-5 overflow-hidden bg-body text-body', lang('Hero'), array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $para(lang('Driving lessons and courses'), 'pdr-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Learn to drive with confidence'), 'pdr-display display-3 mb-3'),
-                        $para($school['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Enrol Now'), '{{page:enrol}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('Courses and Prices'), '{{page:courses}}', 'btn btn-outline-light btn-lg px-4'),
-                        )),
+                        $rise($el('div', '', lang('Text'), array(
+                            $para(lang('Driving lessons and courses'), 'pdr-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+                            $heading('h1', lang('Learn to drive with confidence'), 'pdr-display display-3 mb-3'),
+                            $para($school['tagline'] . '.', 'lead text-body-secondary mb-4'),
+                            $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
+                                $link(lang('Enrol Now'), '{{page:enrol}}', 'btn btn-primary btn-lg px-4'),
+                                $link(lang('Courses and Prices'), '{{page:courses}}', 'btn btn-outline-light btn-lg px-4'),
+                            )),
+                            $para(lang('Pick your licence class'), 'small fw-semibold text-body-secondary mb-2'),
+                            $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-0', lang('Licence Classes'), $plate_links),
+                        )), 'load'),
                     ), '', '6'),
-                    $col(array($framed($photo('home-hero', 1200, 900), lang('A learner driver and an instructor in a dual-control car'), '4x3', false)), '', '6'),
+                    $col(array($picture($photo('home-hero', 1200, 900), lang('A learner driver and an instructor in a dual-control car'), false)), '', '6'),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
         ), array_merge($searchable('drv-welcome', lang('driving school, driving lessons, learner driver, driving instructor')),
             array('_attrs' => array($attr('data-bs-theme', 'dark'))))),
 
-        $figures_band(),
+        $licence_board('drv-home-licences', lang('Choose your licence'), lang('Each class has its own minimum age, lessons and test.')),
 
-        $el('section', 'py-5', lang('Licences'), array(
-            $container(array(
-                $section_header(lang('What you can learn'), lang('Choose your licence'), lang('All Licences'), '{{page:licences}}'),
-                $row($licence_cols, '4'),
-            )),
-        ), $searchable('drv-home-licences', lang('car licence, automatic, motorcycle, truck, trailer, licence class'))),
+        $road('drv-home-road', lang('From first lesson to licence'), lang('Four steps, with one instructor beside you the whole way.')),
 
         // The featured courses, read from the Courses collection.
         $el('section', 'py-5 bg-body-tertiary', lang('Featured Courses'), array(
@@ -154,23 +396,12 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5', lang('Why Learn with Us'), array(
-            $container(array(
-                $section_header(lang('The way we teach'), lang('Why learn with us'), lang('About Us'), '{{page:about}}'),
-                $row($why_tiles, '4'),
-            )),
-        ), $searchable('drv-why-us', lang('same instructor, dual control, pick-up, price, cheap driving lessons'))),
-
-        $story_band('drv-home-theory', lang('Theory test'), lang('Pass the theory first'),
-            array(lang('Our theory classes cover every topic of the test in short evening sessions, and the practice app lets you try the questions at home.')),
-            $photo('home-theory', 1200, 900), lang('Learners in the theory classroom'), true,
-            array($link(lang('About the Theory Test'), '{{page:theory}}', 'btn btn-outline-secondary px-4')),
-            lang('theory test, highway code, road signs, practice questions'), 'py-5 bg-body-tertiary'),
+        $theory_signs('drv-home-theory', lang('Pass the theory first'), lang('Six topics, learned one evening at a time and practised at home until the answers come easily.')),
 
         // The featured pass stories, read from the Pass Stories collection,
         // and beside them the school's own Google reviews, which show once
         // Google Reviews is set up under Site Settings.
-        $el('section', 'py-5', lang('Pass Stories'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Pass Stories'), array(
             $container(array(
                 $section_header(lang('Our learners'), lang('They passed with us'), lang('All Pass Stories'), '{{page:stories}}'),
                 $widget('home_stories'),
@@ -178,7 +409,7 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('From the News'), array(
+        $el('section', 'py-5', lang('From the News'), array(
             $container(array(
                 $section_header(lang('News'), lang('Tips and news from the school'), lang('All News'), '{{page:blog}}'),
                 $widget('home_posts'),
@@ -197,12 +428,8 @@ $public_pages[] = array(
     'meta_description' => lang('The licence classes we teach: car, automatic car, motorcycle, light truck and car with trailer.'),
     'tree'             => $page(array(
         $page_header(lang('Licences'), lang('Five licence classes, each with its own lessons, courses and test.')),
-        $el('section', 'py-5', lang('Licences'), array(
-            $container(array(
-                $row($licence_cols, '4'),
-            )),
-        ), $searchable('drv-licences', lang('licence class, B, A2, C1, BE, car, motorcycle, truck, trailer'))),
-        $ask_band(lang('Not sure which licence you need?'), lang('Tell us what you want to drive and we tell you the class, the minimum age and the lessons it takes.')),
+        $licence_board('drv-licences', lang('Choose your licence class'), lang('Not sure which one? Tell us what you want to drive and we name the class.'), 'py-5'),
+        $road('drv-licences-road', lang('How every class goes'), lang('The same four steps, whichever licence you learn for.'), 'py-5 bg-body-tertiary'),
     )),
 );
 
@@ -246,13 +473,13 @@ foreach ($licences as $key => $l) {
                                 )),
                             )),
                             $heading('h2', lang('What the lessons cover'), 'pdr-display h4 mb-3'),
-                            $check_list($l['points'], 'list-unstyled mb-4'),
+                            $rise($check_list($l['points'], 'list-unstyled mb-4')),
                             $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                                 $link(lang('See the courses'), '{{page:courses}}?' . $query(array('licence' => $l['title'])), 'btn btn-primary px-4'),
                                 $link(lang('Book a Lesson'), '{{page:lesson_request}}?' . $query(array('licence' => $l['title'])), 'btn btn-outline-secondary px-4'),
                             )),
                         ), '', '6'),
-                        $col(array($framed($photo('licence-' . $key, 1200, 900), $l['title'])), '', '6'),
+                        $col(array($picture($photo('licence-' . $key, 1200, 900), $l['title'])), '', '6'),
                     ), '4', '', 'g-lg-5 align-items-center'),
                 )),
             ), $searchable('drv-licence-' . str_replace('_', '-', $key))),
@@ -276,34 +503,31 @@ $public_pages[] = array(
     'meta_description' => lang('What the theory test covers, how our theory classes run and how to prepare for the questions.'),
     'tree'             => $page(array(
         $page_header(lang('Theory Test'), lang('The topics of the test, our classes and the habits that help you pass.')),
-        $el('section', 'py-5', lang('Topics'), array(
-            $container(array(
-                $section_header(lang('What the test covers'), lang('Six topics to know')),
-                $row($topic_tiles, '4'),
-            )),
-        ), $searchable('drv-theory-topics', lang('road signs, highway code, hazard perception, first aid, questions'))),
-        $story_band('drv-theory-classes', lang('Theory classes'), lang('Learn it in the classroom'),
-            array(lang('Our theory teacher runs short evening classes at the main branch, one topic at a time, with questions like the ones in the test.'),
-                lang('Every course learner also gets the practice app, so the questions can be tried at home until they feel easy.')),
-            $photo('theory-class', 1200, 900), lang('A theory class going through road signs'), false,
-            array($link(lang('Enrol Now'), '{{page:enrol}}', 'btn btn-primary px-4')),
-            lang('theory classes, evening classes, practice app, mock questions'), 'py-5 bg-body-tertiary'),
-        $el('section', 'py-5', lang('Tips'), array(
+        $theory_signs('drv-theory-topics', lang('Six topics to know'), lang('Every question of the test comes from one of these, and our classes take them one evening at a time.')),
+        // The classes and the habits side by side on a tinted band.
+        $el('section', 'py-5 bg-body-tertiary', lang('Theory Classes'), array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $heading('h2', lang('How to prepare'), 'pdr-display h3 mb-3'),
-                        $check_list(array(
-                            lang('Study one topic a day instead of everything the night before'),
-                            lang('Try the practice questions until you pass them three times in a row'),
-                            lang('Read each question to the end before you choose an answer'),
-                            lang('Watch the road as a passenger and name the signs you see'),
+                        $heading('h2', lang('Learn it in the classroom'), 'pdr-display h3 mb-3'),
+                        $para(lang('Our theory teacher runs short evening classes at the main branch, one topic at a time, with questions like the ones in the test.'), 'text-body-secondary mb-3'),
+                        $para(lang('Every course learner also gets the practice app, so the questions can be tried at home until they feel easy.'), 'text-body-secondary mb-4'),
+                        $link(lang('Enrol Now'), '{{page:enrol}}', 'btn btn-primary px-4'),
+                    ), '', '6'),
+                    $col(array(
+                        $el('div', 'h-100 p-4 rounded-4 bg-body border', lang('Tips'), array(
+                            $heading('h2', lang('How to prepare'), 'pdr-display h3 mb-3'),
+                            $rise($check_list(array(
+                                lang('Study one topic a day instead of everything the night before'),
+                                lang('Try the practice questions until you pass them three times in a row'),
+                                lang('Read each question to the end before you choose an answer'),
+                                lang('Watch the road as a passenger and name the signs you see'),
+                            ))),
                         )),
-                    ), '', '8'),
-                ), '4', 'center'),
+                    ), '', '6'),
+                ), '4', '', 'g-lg-5'),
             )),
-        ), $searchable('drv-theory-tips', lang('tips, prepare, revise, study, pass first time'))),
-        $ask_band(lang('A question about the theory test?'), lang('Write to us and our theory teacher answers, usually the same day.')),
+        ), $searchable('drv-theory-classes', lang('theory classes, evening classes, practice app, mock questions, tips, revise'))),
     )),
 );
 
@@ -317,42 +541,24 @@ $public_pages[] = array(
     'meta_description' => lang('How the practical driving test goes, what the examiner checks and how we get you ready for it.'),
     'tree'             => $page(array(
         $page_header(lang('Practical Test'), lang('From the warm-up lesson to the result, so nothing on the day comes as a surprise.')),
-        $el('section', 'py-5', lang('Test Day'), array(
+        $test_sheet('drv-test-day', lang('How the practical test goes'), lang('About forty minutes on real roads, then the result in the car.')),
+        // How the school gets a learner ready, beside the car of the test.
+        $el('section', 'py-5 bg-body-tertiary', lang('How We Get You Ready'), array(
             $container(array(
                 $row(array(
-                    $col(array(
-                        $heading('h2', lang('How the practical test goes'), 'pdr-display h3 mb-4'),
-                        $el('ol', 'list-unstyled mb-4', lang('Steps'), $test_day_items),
-                        $link(lang('Book a Lesson'), '{{page:lesson_request}}', 'btn btn-primary px-4'),
-                    ), '', '6'),
-                    $col(array($framed($photo('practical-test', 1200, 900), lang('A learner driver at a junction with the examiner beside them'))), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        ), $searchable('drv-test-day', lang('driving test, test day, examiner, test route, result'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('What the Examiner Checks'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $heading('h2', lang('What the examiner checks'), 'pdr-display h3 mb-3'),
-                        $check_list(array(
-                            lang('Mirrors and signals before every change of speed or direction'),
-                            lang('Speed that suits the road, the limit and the weather'),
-                            lang('Safe junctions and roundabouts'),
-                            lang('One manoeuvre done slowly and under control'),
-                        )),
-                    ), '', '6'),
+                    $col(array($picture($photo('practical-test', 1200, 900), lang('A learner driver at a junction with the examiner beside them'))), '', '6', '', '12', 'order-lg-last'),
                     $col(array(
                         $heading('h2', lang('How we get you ready'), 'pdr-display h3 mb-3'),
-                        $check_list(array(
+                        $rise($check_list(array(
                             lang('A mock test with the same timing as the real one'),
                             lang('Lessons on the roads around the test centre'),
                             lang('The car you learned in, for the test itself'),
-                        )),
+                        ), 'list-unstyled mb-4')),
+                        $link(lang('Book a Lesson'), '{{page:lesson_request}}', 'btn btn-primary px-4'),
                     ), '', '6'),
-                ), '4', '', 'g-lg-5'),
+                ), '4', '', 'g-lg-5 align-items-center'),
             )),
-        ), $searchable('drv-test-checks', lang('faults, mirrors, manoeuvre, mock test, test centre'))),
-        $ask_band(lang('Nervous about the test?'), lang('Write to us: a refresher lesson or a mock test often makes the difference.')),
+        ), $searchable('drv-test-checks', lang('mirrors, manoeuvre, mock test, test centre, nervous'))),
     )),
 );
 
