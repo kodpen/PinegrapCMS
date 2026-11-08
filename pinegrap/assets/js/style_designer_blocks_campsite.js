@@ -35,10 +35,11 @@ StyleDesigner.registerBlockFamily(function (kit) {
         'pg-campsite-stop':   '.pg-campsite-stop { position: relative; } ' +
                               '@media (min-width: 992px) { .pg-campsite-stop::before { content: ""; position: absolute; top: -2.125rem; left: 1.5rem; width: 1rem; height: 1rem; border-radius: 50%; background: var(--bs-body-bg); border: .25rem solid var(--bs-primary); } }',
         // A pitch from above: grass in the theme's success tint inside a
-        // dashed boundary; the car place and the tent area drawn in it.
-        'pg-campsite-plot':   '.pg-campsite-plot { background: var(--bs-success-bg-subtle); border: 2px dashed var(--bs-success-border-subtle); border-radius: var(--bs-border-radius-lg); } ' +
-                              '.pg-campsite-plot .pg-campsite-area { border: 1px dashed var(--bs-success-text-emphasis); border-radius: var(--bs-border-radius); color: var(--bs-success-text-emphasis); }',
-        'pg-campsite-area':   '.pg-campsite-area { display: flex; align-items: center; justify-content: center; font-size: .8125rem; font-weight: 600; }',
+        // dashed boundary; the car place and the tent area drawn in it. A
+        // rule names only its own class: a rule that named another's would
+        // make the drop take that one as present and leave it out.
+        'pg-campsite-plot':   '.pg-campsite-plot { background: var(--bs-success-bg-subtle); border: 2px dashed var(--bs-success-border-subtle); border-radius: var(--bs-border-radius-lg); }',
+        'pg-campsite-area':   '.pg-campsite-area { display: flex; align-items: center; justify-content: center; font-size: .8125rem; font-weight: 600; border: 1px dashed var(--bs-success-text-emphasis); border-radius: var(--bs-border-radius); color: var(--bs-success-text-emphasis); }',
         // A numbered point on the drawing and the same number in its legend.
         'pg-campsite-marker': '.pg-campsite-marker { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--bs-primary); color: var(--bs-body-bg); font-size: .8125rem; font-weight: 700; font-variant-numeric: tabular-nums; }'
     };
