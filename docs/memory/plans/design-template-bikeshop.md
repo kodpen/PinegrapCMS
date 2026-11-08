@@ -18,7 +18,7 @@ description: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and 
 - What it reuses, what it does not build, the look and the Turkish words: [[design-template-bikeshop-design]].
 
 ## Steps (claim as `[plan:design-template-bikeshop] <n> — <topic>`; each waits for the one before it, Working mode 1)
-- 1: the `bikeshop-` palette block family `assets/js/style_designer_blocks_bikeshop.js` (workshop board, frame sizes, group rides, bike fit), `tests/designer_blocks_bikeshop_test.php`, `designer/designer-blocks-bikeshop.md`.
+- 1 (done, #8179): the `bikeshop-` palette block family `assets/js/style_designer_blocks_bikeshop.js` (workshop board, frame sizes, group rides, bike fit), `tests/designer_blocks_bikeshop_test.php`, `designer/designer-blocks-bikeshop.md`.
 
 - 2: `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$ride_on`, page shell, helpers; test.
 
