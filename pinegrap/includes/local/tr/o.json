@@ -1420,6 +1420,7 @@
     "Open this page again using an \"https://\" address. If you already did, then a proxy in front of this server is terminating SSL without sending any recognised forwarding header, and Secure Mode cannot be used safely.": "Bu sayfayı \"https://\" adresiyle yeniden açın. Zaten öyle açtıysanız, bu sunucunun önündeki bir proxy SSL'i sonlandırıyor ancak tanınan hiçbir yönlendirme başlığı göndermiyor demektir; bu durumda Güvenli Mod güvenle kullanılamaz.",
     "Open to children from other schools": "Başka okullardan çocuklara da açık",
     "Open to everyone": "Herkese açık",
+    "Open today, 09:00 to 18:00": "Bugün 09:00 - 18:00 arası açığız",
     "Open topics": "Açık konular",
     "Open until 23:00": "23:00'e kadar açık",
     "Open until someone closes it": "Kapatılana kadar açık",
