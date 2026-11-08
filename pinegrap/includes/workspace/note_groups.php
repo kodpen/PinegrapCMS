@@ -292,6 +292,12 @@ function ws_note_group_delete($viewer, $group)
 
     $id = (int) $group['id'];
 
+    // Its shares are taken back first, so their notes leave the people and
+    // channels the group brought them to (note_group_shares.php).
+    if (function_exists('ws_note_group_shares_forget')) {
+        ws_note_group_shares_forget($group, (int) $viewer['id']);
+    }
+
     db("DELETE FROM ws_note_places WHERE group_id = '" . $id . "'");
     db("DELETE FROM ws_note_groups WHERE id = '" . $id . "'");
 
@@ -301,7 +307,9 @@ function ws_note_group_delete($viewer, $group)
 /**
  * May the person keep the note in the group (0 for no group)? A person
  * places a note they own or one shared with them by name, in a group of
- * their own.
+ * their own; into a group shared with them to change it, or one they share,
+ * only their own notes (ws_note_group_place_gate()), and the owner of the
+ * group moves any note in it.
  *
  * @param array $viewer
  * @param array $note     the note row
@@ -329,10 +337,16 @@ function ws_note_place_check($viewer, $note, $group_id)
         return array('ok' => true, 'error' => '', 'field' => '', 'group' => null);
     }
 
-    $group = ws_note_group_for($viewer, $group_id);
+    $group = function_exists('ws_note_group_reached') ? ws_note_group_reached($viewer, $group_id) : ws_note_group_for($viewer, $group_id);
 
     if (!$group) {
         return $fail(lang('That group could not be found.'), 'group_id');
+    }
+
+    $error = function_exists('ws_note_group_place_gate') ? ws_note_group_place_gate($viewer, $note, $group) : '';
+
+    if ($error !== '') {
+        return $fail($error, 'group_id');
     }
 
     return array('ok' => true, 'error' => '', 'field' => '', 'group' => $group);
@@ -358,14 +372,20 @@ function ws_note_place($viewer, $note, $group_id, $position = -1)
 
     $me = (int) $viewer['id'];
     $note_id = (int) $note['id'];
+    $from = (int) db_value("SELECT group_id FROM ws_note_places WHERE user_id = '" . $me . "' AND note_id = '" . $note_id . "'");
 
     if (!$check['group']) {
         db("DELETE FROM ws_note_places WHERE user_id = '" . $me . "' AND note_id = '" . $note_id . "'");
+
+        if (function_exists('ws_note_group_shares_after_place')) {
+            ws_note_group_shares_after_place($viewer, $note, $from, 0);
+        }
 
         return array('ok' => true, 'error' => '', 'field' => '', 'group_id' => 0);
     }
 
     $group_id = (int) $check['group']['id'];
+    $placed_by = (int) db_value("SELECT user_id FROM ws_note_places WHERE group_id = '" . $group_id . "' AND note_id = '" . $note_id . "' LIMIT 1");
     $ids = array();
 
     foreach ((array) db_items("SELECT note_id FROM ws_note_places WHERE group_id = '" . $group_id . "' ORDER BY sort, created_at, note_id") as $row) {
@@ -374,13 +394,21 @@ function ws_note_place($viewer, $note, $group_id, $position = -1)
 
     $order = ws_note_group_order_insert($ids, $note_id, $position);
 
-    // One group per person and note: a note moved from another group leaves it.
-    db("INSERT INTO ws_note_places (user_id, note_id, group_id, sort, created_at)
-        VALUES ('" . $me . "', '" . $note_id . "', '" . $group_id . "', 0, '" . time() . "')
-        ON DUPLICATE KEY UPDATE group_id = VALUES(group_id)");
+    // One group per person and note: a note moved from another group leaves
+    // it. A note somebody else keeps in this group (a shared group's owner
+    // moving a member's note along) is only put in its new place.
+    if (($placed_by <= 0) || ($placed_by === $me)) {
+        db("INSERT INTO ws_note_places (user_id, note_id, group_id, sort, created_at)
+            VALUES ('" . $me . "', '" . $note_id . "', '" . $group_id . "', 0, '" . time() . "')
+            ON DUPLICATE KEY UPDATE group_id = VALUES(group_id)");
+    }
 
     foreach ($order as $index => $id) {
         db("UPDATE ws_note_places SET sort = '" . ($index + 1) . "' WHERE group_id = '" . $group_id . "' AND note_id = '" . $id . "'");
+    }
+
+    if (($placed_by <= 0) && function_exists('ws_note_group_shares_after_place')) {
+        ws_note_group_shares_after_place($viewer, $note, $from, $group_id);
     }
 
     return array('ok' => true, 'error' => '', 'field' => '', 'group_id' => $group_id);
