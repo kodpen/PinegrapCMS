@@ -6,7 +6,7 @@ description: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and 
 ## What is it?
 - `pinegrap-bikeshop`, a bicycle shop with a repair workshop: home, Workshop, Bike Fit, Sizes, Group Rides by date, Bikes and Parts (catalog and shop), service and fit requests, about, News (blog), contact, sign-in, staff area.
 - File layout like Zoo and Ski Resort (main file plus folder `pinegrap-bikeshop/`, one file per step, `$…_part`; [[design-template-museum]]); never their look.
-- Installer order 147 (up to 133 shipped or in assembly PRs, 145 claimed by Planetarium).
+- Installer order 147 (up to 133 shipped or in assembly PRs, 145 Planetarium).
 
 ## What makes it unlike the shipped templates?
 - Composition: the home opens as a workbench, not a slogan: a split first screen with the workshop's load this week (`bikeshop-workshop`) on one side and the newest bikes on the other, then the next group ride (`bikeshop-rides`), the fit band (`bikeshop-fit`), a parts strip by category and the news. No figures row, testimonials, ask band or FAQ accordion on the home.
