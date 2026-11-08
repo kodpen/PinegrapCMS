@@ -19,7 +19,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - agent-channel-steps-2.md: Steps A5-A9 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, further doors (Claude Code plugin, per-person sessions, chat box), the canvas as an agent tool
 - agent-channel-steps.md: Steps A0-A4 of plans/agent-channel.md: the door experiment, routine hardening, parent_id, the agent registry with doors and wake rules, the request queue with push and scheduled wakes
 - agent-channel.md: Plan (owner 2026-11-06, wake doors 2026-11-07): the Workspace channel from which the owner runs coordinators and agents: registry with @handles, wake rules and doors, scheduled wakes, queue, memory
-- api-forms-for-agents.md: Plan (owner 2026-11-06): the external API and MCP let Claude Desktop and other clients send designed forms and collection records (a blog post with rich text) completely; steps F1-F5
 - bootstrap-6-components.md: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped for native Bootstrap 6 components, the conditions research found, what stays as it is
 - bootstrap-6-findings.md: Research of 2026-10-25 behind plans/bootstrap-6-panel.md: old browsers, conflict rates, work size, hot spots, the visual editor split, third-party coupling
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
