@@ -283,6 +283,10 @@ function ws_canvas_js_strings()
         'canvas_send'    => lang('Send the canvas'),
         'canvas_sent'    => lang('The canvas was sent.'),
         'canvas_to_note' => lang('Add to the note'),
+        'canvas_edited_by' => ws_js_template('Edited by @{var:1}', 1),
+        'canvas_undo'      => lang('Undo'),
+        'canvas_undo_ask'  => lang('Put back the canvas as it was before this edit? The edit stays among the versions.'),
+        'canvas_undone'    => lang('The canvas is back as it was.'),
     );
 }
 
@@ -337,17 +341,138 @@ function ws_canvas_message_state($file_id)
         return null;
     }
 
-    $row = db_item("SELECT version_no, source, doc_json <> '' AS has_doc, doc_json LIKE '%\"picture\":\"pending\"%' AS marked
+    // An agent's version carries the agent as the document's last member
+    // ("by", api_canvas.php): only that tail is read, never the whole
+    // document. Whether an earlier version is there tells an edit from
+    // the version the agent made the canvas with.
+    $row = db_item("SELECT version_no, source, doc_json <> '' AS has_doc, doc_json LIKE '%\"picture\":\"pending\"%' AS marked,
+            IF(source = 'agent', SUBSTRING(doc_json, LOCATE('\"by\":{', doc_json), 300), '') AS by_part,
+            (SELECT COUNT(*) FROM file_versions AS older WHERE older.file_id = file_versions.file_id AND older.version_no < file_versions.version_no) AS earlier
         FROM file_versions WHERE file_id = '" . (int) $file_id . "' ORDER BY version_no DESC LIMIT 1");
 
     if (!$row || empty($row['has_doc'])) {
         return null;
     }
 
+    $agent = ((string) $row['source'] === 'agent');
+
     return array(
         'version_no' => (int) $row['version_no'],
-        'pending'    => !empty($row['marked']) && ((string) $row['source'] === 'agent'),
+        'pending'    => !empty($row['marked']) && $agent,
+        'edited_by'  => ($agent && ((int) $row['earlier'] > 0)) ? ws_canvas_by_handle((string) $row['by_part']) : '',
     );
+}
+
+/**
+ * The agent's handle from the tail of a version's document that starts at
+ * its "by" member; '' when there is none. Pure.
+ *
+ * @param string $part
+ * @return string
+ */
+function ws_canvas_by_handle($part)
+{
+    if ((strpos((string) $part, '"by":{') !== 0) || !preg_match('/^"by":\{[^{}]*"handle":"([A-Za-z0-9_-]{1,64})"/', (string) $part, $match)) {
+        return '';
+    }
+
+    return $match[1];
+}
+
+/**
+ * The mark a person's canvas carries in the conversation while its newest
+ * version is an agent's edit: the agent's handle, the version it made and
+ * whether this reader may put back the version before (Undo: whoever may
+ * edit the message, ws_canvas_undo()). Null otherwise. Pure.
+ *
+ * @param array|null $state       ws_canvas_message_state()
+ * @param string     $sender_kind the message's sender kind
+ * @param bool       $may_edit    may the reader edit the message
+ * @return array|null handle, version, can_undo
+ */
+function ws_canvas_edit_mark($state, $sender_kind, $may_edit)
+{
+    if (!is_array($state) || ((string) ($state['edited_by'] ?? '') === '') || ((string) $sender_kind !== 'user')) {
+        return null;
+    }
+
+    return array(
+        'handle'   => (string) $state['edited_by'],
+        'version'  => (int) $state['version_no'],
+        'can_undo' => (bool) $may_edit,
+    );
+}
+
+/**
+ * Undo of an agent's edit on a person's canvas: the version before the
+ * agent's becomes the newest one again, as a new version (source restore)
+ * with its document and its pixels, so the agent's edit stays among the
+ * versions. Only for whoever may edit the message (its author, while they
+ * may write in the channel), only while the newest version is still the
+ * agent's edit the screen showed ($version; 409 otherwise), and not when
+ * the version before is itself an agent's picture no browser drew yet.
+ *
+ * @param array $viewer
+ * @param array $message ws_messages row
+ * @param int   $version the version_no of the agent's edit
+ * @return array ok, status (HTTP), error
+ */
+function ws_canvas_undo($viewer, $message, $version)
+{
+    $refuse = function ($error, $status) {
+        return array('ok' => false, 'status' => $status, 'error' => $error);
+    };
+
+    $checked = ws_message_edit_check($viewer, $message, (string) $message['body']);
+
+    if (!$checked['ok'] || ((string) $message['sender_kind'] !== 'user')) {
+        return $refuse($checked['ok'] ? lang('You can only change your own messages.') : $checked['error'], 403);
+    }
+
+    if (!pg_file_versions_ready()) {
+        return $refuse(lang('The database has to be updated first.'), 503);
+    }
+
+    $file_id = (int) $message['file_id'];
+    $stored = ($file_id > 0) ? (string) db_value("SELECT name FROM files WHERE id = '" . $file_id . "'") : '';
+    $newest = ($stored !== '') ? pg_file_versions_newest($file_id) : null;
+
+    if (!$newest || ((string) $newest['source'] !== 'agent') || ((int) $newest['version_no'] !== (int) $version)) {
+        return $refuse(lang('The canvas changed since. Look at it again.'), 409);
+    }
+
+    $before = db_item("SELECT * FROM file_versions WHERE file_id = '" . $file_id . "' AND version_no < '" . (int) $newest['version_no'] . "'
+        ORDER BY version_no DESC LIMIT 1");
+
+    if (!$before || ((string) $before['doc_json'] === '') || !is_file(pg_file_versions_path($before))) {
+        return $refuse(lang('There is no version before this edit.'), 409);
+    }
+
+    if (ws_canvas_doc_pending(json_decode((string) $before['doc_json'], true), $before['source'])) {
+        return $refuse(lang('The version before this edit has no picture yet. Try again in a moment.'), 409);
+    }
+
+    $data = @file_get_contents(pg_file_versions_path($before));
+    $path = FILE_DIRECTORY_PATH . '/' . basename($stored);
+
+    if (!is_string($data) || !pg_image_editor_put($path, $data)
+        || !pg_file_versions_add($file_id, $path, (string) $before['doc_json'], 'restore', (int) $viewer['id'], (int) $before['redacted'] === 1)) {
+        return $refuse(lang('The file could not be saved.'), 500);
+    }
+
+    pg_file_versions_prune($file_id);
+
+    // Every write goes to the file directory, which the general job takes
+    // as the file's bytes (pg_file_storage_reconcile_run()).
+    db_q("UPDATE files SET size = ?, timestamp = UNIX_TIMESTAMP() WHERE id = ?", array(strlen($data), $file_id));
+
+    if (function_exists('pg_file_cache_forget')) {
+        pg_file_cache_forget($file_id);
+    }
+
+    ws_message_touch((int) $message['id']);
+
+    return array('ok' => true, 'status' => 200, 'error' => '');
 }
 
 /**

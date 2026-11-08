@@ -10598,6 +10598,43 @@
                     window.PGWsCanvasPicture.mount(message, img, link, featureHelpers());
                 }
 
+                // A person's canvas an agent edited: who did, and Undo for
+                // whoever may edit the message (ws_canvas_undo()).
+                if (file.canvas_edit) {
+                    var edited = el('div');
+                    var mark = el('div', 'small fg-secondary d-flex align-items-center gap-2 mt-1');
+
+                    edited.appendChild(link);
+                    mark.appendChild(icon('bi-robot'));
+                    mark.appendChild(el('span', '', t('canvas_edited_by', file.canvas_edit.handle)));
+
+                    if (file.canvas_edit.can_undo) {
+                        var undo = button('btn btn-sm btn-text theme-secondary py-0', t('canvas_undo'), 'bi-arrow-counterclockwise');
+
+                        undo.addEventListener('click', function () {
+                            ask(t('canvas_undo_ask'), t('canvas_undo')).then(function (yes) {
+                                if (!yes) {
+                                    return;
+                                }
+
+                                undo.disabled = true;
+                                api('ws_canvas_undo', { message_id: message.id, version: file.canvas_edit.version }).then(function (data) {
+                                    toast(t('canvas_undone'));
+                                    self.replaceMessage(data.message);
+                                }).catch(function (error) {
+                                    undo.disabled = false;
+                                    fail(error);
+                                });
+                            });
+                        });
+                        mark.appendChild(undo);
+                    }
+
+                    edited.appendChild(mark);
+
+                    return edited;
+                }
+
                 return link;
             }
 

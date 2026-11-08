@@ -482,6 +482,7 @@
     "Editable": "Düzenlenebilir",
     "Editable area": "Düzenlenebilir alan",
     "Edited": "Düzenleme",
+    "Edited by @{var:1}": "@{var:1} düzenledi",
     "Edited by hand": "Elle düzenleme",
     "Edited in the Options panel": "Seçenekler panelinden düzenlenir",
     "Edited on the page": "Sayfanın üzerinde düzenlenir",

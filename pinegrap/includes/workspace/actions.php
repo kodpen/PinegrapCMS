@@ -397,7 +397,7 @@ function ws_handle_action($action, $request)
     if (function_exists('ws_message_in_past') && ws_eras_ready()) {
         $touched = null;
 
-        if (in_array($action, array('ws_edit', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
+        if (in_array($action, array('ws_edit', 'ws_canvas_undo', 'ws_mark', 'ws_react', 'ws_check', 'ws_check_task', 'ws_ack', 'ws_ack_request'), true)
             || (($action === 'ws_delete') && ((string) ($request['scope'] ?? '') !== 'me'))) {
             $touched = ws_message((int) ($request['message_id'] ?? 0));
         } elseif (in_array($action, array('ws_poll_edit', 'ws_poll_vote', 'ws_poll_close'), true)) {
@@ -2093,6 +2093,25 @@ function ws_handle_action($action, $request)
             }
 
             $result = ws_message_edit($viewer, $message, (string) ($request['body'] ?? ''));
+
+            if (!$result['ok']) {
+                return ws_action_error($result['error']);
+            }
+
+            $payload = ws_message_payloads($viewer, array(ws_message($message['id'])));
+
+            return ws_action_ok(array('message' => $payload[0]));
+
+        // Undo of an agent's edit on a person's canvas (canvas.php): the
+        // version before comes back as the newest one.
+        case 'ws_canvas_undo':
+            $message = ws_message((int) ($request['message_id'] ?? 0));
+
+            if (!$message) {
+                return ws_action_error(lang('That message could not be found.'));
+            }
+
+            $result = ws_canvas_undo($viewer, $message, (int) ($request['version'] ?? 0));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);

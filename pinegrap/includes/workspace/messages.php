@@ -432,6 +432,11 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
                 'url'      => ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas),
                 // The version a browser draws and posts (canvas_picture), 0 for none.
                 'canvas_pending' => ($canvas && $canvas['pending'] && $can_post) ? $canvas['version_no'] : 0,
+                // A person's canvas an agent edited: "Edited by @handle", and
+                // Undo for whoever may edit the message (ws_canvas_undo()
+                // checks it again).
+                'canvas_edit'    => function_exists('ws_canvas_edit_mark') ? ws_canvas_edit_mark($canvas, (string) $row['sender_kind'],
+                    !empty($payload['can_edit']) && $can_post) : null,
                 'image'    => ($kind === 'image'),
                 'kind'     => $kind,
                 'ext'      => $extension,
