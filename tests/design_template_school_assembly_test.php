@@ -221,3 +221,64 @@ function test_school_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_events"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places the events and the news');
 }
+
+// Home, programmes and the day page place the School blocks: every
+// pg-school- class's rule ships in the User Styles, the interactions are
+// kept as written, something rises on each page and none keeps the stock
+// figures, why-us or write-to-us bands; the home has one h1 and an age
+// finder that opens every programme page.
+function test_school_assembly_pages_on_school_blocks()
+{
+	$tpl = _test_sh_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$wanted = array('home' => 'pg-school-finder', 'programmes' => 'pg-school-ages', 'day' => 'pg-school-term');
+	$seen = array();
+	foreach ($tpl['pages'] as $p) {
+		if (!isset($wanted[$p['key']])) continue;
+		$seen[] = $p['key'];
+		$nodes = array();
+		_test_sh_asm_tpl_nodes($p['tree'], $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $p['key'] . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-school-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $p['key'] . ': the rule of ' . $class . ' ships');
+		pg_assert_contains($wanted[$p['key']], $classes, $p['key'] . ': on the school blocks');
+		pg_assert_true($effects >= 2, $p['key'] . ': something rises in');
+		foreach (array('Write to Us', 'Figures', 'Why Families Choose Us') as $band) pg_assert_false(in_array($band, $labels, true), $p['key'] . ': no ' . $band . ' band');
+	}
+	pg_assert_same(3, count($seen), 'home, programmes, day');
+
+	$home = null;
+	foreach ($tpl['pages'] as $p) if ($p['key'] === 'home') $home = $p['tree'];
+	$nodes = array();
+	_test_sh_asm_tpl_nodes($home, $nodes);
+	$h1 = 0;
+	$finder = null;
+	foreach ($nodes as $n) {
+		if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+		if (isset($n['props']['cssClass']) && strpos($n['props']['cssClass'], 'pg-school-finder') !== false) $finder = $n;
+	}
+	pg_assert_same(1, $h1, 'one h1, in the school hero');
+	pg_assert_true($finder !== null && $finder['props']['tag'] === 'nav', 'the age finder is a nav');
+	$finder_json = json_encode($finder);
+	foreach (array('nursery', 'kindergarten', 'primary', 'clubs', 'summer') as $key) {
+		pg_assert_contains('{{page:programme_' . $key . '}}', $finder_json, 'the finder opens programme_' . $key);
+	}
+	$json = json_encode($home, JSON_UNESCAPED_UNICODE);
+	pg_assert_contains('"trigger":"load"', $json, 'the school hero comes in on load');
+	foreach (array('sh-home-programmes', 'sh-home-year') as $id) pg_assert_contains('"id":"' . $id . '"', $json, $id . ' is a search section');
+	pg_assert_same(3, substr_count($json, 'pg-school-term '), 'three terms');
+	pg_assert_same(2, substr_count($json, 'pg-school-break '), 'two holidays');
+}
