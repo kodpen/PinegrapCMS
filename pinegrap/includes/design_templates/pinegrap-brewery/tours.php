@@ -191,6 +191,13 @@ $tour_pages[] = array(
                         $el('div', 'card border-0 shadow-sm rounded-4', lang('Form Card'), array(
                             $el('div', 'card-body p-4 p-lg-5', lang('Card Body'), array($widget('tour_booking_form'))),
                         )),
+                        // A group that only wants to taste needs no tour: a
+                        // private tasting is booked at a free time.
+                        $el('div', 'p-4 rounded-4 border mt-4', lang('Private Tastings'), array(
+                            $heading('h2', lang('Only here to taste?'), 'pbw-display h5 mb-2'),
+                            $para(lang('Book a guided tasting for your group at a free time.'), 'small text-body-secondary mb-3'),
+                            $link(lang('Pick a Free Time'), '{{page:book_online}}', 'btn btn-sm btn-outline-primary rounded-pill px-3'),
+                        )),
                     ), '', '8'),
                     $col($tour_aside(), '', '4'),
                 ), '4', '', 'g-lg-5'),

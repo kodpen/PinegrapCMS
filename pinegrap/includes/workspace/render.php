@@ -747,10 +747,16 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
     // reader who may open it (includes/workspace/watch.php).
     $cards = function_exists('ws_form_cards_html') ? ws_form_cards_html($body, $refs) : '';
 
+    // In a note, a line linking only to a file of this site is drawn as the
+    // file (includes/workspace/note_media.php), by line number.
+    $media = ($note && function_exists('ws_note_media_blocks') && preg_match('/^[ \t]*\[[^\]\n]+\]\(https?:\/\/\S+\)[ \t]*$/m', $body))
+        ? ws_note_media_blocks(preg_split('/\r\n|\r|\n/', $body))
+        : array();
+
     // Running text only - nearly every message - is drawn in one piece,
     // unless it holds a list or a quote (ws_text_blocks()), or is a note
-    // with a heading or a rule.
-    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body) && !($note && preg_match('/^(#{1,3}[ \t]+\S|[ \t]*-{3,}[ \t]*$)/m', $body))) {
+    // with a heading, a rule or a file drawn as itself.
+    if (empty($media) && !preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body) && !($note && preg_match('/^(#{1,3}[ \t]+\S|[ \t]*-{3,}[ \t]*$)/m', $body))) {
         $listed = false;
 
         if (preg_match('/^[ \t]*([-*][ \t]+\S|[1-9][0-9]{0,2}\.[ \t]+\S|>)/m', $body)) {
@@ -852,6 +858,12 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
         if ($note && (($heading = ws_heading_line($line)) !== null)) {
             $flush();
             $html .= ws_heading_html($heading, $refs);
+            continue;
+        }
+
+        if (isset($media[$i])) {
+            $flush();
+            $html .= $media[$i];
             continue;
         }
 
