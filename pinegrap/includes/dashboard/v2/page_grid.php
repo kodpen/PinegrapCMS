@@ -216,6 +216,7 @@ function pg_dashboard_v2_edit_strings()
         'tile'        => lang('Tile {var:1}'),
         'hide'        => lang('Hide'),
         'show'        => lang('Show'),
+        'status_hidden' => lang('System Status hidden'),
         'edit'        => lang('Edit dashboard'),
     );
 }

@@ -281,7 +281,7 @@
         var label = el("label", "visually-hidden", S.search_label);
         label.setAttribute("for", "pg_dash_gal_search");
         section.appendChild(label);
-        var search = el("input", "form-control form-control-sm pg-dash-gal-search");
+        var search = el("input", "form-control pg-dash-field pg-dash-gal-search");
         search.type = "search";
         search.id = "pg_dash_gal_search";
         search.placeholder = S.search;
@@ -333,8 +333,8 @@
                 return;
             }
 
-            var field = el("div", "form-field");
-            var box = el("input", "check");
+            var field = el("div", "pg-dash-check");
+            var box = el("input");
             box.type = "checkbox";
             box.id = "pg_dash_top_" + part;
             box.setAttribute("data-top", part);
@@ -435,7 +435,7 @@
         var label = el("label", "pg-dash-settings-label", share.label);
         label.setAttribute("for", "pg_dash_share_role");
         section.appendChild(label);
-        var select = el("select", "form-control form-control-sm");
+        var select = el("select", "form-control pg-dash-field");
         select.id = "pg_dash_share_role";
         share.roles.forEach(function (pair) {
             var option = el("option", "", pair[1]);
@@ -450,8 +450,8 @@
             return defaults[role] || {has_default: false, locked: false};
         };
 
-        var field = el("div", "form-field");
-        var lock = el("input", "check");
+        var field = el("div", "pg-dash-check");
+        var lock = el("input");
         lock.type = "checkbox";
         lock.id = "pg_dash_share_lock";
         field.appendChild(lock);
@@ -461,8 +461,8 @@
         section.appendChild(field);
 
         var row = el("div", "pg-dash-share-row");
-        var make = button("btn btn-outline theme-secondary btn-sm", share.button);
-        var remove = button("btn btn-outline theme-secondary btn-sm", share.remove);
+        var make = button("btn btn-outline theme-secondary btn-sm pg-dash-btn-sm", share.button);
+        var remove = button("btn btn-outline theme-secondary btn-sm pg-dash-btn-sm", share.remove);
         var done = el("span", "pg-dash-saved");
         done.setAttribute("role", "status");
         done.hidden = true;
@@ -557,7 +557,7 @@
         main.appendChild(top);
         main.appendChild(grid);
 
-        aside = el("aside", "card pg-dash-side");
+        aside = el("aside", "card pg-dash-card pg-dash-side");
         aside.setAttribute("aria-label", S.panel);
         aside.appendChild(drawGallery());
         aside.appendChild(drawTop());
