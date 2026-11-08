@@ -260,3 +260,59 @@ function test_pharmacy_assembly_turkish_words()
 		if (preg_match('/\bVaccinations?\b/i', $key)) pg_assert_true(mb_stripos($tr, 'aşı', 0, 'UTF-8') !== false, "'$key' says aşı");
 	}
 }
+
+// Home, on duty, health checks and three service pages place the pharmacy
+// blocks: each pg-pharmacy- class they use ships its rule in User Styles,
+// every table sits in a named, focusable region with head cells that say
+// what they head, and the home drops the figures row, the check cards and
+// the duty cards for the readings and the duty panel.
+function test_pharmacy_assembly_pages_on_pharmacy_blocks()
+{
+	$tpl = _test_rx_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$wanted = array(
+		'home'                    => array('Pharmacy (Duty Panel)', 'Pharmacy (Reference Readings)'),
+		'on_duty'                 => array('Pharmacy (Duty Panel)'),
+		'health_checks'           => array('Pharmacy (Reference Readings)'),
+		'service_health_checks'   => array('Pharmacy (Reference Readings)'),
+		'service_travel_health'   => array('Pharmacy (Travel Vaccines)'),
+		'service_medicine_review' => array('Pharmacy (Medicine Schedule)'),
+	);
+	$seen = array();
+	foreach ($tpl['pages'] as $p) {
+		if (!isset($wanted[$p['key']])) continue;
+		$seen[] = $p['key'];
+		$nodes = array();
+		_test_rx_asm_nodes($p['tree'], $nodes);
+		$labels = array();
+		$classes = '';
+		foreach ($nodes as $n) {
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			$tag = isset($n['props']['tag']) ? $n['props']['tag'] : '';
+			if ($tag === 'th') {
+				$scope = '';
+				foreach ((array)(isset($n['props']['_attrs']) ? $n['props']['_attrs'] : array()) as $a) if ($a['name'] === 'scope') $scope = $a['value'];
+				pg_assert_true(in_array($scope, array('col', 'row'), true), $p['key'] . ': a head cell has a scope');
+			}
+			if ($tag === 'div' && strpos($n['props']['cssClass'], 'table-responsive') !== false) {
+				$attrs = array_column($n['props']['_attrs'], 'value', 'name');
+				pg_assert_true(isset($attrs['role'], $attrs['aria-label'], $attrs['tabindex']) && $attrs['role'] === 'region' && $attrs['aria-label'] !== '', $p['key'] . ': a table frame is a named region');
+			}
+		}
+		foreach ($wanted[$p['key']] as $block) pg_assert_true(in_array(lang($block), $labels, true), $p['key'] . ': places ' . $block);
+		preg_match_all('/(?<![\w-])pg-pharmacy-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $p['key'] . ': the rule of ' . $class . ' ships');
+		pg_assert_false(in_array(lang('Figures'), $labels, true), $p['key'] . ': no figures row');
+		pg_assert_false(in_array(lang('Duty Card'), $labels, true), $p['key'] . ': no duty cards');
+	}
+	pg_assert_same(count($wanted), count($seen), 'every page that places a block');
+
+	foreach ($tpl['pages'] as $p) {
+		if ($p['key'] !== 'home') continue;
+		$json = json_encode($p['tree'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+		pg_assert_false(strpos($json, lang('Check Card')) !== false, 'the home shows the readings, not the check cards');
+		pg_assert_contains('"href":"tel:112"', $json, 'the duty panel calls the emergency number');
+	}
+}

@@ -856,6 +856,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'notes_export' => $base . 'workspace_notes_export.php',
             'notes_import' => $base . 'workspace_notes_import.php',
             'file_save' => $base . 'workspace_file_save.php',
+            // Where the site serves its files: a note line linking only to
+            // one is drawn as the file (note_media.php, workspace_editor.js).
+            'files'     => URL_SCHEME . HOSTNAME_SETTING . PATH,
             'settings'  => $base . 'workspace_settings.php',
             // Where a From OneNote Connect button posts (connect.php).
             'connect'   => $base . 'connect.php',
