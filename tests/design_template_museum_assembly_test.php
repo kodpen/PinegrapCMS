@@ -244,3 +244,61 @@ function test_museum_assembly_google_reviews()
 		pg_assert_true(strpos($home, '"templateWidget":"' . $w . '"') !== false, 'the home places ' . $w);
 	}
 }
+
+// Home, the exhibitions page and the collection page place the Museum
+// blocks: every pg-museum- class's rule ships in the User Styles, the
+// interactions are kept as written and something moves on each, one h1 on
+// each; the home opens on the exhibition on now with its facts and the
+// others on, its figures band left for the about page; the collection
+// looks closer at one work with its wall label and three numbered details.
+function test_museum_assembly_pages_on_museum_blocks()
+{
+	$tpl = _test_mz_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	pg_assert_same('2.0.0', $tpl['version'], 'version raised');
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'exhibitions', 'collection'), true)) $trees[$p['key']] = $p['tree'];
+	$wanted = array(
+		'home'        => array('pg-museum-poster', 'pg-museum-facts', 'pg-museum-trail', 'pg-museum-no'),
+		'exhibitions' => array('pg-museum-poster', 'pg-museum-facts'),
+		'collection'  => array('pg-museum-label', 'pg-museum-no'),
+	);
+	pg_assert_same(3, count($trees), 'home, exhibitions, collection');
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_mz_asm_tpl_nodes($tree, $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-museum-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		foreach ($wanted[$key] as $class) pg_assert_contains($class, $classes, $key . ': places ' . $class);
+		pg_assert_true($effects >= 2, $key . ': something moves');
+		pg_assert_same(1, $h1, $key . ': one h1');
+		if ($key === 'home') pg_assert_false(in_array('Figures', $labels, true), 'home: no figures band');
+	}
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the exhibition hero comes in on load');
+	foreach (array('When', 'Where', 'Curator', 'Admission') as $fact) pg_assert_contains('"tag":"dt","cssClass":"","_label":"Label","text":"' . $fact . '"', $home, 'the fact ' . $fact);
+	pg_assert_contains('"text":"Also on"', $home, 'the other exhibitions on');
+	pg_assert_contains('"id":"mz-home-trail"', $home, 'the trail is a search section');
+	$exhibitions = json_encode($trees['exhibitions'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_false(strpos($exhibitions, '"text":"Also on"') !== false, 'the list holds the others on the exhibitions page');
+	$collection = json_encode($trees['collection'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_same(3, substr_count($collection, 'pg-museum-no"'), 'three numbered details');
+	pg_assert_contains('"tag":"figcaption","cssClass":"pg-museum-label', $collection, 'the wall label is the caption');
+}

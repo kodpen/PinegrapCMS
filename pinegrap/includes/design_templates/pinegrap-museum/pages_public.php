@@ -136,29 +136,12 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Exhibitions, a collection of forty thousand works, talks, tours and family days in a city museum open to everyone.'),
     'tree'             => $page(array(
-        // The way in: what is on, the two ways on and a picture of the
-        // galleries.
-        $el('section', 'pmz-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Art, history and ideas'), 'pmz-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Come and look closer'), 'pmz-display display-3 mb-3'),
-                        $para($museum['tagline'] . '.', 'lead text-body-secondary mb-2'),
-                        $para($museum['hours'] . '.', 'small fw-semibold mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Book Timed Entry'), '{{page:book_online}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('Plan Your Visit'), '{{page:visit}}', 'btn btn-outline-secondary btn-lg px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('A long gallery with paintings on red walls and a bench in the middle'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $figures_band(),
+        // The way in: the exhibition on now as a poster, with the others
+        // on beside it (Museum: Exhibition Hero).
+        $exhibition_hero('light', array('clay', 'faces'), 'h1', 'mz-home-exhibition', array(
+            $link(lang('Book Tickets'), '{{page:book_online}}', 'btn btn-primary btn-lg px-4'),
+            $link(lang('Plan Your Visit'), '{{page:visit}}', 'btn btn-outline-secondary btn-lg px-4'),
+        ), 'pmz-hero py-5 overflow-hidden'),
 
         // The exhibitions on now, read from the Exhibitions collection.
         $el('section', 'py-5', lang('Now On'), array(
@@ -168,12 +151,10 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Collection'), array(
-            $container(array(
-                $section_header(lang('The collection'), lang('Explore the collection'), lang('Collection Highlights'), '{{page:collection}}'),
-                $row($department_cols, '4'),
-            )),
-        ), $searchable('mz-home-collection', lang('art, paintings, sculpture, objects, artworks, archive'))),
+        // The works not to miss, in walking order with their rooms
+        // (Museum: Highlights Trail); the departments are on the collection
+        // page.
+        $highlights_trail(array('coin', 'harbour', 'dancer', 'tile'), 'mz-home-trail', 'py-5 bg-body-tertiary'),
 
         $el('section', 'py-5', lang('Plan Your Visit'), array(
             $container(array(

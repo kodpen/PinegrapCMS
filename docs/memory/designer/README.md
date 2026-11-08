@@ -179,6 +179,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-marina-pages.md: Marina template 2.0.0: home, berths, the kind pages and arriving on the Marina blocks: the builders, each page's composition, motion, what left, the test
 - design-template-marina.md: Marina template (pinegrap-marina): kinds of berth, rates as words, Charter Boats and Events collections, berth requests, charter enquiries, event entries, no shop, pmn- look, tests.
 - design-template-market.md: Marketplace template (pinegrap-market): makers as a Sellers collection beside the store's catalog, one cart, maker applications and order help followed from the account, pmk- look, tests.
+- design-template-museum-pages.md: Museum template 2.0.0: home, exhibitions and collection on the Museum blocks: the builders, each page's composition, motion, what left, the test
 - design-template-museum.md: Museum template (pinegrap-museum): exhibitions and highlights as collections, event place and school visit requests, tickets and membership in the shop, timed entry, pmz- look, tests.
 - design-template-music.md: Music Artist template (pinegrap-music): shows and releases as collections, press kit with a public press folder, booking enquiries, merch and gift cards in the shop, pmu- look, tests.
 - design-template-news-layout.md: News template page shapes: the lead grid, most read in the article view, newsletter field order, one tip call, band padding, p titles in the drawer, whole tips, byline links.
@@ -242,6 +243,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
 - designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors)
+- designer-blocks-hotel.md: The Hotel block family (hotel- prefix, own palette group): room showcase, stay clock; general blocks placed instead; rules, test
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
 - designer-blocks-museum.md: The Museum block family (museum- prefix, own palette group): exhibition hero, look closer, highlights trail; general blocks placed instead; rules, test
