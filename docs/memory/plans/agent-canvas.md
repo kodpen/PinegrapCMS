@@ -22,7 +22,7 @@ description: Plan (owner 2026-11-08): agents create, read and edit Workspace can
 - C1 (M) Create and read: done in #8236 (`workspace/agent-canvas-svg.md`).
 - C2 (M) The channel draws a pending canvas and posts its picture: done in #8254 (`workspace/agent-canvas-picture.md`).
 - C3a (M) Edit in the API: `ws_canvas_edit_apply()`, the edit route, the agent version, the author's inbox line: done in #8252 (`workspace/agent-canvas-edit.md`).
-- C3b (S) The mark "Edited by @handle" with Undo: done in #PR (`workspace/agent-canvas-edit.md`).
+- C3b (S) The mark "Edited by @handle" with Undo: done in #8299 (`workspace/agent-canvas-edit.md`).
 - C4 (S) The built-in assistant and model assistants: the same as `ws_ai_step()` tools. After A4.
 
 ## Open questions
