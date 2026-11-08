@@ -35,6 +35,7 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 
 ## Where to start?
 - The lowest step not marked done. Models: `pinegrap-museum/`; `pinegrap-restaurant/` for dated events (`$event_on`, `$bind_date`, `current date` filter). `_test_sk_page_keys()` and `_test_sk_shop_keys()` (step 1 test) list every page key. Lists: `?lesson=` `$lesson_choices`, `?level=` `$level_titles`, `?age=` `$age_titles`, `?stay=` `$stay_choices`, `?group=` `$group_kinds`, `?difficulty=` `$difficulty_titles`, `?area=` `$area_titles`. Never `?view=` ([[design-template-hotel]]).
+- Steps 3-4 place the family blocks ([[designer-blocks-skiresort]]): `skiresort-conditions` and `skiresort-snow` on home and `conditions`, `skiresort-lifts` on `conditions` and `lifts`, `skiresort-passes` on `passes`, `skiresort-slope-map` on `slopes`; their CSS through `pg_designer_block_css()`, their structure drawn by the PHP tree.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
