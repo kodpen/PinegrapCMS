@@ -194,19 +194,11 @@ function api_form_facts($page_id, $page_folder, $page_style) {
 
 	$pattern = null;
 
-	require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
-
-	$record_page = pg_ap_record_page($page_id);
-
-	if ($record_page === null) {
-
-		$record_page = api_form_classic_record_page($page_id);
-
-	}
+	$record_page = api_form_record_page($page_id);
 
 	if ($record_page !== null) {
 
-		$pattern = api_form_record_url_pattern(URL_SCHEME . HOSTNAME_SETTING . PATH, $record_page['page_name'], pg_sw_form_pretty_urls($page_id));
+		$pattern = api_form_record_url_pattern(URL_SCHEME . HOSTNAME_SETTING . PATH, $record_page['page_name'], $record_page['pretty']);
 
 	}
 
@@ -215,6 +207,65 @@ function api_form_facts($page_id, $page_folder, $page_style) {
 		'is_collection'      => $is_collection,
 		'record_url_pattern' => $pattern
 	);
+
+}
+
+// The page a form's records are read on (page_id, page_name) and whether the
+// form names them in their addresses (pretty): the first public page with a
+// designed record view of the form (pg_ap_record_page()), else the first
+// public classic form item view page. Null when no public page shows them.
+// Asked once per form per request.
+function api_form_record_page($form_page_id) {
+
+	static $pages = array();
+
+	$form_page_id = (int)$form_page_id;
+
+	if (!array_key_exists($form_page_id, $pages)) {
+
+		require_once(PG_FUNCTIONS_DIR . '/includes/fn/activitypub_outbox.php');
+
+		$page = pg_ap_record_page($form_page_id);
+
+		if ($page === null) {
+
+			$page = api_form_classic_record_page($form_page_id);
+
+		}
+
+		$pages[$form_page_id] = ($page === null) ? null : array(
+			'page_id'   => (int)$page['page_id'],
+			'page_name' => (string)$page['page_name'],
+			'pretty'    => pg_sw_form_pretty_urls($form_page_id)
+		);
+
+	}
+
+	return $pages[$form_page_id];
+
+}
+
+// The address a record is read at on the site, null when no public page shows
+// the form's records or the record is not complete (only complete records
+// are shown). $row: forms row with page_id, complete, reference_code,
+// address_name.
+function api_form_submission_url($row) {
+
+	if (((int)$row['complete'] !== 1) || ((string)$row['reference_code'] === '')) {
+
+		return null;
+
+	}
+
+	$page = api_form_record_page($row['page_id']);
+
+	if ($page === null) {
+
+		return null;
+
+	}
+
+	return pg_sw_record_url($page['page_name'], $row['reference_code'], isset($row['address_name']) ? $row['address_name'] : '', $page['pretty'], URL_SCHEME . HOSTNAME_SETTING . PATH);
 
 }
 
@@ -377,6 +428,9 @@ function api_form_submission_present($row, $values) {
 		// for a record without one; the number once the order is completed.
 		'order_number'      => api_form_submission_order_number($row),
 		'paid'              => ($state === 'none') ? null : ($state === 'paid'),
+		// Where the record is read on the site (api_form_submission_url()),
+		// set by the handler beside the row; null when no page shows it.
+		'url'               => isset($row['record_url']) ? (string)$row['record_url'] : null,
 		'values'            => $values
 	);
 
@@ -724,6 +778,8 @@ function api_form_submissions($params) {
 
 		$key = (int)$row['id'];
 
+		$row['record_url'] = api_form_submission_url($row);
+
 		$out[] = api_form_submission_present($row, isset($values[$key]) ? $values[$key] : array());
 
 	}
@@ -764,7 +820,7 @@ function api_form_submission_select() {
 
 	if (pg_form_payment_ready()) {
 
-		return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
+		return "SELECT forms.id, forms.page_id, forms.reference_code, forms.address_name, forms.complete,
 				forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp,
 				forms.order_id, forms.paid_at, orders.order_number
 			FROM forms
@@ -772,7 +828,7 @@ function api_form_submission_select() {
 
 	}
 
-	return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
+	return "SELECT forms.id, forms.page_id, forms.reference_code, forms.address_name, forms.complete,
 			forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp
 		FROM forms";
 
@@ -797,6 +853,8 @@ function api_form_submission_owned($form_id, $submission_id) {
 
 	}
 
+	$row['record_url'] = api_form_submission_url($row);
+
 	return $row;
 
 }
@@ -817,6 +875,24 @@ function api_form_submission_get($params) {
 function api_form_text_field_types() {
 
 	return array('text box', 'text area', 'email address');
+
+}
+
+// Whether an update may write a field: a text box, a text area (a rich one
+// takes HTML), an e-mail address, or a choice field that takes one answer
+// (a pick list without multiple picks, a radio button group) - a collection's
+// Status field is one, written as sent among its choices. A check box group,
+// a multiple pick list, an upload, a signature and the date and time fields
+// are not.
+function api_form_field_updatable($field) {
+
+	if (in_array($field['type'], api_form_text_field_types(), true)) {
+
+		return true;
+
+	}
+
+	return in_array($field['type'], array('pick list', 'radio button'), true) && !api_form_field_takes_many($field);
 
 }
 
@@ -842,7 +918,7 @@ function api_form_submission_update($params) {
 
 		$fields = array();
 
-		foreach (api_rows("SELECT id, name, type FROM form_fields
+		foreach (api_rows("SELECT id, name, type, multiple, wysiwyg FROM form_fields
 			WHERE page_id = '" . (int)$row['page_id'] . "' AND name <> ''
 			ORDER BY sort_order ASC, id ASC") as $field) {
 
@@ -851,6 +927,14 @@ function api_form_submission_update($params) {
 				$fields[$field['name']] = $field;
 
 			}
+
+		}
+
+		$choices = array();
+
+		foreach (api_rows("SELECT form_field_id, value FROM form_field_options WHERE page_id = '" . (int)$row['page_id'] . "'") as $option) {
+
+			$choices[(int)$option['form_field_id']][] = (string)$option['value'];
 
 		}
 
@@ -871,19 +955,23 @@ function api_form_submission_update($params) {
 
 			}
 
-			if (!in_array($fields[$name]['type'], api_form_text_field_types(), true)) {
+			if (!api_form_field_updatable($fields[$name])) {
 
-				api_fail_validation(lang(array('string' => 'The field {var:1} is not a text field and cannot be written through the API.', 'vars' => $name)), 'values');
+				api_fail_validation(lang(array('string' => 'The field {var:1} cannot be changed through the API: only text, e-mail address and single-choice fields can.', 'vars' => $name)), 'values');
+
+			}
+
+			$field_id = (int)$fields[$name]['id'];
+
+			$checked = api_form_answer_check($fields[$name], isset($item['value']) ? (string)$item['value'] : '', isset($choices[$field_id]) ? $choices[$field_id] : array());
+
+			if (is_string($checked)) {
+
+				api_fail_validation($checked, 'values');
 
 			}
 
-			$value = trim(str_replace("\r\n", "\n", isset($item['value']) ? (string)$item['value'] : ''));
-
-			if (mb_strlen($value) > 10000) {
-
-				api_fail_validation(lang(array('string' => 'The answer to {var:1} is longer than the 10000 characters accepted.', 'vars' => $name)), 'values');
-
-			}
+			$value = $checked['value'];
 
 			if (($fields[$name]['type'] === 'email address') && ($value !== '') && !validate_email_address($value)) {
 
@@ -891,7 +979,7 @@ function api_form_submission_update($params) {
 
 			}
 
-			$writes[(int)$fields[$name]['id']] = array('name' => $name, 'value' => $value);
+			$writes[$field_id] = array('name' => $name, 'value' => $value, 'type' => api_form_field_is_rich_text($fields[$name]) ? 'html' : 'standard');
 
 		}
 
@@ -917,12 +1005,12 @@ function api_form_submission_update($params) {
 
 		if ($kept > 0) {
 
-			api_exec("UPDATE form_data SET data = '" . escape($write['value']) . "' WHERE id = '" . $kept . "' LIMIT 1");
+			api_exec("UPDATE form_data SET data = '" . escape($write['value']) . "', type = '" . $write['type'] . "' WHERE id = '" . $kept . "' LIMIT 1");
 
 		} else {
 
 			api_exec("INSERT INTO form_data (form_id, form_field_id, data, name, type)
-				VALUES ('" . $id . "', '" . $field_id . "', '" . escape($write['value']) . "', '" . escape($write['name']) . "', 'standard')");
+				VALUES ('" . $id . "', '" . $field_id . "', '" . escape($write['value']) . "', '" . escape($write['name']) . "', '" . $write['type'] . "')");
 
 		}
 
@@ -1008,14 +1096,101 @@ function api_form_field_takes_many($field) {
 
 }
 
+// The longest answer a field takes, in characters: a rich text answer is HTML
+// and takes api_form_html_max_length(), any other 10000.
+function api_form_answer_max_length($field) {
+
+	return api_form_field_is_rich_text($field) ? api_form_html_max_length() : 10000;
+
+}
+
+// The site's own addresses, which a rich text answer folds back to {path}:
+// the absolute address of the site path under the configured scheme and the
+// other one, and the site path itself.
+function api_form_site() {
+
+	$host = defined('HOSTNAME_SETTING') ? (string)HOSTNAME_SETTING : '';
+
+	$path = defined('PATH') ? (string)PATH : '/';
+
+	$bases = array();
+
+	if ($host !== '') {
+
+		$bases[] = (defined('URL_SCHEME') ? URL_SCHEME : 'https://') . $host . $path;
+		$bases[] = 'https://' . $host . $path;
+		$bases[] = 'http://' . $host . $path;
+
+	}
+
+	return array('bases' => array_values(array_unique($bases)), 'path' => $path);
+
+}
+
+// A rich text answer as the site stores it: reduced by the sanitiser a
+// visitor's answer goes through (the visitor profile, as custom_form.php
+// does), then every link and image on the site's own address written with the
+// {path} placeholder, so the record keeps working when the site moves. Pure:
+// $site is api_form_site().
+function api_form_html_answer_in($html, $site) {
+
+	$html = pg_sanitize_rich_text((string)$html);
+
+	foreach ($site['bases'] as $base) {
+
+		$html = str_replace(array('href="' . $base, 'src="' . $base), array('href="{path}', 'src="{path}'), $html);
+
+	}
+
+	return prepare_rich_text_editor_content_for_input($html, $site['path']);
+
+}
+
+// One answer to one field, checked and made ready to store: array('value' =>
+// the string to store), or the refusal as a string. The length of the sent
+// text (api_form_answer_max_length()), a choice field's option values, and a
+// rich text answer through api_form_html_answer_in(). Pure apart from reading
+// the site's addresses when $site is null.
+function api_form_answer_check($field, $value, $choices, $site = null) {
+
+	$name = (string)$field['name'];
+
+	$value = trim(str_replace("\r\n", "\n", (string)$value));
+
+	$max = api_form_answer_max_length($field);
+
+	if (mb_strlen($value) > $max) {
+
+		return lang(array('string' => 'The answer to {var:1} is longer than the {var:2} characters accepted.', 'vars' => array($name, $max)));
+
+	}
+
+	if (($value !== '') && pg_cf_type_has_options($field['type']) && !in_array($value, (array)$choices, true)) {
+
+		return lang(array('string' => 'The answer to {var:1} is not one of the choices the field offers.', 'vars' => $name));
+
+	}
+
+	if (($value !== '') && api_form_field_is_rich_text($field)) {
+
+		$value = trim(api_form_html_answer_in($value, ($site === null) ? api_form_site() : $site));
+
+	}
+
+	return array('value' => $value);
+
+}
+
 // The answers of a new submission, keyed by field id, from the {name, value}
 // objects sent: a string per field, a list for a field that takes several
 // (its name sent once per choice). Returns the refusal as a string instead
 // when one is not acceptable. Pure: the fields and their choices are given.
 //
-// $fields   field rows (id, name, type, multiple), in form order
+// $fields   field rows (id, name, type, multiple, wysiwyg), in form order
 // $choices  field id => the option values the field offers
-function api_form_submission_answers($items, $fields, $choices) {
+// $site     the site's addresses for a rich text answer (api_form_site());
+//           read from the site when not given
+function api_form_submission_answers($items, $fields, $choices, $site = null) {
 
 	$by_name = array();
 
@@ -1058,22 +1233,17 @@ function api_form_submission_answers($items, $fields, $choices) {
 
 		}
 
-		$value = trim(str_replace("\r\n", "\n", isset($item['value']) ? (string)$item['value'] : ''));
-
-		if (mb_strlen($value) > 10000) {
-
-			return lang(array('string' => 'The answer to {var:1} is longer than the 10000 characters accepted.', 'vars' => $name));
-
-		}
-
 		$key = (int)$field['id'];
 
-		if (($value !== '') && pg_cf_type_has_options($field['type'])
-			&& !in_array($value, isset($choices[$key]) ? $choices[$key] : array(), true)) {
+		$value = api_form_answer_check($field, isset($item['value']) ? (string)$item['value'] : '', isset($choices[$key]) ? $choices[$key] : array(), $site);
 
-			return lang(array('string' => 'The answer to {var:1} is not one of the choices the field offers.', 'vars' => $name));
+		if (is_string($value)) {
+
+			return $value;
 
 		}
+
+		$value = $value['value'];
 
 		if (api_form_field_takes_many($field)) {
 
@@ -1096,6 +1266,22 @@ function api_form_submission_answers($items, $fields, $choices) {
 	}
 
 	return $answers;
+
+}
+
+// Whether a user row (user_id, user_role, user_manage_forms; null when there
+// is no enabled user) may be named as a record's author: a member of staff
+// who may work with forms, the rule the forms scope itself follows - a role
+// below the user role, or the forms right. Pure.
+function api_form_author_is_staff($user) {
+
+	if (!is_array($user) || ((int)$user['user_id'] <= 0)) {
+
+		return false;
+
+	}
+
+	return ((int)$user['user_role'] < 3) || ((int)$user['user_manage_forms'] === 1);
 
 }
 
@@ -1147,6 +1333,26 @@ function api_form_submission_create($params) {
 
 	$complete = array_key_exists('complete', $params) ? (bool)$params['complete'] : true;
 
+	// The record's author: the owner of the key, or a member of staff named
+	// by author_user_id (a byline shows forms.user_id as the submitter).
+	$author_id = (int)$app['owner']['id'];
+
+	if (isset($params['author_user_id']) && ((int)$params['author_user_id'] !== $author_id)) {
+
+		$author = api_row("SELECT user_id, user_role, user_manage_forms FROM user
+			WHERE user_id = '" . (int)$params['author_user_id'] . "'" . pg_user_enabled_sql() . "
+			LIMIT 1");
+
+		if (!api_form_author_is_staff($author)) {
+
+			api_fail_validation(lang('The author must be an enabled member of staff who may work with forms.'), 'author_user_id');
+
+		}
+
+		$author_id = (int)$author['user_id'];
+
+	}
+
 	$pretty_urls = check_if_pretty_urls_are_enabled($id);
 
 	// The forms scope is held by roles below the user role and by a user with
@@ -1192,13 +1398,20 @@ function api_form_submission_create($params) {
 
 	api_dry_run_stop('created', 'form_submission', array('form_id' => $id, 'values' => count($answers), 'complete' => $complete));
 
-	$created = pg_submitted_form_create($liveform, $fields, $id, $complete, (int)$app['owner']['id'], $office_use_only_access, $pretty_urls, array(), !empty($params['send_notifications']));
+	$created = pg_submitted_form_create($liveform, $fields, $id, $complete, $author_id, $office_use_only_access, $pretty_urls, array(), !empty($params['send_notifications']));
 
 	$liveform->remove_form();
 
 	if ($created === false) {
 
 		api_fail(500, 'server_error', lang('The submission could not be saved.'));
+
+	}
+
+	// The author is the submitter; the change is the key owner's.
+	if ($author_id !== (int)$app['owner']['id']) {
+
+		api_exec("UPDATE forms SET last_modified_user_id = '" . (int)$app['owner']['id'] . "' WHERE id = '" . (int)$created['id'] . "' LIMIT 1");
 
 	}
 
@@ -1343,6 +1556,7 @@ function api_form_submission_schema() {
 		'updated_at'        => 'string?',
 		'order_number'      => 'string?',
 		'paid'              => 'boolean?',
+		'url'               => 'string?',
 		'values'            => array(array(
 			'field_id' => 'integer',
 			'name'     => 'string',
