@@ -16,4 +16,8 @@ description: Design of plans/design-template-zoo.md: the shipped features the Zo
 - Prefix `pzo-` for classes (`pzo-brand`, `pzo-display`, `pzo-hero`, `pzo-zone`, `pzo-price`), `zoo-` for field and section ids. Two fonts: Bricolage Grotesque headings, Rubik body. A green and sand palette; order and look settled by the assembly step; icon `bi-tree`. No `opacity-*` on text ([[design-template-text-contrast]]). No fixed date, year or month in the sample: seasons are words, events count from today.
 - Turkish: "hayvanat bahçesi" for the zoo, "akvaryum", "hayvan", "yaşam alanı" for a habitat, "besleme saati" for a feeding time, "bakıcı sohbeti" for a keeper talk, "park haritası", "bilet", "üyelik", "sahiplenme" for an adoption, "okul gezisi" for a school visit, "grup ziyareti", "koruma" for conservation, "nesli tükenmekte" for Endangered, "etkinlik", "Haberler" for News; check every shared key in tr.json before reuse.
 
+## Which field names do the cards read?
+- Animals (step 5 names its fields so): `title`, `species`, `habitat`, `habitat_number`, `animal_class`, `conservation_status`, `diet`, `lifespan`, `summary`, `details`, `photo_1`, `featured`.
+- Events (step 7): `title`, `event_date`, `event_time`, `kind`, `place`, `price`, `summary`, `photo_1`, `featured`.
+
 Related: docs/memory/plans/design-template-zoo.md

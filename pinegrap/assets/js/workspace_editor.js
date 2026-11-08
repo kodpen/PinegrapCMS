@@ -689,8 +689,10 @@
 
     // A text split into lines of words and the blocks among them; the lines
     // of a list or a quote one block. headings: a note's text, whose
-    // headings and rules are blocks too.
-    function parseBlocks(markup, headings) {
+    // headings and rules are blocks too. media: a note box's reader of a line
+    // linking only to a file of this site (Editor's mediaOf), which makes
+    // that line a media card.
+    function parseBlocks(markup, headings, media) {
         var lines = String(markup || '').replace(/\r\n?/g, '\n').split('\n');
         var out = [];
 
@@ -757,6 +759,11 @@
 
             if (headings && ruleLine(line)) {
                 out.push({ kind: 'rule', markup: '---' });
+                continue;
+            }
+
+            if (media && media(line)) {
+                out.push({ kind: 'media', markup: line.trim() });
                 continue;
             }
 
@@ -1590,6 +1597,64 @@
         return out;
     }
 
+    // ── Files of this site on a note line of their own ────────────────
+
+    // What a file is, for the way it is shown (twin of ws_file_kind()).
+    function fileKind(name) {
+        var extension = (/\.([^.]+)$/.exec(String(name || '')) || ['', ''])[1].toLowerCase();
+
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'bmp'].indexOf(extension) !== -1) {
+            return 'image';
+        }
+
+        if (['mp4', 'webm', 'mov', 'm4v', 'ogv'].indexOf(extension) !== -1) {
+            return 'video';
+        }
+
+        if (['mp3', 'm4a', 'wav', 'ogg', 'oga', 'opus', 'aac', 'weba'].indexOf(extension) !== -1) {
+            return 'audio';
+        }
+
+        return (extension === 'pdf') ? 'pdf' : 'file';
+    }
+
+    // A note line holding only a link to a file of this site (twin of
+    // ws_note_media_line()): label, url, name, kind; null for any other
+    // line. base: where the site serves its files (CFG.urls.files), with or
+    // without its scheme.
+    function mediaLine(line, base) {
+        var site = String(base || '').replace(/^https?:\/\//i, '').toLowerCase();
+        var match = /^[ \t]*\[([^\]\n]{1,300})\]\((https?:\/\/([^\s()<>"']{1,1000}))\)[ \t]*$/i.exec(String(line || ''));
+
+        if (site === '' || !match || match[3].slice(0, site.length).toLowerCase() !== site) {
+            return null;
+        }
+
+        var rest = match[3].slice(site.length);
+
+        // One name, no folder, query or fragment: that is how a file is served.
+        if (!/^[^\/?#\\]{1,255}$/.test(rest)) {
+            return null;
+        }
+
+        var name = rest;
+
+        try {
+            name = decodeURIComponent(rest);
+        } catch (error) {
+            // A broken escape stays as written, as rawurldecode() leaves it.
+            name = rest;
+        }
+
+        if (name === '' || name.charAt(0) === '.' || /[\/\\\x00-\x1f\x7f]/.test(name) || name.indexOf('.') === -1) {
+            return null;
+        }
+
+        return { label: match[1].trim(), url: match[2], name: name, kind: fileKind(name) };
+    }
+
+    var MEDIA_ICONS = { image: 'bi-file-earmark-image', video: 'bi-file-earmark-play', audio: 'bi-file-earmark-music', pdf: 'bi-file-earmark-pdf', file: 'bi-file-earmark' };
+
     // ── Cards for tables, checklists and code ─────────────────────────
 
     function blockSummary(kind, markup) {
@@ -1604,6 +1669,12 @@
     }
 
     function blockSummaryOf(kind, markup) {
+        if (kind === 'media') {
+            var link = /^\s*\[([^\]\n]+)\]\(([^)\s]+)\)/.exec(markup) || ['', markup, ''];
+
+            return { icon: MEDIA_ICONS[fileKind(link[2].split(/[?#]/)[0])] || MEDIA_ICONS.file, label: link[1].trim(), preview: '' };
+        }
+
         if (kind === 'table') {
             var lines = markup.split('\n');
             var columns = tableCells(lines[0] || '').length;
@@ -1644,7 +1715,7 @@
         card.contentEditable = 'false';
         card.setAttribute('data-kind', kind);
         card.setAttribute('data-markup', markup);
-        card.title = t('block_edit');
+        card.title = (kind === 'media') ? summary.label : t('block_edit');
         card.appendChild(icon(summary.icon));
 
         var words = el('span', 'ws-rich-block-text');
@@ -3769,6 +3840,12 @@
         self.slash = null;
         self.slashSkip = -1;
 
+        // A note's box with options.media: a line linking only to a file of
+        // this site is a media card (parseBlocks()).
+        self.mediaOf = (self.options.headings && self.options.media) ? function (line) {
+            return mediaLine(line, (CFG.urls || {}).files);
+        } : null;
+
         var node = el('div', 'ws-rich form-control');
         node.contentEditable = 'true';
         node.setAttribute('role', 'textbox');
@@ -3875,7 +3952,8 @@
         node.addEventListener('click', function (event) {
             var card = event.target.closest ? event.target.closest('.ws-rich-block') : null;
 
-            if (!card || !node.contains(card)) {
+            // A recording's player in a media card is used where it is.
+            if (!card || !node.contains(card) || event.target.closest('[data-ws-media-player]')) {
                 return;
             }
 
@@ -3891,6 +3969,11 @@
                 card.remove();
                 self.tidy();
                 node.dispatchEvent(new Event('input', { bubbles: true }));
+                return;
+            }
+
+            if (card.getAttribute('data-kind') === 'media') {
+                self.openMedia(card);
                 return;
             }
 
@@ -4446,7 +4529,7 @@
         // any other starts the history afresh.
         setMarkup: function (markup, labels, asStep) {
             var node = this.node;
-            var blocks = parseBlocks(markup, !!this.options.headings);
+            var blocks = parseBlocks(markup, !!this.options.headings, this.mediaOf);
 
             if (asStep && this.history.pending) {
                 this.record();
@@ -4475,6 +4558,8 @@
         // tried again on the next change.
         drawPreviews: function () {
             var self = this;
+
+            self.drawMedia();
 
             if (!self.options.previews || !CFG.api_url) {
                 return;
@@ -4640,6 +4725,73 @@
             this.node.dispatchEvent(new Event('input', { bubbles: true }));
         },
 
+        // A file added to the note (attached, a canvas, a recording): in a
+        // box that draws media, a card on a line of its own; else a link at
+        // the caret.
+        insertFile: function (name, url) {
+            var markup = '[' + String(name || '').replace(/[\[\]\n]/g, '') + '](' + url + ')';
+
+            if (this.mediaOf && this.mediaOf(markup)) {
+                this.insertBlock('media', markup);
+                this.drawPreviews();
+                return;
+            }
+
+            this.insertLink(name, url);
+        },
+
+        // A media card clicked: the box's owner shows the file (the image
+        // viewer, the file preview).
+        openMedia: function (card) {
+            var markup = card.getAttribute('data-markup') || '';
+            var media = this.mediaOf ? this.mediaOf(markup) : null;
+
+            if (media && this.options.media && this.options.media.open) {
+                this.options.media.open(media);
+            }
+        },
+
+        // A media card whose file the box's owner plays where it is (a
+        // recording, options.media.player()) holds that player instead of
+        // the server's drawing. A player copied back by undo has lost its
+        // listeners: it is made again.
+        drawMedia: function () {
+            var self = this;
+            var player = self.mediaOf && self.options.media && self.options.media.player;
+
+            if (!player) {
+                return;
+            }
+
+            Array.prototype.forEach.call(self.node.querySelectorAll('.ws-rich-block-media'), function (card) {
+                var markup = card.getAttribute('data-markup') || '';
+
+                if (card.wsMedia === markup) {
+                    return;
+                }
+
+                var media = self.mediaOf(markup);
+                var made = media ? player(media) : null;
+
+                Array.prototype.forEach.call(card.querySelectorAll('[data-ws-media-player], .ws-rich-block-view'), function (old) { old.remove(); });
+                card.wsMedia = markup;
+
+                if (!made) {
+                    card.classList.remove('ws-rich-block-shown');
+                    card.wsShown = null;
+                    return;
+                }
+
+                var holder = el('span', 'ws-rich-block-player');
+                holder.setAttribute('data-ws-media-player', '1');
+                holder.appendChild(made);
+                card.insertBefore(holder, card.querySelector('.ws-rich-block-remove'));
+                card.classList.add('ws-rich-block-shown');
+                // Drawn here: the server is not asked for it.
+                card.wsShown = markup;
+            });
+        },
+
         // A table, a checklist or code, as a card on a line of its own.
         insertBlock: function (kind, markup) {
             this.restore();
@@ -4729,7 +4881,7 @@
                 return false;
             }
 
-            var blocks = parseBlocks(markup, !!this.options.headings);
+            var blocks = parseBlocks(markup, !!this.options.headings, this.mediaOf);
 
             if (blocks.length === 1 && blocks[0].kind === 'table') {
                 this.pasteTable(blocks[0].markup);
@@ -4790,7 +4942,7 @@
         // as one step of the box's undo.
         insertStored: function (count, markup, labels) {
             var self = this;
-            var blocks = parseBlocks(String(markup || ''), !!self.options.headings);
+            var blocks = parseBlocks(String(markup || ''), !!self.options.headings, self.mediaOf);
 
             self.restore();
 
@@ -7364,6 +7516,7 @@
         openCode: openCode,
         openCalc: openCalc,
         serialize: serialize,
+        mediaLine: mediaLine,
         hideFloating: function () { hideBar(); hideTip(); }
     };
 })();
