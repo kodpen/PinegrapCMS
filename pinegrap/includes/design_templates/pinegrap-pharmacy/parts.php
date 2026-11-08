@@ -744,24 +744,6 @@ $check_card = function ($key) use ($el, $heading, $para, $link, $span, $icon, $c
     ), '6', '3');
 };
 
-// One of the on-duty answers (the on-duty page and the home); the
-// emergency one in the danger colour.
-$duty_card = function ($key) use ($el, $heading, $para, $col, $icon, $icon_tile, $duty_facts) {
-    $f = $duty_facts[$key];
-    $urgent = $key === 'emergency';
-    return $col(array(
-        $el('article', 'card h-100 rounded-4 ' . ($urgent ? 'border-danger border-2' : 'border-0 shadow-sm'), lang('Duty Card'), array(
-            $el('div', 'card-body p-4', lang('Card Body'), array(
-                $urgent
-                    ? $el('span', 'd-inline-flex align-items-center justify-content-center rounded-circle bg-danger-subtle text-danger-emphasis p-3 lh-1 mb-3', lang('Icon Box'), array($icon($f['icon'], 'fs-4')))
-                    : $icon_tile($f['icon'], 'mb-3'),
-                $heading('h3', $f['title'], 'prx-display h5 mb-2'),
-                $para($f['text'], 'small text-body-secondary mb-0'),
-            )),
-        )),
-    ), '', '4');
-};
-
 // A pharmacist's card of the lists (the home and the team page): the
 // photo, the service they lead, the name linking the pharmacist's page, the
 // role, the summary and the years of practice. Every value is bound to the
