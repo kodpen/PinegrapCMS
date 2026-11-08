@@ -124,6 +124,7 @@ function test_design_template_collection_forms()
 		'pinegrap-coworking'  => array('blog_new', 'event_new', 'space_new', 'staff_entry'),
 		'pinegrap-florist'    => array('blog_new', 'staff_entry', 'work_new'),
 		'pinegrap-homeservices' => array('blog_new', 'service_new', 'staff_entry', 'team_new'),
+		'pinegrap-veterinary' => array('blog_new', 'staff_entry', 'vet_new'),
 	);
 	$templates = _test_tpl_coll_templates();
 	foreach ($expected as $id => $keys) {

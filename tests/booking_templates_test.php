@@ -34,6 +34,7 @@ function _test_booking_tpl_list()
 		'pinegrap-pharmacy' => array('prescription', 'book_online'),
 		'pinegrap-coworking' => array('tour', 'book_online'),
 		'pinegrap-florist' => array('event_enquiry', 'consultation'),
+		'pinegrap-veterinary' => array('appointment', 'book_online'),
 	);
 }
 
