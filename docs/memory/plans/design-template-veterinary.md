@@ -21,7 +21,7 @@ description: Plan: the Veterinary Practice design template (pinegrap-veterinary)
 
 - 5 (done, #8003): `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: the health plans and pet care products); test.
 
-- 6: `standard.php`: contact, inbox, conversation, newsletter, Pet Care Articles (`blog`, filtered by `?species=`), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 6 (done, #8054): `standard.php`: contact, inbox, conversation, newsletter, Pet Care Articles (`blog`, filtered by `?species=`), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 7: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 
