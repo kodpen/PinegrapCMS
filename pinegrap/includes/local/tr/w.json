@@ -93,6 +93,7 @@
     "Waiting: Claude's runs for today are used up. Next try: {var:1}.": "Bekliyor: Claude'un bugünkü çalıştırma hakkı doldu. Sonraki deneme: {var:1}.",
     "Waiting: Claude's runs for today are used up; it is tried again at {var:1}.": "Bekliyor: Claude'un bugünkü çalıştırma hakkı doldu; saat {var:1}'de yeniden denenecek.",
     "Waiting: Pinegrap AI could not be reached. Next try: {var:1}.": "Bekliyor: Pinegrap AI'a ulaşılamadı. Sonraki deneme: {var:1}.",
+    "Waiting: {var:1} could not be reached. Next try: {var:2}.": "Bekliyor: {var:1} ulaşılamadı. Sonraki deneme: {var:2}.",
     "Waitlisted": "Bekleme listesinde",
     "Waits until {var:1}, then the boxes after it start.": "{var:1} tarihine kadar bekler, sonra ardından gelen kutular başlar.",
     "Waits until {var:1}.": "{var:1} saatine kadar bekliyor.",

@@ -1165,6 +1165,11 @@ function ws_claude_request_state($viewer, $row, $session = false)
         return ws_mcp_agent_request_state($row, $viewer);
     }
 
+    // A registry agent's request names the agent (agent_shown.php).
+    if (function_exists('ws_agent_request_parse') && ws_agent_request_parse((string) ($row['agent'] ?? ''))) {
+        return ws_agent_request_state($row);
+    }
+
     $status = (string) $row['status'];
     $hold = ws_claude_config()['hold_until'];
 

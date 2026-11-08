@@ -67,9 +67,10 @@ function ws_app_handle($name, $app_id, $taken = array())
  * @param int        $claude_app_id the application linked as Claude (0 for none)
  * @param int        $ai_app_id     Pinegrap AI's application (0 for none)
  * @param string[]   $taken         handles held already (MCP servers' aliases)
+ * @param array      $agents        registry agents by their application: handle, name (ws_agent_tags())
  * @return array label, meta, icon, known, gone
  */
-function ws_app_tag($app_id, $app, $claude_app_id, $ai_app_id, $taken = array())
+function ws_app_tag($app_id, $app, $claude_app_id, $ai_app_id, $taken = array(), $agents = array())
 {
     $app_id = (int) $app_id;
 
@@ -81,6 +82,13 @@ function ws_app_tag($app_id, $app, $claude_app_id, $ai_app_id, $taken = array())
 
     if (($app_id > 0) && ($app_id === (int) $claude_app_id)) {
         return array('label' => '@Claude', 'meta' => lang('AI assistant'), 'icon' => 'bi-stars', 'known' => true, 'gone' => false);
+    }
+
+    // A registry agent's application reads as the agent (agent_shown.php).
+    if (isset($agents[$app_id]) && ((string) ($agents[$app_id]['handle'] ?? '') !== '')) {
+        $name = trim((string) ($agents[$app_id]['name'] ?? ''));
+
+        return array('label' => '@' . $agents[$app_id]['handle'], 'meta' => ($name !== '') ? $name : lang('Agent'), 'icon' => 'bi-robot', 'known' => true, 'gone' => false);
     }
 
     if (!is_array($app)) {
@@ -162,14 +170,36 @@ function ws_app_picker_entries($apps, $hooks, $chain, $claude_app_id, $ai_app_id
 }
 
 /**
- * The applications the @ picker offers in a channel (ws_app_picker_entries()),
- * read with one query for the subscriptions and the conditions
- * ws_message_tell_apps() asks before it tells an application.
+ * The applications the @ picker offers in a channel: the registry agents it
+ * allows (ws_agent_picker_entries()), then the applications a mention
+ * reaches through their subscription.
  *
  * @param array $channel the channel or discussion
  * @return array[]
  */
 function ws_channel_app_picker($channel)
+{
+    // The registry agents the channel allows (agent_shown.php) come first;
+    // an application that is one is not offered twice.
+    $agents = (function_exists('ws_agent_picker_entries') && function_exists('ws_agent_channel_rows'))
+        ? ws_agent_picker_entries(ws_agent_channel_rows((int) $channel['id']))
+        : array();
+    $tokens = array_column($agents, 'token');
+
+    return array_merge($agents, array_values(array_filter(ws_channel_app_hook_picker($channel), function ($entry) use ($tokens) {
+        return !in_array($entry['token'], $tokens, true);
+    })));
+}
+
+/**
+ * The applications a mention reaches through their subscription
+ * (ws_app_picker_entries()), read with one query for the subscriptions and
+ * the conditions ws_message_tell_apps() asks before it tells an application.
+ *
+ * @param array $channel the channel or discussion
+ * @return array[]
+ */
+function ws_channel_app_hook_picker($channel)
 {
     if (!function_exists('ws_app_hears_mentions') || !function_exists('api_webhook_channel_groups_ready')) {
         return array();

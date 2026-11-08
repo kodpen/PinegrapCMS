@@ -1784,11 +1784,17 @@ function ws_api_messages_update($params)
     $viewer = ws_api_viewer();
     $message = ws_api_message_or_404($viewer, $params['id']);
 
-    ws_api_own_words_only();
+    // An agent's own key changes the agent's own messages (agent_shown.php);
+    // any other caller only the person's.
+    $as_app = function_exists('ws_api_agent_own_app') ? ws_api_agent_own_app() : 0;
+
+    if ($as_app <= 0) {
+        ws_api_own_words_only();
+    }
 
     // The checks ws_message_edit() makes, made first so that a dry run meets
     // the same refusals.
-    $checked = ws_message_edit_check($viewer, $message, (string) $params['text']);
+    $checked = ws_message_edit_check($viewer, $message, (string) $params['text'], $as_app);
 
     if (!$checked['ok']) {
         ws_api_message_refused($checked['error'], 'text');
@@ -1796,7 +1802,7 @@ function ws_api_messages_update($params)
 
     api_dry_run_stop('updated', 'workspace_message', array('id' => (int) $message['id'], 'channel_id' => (int) $message['channel_id']));
 
-    $result = ws_message_edit($viewer, $message, (string) $params['text']);
+    $result = ws_message_edit($viewer, $message, (string) $params['text'], $as_app);
 
     if (!$result['ok']) {
         ws_api_message_refused($result['error'], 'text');
@@ -1811,10 +1817,13 @@ function ws_api_messages_delete($params)
 {
     $viewer = ws_api_viewer();
     $message = ws_api_message_or_404($viewer, $params['id']);
+    $as_app = function_exists('ws_api_agent_own_app') ? ws_api_agent_own_app() : 0;
 
-    ws_api_own_words_only();
+    if ($as_app <= 0) {
+        ws_api_own_words_only();
+    }
 
-    $checked = ws_message_delete_check($viewer, $message);
+    $checked = ws_message_delete_check($viewer, $message, $as_app);
 
     if (!$checked['ok']) {
         ws_api_message_refused($checked['error']);
@@ -1824,8 +1833,8 @@ function ws_api_messages_delete($params)
 
     // Somebody else's message taken out by staff leaves a line in the
     // activity log.
-    $result = ws_api_as_owner(function () use ($viewer, $message) {
-        return ws_message_delete($viewer, $message);
+    $result = ws_api_as_owner(function () use ($viewer, $message, $as_app) {
+        return ws_message_delete($viewer, $message, $as_app);
     });
 
     if (!$result['ok']) {
