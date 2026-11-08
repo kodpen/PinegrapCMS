@@ -2083,7 +2083,7 @@ function ws_handle_action($action, $request)
                 ws_flow_mention_after_send($viewer, $channel, $result['message_id'], $body);
             }
 
-            return ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $asked['claude'], 'ai' => $asked['ai'], 'agent' => $asked['agent']));
+            return ws_action_ok(array('message_id' => $result['message_id'], 'claude' => $asked['claude'], 'ai' => $asked['ai'] || !empty($asked['models']), 'agent' => $asked['agent']));
 
         case 'ws_edit':
             $message = ws_message((int) ($request['message_id'] ?? 0));
@@ -2538,7 +2538,7 @@ function ws_handle_action($action, $request)
                 ws_claude_dispatch();
             }
 
-            return ws_action_ok(array('message_id' => $result['message_id'], 'ai' => !empty($asked['ai']), 'agent' => !empty($asked['agent'])));
+            return ws_action_ok(array('message_id' => $result['message_id'], 'ai' => !empty($asked['ai']) || !empty($asked['models']), 'agent' => !empty($asked['agent'])));
 
         // A file of the file manager in a conversation (library.php): the
         // picker under the paperclip, the channels the file manager's "Send

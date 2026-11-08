@@ -864,6 +864,7 @@
     "Only an account with a valid tax number is sent.": "Yalnız geçerli vergi numarası olan cari gönderilir.",
     "Only an account with a valid tax number is sent; the walk-in account never is.": "Yalnız geçerli vergi numarası olan cari gönderilir; sıcak satış carisi hiç gönderilmez.",
     "Only an account with the user role takes permissions; the other roles hold every right by their role.": "Yetkileri yalnızca kullanıcı rolündeki bir hesap alır; diğer roller her yetkiyi rolleri gereği taşır.",
+    "Only an active application agent, with its own key, may use this endpoint.": "Bu uç noktayı yalnızca etkin bir uygulama ajanı, kendi anahtarıyla kullanabilir.",
     "Only an active repeat can change its till.": "Yalnız süren bir tekrarın hesabı değiştirilebilir.",
     "Only an administrator can add MCP servers.": "MCP sunucularını yalnızca bir yönetici ekleyebilir.",
     "Only an administrator can change a role.": "Rolü yalnız bir yönetici değiştirebilir.",

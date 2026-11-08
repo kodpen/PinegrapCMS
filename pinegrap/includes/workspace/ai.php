@@ -1173,6 +1173,11 @@ function ws_ai_kick($budget = WS_AI_BUDGET)
     // AI's licence or hold (model_agents.php).
     $models = function_exists('ws_model_kick') ? ws_model_kick($budget) : 'idle';
 
+    // Push doors that failed are knocked again once their wait is over.
+    if (function_exists('ws_agent_knocks_retry')) {
+        ws_agent_knocks_retry();
+    }
+
     if (!ws_ai_schema_ready() || !ws_ai_config()['enabled']) {
         return array('status' => $models);
     }
@@ -4962,3 +4967,6 @@ function ws_ai_settings_card($self_url, $viewer)
 
 // The model assistants, answered with this file's loop.
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/model_agents.php');
+
+// The agents' request queue and push door.
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_queue.php');

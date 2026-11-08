@@ -52,6 +52,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_saved_replies.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_note_groups.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_agents.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_memory.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_agent_requests.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -2632,7 +2633,8 @@ function ws_api_routes()
     // application proposes (api_proposals.php), workflow tables
     // (api_wtables.php), e-mail conversations (api_mail.php), saved
     // replies (api_saved_replies.php), note groups (api_note_groups.php),
-    // the agents of a channel (api_agents.php) and a channel's memory with
-    // the decision mark (api_memory.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes());
+    // the agents of a channel (api_agents.php), a channel's memory with the
+    // decision mark (api_memory.php) and the agents' requests
+    // (api_agent_requests.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes(), ws_note_group_api_routes(), ws_agent_api_routes(), ws_memory_api_routes(), ws_agent_request_api_routes());
 }

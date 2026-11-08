@@ -1280,7 +1280,7 @@ function ws_api_assistants_carry_on($asked, $here = false)
     }
 
     $agent = !empty($asked['agent']) && function_exists('ws_mcp_agent_kick');
-    $ai = !empty($asked['ai']) && function_exists('ws_ai_kick');
+    $ai = (!empty($asked['ai']) || !empty($asked['models'])) && function_exists('ws_ai_kick');
     $where = ws_api_carry_on_where(function_exists('fastcgi_finish_request'), $here);
 
     if ((!$agent && !$ai) || ($where === '')) {
