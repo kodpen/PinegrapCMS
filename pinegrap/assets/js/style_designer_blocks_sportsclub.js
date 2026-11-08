@@ -53,9 +53,9 @@ StyleDesigner.registerBlockFamily(function (kit) {
     // A result said with an icon and a word, never by colour alone.
     var outcome = function (kind) {
         var spec = {
-            won:   ['bi-check-circle-fill', 'bg-success-subtle text-success-emphasis', _sdT('Won')],
-            drawn: ['bi-dash-circle-fill', 'bg-secondary-subtle text-secondary-emphasis', _sdT('Drawn')],
-            lost:  ['bi-x-circle-fill', 'bg-danger-subtle text-danger-emphasis', _sdT('Lost')]
+            won:   ['bi-check-circle-fill', 'bg-success-subtle text-success-emphasis', _sdT('Win')],
+            drawn: ['bi-dash-circle-fill', 'bg-secondary-subtle text-secondary-emphasis', _sdT('Drawn game')],
+            lost:  ['bi-x-circle-fill', 'bg-danger-subtle text-danger-emphasis', _sdT('Loss')]
         }[kind];
         return kit.tag('span', 'badge rounded-pill ' + spec[1], _sdT('Result Badge'), [
             kit.icon(spec[0], 'me-1'),
@@ -85,13 +85,13 @@ StyleDesigner.registerBlockFamily(function (kit) {
                         ]),
                         kit.h('h2', _sdT('Mill Lane against Riverside Rovers'), 'visually-hidden'),
                         fx(kit.div('d-flex align-items-center justify-content-center gap-3 gap-md-5 py-4', _sdT('Teams'), [
-                            side(_sdT('ML'), _sdT('Mill Lane'), _sdT('Home')),
+                            side(_sdT('ML'), _sdT('Mill Lane'), _sdT('Home side')),
                             kit.div('text-center', _sdT('Kick-off'), [
                                 kit.h('span', _sdT('Saturday'), 'd-block small text-body-secondary'),
                                 kit.time('15:00', _sdT('3:00 pm'), 'd-block display-6 pg-sc-score', _sdT('Kick-off Time')),
                                 kit.h('span', _sdT('vs'), 'd-block small fw-semibold text-uppercase text-primary')
                             ]),
-                            side(_sdT('RR'), _sdT('Riverside Rovers'), _sdT('Away'))
+                            side(_sdT('RR'), _sdT('Riverside Rovers'), _sdT('Away side'))
                         ]), 'slide-up', 'view', 150),
                         kit.p(_sdT('Mill Lane Ground · gates open an hour before kick-off'), 'text-center text-body-secondary mb-4'),
                         kit.div('d-flex flex-wrap justify-content-center gap-2', _sdT('Buttons'), [
@@ -128,16 +128,16 @@ StyleDesigner.registerBlockFamily(function (kit) {
                 kit.h('span', day, 'd-block small text-body-secondary'),
                 kit.time(time, label, 'd-block fw-bold pg-sc-score', _sdT('Kick-off Time'))
             ]),
-            kit.div('flex-grow-1', _sdT('Match'), [
+            kit.div('flex-grow-1', _sdT('Match Copy'), [
                 kit.h('h4', opponent, 'h6 fw-bold mb-0'),
                 kit.h('span', competition, 'small text-body-secondary')
             ]),
-            kit.h('span', home ? _sdT('Home') : _sdT('Away'), 'badge rounded-pill ' + (home ? 'text-bg-primary' : 'bg-body-secondary text-body'))
+            kit.h('span', home ? _sdT('Home match') : _sdT('Away match'), 'badge rounded-pill ' + (home ? 'text-bg-primary' : 'bg-body-secondary text-body'))
         ]);
     };
     var result = function (n, opponent, competition, score, kind) {
         return kit.tag('li', 'd-flex align-items-center gap-3 py-3 border-bottom', _sdT('Result {var}', n), [
-            kit.div('flex-grow-1', _sdT('Match'), [
+            kit.div('flex-grow-1', _sdT('Match Copy'), [
                 kit.h('h4', opponent, 'h6 fw-bold mb-0'),
                 kit.h('span', competition, 'small text-body-secondary')
             ]),
@@ -204,14 +204,14 @@ StyleDesigner.registerBlockFamily(function (kit) {
             kit.tag('caption', 'visually-hidden', _sdT('Table Caption'), [kit.h('span', _sdT('League table after twelve matches'))]),
             kit.tag('thead', '', _sdT('Table Head'), [
                 kit.tag('tr', '', _sdT('Head Row'), [
-                    head(_sdT('#'), _sdT('Position')),
+                    head(_sdT('#'), _sdT('League position')),
                     head(_sdT('Club'), _sdT('Club'), ''),
-                    head(_sdT('P'), _sdT('Played')),
-                    head(_sdT('W'), _sdT('Won')),
-                    head(_sdT('D'), _sdT('Drawn')),
-                    head(_sdT('L'), _sdT('Lost')),
+                    head(_sdT('P'), _sdT('Matches played')),
+                    head(_sdT('W'), _sdT('Wins')),
+                    head(_sdT('D'), _sdT('Draws')),
+                    head(_sdT('L'), _sdT('Losses')),
                     head(_sdT('GD'), _sdT('Goal difference')),
-                    head(_sdT('Pts'), _sdT('Points'))
+                    head(_sdT('Pts'), _sdT('League points'))
                 ])
             ]),
             fx(kit.tag('tbody', '', _sdT('Table Body'), [
