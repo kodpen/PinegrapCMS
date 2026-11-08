@@ -19,7 +19,7 @@ description: Plan: the Craft Brewery design template (pinegrap-brewery): beers, 
 
 - 4 (done, #8045): `mail.php` (the e-mail builders) and `tours.php`: the tours page (`tours`), tour booking requests (`tour_booking` with `?tour=`, `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`, `email_booking_new`, `email_booking_received`) and `book_online` (booking widget starter for private tastings); `tests/design_template_brewery_tours_test.php`.
 
-- 5: `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog with beer packs, glassware, merch, gift cards and club terms with `membership_days`) and the Beer Club (`club` with the terms, the members' area in a `club` folder with access `membership`: `club_home`, `club_releases`); test.
+- 5 (done, #8061): `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog with beer packs, glassware, merch, gift cards and club terms with `membership_days`) and the Beer Club (`club` with the terms, the members' area in a `club` folder with access `membership`: `club_home`, `club_releases`); `tests/design_template_brewery_shop_test.php`.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
