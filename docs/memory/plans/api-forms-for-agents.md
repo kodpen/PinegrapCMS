@@ -32,4 +32,4 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
   - G7 a dry-run page or file delete creates the Recycle Bin before its stop (`pg_recycle_folder_id(true)`), warning `sessionusername` on the API path.
 
 ## Where does it start?
-- F3 (M) Rich text in. Done (#8043): `api/api-form-rich-text-in.md`.
+- F5 now; G1-G7 are free work outside the F steps.
