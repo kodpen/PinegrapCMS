@@ -136,6 +136,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-campsite.md: Campsite template (pinegrap-campsite): kinds of stay, Pitches and Cabins collection, prices as words, stay requests and group enquiries, no shop, pcp- look, tests.
 - design-template-carrental.md: Car Rental template (pinegrap-carrental): the fleet as a collection, booking requests with extras and deals, business rentals, desks, extras, deals and terms as fixed content, pcr- look, tests.
 - design-template-charity.md: Charity template (pinegrap-charity): causes and campaigns with progress, gifts as donation products, pledges and volunteers followed from the account, events, reports, News, pch- look, tests.
+- design-template-cityhall-pages.md: City Hall template 2.0.0: home, council and the service-area pages on the City Hall blocks: the builders, each page's composition, motion, what left, the test
 - design-template-cityhall.md: City Hall template (pinegrap-cityhall): services directory, Notices and Events collections, citizen and meeting requests, no shop, pcy- look, tests.
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
 - design-template-construction.md: Construction Firm template (pinegrap-construction): services, a projects portfolio collection, quote requests and careers followed from the account, News, no shop, pcn- look, tests.

@@ -16,11 +16,17 @@ description: Order of the polishing round after Launch: every shipped template's
 5. Last: hello (the default starter), playground (it then shows each family's blocks).
 - Every shipped template is in this list; Launch is in the main plan.
 - Wedding: `-1` #8167, `-2` #8196 done.
+
 - Photo: `-1` #8232, `-2` #8255 done.
+
 - School: `-1` #8233, `-2` #8257 done.
+
 - Architecture: `-1` #8264, `-2` #8280 done.
+
 - Campsite: `-1` #8269, `-2` #8301 done.
-- Cityhall: `-1` #8291 done.
+
+- Cityhall: `-1` #8291, `-2` #8308 done.
+
 - Construction: `-1` #8292 done.
 
 ## Where do the open template plans come?
@@ -30,8 +36,11 @@ description: Order of the polishing round after Launch: every shipped template's
 - Coworking: `-1` #8113, `-2` #8127 done.
 - Drivingschool: `-1` (family, #8117) and `-2` (pages, 1.1.0, #8138) done.
 - Marina: `-1` #8159, `-2` #8185 done.
+
 - Ferry: `-1` #8123, `-2` #8142 done.
+
 - Sportsclub: `-1` #8140, `-2` #8175 done.
+
 - Pharmacy: `-1` #8160, `-2` #8181 done.
 - A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
