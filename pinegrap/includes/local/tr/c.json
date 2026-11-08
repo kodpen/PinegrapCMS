@@ -4062,6 +4062,7 @@
     "change, day, address, card message, cancel": "değiştir, gün, adres, kart mesajı, iptal",
     "change, day, booking, cancel, move": "değiştir, gün, rezervasyon, iptal, ertele",
     "change, day, room, booking, cancel, move": "değiştir, gün, salon, oda, ayırtma, iptal, taşı",
+    "change, days, lesson, stay, cancel, move": "değiştir, günler, ders, konaklama, iptal, taşı",
     "change, edit, budget, deadline": "değiştir, düzenle, bütçe, teslim tarihi",
     "change, move, date, package, cancel": "değiştir, taşı, tarih, paket, iptal",
     "change, reschedule, cancel, test drive day": "değiştir, yeniden planla, iptal, test sürüşü günü",
