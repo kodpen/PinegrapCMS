@@ -25,7 +25,7 @@ description: Plan: the Sports Club design template (pinegrap-sportsclub): teams,
 
 - 7 (done, #8012): `standard.php` (contact, inbox, newsletter, Club News, help search, error); test.
 
-- 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 8 (done, #8040): `account.php` (sign-in, My Account, staff area, `blog_new`, staff directory, account e-mails); test.
 
 - 9: assembly: `pinegrap-sportsclub.php` (order, search sections, look, fonts, `psp-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-sportsclub.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 

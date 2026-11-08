@@ -16,12 +16,12 @@ description: Plan: the Ferry design template (pinegrap-ferry): routes and ports,
 - 3 (done, #7978): `notices.php` (the Travel Notices collection, `home_notices`); test.
 - 4 (done, #8008): `mail.php` and `bookings.php`: booking requests (`booking_request` with `?route=` and `?fare=`; `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`) and group enquiries (`group_enquiry` with `?route=`; `group_view`, `my_groups`, `staff_groups`); test.
 - 5 (done, #8031): `standard.php`: contact, inbox, conversation, newsletter, News (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 6: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 6 (done, #8053): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 7: assembly: `pinegrap-ferry.php` (order, search sections, look, fonts, `pfy-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, url-params), `designer/design-template-ferry.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
 - The next free step is the lowest one not marked done. Models: `pinegrap-marina/`, `pinegrap-campsite/`. The booking request reads `?route=` (route pages, timetables) and `?fare=` (fares page); the group enquiry reads `?route=`; the notice list filters `?route=`. Routes are fixed data: a link carries the route's title, an answer of the Route pick lists; never a filter on another record's title without that page's own `?param=`. Never use `?view=` (reserved, [[design-template-hotel]]). Later tests share `_test_fy_page_keys()` from `tests/design_template_ferry_test.php`.
-- Step 4: model `pinegrap-marina/requests.php` and `mail.php`; reuse `$fy_filter`, `$fy_page_link`, `$fy_filter_bar` from `notices.php` (include it first in tests) and the booking pick lists of `parts.php`. A notice links `booking_request?route=` with its route, possibly "All Routes" (nothing chosen then).
+- Step 7: read [[design-template-own-look]] first (the own-look rule is merged). The parts load in this order: `parts.php`, `mail.php`, `pages_public.php`, `notices.php`, `bookings.php`, `standard.php`, `account.php` (see `tests/design_template_ferry_account_test.php`). The account e-mail pages `email_account_welcome` and `email_password_reset` are not yet in `_test_fy_page_keys()`; add them with the assembly test.
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).
