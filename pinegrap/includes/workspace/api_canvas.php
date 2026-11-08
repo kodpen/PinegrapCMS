@@ -290,14 +290,20 @@ function ws_api_canvas_agent($channel)
     }
 
     $app_id = ws_api_app_id();
+    $found = null;
 
     foreach (ws_channel_agents($channel['id']) as $row) {
         if ($row['allowed'] && ($row['agent']['kind'] === 'app') && ($app_id > 0) && ((int) $row['agent']['app_id'] === $app_id)) {
-            return array('id' => (int) $row['agent']['id'], 'kind' => 'app', 'handle' => (string) $row['agent']['handle']);
+            $found = array('id' => (int) $row['agent']['id'], 'kind' => 'app', 'handle' => (string) $row['agent']['handle']);
+            break;
         }
     }
 
-    api_fail(403, 'forbidden', $refused);
+    if ($found === null) {
+        api_fail(403, 'forbidden', $refused);
+    }
+
+    return $found;
 }
 
 function ws_api_canvases_create($params)
