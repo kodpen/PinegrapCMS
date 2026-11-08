@@ -120,7 +120,7 @@ function _test_rc_page_keys()
 		'jobs', 'job', 'job_new',
 		'apply', 'application_view', 'my_applications', 'staff_applications', 'privacy', 'email_reply',
 		'email_application_new', 'email_application_received',
-		'hire', 'enquiry_view', 'my_enquiries', 'staff_enquiries',
+		'hire', 'enquiry_view', 'my_enquiries', 'staff_enquiries', 'email_enquiry_new', 'email_enquiry_received',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
