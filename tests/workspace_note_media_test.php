@@ -40,6 +40,7 @@ function test_workspace_note_media_line_not_a_file()
 		'[x](https://example.com/a.pdf?download=1)' => 'a query',
 		'[x](https://example.com/about)'            => 'a page, no extension',
 		'[x](https://example.com/.htaccess)'        => 'a hidden name',
+		"[x](https://example.com/it's.pdf)"         => 'an apostrophe, where a link ends',
 		'[x](https://example.com/a%2Fb.pdf)'        => 'an encoded slash',
 		'See [x](https://example.com/a.pdf)'        => 'words before the link',
 		'[x](https://example.com/a.pdf) here'       => 'words after the link',
