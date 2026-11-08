@@ -3301,3 +3301,34 @@ JS
 	pg_assert_same(array('bindCanvas', 'gallery null'), $result['replaced']['log'], 'a single editor with no flow starts at the ways to start one');
 	pg_assert_same(2, $result['noBuild']['closes'], 'and closes for somebody who cannot build');
 }
+
+// The whole editor's config on any Workspace page (the layer over a channel):
+// panel action ws_flow_editor_config, a row of the Workspace family (the
+// member gate the Flows screen has), answered with the flows part of the
+// screen's own config and the canvas texts, nothing narrower or wider.
+function test_workspace_flows_canvas_editor_config_action()
+{
+	$actions = pg_panel_actions();
+
+	pg_assert_true(isset($actions['ws_flow_editor_config']), 'ws_flow_editor_config listed');
+
+	if (isset($actions['ws_flow_editor_config'])) {
+		pg_assert_same('pg_panel_ws', $actions['ws_flow_editor_config']['handler'], 'the Workspace handler');
+		pg_assert_same('exempt', pg_panel_gate('ws_flow_editor_config'), 'the Workspace gate');
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$case = strpos($source, "case 'ws_flow_editor_config':");
+
+	pg_assert_true($case !== false, 'a case answers it');
+	pg_assert_contains('ws_flow_editor_config($viewer)', (string) substr($source, (int) $case, 300), 'with the viewer the member gate let in');
+
+	pg_assert_true(function_exists('ws_flow_editor_config'), 'ws_flow_editor_config() exists');
+
+	$flows = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
+	$start = strpos($flows, 'function ws_flow_editor_config(');
+	$body = ($start !== false) ? substr($flows, $start, strpos($flows, "\n}\n", $start) - $start) : '';
+
+	pg_assert_contains("ws_flow_js_config(\$viewer, 'flows')", $body, 'the Flows screen\'s config, its rights and builder kinds');
+	pg_assert_contains('ws_flow_js_strings()', $body, 'and its texts');
+}
