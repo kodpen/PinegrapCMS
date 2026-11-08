@@ -1445,6 +1445,42 @@
         }
     }
 
+    // A file drawn as itself in a note (ws_note_media_html()): a picture
+    // opens the viewer with the note's other pictures beside it, a PDF's
+    // card the file preview. Without the panel's script they stay links.
+    document.addEventListener('click', function (event) {
+        // Only a picture and a PDF have a view here; any other file follows
+        // its link.
+        var link = event.target.closest ? event.target.closest('a[data-ws-media="image"], a[data-ws-media="pdf"]') : null;
+
+        if (!link || event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0 || link.closest('[contenteditable="true"]')) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var name = link.getAttribute('data-ws-media-name') || '';
+
+        if (link.getAttribute('data-ws-media') === 'pdf') {
+            previewFile({ url: link.href, name: name, kind: 'pdf' });
+            return;
+        }
+
+        var scope = link.closest('.ws-msg-body, .ws-body, .dialog-body') || document;
+        var images = [];
+        var start = 0;
+
+        scope.querySelectorAll('a[data-ws-media="image"]').forEach(function (other) {
+            if (other === link) {
+                start = images.length;
+            }
+
+            images.push({ src: other.href, alt: other.getAttribute('data-ws-media-name') || '', caption: other.getAttribute('data-ws-media-name') || '' });
+        });
+
+        viewImages(images, start);
+    });
+
     document.addEventListener('click', function (event) {
         if (ctxNode && !ctxNode.contains(event.target) && (Date.now() - ctxOpenedAt > 350)) {
             closeCtx();

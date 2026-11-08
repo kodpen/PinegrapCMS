@@ -12754,6 +12754,68 @@ html[data-bs-theme="dark"] .ws-group-icon {
   align-items: center;
   gap: .5rem;
 }
+/* A file of this site on a note line of its own, drawn as the file
+   (includes/workspace/note_media.php): a picture up to 20rem high, players,
+   or a card with the file's icon, name and size. */
+.ws-media {
+  display: block;
+  margin: .4rem 0;
+  max-width: 100%;
+}
+.ws-media-image a {
+  display: inline-block;
+  max-width: 100%;
+  cursor: zoom-in;
+}
+.ws-media-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 20rem;
+  height: auto;
+  border-radius: var(--ws-radius-sm);
+}
+.ws-media-video video {
+  display: block;
+  width: 100%;
+  max-height: 20rem;
+  border-radius: var(--ws-radius-sm);
+  background: #000;
+}
+.ws-media-audio audio {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
+}
+.ws-media-file {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  max-width: 100%;
+  padding: .5rem .75rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+.ws-media-file:hover {
+  background: var(--pg-bg-1);
+}
+.ws-media-file .bi {
+  font-size: 1.4rem;
+  color: var(--ws-accent);
+}
+.ws-media-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.ws-media-size {
+  flex-shrink: 0;
+  font-size: .8rem;
+  color: var(--pg-fg-2);
+}
 /* A block with a title, and the list of titled blocks to pull in. */
 .ws-block-titled {
   margin: .25rem 0;

@@ -167,6 +167,13 @@ echo '<!DOCTYPE html>
   .body .ws-code-head { font-size: .8em; color: #6b7280; }
   .body .ws-code-copy { display: none; }
   .body img { max-width: 100%; height: auto; }
+  .body .ws-media { display: block; margin: .5rem 0; }
+  .body .ws-media-image img { max-height: 20rem; }
+  .body .ws-media-video video { width: 100%; max-height: 20rem; }
+  .body .ws-media-audio audio { width: 100%; max-width: 28rem; }
+  .body .ws-media-file { display: inline-flex; gap: .6em; align-items: center; padding: .4rem .7rem; border: 1px solid #d0d7de; border-radius: .4rem; color: inherit; }
+  .body .ws-media-file i { display: none; }
+  .body .ws-media-size { color: #6b7280; font-size: .85em; }
   .body .ws-block-title { font-weight: 700; margin: 1rem 0 .25rem; }
   @media print {
     body { padding: 0; max-width: none; }
