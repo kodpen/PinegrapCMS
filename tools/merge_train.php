@@ -137,6 +137,55 @@ function merge_train_eligible(array $labels, $green, $pushed_at, $now)
 	return in_array('ready', $labels, true) || (($now - $pushed_at) >= MERGE_TRAIN_QUIET_SECONDS);
 }
 
+// The issue a PR asks the owner's approval in: the N of an "Approval: #N"
+// line of its body (architect-asking.md), or 0.
+function merge_train_approval_issue($body)
+{
+	return preg_match('/^\s*Approval:\s*#(\d+)\b/mi', (string) $body, $match) ? (int) $match[1] : 0;
+}
+
+// Whether the owner approved, from the approval issue's comment bodies: a
+// decision comment (a line opening with "Karar" or "Decision") that says
+// Onaylıyorum / Onaylandı / Approved and asks for no change.
+function merge_train_approval_given(array $comments)
+{
+	foreach ($comments as $body) {
+		$body = (string) $body;
+
+		if (preg_match('/^\W*(?:Karar|Decision)\b/mu', $body)
+			&& preg_match('/Onayl(?:\x{0131}yorum|and\x{0131})|\bApproved\b/iu', $body)
+			&& !preg_match('/De\x{011F}i\x{015F}iklik istiyorum|\bChanges requested\b/iu', $body)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// The approval issue a PR still waits on (open and not approved), or 0.
+function merge_train_approval_waiting($pr)
+{
+	$issue = merge_train_approval_issue(isset($pr['body']) ? $pr['body'] : '');
+
+	if ($issue <= 0) {
+		return 0;
+	}
+
+	$row = merge_train_gh('GET', 'issues/' . $issue);
+
+	if (!isset($row['state']) || ($row['state'] !== 'open')) {
+		return 0;
+	}
+
+	$comments = array();
+
+	foreach (merge_train_gh_all('issues/' . $issue . '/comments') as $comment) {
+		$comments[] = isset($comment['body']) ? $comment['body'] : '';
+	}
+
+	return merge_train_approval_given($comments) ? 0 : $issue;
+}
+
 // Whether a PR's branch lives in this repository, as the pulls endpoint
 // describes the PR. Checks and labels say nothing about who wrote a change,
 // so a PR from a fork, or from a deleted fork (no head repository), never
@@ -601,6 +650,19 @@ function merge_train_open_trains(array $open)
 	return $trains;
 }
 
+// The green PRs left out for an approval not given yet, as
+// merge_train_candidates() met them: with $add one more, without the list.
+function merge_train_waiting_approval($add = null)
+{
+	static $waiting = array();
+
+	if ($add !== null) {
+		$waiting[] = $add;
+	}
+
+	return $waiting;
+}
+
 // The eligible PRs with their product lines and eligible time, as
 // merge_train_order() takes them, plus 'title' and 'why' for the list.
 function merge_train_candidates()
@@ -649,6 +711,14 @@ function merge_train_candidates()
 		}
 
 		if (!merge_train_eligible($labels, merge_train_checks_green($runs), $pushed_at, $now)) {
+			continue;
+		}
+
+		// Screenshots the owner has not approved yet (architect-asking.md).
+		$approval = merge_train_approval_waiting($pr);
+
+		if ($approval > 0) {
+			merge_train_waiting_approval(array('number' => (int) $pr['number'], 'issue' => $approval, 'title' => $pr['title']));
 			continue;
 		}
 
@@ -736,6 +806,10 @@ function merge_train_list()
 		if (!$order[$group]) {
 			fwrite(STDOUT, "  none\n");
 		}
+	}
+
+	foreach (merge_train_waiting_approval() as $pr) {
+		fwrite(STDOUT, sprintf("Waits on the owner's approval (#%d): #%d %s\n", $pr['issue'], $pr['number'], $pr['title']));
 	}
 }
 
@@ -877,6 +951,13 @@ function merge_train_build(array $numbers, array $options)
 
 		if (($pr['state'] !== 'open') || !empty($pr['draft'])) {
 			fwrite(STDOUT, "#$number is not open and ready; left out.\n");
+			continue;
+		}
+
+		$approval = merge_train_approval_waiting($pr);
+
+		if ($approval > 0) {
+			fwrite(STDOUT, "#$number waits on the owner's approval in #$approval; left out.\n");
 			continue;
 		}
 
