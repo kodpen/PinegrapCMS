@@ -579,6 +579,7 @@
     "until {var:1}": "{var:1} tarihine kadar",
     "untouched for a week or more": "bir haftadır ya da daha uzun süredir dokunulmamış olanlar",
     "untracked": "takip edilmiyor",
+    "up to {var} allowed": "en fazla {var} hataya izin verilir",
     "up {var:1} places": "{var:1} sıra yükseldi",
     "up {var:1}%": "%{var:1} arttı",
     "up-sell message off": "yukarı satış kapalı",
