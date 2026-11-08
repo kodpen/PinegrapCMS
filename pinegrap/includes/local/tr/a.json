@@ -6944,6 +6944,7 @@
     "Ayşe builds every ride around a playlist, and nobody leaves her studio with dry hair.": "Ayşe her sürüşü bir çalma listesi etrafında kuruyor ve stüdyosundan kimse kuru saçla çıkmıyor.",
     "Ayşe raced on the road for years and now teaches the cycle classes, mixing climbs and sprints to the beat. Outside the studio she plans the members' weekend rides along the river.": "Ayşe yıllarca yol bisikletinde yarıştı; şimdi bisiklet derslerini veriyor, tırmanışları ve sprintleri ritimle harmanlıyor. Stüdyo dışında üyelerin hafta sonu nehir kıyısı sürüşlerini planlıyor.",
     "Azerbaijani": "Azerbaycan Türkçesi",
+    "Azure OpenAI does not use what is sent to train models; it is processed in the region of your resource.": "Azure OpenAI gönderilenleri model eğitmek için kullanmaz; veriler kaynağınızın bölgesinde işlenir.",
     "Açık": "Açık",
     "a backup archive was refused by the installer": "kurulum bir yedek arşivini reddetti",
     "a backup archive was uploaded to the installer ({var:1})": "kuruluma bir yedek arşivi yüklendi ({var:1})",

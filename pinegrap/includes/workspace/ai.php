@@ -221,7 +221,11 @@ function ws_ai_config($fresh = false)
         );
     }
 
-    return $config;
+    // A model assistant's request is answered with its own application and
+    // model (model_agents.php).
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    return $running ? ws_model_config_over($config, $running) : $config;
 }
 
 /**
@@ -330,6 +334,13 @@ function ws_ai_license_problem()
 function ws_ai_http($method, $path, $payload = null, $timeout = 15)
 {
     $out = array('http' => 0, 'json' => null, 'body' => '', 'headers' => '', 'errno' => 0, 'error' => '');
+
+    // A model assistant's conversation goes to its own API with its key.
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running && ($path === '/chat/completions')) {
+        return ws_model_http($running, $method, $path, $payload, $timeout);
+    }
 
     if (!function_exists('curl_init')) {
         $out['error'] = lang('This server cannot make outgoing HTTPS requests (cURL is missing).');
@@ -1137,10 +1148,6 @@ function ws_ai_tick()
  */
 function ws_ai_job()
 {
-    if (!ws_ai_schema_ready() || !ws_ai_config()['enabled']) {
-        return;
-    }
-
     ws_ai_kick(300);
 }
 
@@ -1162,8 +1169,12 @@ function ws_ai_job()
  */
 function ws_ai_kick($budget = WS_AI_BUDGET)
 {
+    // The model assistants' requests first: they do not wait on Pinegrap
+    // AI's licence or hold (model_agents.php).
+    $models = function_exists('ws_model_kick') ? ws_model_kick($budget) : 'idle';
+
     if (!ws_ai_schema_ready() || !ws_ai_config()['enabled']) {
-        return array('status' => 'idle');
+        return array('status' => $models);
     }
 
     ws_ai_watchdog();
@@ -1286,6 +1297,13 @@ function ws_ai_claim($row)
  */
 function ws_ai_hold($seconds, $error)
 {
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        ws_model_hold($running, $error);
+        return;
+    }
+
     db("UPDATE config SET ws_ai_hold_until = '" . (time() + (int) $seconds) . "', ws_ai_error = '" . e(mb_substr((string) $error, 0, 250)) . "'");
 
     ws_ai_config(true);
@@ -1582,6 +1600,14 @@ function ws_ai_step($row)
  */
 function ws_ai_response_problem($response)
 {
+    // A model assistant's failure is its own: never the licence's, never
+    // Pinegrap AI's hold.
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        return ws_model_response_problem($running, $response);
+    }
+
     $verdict = ws_ai_license_verdict($response);
 
     if ($verdict !== '') {
@@ -3428,10 +3454,14 @@ function ws_ai_briefing_head($asker, $agent, $name = '')
         );
     }
 
+    $running = (($agent === 'ai') && function_exists('ws_model_running')) ? ws_model_running() : null;
+
     return array(
         ($agent === 'claude')
             ? 'You are Claude, the assistant people call with @Claude in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.'
-            : 'You are Pinegrap AI, the assistant people call with @ai in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.',
+            : ($running
+                ? 'You are ' . (string) $running['name'] . ', the assistant people call with @' . (string) $running['handle'] . ' in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.'
+                : 'You are Pinegrap AI, the assistant people call with @ai in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.'),
         'Now: ' . $today . '.',
         'The request comes from ' . ws_person_name($asker['id']) . ' <@user:' . (int) $asker['id'] . '>.',
     );
@@ -4902,3 +4932,6 @@ function ws_ai_settings_card($self_url, $viewer)
             </div>
         </div>';
 }
+
+// The model assistants, answered with this file's loop.
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/model_agents.php');
