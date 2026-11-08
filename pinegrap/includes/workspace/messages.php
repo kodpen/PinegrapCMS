@@ -215,6 +215,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'outside'    => array(),
         // Notes shared in the channel, as they are now (notes.php).
         'note_cards' => function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array(),
+        // Note groups shared in the channel, one card each (note_group_shares.php).
+        'note_group_cards' => function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array(),
         // Scheduled actions written in the channel (scheduled.php).
         'scheduled'  => function_exists('ws_scheduled_cards_map') ? ws_scheduled_cards_map($viewer, $ids) : array(),
         // Flow runs started from the composer (flow_run_cards.php).
@@ -370,7 +372,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // An approval request stays what the people were asked to approve.
         // A note card's text is only the card's caption; the note itself is
         // edited on the notes screen.
-        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]) && !isset($extra['approvals'][$id]) && !isset($extra['note_cards'][$id]),
+        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]) && !isset($extra['approvals'][$id]) && !isset($extra['note_cards'][$id]) && !isset($extra['note_group_cards'][$id]),
         'can_delete'  => !$past && !$deleted && ((($row['sender_kind'] === 'user') && ($mine || ($viewer['role'] < 3)) && (empty($row['locked']) || ($viewer['role'] < 3)))
             || (($row['sender_kind'] === 'guest') && ($viewer['role'] < 3))),
         // Deleted for the person alone, whoever wrote it.
@@ -404,6 +406,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // Mentioned, but not in the channel (see ws_message_mention_invite()).
         'invite'      => $deleted ? array() : ($extra['outside'][$id] ?? array()),
         'note_card'   => $deleted ? null : ($extra['note_cards'][$id] ?? null),
+        'note_group_card' => $deleted ? null : ($extra['note_group_cards'][$id] ?? null),
         'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
         'flow_run'    => $deleted ? null : ($extra['flow_runs'][$id] ?? null),
         'quotes'      => $deleted ? array() : ($extra['quotes'][$id] ?? array()),

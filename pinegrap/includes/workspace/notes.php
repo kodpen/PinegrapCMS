@@ -954,11 +954,25 @@ function ws_notes_list($viewer, $search = '')
 
     // The person's groups, and the group each note is kept in (group_id,
     // group_sort; note_groups.php).
-    return array(
+    $out = array(
         'mine'   => ws_note_places_add($viewer, ws_notes_present($viewer, $mine)),
         'shared' => ws_note_places_add($viewer, ws_notes_present($viewer, $shared)),
         'groups' => ws_note_groups($viewer),
     );
+
+    // Groups shared with the person, and the notes drawn in them
+    // (note_group_shares.php).
+    if (function_exists('ws_note_groups_shared_with') && ws_note_groups_ready()) {
+        $with = ws_note_groups_shared_with($viewer);
+        $own = array_map(function ($group) { return (int) $group['id']; }, $out['groups']);
+
+        $out['groups'] = ws_note_groups_mark_shared($out['groups']);
+        $out['shared_groups'] = $with['groups'];
+        $out['mine'] = ws_note_groups_shared_assign($out['mine'], $own, $with['places']);
+        $out['shared'] = ws_note_groups_shared_assign($out['shared'], $own, $with['places']);
+    }
+
+    return $out;
 }
 
 /**
