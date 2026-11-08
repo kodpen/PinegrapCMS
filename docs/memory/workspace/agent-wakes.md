@@ -1,6 +1,6 @@
 ---
 name: agent-wakes
-description: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1)
+description: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1, #8246)
 ---
 
 ## How is a schedule set?
