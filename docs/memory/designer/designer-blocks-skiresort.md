@@ -26,4 +26,4 @@ description: The Ski Resort block family (skiresort- prefix, its own palette gro
 ## How is it tested?
 - `tests/designer_blocks_test.php` checks the file like every family file; `tests/designer_blocks_skiresort_test.php` runs the kit and the file under Node: a section with one `h2` and no skipped level per block, no fixed colour or `sk-`/`psk-`/`skr-` class, every `{var}` filled, no year, entrances kept by `_sdFxNormalize()`, the dark band, the status pills, the price lines, the legend and the rules reaching the block stylesheet.
 
-Related: docs/memory/designer/design-template-own-look.md, docs/memory/plans/design-template-skiresort.md
+Related: docs/memory/designer/design-template-own-look.md, docs/memory/designer/design-template-skiresort.md

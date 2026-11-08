@@ -244,10 +244,11 @@ return array(
         'email_footer' => array('name' => lang('Ski Resort E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its psk- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the skiresort- blocks its pages
+    // place and its psk- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $skiresort_css),
+        'css'   => pg_design_template_user_styles(array('skiresort-conditions', 'skiresort-lifts', 'skiresort-snow',
+            'skiresort-passes', 'skiresort-slope-map'), $skiresort_css),
         'fonts' => json_encode($skiresort_fonts),
     ),
 );

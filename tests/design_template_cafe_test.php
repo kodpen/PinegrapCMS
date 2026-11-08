@@ -193,6 +193,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-filmstudio' => array('fm-enq-consent', 'fm-hire-consent', 'fm-app-consent'),
 		'pinegrap-gallery' => array('gl-enq-consent', 'gl-vw-consent'),
 		'pinegrap-brewery' => array('bw-tb-consent'),
+		'pinegrap-skiresort' => array('skr-lr-consent', 'skr-ge-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);

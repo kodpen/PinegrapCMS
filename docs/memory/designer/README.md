@@ -188,6 +188,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-salon.md: Beauty Salon template (pinegrap-salon): its parts folder, the booking on the Clinic's request pattern, what is not built, the psl- look, tests.
 - design-template-school.md: Private School template (pinegrap-school): programmes with a page each, events collection, admission applications and visit requests followed from the account, News, no shop, psh- look, tests.
 - design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
+- design-template-skiresort.md: Ski Resort template (pinegrap-skiresort): slopes, lifts and events as collections, lesson requests and stay or group enquiries, passes and rental in the shop, conditions, News, psk- look, tests.
 - design-template-social.md: Social Community template (pinegrap-social): member photo posts and profiles as collections, comments, tags, saved posts, reports and the live rule, psc- look, tests.
 - design-template-sportsclub.md: Sports Club template (pinegrap-sportsclub): teams as data, players, matches and events as collections, academy and trial requests, kit, tickets and memberships, psp- look, tests.
 - design-template-text-contrast.md: Text colours and names in the hello-pinegrap and pinegrap-playground templates: no faded text, no primary text on grey sections, one owner name, Parola wording.
