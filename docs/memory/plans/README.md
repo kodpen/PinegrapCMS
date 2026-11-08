@@ -27,8 +27,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-redesign-screens-2.md: Legacy edit screens redone in step B11 of plans/bootstrap-6-redesign.md after screens-1 closed, each with its PR; new ones are added here
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables (owner, 2026-11-01)
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
-- design-template-bakery-design.md: Design of plans/design-template-bakery.md: which shipped features the Bakery template reuses for the pickup shop, cake orders, wholesale and classes, what it does not build, its look and Turkish words
-- design-template-bakery.md: Plan: the Bakery design template (pinegrap-bakery): daily bake, cakes, a pickup shop, custom cake orders, wholesale enquiries, baking classes; ~1,000-line steps
 - design-template-carrental-design.md: Design of plans/design-template-carrental.md: which shipped features the Car Rental template reuses for the fleet, bookings and business rentals, what it does not build, its look and Turkish words
 - design-template-carrental.md: Plan: the Car Rental design template (pinegrap-carrental), fleet collection, locations, booking requests with extras, deals and business rentals, in ~1,000-line steps
 - design-template-own-looks-order.md: Order of the polishing round after Launch: every shipped template's family and pages steps, and where the open template plans (Skiresort, Gallery and the rest) take theirs
