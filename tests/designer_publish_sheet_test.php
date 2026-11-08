@@ -118,7 +118,6 @@ function test_designer_publish_sheet_editor_wiring()
 	pg_assert_contains("pubPage.addEventListener('click', function () { _pgPublishSheet({ button: pubPage }); });", $js, 'the draft\'s Publish opens the sheet');
 	pg_assert_contains("if ((_pgSaveHold[p.key] && p.page_id > 0 && !p.pickedPending) || _pgPageUnchanged(p, t, vr)) rec.unchanged = 1;", $js, 'a held page goes as unchanged');
 	pg_assert_true(substr_count($js, 'if (_pgSaveHold[p.key]) return;') === 2, 'a held page keeps its name and baseline after the save');
-	pg_assert_contains("if (keys.length) _pgSetDraft(keys, false, hold);", $js, 'the chosen drafts go on the site with the hold');
 	pg_assert_contains("if (b && !b.disabled) saveAjax({ button: b });", $js, 'Ctrl+S saves without the sheet');
 	pg_assert_false(strpos($js, 'data-sd-status') !== false, 'the publishing menu is gone from the editor');
 
@@ -128,5 +127,52 @@ function test_designer_publish_sheet_editor_wiring()
 	pg_assert_false(strpos($screen, 'data-sd-status') !== false, 'the publishing menu is gone from the toolbar');
 	foreach (array('page-draft', 'all-draft', 'publish', 'all') as $act) {
 		pg_assert_contains('data-sdp-act="' . $act . '"', $screen, 'the sheet action ' . $act);
+	}
+}
+
+// After the save the sheet lists where each page ended up, from the
+// server's reply: on the site, a draft, or not saved (held back by the
+// sheet, or a page another user holds, which comes back without a state).
+// A page the reply does not name is left out.
+function test_designer_publish_sheet_outcome()
+{
+	$got = designer_publish_sheet_test_eval('PgDesignerPublish.outcome(rows, ['
+		. '{ key: "a", draft: 0 }, { key: "b", draft: 0 }, { key: "c", draft: 0 },'
+		. '{ key: "d", draft: 1 }, { key: "e", draft: 1 }, { key: "f", page_id: 9 },'
+		. '{ key: "zz", draft: 0 }'
+		. '], ["b"])');
+
+	if ($got === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		'live'  => array('Home', 'New'),
+		'draft' => array('Spring', 'Variant'),
+		'kept'  => array('About', 'Team'),
+	), $got, 'the pages grouped by where the save left them');
+
+	$none = designer_publish_sheet_test_eval('PgDesignerPublish.outcome(rows, null, null)');
+	pg_assert_same(array('live' => array(), 'draft' => array(), 'kept' => array()), $none, 'no reply: nothing to list');
+}
+
+// The sheet stays open during the save: its button shows progress, the
+// editor reports the reply back instead of a toast, and a save that did
+// not run hands the selection back.
+function test_designer_publish_sheet_save_feedback_wiring()
+{
+	$sheet = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_designer_publish.js');
+	pg_assert_contains('bridge.publish(p.publish, p.hold, report)', $sheet, 'the sheet passes its report to the save');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains('if (keys.length) _pgSetDraft(keys, false, hold, report);', $js, 'the drafts go on the site with the report');
+	pg_assert_contains('else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });', $js, 'a plain save reports too');
+	pg_assert_contains("if (!(typeof opts.reportSaved === 'function' && opts.reportSaved(res.data)))", $js, 'the toast only when the sheet did not show the result');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_contains('data-sdp-act="done"', $screen, 'the Done button');
+	pg_assert_contains('data-sdp-result', $screen, 'the result list');
+	foreach (array('busy', 'result-live', 'result-draft', 'result-kept') as $k) {
+		pg_assert_contains("'" . $k . "'", $screen, 'the text ' . $k);
 	}
 }
