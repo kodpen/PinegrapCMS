@@ -18,7 +18,7 @@ description: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals 
 
 ## Steps (claim as `[plan:design-template-zoo] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #8090): the `zoo-` palette block family `assets/js/style_designer_blocks_zoo.js` (today's schedule, animal spotlight, park map, conservation projects), `tests/designer_blocks_zoo_test.php`, `designer/designer-blocks-zoo.md`.
-- 2 (done, #8143): `parts.php`: node builders, the zoo's data, pick lists, `$money`, `$query`, `$event_on`, page shell, helpers; test.
+- 2 (done, #8143): `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$event_on`, page shell, helpers; test.
 - 3: `cards.php`: shared parts (account bar, notice, header, footer, staff bar), record and data cards, form fields, comment thread, newsletter and blog parts; test.
 - 4: `pages_public.php`: home (`home_animals`, `home_events`, `home_posts` placed as widgets), `today`, `map`, `tickets`, `memberships`, `adopt`, `about`, `faq`; places the `zoo-` blocks; test.
 - 5: `animals.php`: the Animals collection (`animals` by `?habitat=` and `?class=`, `animal`, `animal_new`, `home_animals`); test.
