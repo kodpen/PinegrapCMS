@@ -21,3 +21,6 @@ description: Steps L1-L4, M1-M3 and N9 of plans/workspace-notes-groups-lock.md: 
 - M3 (S) A canvas edited again. Done (#8198). On a canvas picture in a note, Edit the picture opens the editor with its layers (`workspace_file_save.php?note=&file=`); the save replaces the file, the old one kept as an earlier version.
 
 - N9 (S) Close-out. Last. A keyboard and screen-reader pass over groups, tabs, drag and drop and the lock; lasting decisions into topic files; these four plan files deleted; index.
+
+## Where does the next session start?
+- L1-L3 and M1-M3 done; L4 is #8205. N9 is next once L4 lands. Lock notes: `workspace/workspace-note-lock.md` (store), `-gate.md` (screen gate, list, locking), `-readers.md` (API 423, assistants, files, export, guard test). Open ends: no unit test drives the database paths of locking with shares; the API cannot open the lock, by design.

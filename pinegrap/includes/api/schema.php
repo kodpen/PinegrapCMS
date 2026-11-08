@@ -6162,6 +6162,7 @@ function api_error_catalogue() {
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
+		'note_locked'              => array(423, 'The workspace note is behind its owner\'s notes lock, which the API never holds open: read it as title only, and change, delete or read its versions on the notes screen with the PIN.'),
 		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
 		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 

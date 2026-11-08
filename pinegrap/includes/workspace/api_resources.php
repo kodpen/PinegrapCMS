@@ -5719,6 +5719,20 @@ function ws_api_tasks_delegate_stop($params)
  * @param int   $note_id
  * @return array the row, with access
  */
+/**
+ * Stops a write or a versions read of a note behind its reader's notes lock
+ * with 423 note_locked: the API never holds the lock open (note_lock.php).
+ *
+ * @param array $viewer
+ * @param array $note
+ */
+function ws_api_note_locked_stop($viewer, $note)
+{
+    if (function_exists('ws_note_lock_closed') && ws_note_lock_closed($viewer, $note)) {
+        api_fail(423, 'note_locked', lang('This note is locked. Open it with your PIN on the notes screen.'));
+    }
+}
+
 function ws_api_note_or_404($viewer, $note_id)
 {
     $note = ws_note_for($viewer, (int) $note_id, 'view');
@@ -5852,7 +5866,9 @@ function ws_api_note_channel_share_present($share)
  */
 function ws_api_note_present($viewer, $note)
 {
-    $full = array_key_exists('body', $note);
+    // Behind a notes lock (note_lock.php): the title alone, never the text.
+    $locked = !empty($note['lock_closed']);
+    $full = array_key_exists('body', $note) && !$locked;
 
     // The group the reader keeps the note in (note_groups.php); a listing
     // adds it to every row of its page in one read.
@@ -5880,6 +5896,7 @@ function ws_api_note_present($viewer, $note)
         'updated_at'  => api_time($note['updated_at']),
         'revision'    => isset($note['revision']) ? (int) $note['revision'] : null,
         'group_id'    => ws_api_note_group_id($note),
+        'locked'      => $locked,
     );
 }
 
@@ -5915,6 +5932,7 @@ function ws_api_note_schema()
         'updated_at'  => 'string?',
         'revision'    => 'integer?',
         'group_id'    => 'integer?',
+        'locked'      => 'boolean',
     );
 }
 
@@ -6049,6 +6067,7 @@ function ws_api_notes_delete($params)
     }
 
     $note = ws_api_note_or_404($viewer, $params['id']);
+    ws_api_note_locked_stop($viewer, $note);
 
     // The check the screen's delete makes, made first so that a dry run
     // meets the same refusal.
@@ -6078,6 +6097,7 @@ function ws_api_notes_update($params)
     }
 
     $note = ws_api_note_or_404($viewer, $params['id']);
+    ws_api_note_locked_stop($viewer, $note);
 
     if (!in_array($note['access'], array('owner', 'edit'), true)) {
         api_fail(403, 'forbidden', lang('This note was shared with you to read only.'));

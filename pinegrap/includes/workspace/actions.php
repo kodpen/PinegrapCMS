@@ -4064,6 +4064,12 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That note could not be found.'));
             }
 
+            $locked = ws_action_note_locked($viewer, $note);
+
+            if ($locked) {
+                return $locked;
+            }
+
             $channel = ((int) ($request['channel_id'] ?? 0) > 0) ? ws_action_channel($viewer, $request, 'post') : null;
 
             if (is_string($channel)) {
