@@ -19,7 +19,7 @@ description: Plan: the Veterinary Practice design template (pinegrap-veterinary)
 
 - 4 (done, #7914): `mail.php` and `appointments.php`: appointment requests (`appointment` with `?service=`, `?vet=`, `?species=`; `appointment_view`, `my_appointments`, `staff_appointments`, `privacy`, `email_reply`, `email_appointment_new`, `email_appointment_received`) and the health plan sign-up (`plan_join` with `?plan=`, `plan_join_view`, `staff_plan_joins`, its two e-mails); test.
 
-- 5 (done, #8003): `shop.php`: shop pages (`shop`, product, cart, checkout, order, `email_order`, the catalog: the health plans and pet care products); test.
+- 5 (done, #8003): `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (health plans, pet care products); test.
 
 - 6 (done, #8054): `standard.php`: contact, inbox, conversation, newsletter, Pet Care Articles (`blog`, filtered by `?species=`), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
