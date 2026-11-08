@@ -6,7 +6,7 @@ description: Ferry template (pinegrap-ferry): routes with a page each, ports, ti
 ## What does it ship?
 - Home (places `home_notices`, `google_reviews`, `home_posts`), `routes` and one `route_<key>` per route (bay_gull, bay_cedar, north_cedar, gull_cedar), `ports`, `timetables`, `fares`, `onboard`, `travel`, `about`, `faq`; `notices` (`?route=`), `notice`, `notice_new` (staff); `booking_request` (`?route=`, `?fare=`), `booking_view`, `my_bookings`, `staff_bookings`, `privacy`, `email_reply`; `group_enquiry` (`?route=`), `group_view`, `my_groups`, `staff_groups`; the standard pages with the blog called News ([[design-templates-standard-pages]]); sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`; the e-mail pages.
 - No shop and no catalog: the booking office confirms and takes payment (only `address_book` carries `requires => ecommerce`).
-- Shared: account_bar, notice, header, footer, staff_bar, booking_band, email_header/footer. Order 113, icon `bi-water`, look `minimal`, palette `ocean`. Contact group `newsletter`. Built in #7873–#8053 and the assembly.
+- Shared: account_bar, notice, header, footer, staff_bar, booking_band, email_header/footer. Order 117 (113 is sports club's), icon `bi-water`, look `minimal`, palette `ocean`. Contact group `newsletter`. Built in #7873–#8053 and the assembly.
 
 ## Why a main file plus a folder?
 - As Marina ([[design-template-marina]]): `pinegrap-ferry.php` includes `parts.php`, `mail.php`, then `pages_public`, `notices`, `bookings`, `standard`, `account` in one scope, returns kept as `$…_part`. `parts.php` owns `$routes`, `$ports`, `$seasons`, `$fares`, `$figures`, `$page`; the main file never uses those names.

@@ -186,7 +186,7 @@ return array(
     'name'        => lang('Ferry'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 113,
+    'order'       => 117,
     'icon'        => 'bi-water',
     'description' => lang('A ferry line: routes between the mainland and the islands with a page per route, the ports, the timetables per season, the fares as words for foot passengers, vehicles and cabins, what is on board, travel notices with a page each, booking requests and group enquiries the traveller follows from their account with the booking office\'s answers, News, a newsletter, an inbox, a staff area and a help that searches the whole site.'),
 

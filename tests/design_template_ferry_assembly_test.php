@@ -55,7 +55,7 @@ function test_ferry_assembly_template_offered()
 	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-water', $tpl['icon']);
-	pg_assert_same(113, $tpl['order']);
+	pg_assert_same(117, $tpl['order']);
 	pg_assert_true(!isset($tpl['requires']), 'the template opens without the shop');
 	pg_assert_true(!isset($tpl['catalog']), 'no catalog: the booking office takes payment');
 	pg_assert_same(4, count($tpl['highlights']));
@@ -66,7 +66,7 @@ function test_ferry_assembly_template_offered()
 	pg_assert_true(!empty($tpl['contact_groups']['newsletter']['subscription']), 'the newsletter takes subscriptions');
 	// No other template's order.
 	foreach ($all as $id => $other) {
-		if ($id !== 'pinegrap-ferry' && isset($other['order'])) pg_assert_true($other['order'] !== 113, "$id: order 113 is the Ferry template's");
+		if ($id !== 'pinegrap-ferry' && isset($other['order'])) pg_assert_true($other['order'] !== 117, "$id: order 117 is the Ferry template's");
 	}
 }
 
