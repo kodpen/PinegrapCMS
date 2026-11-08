@@ -30,21 +30,29 @@ function list_selection_test_js_function($name)
 	return substr($source, $start, $end - $start);
 }
 
+function list_selection_test_product_group_sync()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php');
+	$start = strpos($source, 'function syncSelectAll() {');
+
+	pg_assert_true($start !== false, 'the product group form syncs its select-all box');
+
+	return substr($source, $start, strpos($source, "\n                            }\n", $start) - $start);
+}
+
 function test_list_select_all_box_shows_the_mixed_state()
 {
-	$body = list_selection_test_js_function('chart_checkbox_state_change');
+	$body = list_selection_test_product_group_sync();
 
-	pg_assert_contains("tr:not(.unselectable) .select-all input", $body, 'counts the rows the plugin selects');
-	pg_assert_contains("prop('indeterminate'", $body, 'a part-ticked list says it is mixed');
-	pg_assert_contains("#select_all", $body, 'on the select-all box');
+	pg_assert_contains('prop("indeterminate"', $body, 'a part-ticked list says it is mixed');
+	pg_assert_contains('#select_all', $body, 'on the select-all box');
 }
 
 function test_list_bulk_buttons_toggle_the_disabled_property_with_the_class()
 {
-	$body = list_selection_test_js_function('chart_checkbox_state_change');
+	$body = list_selection_test_product_group_sync();
 
-	pg_assert_contains("prop('disabled', false)", $body, 'a ticked row enables the bulk buttons');
-	pg_assert_contains("prop('disabled', true)", $body, 'nothing ticked disables them for keyboard and screen readers');
+	pg_assert_contains('$(".enable-on-selected button").toggleClass("disabled", ticked === 0).prop("disabled", ticked === 0);', $body, 'Modify Selected shows with a ticked product and is disabled for the keyboard without one');
 }
 
 function test_every_checkbox_list_switch_shows_the_mixed_state()

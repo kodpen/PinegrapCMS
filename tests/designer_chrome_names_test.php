@@ -47,9 +47,13 @@ function test_designer_chrome_names_close_buttons_are_named()
 	$source = designer_chrome_names_source('assets/js/style_designer.src.js');
 
 	pg_assert_true(strpos($source, '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>') === false, 'every dialog btn-close has a name');
-	foreach (array('sd-gf-modal-close', 'sd-as-co-close', 'sd-fp-close', 'sd-snap-close-btn') as $id) {
+	foreach (array('sd-as-co-close', 'sd-fp-close', 'sd-snap-close-btn') as $id) {
 		pg_assert_true((bool) preg_match('/id="' . $id . '"[^>]*aria-label="\' \+ esc\(_sdT\(\'Close\'\)\)/', $source), $id . ' is named');
 	}
+
+	// The Google Fonts browser is the part 'fonts'.
+	$fonts = designer_chrome_names_source('assets/js/style_designer_fonts.js');
+	pg_assert_true((bool) preg_match('/id="sd-gf-modal-close"[^>]*aria-label="\' \+ esc\(_sdT\(\'Close\'\)\)/', $fonts), 'sd-gf-modal-close is named');
 }
 
 function test_designer_chrome_names_new_file_labels_bound()

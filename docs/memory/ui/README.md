@@ -10,7 +10,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - Put everything a screen does in the one toolbar under its heading, with the shared `.pg-toolbar` classes; `#button_bar` is that component (`admin-screen-toolbar.md`).
 - After `add_notice()`, print `output_notices()` and call `remove_form()` once the screen is drawn, or the notice comes back on every visit (`liveform-notices-trap.md`).
 - Hide with `d-none` or `hidden`; Bootstrap 6 utilities carry no `!important`, so an inline display (`style=`, jQuery `.show()`) beats `d-none` (`panel-layout-pitfalls.md`).
-- Never put a `<form>` inside a table row; keep lists whose order is their meaning (ledgers, invoice lines) plain tables, not DataTables (`list-and-table-screens.md`).
+- Never put a `<form>` inside a table row; keep lists whose order is their meaning (ledgers, invoice lines) and tables holding form fields plain tables, never on the list table driver (`list-and-table-screens.md`).
 - Destroy charts (`destroy_widget_charts()`) and code editors (`pgReleaseEditors()`) before replacing the markup that holds them (`chart-destroy-before-markup-change.md`).
 - Fill AJAX markup with jQuery `.html()`, bind scope-taking initializers to `pgInitInjected(scope)`, delegate listeners to `document` (`settings-modal-injected-markup.md`).
 - Let a settings category write only its own columns and never hide a disabled feature's card, or its save blanks settings nobody sees (`settings-card-save-rules.md`).
@@ -90,7 +90,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - chat-window-contrast.md: Panel chat window colours readable in both themes (own-message gradient, read ticks, active tab, emoji tool, send button) and text and box sizes in rem
 - chat-window-keyboard.md: Panel chat window (chat_backend.src.js) from the keyboard: rows as buttons, focus on open, Escape and close back to the launcher, focus kept across the 15 s list refresh
 - chat-window-send-and-unread.md: Panel chat send rules (body check before the conversation row, 2000-character limit in the composer), header button names and sizes, close confirmation, closed tag, unread loop inside a conversation
-- client-list-turkish-search.md: Turkish search of DataTables lists searched in the browser (orders, pages, styles, menus): which lists, the rule, why a matcher, how the list state keeps the typed text
+- client-list-turkish-search.md: Turkish search of lists searched in the browser (the list table driver's browser mode): the rule of pgListTurkishMatch(), the fold of I, İ, ı and i
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - code-field-keyboard-exit.md: Leaving a code field from the keyboard: Tab indents, Ctrl+M (Mac Shift+Alt+M) switches Tab to moving focus, the hint line under an editable field and its aria-describedby
 - combobox-native-size.md: Why the posted select behind a pg_fields.js combobox is pinned to 1px with !important, and the inline width:100% it overrides (#5558)
@@ -308,11 +308,9 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - key-code-shared-form.md: The key code create and edit screens share includes/forms/key_code_form.php: the checks, the offer-code clash, the values, the generator, what stays in the screens
 - lazy-picture-failure.md: Panel lazy pictures (img.lazy, jQuery Lazy) that fail to load show a still picture mark instead of the endlessly spinning loading.gif; reduced motion gets a still square while loading
 - link-rights.md: Names, orders and products link to their edit screen only when it admits the viewer (pg_can_open_user(), pg_can_open_contact(), USER_MANAGE_ECOMMERCE); Sessions rows drop refused actions
-- list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
-- list-heading-copies.md: The copies DataTables (scrollX) and FixedHeader make of a panel list's heading: which leave the Tab order, why the sizing copy stays readable, the floating heading no longer aria-hidden
+- list-and-table-screens.md: Panel list and table rules: lists on the list table driver, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - list-label-sort.md: List columns that show a label for a stored code sort by that label (pg_list_label_order(), FIELD()); the link picker sorts in PHP with pg_list_sort_items()
 - list-page-number.md: How a panel list screen reads its ?screen= page number (pg_list_page_number()), and why 1e400 no longer breaks the offset
-- list-page-state.md: A paged panel list (table.chart) comes back on its page, length and search after Back (history.state, pgListState/pgListKeep); the pager landmark named from the DataTables language
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - list-period-order.md: List date ranges: default a month ago to today on every request (pg_list_period_state(), PR #4463), reversed range swapped; Site Log presets in calendar days
 - list-period-week.md: Week's first day (Monday in Turkish, Sunday otherwise) for the list screens' period navigator (#2039) and the get_calendar() grids (#3328)
@@ -360,8 +358,10 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-table-quick-edit-zones.md: All Shipping Zones list quick edit (zone_list_edit.php): name and the four rates as fields, the zone screen's checks and save, rates not edited written as stored
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - list-table-region-lists.md: Regions, ads and form fields on the list table driver (TD9c): printed whole, list names, quick edit fields and checks, what stays on the edit screen; menu items stay a plain table
+- list-table-rollout.md: How the panel lists moved from DataTables to the list table driver (TD1-TD14, done with #8253): the driver, the rules that still hold, where each batch is noted, what the removal took out
 - list-table-settings-lists.md: Countries, states, zones, tax zones, currencies, referral sources, contact groups, calendars, event locations and auto dialogs on the list table driver (TD11): printed whole in browser mode
 - list-table-shipping-lists.md: Arrival dates, ship date adjustments, verified shipping addresses, order reports and duplicate products on the list table driver (TD10b); the shipping report as a plain report table
+- list-table-variant-sets.md: The Variant Sets list (product_builder.php's pg_pb_variant_sets_screen()) on the list table driver, printed whole: columns, cells, bulk buttons, sort key, filters
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
 - liveform-alert-markup.md: The alert around liveform's errors, warnings and notices: Bootstrap 6 alert component in the panel (PG_PANEL_OUTPUT), Bootstrap 5 markup on sites, the v5 fallback rule
 - liveform-field-names.md: Liveform field names and pagers: aria-label, file id, required import pickers, new-password on outside secret boxes, the Set Password username field, ERP fields

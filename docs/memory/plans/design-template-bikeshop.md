@@ -20,11 +20,11 @@ description: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and 
 ## Steps (claim as `[plan:design-template-bikeshop] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #8179): the `bikeshop-` palette block family `assets/js/style_designer_blocks_bikeshop.js` (workshop board, frame sizes, group rides, bike fit), `tests/designer_blocks_bikeshop_test.php`, `designer/designer-blocks-bikeshop.md`.
 
-- 2: `parts.php`: node builders, data, pick lists, `$money`, `$query`, `$ride_on`, page shell, helpers; test.
+- 2 (done, #8230): `parts.php` (data, pick lists, helpers); test.
 
-- 3: `cards.php`: shared parts (account bar, notice, header, footer, staff bar), record and data cards, form fields, comment thread, newsletter and blog parts; test.
+- 3 (done, #8258): `cards.php`: shared parts (account bar, notice, header, footer, staff bar), record and data cards, form fields, comment thread, newsletter and blog parts; test.
 
-- 4: `pages_public.php`: home (`home_rides`, `home_posts` placed as widgets, `home_bikes` from the catalog), `workshop`, `sizes`, `fit`, `about`; places the `bikeshop-` blocks; test.
+- 4 (done, #8273): `pages_public.php`: home (`home_rides`, `home_posts` placed as widgets, `home_bikes` from the catalog), `workshop`, `sizes`, `fit`, `about`; places the `bikeshop-` blocks; test.
 
 - 5: `mail.php` and `requests.php`: service requests (`service_request`, `service_view`, `my_services`, `staff_services`), fit requests (`fit_request`, `fit_view`, `my_fits`, `staff_fits`), `book_online` ([[booking-templates]]), `privacy`, the request e-mails; test.
 

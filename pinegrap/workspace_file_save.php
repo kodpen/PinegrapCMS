@@ -39,6 +39,10 @@
  *   workspace_file_save.php?message=<id>   { token, action: 'canvas' }
  *     -> { status, doc }: the canvas document the message's picture was
  *     drawn from, or null
+ *   workspace_file_save.php?message=<id>   { token, action: 'canvas_picture',
+ *     version, picture } -> { status, url }: the PNG a member's browser drew
+ *     of an agent's canvas still pending, taken once from a member who may
+ *     write in the channel; 409 once drawn or changed since
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -205,6 +209,19 @@ if (!is_array($target)) {
 }
 
 list($message, $channel) = $target;
+
+// The picture of an agent's canvas, drawn by a member's browser while it is
+// pending; taken once (ws_canvas_picture_take()).
+if (($request['action'] ?? '') === 'canvas_picture') {
+    $taken = ws_canvas_picture_take($viewer, $message, $channel, (int) ($request['version'] ?? 0), $request['picture'] ?? '');
+
+    if (!$taken['ok']) {
+        ws_file_save_refuse($taken['error'], $taken['status']);
+    }
+
+    echo encode_json(array('status' => 'success', 'url' => $taken['url']));
+    exit();
+}
 
 // Before the editor opens a picture of the conversation: the canvas it was
 // drawn from, if it was one.

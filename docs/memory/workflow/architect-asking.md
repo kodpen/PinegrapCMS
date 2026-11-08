@@ -11,6 +11,6 @@ description: How a session asks a decision question or the owner's approval of s
 
 ## How is the owner's approval of a PR asked?
 - A PR whose plan says "the owner approves each PR before merge" (screenshots; B11 no longer says so: the owner dropped it on 2026-11-04 after five screens landed before their answers, #6509): once green, the session opens an `architect` issue `Approval: #<pr> — <topic>` (`## Türkçe özet`: what changes on screen, the screenshot link, options Onaylıyorum / Değişiklik istiyorum), writes `Approval: #<issue>` in the PR body, keeps `ready` and ends. Without the issue the approval never reaches the owner (B10/B11, 2026-11-01).
-- The architect asks it like a product question (`erdal`, a selectable list) and writes the answer on the PR. The merging session takes such a PR only after that answer, removes the screenshot link and the waiting note from the PR body, and closes the issue on landing.
+- The architect asks it like a product question (`erdal`, a selectable list) and writes the answer on the PR. The merging session takes such a PR only after that answer, removes the screenshot link and the waiting note from the PR body, and closes the issue on landing. `tools/merge_train.php` leaves it out (`--list` names it, `--build` too) while the issue is open with no `Karar`/`Decision` comment saying Onaylıyorum/Approved: #8222 landed before its answer on 2026-11-08.
 
 Related: docs/memory/workflow/architect.md, docs/memory/workflow/session-lifecycle.md

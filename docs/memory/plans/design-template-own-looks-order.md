@@ -15,18 +15,21 @@ description: Order of the polishing round after Launch: every shipped template's
 4. Templates that already have a family or their own layout: news, magazine (one step each: motion and the family's newer blocks), forum.
 5. Last: hello (the default starter), playground (it then shows each family's blocks).
 - Every shipped template is in this list; Launch is in the main plan.
-- Wedding: `-1` (#8167) and `-2` ([[design-template-wedding-pages]], #8196) done.
+- Wedding: `-1` #8167, `-2` #8196 done.
+- Photo: `-1` #8232, `-2` #8255 done.
+- School: `-1` #8233, `-2` #8257 done.
+- Architecture: `-1` #8264 done.
 
 ## Where do the open template plans come?
 - Their files are not edited here (open PRs hold most). In each, the assembly step (look, fonts, rules) adds no new stock band. Their pages are built, so each one's `-1`, `-2` joins the list once its assembly lands, ahead of unclaimed groups: bakery, brewery, carrental, coworking, drivingschool, ferry, filmstudio, florist, homeservices, library (assembly #7982 open), marina, pharmacy, podcast, recruitment, restaurant, sportsclub, theatre, veterinary.
 - Gallery: step 3 (`pages_public.php`, #7992) predates the rule and lands as is; steps 4 and 5 (artists, exhibitions) are its signature pages: when `gallery-1` (its family) has landed they place its blocks, otherwise its `-2` rebuilds them after the assembly.
 - Skiresort: step 2 (`cards.php`, #7986) lands as it is. `skiresort-1` (its family: conditions board, lift status, slope map, pass cards, snow report) done (#8050); steps 3-4 then build home, conditions and slopes on it, and it needs no `-2`.
-- Coworking: `-1` (#8113) and `-2` ([[design-template-coworking-pages]], #8127) done.
+- Coworking: `-1` #8113, `-2` #8127 done.
 - Drivingschool: `-1` (family, #8117) and `-2` (pages, 1.1.0, #8138) done.
 - Marina: `-1` #8159, `-2` #8185 done.
-- Ferry: `-1` ([[designer-blocks-ferry]], #8123) and `-2` ([[design-template-ferry-pages]], #8142) done.
-- Sportsclub: `-1` (#8140) and `-2` ([[design-template-sportsclub-pages]], #8175) done.
-- Pharmacy: `-1` (#8160) and `-2` ([[design-template-pharmacy-pages]], #8181) done.
+- Ferry: `-1` #8123, `-2` #8142 done.
+- Sportsclub: `-1` #8140, `-2` #8175 done.
+- Pharmacy: `-1` #8160, `-2` #8181 done.
 - A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
 ## Who claims what?

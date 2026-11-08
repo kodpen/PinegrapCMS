@@ -145,12 +145,26 @@
         var box = kit.el('div', 'ws-nb-lock-form');
         var note = kit.el('div', 'small fg-danger mt-2 d-none');
 
-        fields.forEach(function (field) { box.appendChild(field); });
+        // The reason of a refusal is read with each field and announced.
+        note.id = 'ws-nb-lock-form-note';
+        note.setAttribute('role', 'alert');
+        fields.forEach(function (field) {
+            box.appendChild(field);
+
+            if (field.input) {
+                field.input.setAttribute('aria-describedby', note.id);
+            }
+        });
         box.appendChild(note);
 
         function round(message) {
             note.textContent = message || '';
             note.classList.toggle('d-none', !message);
+            fields.forEach(function (field) {
+                if (field.input) {
+                    field.input.setAttribute('aria-invalid', message ? 'true' : 'false');
+                }
+            });
 
             window.setTimeout(function () {
                 var first = box.querySelector('input, select');
@@ -262,13 +276,20 @@
         var kit = ctx.kit;
         var node = kit.button('btn btn-sm btn-text theme-secondary ws-nb-lock-button', kit.t('nlock_lock'), 'bi-lock');
 
-        node.setAttribute('aria-haspopup', 'true');
+        // A menu once the lock is set up; before that the set-up dialog.
+        function popup() {
+            node.setAttribute('aria-haspopup', (state && state.set_up) ? 'menu' : 'dialog');
+        }
+
+        popup();
         node.addEventListener('click', function (event) {
             var box = node.getBoundingClientRect();
 
             event.stopPropagation();
 
             (state ? Promise.resolve(state) : load(ctx)).then(function () {
+                popup();
+
                 if (!state || !state.set_up) {
                     setUp(ctx);
                     return;
@@ -402,6 +423,7 @@
         var formNode = kit.el('form', 'ws-nb-lock-form d-flex flex-column align-items-stretch gap-3');
         var message = kit.el('div', 'small fg-danger d-none');
 
+        message.id = 'ws-nb-lock-pane-message';
         message.setAttribute('role', 'alert');
         body.appendChild(kit.icon('bi-lock-fill', 'ws-nb-lock-icon'));
         body.appendChild(kit.el('h2', 'h5 mb-0 ws-nb-lock-title', title || kit.t('nlock_locked_note')));
@@ -409,9 +431,15 @@
         box.appendChild(body);
         body.appendChild(formNode);
 
+        // The message is read with the fields it is about, which are
+        // marked invalid while it stands.
         function say(text) {
             message.textContent = text || '';
             message.classList.toggle('d-none', !text);
+            Array.prototype.forEach.call(formNode.querySelectorAll('input'), function (input) {
+                input.setAttribute('aria-describedby', message.id);
+                input.setAttribute('aria-invalid', text ? 'true' : 'false');
+            });
         }
 
         function busy(node, yes) {

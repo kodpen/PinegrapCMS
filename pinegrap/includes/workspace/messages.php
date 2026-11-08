@@ -422,9 +422,16 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         if ($stored !== '') {
             $kind = ws_file_kind($row['file_name']);
 
+            // A canvas's picture: shown under its version's address, and
+            // drawn here by a member who may write while an agent's version
+            // waits for it (assets/js/workspace_canvas_picture.js).
+            $canvas = (($kind === 'image') && ($extension === 'png') && function_exists('ws_canvas_message_state')) ? ws_canvas_message_state((int) $row['file_id']) : null;
+
             $payload['file'] = array(
                 'name'     => (string) $row['file_name'],
-                'url'      => PATH . encode_url_path($stored),
+                'url'      => ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas),
+                // The version a browser draws and posts (canvas_picture), 0 for none.
+                'canvas_pending' => ($canvas && $canvas['pending'] && $can_post) ? $canvas['version_no'] : 0,
                 'image'    => ($kind === 'image'),
                 'kind'     => $kind,
                 'ext'      => $extension,
@@ -731,9 +738,12 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 
     $now = time();
     $marked = in_array($kind, array('note', 'decision'), true);
+    // An application posting a decision marks it as itself, never as the
+    // person it acts for (channel_memory.php).
+    $app_mark = $marked && ($app_id > 0) && ws_marks_kind_ready();
 
     db("INSERT INTO ws_messages (channel_id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name,
-            marked_by, marked_at, created_at)
+            marked_by, marked_at, created_at" . ($app_mark ? ', marked_by_kind' : '') . ")
         VALUES (
             '" . (int) $channel['id'] . "',
             '" . $parent_id . "',
@@ -744,9 +754,9 @@ function ws_message_send($viewer, $channel, $body, $options = array())
             '" . (int) ($options['task_id'] ?? 0) . "',
             '" . $file_id . "',
             '" . e(mb_substr((string) ($options['file_name'] ?? ''), 0, 255)) . "',
-            '" . ($marked ? (int) $viewer['id'] : 0) . "',
+            '" . ($marked ? ($app_mark ? $app_id : (int) $viewer['id']) : 0) . "',
             '" . ($marked ? $now : 0) . "',
-            '" . $now . "')");
+            '" . $now . "'" . ($app_mark ? ", 'app'" : '') . ")");
 
     $message_id = (int) mysqli_insert_id(db::$con);
 
@@ -836,7 +846,9 @@ function ws_message_send($viewer, $channel, $body, $options = array())
  * @param array  $channel
  * @param int    $message_id
  * @param string $body as written
- * @return array claude, agent, ai: whether a request was queued for each
+ * @return array claude, agent, ai: whether a request was queued for each;
+ *               agents: the registry agents woken (app:<id>, model:<id>);
+ *               models: a model agent among them, carried on as ai is
  */
 function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 {
@@ -852,6 +864,13 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 
     // A message written to an agent's alias is the agent's alone.
     $ai = ($agent === null) && function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body);
+
+    // The registry's agents the channel lets this message wake
+    // (agent_queue.php): a model agent is answered by the site's own loop.
+    $woken = function_exists('ws_agent_after_send') ? ws_agent_after_send($viewer, $channel, $message_id, $body) : array();
+    $models = !empty(array_filter($woken, function ($value) {
+        return strpos($value, 'model:') === 0;
+    }));
 
     if ($follows) {
         $followed = ws_thread_follow_agent($channel['id']);
@@ -873,7 +892,7 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
         ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
     }
 
-    return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai);
+    return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai, 'agents' => $woken, 'models' => $models);
 }
 
 /**
@@ -1756,6 +1775,20 @@ function ws_message_mark_check($viewer, $message, $kind)
     }
 
     return array('ok' => true, 'error' => '', 'forbidden' => false);
+}
+
+/**
+ * The application that wrote a message, 0 when a person (or the system)
+ * did: a poll or an approval an agent asked is settled in its name.
+ *
+ * @param int $message_id
+ * @return int
+ */
+function ws_message_app_id($message_id)
+{
+    $row = db_item("SELECT sender_kind, sender_id FROM ws_messages WHERE id = '" . (int) $message_id . "'");
+
+    return (is_array($row) && (($row['sender_kind'] ?? '') === 'app')) ? (int) $row['sender_id'] : 0;
 }
 
 /**

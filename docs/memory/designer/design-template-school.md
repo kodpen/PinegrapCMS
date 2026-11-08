@@ -4,6 +4,7 @@ description: Private School template (pinegrap-school): programmes with a page e
 ---
 
 ## What does it ship?
+- Version 2.0.0: home, `programmes` and `day` on the School blocks ([[design-template-school-pages]]).
 - Home (places `home_events`, `google_reviews`, `home_posts`), `programmes` and five `programme_<key>` (nursery, kindergarten, primary, clubs, summer), `day`, `approach`, `campus`, `staff_team`, `about`, `fees`, `faq`; `events` (`?programme=`), the `event` record page, `event_new` (staff); `apply` (`?programme=`), `application_view`, `my_applications`, `staff_applications`, `visit`, `staff_visits`, `privacy`, `email_reply`; the standard pages with the blog called News ([[design-templates-standard-pages]]); sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`; the e-mail pages.
 - No shop and no catalog: a school takes no payment online (only `address_book` carries `requires => ecommerce`). No newsletter band: the admissions band sits above the footer, which links the newsletter page.
 - Shared: account_bar, notice, header, footer, staff_bar, admissions_band, email_header/footer. Order 93, icon `bi-backpack`, look `playful`, palette `sunset` (e-mail orange `#c2410c`). Contact group `newsletter`. Built in #7582, #7625, #7645, #7702, #7764, #7776 and the assembly PR.

@@ -257,3 +257,31 @@ PHP;
 
 	return $result;
 }
+
+// A poll or an approval an agent asked is settled in the agent's name, and a
+// decision an application posts is marked by the application: none of them
+// reads as a decision of the person the agent acts for.
+function test_workspace_agent_questions_settle_in_the_agents_name()
+{
+	$source = function ($relative) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+	};
+	$function = function ($file, $name) use ($source) {
+		$text = $source($file);
+		$start = strpos($text, 'function ' . $name . '(');
+
+		return ($start === false) ? '' : substr($text, $start, strpos($text, "\n}\n", $start) - $start);
+	};
+
+	foreach (array(array('includes/workspace/interact.php', 'ws_poll_close', '$poll[\'message_id\']'), array('includes/workspace/approvals.php', 'ws_approval_settle', '$approval[\'message_id\']')) as $case) {
+		$body = $function($case[0], $case[1]);
+
+		pg_assert_contains('$app_id = ws_message_app_id(' . $case[2] . ');', $body, $case[1] . ' finds the agent that asked');
+		pg_assert_contains("'kind' => 'decision', 'parent_id' => (int) " . $case[2] . ", 'app_id' => \$app_id)", $body, $case[1] . ' writes the outcome as the agent');
+	}
+
+	$send = $function('includes/workspace/messages.php', 'ws_message_send');
+
+	pg_assert_contains('$app_mark = $marked && ($app_id > 0) && ws_marks_kind_ready();', $send);
+	pg_assert_contains("(\$app_mark ? \$app_id : (int) \$viewer['id'])", $send, 'the application is the marker');
+}
