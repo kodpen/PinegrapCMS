@@ -2267,6 +2267,7 @@
     "repair, broken screen, battery, service": "onarım, kırık ekran, pil, servis",
     "repair, broken, screen, battery, warranty": "onarım, kırık, ekran, pil, garanti",
     "repair, recycling": "onarım, geri dönüşüm",
+    "repair, service, status, quote, my service requests": "onarım, bakım, servis, durum, fiyat teklifi, bakım taleplerim",
     "repeat prescription, collect, ready, order": "tekrar reçete, teslim alma, hazır, sipariş",
     "repeating workspace task ({var:1}) was stopped, its next copy could not be made": "tekrarlayan çalışma alanı görevi ({var:1}) durduruldu, sonraki kopyası açılamadı",
     "replace": "değiştir",
