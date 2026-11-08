@@ -22,30 +22,6 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 $public_pages = array();
 
-// A band of text beside a picture (the camera page); $flip puts the picture
-// first from lg up.
-// The band is a search section under its anchor $id, with the topics a
-// visitor may search for that it does not say itself.
-$feature_band = function ($id, $eyebrow, $title, $text, $points, $picture, $alt, $flip = false, $topics = '', $class = 'py-5')
-    use ($el, $heading, $para, $image, $attr, $container, $row, $col, $check_list, $searchable) {
-    $text_col = $col(array(
-        $para($eyebrow, 'plx-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-        $heading('h2', $title, 'display-6 fw-semibold mb-3'),
-        $para($text, 'lead text-body-secondary mb-4'),
-        $check_list($points),
-    ), '', '6', '', '12', $flip ? 'order-lg-last' : '');
-    $picture_col = $col(array(
-        $el('div', 'ratio ratio-4x3 rounded-4 overflow-hidden bg-body-tertiary', lang('Picture Frame'), array(
-            $image($picture, $alt, 'object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
-        )),
-    ), '', '6');
-    return $el('section', $class, $title, array(
-        $container(array(
-            $row(array($text_col, $picture_col), '4', '', 'g-lg-5 align-items-center'),
-        )),
-    ), $searchable($id, $topics));
-};
-
 // The model cards in a row, smallest first.
 $model_cards = array();
 foreach (array_keys($models) as $key) $model_cards[] = $model_card($key);
@@ -116,8 +92,10 @@ $launch_hero = function () use ($el, $heading, $para, $link, $image, $span, $con
 };
 
 // Launch: Camera Band — a tall photo band moving slower than the page; its
-// text and three figures on the shared scrim, the way on to the camera page.
-$launch_camera = function () use ($el, $heading, $para, $link, $span, $container, $row, $col, $attr, $fx, $photo) {
+// text and three figures on the shared scrim, and a way on. The home page
+// places it as a section (h2, on to the camera page), the camera page as its
+// top (h1, on to the camera rows of the specs).
+$launch_camera = function ($first = false) use ($el, $heading, $para, $link, $span, $container, $row, $col, $attr, $fx, $photo) {
     $figure = function ($value, $label) use ($span, $col) {
         return $col(array(
             $span($value, 'd-block display-6 fw-semibold pg-launch-figure', lang('Figure')),
@@ -128,17 +106,19 @@ $launch_camera = function () use ($el, $heading, $para, $link, $span, $container
         $el('div', 'd-flex flex-column justify-content-end w-100 py-5 text-body pg-shade-bottom', lang('Overlay'), array(
             $container(array(
                 $para(lang('Camera'), 'plx-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                $heading('h2', lang('Three cameras, one look'), 'display-5 fw-semibold mb-3'),
+                $heading($first ? 'h1' : 'h2', lang('Three cameras, one look'), ($first ? 'display-4' : 'display-5') . ' fw-semibold mb-3'),
                 $para(lang('Wide, ultra wide and zoom share one colour science, so the photos of a day look like one set. At night the main camera takes in four times more light.'), 'lead mb-4'),
                 $row(array(
                     $figure(lang('50 MP'), lang('Main and ultra wide')),
                     $figure(lang('5x'), lang('Optical zoom on One Plus')),
                     $figure(lang('4K 120'), lang('Slow-motion video')),
                 ), '4', '', 'mb-4 text-center text-sm-start'),
-                $link(lang('See the camera'), '{{page:camera}}', 'btn btn-primary rounded-pill px-4'),
+                $first
+                    ? $link(lang('Camera specifications'), '{{page:specs}}#spec-camera', 'btn btn-primary rounded-pill px-4')
+                    : $link(lang('See the camera'), '{{page:camera}}', 'btn btn-primary rounded-pill px-4'),
             )),
         ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
-    ), array('_attrs' => array($attr('style', 'background-image: url(' . $photo('camera-night', 1920, 1080) . ');')))),
+    ), array('_attrs' => array($attr('style', 'background-image: url(' . $photo($first ? 'camera-stage' : 'camera-night', 1920, 1080) . ');')))),
     array('effect' => 'parallax', 'speed' => 20));
 };
 
@@ -189,22 +169,22 @@ $feature_points = array(
     'chip'    => array(lang('Orbit O3, built at 3 nm'), lang('Up to 16 GB of memory'), lang('A vapour chamber that keeps it cool')),
     'updates' => array(lang('Seven years of system updates'), lang('Monthly security fixes'), lang('Parts and repairs for as long')),
 );
-$launch_showcase = function () use ($el, $heading, $para, $image, $span, $container, $row, $col, $fx, $searchable, $check_list, $highlights, $feature_points, $models, $featured_model, $render) {
+$launch_showcase = function ($panels_data, $picture, $alt) use ($el, $heading, $para, $image, $span, $container, $row, $col, $fx, $searchable, $check_list) {
     $panels = array();
-    foreach ($highlights as $key => $h) {
+    foreach ($panels_data as $id => $h) {
         $panels[] = $fx($el('div', 'pg-launch-panel py-4', $h['title'], array(
             $span($h['figure'], 'd-block mb-2 small fw-semibold text-uppercase text-primary pg-launch-figure', lang('Figure')),
             $heading('h2', $h['title'], 'display-6 fw-semibold mb-3'),
             $para($h['text'], 'fs-5 text-body-secondary mb-4'),
-            $check_list($feature_points[$key]),
-        ), $searchable('feature-' . $key, $h['topics'])), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700));
+            $check_list($h['points']),
+        ), $searchable($id, $h['topics'])), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700));
     }
     return $el('section', 'py-5', lang('Features'), array(
         $container(array(
             $row(array(
                 $col(array(
                     $fx($el('div', 'py-lg-5', lang('Sticky Picture'), array(
-                        $image($render($models[$featured_model]['name'], 900, 900), lang('The Orbit One phone from the front and the back'), 'img-fluid w-100 rounded-4 object-fit-cover pg-ratio-1x1'),
+                        $image($picture, $alt, 'img-fluid w-100 rounded-4 object-fit-cover pg-ratio-1x1'),
                     )), array('effect' => 'sticky', 'offset' => 96)),
                 ), '', '6'),
                 $col($panels, '', '6'),
@@ -212,6 +192,11 @@ $launch_showcase = function () use ($el, $heading, $para, $image, $span, $contai
         )),
     ));
 };
+// The features page's panels: a highlight each, under #feature-<key>.
+$feature_panels = array();
+foreach ($highlights as $key => $h) {
+    $feature_panels['feature-' . $key] = array_merge($h, array('points' => $feature_points[$key]));
+}
 
 // Launch: In the Box — what comes in the box, as a strip of pictures.
 $box_items = array(
@@ -220,7 +205,7 @@ $box_items = array(
     array('box-tool', lang('SIM tool'), lang('A tool to open the SIM tray')),
     array('box-guide', lang('Quick start guide'), lang('A quick start guide')),
 );
-$launch_box = function () use ($el, $heading, $para, $image, $span, $container, $box_items, $photo) {
+$launch_box = function ($more = array()) use ($el, $heading, $para, $image, $span, $container, $box_items, $photo) {
     $items = array();
     foreach ($box_items as $b) {
         $items[] = $el('li', 'col', $b[1], array(
@@ -236,7 +221,7 @@ $launch_box = function () use ($el, $heading, $para, $image, $span, $container, 
             )),
             $el('ul', 'row row-cols-2 row-cols-md-4 g-4 list-unstyled mb-0', lang('Box List'), $items),
         )),
-    ));
+    ), $more);
 };
 
 // ── Home ────────────────────────────────────────────────────────────────
@@ -308,7 +293,7 @@ $public_pages[] = array(
     'meta_description' => lang('The Orbit\'s design, screen, cameras, battery, chip and seven years of updates, one by one.'),
     'tree'             => $page(array(
         $page_header(lang('Features'), lang('What makes Orbit the phone you keep: the parts you notice every day, one by one.')),
-        $launch_showcase(),
+        $launch_showcase($feature_panels, $render($models[$featured_model]['name'], 900, 900), lang('The Orbit One phone from the front and the back')),
         $launch_colours(lang('Four colours, every model'), lang('Pick a colour to see it.'), true,
             $searchable('colours', lang('colour, color, graphite, glacier, sage, coral'))),
         $launch_box(),
@@ -317,8 +302,28 @@ $public_pages[] = array(
 );
 
 // ── Camera ──────────────────────────────────────────────────────────────
-// The cameras one by one, a strip of sample photos and the camera rows of
-// the spec table.
+// The camera band as the page's top, the four ways of shooting as a sticky
+// showcase beside the photo, sample photos coming in one after another and
+// the camera rows of the spec comparison.
+$camera_panels = array(
+    'camera-main' => array('figure' => lang('50 MP main camera'), 'title' => lang('More light, less noise'),
+        'text'   => lang('A large sensor and an f/1.7 lens take in light the way your eye does; optical stabilisation keeps the hand out of the picture.'),
+        'points' => array(lang('50 MP, f/1.7 with optical stabilisation'), lang('Portraits with a natural edge around hair'), lang('Raw photos for editing')),
+        'topics' => lang('main camera, sensor, portrait, raw')),
+    'camera-zoom' => array('figure' => lang('Up to 5x optical zoom'), 'title' => lang('Close from the back row'),
+        'text'   => lang('Orbit One zooms 3x through glass, Orbit One Plus 5x through a periscope lens, both with the main camera\'s colours.'),
+        'points' => array(lang('3x on Orbit One, 5x on Orbit One Plus'), lang('Up to 30x digital zoom'), lang('Zoom in video without a jump in colour')),
+        'topics' => lang('zoom, telephoto, periscope, concert')),
+    'camera-night' => array('figure' => lang('Night mode'), 'title' => lang('After dark, still sharp'),
+        'text'   => lang('Night mode starts by itself and works on every lens; a second at arm\'s length is enough for a street at midnight.'),
+        'points' => array(lang('Night mode on all three cameras'), lang('Night portraits with the front camera'), lang('Astro mode on a tripod')),
+        'topics' => lang('night mode, low light, astro, dark')),
+    'camera-video' => array('figure' => lang('Video'), 'title' => lang('Cinema in your pocket'),
+        'text'   => lang('4K at 120 frames for slow motion, steady enough to run with; on Orbit One Plus 8K for cropping later.'),
+        'points' => array(lang('4K at up to 120 fps'), lang('8K at 30 fps on Orbit One Plus'), lang('Four microphones that follow your subject')),
+        'topics' => lang('video, 4K, 8K, slow motion, stabilisation')),
+);
+
 $sample_photos = array();
 foreach (array(
     array('sample-portrait', lang('A portrait in soft evening light')),
@@ -328,9 +333,7 @@ foreach (array(
 ) as $s) {
     $sample_photos[] = $col(array(
         $el('figure', 'mb-0', lang('Sample Photo'), array(
-            $el('div', 'ratio ratio-1x1 rounded-4 overflow-hidden bg-body-tertiary mb-2', lang('Picture Frame'), array(
-                $image($photo($s[0], 800, 800), $s[1], 'object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
-            )),
+            $image($photo($s[0], 800, 800), $s[1], 'img-fluid w-100 mb-2 rounded-4 bg-body-tertiary object-fit-cover pg-ratio-1x1', array('_attrs' => array($attr('loading', 'lazy')))),
             $el('figcaption', 'small text-body-secondary', lang('Caption'), array(), array('text' => $s[1])),
         )),
     ), '6', '3', '', '6');
@@ -343,67 +346,33 @@ $public_pages[] = array(
     'title'            => lang('Camera'),
     'meta_description' => lang('Orbit\'s three cameras: a 50 MP main camera, an ultra wide, up to 5x optical zoom, night mode on every lens and 4K video.'),
     'tree'             => $page(array(
-        $el('section', 'py-5 bg-body text-body plx-hero', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Camera'), 'plx-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                        $heading('h1', lang('Three cameras, one look'), 'display-4 fw-semibold mb-3'),
-                        $para(lang('Every lens shares one colour science and one night mode, so you choose the frame, not the camera.'), 'lead text-body-secondary mb-0'),
-                    ), '', '8'),
-                ), '4', 'center', 'text-center'),
-            )),
-        ), array('_attrs' => array($attr('data-bs-theme', 'dark')))),
-        $feature_band('camera-main', lang('50 MP main camera'), lang('More light, less noise'),
-            lang('A large sensor and an f/1.7 lens take in light the way your eye does; optical stabilisation keeps the hand out of the picture.'),
-            array(lang('50 MP, f/1.7 with optical stabilisation'), lang('Portraits with a natural edge around hair'), lang('Raw photos for editing')),
-            $photo('camera-main', 1200, 900), lang('A close portrait taken with the main camera'), false, lang('main camera, sensor, portrait, raw')),
-        $feature_band('camera-zoom', lang('Up to 5x optical zoom'), lang('Close from the back row'),
-            lang('Orbit One zooms 3x through glass, Orbit One Plus 5x through a periscope lens, both with the main camera\'s colours.'),
-            array(lang('3x on Orbit One, 5x on Orbit One Plus'), lang('Up to 30x digital zoom'), lang('Zoom in video without a jump in colour')),
-            $photo('camera-zoom', 1200, 900), lang('A singer on a far stage, taken with the telephoto camera'), true, lang('zoom, telephoto, periscope, concert'), 'py-5 bg-body-tertiary'),
-        $feature_band('camera-night', lang('Night mode'), lang('After dark, still sharp'),
-            lang('Night mode starts by itself and works on every lens; a second at arm\'s length is enough for a street at midnight.'),
-            array(lang('Night mode on all three cameras'), lang('Night portraits with the front camera'), lang('Astro mode on a tripod')),
-            $photo('camera-night-2', 1200, 900), lang('City lights over water at night'), false, lang('night mode, low light, astro, dark')),
-        $feature_band('camera-video', lang('Video'), lang('Cinema in your pocket'),
-            lang('4K at 120 frames for slow motion, steady enough to run with; on Orbit One Plus 8K for cropping later.'),
-            array(lang('4K at up to 120 fps'), lang('8K at 30 fps on Orbit One Plus'), lang('Four microphones that follow your subject')),
-            $photo('camera-video', 1200, 900), lang('A cyclist filmed while running beside the bike'), true, lang('video, 4K, 8K, slow motion, stabilisation'), 'py-5 bg-body-tertiary'),
-        $el('section', 'py-5', lang('Sample Photos'), array(
+        $launch_camera(true),
+        $launch_showcase($camera_panels, $photo('camera-lenses', 900, 900), lang('The three cameras on the back of the Orbit One Plus')),
+        $el('section', 'py-5 bg-body-tertiary', lang('Sample Photos'), array(
             $container(array(
                 $section_header(lang('Shot on Orbit'), lang('Sample photos')),
-                $row($sample_photos, '3'),
+                $fx($row($sample_photos, '3'), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 600, 'stagger' => 100)),
                 $para(lang('Sample photos are unedited apart from cropping.'), 'small text-body-secondary mt-3 mb-0'),
             )),
         )),
-        $el('section', 'py-5 border-top', lang('Camera Specifications'), array(
+        $el('section', 'py-5', lang('Camera Specifications'), array(
             $container(array(
                 $section_header(lang('In detail'), lang('Camera specifications'), lang('All specs'), '{{page:specs}}'),
-                $spec_table('camera'),
+                $spec_table('camera', array('caption' => lang('The cameras of each model, side by side.'))),
             )),
-        )),
+        ), $searchable('camera-specs', lang('camera specs, lenses, megapixels, zoom, video'))),
         $shared('launch_band'),
     )),
 );
 
 // ── Tech specs ──────────────────────────────────────────────────────────
-// A table for each group of $spec_groups, every model in a column, behind a
-// jump list; each group is a search section (#spec-<key>).
+// Every group of $spec_groups in one comparison, the models' head row
+// sticky as the groups pass; each group a search section (#spec-<key>)
+// opened from the jump list. Then what comes in the box.
 $jump_links = array();
-$spec_sections = array();
 foreach ($spec_groups as $key => $g) {
     $jump_links[] = $el('li', 'nav-item', lang('Nav Item'), array($link($g['title'], '#spec-' . $key, 'nav-link px-0')));
-    $spec_sections[] = $el('section', 'pb-5', $g['title'], array(
-        $el('h2', 'h4 fw-semibold d-flex align-items-center gap-2 mb-3', lang('Title'), array(
-            $icon($g['icon'], 'text-primary'),
-            $span($g['title'], '', lang('Text')),
-        )),
-        $spec_table($key),
-    ), $searchable('spec-' . $key, lang('specs, specifications, technical details')));
 }
-
-$in_the_box = array(lang('Orbit phone'), lang('USB-C to USB-C cable, 1 m'), lang('SIM tool'), lang('Quick start guide'));
 
 $public_pages[] = array(
     'key'              => 'specs',
@@ -417,30 +386,27 @@ $public_pages[] = array(
                 $el('ul', 'nav column-gap-4 small', lang('Jump Links'), $jump_links),
             ), array('_attrs' => array($attr('aria-label', lang('Specification groups'))))),
         )),
-        $el('div', 'py-5', lang('Specifications'), array(
-            $container(array_merge($spec_sections, array(
-                $el('section', 'pb-4', lang('In the Box'), array(
-                    $heading('h2', lang('In the box'), 'h4 fw-semibold mb-3'),
-                    $check_list($in_the_box),
-                    $para(lang('No charger in the box: it comes separately, so a drawer of old chargers does not grow.'), 'small text-body-secondary mt-3 mb-0'),
-                ), $searchable('in-the-box', lang('box contents, charger, cable, accessories'))),
-                $para(lang('Battery and charging figures are from lab tests; real use varies with settings and signal.'), 'small text-body-secondary mb-0'),
-            ))),
+        $el('section', 'py-5', lang('Specifications'), array(
+            $container(array(
+                $spec_table(array(), array('anchors' => true)),
+                $para(lang('Battery and charging figures are from lab tests; real use varies with settings and signal.'), 'small text-body-secondary mt-4 mb-0'),
+            )),
         )),
+        $launch_box($searchable('in-the-box', lang('box contents, charger, cable, accessories'))),
         $shared('launch_band'),
     )),
 );
 
 // ── Compare ─────────────────────────────────────────────────────────────
-// The three models side by side: a head of renders and prices, then every
-// spec group as one table each.
+// The three models coming in side by side, then only what tells them apart
+// (the rows of $spec_groups whose values differ) and, below, what every
+// model shares: one source, so a figure changed in parts.php moves a row
+// between the two by itself.
 $compare_heads = array();
 foreach ($models as $key => $m) {
     $compare_heads[] = $col(array(
         $el('div', 'text-center', $m['name'], array(
-            $el('div', 'ratio ratio-1x1 mb-3', lang('Picture Frame'), array(
-                $image($render($m['name'], 600, 600), $m['name'], 'object-fit-contain', array('_attrs' => array($attr('loading', 'lazy')))),
-            )),
+            $image($render($m['name'], 600, 600), $m['name'], 'img-fluid w-100 mb-3 object-fit-contain pg-ratio-1x1', array('_attrs' => array($attr('loading', 'lazy')))),
             $heading('h2', $m['name'], 'h5 fw-semibold mb-1'),
             $para($m['tagline'], 'small text-body-secondary mb-2'),
             $para($price_from($key), 'fw-semibold mb-3 plx-price'),
@@ -448,9 +414,11 @@ foreach ($models as $key => $m) {
         )),
     ), '4', '', '', '4');
 }
-$compare_tables = array();
-foreach (array_keys($spec_groups) as $key) {
-    $compare_tables[] = $el('div', 'mb-4', $spec_groups[$key]['title'], array($spec_table($key)));
+$shared_specs = array();
+foreach ($spec_groups as $g) {
+    foreach ($g['rows'] as $r) {
+        if (count(array_unique($r[1])) === 1) $shared_specs[] = $r[0] . ': ' . reset($r[1]);
+    }
 }
 
 $public_pages[] = array(
@@ -463,10 +431,16 @@ $public_pages[] = array(
         $page_header(lang('Compare Models'), lang('Same chip, same main camera, same seven years of updates. Pick the size, the zoom and the battery.')),
         $el('section', 'py-5', lang('Models'), array(
             $container(array(
-                $row($compare_heads, '3', '', 'mb-5'),
-                $el('div', '', lang('Specifications'), $compare_tables),
+                $fx($row($compare_heads, '3', '', 'mb-5'), array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700, 'stagger' => 150)),
+                $spec_table(array(), array('differ' => true, 'caption' => lang('What differs between the three models.'))),
             )),
         ), $searchable('compare', lang('compare, difference, which model, mini, plus'))),
+        $el('section', 'py-5 bg-body-tertiary', lang('Shared'), array(
+            $container(array(
+                $section_header(lang('In every model'), lang('What every Orbit shares'), lang('All specs'), '{{page:specs}}'),
+                $check_list($shared_specs, 'list-unstyled row row-cols-1 row-cols-md-2 g-3 mb-0'),
+            )),
+        ), $searchable('compare-shared', lang('same, shared, every model, chip, updates'))),
         $shared('launch_band'),
     )),
 );

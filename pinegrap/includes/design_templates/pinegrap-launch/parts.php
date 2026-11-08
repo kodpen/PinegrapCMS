@@ -525,28 +525,54 @@ $swatches = function ($class = 'd-flex flex-wrap gap-4') use ($el, $span, $attr,
     return $el('ul', 'list-unstyled mb-0 ' . $class, lang('Colours'), $items);
 };
 
-// A specification table of one group: a row per line, a column per model
-// (all three, or the ones named). The compare page draws every group, the
-// specs page one table per group under its heading; the first column is
-// the row's header, so a screen reader reads "Weight, Orbit Mini, 168 g".
-$spec_table = function ($group_key, $model_keys = array()) use ($el, $span, $attr, $models, $spec_groups) {
-    if (!$model_keys) $model_keys = array_keys($models);
-    $g = $spec_groups[$group_key];
-    $head = array($el('th', 'w-25', lang('Feature'), array(), array('text' => $g['title'], '_attrs' => array($attr('scope', 'col')))));
+// Launch: Spec Comparison — the models side by side, a head cell per model
+// with its "From" price, each group of $spec_groups a row group under its
+// title, figures of one width and the head row sticky from 992 px up
+// (pg-launch-specs, the block's own rules). The first cell of a row is its
+// header, so a screen reader reads "Weight, Orbit Mini, 168 g".
+// $group_keys: the groups drawn (all when empty, one when a string).
+// $opts: 'models' (the columns, all by default), 'differ' (only the rows
+// whose values differ between those models; a group left empty is dropped),
+// 'anchors' (each group a search section under #spec-<key>), 'caption'.
+$spec_table = function ($group_keys = array(), $opts = array()) use ($el, $span, $attr, $models, $spec_groups, $price_from, $searchable) {
+    $group_keys = $group_keys ? (array)$group_keys : array_keys($spec_groups);
+    $model_keys = !empty($opts['models']) ? $opts['models'] : array_keys($models);
+    $cell = function ($tag, $text, $class, $name, $attrs = array()) use ($el, $span) {
+        return $el($tag, $class, $name, array($span($text, '', lang('Text'))), $attrs ? array('_attrs' => $attrs) : array());
+    };
+    $head = array($el('td', '', lang('Corner Cell')));
     foreach ($model_keys as $mk) {
-        $head[] = $el('th', '', lang('Model'), array(), array('text' => $models[$mk]['name'], '_attrs' => array($attr('scope', 'col'))));
+        $head[] = $el('th', 'text-center pb-3', $models[$mk]['name'], array(
+            $span($models[$mk]['name'], 'd-block h5 fw-bold mb-1', lang('Name')),
+            $span($price_from($mk), 'd-block small fw-normal text-body-secondary', lang('Price')),
+        ), array('_attrs' => array($attr('scope', 'col'))));
     }
-    $rows = array();
-    foreach ($g['rows'] as $r) {
-        $cells = array($el('th', 'fw-normal text-body-secondary', lang('Feature'), array(), array('text' => $r[0], '_attrs' => array($attr('scope', 'row')))));
-        foreach ($model_keys as $mk) $cells[] = $el('td', '', lang('Value'), array(), array('text' => $r[1][$mk]));
-        $rows[] = $el('tr', '', lang('Table Row'), $cells);
+    $groups = array();
+    foreach ($group_keys as $gk) {
+        $g = $spec_groups[$gk];
+        $rows = array();
+        foreach ($g['rows'] as $r) {
+            $values = array();
+            foreach ($model_keys as $mk) $values[] = $r[1][$mk];
+            if (!empty($opts['differ']) && count(array_unique($values)) < 2) continue;
+            $cells = array($cell('th', $r[0], 'fw-normal text-body-secondary text-start', lang('Header Cell'), array($attr('scope', 'row'))));
+            foreach ($values as $v) $cells[] = $cell('td', $v, '', lang('Cell'));
+            $rows[] = $el('tr', '', lang('Spec Row'), $cells);
+        }
+        if (!$rows) continue;
+        array_unshift($rows, $el('tr', '', lang('Group Row'), array(
+            $cell('th', $g['title'], 'pt-4 h5 fw-bold border-0 text-start', lang('Group Header'),
+                array($attr('scope', 'rowgroup'), $attr('colspan', (string)(count($model_keys) + 1)))),
+        )));
+        $groups[] = $el('tbody', '', $g['title'], $rows,
+            !empty($opts['anchors']) ? $searchable('spec-' . $gk, lang('specs, specifications, technical details')) : array());
     }
-    return $el('div', 'table-responsive', lang('Table Wrapper'), array(
-        $el('table', 'table align-middle mb-0 plx-specs', lang('Specifications'), array(
-            $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Table Row'), $head))),
-            $el('tbody', '', lang('Table Body'), $rows),
-        )),
+    $caption = !empty($opts['caption']) ? $opts['caption'] : lang('The specifications of each model, side by side.');
+    return $el('div', 'pg-launch-specs', lang('Table Wrap'), array(
+        $el('table', 'table align-middle text-center mb-0', lang('Specifications'), array_merge(array(
+            $el('caption', 'visually-hidden', lang('Table Caption'), array(), array('text' => $caption)),
+            $el('thead', '', lang('Table Head'), array($el('tr', '', lang('Header Row'), $head))),
+        ), $groups)),
     ));
 };
 
