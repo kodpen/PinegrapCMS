@@ -123,6 +123,7 @@ function _sdAnyParent(node) {
     return null;
 }
 function _sdSharedOwnerOf(node) { return ownerSid(node); }
+function _sdBlockFamilyOf() { return null; }
 function _isInsideSystemWidget(node) { var s = ownerSid(node); return (s && _sharedCache[s].system) ? s : 0; }
 function expandAncestorsAnywhere(node) { expanded.push(node.id); }
 var balanced = [];
