@@ -221,7 +221,16 @@
             tab.tabIndex = -1;
             tab.title = name;
             tab.dataset.noteId = String(one.id);
-            tab.appendChild(kit.el('span', 'ws-nb-tab-name', short(name, TITLE_MAX)));
+            var shown = short(name, TITLE_MAX);
+            var nameNode = kit.el('span', 'ws-nb-tab-name', shown);
+
+            tab.appendChild(nameNode);
+
+            // A cut title is read whole: the short one is for the eye only.
+            if (shown !== name) {
+                nameNode.setAttribute('aria-hidden', 'true');
+                tab.appendChild(kit.el('span', 'visually-hidden', name));
+            }
 
             if (one.locked) {
                 tab.appendChild(mark(kit, 'bi-lock-fill', kit.t('notes_group_locked')));
@@ -249,6 +258,8 @@
 
             if (canMove) {
                 tab.draggable = true;
+                // The keyboard's way of dragging a tab along (the keydown below).
+                tab.setAttribute('aria-keyshortcuts', 'Control+Shift+ArrowLeft Control+Shift+ArrowRight');
             }
 
             tabs.push(tab);
