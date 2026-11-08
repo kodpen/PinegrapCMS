@@ -224,10 +224,10 @@ return array(
         'email_footer' => array('name' => lang('Hotel E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pht- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Hotel blocks' pg-hotel- rules and its
+    // pht- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $hotel_css),
+        'css'   => pg_design_template_user_styles(array('hotel-room', 'hotel-stay'), $hotel_css),
         'fonts' => json_encode($hotel_fonts),
     ),
 );
