@@ -51,7 +51,7 @@ function test_florist_assembly_template_offered()
 	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-flower1', $tpl['icon']);
-	pg_assert_same(119, $tpl['order']);
+	pg_assert_same(121, $tpl['order']);
 	pg_assert_true(!isset($tpl['requires']), 'the template opens without the shop');
 	pg_assert_true(!empty($tpl['catalog']), 'the bouquets, bundles, extras and gift cards\' catalog');
 	pg_assert_same(4, count($tpl['highlights']));

@@ -177,7 +177,7 @@ return array(
     'name'        => lang('Florist'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 119,
+    'order'       => 121,
     'icon'        => 'bi-flower1',
     'description' => lang('A flower shop with its own studio: bouquets with their sizes and prices, flowers for every special occasion, flower subscriptions, wedding and event flowers, delivery areas, flower care, Our Work, order requests with a delivery date and card message the customer follows from their account, event enquiries, consultations booked at a free time, the shop with bouquets, subscription bundles and gift cards when it is on, the Flower Journal, a newsletter, an inbox, a staff area and a help that searches the whole site.'),
 
