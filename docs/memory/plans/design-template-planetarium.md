@@ -33,7 +33,7 @@ description: Plan: the Planetarium and Observatory design template (pinegrap-pla
 ## Where to start?
 - The lowest step not marked done. Layout models: `pinegrap-skiresort/`, `pinegrap-restaurant/` for dated events. Lists: `?audience=` `$audience_titles`, `?visit=` `$visit_choices`, `?grade=` `$grade_titles`. Never `?view=` ([[design-template-hotel]]).
 - Steps 4-6 place the family's blocks ([[designer-blocks-planetarium]]).
-- Order 145 is claimed here (129-133 in open assembly PRs, 135-143 left for the open plans).
+- Order 145 is claimed here.
 
 ## Open questions
 - None: all reuses shipped features (Working mode 10 for anything new).
