@@ -15,7 +15,7 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
 - F1 (S, docs and tests) Audit. Done (#7967): the gaps below; `tests/api_route_examples_test.php`.
 - F2 (S) Form and field facts. Done (#7973): a rich text area is `rich_text`, `max_length` 200000 (`api/api-form-facts.md`). Form: `framework` (of the page's design), `is_collection`, the record's site address pattern; a FormField of type `html`: `html_allowed` (the tags and attributes `pg_sanitize_rich_text()` keeps) and `max_length`; the choice fields keep their `options`; `GET /forms/{id}`, `/fields`, `api_form_field_schema()`.
 - F3 (M) Rich text in. After F2. `html` answers on create and update through the visitor path's sanitiser (`pg_sanitize_rich_text()`), the site's own address folded back to `{path}`, the length limit the column takes instead of 10,000; `author_user_id` (staff, the key's owner by default); the Status field as sent with its choices checked; `form.submitted` as today; the FormSubmission answer carries the record's address.
-- F4 (S) MCP guidance. After F2. The tools' descriptions say to read `forms_fields` first and what an `html` field takes; a resource `pinegrap://forms/{id}/fields`; a prompt `blog_post` (the form, the framework, the allowed HTML, the picture flow) (`api/mcp-resources-prompts.md`).
+- F4 (S) MCP guidance. Done (#8042, `api/mcp-form-guidance.md`). The tools' descriptions say to read `forms_fields` first and what an `html` field takes; a resource `pinegrap://forms/{id}/fields`; a prompt `blog_post` (the form, the framework, the allowed HTML, the picture flow) (`api/mcp-resources-prompts.md`).
 - F5 (S) Pictures in a post. After F3. A picture sent through `POST /files` (`api/api-file-endpoints.md`) and referenced by its address in an `html` answer is kept as the page keeps it; the folder the form's pictures go to; size and type as the panel's upload.
 
 ## What stays as it is?
@@ -32,4 +32,4 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
   - G7 a dry-run page or file delete creates the Recycle Bin before its stop (`pg_recycle_folder_id(true)`), warning `sessionusername` on the API path.
 
 ## Where does it start?
-- F3 and F4 now; G1-G7 are free work outside the F steps.
+- F3 now; G1-G7 are free work outside the F steps.

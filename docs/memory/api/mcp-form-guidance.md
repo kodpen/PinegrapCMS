@@ -1,6 +1,6 @@
 ---
 name: mcp-form-guidance
-description: What MCP tells a model before it writes a form record (PR F4): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument
+description: What MCP tells a model before it writes a form record (PR #8042): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument
 ---
 
 ## What do the form tools say beyond their route's description?

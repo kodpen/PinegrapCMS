@@ -103,7 +103,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - google-analytics-card.md: GA4 dashboard card (widget 32, #3275): purpose google_analytics, property pick on Visitor Tracking, batchRunReports cached by an hourly job, state in a sealed service entry
 - mailchimp-sync-running-claim.md: How the MailChimp sync in the general job keeps two overlapping runs from syncing at once.
 - mcp-dry-run-argument.md: MCP tool calls read the dry_run argument by the X-Dry-Run rule (1/true/yes/on, any case); a value that is neither is refused with 400 invalid_dry_run before anything runs
-- mcp-form-guidance.md: What MCP tells a model before it writes a form record (PR F4): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument
+- mcp-form-guidance.md: What MCP tells a model before it writes a form record (PR #8042): guidance on the form write tools, the pinegrap://forms/{id}/fields resource, the blog_post prompt and its text argument
 - mcp-resources-prompts.md: MCP resources (pinegrap://workspace/my-day, channels/{id}/context and /customer, refs/{type}/{id}, forms/{id}/fields) read by their GET routes; prompts; who sees them, errors, caching
 - oauth-authorize-state.md: OAuth authorize (includes/oauth/authorize.php): state is handed back exactly as sent, never cut; a state over 4096 bytes is refused with invalid_request and the same state
 - removed-rest-api-apps.md: History note: apps.php, apps_settings.php and the custom_apps table were removed in 2026.4.4 and replaced by the external API (integration.php, includes/api/).
