@@ -18,11 +18,11 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 - 5 (done, #7975): `enquiries.php`: event enquiries (`event_enquiry` with `?event=`, `event_enquiry_view`, `staff_events`), subscription requests (`subscribe` with `?plan=`, `subscription_view`), `consultation` (the booking widget's starter beside the event enquiry, [[booking-templates]]), their e-mails; test.
 - 6 (done, #8007): `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (bouquets by occasion, prepaid subscription bundles, vases and extras, gift cards); test.
 - 7 (done, #8026): `standard.php`: contact, inbox, conversation, newsletter, blog (Flower Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 8 (done, #PRNUM): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 9: assembly: `pinegrap-florist.php` (order, search sections, look, fonts, `pfl-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-florist.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where does the next session start?
-- Step 8. Copy `pinegrap-wedding/account.php` and its test. The other parts already link `login`, `register`, `my_account`, `forgot_password`, `staff`, `blog_new` (the post form the journal lists read: `title`, `summary`, `content`, `cover_image`), `staff_directory` and `staff_entry`; `standard.php` owns the message and newsletter e-mails (`email_new_message`, `email_message_received`, `email_welcome`) and the home's `home_posts` and `google_reviews`. My Account should link My Requests (orders, event enquiries, subscriptions) and the staff lists `staff_requests` and `staff_events`.
+- Step 9. Every part file is in place: `parts.php`, `mail.php`, `pages_public.php`, `work.php`, `orders.php`, `enquiries.php`, `shop.php`, `standard.php`, `account.php`, each with its test; copy the Wedding's `pinegrap-wedding.php` and its assembly test for the shape. `account.php` defines `login_region` (the account bar places it), the account e-mails and the post form `blog_form`.
 - Check an existing key's Turkish before reuse: `Occasions` reads "Etkinlikler", `Occasion` "Vesile" (step 4 labels it `Special Occasion`, "Özel Gün"), `The work` "Eser".
 - PHP 7.1: no trailing comma after a call's last argument.
 
