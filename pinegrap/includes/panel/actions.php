@@ -315,7 +315,7 @@ function pg_panel_actions()
         'ws_note_unshare', 'ws_note_file', 'ws_note_claude',
         'ws_note_claude_deliver', 'ws_note_menu_pin', 'ws_note_groups',
         'ws_note_group_save', 'ws_note_group_order', 'ws_note_group_delete', 'ws_note_place',
-        'ws_note_group_shares', 'ws_note_group_share', 'ws_note_group_unshare', 'ws_note_group_take_out', 'ws_file_office', 'ws_file_office_save',
+        'ws_note_group_shares', 'ws_note_group_share', 'ws_note_group_unshare', 'ws_note_group_take_out', 'ws_note_lock', 'ws_note_lock_setup', 'ws_note_lock_open', 'ws_note_lock_now', 'ws_note_lock_change', 'ws_note_lock_time', 'ws_note_lock_off', 'ws_note_lock_code', 'ws_file_office', 'ws_file_office_save',
         'ws_file_text', 'ws_file_text_save', 'ws_file_history', 'ws_channel_notify',
         'ws_channel_pin', 'ws_channel_order', 'ws_channel_summary',
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
