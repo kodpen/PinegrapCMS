@@ -62,6 +62,32 @@ function pg_mcp_route_is_offered($route) {
 
 }
 
+// What a model is told on top of the route's own description, for the
+// tools where it goes wrong without it: the form writes are addressed by
+// field names it cannot guess, and a rich-text answer keeps only the HTML
+// the field's html_allowed lists. Empty for every other route. The REST
+// document keeps the route's description alone.
+function pg_mcp_tool_guidance($route_id) {
+
+	$fields = 'Read the form\'s fields first with the tool forms_fields (or the resource pinegrap://forms/{id}/fields): an answer is addressed by the field name, the answer to a choice field is one of its option values, and a field with rich_text true takes HTML - only the tags, attributes, style properties, address schemes and image hosts its html_allowed lists are kept (anything else is removed or unwrapped, and class is never kept), up to its max_length characters.';
+
+	switch ($route_id) {
+
+		case 'forms.submission_create':
+		case 'forms.submission_update':
+
+			return $fields . ' Send it with dry_run true first to see the answer without writing anything.';
+
+		case 'forms.get':
+
+			return 'To write a record on this form, read forms_fields for what each field takes.';
+
+	}
+
+	return '';
+
+}
+
 // The tool's name: the route id with its dots turned into underscores.
 // MCP itself allows a dot, but the model APIs most clients pass tools on to
 // accept only letters, digits, underscores and hyphens.
@@ -161,6 +187,14 @@ function pg_mcp_tool_from_route($route) {
 	if (isset($route['description']) && ($route['description'] !== '')) {
 
 		$description .= (($description !== '') ? '. ' : '') . $route['description'];
+
+	}
+
+	$guidance = pg_mcp_tool_guidance((string)$route['id']);
+
+	if ($guidance !== '') {
+
+		$description .= (($description !== '') ? ' ' : '') . $guidance;
 
 	}
 
