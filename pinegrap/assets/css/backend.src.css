@@ -20829,6 +20829,59 @@ button.ws-ack-count:hover {
   width: 100%;
   height: auto;
 }
+/* The whole Flows editor in a full-screen layer over a channel (flowLayer()
+   in workspace.js): its bar, then the editor filling the rest; the page
+   beneath does not scroll while it is open. Native dialogs sit in the top
+   layer above it, menus and toasts on higher z-indexes. */
+html.ws-flow-layer-on,
+html.ws-flow-layer-on body {
+  overflow: hidden;
+}
+.ws-flow-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1035;
+  display: flex;
+  flex-direction: column;
+  background: var(--pg-bg-body);
+}
+.ws-flow-layer-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ws-space-2);
+  padding: var(--ws-space-2) var(--ws-space-3);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+}
+.ws-flow-layer-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-flow-layer-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--ws-space-3);
+}
+.ws-flow-layer-body .wsf-app {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 20rem;
+}
+@media (max-width: 767.98px) {
+  .ws-flow-layer-bar { flex-wrap: wrap; }
+  .ws-flow-layer-title { flex-basis: 100%; }
+  .ws-flow-layer-body { padding: var(--ws-space-2); }
+  .ws-flow-layer-body .wsf-app { flex: none; min-height: 0; }
+}
 /* The Flows canvas on the core: its arrowhead markers, a box's border and
    ports in its group's colour (kindClasses() in workspace_flow.js), its
    problem state. */
