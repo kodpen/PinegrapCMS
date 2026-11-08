@@ -226,6 +226,7 @@
     "%s per visit": "Ziyaret başına %s",
     "%s weddings": "%s düğünleri",
     "%s, Three Months": "%s, Üç Ay",
+    "%s. Lessons can start earlier or end later when you agree it with your instructor.": "%s. Eğitmeninizle anlaşırsanız dersler daha erken başlayabilir ya da daha geç bitebilir.",
     "%s: Classroom": "%s: Sınıf",
     "%{var:1} off shipping ({var:2})": "kargoya %{var:1} indirim ({var:2})",
     "& Time": "ve Saati",
