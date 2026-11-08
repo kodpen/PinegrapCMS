@@ -31,6 +31,7 @@ function _test_spp_load()
 	static $out = null;
 	if ($out !== null) return $out;
 	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub/parts.php';
+	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub/blocks.php';
 	$public_part = include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub/pages_public.php';
 	$out = array('part' => $public_part, 'teams' => $teams, 'sponsor_packages' => $sponsor_packages,
 		'team_titles' => $team_titles, 'youth_team_titles' => $youth_team_titles, 'package_titles' => $package_titles,

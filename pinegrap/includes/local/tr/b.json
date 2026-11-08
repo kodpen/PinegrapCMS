@@ -1001,6 +1001,7 @@
     "Bot IP lists refreshed: {var:1} list{suffix:1} updated.": "Bot IP listeleri tazelendi: {var:1} liste güncellendi.",
     "Bot IP lists: {var:1} updated, {var:2} could not be fetched. The stored copies were kept.": "Bot IP listeleri: {var:1} güncellendi, {var:2} alınamadı. Kayıtlı kopyalar korundu.",
     "Bot token": "Bot jetonu",
+    "Both Sides": "İki Takım",
     "Both are viruses, so antibiotics do not help. Rest, drink plenty and take something for the fever if you need it.": "İkisi de virüs kaynaklıdır, bu yüzden antibiyotik işe yaramaz. Dinlenin, bol sıvı için ve gerekirse ateş düşürücü alın.",
     "Both banks of the river, from the bridge to the park": "Köprüden parka kadar nehrin iki yakası",
     "Both days, every track and the evening reception.": "İki gün, bütün oturum dizileri ve akşam resepsiyonu.",

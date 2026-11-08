@@ -125,36 +125,23 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('A community football and basketball club with teams for every age, a youth academy, weekend matches and a clubhouse open to all.'),
     'tree'             => $page(array(
-        // The way in: the club in a sentence, the two ways on and a photo
-        // of a match day.
-        $el('section', 'psp-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para($ground['name'], 'psp-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('One club, every age'), 'psp-display display-3 mb-3'),
-                        $para($club['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('See the Fixtures'), '{{page:fixtures}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('Ask for a Trial'), '{{page:trial}}', 'btn btn-outline-primary btn-lg px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('Players challenging for the ball under the floodlights at Mill Lane'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
+        // The way in is match day: the club in a sentence over the first
+        // team's next match, the last result beside it, on a dark band.
+        $sc_matchday(array(
+            $fx($el('div', 'mb-2', lang('Hero Text'), array(
+                $heading('h1', lang('One club, every age'), 'psp-display display-4 mb-2'),
+                $para($club['tagline'] . '.', 'lead text-body-secondary mb-0'),
+            )), 'slide-up', 'load'),
+        ), array(
+            $link(lang('See the Fixtures'), '{{page:fixtures}}', 'btn btn-primary btn-lg px-4'),
+            $link(lang('Ask for a Trial'), '{{page:trial}}', 'btn btn-outline-primary btn-lg px-4'),
+        ), 'load', 'sp-home-matchday', lang('next match, kick-off, derby, last result, score')),
 
         // The next matches and the last results, read from the Matches
         // collection.
         $el('section', 'py-5', lang('Fixtures'), array(
             $container(array(
-                $row(array(
+                $fx($row(array(
                     $col(array(
                         $section_header(lang('Coming up'), lang('Next matches'), lang('All fixtures'), '{{page:fixtures}}'),
                         $widget('home_fixtures'),
@@ -163,32 +150,28 @@ $public_pages[] = array(
                         $section_header(lang('Final whistle'), lang('Latest results'), lang('All results'), '{{page:results}}'),
                         $widget('home_results'),
                     ), '', '6'),
-                ), '4', '', 'g-lg-5'),
+                ), '4', '', 'g-lg-5'), 'slide-up', 'view', array('stagger' => 120)),
             )),
         ), $searchable('sp-home-matches', lang('fixtures, results, kick-off, score, next match'))),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Our Teams'), array(
+        $sc_table(),
+
+        $el('section', 'py-5', lang('Our Teams'), array(
             $container(array(
                 $section_header(lang('Play for us'), lang('A team for every age and level'), lang('All teams'), '{{page:teams}}'),
-                $row(array_merge($senior_cards, $youth_cards), '4'),
+                $fx($row(array_merge($senior_cards, $youth_cards), '4'), 'slide-up', 'view', array('stagger' => 90)),
             )),
         ), $searchable('sp-home-teams', lang('teams, men, women, veterans, youth, basketball, training times'))),
 
         // The featured club events, read from the Club Events collection.
-        $el('section', 'py-5', lang('Club Events'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Club Events'), array(
             $container(array(
                 $section_header(lang('At the clubhouse'), lang('Club events'), lang('All events'), '{{page:events}}'),
                 $widget('home_events'),
             )),
         ), $searchable('sp-home-events', lang('events, social, quiz night, fundraiser, open day, camp'))),
 
-        $story_band('sp-home-academy', lang('Youth Academy'), lang('Where the next first team starts'),
-            array(lang('Boys and girls from five to sixteen train every week with qualified coaches, play in friendly leagues and learn to love the game.')),
-            $photo('home-academy', 1200, 900), lang('Young players dribbling around cones on the all-weather pitch'), true,
-            array($link(lang('About the academy'), '{{page:academy}}', 'btn btn-outline-primary px-4')),
-            lang('children, kids, juniors, girls, boys, academy'), 'py-5'),
-
-        $el('section', 'py-5 bg-body-tertiary', lang('Sponsors'), array(
+        $el('section', 'py-5', lang('Sponsors'), array(
             $container(array(
                 $section_header(lang('Thank you'), lang('Our partners'), lang('All sponsors'), '{{page:sponsors}}'),
                 $row($top_sponsor_tiles, '4'),
@@ -198,7 +181,7 @@ $public_pages[] = array(
         // What players, parents and fans say: sample words for the club to
         // replace, and beside them its own Google reviews, which show once
         // Google Reviews is set up under Site Settings.
-        $el('section', 'py-5', lang('Voices of the Club'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Voices of the Club'), array(
             $container(array(
                 $section_header(lang('Our people'), lang('What players and fans say')),
                 $row($testimonial_cols, '4'),
@@ -206,7 +189,7 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Club News'), array(
+        $el('section', 'py-5', lang('Club News'), array(
             $container(array(
                 $section_header(lang('Club News'), lang('Latest from the club'), lang('All news'), '{{page:blog}}'),
                 $widget('home_posts'),
@@ -228,16 +211,22 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Senior Teams'), array(
             $container(array(
                 $section_header(lang('Adults'), lang('Senior teams'), lang('Ask for a Trial'), '{{page:trial}}'),
-                $row($senior_cards, '4'),
+                $fx($row($senior_cards, '4'), 'slide-up', 'view', array('stagger' => 90)),
             )),
         ), $searchable('sp-senior-teams', lang('men, women, veterans, basketball, adults, training'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Academy Teams'), array(
             $container(array(
                 $section_header(lang('Juniors'), lang('Academy teams'), lang('Youth Academy'), '{{page:academy}}'),
-                $row($youth_cards, '4'),
+                $fx($row($youth_cards, '4'), 'slide-up', 'view', array('stagger' => 90)),
             )),
         ), $searchable('sp-youth-teams', lang('children, kids, juniors, under 8, under 12, under 16'))),
-        $el('section', 'py-5', lang('How It Works'), array(
+        // The first team's squad by position, led by the shirt numbers.
+        $el('section', 'py-5', lang('First Team Squad'), array(
+            $container(array_merge(array(
+                $section_header($teams['first']['title'], lang('First team squad'), lang('The Squad'), '{{page:squad}}?' . $query(array('team' => $teams['first']['title']))),
+            ), $sc_squad('first'))),
+        ), $searchable('sp-first-squad', lang('players, squad, shirt numbers, goalkeeper, defender, midfielder, striker'))),
+        $el('section', 'py-5 bg-body-tertiary', lang('How It Works'), array(
             $container(array(
                 $row(array(
                     $col(array(
