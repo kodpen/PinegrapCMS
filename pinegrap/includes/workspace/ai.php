@@ -4970,3 +4970,5 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/model_agents.php');
 
 // The agents' request queue and push door.
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_queue.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_wake.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_shown.php');

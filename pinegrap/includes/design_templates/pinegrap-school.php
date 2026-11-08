@@ -171,7 +171,7 @@ $school_css = implode("\n", array(
 
 return array(
     'name'        => lang('Private School'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 93,
     'icon'        => 'bi-backpack',
@@ -225,10 +225,10 @@ return array(
         'email_footer'    => array('name' => lang('School E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its psh- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the School blocks' pg-school- rules and its
+    // psh- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $school_css),
+        'css'   => pg_design_template_user_styles(array('school-hero', 'school-ages', 'school-year'), $school_css),
         'fonts' => json_encode($school_fonts),
     ),
 );

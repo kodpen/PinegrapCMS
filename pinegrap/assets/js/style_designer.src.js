@@ -11196,7 +11196,8 @@ const StyleDesigner = (function () {
     // (pg_fx.min.js), loaded into the frame once and bound again after
     // every render. pgFxEditing makes a node drawn again by a later render
     // show in place instead of playing its entrance on every change; the
-    // Interactions section's Play button replays one. While the canvas's
+    // Interactions section's Play button replays one (the part
+    // 'interactions'). While the canvas's
     // motion is paused the frame answers reduced motion, so nothing moves.
     function _sdFxCanvas() {
         if (!canvasDoc || !canvasDoc.querySelector('[data-pg-fx]')) return;
@@ -11208,20 +11209,6 @@ const StyleDesigner = (function () {
         scr.id = 'pg-fx-js';
         try { scr.src = new URL('assets/js/pg_fx.min.js', document.baseURI).href; } catch (e) { return; }
         canvasDoc.head.appendChild(scr);
-    }
-
-    // The Play button of the Interactions section: the node's interaction
-    // once on the canvas, whether the canvas's motion plays or not.
-    function _sdFxReplay(node) {
-        var el = _sdCanvasInnerOf(node);
-        if (el && !el.hasAttribute('data-pg-fx')) el = el.querySelector('[data-pg-fx]');
-        var win = canvasDoc && canvasDoc.defaultView;
-        if (!el || !win) return;
-        if (win.pgFx && typeof win.pgFx.replay === 'function') { win.pgFx.replay(el); return; }
-        // The file is not in the frame yet: load it, then play.
-        _sdFxCanvas();
-        var scr = canvasDoc.getElementById('pg-fx-js');
-        if (scr) scr.addEventListener('load', function () { if (win.pgFx && win.pgFx.replay) win.pgFx.replay(el); });
     }
 
     function _reExecuteCanvasScripts(root) {
@@ -31695,98 +31682,38 @@ const StyleDesigner = (function () {
         return html.slice(0, at) + fx + html.slice(at);
     }
 
-    // The node's interaction after one field of the panel changed: the
-    // stored one with `field` set to `value`, normalized; null when the
-    // effect is cleared. Fields that no longer apply drop out; switching
-    // the effect keeps the timing.
-    function _sdFxSet(fx, field, value) {
-        if (field === 'effect' && !value) return null;
-        var cur = _sdFxNormalize(fx) || {}, next = {};
-        for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
-        next[field] = value;
-        return _sdFxNormalize(next);
-    }
-
+    // The section with an empty body: its rows and fields are the part
+    // 'interactions' (style_designer_interactions.js), which _sdFxBind()
+    // runs to fill it.
     function propsInteractions(n) {
         if (!_sdFxTakes(n)) return '';
-        var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
-        var spec = _sdFxSpec();
-        var select = function (field, opts) {
-            return '<select class="form-control form-control-sm" data-fx="' + field + '">' + opts.map(function (o) {
-                return '<option value="' + esc(o[0]) + '"' + (o[0] === fx[field] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
-            }).join('') + '</select>';
-        };
-        var number = function (field, unit, placeholder) {
-            var r = spec.numbers[field];
-            var v = (field === 'distance' && !fx.distance) ? '' : fx[field];
-            return '<div class="input-group input-group-sm">' +
-                '<input type="number" class="form-control form-control-sm" data-fx="' + field + '" min="' + r[0] + '" max="' + r[1] + '" step="1" value="' + esc(String(v)) + '"' +
-                (placeholder ? ' placeholder="' + esc(String(placeholder)) + '"' : '') + '>' +
-                '<span class="input-group-text">' + unit + '</span></div>';
-        };
-        var h = row(_sdT('Effect'), select('effect', [
-            ['', _sdT('None')], ['fade', _sdT('Fade in')],
-            ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
-            ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
-            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')]
-        ]));
-        if (fx.trigger) {
-            var entrance = fx.trigger === 'load' || fx.trigger === 'view';
-            h += row(_sdT('Trigger'), select('trigger', [
-                ['view', _sdT('Scroll into view')], ['load', _sdT('Page load')],
-                ['hover', _sdT('Hover')], ['click', _sdT('Click')]
-            ]));
-            h += row(_sdT('Duration'), number('duration', 'ms'));
-            h += row(_sdT('Delay'), number('delay', 'ms'));
-            h += row(_sdT('Easing'), select('easing', [
-                ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
-                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]
-            ]));
-            if (/^slide-/.test(fx.effect)) h += row(_sdT('Distance'), number('distance', 'px', entrance ? 24 : 6));
-            if (entrance) h += row(_sdT('Stagger children'), number('stagger', 'ms'));
-            if (fx.trigger === 'view') h += row(_sdT('Every time'), swAttr('data-fx="repeat"', !!fx.repeat));
-        }
-        if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
-        if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
-        if (fx.trigger) {
-            h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
-                '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
-        }
-        if (fx.effect) {
-            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
-                esc(_sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
-                '</div></div>';
-        }
-        return sect('bi-stars', _sdT('Interactions'), h);
+        return sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>');
     }
 
-    // The Interactions section's fields write props._fx (_sdFxSet()). A
-    // choice is one undo step and redraws the panel, whose rows follow the
-    // effect and trigger; a typed number is one undo step per focus and
-    // redraws the panel once it is left, showing the value kept.
+    // Fills the section's body once the panel is drawn. A collapsed
+    // section waits for its header to open it before the part is loaded
+    // for the first time; once the part has run it fills at once. A rule
+    // typed in the panel's search box is applied again to the new rows.
     function _sdFxBind(n) {
         var panel = document.getElementById('sd-properties');
-        if (!panel || !_sdFxTakes(n)) return;
-        var play = panel.querySelector('[data-fx-play]');
-        if (play) play.addEventListener('click', function () { _sdFxReplay(n); });
-        panel.querySelectorAll('[data-fx]').forEach(function (el) {
-            var field = el.getAttribute('data-fx');
-            var typed = el.type === 'number';
-            var before = typed ? _sdUndoBeforeFirstInput(el) : null;
-            el.addEventListener(typed ? 'input' : 'change', function () {
-                if (typed) before(); else saveState();
-                var fx = _sdFxSet(n.props._fx, field, el.type === 'checkbox' ? el.checked : el.value);
-                if (fx) n.props._fx = fx; else delete n.props._fx;
-                if (!typed) { render(); return; }
-                renderCanvas();
-                renderTree();
-                renderStatusBar();
-                renderAttrsPanel();
-                renderHtmlTree();
-                _sdLivePreviewSchedule();
+        var body = panel ? panel.querySelector('[data-sd-fx-body]') : null;
+        if (!body || !_sdFxTakes(n)) return;
+        var fill = function () {
+            _sdPartCall('interactions', 'fill', [body, n]).then(function () {
+                var srch = document.getElementById('sd-props-search');
+                if (body.isConnected && srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
+            }).catch(_sdPartFailed);
+        };
+        var sectBody = body.closest('.sd-sect-body');
+        var hdr = sectBody ? sectBody.previousElementSibling : null;
+        if (!_sdPartLoaded('interactions') && sectBody && sectBody.style.display === 'none' && hdr) {
+            hdr.addEventListener('click', function first() {
+                hdr.removeEventListener('click', first);
+                fill();
             });
-            if (typed) el.addEventListener('change', function () { render(); });
-        });
+            return;
+        }
+        fill();
     }
 
     // A design built without a framework (Custom) has nothing that styles
@@ -48028,14 +47955,6 @@ const StyleDesigner = (function () {
     // 'rounded-top-3' → "Top 3"); the bare `shadow` reads "Regular". A
     // label with a word that has no translation keeps its class-derived
     // form in full ('Decoration none'), never half of it.
-    // Labels of the Themes panel's link decoration options; the values stay
-    // the CSS keywords.
-    function _sdThemeDecorationLabels() {
-        return {
-            'none': _sdT('No decoration'), 'underline': _sdT('Underline'),
-            'overline': _sdT('Overline'), 'line-through': _sdT('Strikethrough')
-        };
-    }
     function _sdStyleOptionLabel(cls) {
         var words = {
             'none': _sdT('None'), 'sm': _sdT('Small'), 'lg': _sdT('Large'),
@@ -52167,44 +52086,18 @@ const StyleDesigner = (function () {
             '</div>';
         rightPanel.appendChild(wrap);
 
-        // ── Google Fonts Modal ─────────────────────────────────────────────────
-        var gfModalEl = document.createElement('div');
-        gfModalEl.id = 'sd-gf-modal';
-        gfModalEl.style.display = 'none';
-        gfModalEl.innerHTML =
-            '<div class="sd-gf-modal-dialog">' +
-                '<div class="sd-gf-modal-hdr">' +
-                    '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
-                    '<button id="sd-gf-modal-close" class="sd-gf-modal-close" type="button" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>' +
-                '</div>' +
-                '<div class="sd-gf-modal-body">' +
-                    '<div class="sd-gf-modal-left">' +
-                        '<div class="sd-gf-toolbar">' +
-                            '<span class="bi bi-search sd-gf-search-icon"></span>' +
-                            '<input type="text" id="sd-gf-search" class="sd-gf-search" placeholder="' + esc(_sdT('Search fonts...')) + '">' +
-                        '</div>' +
-                        '<div id="sd-gf-list" class="sd-gf-list"></div>' +
-                    '</div>' +
-                    '<div class="sd-gf-modal-right" id="sd-gf-detail">' +
-                        '<div class="sd-gf-detail-empty"><span class="bi bi-arrow-left"></span> ' + esc(_sdT('Pick a font from the list')) + '</div>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(gfModalEl);
-
+        // ── Google Fonts browser ──────────────────────────────────────────────
+        // The browser is the part 'fonts' (style_designer_fonts.js), run the
+        // first time "Add a Google Font" is asked for. It reads and writes
+        // the design's fonts through this host.
+        var _gfHost = {
+            added: function () { return gfAdded; },
+            set: function (list) { gfAdded = list; saveGfField(); renderFontList(); },
+            catalogue: function () { return GOOGLE_FONTS.slice(); }
+        };
         function openGfModal() {
-            gfModalEl.style.display = 'flex';
-            renderGfBrowser('');
-            setTimeout(function() { var s = document.getElementById('sd-gf-search'); if (s) { s.value = ''; s.focus(); } }, 50);
+            _sdPartCall('fonts', 'open', [_gfHost]).catch(_sdPartFailed);
         }
-        function closeGfModal() {
-            gfModalEl.style.display = 'none';
-            var det = document.getElementById('sd-gf-detail');
-            if (det) det.innerHTML = '<div class="sd-gf-detail-empty"><span class="bi bi-arrow-left"></span> ' + esc(_sdT('Pick a font from the list')) + '</div>';
-            _gfOpenFamily = null;
-        }
-        document.getElementById('sd-gf-modal-close').addEventListener('click', closeGfModal);
-        gfModalEl.addEventListener('click', function(e) { if (e.target === gfModalEl) closeGfModal(); });
 
         function _fileIsExt(file)        { return file.type === 'external-css' || file.type === 'external-js'; }
         // Managed = backed by a real `files` row + on-disk file. Includes JSON
@@ -53082,157 +52975,8 @@ const StyleDesigner = (function () {
         _flushPendingOverlays = function (done) { done(); };
 
         // ── Theme: Bootstrap CSS variable overrides ─────────────────────────
-        // Edits write light values under
-        // `:root:not([data-bs-theme="dark"]), [data-bs-theme="light"] { … }`
-        // (variables Bootstrap gives a dark value) or
-        // `:root, [data-bs-theme="light"] { … }` (the rest, which also apply
-        // in dark mode), and dark values under `[data-bs-theme="dark"] { … }`,
-        // into the user-styles content (see _themeBlockFor()). Single source of truth — same place the bottom Styles
-        // panel and "Dosyaya Aktar" extract from.
-        //
-        // Each group has an `id` (used for collapse persistence), a friendly
-        // `label`, and a list of vars. Each var carries:
-        //   • name  — the CSS custom property (`--bs-…`)
-        //   • label — the human-friendly row label (e.g. "Primary")
-        //   • kind  — 'color' (native picker), 'colorRgba' (text only —
-        //             rgba()/hex8 not supported by input[type=color]),
-        //             'text', 'select'
-        //   • def   — `{ light: …, dark: … }` Bootstrap-5.3 stock values,
-        //             used as the picker's fallback colour AND as the
-        //             "is this row modified?" comparison source.
-        //   • theme — true for the 8 Bootstrap theme colors (primary/…/dark).
-        //             When set, changes also emit cascade override rules
-        //             (.btn-X, .bg-X, .text-X, …) so the colour propagates
-        //             through Bootstrap's component hierarchy.
-        //   • opts  — list of values for kind='select' rows.
-        var THEME_VAR_GROUPS = [
-            {
-                id: 'theme-colors',
-                label: _sdT('Theme Colors'),
-                defaultOpen: true,
-                vars: [
-                    { name: '--bs-primary',   label: _sdT('Primary'),   kind: 'color', theme: true, def: { light: '#0d6efd', dark: '#6ea8fe' } },
-                    { name: '--bs-secondary', label: _sdT('Secondary'), kind: 'color', theme: true, def: { light: '#6c757d', dark: '#a7acb1' } },
-                    { name: '--bs-success',   label: _sdT('Success'),   kind: 'color', theme: true, def: { light: '#198754', dark: '#75b798' } },
-                    { name: '--bs-info',      label: _sdT('Info'),      kind: 'color', theme: true, def: { light: '#0dcaf0', dark: '#6edff6' } },
-                    { name: '--bs-warning',   label: _sdT('Warning'),   kind: 'color', theme: true, def: { light: '#ffc107', dark: '#ffda6a' } },
-                    { name: '--bs-danger',    label: _sdT('Danger'),    kind: 'color', theme: true, def: { light: '#dc3545', dark: '#ea868f' } },
-                    { name: '--bs-light',     label: _sdT('Light'),     kind: 'color', theme: true, def: { light: '#f8f9fa', dark: '#343a40' } },
-                    { name: '--bs-dark',      label: _sdT('Dark'),      kind: 'color', theme: true, def: { light: '#212529', dark: '#dee2e6' } }
-                ]
-            },
-            {
-                id: 'body-colors',
-                label: _sdT('Body Colors'),
-                defaultOpen: true,
-                vars: [
-                    { name: '--bs-body-color',       label: _sdT('Text Color'),           kind: 'color',     def: { light: '#212529', dark: '#dee2e6' } },
-                    { name: '--bs-secondary-color',  label: _sdT('Secondary Text Color'), kind: 'colorRgba', def: { light: 'rgba(33, 37, 41, 0.75)', dark: 'rgba(222, 226, 230, 0.75)' } },
-                    { name: '--bs-tertiary-color',   label: _sdT('Tertiary Text Color'),  kind: 'colorRgba', def: { light: 'rgba(33, 37, 41, 0.5)',  dark: 'rgba(222, 226, 230, 0.5)'  } },
-                    { name: '--bs-body-bg',          label: _sdT('Background'),           kind: 'color',     def: { light: '#ffffff', dark: '#212529' } },
-                    { name: '--bs-secondary-bg',     label: _sdT('Secondary BG'),         kind: 'color',     def: { light: '#e9ecef', dark: '#343a40' } },
-                    { name: '--bs-tertiary-bg',      label: _sdT('Tertiary BG'),          kind: 'color',     def: { light: '#f8f9fa', dark: '#2b3035' } }
-                ]
-            },
-            {
-                id: 'text',
-                label: _sdT('Text'),
-                defaultOpen: true,
-                vars: [
-                    { name: '--bs-body-font-family', label: _sdT('Font Family'), kind: 'text', def: { light: 'var(--bs-font-sans-serif)', dark: 'var(--bs-font-sans-serif)' } },
-                    { name: '--bs-body-font-size',   label: _sdT('Font Size'),   kind: 'text', def: { light: '1rem', dark: '1rem' } },
-                    { name: '--bs-body-font-weight', label: _sdT('Font Weight'), kind: 'select', opts: ['100','200','300','400','500','600','700','800','900'], def: { light: '400', dark: '400' } },
-                    { name: '--bs-body-line-height', label: _sdT('Line Height'), kind: 'text', def: { light: '1.5', dark: '1.5' } }
-                ]
-            },
-            {
-                id: 'links',
-                label: _sdT('Links'),
-                defaultOpen: true,
-                vars: [
-                    { name: '--bs-link-color',           label: _sdT('Color'),            kind: 'color', def: { light: '#0d6efd', dark: '#6ea8fe' } },
-                    { name: '--bs-link-hover-color',     label: _sdT('Hover Color'),      kind: 'color', def: { light: '#0a58ca', dark: '#9ec5fe' } },
-                    { name: '--bs-link-decoration',      label: _sdT('Decoration'),       kind: 'select', opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(), def: { light: 'underline', dark: 'underline' } },
-                    { name: '--bs-link-hover-decoration',label: _sdT('Hover Decoration'), kind: 'select', opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(), def: { light: 'underline', dark: 'underline' } }
-                ]
-            },
-            {
-                id: 'borders',
-                label: _sdT('Borders'),
-                defaultOpen: false,
-                vars: [
-                    { name: '--bs-border-color',     label: _sdT('Border Color'),  kind: 'color', def: { light: '#dee2e6',  dark: '#495057'  } },
-                    { name: '--bs-border-width',     label: _sdT('Border Width'),  kind: 'text',  def: { light: '1px',      dark: '1px'      } },
-                    { name: '--bs-border-radius',    label: _sdT('Radius'),        kind: 'text',  def: { light: '0.375rem', dark: '0.375rem' } },
-                    { name: '--bs-border-radius-sm', label: _sdT('Radius SM'),     kind: 'text',  def: { light: '0.25rem',  dark: '0.25rem'  } },
-                    { name: '--bs-border-radius-lg', label: _sdT('Radius LG'),     kind: 'text',  def: { light: '0.5rem',   dark: '0.5rem'   } },
-                    { name: '--bs-border-radius-xl', label: _sdT('Radius XL'),     kind: 'text',  def: { light: '1rem',     dark: '1rem'     } }
-                ]
-            },
-            {
-                id: 'focus-ring',
-                label: _sdT('Focus Ring'),
-                defaultOpen: false,
-                vars: [
-                    { name: '--bs-focus-ring-color',   label: _sdT('Color'),   kind: 'colorRgba', def: { light: 'rgba(13, 110, 253, 0.25)', dark: 'rgba(110, 168, 254, 0.25)' } },
-                    { name: '--bs-focus-ring-width',   label: _sdT('Width'),   kind: 'text',      def: { light: '0.25rem', dark: '0.25rem' } },
-                    { name: '--bs-focus-ring-opacity', label: _sdT('Opacity'), kind: 'text',      def: { light: '0.25',    dark: '0.25'    } }
-                ]
-            }
-        ];
-
-        // Theme color cascade: which Bootstrap utility/component classes
-        // need an explicit override when the user changes a theme color.
-        // Each entry generates one CSS rule.
-        //
-        // Why this exists: Bootstrap's components don't read --bs-primary
-        // directly — they hardcode the colour at build time (e.g. .btn-primary
-        // sets `--bs-btn-bg: #0d6efd`). Without the cascade, changing
-        // --bs-primary would only affect a handful of utilities and leave
-        // .btn-primary, .alert-primary, .badge.text-bg-primary untouched.
-        //
-        // mode='light' emits unprefixed selectors (apply by default).
-        // mode='dark'  emits selectors prefixed with `[data-bs-theme="dark"]`
-        // so they only kick in when the user toggles dark mode and don't
-        // override the light cascade in light mode.
-        function _themeCascadeRulesFor(varName, value, mode) {
-            var slug = varName.replace(/^--bs-/, '');
-            var v = value;
-            var pref = (mode === 'dark') ? '[data-bs-theme="dark"] ' : '';
-            return [
-                pref + '.bg-'      + slug + ' { background-color: ' + v + ' !important; }',
-                pref + '.text-'    + slug + ' { color: '            + v + ' !important; }',
-                pref + '.border-'  + slug + ' { border-color: '     + v + ' !important; }',
-                pref + '.link-'    + slug + ' { color: '            + v + ' !important; }',
-                pref + '.text-bg-' + slug + ' { background-color: ' + v + ' !important; color: #fff !important; }',
-                pref + '.btn-'     + slug + ' {' +
-                    ' --bs-btn-bg: '                 + v + ';' +
-                    ' --bs-btn-border-color: '       + v + ';' +
-                    ' --bs-btn-hover-bg: '           + 'color-mix(in srgb, ' + v + ', black 15%);' +
-                    ' --bs-btn-hover-border-color: ' + 'color-mix(in srgb, ' + v + ', black 20%);' +
-                    ' --bs-btn-active-bg: '          + 'color-mix(in srgb, ' + v + ', black 20%);' +
-                    ' --bs-btn-active-border-color: '+ 'color-mix(in srgb, ' + v + ', black 25%);' +
-                    ' --bs-btn-disabled-bg: '        + v + ';' +
-                    ' --bs-btn-disabled-border-color: ' + v + ';' +
-                    ' }',
-                pref + '.btn-outline-' + slug + ' {' +
-                    ' --bs-btn-color: '              + v + ';' +
-                    ' --bs-btn-border-color: '       + v + ';' +
-                    ' --bs-btn-hover-bg: '           + v + ';' +
-                    ' --bs-btn-hover-border-color: ' + v + ';' +
-                    ' --bs-btn-active-bg: '          + v + ';' +
-                    ' --bs-btn-active-border-color: '+ v + ';' +
-                    ' --bs-btn-disabled-color: '     + v + ';' +
-                    ' --bs-btn-disabled-border-color: ' + v + ';' +
-                    ' }',
-                pref + '.alert-' + slug + ' {' +
-                    ' --bs-alert-color: '        + 'color-mix(in srgb, ' + v + ', black 50%);' +
-                    ' --bs-alert-bg: '           + 'color-mix(in srgb, ' + v + ', white 80%);' +
-                    ' --bs-alert-border-color: ' + 'color-mix(in srgb, ' + v + ', white 70%);' +
-                    ' --bs-alert-link-color: '   + 'color-mix(in srgb, ' + v + ', black 60%);' +
-                    ' }'
-            ].join('\n');
-        }
+        // The light, shared and dark blocks of the user-styles content the
+        // Themes tab writes its Bootstrap variables to (see _themeBlockFor()).
 
         // Active mode for the Theme panel. Switching this re-renders the
         // inputs against the corresponding selector block.
@@ -53503,117 +53247,7 @@ const StyleDesigner = (function () {
             return _themeModeDecls(content, mode)[varName] || '';
         }
 
-        // Update or remove a "cascade" block for a theme color. Marker
-        // comments make the block self-identifying so the writer can find
-        // and replace it idempotently. Empty `value` removes the block.
-        // Each mode has its own block: light cascade is unscoped (default
-        // styling), dark cascade is prefixed with `[data-bs-theme="dark"]`
-        // so it only kicks in when the user toggles dark mode and doesn't
-        // override the light cascade in light mode.
-        function _writeCascadeBlock(content, varName, value, mode) {
-            var slug = varName.replace(/^--bs-/, '');
-            var startMark = '/* === pg-theme-cascade:' + slug + ':' + mode + ':start === */';
-            var endMark   = '/* === pg-theme-cascade:' + slug + ':' + mode + ':end === */';
-            var startIdx = content.indexOf(startMark);
-            var endIdx   = (startIdx === -1) ? -1 : content.indexOf(endMark, startIdx);
-            var newBlock = '';
-            if (value) {
-                newBlock = startMark + '\n' + _themeCascadeRulesFor(varName, value, mode) + '\n' + endMark;
-            }
-            if (startIdx !== -1 && endIdx !== -1) {
-                // Replace existing — drop the whole region (markers + body).
-                var endLen = endIdx + endMark.length;
-                var pre = content.slice(0, startIdx).replace(/\n+$/, '');
-                var post = content.slice(endLen).replace(/^\n+/, '');
-                if (newBlock) {
-                    return (pre ? pre + '\n\n' : '') + newBlock + (post ? '\n\n' + post : '');
-                }
-                return (pre + (post ? '\n\n' + post : '')).replace(/^\s+|\s+$/g, '') + (post ? '' : '');
-            }
-            // No existing — append.
-            if (!newBlock) return content;
-            return (content.replace(/\s+$/, '') ? content.replace(/\s+$/, '') + '\n\n' : '') + newBlock + '\n';
-        }
 
-        // Write a single theme var into the user-styles content, creating
-        // the rule block on first write. Removes the declaration when
-        // `value` is empty so the user can revert to the Bootstrap default.
-        // For theme colors (primary/…/dark) ALSO emits a cascade block so
-        // .btn-primary, .bg-primary, .alert-primary etc. follow along.
-        function _writeThemeVar(mode, varName, value) {
-            // Snapshot BEFORE we touch cssFiles or the user-styles content.
-            // saveState() captures the css hidden field as part of `assets`,
-            // so undo restores the entire pre-edit user-styles block —
-            // variable + cascade rules together. Without this, theme-var
-            // edits silently bypass the undo history.
-            saveState();
-            var entryIdx = -1;
-            for (var i = 0; i < cssFiles.length; i++) {
-                if (cssFiles[i].meta === 'user-styles') { entryIdx = i; break; }
-            }
-            var entry;
-            if (entryIdx === -1) {
-                entry = { id: mkId(), name: _sdT('User Styles'), type: 'css', content: '', enabled: true, locked: false, meta: 'user-styles' };
-                cssFiles.push(entry);
-                entryIdx = cssFiles.length - 1;
-            } else {
-                entry = cssFiles[entryIdx];
-            }
-            // A light block in the old form is rewritten on every write, so a
-            // value set now never overrides a dark page. A light value lives
-            // in one block only: the one its variable belongs to.
-            var kind = _themeBlockFor(mode, varName);
-            var content = _themeUpgradeLightSelector(entry.content || '');
-            if (kind !== 'dark') content = _themeSetDecl(content, (kind === 'light') ? 'shared' : 'light', varName, '');
-            content = _themeSetDecl(content, kind, varName, value);
-
-            // For theme colors (primary/.../dark), also (re)emit the cascade
-            // override block for the current mode. Light cascade is unscoped;
-            // dark cascade is prefixed with [data-bs-theme="dark"] so the
-            // two modes don't collide.
-            var meta = _findThemeVarMeta(varName);
-            if (meta && meta.theme) {
-                content = _writeCascadeBlock(content, varName, value, mode);
-            }
-            entry.content = content;
-            saveFiles('sd-custom-css-field', cssFiles);
-            // Refresh the canvas iframe so the new variable + cascade rules
-            // take effect immediately. Without this, saveFiles only updates
-            // the hidden form field and the user has to interact with
-            // something else for the iframe to pick up the change.
-            applyAssetsToIframe();
-        }
-
-        // Look up a var's metadata (for `theme: true` checks etc.).
-        function _findThemeVarMeta(name) {
-            for (var i = 0; i < THEME_VAR_GROUPS.length; i++) {
-                var g = THEME_VAR_GROUPS[i];
-                for (var j = 0; j < g.vars.length; j++) {
-                    if (g.vars[j].name === name) return g.vars[j];
-                }
-            }
-            return null;
-        }
-
-        // Persisted collapse state per group. Defaults come from group def.
-        var _themeGrpCollapseKey = 'sd_theme_grp_collapse';
-        var _themeGrpCollapsed = {};
-        try {
-            var raw = localStorage.getItem(_themeGrpCollapseKey);
-            if (raw) _themeGrpCollapsed = JSON.parse(raw) || {};
-        } catch (e) {}
-        function _isGrpCollapsed(g) {
-            if (typeof _themeGrpCollapsed[g.id] === 'boolean') return _themeGrpCollapsed[g.id];
-            return !g.defaultOpen;
-        }
-        function _setGrpCollapsed(id, collapsed) {
-            _themeGrpCollapsed[id] = !!collapsed;
-            try { localStorage.setItem(_themeGrpCollapseKey, JSON.stringify(_themeGrpCollapsed)); } catch (e) {}
-        }
-
-        // Render the variable rows for the active mode. Called on init,
-        // when the mode changes, on tab switch, and after user-styles
-        // content is edited from elsewhere (bottom Styles panel etc.).
         // The variable blocks the panel edits (light + dark), as a standalone
         // stylesheet — what a saved theme file is made of.
         function _sdThemeCssFromUserStyles() {
@@ -53632,246 +53266,48 @@ const StyleDesigner = (function () {
             return out.trim();
         }
 
-        // Header of the Themes tab: which theme file the design loads (and
-        // that it wins over the variables below), plus "save as theme".
-        function _renderThemeHead() {
-            var head = document.getElementById('sd-theme-head');
-            if (!head) return;
-            var th = _sdActiveTheme();
-            // The design's look and palette (Settings > Theme) come
-            // first: they are what the variables below are laid over.
-            var _lk = _sdThemeFind('look', _sdThemeValue('look'));
-            var _pl = _sdThemeFind('palette', _sdThemeValue('palette'));
-            var lookRow = (_sdUsesBootstrap() && _sdThemes())
-                ? '<div class="sd-theme-head-row">' +
-                      '<span class="bi bi-brush sd-theme-head-icon"></span>' +
-                      '<span class="sd-theme-head-txt"><strong>' + esc(_lk ? _lk.name : _sdT('Plain Bootstrap')) + '</strong> · ' + esc(_pl ? _pl.name : _sdT('Bootstrap')) +
-                          '<br><span class="sd-theme-head-hint">' + esc(_sdT('Look and colour palette of the design')) + '</span></span>' +
-                      '<button type="button" class="sd-theme-head-btn" data-act="look" title="' + esc(_sdT('Change the look and the palette')) + '"><span class="bi bi-sliders"></span></button>' +
-                  '</div>'
-                : '';
-            // Without Bootstrap there are no variables below to speak of or
-            // to save as a theme; the theme file itself is any stylesheet.
-            var _bsVars = _sdUsesBootstrap();
-            head.innerHTML = lookRow +
-                '<div class="sd-theme-head-row">' +
-                    '<span class="bi bi-palette2 sd-theme-head-icon"></span>' +
-                    '<span class="sd-theme-head-txt">' +
-                        (th
-                            ? '<strong>' + esc(th.name) + '</strong><br><span class="sd-theme-head-hint">' + esc(_bsVars ? _sdT('Loads after every stylesheet and overrides the variables below.') : _sdT('Loads after every stylesheet of the design.')) + '</span>'
-                            : '<strong>' + esc(_sdT('No theme')) + '</strong><br><span class="sd-theme-head-hint">' + esc(_bsVars ? _sdT('The variables below live in User Styles.') : _sdT('A theme file loads after every stylesheet of the design.')) + '</span>') +
-                    '</span>' +
-                    '<button type="button" class="sd-theme-head-btn" data-act="pick" title="' + esc(_sdT('Choose a theme (Settings → Theme)')) + '"><span class="bi bi-gear"></span></button>' +
-                '</div>' +
-                (_bsVars
-                    ? '<button type="button" class="sd-theme-save-btn" data-act="save">' +
-                          '<span class="bi bi-save me-1"></span>' + esc(_sdT('Save these colours as a theme')) +
-                      '</button>'
-                    : '');
-            head.querySelector('[data-act="pick"]').addEventListener('click', _sdOpenDesignSettings);
-            var _saveBtn = head.querySelector('[data-act="save"]');
-            if (_saveBtn) _saveBtn.addEventListener('click', _sdSaveAsTheme);
-            var lookBtn = head.querySelector('[data-act="look"]');
-            if (lookBtn) lookBtn.addEventListener('click', _sdOpenThemeSettings);
-        }
-        if (!window._sdThemeHeadBound) {
-            window._sdThemeHeadBound = true;
-            document.addEventListener('pg-design-theme-change', function () { _renderThemeHead(); });
-        }
-
-        // Write the light/dark variable blocks to a new theme file and make
-        // it the design's theme. The variables stay in User Styles as well:
-        // the file is a snapshot the operator can reuse on other designs.
-        function _sdSaveAsTheme() {
-            var css = _sdThemeCssFromUserStyles();
-            if (!css) {
-                sdToast(_sdT('Nothing to save yet — change a colour or two first.'), 'warning', 4000);
-                return;
-            }
-            var name = window.prompt(_sdT('Theme name:'), '');
-            if (!name || !name.trim()) return;
-            _pgApiPost('theme_save', { name: name.trim(), css: css }).then(function (res) {
-                if (!res || res.status !== 'success') {
-                    sdToast((res && res.message) ? res.message : _sdT('The theme could not be saved.'), 'error', 6000);
-                    return;
+        // The Themes tab is the part 'theme' (assets/js/style_designer_theme.js):
+        // its variable rows, header and "save as a theme" are drawn the
+        // first time the tab is shown, and after that whenever the user
+        // styles change. The part reads and writes the user-styles content
+        // and its rule blocks through this host.
+        var _themeHost = {
+            wrap: wrap,
+            mode: function () { return _themeMode; },
+            userStyles: function () {
+                for (var i = 0; i < cssFiles.length; i++) {
+                    if (cssFiles[i].meta === 'user-styles') return cssFiles[i].content || '';
                 }
-                var sel = document.querySelector('select[name="theme_id"]');
-                if (sel) {
-                    var opt = document.createElement('option');
-                    opt.value = String(res.id); opt.textContent = res.name;
-                    sel.appendChild(opt);
-                    sel.value = String(res.id);
-                    sel.dispatchEvent(new Event('change', { bubbles: true }));   // canvas link + lists
+                return '';
+            },
+            setUserStyles: function (content) {
+                var entry = null;
+                for (var i = 0; i < cssFiles.length; i++) {
+                    if (cssFiles[i].meta === 'user-styles') { entry = cssFiles[i]; break; }
                 }
-                sdToast('<strong>' + esc(res.name) + '</strong> ' + esc(_sdT('was saved and selected as this design\'s theme. Save the design to keep the choice.')), 'success', 7000);
-            }).catch(function () { sdToast(_sdT('Network error.'), 'error'); });
-        }
+                if (!entry) {
+                    entry = { id: mkId(), name: _sdT('User Styles'), type: 'css', content: '', enabled: true, locked: false, meta: 'user-styles' };
+                    cssFiles.push(entry);
+                }
+                entry.content = content;
+                saveFiles('sd-custom-css-field', cssFiles);
+            },
+            activeTheme: _sdActiveTheme,
+            openDesignSettings: _sdOpenDesignSettings,
+            themeCss: _sdThemeCssFromUserStyles,
+            blockFor: _themeBlockFor,
+            setDecl: _themeSetDecl,
+            upgrade: _themeUpgradeLightSelector,
+            modeDecls: _themeModeDecls,
+            hasDarkDefault: _themeVarHasDarkDefault
+        };
 
+        // Draws the Themes tab. While the tab has never been shown there is
+        // nothing to draw: showing it draws it.
         function renderThemePanel() {
-            _renderThemeHead();
-            var host = document.getElementById('sd-theme-vars');
-            if (!host) return;
-            // The variables below are Bootstrap's (--bs-*): a design built
-            // without a framework, or on another one, reads none of them, so
-            // neither they nor the light/dark blocks they are written to are
-            // offered there.
-            var _modeTabs = wrap.querySelector('.sd-theme-mode-tabs');
-            if (_modeTabs) _modeTabs.style.display = _sdUsesBootstrap() ? '' : 'none';
-            if (!_sdUsesBootstrap()) {
-                host.innerHTML = '<p class="form-text small px-3 mb-0">' +
-                    esc(_sdT('This design is built without Bootstrap, so the Bootstrap variables (colours, fonts, borders) are not offered here. Put your own variables in one of the design\'s stylesheets, or choose a theme file above.')) + '</p>';
-                return;
-            }
-            // Gather current values once per render
-            var content = '';
-            for (var i = 0; i < cssFiles.length; i++) {
-                if (cssFiles[i].meta === 'user-styles') { content = cssFiles[i].content || ''; break; }
-            }
-            var current = _themeModeDecls(content, _themeMode);
-            // In dark mode a variable without a Bootstrap dark value shows
-            // the light value it inherits there as its placeholder.
-            var inherited = (_themeMode === 'dark') ? _themeModeDecls(content, 'light') : {};
-
-            var html = '';
-            THEME_VAR_GROUPS.forEach(function (g) {
-                var collapsed = _isGrpCollapsed(g);
-                html += '<div class="sd-theme-grp' + (collapsed ? ' collapsed' : '') + '" data-grp="' + g.id + '">' +
-                            '<div class="sd-theme-grp-hdr" data-grp="' + g.id + '">' +
-                                '<span class="bi bi-chevron-' + (collapsed ? 'right' : 'down') + ' sd-theme-grp-chev"></span>' +
-                                '<span class="sd-theme-grp-label">' + g.label + '</span>' +
-                                '<span class="sd-theme-grp-spacer"></span>' +
-                                '<button type="button" class="sd-theme-grp-act" data-act="reset-all" data-grp="' + g.id + '" title="' + esc(_sdT('Reset every change in this group')) + '"><span class="bi bi-arrow-counterclockwise"></span></button>' +
-                            '</div>' +
-                            '<div class="sd-theme-grp-body"' + (collapsed ? ' style="display:none"' : '') + '>';
-
-                g.vars.forEach(function (v) {
-                    var val = current[v.name] || '';
-                    var ph  = (typeof v.def[_themeMode] === 'string') ? v.def[_themeMode] : '';
-                    if (_themeMode === 'dark' && !_themeVarHasDarkDefault(v.name) && inherited[v.name]) ph = inherited[v.name];
-                    var modified = !!val;        // ← class hook for the blue label
-                    var displayColor = val || ph;
-
-                    var labelHtml = '<span class="sd-theme-row-name' + (modified ? ' modified' : '') + '"' +
-                                    ' data-var="' + v.name + '"' +
-                                    ' title="' + (modified ? _sdT('Click to return to the default') : v.name) + '">' +
-                                    v.label + '</span>';
-
-                    if (v.kind === 'color') {
-                        // Native <input type="color"> only understands #rrggbb.
-                        var hex = (displayColor || '').trim();
-                        if (!/^#[0-9a-fA-F]{6}$/.test(hex)) hex = (ph || '#000000');
-                        if (!/^#[0-9a-fA-F]{6}$/.test(hex)) hex = '#000000';
-                        html +=
-                            '<div class="sd-theme-row" data-var="' + v.name + '">' +
-                                labelHtml +
-                                '<input type="text" class="sd-theme-row-text" data-var="' + v.name + '" value="' + esc(val) + '" placeholder="' + esc(ph) + '">' +
-                                '<input type="color" class="sd-theme-row-color" data-var="' + v.name + '" value="' + hex + '">' +
-                            '</div>';
-                    } else if (v.kind === 'colorRgba') {
-                        // No native picker for rgba/hex8 — text-only.
-                        html +=
-                            '<div class="sd-theme-row sd-theme-row-rgba" data-var="' + v.name + '">' +
-                                labelHtml +
-                                '<input type="text" class="sd-theme-row-text" data-var="' + v.name + '" value="' + esc(val) + '" placeholder="' + esc(ph) + '">' +
-                                '<span class="sd-theme-row-swatch" style="background:' + esc(displayColor) + '"></span>' +
-                            '</div>';
-                    } else if (v.kind === 'select') {
-                        var opts = (v.opts || []).map(function (o) {
-                            var sel = (val === o) || (!val && ph === o);
-                            return '<option value="' + esc(o) + '"' + (sel ? ' selected' : '') + '>' + esc(v.optLabels && v.optLabels[o] ? v.optLabels[o] : o) + '</option>';
-                        }).join('');
-                        html +=
-                            '<div class="sd-theme-row sd-theme-row-select" data-var="' + v.name + '">' +
-                                labelHtml +
-                                '<select class="sd-theme-row-sel" data-var="' + v.name + '">' + opts + '</select>' +
-                            '</div>';
-                    } else {
-                        html +=
-                            '<div class="sd-theme-row sd-theme-row-text-only" data-var="' + v.name + '">' +
-                                labelHtml +
-                                '<input type="text" class="sd-theme-row-text" data-var="' + v.name + '" value="' + esc(val) + '" placeholder="' + esc(ph) + '">' +
-                            '</div>';
-                    }
-                });
-                html += '</div></div>';
-            });
-            host.innerHTML = html;
-
-            // ── Wire interactions ──────────────────────────────────────────
-            // Group header → toggle collapse (chevron + body).
-            host.querySelectorAll('.sd-theme-grp-hdr').forEach(function (hdr) {
-                hdr.addEventListener('click', function (e) {
-                    if (e.target.closest('.sd-theme-grp-act')) return;  // ignore toolbar clicks
-                    var id = this.dataset.grp;
-                    var grpEl = host.querySelector('.sd-theme-grp[data-grp="' + id + '"]');
-                    if (!grpEl) return;
-                    var nowCollapsed = !grpEl.classList.contains('collapsed');
-                    grpEl.classList.toggle('collapsed', nowCollapsed);
-                    var body = grpEl.querySelector('.sd-theme-grp-body');
-                    var chev = grpEl.querySelector('.sd-theme-grp-chev');
-                    if (body) body.style.display = nowCollapsed ? 'none' : '';
-                    if (chev) chev.className = 'bi bi-chevron-' + (nowCollapsed ? 'right' : 'down') + ' sd-theme-grp-chev';
-                    _setGrpCollapsed(id, nowCollapsed);
-                });
-            });
-            // Group action buttons: each group's reset.
-            host.querySelectorAll('.sd-theme-grp-act').forEach(function (btn) {
-                btn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    var act = this.dataset.act;
-                    var id  = this.dataset.grp;
-                    if (act === 'reset-all') {
-                        var grp = null;
-                        for (var k = 0; k < THEME_VAR_GROUPS.length; k++) if (THEME_VAR_GROUPS[k].id === id) { grp = THEME_VAR_GROUPS[k]; break; }
-                        if (!grp) return;
-                        grp.vars.forEach(function (v) { _writeThemeVar(_themeMode, v.name, ''); });
-                        renderThemePanel();
-                        applyAssetsToIframe();
-                    }
-                });
-            });
-
-            // Color picker → mirror into text + write on change.
-            host.querySelectorAll('.sd-theme-row-color').forEach(function (cp) {
-                cp.addEventListener('input', function () {
-                    var row = this.closest('.sd-theme-row');
-                    var txt = row.querySelector('.sd-theme-row-text');
-                    if (txt) txt.value = this.value;
-                });
-                cp.addEventListener('change', function () {
-                    _writeThemeVar(_themeMode, this.dataset.var, this.value);
-                    renderThemePanel();
-                });
-            });
-            // Free text → mirror to color picker if hex, write on change.
-            host.querySelectorAll('.sd-theme-row-text').forEach(function (inp) {
-                inp.addEventListener('change', function () {
-                    var row = this.closest('.sd-theme-row');
-                    var cp  = row.querySelector('.sd-theme-row-color');
-                    if (cp && /^#[0-9a-fA-F]{6}$/.test(this.value)) cp.value = this.value;
-                    var sw  = row.querySelector('.sd-theme-row-swatch');
-                    if (sw) sw.style.background = this.value || '';
-                    _writeThemeVar(_themeMode, this.dataset.var, this.value.trim());
-                    renderThemePanel();
-                });
-            });
-            // Select dropdown → write on change.
-            host.querySelectorAll('.sd-theme-row-sel').forEach(function (sel) {
-                sel.addEventListener('change', function () {
-                    _writeThemeVar(_themeMode, this.dataset.var, this.value);
-                    renderThemePanel();
-                });
-            });
-
-            // Label-as-reset: clicking a modified label reverts the override.
-            host.querySelectorAll('.sd-theme-row-name').forEach(function (lbl) {
-                lbl.addEventListener('click', function () {
-                    if (!this.classList.contains('modified')) return;
-                    _writeThemeVar(_themeMode, this.dataset.var, '');
-                    renderThemePanel();
-                    applyAssetsToIframe();
-                });
-            });
+            var pane = document.getElementById('sd-tab-themes');
+            if (!_sdPartLoaded('theme') && (!pane || pane.style.display === 'none')) return;
+            _sdPartCall('theme', 'render', [_themeHost]).catch(_sdPartFailed);
         }
 
         // Mode tab switching — light vs dark. Routes through the shared
@@ -53931,125 +53367,6 @@ const StyleDesigner = (function () {
                 else showHdrCtx(t, e.clientX, e.clientY);
             });
         });
-
-        // ── Google Fonts browser ──────────────────────────────────────────────
-        var _gfOpenFamily = null;
-
-        function renderGfBrowser(query) {
-            var el = document.getElementById('sd-gf-list');
-            if (!el) return;
-            query = (query || '').toLowerCase().trim();
-            var fonts = GOOGLE_FONTS.filter(function(f) { return f !== 'Default' && (!query || f.toLowerCase().indexOf(query) !== -1); });
-            var addedFams = gfAdded.map(function(f) { return f.family; });
-            // Render the entire filtered list — the catalog (~180 entries)
-            // is small enough that a virtual scroller would be overkill, and
-            // the filter input on top means most queries narrow the list to
-            // a handful anyway. Earlier builds capped at 100 with a "+X
-            // more…" footer; that hid common picks like Roboto Slab and
-            // forced the user to type to find them.
-            el.innerHTML = fonts.map(function(f) {
-                var added = addedFams.indexOf(f) !== -1;
-                var activeCls = (_gfOpenFamily === f) ? ' active' : '';
-                return '<div class="sd-gf-item' + (added ? ' sd-gf-added-mark' : '') + activeCls + '" data-gf-pick="' + f + '"><span class="sd-gf-item-name">' + f + '</span>' + (added ? '<span class="bi bi-check2-circle sd-gf-icon-ok"></span>' : '<span class="bi bi-plus-circle sd-gf-icon-add"></span>') + '</div>';
-            }).join('');
-            el.querySelectorAll('[data-gf-pick]').forEach(function(item) {
-                item.addEventListener('click', function() { openGfPicker(this.dataset.gfPick, this); });
-            });
-        }
-
-        function openGfPicker(family, anchorEl) {
-            // Same-click toggle removed: the previous "click again to
-            // deselect" behaviour read as a bug — the user thought their
-            // click was lost. Now clicking a font always opens (or refreshes)
-            // its detail panel; selection is cleared only by the modal close.
-            _gfOpenFamily = family;
-            document.querySelectorAll('.sd-gf-item.active').forEach(function(el) { el.classList.remove('active'); });
-            // Active class derives from `_gfOpenFamily` rather than the
-            // anchorEl reference — that way a stale anchorEl from an old
-            // render (e.g. after Add re-renders the list) still highlights
-            // the correct row instead of silently doing nothing.
-            var liveAnchor = anchorEl;
-            if (!liveAnchor || !liveAnchor.isConnected) {
-                liveAnchor = document.querySelector('.sd-gf-item[data-gf-pick="' + family.replace(/"/g, '\\"') + '"]');
-            }
-            if (liveAnchor) liveAnchor.classList.add('active');
-            var existing = null; for (var i=0; i<gfAdded.length; i++) { if (gfAdded[i].family === family) { existing = gfAdded[i]; break; } }
-            var selWts = existing ? existing.weights.slice() : [400];
-            // Load preview font — the <link> targets the parent document so
-            // the preview area in the modal can render in the chosen face.
-            var prevLink = document.getElementById('sd-gf-preview-link');
-            if (!prevLink) { prevLink = document.createElement('link'); prevLink.id = 'sd-gf-preview-link'; prevLink.rel = 'stylesheet'; document.head.appendChild(prevLink); }
-            prevLink.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(family).replace(/%20/g, '+') + ':wght@100;200;300;400;500;600;700;800;900&display=swap';
-            var det = document.getElementById('sd-gf-detail');
-            if (!det) return;
-            // Detail layout (top-down): title → preview card → weights row
-            // (numbers in default UI font; small sample swatch shows what the
-            // weight looks like) → actions row.
-            // Sample text follows the user's preview convention but is given
-            // a card-style wrapper so the boundary between "preview text"
-            // and "weight controls" is visually obvious.
-            det.innerHTML =
-                '<div class="sd-gf-det-head">' +
-                    '<div class="sd-gf-det-title">' + family + '</div>' +
-                    (existing
-                        ? '<span class="sd-gf-det-status sd-gf-det-status-added"><span class="bi bi-check2-circle me-1"></span>' + esc(_sdT('Already added')) + '</span>'
-                        : '<span class="sd-gf-det-status">' + esc(_sdT('Not added yet')) + '</span>') +
-                '</div>' +
-                '<div class="sd-gf-det-preview-card">' +
-                    '<div class="sd-gf-det-preview-label">' + esc(_sdT('Preview')) + '</div>' +
-                    '<div class="sd-gf-det-preview" style="font-family:\'' + family + '\',sans-serif">AaBbCcDd 0123</div>' +
-                    '<div class="sd-gf-det-preview-pangram" style="font-family:\'' + family + '\',sans-serif">' + esc(_sdT('The quick brown fox jumps over the lazy dog.')) + '</div>' +
-                '</div>' +
-                '<div class="sd-gf-det-subtitle">' + esc(_sdT('Weights')) + '</div>' +
-                '<div class="sd-gf-det-wts">' + [100,200,300,400,500,600,700,800,900].map(function(w) {
-                    var isOn = selWts.indexOf(w) !== -1;
-                    return '<label class="sd-gf-det-wt' + (isOn ? ' active' : '') + '">' +
-                                '<input type="checkbox" value="' + w + '"' + (isOn ? ' checked' : '') + '>' +
-                                '<span class="sd-gf-det-wt-num">' + w + '</span>' +
-                                '<span class="sd-gf-det-wt-sample" style="font-family:\'' + family + '\',sans-serif;font-weight:' + w + '">Aa</span>' +
-                            '</label>';
-                }).join('') + '</div>' +
-                '<div class="sd-gf-det-actions">' +
-                    '<button class="sd-gf-det-add btn btn-solid theme-primary btn-sm" type="button"><span class="bi bi-plus-circle me-1"></span>' +
-                        (existing ? _sdT('Update') : _sdT('Add')) +
-                    '</button>' +
-                    (existing ? '<button class="sd-gf-det-remove btn btn-outline theme-danger btn-sm" type="button"><span class="bi bi-trash me-1"></span>' + esc(_sdT('Remove')) + '</button>' : '') +
-                '</div>';
-            // Active state on weight chips so the user sees their selection
-            // without staring at the tiny native checkbox.
-            det.querySelectorAll('.sd-gf-det-wt input').forEach(function (cb) {
-                cb.addEventListener('change', function () {
-                    var lbl = this.closest('.sd-gf-det-wt');
-                    if (lbl) lbl.classList.toggle('active', this.checked);
-                });
-            });
-            det.querySelector('.sd-gf-det-add').addEventListener('click', function() {
-                var wts = []; det.querySelectorAll('input:checked').forEach(function(c) { wts.push(parseInt(c.value,10)); });
-                if (!wts.length) wts = [400];
-                gfAdded = gfAdded.filter(function(f) { return f.family !== family; });
-                gfAdded.push({ family: family, weights: wts, enabled: true });
-                saveGfField(); renderFontList();
-                renderGfBrowser(document.getElementById('sd-gf-search') ? document.getElementById('sd-gf-search').value : '');
-                // Re-open with the now-existing entry so the title flips to
-                // "Update" and the Remove button appears.
-                openGfPicker(family);
-            });
-            var remBtn = det.querySelector('.sd-gf-det-remove');
-            if (remBtn) remBtn.addEventListener('click', function() {
-                gfAdded = gfAdded.filter(function(f) { return f.family !== family; });
-                saveGfField(); renderFontList();
-                renderGfBrowser(document.getElementById('sd-gf-search') ? document.getElementById('sd-gf-search').value : '');
-                // Keep _gfOpenFamily as-is so the font can be re-added
-                // immediately without having to re-find it in the list. The
-                // detail re-renders with the "Not added yet" status.
-                openGfPicker(family);
-            });
-        }
-
-        // GF search listener — element lives inside gfModalEl so it exists after append
-        gfModalEl.querySelector('#sd-gf-search').addEventListener('input', function() { renderGfBrowser(this.value); });
-        // Escape closes GF modal too
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && gfModalEl.style.display !== 'none') { e.stopPropagation(); closeGfModal(); } }, true);
 
         // ── Resize handle (with snap-to-collapse) ──────────────────────────────
         var _ASSETS_SNAP_THRESHOLD = 80;
@@ -77138,6 +76455,11 @@ const StyleDesigner = (function () {
             _refreshSharedPalette: _refreshSharedPalette,
             _sdSmartActiveHost: _sdSmartActiveHost,
             _sdUsesBootstrap: _sdUsesBootstrap,
+            _sdThemes: _sdThemes,
+            _sdThemeFind: _sdThemeFind,
+            _sdThemeValue: _sdThemeValue,
+            _sdOpenThemeSettings: _sdOpenThemeSettings,
+            applyAssetsToIframe: applyAssetsToIframe,
             _SD_CODE_KEY: _SD_CODE_KEY,
             _sdCode: _sdCode,
             _sdCodeActiveTab: _sdCodeActiveTab,
@@ -77178,7 +76500,18 @@ const StyleDesigner = (function () {
             _sdContentSizingNode: _sdContentSizingNode,
             _sdDecodeEntities: _sdDecodeEntities,
             _sdFxAttrs: _sdFxAttrs,
+            _sdFxCanvas: _sdFxCanvas,
             _sdFxNormalize: _sdFxNormalize,
+            _sdFxSpec: _sdFxSpec,
+            _sdFxTakes: _sdFxTakes,
+            _sdCanvasInnerOf: _sdCanvasInnerOf,
+            _sdUndoBeforeFirstInput: _sdUndoBeforeFirstInput,
+            _sdLivePreviewSchedule: _sdLivePreviewSchedule,
+            renderTree: renderTree,
+            renderStatusBar: renderStatusBar,
+            renderAttrsPanel: renderAttrsPanel,
+            row: row,
+            swAttr: swAttr,
             _sdImgInRatio: _sdImgInRatio,
             _sdIsSentence: _sdIsSentence,
             _sdNodeSetBinding: _sdNodeSetBinding,
@@ -77199,6 +76532,7 @@ const StyleDesigner = (function () {
             newTabSeq: { get: function () { return _pgNewTabSeq; }, set: function (v) { _pgNewTabSeq = v; } },
             sharedCache: { get: function () { return _sharedCache; } },
             design: { get: function () { return _design; } },
+            canvasDoc: { get: function () { return canvasDoc; } },
             tree: { get: function () { return tree; }, set: function (v) { tree = v; } },
             selectedNode: { get: function () { return selectedNode; }, set: function (v) { selectedNode = v; } },
             selectedNodes: { get: function () { return selectedNodes; }, set: function (v) { selectedNodes = v; } }

@@ -9,7 +9,7 @@ description: Panel text on the page background is fg-body, never fg-black (black
 ## What do I use?
 - Text on the page or card background: `fg-body` (follows the theme). `fg-black` only on a fixed light fill (`bg-warning`, `theme-warning`, `bg-info`).
 - A subtle status badge: `badge badge-subtle theme-<colour>`, not `bg-subtle-<colour>` with a fixed text colour.
-- A `data-bs-toggle="menu"` inside a DataTables scroll box (`.dt-scroll-body`, `overflow: auto`) is clipped; `data-bs-strategy="fixed"` on the toggle positions it against the viewport (`view_product_attributes.php`).
+- A `data-bs-toggle="menu"` inside a scroll box (`overflow: auto`) is clipped; `data-bs-strategy="fixed"` on the toggle positions it against the viewport (`view_product_attributes.php`).
 
 ## Which places were fixed later?
 - The sign-in identity badges (`pg_signin_identity_badges()`) and the find/replace row numbers of `duplicate_folder.php` dropped `fg-black`; the access menu names of `view_users.php` (`pg_user_list_names_cell()`) are `fg-body`; the firewall widget (`widget_21.php`) dropped the v5 `text-dark`, which has no rule in Bootstrap 6. `tests/dark_theme_leftovers_test.php` keeps them.

@@ -68,7 +68,7 @@ if (!$_POST) {
         WHERE c.cash_account_id = '" . $till_id . "'
         ORDER BY c.doc_date ASC, c.id ASC");
 
-    // Deliberately not a DataTable: a cash book is read down the page in date
+    // Deliberately not a sortable list: a cash book is read down the page in date
     // order, and the running balance on each line only means anything in that
     // order.
     $running = (int) $till['opening_balance'];

@@ -803,7 +803,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
 
     // The search box of every screen (palette.php) and a channel's board
     // (channel_board.php).
-    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings());
+    $strings = array_merge($strings, ws_palette_js_strings(), ws_channel_board_js_strings(), ws_memory_js_strings(), ws_channel_agents_js_strings());
     // The time spent on tasks and the tasks they wait for
     // (assets/js/workspace_task_time.js, workspace_task_links.js).
     $strings = array_merge($strings, ws_task_time_js_strings(), ws_task_links_js_strings());

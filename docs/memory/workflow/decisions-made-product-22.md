@@ -7,9 +7,9 @@ description: Decisions list, product part 22 (2026-11-01 evening on): the panel'
 - `decisions-made.md`; its Parts line lists the files. Entries name the issue, the date and the reason.
 
 ## DataTables leaves the panel; a Pinegrap table driver replaces it (2026-11-03)
-- Owner (2026-11-03): DataTables goes; the panel's own table driver takes its place, built and rolled out by `plans/table-driver.md`. Until a screen moves, everything continues as today: list fixes and server-side paging (`ui/server-paged-lists.md`) go on, nothing waits for the driver. Reason: the lists must keep working while the driver is built; the driver takes over the same row actions.
+- Owner (2026-11-03): DataTables goes; the panel's own table driver takes its place, built and rolled out by the table driver plan (done with #8253, `ui/list-table-rollout.md`). Until a screen moves, everything continues as today: list fixes and server-side paging (`ui/server-paged-lists.md`) go on, nothing waits for the driver. Reason: the lists must keep working while the driver is built; the driver takes over the same row actions.
 
-## How a list behaves under the driver (owner, 2026-11-03, `plans/table-driver.md`)
+## How a list behaves under the driver (owner, 2026-11-03, `ui/list-table-rollout.md`)
 - No row checkboxes: selection as in the File Manager (click one, Ctrl/Cmd toggles, Shift a range, arrows), kept by record id, so loading, sorting or searching never drops it. Reason: ticked boxes were lost on every DataTables redraw.
 - Double-click or Enter opens the record and its name stays a link; a tap selects on a phone. A plain click, × or Escape that replaces 2+ selected rows offers "Önceki seçimi geri al" for 10 s.
 - Ctrl+A selects the whole list by its condition, rows not loaded yet included; Ctrl+click excludes one. Bulk actions act on that condition with its exceptions.

@@ -362,3 +362,235 @@ function test_designer_code_view_typed_changes_are_in_the_part()
 		pg_assert_false(isset(designer_parts_kit_keys()[$gone]), $gone . ' is no longer in the kit');
 	}
 }
+
+// The Themes tab (the Bootstrap variable rows, their cascade rules, the
+// header and "save as a theme") is a part: drawn the first time the tab is
+// shown. The core keeps the rule-block helpers the design's load runs
+// (_themeUpgradeLightSelector() and the parsers under it) and one stub.
+function test_designer_theme_panel_is_a_part()
+{
+	$parts = pg_designer_parts();
+	pg_assert_same('assets/js/style_designer_theme.min.js', $parts['theme'] ?? '', 'the theme panel is a part');
+	pg_assert_same(array('assets/js/style_designer_theme.js'), pg_js_bundles()['assets/js/style_designer_theme.min.js'] ?? array(), 'built from its file');
+	$core = _test_blocks_js();
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_theme.js');
+	$moved = array('_themeCascadeRulesFor', '_writeCascadeBlock', '_writeThemeVar', '_findThemeVarMeta', '_renderThemeHead', '_sdSaveAsTheme', '_sdThemeDecorationLabels');
+
+	foreach ($moved as $name) {
+		pg_assert_false(strpos($core, 'function ' . $name . '(') !== false, $name . ' left the core');
+		pg_assert_true(strpos($part, 'function ' . $name . '(') !== false, 'the part holds ' . $name);
+	}
+
+	pg_assert_false(strpos($core, 'THEME_VAR_GROUPS') !== false, 'the variable list left the core');
+
+	foreach (array('_findRuleBlock', '_themeUpgradeLightSelector', '_themeSetDecl', '_themeModeDecls', '_sdThemeCssFromUserStyles', 'renderThemePanel') as $kept) {
+		pg_assert_true(strpos($core, 'function ' . $kept . '(') !== false, $kept . ' stays in the core');
+	}
+
+	pg_assert_true(strpos($core, "_sdPartCall('theme', 'render'") !== false, 'the core runs the part to draw the tab');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_true(strpos($screen, "'theme'") !== false, 'the screen hands the theme part over');
+}
+
+// The theme part under Node, handed a kit with every key the core's has and
+// a host like the core's: render() fills the variable rows of the mode the
+// host names; a colour typed in a row is written through the host into the
+// right block, with the cascade rules of a theme colour.
+function test_designer_theme_part_draws_and_writes_through_the_host()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$keys = array_keys(designer_parts_kit_keys());
+	$js = 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "theme") factory = f; } };'
+		. 'var window = {}; var localStorage = { getItem: function () { return null; }, setItem: function () {} };'
+		. 'var listeners = []; var document = { addEventListener: function (t, f) { listeners.push(t); }, querySelector: function () { return null; } };'
+		. 'function el() { var e = { innerHTML: "", style: {}, listeners: {}, addEventListener: function (t, f) { this.listeners[t] = f; }, querySelectorAll: function () { return []; }, querySelector: function () { return el(); } }; return e; }'
+		. 'var head = el(), vars = el(); document.getElementById = function (id) { return id === "sd-theme-head" ? head : (id === "sd-theme-vars" ? vars : null); };'
+		. 'var K = {}; ' . json_encode($keys) . '.forEach(function (k) { K[k] = function () {}; });'
+		. 'K._sdT = function (s) { return s; }; K.esc = function (s) { return String(s); }; K._sdUsesBootstrap = function () { return true; };'
+		. 'K._sdThemes = function () { return null; }; var saved = 0; K.saveState = function () { saved++; };'
+		. 'var content = ""; var host = { wrap: el(), mode: function () { return "light"; }, userStyles: function () { return content; },'
+		. ' setUserStyles: function (c) { content = c; }, activeTheme: function () { return null; }, openDesignSettings: function () {},'
+		. ' themeCss: function () { return ""; }, blockFor: function (m, n) { return m === "dark" ? "dark" : "shared"; },'
+		. ' setDecl: function (c, kind, n, v) { return c + kind + ":" + n + "=" + v + ";"; }, upgrade: function (c) { return c; },'
+		. ' modeDecls: function () { return {}; }, hasDarkDefault: function () { return false; } };'
+		. "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_theme.js') . "\n"
+		. 'var api = factory(K); api.render(host);'
+		. 'console.log(JSON.stringify([Object.keys(api).sort(), vars.innerHTML.indexOf("data-var=\"--bs-primary\"") !== -1, head.innerHTML.indexOf("No theme") !== -1]));'
+		. 'api.write(host, "light", "--bs-primary", "#ff0000");'
+		. 'console.log(JSON.stringify([saved, content.indexOf("shared:--bs-primary=#ff0000;") !== -1, content.indexOf("pg-theme-cascade:primary:light:start") !== -1]));';
+	$file = tempnam(sys_get_temp_dir(), 'sdtheme') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the theme part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(array('render', 'write'), true, true), json_decode($lines[0] ?? '', true), 'its entry points; the rows and the header drawn');
+	pg_assert_same(array(1, true, true), json_decode($lines[1] ?? '', true), 'one undo step, the value and its cascade written');
+}
+
+// The Google Fonts browser (the modal, its searchable list and the detail
+// with the weights) is a part: built the first time "Add a Google Font" is
+// asked for. The core keeps the added-fonts list, its field and the Fonts
+// section of the assets panel, and one stub that runs the part.
+function test_designer_fonts_browser_is_a_part()
+{
+	$parts = pg_designer_parts();
+	pg_assert_same('assets/js/style_designer_fonts.min.js', $parts['fonts'] ?? '', 'the fonts browser is a part');
+	pg_assert_same(array('assets/js/style_designer_fonts.js'), pg_js_bundles()['assets/js/style_designer_fonts.min.js'] ?? array(), 'built from its file');
+	$core = _test_blocks_js();
+	$part = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_fonts.js');
+
+	foreach (array('renderGfBrowser', 'openGfPicker', 'closeGfModal') as $name) {
+		pg_assert_false(strpos($core, 'function ' . $name . '(') !== false, $name . ' left the core');
+		pg_assert_true(strpos($part, 'function ' . $name . '(') !== false, 'the part holds ' . $name);
+	}
+
+	pg_assert_false(strpos($core, "'sd-gf-modal'") !== false, 'the modal is no longer built at open');
+	pg_assert_true(strpos($part, "'sd-gf-modal'") !== false, 'the part builds the modal');
+
+	foreach (array('parseGfField', 'saveGfField', 'renderFontList', 'openGfModal') as $kept) {
+		pg_assert_true(strpos($core, 'function ' . $kept . '(') !== false, $kept . ' stays in the core');
+	}
+
+	pg_assert_true(strpos($core, "_sdPartCall('fonts', 'open'") !== false, 'the core runs the part to open the browser');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_true(strpos($screen, "'fonts'") !== false, 'the screen hands the fonts part over');
+}
+
+// The fonts part under Node, handed a kit with every key the core's has and
+// a host like the core's: open() builds the modal once and lists the
+// catalogue, marking the fonts already added; picking a font and pressing
+// Add writes the list back through the host with the weights ticked;
+// Remove takes it out again.
+function test_designer_fonts_part_lists_adds_and_removes_through_the_host()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$keys = array_keys(designer_parts_kit_keys());
+	$js = 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "fonts") factory = f; } };'
+		. 'var byId = {}; var built = 0; var keydowns = 0;'
+		. 'function el(tag) { var e = { tag: tag, id: "", value: "", dataset: {}, style: {}, classList: { add: function () {}, remove: function () {}, toggle: function () {} },'
+		. ' listeners: {}, children: [], _html: "", isConnected: true, focus: function () {},'
+		. ' addEventListener: function (t, f) { this.listeners[t] = f; }, appendChild: function (c) { this.children.push(c); if (c.id) byId[c.id] = c; return c; },'
+		. ' querySelectorAll: function (s) { return (this.q && this.q[s]) || []; }, querySelector: function (s) { var l = this.querySelectorAll(s); return l.length ? l[0] : (byId[s.replace("#", "")] || null); } };'
+		. ' Object.defineProperty(e, "innerHTML", { get: function () { return this._html; }, set: function (h) { this._html = h; if (this.id === "sd-gf-modal") { built++; ["sd-gf-modal-close", "sd-gf-search", "sd-gf-list", "sd-gf-detail"].forEach(function (id) { var c = el("div"); c.id = id; byId[id] = c; }); } } });'
+		. ' return e; }'
+		. 'var document = { body: el("body"), head: el("head"), createElement: function (t) { return el(t); }, getElementById: function (id) { return byId[id] || null; },'
+		. ' querySelector: function () { return null; }, querySelectorAll: function () { return []; }, addEventListener: function (t) { if (t === "keydown") keydowns++; } };'
+		. 'var setTimeout = function (f) { f(); };'
+		. 'var K = {}; ' . json_encode($keys) . '.forEach(function (k) { K[k] = function () {}; });'
+		. 'K._sdT = function (s) { return s; }; K.esc = function (s) { return String(s); };'
+		. 'var added = [{ family: "Lato", weights: [400], enabled: true }]; var writes = 0;'
+		. 'var host = { added: function () { return added; }, set: function (l) { added = l; writes++; }, catalogue: function () { return ["Inter", "Lato", "Roboto"]; } };'
+		. "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_fonts.js') . "\n"
+		. 'var api = factory(K); api.open(host); api.open(host);'
+		. 'var list = byId["sd-gf-list"].innerHTML;'
+		. 'console.log(JSON.stringify([Object.keys(api).sort(), built, keydowns, byId["sd-gf-modal"].style.display, (list.match(/data-gf-pick=/g) || []).length, /sd-gf-added-mark[^>]*data-gf-pick="Lato"/.test(list)]));'
+		. 'var det = byId["sd-gf-detail"]; var w400 = { value: "400" }, w700 = { value: "700" }; var add = el("button"), rem = el("button");'
+		. 'det.q = { "input:checked": [w400, w700], ".sd-gf-det-add": [add], ".sd-gf-det-remove": [rem], ".sd-gf-det-wt input": [] };'
+		. 'api.pick(host, "Inter"); add.listeners.click();'
+		. 'var inter = added.filter(function (f) { return f.family === "Inter"; })[0];'
+		. 'console.log(JSON.stringify([writes, added.length, inter ? inter.weights : null, det.innerHTML.indexOf("Inter") !== -1]));'
+		. 'api.pick(host, "Inter"); rem.listeners.click();'
+		. 'console.log(JSON.stringify([writes, added.map(function (f) { return f.family; })]));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfonts') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the fonts part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(array('open', 'pick'), 1, 1, 'flex', 3, true), json_decode($lines[0] ?? '', true), 'its entry points; the modal built once; the catalogue listed with Lato marked');
+	pg_assert_same(array(1, 2, array(400, 700), true), json_decode($lines[1] ?? '', true), 'Add writes the font with its weights');
+	pg_assert_same(array(2, array('Lato')), json_decode($lines[2] ?? '', true), 'Remove takes it out');
+}
+
+// The Interactions section's rows and fields are a part: the core draws the
+// section (its header and an empty body) and keeps what the page and the
+// canvas need at open (_sdFxSpec(), _sdFxNormalize(), _sdFxAttrs(),
+// _sdFxTakes(), _sdFxCanvas()); the part fills the body the first time an
+// element's open section is shown.
+function test_designer_interactions_are_a_part()
+{
+	$parts = pg_designer_parts();
+	pg_assert_same('assets/js/style_designer_interactions.min.js', $parts['interactions'] ?? '', 'the interactions are a part');
+	pg_assert_same(array('assets/js/style_designer_interactions.js'), pg_js_bundles()['assets/js/style_designer_interactions.min.js'] ?? array(), 'built from its file');
+	$core = _test_blocks_js();
+	$part = (string) @file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_interactions.js');
+
+	foreach (array('_sdFxSet', '_sdFxReplay', '_sdFxRows') as $name) {
+		pg_assert_false(strpos($core, 'function ' . $name . '(') !== false, $name . ' left the core');
+		pg_assert_true(strpos($part, 'function ' . $name . '(') !== false, 'the part holds ' . $name);
+	}
+
+	pg_assert_false(strpos($core, 'data-fx-play') !== false, 'the Play button is drawn by the part');
+
+	foreach (array('_sdFxSpec', '_sdFxNormalize', '_sdFxAttrs', '_sdFxTakes', '_sdFxCanvas', '_sdFxIntoFirstTag', 'propsInteractions', '_sdFxBind') as $kept) {
+		pg_assert_true(strpos($core, 'function ' . $kept . '(') !== false, $kept . ' stays in the core');
+	}
+
+	pg_assert_true(strpos($core, "_sdPartCall('interactions', 'fill'") !== false, 'the core runs the part to fill the section');
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	pg_assert_true(strpos($screen, "'interactions'") !== false, 'the screen hands the interactions part over');
+}
+
+// The interactions part under Node, handed a kit with every key the core's
+// has: fill() draws the rows into the section's body; a chosen effect is
+// one undo step, written to props._fx and redrawn; a cleared effect takes
+// _fx away; Play replays the node on the canvas.
+function test_designer_interactions_part_fills_and_writes()
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return;
+	}
+
+	$keys = array_keys(designer_parts_kit_keys());
+	$js = 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "interactions") factory = f; } };'
+		. 'var K = {}; ' . json_encode($keys) . '.forEach(function (k) { K[k] = function () {}; });'
+		. 'var calls = []; ["saveState", "render", "renderCanvas"].forEach(function (k) { K[k] = function () { calls.push(k); }; });'
+		. 'K._sdT = function (s) { return s; }; K.esc = function (s) { return String(s); };'
+		. 'K.row = function (l, c) { return "<row " + l + ">" + c; }; K.swAttr = function (a) { return "<sw " + a + ">"; };'
+		. 'K._sdFxSpec = function () { return { effects: ["fade", "slide-up"], triggers: ["view", "hover"], easings: ["ease-out"], numbers: { duration: [100, 5000, 600], delay: [0, 5000, 0], stagger: [0, 1000, 0], distance: [0, 400, 0], offset: [0, 1000, 0], speed: [5, 100, 20] } }; };'
+		. 'K._sdFxNormalize = function (fx) { return fx && fx.effect ? { effect: fx.effect, trigger: "view", duration: 600, delay: 0, easing: "ease-out", stagger: 0, repeat: false } : null; };'
+		. 'K._sdFxTakes = function () { return true; };'
+		. 'var replayed = 0; K._sdCanvasInnerOf = function () { return { hasAttribute: function () { return true; } }; };'
+		. 'var fakeWin = { pgFx: { replay: function () { replayed++; } } };'
+		. 'Object.defineProperty(K, "canvasDoc", { get: function () { return { defaultView: fakeWin }; } });'
+		. 'function field(name, type) { return { type: type || "select-one", value: "", checked: false, listeners: {}, getAttribute: function (a) { return a === "data-fx" ? name : null; },'
+		. ' addEventListener: function (t, f) { this.listeners[t] = f; } }; }'
+		. 'var effect = field("effect"); var play = { listeners: {}, addEventListener: function (t, f) { this.listeners[t] = f; } };'
+		. 'var body = { innerHTML: "", querySelector: function (s) { return s === "[data-fx-play]" ? play : null; }, querySelectorAll: function (s) { return s === "[data-fx]" ? [effect] : []; } };'
+		. 'var n = { type: "semantic", props: {} };'
+		. "\n" . (string) @file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_interactions.js') . "\n"
+		. 'var api = factory(K); api.fill(body, n);'
+		. 'console.log(JSON.stringify([Object.keys(api).sort(), (body.innerHTML.match(/<row /g) || []).length, typeof effect.listeners.change]));'
+		. 'effect.value = "fade"; effect.listeners.change();'
+		. 'console.log(JSON.stringify([calls, n.props._fx ? n.props._fx.effect : null]));'
+		. 'play.listeners.click(); effect.value = ""; effect.listeners.change();'
+		. 'console.log(JSON.stringify([replayed, "_fx" in n.props, calls.length]));';
+	$file = tempnam(sys_get_temp_dir(), 'sdfx') . '.js';
+	file_put_contents($file, $js);
+	$lines = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+	pg_assert_same(0, $code, 'the interactions part runs: ' . implode("\n", $lines));
+	pg_assert_same(array(array('fill', 'rows', 'set'), 1, 'function'), json_decode($lines[0] ?? '', true), 'its entry points; the effect row drawn and bound');
+	pg_assert_same(array(array('saveState', 'render'), 'fade'), json_decode($lines[1] ?? '', true), 'one undo step, the effect written, the panel redrawn');
+	pg_assert_same(array(1, false, 4), json_decode($lines[2] ?? '', true), 'Play replays; a cleared effect takes _fx away');
+}

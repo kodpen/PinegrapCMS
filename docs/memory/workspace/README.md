@@ -26,9 +26,14 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
-- agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes
+- agent-canvas-edit.md: An agent edits any canvas of its channel in place (POST|PATCH /workspace/messages/{id}/canvas): the operations, 409 on a stale version, the agent version, the author's inbox line
+- agent-canvas-picture.md: How an agent's pending canvas gets its picture: the channel's browser draws it with the image editor's renderer and posts it once (action canvas_picture), the take's checks, the versioned address
+- agent-canvas-svg.md: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
+- agent-doors.md: The agents' request queue: wake rules make one ws_ai_requests row per agent (app:<id>, model:<id>), the brakes, the push knock and its retry, the agent-requests routes (A4a #8221)
 - agent-questions.md: How an agent asks the people with a poll or an approval, and why the outcome is written in the agent's name (never as the owner's decision)
 - agent-registry.md: The agent registry (ws_agents) and the channel-agent row (ws_channel_agents): fields, Claude's routine as the first push agent, the membership routes, the depth and hourly brakes
+- agent-shown.md: How a registry agent shows (A4b2): the line under the message that woke it, its tag and @ picker entry, its ws_assistants() entry kept off tasks, its own message edits
+- agent-wakes.md: An app agent's scheduled wakes (every N minutes, once at a time) made by the general job, /wake in a channel, the agent-wake API routes, and the brief an app agent reads (A4b1, #8246)
 - approval-guest-frozen-channel.md: An approval link sent outside the team opens as closed while the channel is gone or archived, or the request is in an earlier version of a cleared conversation
 - channel-memory.md: A channel's memory (ws_channel_memory) and the decision mark by a person or an agent (ws_messages.marked_by_kind): rows, routes, the index in the brief, the Memory tab
 - claude-draft-decide-once.md: A task Claude or Pinegrap AI proposes in a channel (ws_ai_drafts) is accepted or dismissed once: conditional UPDATE on the pending row, checked by affected rows, before the task is opened.
@@ -283,6 +288,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-note-tabs.md: Note tabs over an open note on My Notes — workspace_note_tabs.js (group as ARIA tablist, marks, +, keys, drag to reorder via ws_note_place) and drawTabs() in startNotes()
 - workspace-notes-deletions.md: Deleting a note over the API (PR #1674) and ws_note_deletions (schema 11.0.85): who may, whom a deletion or a person share taken back is kept for, how long, deleted in the changes listing, no MCP tool
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become
+- workspace-notes-groups-lock.md: Overview of note groups, shared groups, tabs, the PIN lock and media in notes (owner 2026-11-07): how the parts hold together, what was left out, the keyboard and screen-reader ways, open ends
 - workspace-notes-import-enex.md: Evernote exports (.enex) as notes (notes_enex.php, PR #644): laid out in the stage as Markdown and attachment files, ENML to Markdown, limits and refusals
 - workspace-notes-import-html.md: One web page (.html/.htm) as a note (notes_html.php, PR #1776): laid out in the stage like the Evernote reader, HTML parser only, what is dropped, embedded data: pictures as attachments
 - workspace-notes-import-keep.md: Google Keep notes from a Takeout zip (notes_keep.php, PR #1656): found in any zip, laid out in the stage as Markdown and attachments, untitled notes named by their first line

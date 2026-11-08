@@ -370,3 +370,143 @@ function ws_agent_react($app_id, $message_id, $emoji, $on)
 
     ws_message_touch($message_id);
 }
+
+/* ---------------------------------------------------------------------------
+   The brief
+   --------------------------------------------------------------------------- */
+
+/**
+ * The loop-guard text every brief carries unless the channel's row switched
+ * it off: when not to answer, and to check in on a schedule rather than
+ * keep a conversation going. Guidance only: the depth and hourly brakes
+ * hold in code either way. Pure.
+ *
+ * @return string[]
+ */
+function ws_agent_loop_guard_lines()
+{
+    return array(
+        'Before you answer:',
+        '- Answer only when the message needs something from you. An acknowledgement, a thank-you or an answer to an answer needs nothing: close the request with no_answer.',
+        '- Do not answer another agent unless it asked you something.',
+        '- After a few exchanges with other agents, stop and wait for a person.',
+        '- Check in on a schedule (POST /workspace/agent-wake) rather than staying in the conversation.',
+    );
+}
+
+/**
+ * The tools part of a brief: the site's MCP address, the key's scopes and
+ * the routes that close the request. Pure.
+ *
+ * @param string   $mcp        the MCP server's address
+ * @param string[] $scopes     the scopes of the agent's key
+ * @param int      $request_id
+ * @return string[]
+ */
+function ws_agent_brief_tool_lines($mcp, $scopes, $request_id)
+{
+    $scopes = array_values(array_filter(array_map('strval', (array) $scopes), 'strlen'));
+    sort($scopes);
+
+    return array(
+        'Tools: the site\'s MCP server at ' . $mcp . ' (every API route is a tool there) and the same routes over HTTP, both with your own key.',
+        'Your key\'s scopes: ' . ($scopes ? implode(', ', $scopes) : 'none') . '.',
+        'Close this request with POST /workspace/agent-requests/' . (int) $request_id . '/answer (text, or no_answer true), or give it up with POST /workspace/agent-requests/' . (int) $request_id . '/fail (reason).',
+    );
+}
+
+/**
+ * The place lines of a wake request's brief: the schedule that woke the
+ * agent and where it can write. Pure.
+ *
+ * @param array    $wake     ws_agent_wake_of()
+ * @param array    $channels id, name of the channels the agent is allowed in
+ * @param int      $channel_id the request's channel, 0 for none
+ * @return string[]
+ */
+function ws_agent_brief_wake_lines($wake, $channels, $channel_id)
+{
+    $lines = array(($wake['kind'] === 'every')
+        ? 'Your schedule woke you (a wake every few minutes); no message asked.'
+        : 'Your one-time scheduled wake has come; no message asked.');
+    $names = array();
+
+    foreach ((array) $channels as $channel) {
+        $names[] = '#' . trim(str_replace(array("\r", "\n"), ' ', (string) $channel['name'])) . ' (id ' . (int) $channel['id'] . ')';
+    }
+
+    if ((int) $channel_id > 0) {
+        $lines[] = 'Your answer goes into your channel ' . ($names ? $names[0] : '(id ' . (int) $channel_id . ')') . '.';
+    } elseif ($names) {
+        $lines[] = 'Your channels: ' . implode(', ', $names) . '. Write where you need with workspace.messages.create, then close this request with no_answer.';
+    } else {
+        $lines[] = 'You are in no channel now: close this request with no_answer.';
+    }
+
+    return $lines;
+}
+
+/**
+ * What an app agent is told before it starts on a request: who it is, now,
+ * who asked, where, the request inside a data block (a wake's note), the
+ * channel's memory, the loop-guard text unless the channel switched it off,
+ * its tools, the language of the answer and the rules.
+ *
+ * @param array    $agent  the raw ws_agents row
+ * @param array    $row    ws_ai_requests
+ * @param string[] $scopes the scopes of the agent's key
+ * @return string
+ */
+function ws_agent_brief($agent, $row, $scopes)
+{
+    $asker = ws_change_viewer_for_id((int) $row['requested_by']);
+    $asker = $asker ? $asker : array('id' => (int) $row['requested_by']);
+    $channel = ((int) $row['channel_id'] > 0) ? ws_channel($row['channel_id']) : null;
+    $wake = ws_agent_wake_of($row);
+    $name = trim((string) $agent['name']);
+    $name = (($name !== '') ? $name : (string) $agent['handle']) . ' (@' . (string) $agent['handle'] . ')';
+    $request = '';
+    $lines = ws_ai_briefing_head(array('name' => $wake ? 'your schedule' : ws_person_name($row['requested_by'])), 'agent', $name);
+    $lines[] = '';
+
+    if ($wake) {
+        $channels = (array) db_items("SELECT c.id, c.name FROM ws_channel_agents ca
+            INNER JOIN ws_channels c ON c.id = ca.channel_id
+            WHERE ca.agent_id = '" . (int) $agent['id'] . "' AND ca.allowed = 1
+            ORDER BY c.name LIMIT 20");
+        $lines = array_merge($lines, ws_agent_brief_wake_lines($wake, $channels, (int) $row['channel_id']));
+        $request = $wake['note'];
+    } else {
+        $parent = ($channel && ws_channel_is_thread($channel)) ? ws_thread_parent_channel($channel) : null;
+        $lines[] = $parent ? ws_ai_agent_place('thread', (string) $parent['name']) : ws_ai_agent_place('channel', $channel ? (string) $channel['name'] : '');
+        $message = ws_message($row['message_id']);
+
+        if ($message && ((int) $message['deleted_at'] === 0)) {
+            $request = ws_plain_text($asker, (string) $message['body']);
+            $lines[] = 'Read more of it with GET /workspace/channels/' . (int) $row['channel_id'] . '/context.';
+        }
+    }
+
+    if (trim($request) !== '') {
+        $lines[] = '';
+        $lines[] = $wake ? 'The note your wake carries:' : 'The request:';
+        $lines[] = pg_ai_data_block('request', $request);
+    }
+
+    $lines[] = '';
+
+    if ($channel) {
+        $lines = array_merge($lines, ws_ai_memory_parts($asker, $channel));
+    }
+
+    $own = $channel ? ws_channel_agent_row((int) $channel['id'], (int) $agent['id']) : null;
+
+    if (!$own || ((int) $own['loop_guard'] === 1)) {
+        $lines = array_merge($lines, ws_agent_loop_guard_lines(), array(''));
+    }
+
+    $mcp = URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/mcp.php';
+    $lines = array_merge($lines, ws_agent_brief_tool_lines($mcp, $scopes, (int) $row['id']));
+
+    return ws_ai_briefing_text($lines, ws_ai_request_language($request));
+}

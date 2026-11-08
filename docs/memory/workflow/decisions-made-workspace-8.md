@@ -9,7 +9,7 @@ description: Decisions list, workspace part 8 (2026-11-07 on): note groups and t
 ## How are notes grouped? (owner, 2026-11-07, in chat)
 - Each person groups My Notes in groups of their own (name, colour, order), notes shared with them included, and moves notes into, out of and between groups by drag and drop.
 - A group is shared as a note is, with people (read or edit) or in a channel. People with edit put their own notes in it: the notes stay theirs and are shared with everyone the group reaches. One who leaves a group, or whose access is taken back, takes their own notes out of it.
-- While a note of a group is open, the group's other notes show as tabs over it, for quick access. Plan: `plans/workspace-notes-groups-lock.md`.
+- While a note of a group is open, the group's other notes show as tabs over it, for quick access. Overview: `workspace/workspace-notes-groups-lock.md`.
 
 ## How are notes locked? (owner, 2026-11-07, in chat)
 - Off until the person sets a PIN in My Notes; there is no site setting. Own notes and own groups can be locked; the PIN is asked again after the time the person chose; a code sent by e-mail opens the lock when the PIN is forgotten.

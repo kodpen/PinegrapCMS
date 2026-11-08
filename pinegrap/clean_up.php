@@ -171,6 +171,12 @@ $file_list = array(
     // no page loads it. Dropped from the package with 2026.11.0.
     'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js',
     'assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.src.js',
+    // DataTables and its checkbox extension. Every panel list is drawn by
+    // the list table driver (assets/js/pg_list_table.js) or is a plain
+    // table, so no page loads them. Dropped from the package with 2026.11.0.
+    'assets/lib/DataTables',
+    'assets/lib/Jquery/jquery_datatables_checkbox.min.js',
+    'assets/lib/Jquery/jquery_datatables_checkbox.min.js.map',
     'assets/colorpicker',
     'assets/dropzone',
     'assets/file-explorer',

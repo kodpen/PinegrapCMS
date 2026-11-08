@@ -1053,6 +1053,13 @@ if (
         ws_scheduled_run(WS_SCHEDULED_BATCH, WS_FLOW_BUDGET_JOB);
     }
 
+    // The agents' scheduled wakes (includes/workspace/agent_wake.php) on
+    // every tick, for the same reason: "every 30m" or "at 21:00" must not
+    // wait for the dispatcher's rotation. One small read when none is due.
+    if (ws_enabled() && function_exists('ws_agent_wakes_due') && ws_agent_wakes_due()) {
+        ws_agent_wakes_run();
+    }
+
     // The tags of the notes and workflow table rows saved before ws_refs
     // took them (includes/workspace/refs.php), a few seconds a tick until
     // they are through; then one small read of the marker.

@@ -6,7 +6,7 @@ description: Architecture & Interiors Studio template (pinegrap-architecture): p
 ## What does it ship?
 - Home (places `home_projects`, `google_reviews`, `home_posts`), `services` and six `service_<key>`, `studio`, `team`, `process`, `awards`, `faq`; `projects` (`?type=`, `?location=`), the `project` record page, `project_new` (staff); `enquiry` and `consultation` (both `?service=`), their `_view` pages, `my_` and `staff_` lists, `privacy`, `email_reply`; `careers`, `job` (apply link `?job=`), `job_new`, `application` (portfolio and CV), `application_view`, `my_applications`, `staff_applications`; the standard pages with the blog called the Journal ([[design-templates-standard-pages]]); sign-in and My Account pages, `staff` (newest enquiries and consultations), `blog_new`, `staff_directory`, `staff_entry`; the e-mail pages.
 - No shop and no catalog: a studio sells its time, quoted per project (only `address_book` carries `requires => ecommerce`).
-- Shared: account_bar, notice, header, footer, staff_bar, enquiry_band, email_header/footer. Order 97, icon `bi-rulers`, look `minimal`, palette `graphite` (e-mail `#18181b`). Contact group `newsletter`. Built in #7639, #7767, #7777, #7790, #7802, #7814, #7828 and the assembly PR.
+- Shared: account_bar, notice, header, footer, staff_bar, enquiry_band, email_header/footer. Order 97, icon `bi-rulers`, look `minimal`, palette `graphite` (e-mail `#18181b`). Contact group `newsletter`. Built in #7639 to #7828; pages on its blocks: [[design-template-architecture-pages]].
 
 ## Why a main file plus a folder?
 - As Construction ([[design-template-construction]]): `pinegrap-architecture.php` includes `parts.php`, `mail.php`, then `pages_public`, `projects`, `enquiries`, `careers`, `standard`, `account` in one scope, returns kept as `$…_part`. `careers.php` and `account.php` use `enquiries.php`'s `$request_list`, `$detail`, `$bound`, `$mail_reference`, `$mail_new_account`.
@@ -16,7 +16,7 @@ description: Architecture & Interiors Studio template (pinegrap-architecture): p
 - Projects are a collection ([[collection-fields]]): type and location pick lists, the stage as a pick list (never a year), setting and size as words, image kinds `photo_1`-`photo_4` drawn as the gallery, the credits one "Role: Name" line each, office field `featured`.
 - A project enquiry is a request, never a contract: service by `?service=` through `_cf.url_param`, drawings and photos as files in `private`, consent linking `privacy`, office-only status, messages on the record page's Comments widget, `submitter_only` view. A consultation request is the smaller form (where to meet, preferred days as words): no calendar, the studio answers with a time. Careers as Construction.
 - The team, awards and press are fixed data drawn as cards, never a collection; awards name the prize, never the year.
-- Not built: a fee calculator, a client portal, mood boards, a 3D viewer, a consultation calendar.
+- Not built: fee calculator, client portal, mood boards, 3D viewer, consultation calendar.
 
 ## What is the pai- look?
 - `pai-brand` (spaced capitals), `pai-display`, `pai-eyebrow`, `pai-hero` (a thin rule under it), `pai-index` (small-caps numbers of the steps and awards), `pai-lift`, `pai-quote`, `pai-stat`; Jost headings, Karla body. Square corners, no `opacity-*` text. Field ids `ai-`.

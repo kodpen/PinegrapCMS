@@ -5567,6 +5567,12 @@
             body.appendChild(memoryRow);
         }
 
+        // The channel's agents and what wakes each here
+        // (assets/js/workspace_channel_agents.js); it saves on its own.
+        if (channel && window.PGWsChannelAgents) {
+            window.PGWsChannelAgents.mount(body, channel);
+        }
+
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
         var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
@@ -10585,6 +10591,12 @@
                     event.preventDefault();
                     self.showImage(file.url);
                 });
+
+                // An agent's canvas still blank: this browser draws its
+                // picture (assets/js/workspace_canvas_picture.js).
+                if (file.canvas_pending && window.PGWsCanvasPicture) {
+                    window.PGWsCanvasPicture.mount(message, img, link, featureHelpers());
+                }
 
                 return link;
             }

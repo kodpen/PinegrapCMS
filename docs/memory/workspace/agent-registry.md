@@ -18,6 +18,7 @@ description: The agent registry (ws_agents) and the channel-agent row (ws_channe
 
 ## Who may change a channel's agents?
 - Routes `workspace.channels.agents.list|set|remove` (`api_agents.php`), MCP tools as every route. Add, change or remove: whoever may post in the channel, in a private one only a member (`ws_channel_agent_add_problem()`). The tier, raised or lowered, only a channel manager (`ws_channel_agent_check()`, 403 forbidden). Fields left out keep their value; a new row is mention, tier 1, loop guard on.
+- In the panel: the Agents section of the channel settings drawer (`assets/js/workspace_channel_agents.js`, mounted by `channelForm()`), on the actions `ws_channel_agents_list|set|remove` (`includes/workspace/channel_agents_panel.php`, dispatched from `includes/panel/workspace.php` before `ws_handle_action()`), the same checks as the routes. The Add list shows id, handle, name and status only, never a door or key; hidden while the registry is missing or no agent is registered; the tier select only for a channel manager.
 
 ## What are the brakes?
 - Code, not prompt: `ws_agent_brake($depth, $last_hour)` refuses a wake when the chain of agent messages it would answer is `WS_AGENT_DEPTH_MAX` (6) deep (`ws_agent_chain_depth()`, a person's message ends the count) or the agent was woken `WS_AGENT_HOURLY_MAX` (30) times in the last hour. They hold for every tier; A4 calls them where it makes a request.

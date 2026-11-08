@@ -21,7 +21,6 @@ description: Names screen readers get in the panel: translated aria-labels, labe
 - `pg_readable_ink_on($hex)` (`includes/fn/design_themes.php`) gives white where it reads at 4.5:1 on the colour, else `#18181b`; `readableInk()` in `workspace.js` is the same rule for a channel's department badge. Used for department badges (Workspace Settings, channel header). Anything that is not `#rgb`/`#rrggbb` keeps white.
 
 ## What is not covered yet?
-- DataTables pagination names come from its language file (#2043).
 - Waiting on files other work holds: the feed groups label (`settings/seo.php`), the Iyzipay protected currency select id (`settings/prep.php`), the dark-theme today number of the Work Calendar (`backend.src.css`), the close buttons of `get_page_content.php` and the installer; the products list filter select (`view_products.php`) and the SearchBox dialog of `includes/fn/output.php` (its `aria-labelledby` names no element).
 - About 55 fields with a `title` beside a `<label>` (`panel-hint-tooltip-or-popover.md`).
 

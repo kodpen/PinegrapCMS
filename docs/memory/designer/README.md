@@ -125,6 +125,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-live-pictures.md: Live pictures of templates and designs (the real page in a scaled, script-free frame), the preview address of a template page or tour, the tour page; what the browser side does
 - design-preview-address.md: design_preview.php, the panel's preview address: a template page, its tour, or a visual design page as a first-time visitor sees it; who may open it, what is left out, caching
 - design-template-appstudio.md: Mobile App Developer template (pinegrap-appstudio): apps and release notes as collections, support and project requests followed from the account, beta sign-up, pma- look, tests.
+- design-template-architecture-pages.md: Architecture template 2.0.0: home, projects and the project page on the Architecture blocks: the builders, each page's composition, motion, what left, the test
 - design-template-architecture.md: Architecture & Interiors Studio template (pinegrap-architecture): projects by type and location, enquiries, consultations and careers followed from the account, no shop, pai- look, tests.
 - design-template-bakery.md: Bakery template (pinegrap-bakery): daily bake and cakes as page content, cake orders and wholesale enquiries as requests, baking classes collection, pickup shop, pbk- look, tests.
 - design-template-blog-cover.md: A design template's blog or article Cover Image input takes image/* and carries _cf.kind = image; templates whose $file helper defaults to documents pass it explicitly (#7513)
@@ -184,6 +185,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-own-look.md: Rule (owner, 2026-11-07): sector sections first as palette blocks, reused not duplicated, general ones in general groups; own composition and motion on home and signature pages
 - design-template-pharmacy-pages.md: Pharmacy template 2.0.0: home, on duty, health checks and three service pages on the Pharmacy blocks: the builders, each page's composition, what left, no motion, the test
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
+- design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
@@ -191,6 +193,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-restaurant.md: Restaurant template (pinegrap-restaurant): menu and events as collections, reservation requests, chef's table, private dining enquiries, gift vouchers in the shop, prt- look, tests.
 - design-template-salon-words.md: Beauty Salon template wording (1.1.1, #4807): hizmet and randevu, own keys for the booking field, staff shortcut and statuses, e-posta page names; sample days and times fit the opening hours (#4944).
 - design-template-salon.md: Beauty Salon template (pinegrap-salon): its parts folder, the booking on the Clinic's request pattern, what is not built, the psl- look, tests.
+- design-template-school-pages.md: School template 2.0.0: home, programmes and the day page on the School blocks: the builders, each page's composition, motion, what left, the test
 - design-template-school.md: Private School template (pinegrap-school): programmes with a page each, events collection, admission applications and visit requests followed from the account, News, no shop, psh- look, tests.
 - design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
 - design-template-skiresort.md: Ski Resort template (pinegrap-skiresort): slopes, lifts and events as collections, lesson requests and stay or group enquiries, passes and rental in the shop, conditions, News, psk- look, tests.
@@ -226,7 +229,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-block-style.md: Where CSS for ready-made designer blocks may live: Bootstrap classes, _SD_BLOCK_CSS in the Styles panel, never inline style or a <style> element; how a design template ships them.
 - designer-block-theme-colours.md: Which classes keep a ready-made designer block in step with the design's look and colour palette, which ones break it, and the contrast traps measured on the ready-made blocks.
 - designer-block-theme-surfaces.md: How a ready-made designer block writes a dark navbar, a hero on a photo, buttons and links on tinted or primary surfaces, and carousel slides so they pass contrast in every look, palette and mode.
+- designer-blocks-architecture.md: The Architecture block family (architecture- prefix, own palette group): plate hero, project sheet, material board; general blocks placed instead; rules, test
 - designer-blocks-bikeshop.md: The Bike Shop block family (bikeshop- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-bike-* rules, motion and test
+- designer-blocks-campsite.md: The Campsite block family (campsite- prefix, own palette group): hero with a kind-of-stay chooser, comfort scale, pitch drawing; general and other blocks placed instead; rules, test
+- designer-blocks-cityhall.md: The City Hall block family (cityhall- prefix, own palette group): task hero, service guide, council agenda; general blocks placed instead; rules, test
 - designer-blocks-coworking.md: The coworking- block family (Coworking group): the workspace hero, what it reuses instead (spaces, plans, amenities, floors), its pg-cw-* rules, its test
 - designer-blocks-drivingschool.md: The Driving School block family (drivingschool- prefix, its own palette group): the three blocks, the general blocks it reuses instead, its pg-drv-* rules, its test
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
@@ -237,6 +243,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-pharmacy.md: The Pharmacy block family (pharmacy- prefix): duty panel, reference readings, travel vaccines, medicine schedule; general blocks reused instead; no motion; rule and test
 - designer-blocks-photo.md: The Photo block family (photo- prefix, its own palette group): filmstrip hero, proof contact sheet, behind the shot; the general blocks a photography site places instead; rules and test
 - designer-blocks-planetarium.md: The Planetarium block family (planetarium- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-sky-* rules, motion and test
+- designer-blocks-school.md: The School block family (school- prefix, own palette group): hero with an age finder, age ladder, school year in terms; general blocks placed instead; rules, test
 - designer-blocks-skiresort.md: The Ski Resort block family (skiresort- prefix, its own palette group): the five blocks, what each draws, its pg-ski-* rules, why the pass cards are not a pricing or compare block, its test
 - designer-blocks-sportsclub.md: The Sports Club block family (sportsclub-): match day, fixtures and results, league table, squad by position; what a club places instead; rules; test
 - designer-blocks-wedding.md: The Wedding block family (wedding- prefix, its own palette group): invitation hero, real wedding story, planning checklist; the general blocks a wedding site places instead; rules and test
@@ -272,6 +279,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-content-roles-ui-guards.md: Designer content-role UI guards: _sdCanEditNode vs _sdMayEdit, every guarded mutation path, WeakSet perf rule, _sdGuardItem, content images, revision load, content chrome.
 - designer-content-translation.md: Which texts of a designer node enter the site translation (pg_tr_node_fields()), visible text kept in an underscore prop such as _labelDetail, and form records translated through translate_records.
 - designer-find-node-for-el.md: Resolve a canvas element to a node with _sdFindNodeForEl(id, el) and _sdAnyParent(node), not findNodeById, because shared component trees are separate.
+- designer-fonts-part.md: The Google Fonts browser of the designer as the part 'fonts' (D5 part 6): what moved, what the core keeps, the host it works through
 - designer-form-palette-and-fields.md: Designer form controls: label[for] protection, fieldset radio/checkbox groups, CF_PALETTE rules, overview-tree option folding.
 - designer-form-uploads-for-readers.md: Designed-form uploads open for visitors when a public designed record view or list shows the record and prints the field (get_file.php, includes/record_files.php); what keeps them closed
 - designer-grid-node-tag.md: Opening tag of designer container/row/col on the page and in the editor HTML: twin helpers, classes once, attribute order, column widths, sizing props; page bodies drawn before
@@ -284,6 +292,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-incremental-canvas.md: How a one-node edit redraws only that node's element on the designer canvas (_sdRenderNode, _sdCanvasRedrawNode), which edits keep the full rebuild, and what the in-place redraw keeps (D2, PR #8048)
 - designer-inline-text-editing.md: Canvas in-place text editing: button-label spaces, colour/date/file input labels, no hint on bound text, an ended edit's key handler, shared-component edits, <html lang>.
 - designer-interactions-panel.md: Interactions section of the properties panel and on the canvas: nodes, rows, _sdFxSet(), undo, canvas binding, Play button, code view back to props._fx.
+- designer-interactions-part.md: The Interactions section of the designer's properties panel as the part 'interactions' (D5 part 7): what moved, what the core keeps, when it loads
 - designer-interactions-script.md: What pg_fx.src.js does with the data-pg-fx-* attributes: entrance start states and the observer, stagger, hover and click, parallax, the node's own styles, reduced motion, pgFxBind.
 - designer-interactions.md: Interactions of designer nodes: props._fx, the data-pg-fx-* attributes, pg_fx.src.js (entrance, hover, click, sticky, parallax), the head style and fail-safe, reduced motion, the twins and tests.
 - designer-layer-names.md: Rules for node customName (layer names) in designer blocks: one name per role, contextual generic names, no embedded numbers, no empty names.
@@ -302,7 +311,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
 - designer-panels-on-demand.md: The designer draws only the panels that can be seen, debounces them while a field is typed into, and redraws one node's Layers rows (D3, PR #8075)
-- designer-parts-on-demand.md: The designer's parts not needed to open a page: own bundles (pg_designer_parts()), the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the ai and import parts (D5)
+- designer-parts-on-demand.md: The designer's parts not needed to open a page: own bundles (pg_designer_parts()), the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the parts (D5)
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.
@@ -326,6 +335,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-tab-groups.md: Page tab order and named coloured groups in the designer (style.style_tab_layout, 2026.4.8): shape, own endpoint apart from Save, twin normalisers, colours, folding per browser, new tabs, drag.
 - designer-theme-light-selector-upgrade.md: Upgrade step 11.0.32 splits the Themes panel's old combined light block in designs, page copies, templates and old theme files with a PHP twin of the editor's split.
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
+- designer-theme-part.md: The Themes tab of the designer's assets panel as the part 'theme' (D5 part 5): what moved, what the core keeps, the host the part works through
 - designer-turkish-terms-2.md: More Turkish designer words, continued from designer-turkish-terms: Parola (never Şifre) in the account widgets, their Bind Data labels and the account e-mails; tests/designer_password_word_test.php
 - designer-turkish-terms.md: Turkish terms for designer layer names, palette labels and panel rows; how a shared language key with a misfit Turkish is fixed (in place or a narrower key); tests/designer_turkish_terms_test.php
 - designer-widget-ghosts-and-edit-chips.md: Canvas ghost records of listing widgets (designer/widget_ghosts); the edit pencil on records (pg_sw_add_edit_chip()): who sees it, inline !important look, its page stylesheet.

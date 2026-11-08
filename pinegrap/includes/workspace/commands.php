@@ -19,6 +19,7 @@
  *   /price #product 149,90                                   (also /fiyat)
  *   /stock #product 12, +5 or -3                             (also /stok)
  *   /create product Blue mug 149,90 #group                   (also /oluştur, /olustur)
+ *   /wake @ci every 30m Look at the queue                (also /uyandır, /uyandir)
  *   /create group Mugs                                       (grup, group)
  *   /product Blue mug 149,90 #group                          (also /ürün, /urun:
  *                                                            /create product)
@@ -76,6 +77,7 @@ function ws_command_names()
         'oylama' => 'poll', 'anket' => 'poll', 'sor' => 'poll', 'poll' => 'poll',
         'fiyat' => 'price', 'price' => 'price',
         'stok' => 'stock', 'stock' => 'stock',
+        'uyandır' => 'wake', 'uyandir' => 'wake', 'wake' => 'wake',
         'yardim' => 'help', 'yardım' => 'help', 'help' => 'help',
     );
 }
@@ -192,6 +194,10 @@ function ws_command_offered($viewer, $command)
 
     if (($command === 'schedule') && is_array($viewer)) {
         return function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer);
+    }
+
+    if (($command === 'wake') && is_array($viewer)) {
+        return function_exists('ws_agents_ready') && ws_agents_ready();
     }
 
     if (($command === 'timer') && is_array($viewer)) {
@@ -419,6 +425,16 @@ function ws_commands($viewer = null)
                 $arg('name', 'text', lang('product name'), false),
                 $arg('price', 'amount', lang('price'), true),
                 $arg('group', 'record', lang('#group'), true, 'records', array('anywhere' => true)),
+            ),
+        ),
+        array(
+            'key' => 'wake', 'tr' => 'uyandır', 'en' => 'wake', 'label' => '/wake · /uyandır',
+            'description' => lang('Wakes an application agent of this channel on a schedule: every 30m, at 21:00, with a note; off stops it, the agent alone shows it.'),
+            'example'     => lang('/wake @ci every 30m Look at the queue'),
+            'args'        => array(
+                $arg('agent', 'text', lang('@agent'), false),
+                $arg('when', 'text', lang('every 30m | at 21:00 | off'), true),
+                $arg('note', 'text', lang('note'), true),
             ),
         ),
         array(
@@ -1542,6 +1558,9 @@ function ws_command_run($viewer, $channel, $body, $options = array())
             return $result['ok']
                 ? array('type' => 'done', 'message_id' => $result['message_id'])
                 : array('type' => 'error', 'error' => $result['error']);
+
+        case 'wake':
+            return function_exists('ws_command_wake') ? ws_command_wake($viewer, $channel, $rest) : array('type' => 'error', 'error' => lang('Agents are not set up on this site yet.'));
 
         case 'help':
         default:
