@@ -40,8 +40,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-planetarium.md: Plan: the Planetarium and Observatory design template (pinegrap-planetarium): dome shows by date, telescope nights, school visits, tickets and memberships, astronomy news; small steps
 - design-template-podcast-design.md: Design of plans/design-template-podcast.md: what the Podcast template reuses for podcasts, episodes, sponsorship and supporters, what it does not build, its look and Turkish words
 - design-template-podcast.md: Plan: the Podcast Network design template (pinegrap-podcast): podcasts and episodes as collections, hosts, sponsorship enquiries, supporters' membership with bonus episodes; ~1,000-line steps
-- design-template-recruitment-design.md: Design of plans/design-template-recruitment.md: which shipped features the Recruitment template reuses for jobs, applications and employer enquiries, what it does not build, its look and Turkish words
-- design-template-recruitment.md: Plan: the Recruitment Agency design template (pinegrap-recruitment): jobs by sector and city, applications, employer enquiries, career advice; ~1,000-line steps
 - design-template-zoo-design.md: Design of plans/design-template-zoo.md: the shipped features the Zoo template reuses, what it does not build, its look and Turkish words
 - design-template-zoo.md: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals by habitat, feeding times, park map, tickets, adoptions, visit requests, events; small steps
 - designer-performance-and-publish.md: Plan (owner 2026-11-06): the visual designer stops rebuilding everything on every edit and opens faster, and Publish lists the pages to put on the site; steps D1-D7, one worker at a time on the script

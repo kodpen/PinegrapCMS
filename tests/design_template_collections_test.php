@@ -123,6 +123,7 @@ function test_design_template_collection_forms()
 		'pinegrap-ferry'      => array('blog_new', 'notice_new', 'staff_entry'),
 		'pinegrap-coworking'  => array('blog_new', 'event_new', 'space_new', 'staff_entry'),
 		'pinegrap-carrental'  => array('blog_new', 'car_new', 'staff_entry'),
+		'pinegrap-recruitment' => array('blog_new', 'job_new', 'staff_entry'),
 		'pinegrap-florist'    => array('blog_new', 'staff_entry', 'work_new'),
 		'pinegrap-homeservices' => array('blog_new', 'service_new', 'staff_entry', 'team_new'),
 		'pinegrap-veterinary' => array('blog_new', 'staff_entry', 'vet_new'),
