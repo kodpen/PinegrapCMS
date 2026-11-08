@@ -8,7 +8,7 @@ description: Steps N0 and G1-G7 of plans/workspace-notes-groups-lock.md: schema,
 
 - N0 (S) Schema. Done (PR #8027). One re-runnable sub-step of `2026.11.0.php` under the next free Workspace label, shapes in `workflow/decisions-made-schema-12.md`; `get_tables()`; `ws_note_groups_ready()`, `ws_note_lock_ready()`. Rerun twice on a dev DB.
 
-- G1 (M) Groups store. After N0. New `includes/workspace/note_groups.php`: a person's groups with counts; create, rename, colour (`ws_palette()`), order, delete (notes back to no group, never deleted); a note placed in a group or none and ordered in it; `ws_notes_list()` answers the groups and each note's group for the viewer; actions `ws_note_group_*`; at most 200 groups, names of 100 characters.
+- G1 (M) Groups store. Done (PR #8044). New `includes/workspace/note_groups.php`: a person's groups with counts; create, rename, colour (`ws_palette()`), order, delete (notes back to no group, never deleted); a note placed in a group or none and ordered in it; `ws_notes_list()` answers the groups and each note's group for the viewer; actions `ws_note_group_*`; at most 200 groups, names of 100 characters.
 
 - G2 (M) Groups on the screen. After G1. New `assets/js/workspace_note_groups.js`: folders in My Notes as `-design.md` draws them, open or closed kept in the browser, New group, the group's menu, the note menu's Move to group, search answered inside groups, phone.
 
