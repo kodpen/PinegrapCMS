@@ -3,6 +3,9 @@ name: agent-canvas-svg
 description: Agents draw Workspace canvases from SVG (POST channels/{id}/canvases) and read any canvas (GET messages/{id}/canvas): Import port, blank picture, pending, who may
 ---
 
+## What are agent canvases for?
+- An agent shows something as a picture in a channel where it is a member and changes it on request, as Claude's artifacts: it writes SVG, people open it in the image editor (owner 2026-11-08, `workflow/decisions-made-workspace-9.md`). Claude, Pinegrap AI and model assistants alike (`agent-canvas-assistants.md`). No schema: source `agent` and the document's `by` name the agent. Built in #8236, #8254, #8252, #8299, #8293; picture `agent-canvas-picture.md`, edits, mark and Undo `agent-canvas-edit.md`. Notes' canvases: not yet.
+
 ## What does an agent's SVG become?
 - `ws_canvas_from_svg($svg, $background)` (`includes/workspace/canvas_svg.php`) builds the image editor's canvas document as Import does (`ui/image-editor-import.md`): `pg_svg_sanitize()`, then one `svg` layer (id `l0`, kind `g`, `imported`) covering the artboard; an outer `<g id>` with the root's id (`svg` when none), an inner `<g transform>` with the view box's matrix and the root's inherited paint; ids prefixed `i<n>-` and references renamed.
 - The PHP port of the model's `svgRoot()`, `svgMatrixText()`, `svgIdMap()`, `svgRenameValue()` and `svgRenameCss()` is checked against the model under Node in `tests/workspace_agent_canvas_test.php`: change one side, the test fails.

@@ -26,4 +26,4 @@ description: Decisions list, workspace part 9 (2026-11-08 on): agent channels by
 ## How do agents make and change canvases? (owner, 2026-11-08, in the architect's window)
 - By writing SVG: the site sanitizes it and makes an image editor canvas with layers; the channel's browser draws the picture. It replaces the 2026-11-07 route taking the editor's document and a PNG (`decisions-made-workspace-7.md`). Reason: as Claude's artifacts, and every agent writes SVG (Claude, the built-in assistant, model assistants) while few can draw a PNG.
 - An agent edits a person's canvas in place: a new version, "Edited by @handle" with Undo on the message, its author notified; its own canvas likewise.
-- Started now as a free plan (`plans/agent-canvas.md`), not after A4; the built-in assistant's tools come with A4.
+- Built as its own plan, not after A4 (#8236, #8254, #8252, #8299; the built-in assistant's tools #8293): `workspace/agent-canvas-svg.md` and its siblings.

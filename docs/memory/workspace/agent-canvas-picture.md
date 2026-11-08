@@ -4,7 +4,7 @@ description: How an agent's pending canvas gets its picture: the channel's brows
 ---
 
 ## Who draws an agent's canvas?
-- The server never rasterises SVG: an agent's canvas is posted with a blank picture and its version marked `picture: pending` (`agent-canvas-svg.md`). The first browser of a member who may write in the channel (`can_post`) that shows the message draws it (C2, PR on `[plan:agent-canvas] C2`).
+- The server never rasterises SVG: an agent's canvas is posted with a blank picture and its version marked `picture: pending` (`agent-canvas-svg.md`). The first browser of a member who may write in the channel (`can_post`) that shows the message draws it (#8254).
 - The message payload's file carries `canvas_pending` (the version number to draw, 0 otherwise) from `ws_canvas_message_state()`: one query on the newest `file_versions` row, only for a PNG picture.
 - `assets/js/workspace_canvas_picture.js` (in `workspace.min.js`), called from `filePreview()`: loads the editor (`pgImageEditor.load()`), asks the document (`action: 'canvas'`), draws it with a painter on the editor's prototype that opens no dialog (`M.canvasOpenDoc()`, `layersReady()`, `drawArtboard()`; it sets `doc`, `pictures`, `textFonts`, a no-op `renderView`) and posts `{action: 'canvas_picture', version, picture}` once per message and version per page. Nothing is shown either way.
 
