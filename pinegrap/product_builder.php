@@ -3968,6 +3968,16 @@ function pg_pb_variant_sets_screen()
 
     $filters_active = ($filter_status !== '' || $filter_parent !== 0);
 
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/variant_set_list.php');
+
+    // The sort is kept in the session under the list's own name, so the
+    // products list beside it keeps its own.
+    $list_columns = pg_variant_set_list_columns();
+    $sort_columns = pg_list_table_printed_sort_columns($list_columns);
+    $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+    $list_state = pg_list_state(PG_VARIANT_SET_LIST, $sort_columns, $sort_default);
+
 
     /* ------------------------------------------------------------------ *
      * Data
@@ -4045,170 +4055,42 @@ function pg_pb_variant_sets_screen()
      * Rows
      * ------------------------------------------------------------------ */
 
-    $output_rows = '';
+    // Every set is printed: the list table driver sorts and searches them in
+    // the browser (browser mode) and keeps a heading's sort in the session.
+    // The bulk buttons post the selected ids as group_ids[] through the one
+    // POST form (variant_set_action.php); no row holds a form of its own.
+    $list_rows = array();
 
     foreach ($sets as $set) {
-
-        $set_id   = (int) $set['id'];
-        // The set is edited on the group screen, which already lists the
-        // products inside it and links to each one. Sending this button to a
-        // product editor instead would put a variant matrix on a screen whose
-        // job is to edit one product, and from there an operator fixing a
-        // variant could add another variant underneath it — a variant of a
-        // variant, which is not a thing.
-        $edit_url = 'edit_product_group.php?id=' . $set_id;
-
-        // Thumbnail, or a neutral placeholder — a broken image tile reads as an
-        // error rather than as "no image chosen yet".
-        if ($set['image_name'] != '') {
-            $output_image =
-                '<img src="' . OUTPUT_PATH . h($set['image_name']) . '" alt="" class="rounded-4"
-                    style="width:44px;height:44px;object-fit:cover;" onerror="this.style.display=\'none\'" />';
-        } else {
-            $output_image =
-                '<span class="d-inline-flex align-items-center justify-content-center bg-1 rounded-4 fg-secondary"
-                    style="width:44px;height:44px;"><i class="bi bi-image"></i></span>';
-        }
-
-        $output_enabled = $set['enabled']
-            ? '<span class="badge theme-success">' . lang('Enabled') . '</span>'
-            : '<span class="badge theme-secondary">' . lang('Disabled') . '</span>';
-
-        // A set with no products is not a normal state — it means the products were
-        // deleted out from under the group, and it is worth surfacing rather than
-        // printing a quiet zero.
-        if ((int) $set['variant_count'] === 0) {
-            $output_variants = '<span class="badge theme-warning">' . lang('No products') . '</span>';
-        } else {
-            $output_variants =
-                '<span class="badge theme-primary">' .
-                lang(array(
-                    'string' => '{var:1} variant{suffix:1}',
-                    'vars'   => array((int) $set['variant_count']),
-                    'suffix' => ((int) $set['variant_count'] === 1) ? '' : 's')) .
-                '</span>';
-        }
-
-        $output_attributes = '';
-
-        if (!empty($attribute_labels[$set['id']])) {
-            foreach ($attribute_labels[$set['id']] as $attribute_label) {
-                $output_attributes .= '<span class="badge badge-subtle theme-secondary border me-1">' . h($attribute_label) . '</span>';
-            }
-        } else {
-            $output_attributes = '<span class="fg-secondary">&mdash;</span>';
-        }
-
-        // One price for the whole set when the variants agree, a span when they do
-        // not — the catalog shows the same thing.
-        // prepare_amount() is not escaped, deliberately. BASE_CURRENCY_SYMBOL is
-        // whatever the operator typed in settings, and for most non-Latin
-        // currencies that is an HTML entity — "&#8378;" for the lira. Running it
-        // through h() escapes the ampersand and the page prints the entity itself
-        // instead of the symbol. Every legacy screen outputs it raw for this
-        // reason; the value is a setting, not visitor input.
-        if ((int) $set['variant_count'] === 0) {
-            $output_price = '<span class="fg-secondary">&mdash;</span>';
-        } elseif ((int) $set['min_price'] === (int) $set['max_price']) {
-            $output_price = prepare_amount(((int) $set['min_price']) / 100);
-        } else {
-            $output_price =
-                prepare_amount(((int) $set['min_price']) / 100) . ' &ndash; ' .
-                prepare_amount(((int) $set['max_price']) / 100);
-        }
-
-        $output_parent = ($set['parent_name'] != '')
-            ? h($set['parent_name'])
-            : '<span class="fg-secondary">' . lang('None') . '</span>';
-
-        $output_username = ($set['username'] != '')
-            ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($set['username']))))
-            : '';
-
-        // Checkbox cell and action cell carry the class names the shared DataTable
-        // wiring looks for: ".select-all" is what #select_all and the
-        // multiselectCheckbox plugin bind to (shift-click ranges included), and
-        // ".action-buttons" is what gets hidden while a selection is active. Naming
-        // them anything else means reimplementing both.
-        $output_rows .=
-            '<tr>
-                <td class="select-all align-middle text-start">
-                    <input class="check" type="checkbox" name="group_ids[]" value="' . $set_id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($set['name'])))) . '" />
-                </td>
-                <td class="align-middle text-start action-buttons text-nowrap">
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2"
-                        title="' . lang('Edit') . '" onclick="window.location.href=\'' . $edit_url . '\'"><i class="bi bi-pencil"></i></button>
-                    <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2"
-                        title="' . lang('Duplicate') . '" onclick="window.location.href=\'duplicate_product_group.php?id=' . $set_id . '\'"><i class="bi bi-files"></i></button>
-                </td>
-                <td class="chart_label align-middle">
-                    <div class="d-flex align-items-center gap-3">
-                        ' . $output_image . '
-                        <div>
-                            <a href="' . $edit_url . '" class="fw-semibold text-decoration-none">' . h($set['name']) . '</a>
-                            <div class="fg-secondary small">' . h($set['short_description']) . '</div>
-                        </div>
-                    </div>
-                </td>
-                <td class="align-middle">' . $output_variants . '</td>
-                <td class="align-middle">' . $output_attributes . '</td>
-                <td class="align-middle">' . $output_price . '</td>
-                <td class="align-middle">' . $output_parent . '</td>
-                <td class="align-middle">' . $output_enabled . '</td>
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $set['timestamp'])) . $output_username . '</td>
-            </tr>';
+        $list_rows[] = array(
+            'id' => (int) $set['id'],
+            'cells' => pg_variant_set_list_cells($set, $attribute_labels[$set['id']] ?? array()),
+        );
     }
 
-    // The table is only rendered when there is something in it. DataTables would
-    // otherwise draw its own "no data available" row next to our empty state, and
-    // two different ways of saying nothing is here read as a fault.
+    $list = pg_list_table_printed(array(
+        'list' => PG_VARIANT_SET_LIST,
+        'columns' => $list_columns,
+        'levels' => $list_state['sorts'],
+        'rows' => $list_rows,
+        'ids_field' => 'group_ids[]',
+    ));
+
+    // The list is printed only when it has rows: the empty states below say
+    // why there is none, and a second "nothing here" in the list reads as a
+    // fault.
     $output_table = '';
 
     if ($sets) {
-
-        // The table sits inside the POST form, and every action on this screen goes
-        // through it. No row ever gets a form element of its own: HTML forbids
-        // nested forms and the parser drops the inner one outright, which is how the
-        // per-row cancel button in view_orders.php came to do nothing for months
-        //
-        // The bulk bar is rendered with the table rather than always: a permanently
-        // disabled row of buttons under an empty screen is furniture.
         $output_table =
-            '<form name="form" action="variant_set_action.php" method="post">
+            '<form name="form" action="variant_set_action.php" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
                 <input type="hidden" name="action" />
                 <input type="hidden" name="status" />
-
-            <table class="chart table-hover table" style="width:100%;display:none">
-                <thead>
-                    <tr>
-                        <th class="noVis">
-                            <div class="form-field">
-                                <div class="switch"><input class="" title="' . lang('Select/Deselect All') . '" type="checkbox" id="select_all" /></div>
-                            </div>
-                        </th>
-                        <th class="noVis">' . lang('Action') . '</th>
-                        <th>' . lang('Name') . '</th>
-                        <th>' . lang('Variants') . '</th>
-                        <th>' . lang('Product Attributes') . '</th>
-                        <th>' . lang('Unit Price') . '</th>
-                        <th>' . lang('Parent Product Group') . '</th>
-                        <th>' . lang('Enabled') . '</th>
-                        <th>' . lang('Last Modified') . '</th>
-                    </tr>
-                </thead>
-                <tbody>' . $output_rows . '</tbody>
-            </table>
-
-                <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . lang('Action') . '">
-                    <div class="container">
-                        <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                            <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-3"></i>' . lang('Enable Selected') . '</button>
-                            <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-3"></i>' . lang('Disable Selected') . '</button>
-                            <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang('Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.') : lang('Delete the selected variant sets and all of their products? This cannot be undone.')) . '"><i class="bi bi-trash me-3"></i>' . lang('Delete') . '</button>
-                        </div>
-                    </div>
-                </nav>
+                ' . pg_list_table_html($list['source'], $list['page'], lang('Variant Sets'),
+                    '<button type="button" class="btn btn-sm btn-solid theme-secondary pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-1" aria-hidden="true"></i>' . lang('Enable Selected') . '</button>
+                    <button type="button" class="btn btn-sm btn-solid theme-secondary pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-1" aria-hidden="true"></i>' . lang('Disable Selected') . '</button>
+                    <button type="button" value="Delete Selected" class="btn btn-sm btn-solid theme-danger" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang('Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.') : lang('Delete the selected variant sets and all of their products? This cannot be undone.')) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . lang('Delete') . '</button>') . '
             </form>';
     }
 
@@ -4296,7 +4178,10 @@ function pg_pb_variant_sets_screen()
                      also kept in the session. -->
                 ' . pg_screen_toolbar(array(
                     'primary' => array('label' => lang('Create'), 'url' => 'add_product.php', 'icon' => 'bi-plus-circle'),
-                    'search'  => '<form id="search_form" action="view_products.php?mode=variant_sets" method="get" class="pg-toolbar-filter disable_shortcut">
+                    'search'  => array(
+                        pg_list_table_search_box(PG_VARIANT_SET_LIST),
+                        pg_list_sort_menu('view_products.php', $sort_columns, $list_state['sorts'], $sort_default, array('mode' => 'variant_sets'), PG_VARIANT_SET_LIST),
+                        '<form id="search_form" action="view_products.php?mode=variant_sets" method="get" class="pg-toolbar-filter disable_shortcut">
                         <div class="input-group input-group-sm w-auto flex-nowrap">
                             <label class="input-group-text" for="status" title="' . h(lang('Enabled')) . '"><i class="bi bi-eye" aria-hidden="true"></i></label>
                             <select id="status" aria-label="' . h(lang('Enabled')) . '" name="status" class="form-control form-control-sm w-auto" onchange="this.form.submit()">' . $output_status_options . '</select>
@@ -4306,7 +4191,7 @@ function pg_pb_variant_sets_screen()
                                 : '') . '
                         </div>
                         <noscript><button type="submit" class="btn btn-sm btn-outline theme-secondary">' . h(lang('Apply')) . '</button></noscript>
-                    </form>',
+                    </form>'),
                 )) . '
 
                 <div class="card my-7">
@@ -4328,10 +4213,6 @@ function pg_pb_variant_sets_screen()
            just one extra hidden field. */
         $(document).on("click", ".pg-vs-status", function () {
 
-            if ($(this).hasClass("disabled")) {
-                return;
-            }
-
             document.form.action.value  = "status";
             document.form.status.value  = $(this).attr("data-pg-vs-status");
             document.form.submit();
@@ -4339,7 +4220,9 @@ function pg_pb_variant_sets_screen()
 
     }(jQuery));
     </script>
-</main>' .
+</main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
+' .
     output_footer();
 
     $liveform->remove_form();
