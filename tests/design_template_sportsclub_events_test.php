@@ -35,6 +35,7 @@ function _test_spe_load()
 	if ($out !== null) return $out;
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub';
 	include $dir . '/parts.php';
+	include $dir . '/blocks.php';
 	include $dir . '/squad.php';
 	include $dir . '/mail.php';
 	$part = include $dir . '/events.php';

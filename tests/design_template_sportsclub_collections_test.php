@@ -33,6 +33,7 @@ function _test_spc_load()
 	if ($out !== null) return $out;
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-sportsclub';
 	include $dir . '/parts.php';
+	include $dir . '/blocks.php';
 	$squad_part = include $dir . '/squad.php';
 	$match_part = include $dir . '/matches.php';
 	$parts = array('squad' => $squad_part, 'matches' => $match_part);
