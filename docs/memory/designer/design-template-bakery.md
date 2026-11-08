@@ -19,7 +19,7 @@ description: Bakery template (pinegrap-bakery): daily bake and cakes as page con
 - Not built: a pickup day per product, daily limits, cut-off times, a priced cake builder, standing wholesale orders, class capacity.
 
 ## What is the pbk- look?
-- `pbk-brand`, `pbk-display`, `pbk-eyebrow`, `pbk-hero`, `pbk-lift`, `pbk-price`, `pbk-quote`; field and section ids `bky-` (`bk-` is Bookshop's). Playfair Display headings, Nunito Sans body. Look `organic`, palette `coral` (the e-mails' inline rose), order 137 (135 is Ski Resort's), icon `bi-cake2`. No `opacity-*` on text ([[design-template-text-contrast]]); no fixed date: pickup days are counted from the order.
+- `pbk-brand`, `pbk-display`, `pbk-eyebrow`, `pbk-hero`, `pbk-lift`, `pbk-price`, `pbk-quote`; field and section ids `bky-` (`bk-` is Bookshop's). Playfair Display headings, Nunito Sans body. Look `organic`, palette `coral` (the e-mails' inline rose), order 139 (137 is Recruitment's), icon `bi-cake2`. No `opacity-*` on text ([[design-template-text-contrast]]); no fixed date: pickup days are counted from the order.
 - Turkish: "fırın", "pastane", "ekmek", "hamur işi", "pasta", "özel pasta siparişi", "teslim alma", "toptan", "atölye" for a baking class (never "ders" or "sınıf": `Classes` reads "Sınıflar"); the Journal is "Günce".
 
 ## Which tests cover it?

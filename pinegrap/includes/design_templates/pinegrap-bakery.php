@@ -180,7 +180,7 @@ return array(
     'name'        => lang('Bakery'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 137,
+    'order'       => 139,
     'icon'        => 'bi-cake2',
     'description' => lang('An artisan bakery and patisserie: the daily bake with its prices, celebration cakes with their sizes and flavours, ordering ahead and collecting, custom cake orders and wholesale enquiries the visitor follows from their account, baking classes with a page each and a place request, bread, pastries, cakes, gift boxes and class places in a pickup shop when it is on, the Journal, a newsletter, an inbox, a staff area and a help page that searches the whole site.'),
 
