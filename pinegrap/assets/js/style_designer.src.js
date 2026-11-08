@@ -11196,7 +11196,8 @@ const StyleDesigner = (function () {
     // (pg_fx.min.js), loaded into the frame once and bound again after
     // every render. pgFxEditing makes a node drawn again by a later render
     // show in place instead of playing its entrance on every change; the
-    // Interactions section's Play button replays one. While the canvas's
+    // Interactions section's Play button replays one (the part
+    // 'interactions'). While the canvas's
     // motion is paused the frame answers reduced motion, so nothing moves.
     function _sdFxCanvas() {
         if (!canvasDoc || !canvasDoc.querySelector('[data-pg-fx]')) return;
@@ -11208,20 +11209,6 @@ const StyleDesigner = (function () {
         scr.id = 'pg-fx-js';
         try { scr.src = new URL('assets/js/pg_fx.min.js', document.baseURI).href; } catch (e) { return; }
         canvasDoc.head.appendChild(scr);
-    }
-
-    // The Play button of the Interactions section: the node's interaction
-    // once on the canvas, whether the canvas's motion plays or not.
-    function _sdFxReplay(node) {
-        var el = _sdCanvasInnerOf(node);
-        if (el && !el.hasAttribute('data-pg-fx')) el = el.querySelector('[data-pg-fx]');
-        var win = canvasDoc && canvasDoc.defaultView;
-        if (!el || !win) return;
-        if (win.pgFx && typeof win.pgFx.replay === 'function') { win.pgFx.replay(el); return; }
-        // The file is not in the frame yet: load it, then play.
-        _sdFxCanvas();
-        var scr = canvasDoc.getElementById('pg-fx-js');
-        if (scr) scr.addEventListener('load', function () { if (win.pgFx && win.pgFx.replay) win.pgFx.replay(el); });
     }
 
     function _reExecuteCanvasScripts(root) {
@@ -31695,98 +31682,38 @@ const StyleDesigner = (function () {
         return html.slice(0, at) + fx + html.slice(at);
     }
 
-    // The node's interaction after one field of the panel changed: the
-    // stored one with `field` set to `value`, normalized; null when the
-    // effect is cleared. Fields that no longer apply drop out; switching
-    // the effect keeps the timing.
-    function _sdFxSet(fx, field, value) {
-        if (field === 'effect' && !value) return null;
-        var cur = _sdFxNormalize(fx) || {}, next = {};
-        for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
-        next[field] = value;
-        return _sdFxNormalize(next);
-    }
-
+    // The section with an empty body: its rows and fields are the part
+    // 'interactions' (style_designer_interactions.js), which _sdFxBind()
+    // runs to fill it.
     function propsInteractions(n) {
         if (!_sdFxTakes(n)) return '';
-        var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
-        var spec = _sdFxSpec();
-        var select = function (field, opts) {
-            return '<select class="form-control form-control-sm" data-fx="' + field + '">' + opts.map(function (o) {
-                return '<option value="' + esc(o[0]) + '"' + (o[0] === fx[field] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
-            }).join('') + '</select>';
-        };
-        var number = function (field, unit, placeholder) {
-            var r = spec.numbers[field];
-            var v = (field === 'distance' && !fx.distance) ? '' : fx[field];
-            return '<div class="input-group input-group-sm">' +
-                '<input type="number" class="form-control form-control-sm" data-fx="' + field + '" min="' + r[0] + '" max="' + r[1] + '" step="1" value="' + esc(String(v)) + '"' +
-                (placeholder ? ' placeholder="' + esc(String(placeholder)) + '"' : '') + '>' +
-                '<span class="input-group-text">' + unit + '</span></div>';
-        };
-        var h = row(_sdT('Effect'), select('effect', [
-            ['', _sdT('None')], ['fade', _sdT('Fade in')],
-            ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
-            ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
-            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')]
-        ]));
-        if (fx.trigger) {
-            var entrance = fx.trigger === 'load' || fx.trigger === 'view';
-            h += row(_sdT('Trigger'), select('trigger', [
-                ['view', _sdT('Scroll into view')], ['load', _sdT('Page load')],
-                ['hover', _sdT('Hover')], ['click', _sdT('Click')]
-            ]));
-            h += row(_sdT('Duration'), number('duration', 'ms'));
-            h += row(_sdT('Delay'), number('delay', 'ms'));
-            h += row(_sdT('Easing'), select('easing', [
-                ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
-                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]
-            ]));
-            if (/^slide-/.test(fx.effect)) h += row(_sdT('Distance'), number('distance', 'px', entrance ? 24 : 6));
-            if (entrance) h += row(_sdT('Stagger children'), number('stagger', 'ms'));
-            if (fx.trigger === 'view') h += row(_sdT('Every time'), swAttr('data-fx="repeat"', !!fx.repeat));
-        }
-        if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
-        if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
-        if (fx.trigger) {
-            h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
-                '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
-        }
-        if (fx.effect) {
-            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
-                esc(_sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
-                '</div></div>';
-        }
-        return sect('bi-stars', _sdT('Interactions'), h);
+        return sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>');
     }
 
-    // The Interactions section's fields write props._fx (_sdFxSet()). A
-    // choice is one undo step and redraws the panel, whose rows follow the
-    // effect and trigger; a typed number is one undo step per focus and
-    // redraws the panel once it is left, showing the value kept.
+    // Fills the section's body once the panel is drawn. A collapsed
+    // section waits for its header to open it before the part is loaded
+    // for the first time; once the part has run it fills at once. A rule
+    // typed in the panel's search box is applied again to the new rows.
     function _sdFxBind(n) {
         var panel = document.getElementById('sd-properties');
-        if (!panel || !_sdFxTakes(n)) return;
-        var play = panel.querySelector('[data-fx-play]');
-        if (play) play.addEventListener('click', function () { _sdFxReplay(n); });
-        panel.querySelectorAll('[data-fx]').forEach(function (el) {
-            var field = el.getAttribute('data-fx');
-            var typed = el.type === 'number';
-            var before = typed ? _sdUndoBeforeFirstInput(el) : null;
-            el.addEventListener(typed ? 'input' : 'change', function () {
-                if (typed) before(); else saveState();
-                var fx = _sdFxSet(n.props._fx, field, el.type === 'checkbox' ? el.checked : el.value);
-                if (fx) n.props._fx = fx; else delete n.props._fx;
-                if (!typed) { render(); return; }
-                renderCanvas();
-                renderTree();
-                renderStatusBar();
-                renderAttrsPanel();
-                renderHtmlTree();
-                _sdLivePreviewSchedule();
+        var body = panel ? panel.querySelector('[data-sd-fx-body]') : null;
+        if (!body || !_sdFxTakes(n)) return;
+        var fill = function () {
+            _sdPartCall('interactions', 'fill', [body, n]).then(function () {
+                var srch = document.getElementById('sd-props-search');
+                if (body.isConnected && srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
+            }).catch(_sdPartFailed);
+        };
+        var sectBody = body.closest('.sd-sect-body');
+        var hdr = sectBody ? sectBody.previousElementSibling : null;
+        if (!_sdPartLoaded('interactions') && sectBody && sectBody.style.display === 'none' && hdr) {
+            hdr.addEventListener('click', function first() {
+                hdr.removeEventListener('click', first);
+                fill();
             });
-            if (typed) el.addEventListener('change', function () { render(); });
-        });
+            return;
+        }
+        fill();
     }
 
     // A design built without a framework (Custom) has nothing that styles
@@ -76573,7 +76500,18 @@ const StyleDesigner = (function () {
             _sdContentSizingNode: _sdContentSizingNode,
             _sdDecodeEntities: _sdDecodeEntities,
             _sdFxAttrs: _sdFxAttrs,
+            _sdFxCanvas: _sdFxCanvas,
             _sdFxNormalize: _sdFxNormalize,
+            _sdFxSpec: _sdFxSpec,
+            _sdFxTakes: _sdFxTakes,
+            _sdCanvasInnerOf: _sdCanvasInnerOf,
+            _sdUndoBeforeFirstInput: _sdUndoBeforeFirstInput,
+            _sdLivePreviewSchedule: _sdLivePreviewSchedule,
+            renderTree: renderTree,
+            renderStatusBar: renderStatusBar,
+            renderAttrsPanel: renderAttrsPanel,
+            row: row,
+            swAttr: swAttr,
             _sdImgInRatio: _sdImgInRatio,
             _sdIsSentence: _sdIsSentence,
             _sdNodeSetBinding: _sdNodeSetBinding,
@@ -76594,6 +76532,7 @@ const StyleDesigner = (function () {
             newTabSeq: { get: function () { return _pgNewTabSeq; }, set: function (v) { _pgNewTabSeq = v; } },
             sharedCache: { get: function () { return _sharedCache; } },
             design: { get: function () { return _design; } },
+            canvasDoc: { get: function () { return canvasDoc; } },
             tree: { get: function () { return tree; }, set: function (v) { tree = v; } },
             selectedNode: { get: function () { return selectedNode; }, set: function (v) { selectedNode = v; } },
             selectedNodes: { get: function () { return selectedNodes; }, set: function (v) { selectedNodes = v; } }

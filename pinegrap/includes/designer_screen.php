@@ -335,7 +335,7 @@ function pg_designer_screen_render($ctx)
         'ai'            => $sd_ai,
         // The editor's parts not needed to open a page, run on first use
         // (pg_designer_parts()): their file addresses by name.
-        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts'), !empty($sd_ai['enabled']) ? array('ai') : array())),
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions'), !empty($sd_ai['enabled']) ? array('ai') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
