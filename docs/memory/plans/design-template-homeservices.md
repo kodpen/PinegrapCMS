@@ -19,7 +19,7 @@ description: Plan: the Home Services design template (pinegrap-homeservices): se
 
 - 4 (done, #7893): `mail.php` (the e-mail builders) and `visits.php`: `book` (with `?service=`, `?area=`), `visit_view`, `my_visits`, `staff_visits`, `privacy`, `email_reply`, the visit e-mails; test.
 
-- 5: `estimates.php` (`estimate` with `?service=`, `?area=`, photos; `estimate_view`, `my_estimates`, `staff_estimates`, the estimate e-mails) and `shop.php` (`plans`, product, cart, checkout, order, `email_order`; the Care Plans group: plans and gift cards, `shippable => false`); test.
+- 5 (done, #8004): `estimates.php` (`estimate` with `?service=`, `?area=`, photos; `estimate_view`, `my_estimates`, `staff_estimates`, the estimate e-mails) and `shop.php` (`plans`, product, cart, checkout, order, `email_order`; the Care Plans group: plans and gift cards, `shippable => false`); test.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, Tips (the blog), post, help search, error, the message and welcome e-mails, `home_posts`, `google_reviews` ([[design-templates-standard-pages]]); test.
 
@@ -29,7 +29,7 @@ description: Plan: the Home Services design template (pinegrap-homeservices): se
 
 ## Where to start?
 - The next free step is the lowest one not marked done. Model files: `pinegrap-travel/` (collections, requests, enquiries, shop), `pinegrap-cafe.php` (`min_date`, `required_when`). Later tests share `_test_hs_page_keys()` and `_test_hs_shop_keys()` from `tests/design_template_homeservices_test.php`.
-- Step 4's form reads `?service=` (`$service_choices`) and `?area=` (`$area_names`); reuse `$hs_page_link`, `$hs_toolbar`, `$hs_not_found` from `services.php`.
+- `estimates.php` is included after `visits.php` (reuses its record pieces); reuse `$hs_page_link`, `$hs_toolbar`, `$hs_not_found` from `services.php`.
 - Check a shared key's Turkish before reuse (`Service`, `Services`, `Booking` and `Book this service` do not say "hizmet" or "ziyaret"). PHP 7.1: no trailing comma after a call's last argument.
 
 ## Open questions
