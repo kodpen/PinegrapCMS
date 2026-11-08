@@ -163,6 +163,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_api_device_access_scopes(); // 11.0.71
 	upgrade_2026_11_0_workspace_note_groups();   // 11.0.119
 	upgrade_2026_11_0_ws_agents();               // 11.0.172
+	upgrade_2026_11_0_ws_channel_memory();       // 11.0.173
 
 }
 
@@ -5510,5 +5511,44 @@ function upgrade_2026_11_0_ws_agents() {
 	}
 
 	install_note('Workspace: agents with doors get their own registry and channel memberships. Claude\'s routine is moved into it and works as before; nothing else changes until an agent is added.');
+
+}
+
+// A channel's memory and an agent's decision mark (2026.11.0, 11.0.173;
+// includes/workspace/channel_memory.php).
+//
+// ws_channel_memory: the entries members and agents keep for a channel (any
+// channel, an agent channel or not): a title, a text, tags, pinned, an
+// expiry (0 never), who wrote it and who changed it last, each as a kind
+// (user, app) and an id like ws_messages.sender_kind / sender_id. An agent's
+// brief carries their index; it reads the texts it needs. Expired entries
+// leave the index; the workspace job deletes them 30 days later.
+// ws_messages.marked_by_kind: whether marked_by is a person or an
+// application, so an agent's mark never reads as a person's. Existing marks
+// were all made by people and stay 'user'.
+function upgrade_2026_11_0_ws_channel_memory() {
+
+	install_create_table('ws_channel_memory', "CREATE TABLE ws_channel_memory (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		title           VARCHAR(150) NOT NULL DEFAULT '',
+		text            TEXT NULL,
+		tags            VARCHAR(400) NOT NULL DEFAULT '',
+		pinned          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		author_kind     ENUM('user','app') NOT NULL DEFAULT 'user',
+		author_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by_kind ENUM('user','app') NOT NULL DEFAULT 'user',
+		updated_by_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_channel (channel_id, pinned, updated_at),
+		KEY idx_expires (expires_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_messages', 'marked_by_kind', "ENUM('user','app') NOT NULL DEFAULT 'user' AFTER marked_by");
+
+	install_note('Workspace: every channel gets a memory that its members and agents keep, and an agent may mark a message as a decision. Nothing changes until someone writes an entry or an agent marks a message.');
 
 }

@@ -595,6 +595,7 @@
     "Left empty or at 0, it comes back with the goods in proportion.": "Boş ya da 0 bırakılırsa mallarla orantılı olarak geri gelir.",
     "Left empty, every member of the channel gets the list.": "Boş bırakılırsa kanalın her üyesi listeyi alır.",
     "Left empty, everybody who is on an open task gets their list.": "Boş bırakılırsa açık bir görevde adı olan herkes kendi listesini alır.",
+    "Left empty, it never expires. An expired entry leaves the agents' list and is deleted 30 days later.": "Boş bırakılırsa süresi dolmaz. Süresi dolan kayıt ajanların listesinden çıkar ve 30 gün sonra silinir.",
     "Left empty, it stays open until someone closes it.": "Boş bırakılırsa biri kapatana kadar açık kalır.",
     "Left empty, it waits until it is answered. A day before, the people still to answer are reminded.": "Boş bırakılırsa yanıtlanana kadar bekler. Son tarihten bir gün önce hâlâ yanıt vermeyenlere hatırlatılır.",
     "Left empty, its own code is used: {var:1}": "Boş bırakılırsa kendi kodu kullanılır: {var:1}",

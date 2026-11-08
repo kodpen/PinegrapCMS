@@ -9221,6 +9221,7 @@ function get_tables() {
 		'ws_note_locks',
 		'ws_agents',
 		'ws_channel_agents',
+		'ws_channel_memory',
 		'ws_app_commands',
 		'ws_voice',
 		'ws_file_edits',

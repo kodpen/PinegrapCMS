@@ -1283,6 +1283,7 @@
     "Pinned message and summary": "Sabit mesaj ve özet",
     "Pinned to the top": "En üste sabitlendi",
     "Pinned to the top.": "En üste sabitlendi.",
+    "Pinned: first in the list agents see": "Sabitlenmiş: ajanların gördüğü listede en başta",
     "Pins THIS session: the device limit cannot evict it and the member cannot sign it out from their own screen. Different from the setting \"Refuse new sign-ins when the limit is full\", which only stops new devices - here the account is tied to this one.": "BU oturumu sabitler: cihaz sınırı düşüremez, kullanıcı da kendi ekranından kapatamaz. Ayarlardaki \"Sınır doluyken yeni girişi reddet\"ten farklıdır — o yalnızca yeni cihazları durdurur, bu ise hesabı bu cihaza bağlar.",
     "Pins: {n}": "Pimler: {n}",
     "Pintura Image Editor": "Pintura Görsel Düzenleyici",
