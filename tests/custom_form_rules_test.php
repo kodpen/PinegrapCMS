@@ -229,6 +229,9 @@ function test_custom_form_rules_templates()
 		array('pinegrap-homeservices', 'hs-bk-day'),
 		array('pinegrap-veterinary', 'vt-ap-date'),
 		array('pinegrap-veterinary', 'vt-pj-start'),
+		array('pinegrap-carrental', 'cr-bk-pickup-date'),
+		array('pinegrap-carrental', 'cr-bk-return-date'),
+		array('pinegrap-carrental', 'cr-be-start'),
 	) as $c) {
 		$node = _test_cf_rules_template_node($c[0], $c[1]);
 		pg_assert_true($node !== null, $c[1] . ' exists');
