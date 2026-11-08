@@ -302,6 +302,7 @@
     "Give online": "Çevrim içi bağış",
     "Give options an effect on the price and every variant below is priced from the Unit Price. Order: the base, times the multipliers, plus the amounts, then the percentages one after another. Only one attribute can set the price. A price typed into a row is kept.": "Seçeneklere fiyat etkisi verin; aşağıdaki her varyantın fiyatı Birim fiyatı alanından hesaplanır. Sıra: taban, çarpanlarla çarpılır, tutarlar eklenir, ardından yüzdeler sırayla uygulanır. Fiyatı yalnız bir nitelik belirleyebilir. Bir satıra elle yazılan fiyat korunur.",
     "Give the Cover story a line to set apart and it appears here.": "Kapak yazısına öne çıkarılacak bir cümle verin, burada görünür.",
+    "Give the agent a name of up to 100 characters.": "Ajana en çok 100 karakterlik bir ad verin.",
     "Give the carrier this return code:": "Kargo şubesine bu iade kodunu verin:",
     "Give the element an id to use it.": "Kullanmak için öğeye bir id verin.",
     "Give the experiment a name of up to 100 characters.": "Deneye en çok 100 karakterlik bir ad verin.",
