@@ -1076,27 +1076,67 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
   }
 
+  /* ── Look: backdrop ───────────────────────────────────────────────────
+     The drawings' washes behind the new dashboard, over the old
+     dashboard's rules for #content[data-panel-backdrop] in backend.src.css,
+     which keep drawing the old one. Dark is drawn; light keeps the same
+     hues faint on the white page. None is the page's own colour. */
+
+  #content.pg-dash[data-panel-backdrop="mesh"] {
+    background-image:
+      radial-gradient(900px 500px at 8% -5%, rgba(6, 182, 212, .09), transparent 60%),
+      radial-gradient(800px 520px at 100% 0%, rgba(192, 38, 211, .06), transparent 60%),
+      radial-gradient(900px 700px at 60% 110%, rgba(79, 70, 229, .06), transparent 60%);
+  }
+
+  #content.pg-dash[data-panel-backdrop="dusk"] {
+    background-image: linear-gradient(180deg, rgba(79, 70, 229, .1) 0%, rgba(79, 70, 229, .03) 38%, transparent 100%);
+  }
+
+  #content.pg-dash[data-panel-backdrop="ember"] {
+    background-image:
+      radial-gradient(900px 620px at 92% 105%, rgba(249, 115, 22, .1), transparent 60%),
+      radial-gradient(700px 520px at 0% 100%, rgba(244, 63, 94, .06), transparent 60%);
+  }
+
+  html[data-bs-theme="dark"] #content.pg-dash[data-panel-backdrop="mesh"] {
+    background-image:
+      radial-gradient(900px 500px at 8% -5%, rgba(34, 211, 238, .13), transparent 60%),
+      radial-gradient(800px 520px at 100% 0%, rgba(217, 70, 239, .1), transparent 60%),
+      radial-gradient(900px 700px at 60% 110%, rgba(99, 102, 241, .1), transparent 60%);
+  }
+
+  html[data-bs-theme="dark"] #content.pg-dash[data-panel-backdrop="dusk"] {
+    background-image: linear-gradient(180deg, #1b1440 0%, #0d1024 38%, #070b12 100%);
+  }
+
+  html[data-bs-theme="dark"] #content.pg-dash[data-panel-backdrop="ember"] {
+    background-image:
+      radial-gradient(900px 620px at 92% 105%, rgba(249, 115, 22, .16), transparent 60%),
+      radial-gradient(700px 520px at 0% 100%, rgba(244, 63, 94, .1), transparent 60%);
+  }
+
   /* ── Look: density and lights ─────────────────────────────────────────
-     Compact narrows padding and gaps. Lights off drops shadows, blur and
-     the gauge's glow, and holds its twinkle as an off-screen dial is held:
+     Compact narrows the cards' padding and the grid's gaps; the top row
+     keeps its own, as drawn. Lights off drops the backdrop, shadows, blur
+     and the gauge's glow, and holds its twinkle as an off-screen dial is held:
      smoother on a weak device. */
 
   .pg-dash-compact .pg-dash-card {
     padding: .75rem .875rem;
   }
 
-  .pg-dash-compact .pg-dash-top,
   .pg-dash-compact .pg-dash-grid {
     gap: .75rem;
-  }
-
-  .pg-dash-compact .pg-dash-top {
-    margin-bottom: .75rem;
   }
 
   .pg-dash-calm .pg-dash-card {
     box-shadow: none;
     backdrop-filter: none;
+  }
+
+  #content.pg-dash.pg-dash-calm[data-panel-backdrop] {
+    background-image: none;
   }
 
   .pg-dash-calm .pg-health-cells > rect,

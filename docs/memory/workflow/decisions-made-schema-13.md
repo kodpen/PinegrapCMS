@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-13
-description: Decisions list, schema part 13 (2026-11-08 on): the agent channel switch on ws_channels (step AC); the channel memory table and an agent's mark (step A5, #8188)
+description: Decisions list, schema part 13 (2026-11-08 on): agent channel switch (AC); channel memory table and an agent's mark (A5); A7 undo in ws_ai_changes; GitHub channel link tables (G2)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -12,3 +12,5 @@ description: Decisions list, schema part 13 (2026-11-08 on): the agent channel s
   - `ws_channel_memory`: id (PK AI), channel_id (KEY channel_id, pinned, updated_at; rows go with the channel), title VARCHAR(150), text TEXT (at most 4000 characters), tags VARCHAR(400) (comma list, lower case, at most 10 of 32), pinned TINYINT UNSIGNED DEFAULT 0, expires_at INT UNSIGNED DEFAULT 0 (KEY; 0 never; the general job deletes expired rows after 30 days), author_kind ENUM('user','app') DEFAULT 'user', author_id, updated_by_kind, updated_by_id, created_at, updated_at. Chosen over entries as `ws_notes` rows.
   - `ws_messages.marked_by_kind` ENUM('user','app') NOT NULL DEFAULT 'user' after `marked_by`, which holds the application id for an agent's mark. Existing marks read `user`. Chosen over recording an agent's mark under the application's owner, which would read as an owner decision.
   - A channel decision is not copied into the table: the digest reads the marked messages beside the entries.
+- Undo journal of an agent's applied change (owner, 2026-11-08, #8243; step A7 of `plans/agent-channel.md`): in `ws_ai_changes`, no new table. `status` ENUM gains `undone` (MODIFY keeping the old values); `applied_by_kind` ENUM('user','app') NOT NULL DEFAULT 'user', `undone_by` and `undone_at` INT UNSIGNED NOT NULL DEFAULT 0. Existing rows read `user`, never `undone`. Undo by a member allowed to change that kind, for 7 days, refused once the record changed since. Chosen over a `ws_agent_undo` table (the before values twice).
+- GitHub channel links (owner, 2026-11-08, #8270; step G2 of `plans/github-channel-connection.md`): `ws_channel_links` (channel_id, provider, connection_id, repository, events, labels, hook_id, sealed secret, last_error, last_error_at, created_by, created_at, updated_at; unique channel_id, provider, repository) and `ws_channel_link_deliveries` (link_id, delivery_id CHAR(36), received_at; unique link_id, delivery_id; pruned after 7 days) so a redelivered or parallel delivery is written once. Chosen over `connect_accounts` service rows (no query by channel).
