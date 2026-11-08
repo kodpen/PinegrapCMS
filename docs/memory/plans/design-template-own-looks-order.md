@@ -15,14 +15,8 @@ description: Order of the polishing round after Launch: every shipped template's
 4. Templates that already have a family or their own layout: news, magazine (one step each: motion and the family's newer blocks), forum.
 5. Last: hello (the default starter), playground (it then shows each family's blocks).
 - Every shipped template is in this list; Launch is in the main plan.
-- Wedding: `-1` #8167, `-2` #8196 done.
-- Photo: `-1` #8232, `-2` #8255 done.
-- School: `-1` #8233, `-2` #8257 done.
-- Architecture: `-1` #8264, `-2` #8280 done.
-- Campsite: `-1` #8269, `-2` #8301 done.
-- Cityhall: `-1` #8291, `-2` #8308 done.
-- Construction: `-1` #8292, `-2` #8324 done.
-- Museum: `-1` #8306 done.
+- Both steps done (`-1`/`-2`): wedding #8167/#8196, photo #8232/#8255, school #8233/#8257, architecture #8264/#8280, campsite #8269/#8301, cityhall #8291/#8308, construction #8292/#8324.
+- `-1` done: museum #8306, travel #TRAVEL.
 
 ## Where do the open template plans come?
 - Their files are not edited here (open PRs hold most). In each, the assembly step (look, fonts, rules) adds no new stock band. Their pages are built, so each one's `-1`, `-2` joins the list once its assembly lands, ahead of unclaimed groups: bakery, brewery, carrental, coworking, drivingschool, ferry, filmstudio, florist, homeservices, library (assembly #7982 open), marina, pharmacy, podcast, recruitment, restaurant, sportsclub, theatre, veterinary.
