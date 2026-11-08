@@ -16,7 +16,7 @@ description: System widget renderer rules: Messages node named after the livefor
 - Its default words fit every view a visitor can switch to: the calendar's one `empty_message` serves month, week and upcoming, so it names no period ("There are no events to show."); a stored "There are no events this month." (either language) reads as that default (`pg_sw_calendar_empty_message()`, JS `_swCalendarEmptyMessage()`).
 
 ## How does `pg-hide-if-empty` decide?
-- `pg_sw_hide_empty_fields()` drops a marked element that came out empty. Its value is the inside of its `pg-field-value` element, or the whole element when it has none. Words, a picture with an address, a video, a frame, a link or a form control count; inner marked elements go first, so a box whose rows all left goes too.
+- `pg_sw_hide_empty_fields()` drops a marked element that came out empty. Its value is the inside of its `pg-field-value` element, or the whole element when it has none; what counts: [[widget-hide-if-empty]]; inner marked elements go first, so a box whose rows all left goes too.
 - An empty semantic element closes on the same line (`_render_tree_node()`), so `:empty` matches it; never add pretty-print whitespace inside.
 
 ## Which box does a stretched link cover?
