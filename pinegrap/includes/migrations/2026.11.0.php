@@ -162,6 +162,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_credit_campaigns();         // 11.0.171
 	upgrade_2026_11_0_api_device_access_scopes(); // 11.0.71
 	upgrade_2026_11_0_workspace_note_groups();   // 11.0.119
+	upgrade_2026_11_0_ws_agents();               // 11.0.172
 
 }
 
@@ -5413,5 +5414,101 @@ function upgrade_2026_11_0_workspace_note_groups() {
 	install_add_index('ws_note_shares', 'idx_via_group', "INDEX idx_via_group (via_group, user_id)");
 
 	install_note('Workspace: notes can be kept in groups, groups can be shared, and notes and groups can be locked with a PIN. Nothing changes until someone makes a group or sets a PIN.');
+
+}
+
+// The agent registry and the channel-agent row (2026.11.0, 11.0.172;
+// includes/workspace/agents.php).
+//
+// ws_agents: one row per agent with a door, any number per kind (claude,
+// app, model), each called by its own handle (alias shape, never a person's
+// user name). The door is how the site wakes it: push (door_url, the sealed
+// door_secret) or poll; its failures, last knock and last error show on its
+// card. wake_every / wake_next_at / wake_note are its schedule.
+// ws_channel_agents: an agent in a channel - allowed (the member row), what
+// wakes it, the tier the channel's manager allows and the loop-guard switch.
+// It decides waking and the tier only: an application keeps reading with its
+// owner's reach. No row means the agent's defaults (Claude: claude_access).
+//
+// Today's Claude routine becomes the first row: its address and sealed token
+// are copied from config, whose columns stay unread for one release (files
+// can land before the upgrade runs). A site without a routine gets no row.
+function upgrade_2026_11_0_ws_agents() {
+
+	install_create_table('ws_agents', "CREATE TABLE ws_agents (
+		id                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind               VARCHAR(16) NOT NULL DEFAULT '',
+		handle             VARCHAR(32) NOT NULL DEFAULT '',
+		name               VARCHAR(100) NOT NULL DEFAULT '',
+		avatar             VARCHAR(255) NOT NULL DEFAULT '',
+		app_id             INT UNSIGNED NOT NULL DEFAULT 0,
+		provider           VARCHAR(32) NOT NULL DEFAULT '',
+		model              VARCHAR(100) NOT NULL DEFAULT '',
+		key_sealed         TEXT NULL,
+		status             VARCHAR(16) NOT NULL DEFAULT 'active',
+		door_kind          VARCHAR(8) NOT NULL DEFAULT 'poll',
+		door_url           VARCHAR(500) NOT NULL DEFAULT '',
+		door_secret_sealed TEXT NULL,
+		door_failures      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		door_last_knock    INT UNSIGNED NOT NULL DEFAULT 0,
+		door_error         VARCHAR(250) NOT NULL DEFAULT '',
+		wake_every         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		wake_next_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		wake_note          VARCHAR(250) NOT NULL DEFAULT '',
+		created_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_handle (handle),
+		KEY idx_app (app_id),
+		KEY idx_wake (wake_next_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_channel_agents', "CREATE TABLE ws_channel_agents (
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		agent_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		allowed     TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		wake_rule   VARCHAR(16) NOT NULL DEFAULT 'mention',
+		wake_prefix VARCHAR(32) NOT NULL DEFAULT '',
+		tier        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		loop_guard  TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		added_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		added_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (channel_id, agent_id),
+		KEY idx_agent (agent_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Claude's row, copied once: a second run finds it and leaves it, so a
+	// routine changed on the card since is never overwritten from config.
+	if ((int) db_value("SELECT COUNT(*) FROM ws_agents WHERE kind = 'claude'") > 0) {
+
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_agents claude')));
+
+	} elseif (!install_column_exists('config', 'ws_claude_routine_url') || !install_column_exists('config', 'ws_claude_token')) {
+
+		install_skipped('ws_agents: no Claude routine to copy');
+
+	} else {
+
+		$row = (array) db_item("SELECT ws_claude_routine_url, ws_claude_token FROM config LIMIT 1");
+		$url = (string) ($row['ws_claude_routine_url'] ?? '');
+		$token = (string) ($row['ws_claude_token'] ?? '');
+
+		if (($url === '') && ($token === '')) {
+
+			install_skipped('ws_agents: no Claude routine to copy');
+
+		} else {
+
+			db("INSERT INTO ws_agents (kind, handle, name, status, door_kind, door_url, door_secret_sealed, created_at, updated_at)
+				VALUES ('claude', 'claude', 'Claude', 'active', 'push', '" . e(substr($url, 0, 500)) . "', " . (($token === '') ? 'NULL' : "'" . e($token) . "'") . ", '" . time() . "', '" . time() . "')");
+
+			install_ran('ws_agents: the Claude routine\'s address and token copied into its row');
+
+		}
+
+	}
+
+	install_note('Workspace: agents with doors get their own registry and channel memberships. Claude\'s routine is moved into it and works as before; nothing else changes until an agent is added.');
 
 }

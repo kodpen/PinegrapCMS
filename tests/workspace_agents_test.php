@@ -47,3 +47,70 @@ function test_workspace_agent_door_problem()
 	pg_assert_true(ws_agent_door_problem('push', 'https://api.anthropic.com/integrations/v1/code/webhook-triggers/abc/fire') !== '', 'a session webhook nobody but Anthropic can sign');
 	pg_assert_true(ws_agent_door_problem('ring', '') !== '', 'push or poll');
 }
+
+function test_workspace_channel_agent_check_defaults_and_fields()
+{
+	$new = ws_channel_agent_check(array(), null, false);
+	pg_assert_true($new['ok']);
+	pg_assert_same(array('wake_rule' => 'mention', 'wake_prefix' => '', 'tier' => 1, 'loop_guard' => 1), $new['values'], 'a new row: mention, tier 1, loop guard on');
+
+	$prefix = ws_channel_agent_check(array('wake_rule' => 'prefix', 'wake_prefix' => ' [ci] '), null, false);
+	pg_assert_same('[ci]', $prefix['values']['wake_prefix']);
+
+	$kept = ws_channel_agent_check(array('loop_guard' => false), array('wake_rule' => 'prefix', 'wake_prefix' => '[ready]', 'tier' => 2, 'loop_guard' => 1), false);
+	pg_assert_same(array('wake_rule' => 'prefix', 'wake_prefix' => '[ready]', 'tier' => 2, 'loop_guard' => 0), $kept['values'], 'fields left out keep the row\'s value');
+
+	$dropped = ws_channel_agent_check(array('wake_rule' => 'all', 'wake_prefix' => '[ci]'), null, false);
+	pg_assert_same('', $dropped['values']['wake_prefix'], 'only a prefix wake keeps a prefix');
+
+	pg_assert_same('wake_rule_invalid', ws_channel_agent_check(array('wake_rule' => 'always'), null, false)['error']);
+	pg_assert_same('wake_prefix_invalid', ws_channel_agent_check(array('wake_rule' => 'prefix'), null, false)['error']);
+	pg_assert_same('wake_prefix_invalid', ws_channel_agent_check(array('wake_rule' => 'prefix', 'wake_prefix' => str_repeat('x', 33)), null, false)['error']);
+}
+
+function test_workspace_channel_agent_check_tier_is_the_managers()
+{
+	pg_assert_same('tier_forbidden', ws_channel_agent_check(array('tier' => 2), null, false)['error'], 'raising the tier');
+	pg_assert_same('tier_forbidden', ws_channel_agent_check(array('tier' => 1), array('tier' => 3), false)['error'], 'lowering it too');
+	pg_assert_true(ws_channel_agent_check(array('tier' => 2), array('tier' => 2), false)['ok'], 'the same tier sent back');
+	pg_assert_same(3, ws_channel_agent_check(array('tier' => 3), null, true)['values']['tier'], 'the manager');
+	pg_assert_same('tier_invalid', ws_channel_agent_check(array('tier' => 4), null, true)['error']);
+	pg_assert_same('tier_invalid', ws_channel_agent_check(array('tier' => 0), null, true)['error']);
+}
+
+function test_workspace_agent_shape_hides_secrets()
+{
+	$agent = ws_agent_shape(array('id' => '3', 'kind' => 'claude', 'handle' => 'claude', 'door_kind' => 'push', 'door_secret_sealed' => 'abc:def', 'key_sealed' => null, 'wake_every' => '30'));
+	pg_assert_same(3, $agent['id']);
+	pg_assert_same(30, $agent['wake_every']);
+	pg_assert_true($agent['door_secret_set']);
+	pg_assert_true(!$agent['key_set']);
+	pg_assert_true(!array_key_exists('door_secret_sealed', $agent) && !array_key_exists('key_sealed', $agent), 'no sealed value is carried');
+}
+
+function test_workspace_agent_brakes()
+{
+	pg_assert_same(0, ws_agent_chain_depth(array()));
+	pg_assert_same(2, ws_agent_chain_depth(array(array('by_agent' => true), array('by_agent' => true), array('by_agent' => false), array('by_agent' => true))), 'a person ends the count');
+	pg_assert_same('', ws_agent_brake(WS_AGENT_DEPTH_MAX - 1, WS_AGENT_HOURLY_MAX - 1));
+	pg_assert_same('depth', ws_agent_brake(WS_AGENT_DEPTH_MAX, 0));
+	pg_assert_same('hourly', ws_agent_brake(0, WS_AGENT_HOURLY_MAX));
+}
+
+function test_workspace_agent_routes()
+{
+	$routes = array();
+
+	foreach (ws_agent_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	pg_assert_same(array('workspace.channels.agents.list', 'workspace.channels.agents.set', 'workspace.channels.agents.remove'), array_keys($routes));
+	pg_assert_same('workspace:read', $routes['workspace.channels.agents.list']['scope']);
+	pg_assert_true(!empty($routes['workspace.channels.agents.set']['dry_run']) && !empty($routes['workspace.channels.agents.remove']['dry_run']), 'writes rehearse');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/api_agents.php');
+	$set = substr($source, strpos($source, 'function ws_api_channel_agents_set('));
+	pg_assert_true(strpos($set, 'ws_channel_agent_check(') < strpos($set, 'api_dry_run_stop('), 'the check runs before the rehearsal stops');
+	pg_assert_true(strpos($set, 'api_dry_run_stop(') < strpos($set, 'ws_channel_agent_save('), 'nothing is written in a rehearsal');
+}

@@ -89,3 +89,463 @@ function ws_agent_door_problem($kind, $url)
 
     return '';
 }
+
+/** How many agent messages may answer one another in a row before the site stops waking agents in that chain. */
+define('WS_AGENT_DEPTH_MAX', 6);
+
+/** How many times one agent may be woken in an hour. */
+define('WS_AGENT_HOURLY_MAX', 30);
+
+/**
+ * Are the registry tables there? Files can land before the upgrade runs
+ * (11.0.172): until then Claude's routine is read from config.
+ *
+ * @return bool
+ */
+function ws_agents_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = pg_schema_has('ws_agents', 'door_secret_sealed') && pg_schema_has('ws_channel_agents', 'loop_guard');
+    }
+
+    return $ready;
+}
+
+/**
+ * The wake rules a channel-agent row takes: a mention of its handle, every
+ * message, a message that starts with its prefix, or replies to its own
+ * messages.
+ *
+ * @return string[]
+ */
+function ws_agent_wake_rules()
+{
+    return array('mention', 'all', 'prefix', 'replies');
+}
+
+/**
+ * An agent's row as the code reads it: numbers as numbers, the sealed values
+ * replaced by whether they are set. Pure.
+ *
+ * @param array $row a ws_agents row
+ * @return array
+ */
+function ws_agent_shape($row)
+{
+    $row = (array) $row;
+    $int = array('id', 'app_id', 'door_failures', 'door_last_knock', 'wake_every', 'wake_next_at', 'created_by', 'created_at', 'updated_at');
+    $out = array();
+
+    foreach (array('id', 'kind', 'handle', 'name', 'avatar', 'app_id', 'provider', 'model', 'status', 'door_kind', 'door_url',
+        'door_failures', 'door_last_knock', 'door_error', 'wake_every', 'wake_next_at', 'wake_note', 'created_by', 'created_at', 'updated_at') as $field) {
+        $out[$field] = in_array($field, $int, true) ? (int) ($row[$field] ?? 0) : (string) ($row[$field] ?? '');
+    }
+
+    $out['key_set'] = (strpos((string) ($row['key_sealed'] ?? ''), ':') !== false);
+    $out['door_secret_set'] = (strpos((string) ($row['door_secret_sealed'] ?? ''), ':') !== false);
+
+    return $out;
+}
+
+/**
+ * The registered agents, by handle.
+ *
+ * @return array[] shaped by ws_agent_shape()
+ */
+function ws_agents_list()
+{
+    if (!ws_agents_ready()) {
+        return array();
+    }
+
+    return array_map('ws_agent_shape', (array) db_items("SELECT * FROM ws_agents ORDER BY handle"));
+}
+
+/**
+ * One agent, or null.
+ *
+ * @param int $id
+ * @return array|null shaped by ws_agent_shape()
+ */
+function ws_agent($id)
+{
+    if (!ws_agents_ready() || ((int) $id <= 0)) {
+        return null;
+    }
+
+    $row = db_item("SELECT * FROM ws_agents WHERE id = '" . (int) $id . "'");
+
+    return $row ? ws_agent_shape($row) : null;
+}
+
+/**
+ * Claude's row: the routine as the first push agent. Null before the upgrade
+ * or while no routine was ever set.
+ *
+ * @return array|null the raw row, its sealed token included
+ */
+function ws_agent_claude_row()
+{
+    if (!ws_agents_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT * FROM ws_agents WHERE kind = 'claude' ORDER BY id LIMIT 1");
+
+    return $row ? (array) $row : null;
+}
+
+/**
+ * Writes Claude's routine into its row, making the row the first time.
+ *
+ * @param string      $url    the routine's fire address
+ * @param string|null $sealed the sealed token (cipher:iv), '' to remove it, null to keep it
+ */
+function ws_agent_claude_save($url, $sealed)
+{
+    $now = time();
+    $row = ws_agent_claude_row();
+    $secret = ($sealed === null) ? null : (($sealed === '') ? 'NULL' : "'" . e($sealed) . "'");
+
+    if ($row) {
+        db("UPDATE ws_agents SET door_url = '" . e(substr((string) $url, 0, 500)) . "', door_kind = 'push'"
+            . (($secret === null) ? '' : ", door_secret_sealed = " . $secret)
+            . ", door_failures = 0, door_error = '', updated_at = '" . $now . "' WHERE id = '" . (int) $row['id'] . "'");
+        return;
+    }
+
+    db("INSERT INTO ws_agents (kind, handle, name, status, door_kind, door_url, door_secret_sealed, created_by, created_at, updated_at)
+        VALUES ('claude', 'claude', 'Claude', 'active', 'push', '" . e(substr((string) $url, 0, 500)) . "', " . (($secret === null) ? 'NULL' : $secret) . ",
+        '" . (int) ($_SESSION['sessionuserid'] ?? 0) . "', '" . $now . "', '" . $now . "')");
+}
+
+/**
+ * Seals a secret the way the site seals the others (cipher:iv), '' when
+ * encryption is not available here.
+ *
+ * @param string $plain
+ * @return string
+ */
+function ws_agent_seal($plain)
+{
+    if (((string) $plain === '') || !function_exists('encrypt_string_with_iv') || !defined('ENCRYPTION_KEY') || (ENCRYPTION_KEY === '')) {
+        return '';
+    }
+
+    list($cipher, $iv) = encrypt_string_with_iv((string) $plain);
+
+    return $cipher . ':' . $iv;
+}
+
+/**
+ * Opens a sealed secret, '' when there is none or it cannot be read back (a
+ * site restored with another ENCRYPTION_KEY).
+ *
+ * @param string|null $stored
+ * @return string
+ */
+function ws_agent_unseal($stored)
+{
+    $stored = (string) $stored;
+
+    if (($stored === '') || (strpos($stored, ':') === false) || !function_exists('decode_ssl_keys') || !defined('ENCRYPTION_KEY')) {
+        return '';
+    }
+
+    list($cipher, $iv) = explode(':', $stored, 2);
+
+    return (string) decode_ssl_keys($cipher, $iv);
+}
+
+/**
+ * The handles agents hold, lower case, for ws_agent_handle_problem() and an
+ * MCP server's alias check.
+ *
+ * @param int $except_id an agent whose own handle is left out
+ * @return string[]
+ */
+function ws_agent_handles($except_id = 0)
+{
+    if (!ws_agents_ready()) {
+        return array();
+    }
+
+    $out = array();
+
+    foreach ((array) db_items("SELECT handle FROM ws_agents WHERE id <> '" . (int) $except_id . "'") as $row) {
+        $out[] = mb_strtolower((string) $row['handle']);
+    }
+
+    return $out;
+}
+
+/**
+ * A channel-agent row's settings checked and filled from the current row or
+ * the defaults. Raising the tier above 1, or changing it, is the channel
+ * manager's: anybody else keeps the tier the row has. Pure.
+ *
+ * @param array      $input       wake_rule, wake_prefix, tier, loop_guard (any may be missing)
+ * @param array|null $current     the row there is, null for a new one
+ * @param bool       $can_manage  may the caller manage the channel
+ * @return array ok, error, field, values (wake_rule, wake_prefix, tier, loop_guard)
+ */
+function ws_channel_agent_check($input, $current, $can_manage)
+{
+    $input = (array) $input;
+    $values = array(
+        'wake_rule'   => (string) ($current['wake_rule'] ?? 'mention'),
+        'wake_prefix' => (string) ($current['wake_prefix'] ?? ''),
+        'tier'        => (int) ($current['tier'] ?? 1),
+        'loop_guard'  => (int) ($current['loop_guard'] ?? 1),
+    );
+    $fail = function ($error, $field) use ($values) {
+        return array('ok' => false, 'error' => $error, 'field' => $field, 'values' => $values);
+    };
+
+    if (array_key_exists('wake_rule', $input) && ($input['wake_rule'] !== null)) {
+        $values['wake_rule'] = (string) $input['wake_rule'];
+    }
+
+    if (array_key_exists('wake_prefix', $input) && ($input['wake_prefix'] !== null)) {
+        $values['wake_prefix'] = trim((string) $input['wake_prefix']);
+    }
+
+    if (!in_array($values['wake_rule'], ws_agent_wake_rules(), true)) {
+        return $fail('wake_rule_invalid', 'wake_rule');
+    }
+
+    if ($values['wake_rule'] !== 'prefix') {
+        $values['wake_prefix'] = '';
+    } elseif (($values['wake_prefix'] === '') || (mb_strlen($values['wake_prefix']) > 32)) {
+        return $fail('wake_prefix_invalid', 'wake_prefix');
+    }
+
+    if (array_key_exists('tier', $input) && ($input['tier'] !== null)) {
+        $tier = (int) $input['tier'];
+
+        if (($tier < 1) || ($tier > 3)) {
+            return $fail('tier_invalid', 'tier');
+        }
+
+        if (($tier !== $values['tier']) && !$can_manage) {
+            return $fail('tier_forbidden', 'tier');
+        }
+
+        $values['tier'] = $tier;
+    }
+
+    if (array_key_exists('loop_guard', $input) && ($input['loop_guard'] !== null)) {
+        $values['loop_guard'] = empty($input['loop_guard']) ? 0 : 1;
+    }
+
+    return array('ok' => true, 'error' => '', 'field' => '', 'values' => $values);
+}
+
+/**
+ * The words for a refusal of ws_channel_agent_check() and the routes.
+ *
+ * @param string $error
+ * @return string
+ */
+function ws_channel_agent_error_text($error)
+{
+    switch ((string) $error) {
+        case 'wake_rule_invalid':
+            return lang('An agent is woken by a mention, every message, a prefix or replies to it.');
+        case 'wake_prefix_invalid':
+            return lang('A prefix wake needs a prefix of up to 32 characters.');
+        case 'tier_invalid':
+            return lang('The tier is 1, 2 or 3.');
+        case 'tier_forbidden':
+            return lang('Only the owner of the channel can change an agent\'s tier.');
+        case 'member_only':
+            return lang('Only a member of a private channel can add an agent to it.');
+    }
+
+    return lang('Invalid request.');
+}
+
+/**
+ * The agents of a channel: its channel-agent rows with the agent beside each.
+ *
+ * @param int $channel_id
+ * @return array[] agent (ws_agent_shape()), allowed, wake_rule, wake_prefix, tier, loop_guard, added_by, added_at
+ */
+function ws_channel_agents($channel_id)
+{
+    if (!ws_agents_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT * FROM ws_channel_agents WHERE channel_id = '" . (int) $channel_id . "' ORDER BY added_at, agent_id");
+    $agents = array();
+    $out = array();
+
+    if (!empty($rows)) {
+        foreach ((array) db_items("SELECT * FROM ws_agents WHERE id IN (" . implode(',', array_map(function ($row) {
+            return (int) $row['agent_id'];
+        }, $rows)) . ")") as $agent) {
+            $agents[(int) $agent['id']] = ws_agent_shape($agent);
+        }
+    }
+
+    foreach ($rows as $row) {
+        if (isset($agents[(int) $row['agent_id']])) {
+            $out[] = ws_channel_agent_shape($row, $agents[(int) $row['agent_id']]);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * One channel-agent row as read. Pure.
+ *
+ * @param array $row
+ * @param array $agent
+ * @return array
+ */
+function ws_channel_agent_shape($row, $agent)
+{
+    return array(
+        'agent'       => $agent,
+        'allowed'     => ((int) ($row['allowed'] ?? 1) === 1),
+        'wake_rule'   => (string) ($row['wake_rule'] ?? 'mention'),
+        'wake_prefix' => (string) ($row['wake_prefix'] ?? ''),
+        'tier'        => (int) ($row['tier'] ?? 1),
+        'loop_guard'  => ((int) ($row['loop_guard'] ?? 1) === 1),
+        'added_by'    => (int) ($row['added_by'] ?? 0),
+        'added_at'    => (int) ($row['added_at'] ?? 0),
+    );
+}
+
+/**
+ * An agent's row in a channel, or null when it has none.
+ *
+ * @param int $channel_id
+ * @param int $agent_id
+ * @return array|null the raw row
+ */
+function ws_channel_agent_row($channel_id, $agent_id)
+{
+    if (!ws_agents_ready()) {
+        return null;
+    }
+
+    $row = db_item("SELECT * FROM ws_channel_agents WHERE channel_id = '" . (int) $channel_id . "' AND agent_id = '" . (int) $agent_id . "'");
+
+    return $row ? (array) $row : null;
+}
+
+/**
+ * Who may add an agent to a channel, or change its row there: whoever may
+ * post in it, and in a private channel only a member. Changing the tier is
+ * checked apart (ws_channel_agent_check()).
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @return string '' or the refusal code
+ */
+function ws_channel_agent_add_problem($viewer, $channel)
+{
+    if (!ws_can_post_channel($viewer, $channel)) {
+        return 'forbidden';
+    }
+
+    if (($channel['kind'] !== 'public') && !ws_channel_membership($channel['id'], $viewer['id'])) {
+        return 'member_only';
+    }
+
+    return '';
+}
+
+/**
+ * Writes an agent's row in a channel, values checked by
+ * ws_channel_agent_check().
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @param int   $agent_id
+ * @param array $values
+ * @return bool true when the row is new
+ */
+function ws_channel_agent_save($viewer, $channel_id, $agent_id, $values)
+{
+    $sets = "allowed = 1, wake_rule = '" . e($values['wake_rule']) . "', wake_prefix = '" . e($values['wake_prefix']) . "',
+        tier = '" . (int) $values['tier'] . "', loop_guard = '" . (int) $values['loop_guard'] . "'";
+
+    if (ws_channel_agent_row($channel_id, $agent_id)) {
+        db("UPDATE ws_channel_agents SET " . $sets . " WHERE channel_id = '" . (int) $channel_id . "' AND agent_id = '" . (int) $agent_id . "'");
+        return false;
+    }
+
+    db("INSERT INTO ws_channel_agents SET channel_id = '" . (int) $channel_id . "', agent_id = '" . (int) $agent_id . "', " . $sets . ",
+        added_by = '" . (int) $viewer['id'] . "', added_at = '" . time() . "'");
+
+    return true;
+}
+
+/**
+ * Takes an agent out of a channel.
+ *
+ * @param int $channel_id
+ * @param int $agent_id
+ * @return bool whether it was in it
+ */
+function ws_channel_agent_remove($channel_id, $agent_id)
+{
+    if (!ws_channel_agent_row($channel_id, $agent_id)) {
+        return false;
+    }
+
+    db("DELETE FROM ws_channel_agents WHERE channel_id = '" . (int) $channel_id . "' AND agent_id = '" . (int) $agent_id . "'");
+
+    return true;
+}
+
+/**
+ * How many messages in a row, counted back from the newest of a reply chain,
+ * agents wrote. A person's message ends the count. Pure.
+ *
+ * @param array[] $chain the chain's messages, newest first, each with by_agent (bool)
+ * @return int
+ */
+function ws_agent_chain_depth($chain)
+{
+    $depth = 0;
+
+    foreach ((array) $chain as $message) {
+        if (empty($message['by_agent'])) {
+            break;
+        }
+
+        $depth++;
+    }
+
+    return $depth;
+}
+
+/**
+ * The brake that stops waking an agent: the chain of agent messages it would
+ * answer is too deep, or the agent was woken too often this hour. A prompt
+ * is no security layer: these hold whatever the brief says, for every tier.
+ * Pure.
+ *
+ * @param int $depth     ws_agent_chain_depth() of the chain it would answer
+ * @param int $last_hour times the agent was woken in the last hour
+ * @return string '' | 'depth' | 'hourly'
+ */
+function ws_agent_brake($depth, $last_hour)
+{
+    if ((int) $depth >= WS_AGENT_DEPTH_MAX) {
+        return 'depth';
+    }
+
+    if ((int) $last_hour >= WS_AGENT_HOURLY_MAX) {
+        return 'hourly';
+    }
+
+    return '';
+}

@@ -177,6 +177,10 @@ function ws_mcp_alias_problem($alias, $server_id = 0)
         return lang('Another MCP server already has that alias.');
     }
 
+    if (function_exists('ws_agent_handles') && in_array($alias, ws_agent_handles(), true)) {
+        return lang('Another agent already has that handle. Choose another.');
+    }
+
     if ((int) db_value("SELECT COUNT(*) FROM user WHERE LOWER(user_username) = '" . e($alias) . "'") > 0) {
         return lang('Somebody\'s user name is the same as that alias. Choose another, so that @ means one thing.');
     }
