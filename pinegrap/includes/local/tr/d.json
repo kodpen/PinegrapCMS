@@ -383,6 +383,8 @@
     "Delete the failed updates of {var:1}? The stock and price changes in them are not sent again.": "{var:1} hesabının başarısız güncellemeleri silinsin mi? İçlerindeki stok ve fiyat değişiklikleri yeniden gönderilmez.",
     "Delete the flow": "Akışı sil",
     "Delete the flow {var:1}? Nobody can open or run it any more.": "{var:1} akışı silinsin mi? Artık kimse onu açamaz ya da çalıştıramaz.",
+    "Delete the group": "Grubu sil",
+    "Delete the group “{var:1}”? Its notes are not deleted: they go back to no group.": "“{var:1}” grubu silinsin mi? Notları silinmez: grupsuz notlara döner.",
     "Delete the picture": "Görseli sil",
     "Delete the reviewed translations as well": "Gözden geçirilmiş çevirileri de sil",
     "Delete the row": "Satırı sil",
