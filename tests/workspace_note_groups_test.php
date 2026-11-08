@@ -57,6 +57,8 @@ function test_workspace_note_group_present()
 	pg_assert_same('', $group['hex'], 'no colour code for none');
 	pg_assert_same(true, $group['locked'], 'locked');
 	pg_assert_same(6, $group['count'], 'count');
+	pg_assert_same(false, $group['shared'], 'a group without shares is not shared');
+	pg_assert_same(true, ws_note_group_present(array('id' => 4, 'name' => 'Ideas', 'shares' => '2'))['shared'], 'a group with shares is shared, so a move into or out of it asks first');
 
 	$group = ws_note_group_present(array('id' => 5, 'name' => 'B', 'color' => 7));
 

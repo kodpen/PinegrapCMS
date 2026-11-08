@@ -19040,6 +19040,21 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
         transition: none;
     }
 }
+/* Drag and drop in My notes: where a note or a folder would land. */
+.ws-nb-dragging {
+    opacity: .45;
+}
+.ws-nb-drop-into {
+    outline: 2px dashed var(--ws-accent);
+    outline-offset: -2px;
+    border-radius: var(--ws-radius-sm);
+}
+.ws-nb-drop-before {
+    box-shadow: inset 0 2px 0 var(--ws-accent);
+}
+.ws-nb-drop-after {
+    box-shadow: inset 0 -2px 0 var(--ws-accent);
+}
 /* No hover on a touch screen: the folder's menu button stays visible. */
 @media (pointer: coarse) {
     .ws-nb-group-head .ws-nb-item-more {

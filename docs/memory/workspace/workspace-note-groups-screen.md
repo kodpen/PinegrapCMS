@@ -1,6 +1,6 @@
 ---
 name: workspace-note-groups-screen
-description: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, search, closed folders in the browser) and its hooks in startNotes()
+description: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
 ---
 
 ## Where is the screen code?
@@ -14,5 +14,10 @@ description: Note groups on the My Notes screen — workspace_note_groups.js (fo
 - Move to group in a note's menu (only once the person has a group): a select of No group and the groups, sent as `ws_note_place` at the end.
 - New note while a note in a group is open: saved first, then placed last in that group (`placeNew()`).
 
+## How do drag and drop work (G3)?
+- Rows of My notes (`noteRow()`) and folder heads are `draggable`; a module-level `drag` ({kind: note|group}) is set on dragstart, so a file dragged in for the import is never taken. Drop places: a row in a folder (top or bottom half: before / after, position from `group_sort` without the dragged note), a folder head (note in, last; folder before / after), a folder's body (in, last), a loose row or anywhere else in My notes (out of its group). Marks: `.ws-nb-drop-before/after/into`, `.ws-nb-dragging` (backend.src.css).
+- `placeNote()` asks first: into a shared group (everyone will see it), out of one (they lose it unless shared on its own), a shared note into a locked group (locking takes its shares back); somebody else's note into a shared group is refused with a toast (the server refuses it too). Groups carry `shared` from `ws_note_groups()`.
+- Keyboard and touch: Move to group, Move up / Move down in a note's menu (inside a folder of two or more) and in a folder's menu; a long press opens a row's or folder's menu (`onContext()`). Shared-with-me rows are not draggable; Move to group places them.
+
 ## What is not there yet?
-- Drag and drop and long press (G3), tabs (G4), shared groups (G5/G6), the lock pane hiding a locked folder's notes (L steps).
+- Tabs (G4), shared groups on the screen (G6), the lock pane hiding a locked folder's notes (L steps).
