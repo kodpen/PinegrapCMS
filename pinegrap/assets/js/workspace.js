@@ -11583,7 +11583,8 @@
 
             if (view.flow_id) {
                 var link = el('a', '', t('fd_box_open'));
-                link.href = CFG.urls.flows + '?flow=' + view.flow_id + '&box=' + encodeURIComponent(node.id);
+                link.href = flowScreenAddress(view.flow_id, { box: node.id });
+                flowLinkOpens(link, view.flow_id, { box: node.id });
                 tools.appendChild(link);
             }
 
@@ -12032,7 +12033,8 @@
 
                     if (change.flow_id) {
                         var flow = el('a', '', t('sa_draft_flow_see'));
-                        flow.href = CFG.urls.flows + '?flow=' + change.flow_id;
+                        flow.href = flowScreenAddress(change.flow_id);
+                        flowLinkOpens(flow, change.flow_id);
                         done.appendChild(flow);
                     } else if (change.decision_id) {
                         var see = el('a', '', t(change.action === 'draft' ? 'sa_draft_see' : 'change_see_decision'));
@@ -12697,8 +12699,12 @@
                         saved.flow_id = result.flow_id;
                         saved.draft_rev = result.draft_rev;
 
+                        // The canvas over the channel once this window
+                        // has gone (a drawer the layer would sit under).
                         if (!publish) {
-                            flowOpened(result);
+                            flowOpened(result, null, function (next) {
+                                hideOffcanvas(node, next);
+                            });
                             return;
                         }
 
@@ -12745,7 +12751,7 @@
                     key: key,
                     label: t('fl_run_card', card.flow_name),
                     open: card.can_open ? function (run) {
-                        window.location.href = CFG.urls.flows + '?flow=' + run.flow_id + '&run=' + run.id;
+                        flowGo(run.flow_id, { run: run.id });
                     } : null,
                     stop: stop
                 }));
@@ -18255,7 +18261,7 @@
             var edit = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', function () {
                 if (item.flow) {
-                    window.location.href = 'workspace_flows.php?flow=' + encodeURIComponent(item.flow.id);
+                    flowGo(item.flow.id, { opener: edit });
                     return;
                 }
 
@@ -18441,9 +18447,17 @@
         return { when: line('start', 'when'), post: line('post', 'post') };
     }
 
-    function flowOpened(result, stay) {
+    // A flow just made or converted opened on the canvas (flowGo()); what
+    // it left behind is told first. stay: called when the person stays
+    // where they are; leave(next): called before the canvas opens, next()
+    // once the page is ready for it (a drawer gone).
+    function flowOpened(result, stay, leave) {
         var go = function () {
-            window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+            if (leave) {
+                leave(function () { flowGo(result.flow_id); });
+            } else {
+                flowGo(result.flow_id);
+            }
         };
 
         if (!result.left || !result.left.length) {
@@ -18483,7 +18497,8 @@
 
         api('ws_flow_scheduled_edit', { id: id }).then(function (result) {
             if (result.flow_id) {
-                window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+                free();
+                flowGo(result.flow_id, { opener: trigger });
                 return;
             }
 
@@ -25240,6 +25255,33 @@
         return CFG.urls.flows + '?flow=' + encodeURIComponent(flowId)
             + (options.box ? '&box=' + encodeURIComponent(options.box) : '')
             + (options.run ? '&run=' + encodeURIComponent(options.run) : '');
+    }
+
+    // A flow opened from one of the ways in (a card, a window, an action's
+    // Edit): in the layer over the page, so the chat stays; on the Flows
+    // screen itself by its address, as the layer would replace the screen's
+    // own editor. options as flowLayer()'s.
+    function flowGo(flowId, options) {
+        if (CFG.mode === 'flows') {
+            window.location.href = flowScreenAddress(flowId, options);
+            return;
+        }
+
+        flowLayer(flowId, options);
+    }
+
+    // A link to a flow on the Flows screen that opens the layer instead on
+    // a plain click; a new tab or window still follows its address.
+    function flowLinkOpens(link, flowId, options) {
+        link.addEventListener('click', function (event) {
+            if ((CFG.mode === 'flows') || event.defaultPrevented || (event.button !== 0)
+                || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
+                return;
+            }
+
+            event.preventDefault();
+            flowLayer(flowId, Object.assign({ opener: link }, options || {}));
+        });
     }
 
     // The whole Flows editor in a full-screen layer over the page (a
