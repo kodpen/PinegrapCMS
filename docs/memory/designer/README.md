@@ -137,6 +137,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-courses.md: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- look, tests.
 - design-template-coworking.md: Coworking template (pinegrap-coworking): spaces and events as collections, tour, office and event requests, meeting rooms booked online, memberships in the shop, pcw- look, tests.
 - design-template-dealership.md: Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account, pdl- look, tests.
+- design-template-drivingschool-pages.md: Driving School home and sector pages on its block family since 1.1.0: the block behind each section, entrances, what was dropped
 - design-template-drivingschool.md: Driving School template (pinegrap-drivingschool): licence classes, courses and pass stories as collections, enrolment and lesson requests, online lessons, no shop, pdr- look, tests.
 - design-template-events-words.md: Events template wording: "Events" is Etkinlikler (1.0.3, #4810), bilet, oturum dizisi, own keys for registration pages (1.0.1, #4825), ticket breadcrumb Biletler (1.0.4), heading order (1.0.2, #4824).
 - design-template-events.md: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- look, tests.
