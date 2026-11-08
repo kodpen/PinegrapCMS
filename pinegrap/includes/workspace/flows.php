@@ -3669,6 +3669,9 @@ function ws_flow_js_config($viewer, $mode)
         // The Pinegrap AI box is offered while the site has it set up
         // (ws_step_ai_check()).
         $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
+        // The agents an agent box may ask, each with the channels the owner
+        // may write in where it is allowed (flow_agent_box.php).
+        $steps['agents'] = function_exists('ws_step_agent_form_list') ? ws_step_agent_form_list($viewer) : array();
 
         // A box on customers who stopped ordering, to whoever reads orders
         // and contacts.

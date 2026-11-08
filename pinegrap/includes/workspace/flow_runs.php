@@ -3050,6 +3050,11 @@ function ws_flow_step_recheck($step)
         return ws_step_ai_recheck($step);
     }
 
+    // An agent box waiting for the agent's answer (flow_agent_box.php).
+    if (function_exists('ws_step_agent_key_request') && (ws_step_agent_key_request($step['wait_key']) > 0)) {
+        return ws_step_agent_recheck($step);
+    }
+
     // A table box waiting for its table's owner to be back (steps.php).
     if (ws_step_row_wait_table($step['wait_key']) > 0) {
         return ws_step_row_recheck($step);

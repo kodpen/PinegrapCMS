@@ -628,7 +628,10 @@ function test_ws_api_flow_runs_writes_are_no_tools()
 		// not offered as a tool, but Claude's routine calls REST with its key.
 		$source = ws_api_test_handler_source($routes[$id]['handler']);
 
-		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') !== false, $id . ' refuses an assistant');
+		// An application agent of the registry may start a run within the
+		// tier it is allowed in the run's channel (flow_agent_box.php).
+		pg_assert_true((strpos($source, 'if (ws_api_is_assistant())') !== false)
+			|| (($id === 'workspace.flow_runs.start') && (strpos($source, 'if (ws_api_is_assistant() && !$agent)') !== false)), $id . ' refuses an assistant');
 		pg_assert_true(strpos($source, 'if (ws_api_is_assistant())') < strpos($source, 'api_dry_run_stop('), $id . ' refuses it before the rehearsal');
 	}
 
