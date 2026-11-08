@@ -28,7 +28,7 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
   - G3 done (PR #8098): `by_rule` and `computed_at` on ContactGroup, `POST /contact-groups/{id}/refresh`.
   - G4 no read or restore of a collection item's revisions.
   - G5 Customer has no bounce state; no Allow again.
-  - G6 experiments start/pause/end take no `dry_run`.
+  - G6 experiments start/pause/end take no `dry_run`. Done (#8099).
   - G7 a dry-run page or file delete creates the Recycle Bin before its stop (`pg_recycle_folder_id(true)`), warning `sessionusername` on the API path.
 
 ## Where does it start?

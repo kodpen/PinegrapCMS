@@ -601,16 +601,16 @@ function pg_experiment_sheet_create($live, $values, $user, $draft_page_id = 0)
 }
 
 /**
- * Moves an experiment to another status (pg_experiment_may_move()). A
- * start checks the live page is still on the site and every variant still
- * a draft; the first start stamps started_at, an end ended_at.
+ * The checks of a status move, before anything is written: the move is one
+ * pg_experiment_may_move() allows, and a start finds the live page still on
+ * the site, every variant still a draft and no other experiment running on
+ * the page. The panel's move and the API's rehearsal meet the same refusals.
  *
  * @param array  $experiment pg_experiment_sheet_get()
  * @param string $to
- * @param int    $winner_variant_id stamped on an end, 0 for none
  * @return array ok, error
  */
-function pg_experiment_sheet_move($experiment, $to, $winner_variant_id = 0)
+function pg_experiment_sheet_move_check($experiment, $to)
 {
     if (!pg_experiment_may_move($experiment['status'], $to)) {
         return array('ok' => false, 'error' => lang('The experiment cannot make that change now.'));
@@ -637,6 +637,28 @@ function pg_experiment_sheet_move($experiment, $to, $winner_variant_id = 0)
             return array('ok' => false, 'error' => lang('Another experiment is running on this page.'));
         }
     }
+
+    return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Moves an experiment to another status after pg_experiment_sheet_move_check();
+ * the first start stamps started_at, an end ended_at.
+ *
+ * @param array  $experiment pg_experiment_sheet_get()
+ * @param string $to
+ * @param int    $winner_variant_id stamped on an end, 0 for none
+ * @return array ok, error
+ */
+function pg_experiment_sheet_move($experiment, $to, $winner_variant_id = 0)
+{
+    $checked = pg_experiment_sheet_move_check($experiment, $to);
+
+    if (!$checked['ok']) {
+        return $checked;
+    }
+
+    $id = (int) $experiment['id'];
 
     $set = "status = '" . e($to) . "', updated_at = UNIX_TIMESTAMP()";
 
