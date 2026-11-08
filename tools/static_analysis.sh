@@ -79,7 +79,9 @@ sha256_of () {
 
 # A phar from a release, kept under its version's name; a file whose checksum
 # does not match is fetched again, and a download that does not match is
-# refused.
+# refused. GitHub's release downloads answer 504 for a minute or two at a
+# time, longer than curl's default backoff of 1, 2 and 4 seconds, so the
+# retries wait 15 seconds each.
 fetch_phar () {
 	local file="$cache/$1" url="$2" sha="$3"
 
@@ -87,7 +89,7 @@ fetch_phar () {
 		return 0
 	fi
 
-	curl -fsSL --retry 3 -o "$file.part" "$url" || { echo "Could not download $url" >&2; return 1; }
+	curl -fsSL --retry 8 --retry-delay 15 --connect-timeout 30 -o "$file.part" "$url" || { echo "Could not download $url" >&2; return 1; }
 
 	if [ "$(sha256_of "$file.part")" != "$sha" ]; then
 		echo "$url does not match its pinned SHA-256; not used." >&2
