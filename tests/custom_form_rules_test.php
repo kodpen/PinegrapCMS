@@ -208,6 +208,7 @@ function test_custom_form_rules_templates()
 		array('pinegrap-salon', 'sl-book-date'),
 		array('pinegrap-photo', 'ph-bk-date'),
 		array('pinegrap-museum', 'mz-sv-date'),
+		array('pinegrap-coworking', 'cw-tr-date'),
 		array('pinegrap-campsite', 'cp-rq-arrival'),
 		array('pinegrap-campsite', 'cp-rq-departure'),
 		array('pinegrap-campsite', 'cp-gr-arrival'),
@@ -222,6 +223,9 @@ function test_custom_form_rules_templates()
 		array('pinegrap-restaurant', 'rt-rs-date'),
 		array('pinegrap-restaurant', 'rt-pd-date'),
 		array('pinegrap-drivingschool', 'drv-ls-date'),
+		array('pinegrap-ferry', 'fy-bk-out'),
+		array('pinegrap-ferry', 'fy-bk-back'),
+		array('pinegrap-ferry', 'fy-gr-date'),
 		array('pinegrap-homeservices', 'hs-bk-day'),
 	) as $c) {
 		$node = _test_cf_rules_template_node($c[0], $c[1]);

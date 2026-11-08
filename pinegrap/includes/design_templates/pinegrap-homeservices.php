@@ -175,7 +175,7 @@ return array(
     'name'        => lang('Home Services'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 113,
+    'order'       => 123,
     'icon'        => 'bi-tools',
     'description' => lang('A home services company: the services by category with a page per service and customer reviews, a price guide, the service areas, the team, visit bookings and free estimate requests with photos the customer follows from their account, care plans and gift cards with the shop on, home care tips, a newsletter, an inbox, a staff area and a customer help that searches the whole site.'),
 
