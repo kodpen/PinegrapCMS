@@ -26,7 +26,7 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
   - G1 `GET /inventory/moves` (stock history). Done (#8097).
   - G2 no route writes the staff answer to a product question.
   - G3 done (PR #8098): `by_rule` and `computed_at` on ContactGroup, `POST /contact-groups/{id}/refresh`.
-  - G4 no read or restore of a collection item's revisions.
+  - G4 no read or restore of a collection item's revisions. Done (#8111): `api/api-form-submission-revisions.md`.
   - G5 Customer has no bounce state; no Allow again.
   - G6 experiments start/pause/end take no `dry_run`. Done (#8099).
   - G7 done (#8106): a dry-run page or file delete no longer creates the Recycle Bin; the real delete makes it as the key's owner.
