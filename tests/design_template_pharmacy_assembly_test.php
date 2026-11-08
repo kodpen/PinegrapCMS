@@ -53,7 +53,7 @@ function test_pharmacy_assembly_template_offered()
 	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-capsule', $tpl['icon']);
-	pg_assert_same(111, $tpl['order']);
+	pg_assert_same(115, $tpl['order']);
 	foreach ($all as $id => $other) {
 		if ($id !== 'pinegrap-pharmacy' && isset($other['order'])) pg_assert_true($other['order'] !== $tpl['order'], "$id has another order");
 	}

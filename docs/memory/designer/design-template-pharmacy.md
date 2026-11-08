@@ -19,7 +19,7 @@ description: Pharmacy template (pinegrap-pharmacy): services, health checks, on 
 - Not built: patient record, medication history, e-prescription lookup, refill reminders, a duty rota by date.
 
 ## What is the prx- look?
-- `prx-brand`, `prx-cross`, `prx-display`, `prx-eyebrow`, `prx-hero`, `prx-lift`, `prx-price`; field ids `rx-`. Lexend headings, Source Sans 3 body. Look `modern-soft`, palette `ocean` (the e-mails' teal), order 111, icon `bi-capsule`. No `_fx` motion: a quiet sector ([[design-template-own-look]]); its own-look polishing waits in `plans/design-template-own-looks-order.md`.
+- `prx-brand`, `prx-cross`, `prx-display`, `prx-eyebrow`, `prx-hero`, `prx-lift`, `prx-price`; field ids `rx-`. Lexend headings, Source Sans 3 body. Look `modern-soft`, palette `ocean` (the e-mails' teal), order 115, icon `bi-capsule`. No `_fx` motion: a quiet sector ([[design-template-own-look]]); its own-look polishing waits in `plans/design-template-own-looks-order.md`.
 - Turkish: "eczane", "eczacı", "reçete", "nöbet"/"nöbetçi eczane", "aşı", "sağlık ölçümü", "Sağlık Önerileri".
 
 ## Which tests cover it?

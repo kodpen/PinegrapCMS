@@ -178,7 +178,7 @@ return array(
     'name'        => lang('Pharmacy'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 111,
+    'order'       => 115,
     'icon'        => 'bi-capsule',
     'description' => lang('A community pharmacy: services with a page each, health checks with their prices, the duty nights and how to find the pharmacy on duty, pharmacists with a page each, vaccinations and health checks booked online, prescription requests and questions to the pharmacist followed from the account, health products in the shop, Health Advice, a newsletter, an inbox, a staff area and a help page that searches the whole site.'),
 
