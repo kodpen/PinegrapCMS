@@ -715,6 +715,12 @@ function ws_handle_action($action, $request)
         case 'ws_flow_embed_config':
             return ws_action_ok(array('config' => ws_flow_embed_config($viewer)));
 
+        // What the whole Flows editor needs on a page other than the Flows
+        // screen (the layer over a channel, flows.php), read once per page:
+        // the screen's own config and texts, with its rights.
+        case 'ws_flow_editor_config':
+            return ws_action_ok(ws_flow_editor_config($viewer));
+
         // Add › Scheduled flow in a channel's composer (scheduled_convert.php):
         // with sketch, the two boxes its mini window draws with what the form
         // holds so far, each with its dry run, nothing written;

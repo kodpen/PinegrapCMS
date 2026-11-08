@@ -3740,6 +3740,26 @@ function ws_flow_js_config($viewer, $mode)
 }
 
 /**
+ * What the whole Flows editor needs on a Workspace page other than the Flows
+ * screen (a layer over a channel, PGWsFlow.mount() with single): the flows
+ * part of the screen's config, with the screen's rights (the member gate of
+ * ws_handle_action(), as ws_screen_gate() on workspace_flows.php) and the
+ * builder kinds ws_flow_js_config() applies, and the canvas texts. The panel
+ * action ws_flow_editor_config gives it once per page.
+ *
+ * @param array $viewer
+ * @return array flows (ws_flow_js_config() for mode flows), strings
+ *               (ws_flow_js_strings())
+ */
+function ws_flow_editor_config($viewer)
+{
+    return array(
+        'flows'   => ws_flow_js_config($viewer, 'flows'),
+        'strings' => ws_flow_js_strings(),
+    );
+}
+
+/**
  * The lists a read-only Flows canvas reads for its boxes' lines, labels only
  * (pure): what each list of ws_flow_js_config() steps holds, cut to what a
  * box's meta line and a value's name need, never a form's options, a
