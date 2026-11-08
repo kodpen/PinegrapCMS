@@ -2954,6 +2954,7 @@
     "Contact group ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "İletişim grubu ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden değiştirildi.",
     "Contact group ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "İletişim grubu ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden oluşturuldu.",
     "Contact group ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "İletişim grubu ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",
+    "Contact group ({var:1}) was refreshed through the API by the application {var:2} (key {var:3}).": "İletişim grubu ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden yenilendi.",
     "Contact groups": "Rehber grupları",
     "Contact groups are created from the manager role up, as on the contact group screens. This account works inside the groups given to it.": "İletişim grubunu, iletişim grubu ekranlarındaki gibi yönetici ve üstü roller oluşturur. Bu hesap yalnız kendisine verilen gruplarla çalışır.",
     "Contact groups, import and export, e-mail campaigns": "Rehber grupları, içe/dışa aktarma, e-posta kampanyaları",
