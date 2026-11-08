@@ -23,7 +23,7 @@ description: Plan (owner 2026-11-06): the external API and MCP let Claude Deskto
 
 ## What did the audit (F1) find?
 - 245 GET routes and 353 `dry_run` writes ran on a sandbox: no 500; the 8 writes without `dry_run` were not called. None of the gaps needs a product decision; screen and route of each in `api/api-panel-coverage.md`:
-  - G1 no `GET /inventory/moves` (stock history, `includes/fn/stock_moves.php`).
+  - G1 `GET /inventory/moves` (stock history). Done (#8097).
   - G2 no route writes the staff answer to a product question.
   - G3 ContactGroup does not say it is filled by rules; no Refresh now.
   - G4 no read or restore of a collection item's revisions.
