@@ -16,7 +16,7 @@ description: Order of the polishing round after Launch: every shipped template's
 5. Last: hello (the default starter), playground (it then shows each family's blocks).
 - Every shipped template is in this list; Launch is in the main plan.
 - Wedding: `-1` #8167, `-2` #8196 done.
-- Photo: `-1` #8232 done.
+- Photo: `-1` #8232, `-2` #8255 done.
 - School: `-1` #8233 done.
 
 ## Where do the open template plans come?

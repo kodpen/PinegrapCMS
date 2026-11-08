@@ -146,7 +146,8 @@ $photo_fonts = array(
 );
 
 // The template's own CSS in User Styles. Every class is named pph- (the
-// field ids are ph-); no block rule's class is named here. Selectors use
+// field ids are ph-); the Photo blocks' pg-photo- rules come from the
+// palette (pg_designer_block_css()), never copied here. Selectors use
 // descendants and pseudo-classes only, so they hold on the editor's canvas
 // too. Colours are tokens only, so they follow any palette in both themes.
 $photo_css = implode("\n", array(
@@ -165,9 +166,6 @@ $photo_css = implode("\n", array(
     '.pph-price{font-variant-numeric:tabular-nums}',
     // What a client says: the serif, a little larger.
     '.pph-quote{font-family:var(--pg-font-heading);font-size:1.15rem;line-height:1.55}',
-    // The home page's opening: a soft fade from the tinted background into
-    // the page, so the photo beside it reads as a print on paper.
-    '.pph-hero{background-image:linear-gradient(180deg,var(--bs-tertiary-bg),var(--bs-body-bg))}',
     // Gallery, package and voucher cards rise a little under the pointer.
     '.pph-lift{transition:transform .2s ease,box-shadow .2s ease}',
     '.pph-lift:hover,.pph-lift:focus-visible,.pph-lift:focus-within{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
@@ -176,7 +174,7 @@ $photo_css = implode("\n", array(
 
 return array(
     'name'        => lang('Photography Studio'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 85,
     'icon'        => 'bi-camera',
@@ -236,10 +234,10 @@ return array(
         'email_footer' => array('name' => lang('Studio E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pph- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Photo blocks' pg-photo- rules and its
+    // pph- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $photo_css),
+        'css'   => pg_design_template_user_styles(array('photo-hero', 'photo-proofing', 'photo-shot'), $photo_css),
         'fonts' => json_encode($photo_fonts),
     ),
 );

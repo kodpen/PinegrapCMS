@@ -248,7 +248,7 @@ function test_photo_assembly_pages_on_photo_blocks()
 		'home'       => array('pg-photo-strip', 'pg-photo-sheet', 'pg-photo-exif'),
 		'experience' => array('pg-photo-sheet'),
 		'packages'   => array(),
-		'about'      => array('pg-photo-exif'),
+		'about'      => array(),
 	);
 	$seen = array();
 	foreach ($tpl['pages'] as $p) {
@@ -277,6 +277,7 @@ function test_photo_assembly_pages_on_photo_blocks()
 		pg_assert_true($effects >= 1, $p['key'] . ': something comes in');
 		pg_assert_true($h1 <= 1, $p['key'] . ': one h1 at most');
 		foreach (array('Write to Us', 'Figures', 'Why Choose Us') as $band) {
+			// About keeps the studio's figures and why tiles.
 			if ($p['key'] === 'about' && $band !== 'Write to Us') continue;
 			pg_assert_false(in_array(lang($band), $labels, true), $p['key'] . ': no ' . $band . ' band');
 		}
