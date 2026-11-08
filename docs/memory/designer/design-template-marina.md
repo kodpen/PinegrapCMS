@@ -22,7 +22,7 @@ description: Marina template (pinegrap-marina): kinds of berth, rates as words, 
 ## What is the pmn- look?
 - `pmn-brand`, `pmn-display`, `pmn-eyebrow`, `pmn-hero`, `pmn-lift`, `pmn-price`, `pmn-quote`, `pmn-stat`; Josefin Sans headings, Nunito Sans body. No `opacity-*` text or fixed date. Field ids `mn-`.
 - Turkish: "bağlama yeri", "şamandıra", "kara park", "bağlama talebi", "kiralık tekne", "kiralama talebi", "kiralama masası" (charter desk), "kaptan", "regata".
-- Own-look polishing: `plans/design-template-own-looks-order.md`.
+- Own-look: family [[designer-blocks-marina]] (#8159), pages next.
 
 ## Which tests cover it?
 - `design_template_marina_test.php` (data, shared parts, `_test_mn_page_keys()`) and `…_public_`, `…_charters_`, `…_requests_` (`_test_mnr_load()`), `…_events_` (`_test_mne_load()`), `…_standard_` (`_test_mns_load()`), `…_account_test.php`; `…_assembly_test.php` (settings, pages, widgets, placeholders, `pmn-` rules, threads, samples).
