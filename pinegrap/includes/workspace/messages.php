@@ -836,7 +836,9 @@ function ws_message_send($viewer, $channel, $body, $options = array())
  * @param array  $channel
  * @param int    $message_id
  * @param string $body as written
- * @return array claude, agent, ai: whether a request was queued for each
+ * @return array claude, agent, ai: whether a request was queued for each;
+ *               agents: the registry agents woken (app:<id>, model:<id>);
+ *               models: a model agent among them, carried on as ai is
  */
 function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 {
@@ -852,6 +854,13 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 
     // A message written to an agent's alias is the agent's alone.
     $ai = ($agent === null) && function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body);
+
+    // The registry's agents the channel lets this message wake
+    // (agent_queue.php): a model agent is answered by the site's own loop.
+    $woken = function_exists('ws_agent_after_send') ? ws_agent_after_send($viewer, $channel, $message_id, $body) : array();
+    $models = !empty(array_filter($woken, function ($value) {
+        return strpos($value, 'model:') === 0;
+    }));
 
     if ($follows) {
         $followed = ws_thread_follow_agent($channel['id']);
@@ -873,7 +882,7 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
         ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
     }
 
-    return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai);
+    return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai, 'agents' => $woken, 'models' => $models);
 }
 
 /**
