@@ -19,4 +19,5 @@ description: Workspace note groups and the notes lock — tables of step 11.0.11
 - Cleanup: `ws_note_delete()` drops every place of the note (`ws_note_places_forget_note()`); `ws_note_unshare()` drops the reader's place once no share by name is left (`ws_note_places_forget_reader()`).
 - Panel actions: `ws_note_groups`, `ws_note_group_save`, `ws_note_group_order`, `ws_note_group_delete`, `ws_note_place`; each answers the groups again.
 - Shared groups (G5): `workspace-note-group-shares.md`; `ws_note_place()` asks its gate and syncs the groups a note leaves and enters.
-- Not yet: the lock hiding a locked group's count (L steps), the API (G7).
+- The API and MCP: `workspace-note-groups-api.md`.
+- Not yet: the lock hiding a locked group's count (L steps).
