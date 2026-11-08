@@ -42,6 +42,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/mcp/protocol.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/resources.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/prompts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 
 // The routes a caller holding these scopes may use, by tool name, from the
@@ -225,7 +226,7 @@ function test_mcp_resources_templates_match_their_routes()
 {
 	$by_id = array();
 
-	foreach (ws_api_routes() as $route) {
+	foreach (array_merge(api_schema(), ws_api_routes()) as $route) {
 		$by_id[$route['id']] = $route;
 	}
 
