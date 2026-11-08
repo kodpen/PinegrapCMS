@@ -4,7 +4,7 @@ description: Marina template 2.0.0: home, berths, the kind pages and arriving on
 ---
 
 ## Which builders draw the blocks?
-- Version 2.0.0 (#8159 family, then its pages): home, `berths` and `arriving` place the Marina blocks ([[designer-blocks-marina]]), their rules shipped by `pg_design_template_user_styles(array('marina-pontoons', 'marina-arrival'), $marina_css)`.
+- Version 2.0.0 (#8159 family, #8185 pages): home, `berths` and `arriving` place the Marina blocks ([[designer-blocks-marina]]), their rules shipped by `pg_design_template_user_styles(array('marina-pontoons', 'marina-arrival'), $marina_css)`.
 - `parts.php` holds the data: `$pontoons` (A to D: name, use, berths, length range, largest boat, depth, amenities; the berths add up to the 420 of `$figures`), `$pontoon_amenities`, `$harbour['channel']`.
 - `pages_public.php`: `$fx`, `$rise` (the blocks' entrance), `$metres`, `$pontoon_plan($id, $title, $text, $more_text, $more_href, $topics)` (the `marina-pontoons` section), `$arrival_band($id, $topics, $more)` (the dark `marina-arrival` band; `$more` goes under the tiles).
 
