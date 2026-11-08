@@ -25,7 +25,7 @@ description: CI's PHPStan level 0 and PHPCompatibility (PHP 7.1+) checks: what t
 
 ## Where do the tools come from?
 - Nothing enters the product or a Composer file. The script downloads the pinned phars (SHA-256 checked) and fetches both standards by commit into `$RUNNER_TEMP/pinegrap-analysis` in CI, `~/.cache/pinegrap-analysis` elsewhere (`PG_ANALYSIS_TOOLS` overrides). A cloud session reaches GitHub releases and git; Packagist is blocked there.
-- Phar downloads retry 8 times 15 s apart: GitHub's release 504s last minutes; curl's 7 s default failed train CI (2026-11-08).
+- Each phar has a second source (the tag's raw file, phars.phpcodesniffer.com): GitHub release 504s outlasted retries (2026-11-08).
 - A version change edits the pins in the script and regenerates both baselines in the same PR. PHPCS 4 refuses a ruleset that excludes a sniff its standard lacks: the `trim()` form-feed sniff (PHP 8.6) is not in 10.0.0-alpha2, so the ruleset excludes nothing yet.
 
 ## How long does it take?
