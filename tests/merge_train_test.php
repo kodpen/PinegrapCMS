@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the pure parts of tools/merge_train.php: which PRs may ride a
- * train and in what order, the product-line count, reading the Changelog
+ * train and in what order, an approval the owner has not given yet, the product-line count, reading the Changelog
  * section of a PR body and writing it into changelog.txt, quoting a
  * command's arguments on Windows.
  *
@@ -109,6 +109,24 @@ function test_merge_train_eligible()
 	pg_assert_false(merge_train_eligible(array(), true, $now - 3599, $now));
 	pg_assert_false(merge_train_eligible(array('ready'), false, $now - 7200, $now));
 	pg_assert_false(merge_train_eligible(array('ready-for-review'), true, $now - 60, $now));
+}
+
+// A PR naming an approval issue waits for the owner's decision comment.
+function test_merge_train_approval_issue_and_answer()
+{
+	pg_assert_same(8229, merge_train_approval_issue("Approval: #8229 (the owner approves the screenshots before merge).\n\nStep V3"));
+	pg_assert_same(6565, merge_train_approval_issue("Step B11.\n\napproval: #6565"));
+	pg_assert_same(0, merge_train_approval_issue('Fixes the approval screen (#6565).'));
+
+	$analysis = "## Mimar analizi\n**Türkçe özet:** Onay sorusu, karar sahibin.";
+
+	pg_assert_false(merge_train_approval_given(array()));
+	pg_assert_false(merge_train_approval_given(array($analysis)));
+	pg_assert_true(merge_train_approval_given(array($analysis, "**Karar (sahip):** Onaylıyorum — #6562 indiği gibi kalır.")));
+	pg_assert_true(merge_train_approval_given(array("## Karar (sahip)\nOnaylandı. #6384'ün görünümü")));
+	pg_assert_true(merge_train_approval_given(array("Decision (owner): Approved.")));
+	pg_assert_false(merge_train_approval_given(array("## Karar (sahip)\nDeğişiklik istiyorum: başlık daha küçük.")));
+	pg_assert_false(merge_train_approval_given(array("Onaylıyorum seçeneği listede.")));
 }
 
 // Only a branch of this repository rides a train: a fork's branch, a deleted
