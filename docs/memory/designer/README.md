@@ -244,6 +244,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
 - designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors, booking-week)
 - designer-blocks-gym.md: The Gym block family (gym- prefix, own palette group): free pass hero, class finder with an intensity meter; the weekly timetable as a general block; general blocks placed instead; rules, test
+- designer-blocks-hotel.md: The Hotel block family (hotel- prefix, own palette group): room showcase, stay clock; general blocks placed instead; rules, test
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
 - designer-blocks-museum.md: The Museum block family (museum- prefix, own palette group): exhibition hero, look closer, highlights trail; general blocks placed instead; rules, test
