@@ -14,7 +14,7 @@ description: Steps L1-L4, M1-M3 and N9 of plans/workspace-notes-groups-lock.md: 
 
 - L4 (M) Lock on the screen. After L1, beside L2. New `assets/js/workspace_note_lock.js`: the toolbar's Lock and its dialog, the lock pane (PIN, Open, Forgot your PIN → e-mail code → new PIN), lock marks in the list and tabs, Lock and Unlock in the menus, Lock now, the open note closed when the time ends or an answer says `note_locked`.
 
-- M1 (M) Media, read view. `free`. A line holding only a link to a file of this site drawn by `ws_render_body(…, $note = true)` after `ws_file_kind()`: a picture (lazy, bounded height), video and audio players, a PDF or other file as a card (icon, name, size); other hosts stay links; the read-only view and the print page; styles in `backend.src.css`.
+- M1 (M) Media, read view. Done (#8150). A line holding only a link to a file of this site drawn by `ws_render_body(…, $note = true)` after `ws_file_kind()`: a picture (lazy, bounded height), video and audio players, a PDF or other file as a card (icon, name, size); other hosts stay links; the read-only view and the print page; styles in `backend.src.css`.
 
 - M2 (M) Media, writing box. `free`. `workspace_editor.js`: such a line as a `media` card (contentEditable false, its markup kept) opening `viewImages()` or `previewFile()`; `attach()` and `drawCanvas()` put the file on a line of its own (`insertFile()`); a voice link on a line of its own takes the inline player (`PGWsVoice.player()`), and "Recordings in this note" keeps only the others.
 
