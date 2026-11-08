@@ -164,6 +164,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_note_groups();   // 11.0.119
 	upgrade_2026_11_0_ws_agents();               // 11.0.172
 	upgrade_2026_11_0_ws_channel_memory();       // 11.0.173
+	upgrade_2026_11_0_ws_agent_undo();           // 11.0.174
 
 }
 
@@ -5550,5 +5551,48 @@ function upgrade_2026_11_0_ws_channel_memory() {
 	install_add_column('ws_messages', 'marked_by_kind', "ENUM('user','app') NOT NULL DEFAULT 'user' AFTER marked_by");
 
 	install_note('Workspace: every channel gets a memory that its members and agents keep, and an agent may mark a message as a decision. Nothing changes until someone writes an entry or an agent marks a message.');
+
+}
+
+
+// The undo journal of an agent's applied change (2026.11.0, 11.0.174;
+// includes/workspace/agent_tiers.php).
+//
+// An agent allowed a tier in a channel (ws_channel_agents.tier) has a change
+// within it applied at once; the ws_ai_changes row is its journal line, with
+// the before values it already keeps in fields. applied_by_kind says whether
+// a person applied the row ('user', every existing row) or the agent's tier
+// did ('app'); status gains 'undone', and undone_by / undone_at say who put
+// the record back and when. A member allowed to change that kind may undo it
+// for 7 days, unless the record changed since.
+function upgrade_2026_11_0_ws_agent_undo() {
+
+	// The enum is widened from what is there, never narrowed: reading it first
+	// keeps any value a later release may have added.
+	$status = install_column_info('ws_ai_changes', 'status');
+
+	if (is_array($status) && (stripos((string) $status['Type'], "'undone'") === false)) {
+
+		preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $status['Type'], $matches);
+		$values = array();
+
+		foreach ($matches[1] as $value) {
+			$values[] = "'" . $value . "'";
+		}
+
+		$values[] = "'undone'";
+
+		// The default is kept as it stands too, not rewritten from memory.
+		$default = ((string) $status['Default'] !== '') ? (string) $status['Default'] : 'pending';
+
+		install_modify_column('ws_ai_changes', 'status', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	}
+
+	install_add_column('ws_ai_changes', 'applied_by_kind', "ENUM('user','app') NOT NULL DEFAULT 'user' AFTER decided_at");
+	install_add_column('ws_ai_changes', 'undone_by', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER applied_by_kind");
+	install_add_column('ws_ai_changes', 'undone_at', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER undone_by");
+
+	install_note('Workspace: a record change an agent makes within the tier its channel allows is applied at once and can be undone for 7 days. Nothing changes until a channel manager raises an agent\'s tier.');
 
 }

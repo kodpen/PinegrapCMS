@@ -3254,6 +3254,13 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
+        // A change an agent applied at once within its tier, put back by a
+        // member (agent_tiers.php).
+        case 'ws_agent_change_undo':
+            $result = ws_agent_change_undo($viewer, (int) ($request['change_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('decision_id' => $result['decision_id'])) : ws_action_error($result['error']);
+
         // A person's own account on an MCP server (mcp.php): connecting one
         // sends them to the service and back to the channel they were in, or
         // to the task whose drawer offered it.

@@ -97,3 +97,69 @@ function test_workspace_change_tier3_types_are_in_the_catalogue()
 		pg_assert_true(strpos($source, "        '" . $type . "' => array(") !== false, $type . ' is a kind');
 	}
 }
+
+// A catalogue with the columns the undo compares against.
+function workspace_agent_undo_test_types()
+{
+	return array(
+		'product' => array('actions' => array('update', 'create', 'delete'), 'fields' => array('name' => array('text', 255, 'Name', 'name'), 'price' => array('money', 0, 'Price', 'price'), 'tags' => array('ids', 'tag', 'Tags', ''))),
+		'note'    => array('actions' => array('create'), 'fields' => array('title' => array('text', 150, 'Title', 'title'))),
+		'task'    => array('actions' => array('update'), 'fields' => array('title' => array('text', 150, 'Title', 'title'))),
+	);
+}
+
+function workspace_agent_undo_test_row($type, $action, $fields, $extra = array())
+{
+	return array_merge(array(
+		'record_type'     => $type,
+		'action'          => $action,
+		'record_id'       => 7,
+		'fields'          => json_encode($fields),
+		'status'          => 'applied',
+		'applied_by_kind' => 'app',
+		'decided_at'      => 1000,
+	), $extra);
+}
+
+function test_workspace_agent_applies_at_once()
+{
+	$t = workspace_agent_undo_test_types();
+	$name = workspace_agent_undo_test_row('product', 'update', array(array('name' => 'name', 'from' => 'A', 'to' => 'B')));
+	$price = workspace_agent_undo_test_row('product', 'update', array(array('name' => 'price', 'from' => 100, 'to' => 200)));
+
+	pg_assert_same(2, ws_change_row_tier($name, $t));
+	pg_assert_same(3, ws_change_row_tier($price, $t));
+	pg_assert_true(ws_agent_applies_at_once(array($name), 2, $t));
+	pg_assert_true(!ws_agent_applies_at_once(array($name), 1, $t), 'tier 1 only proposes');
+	pg_assert_true(!ws_agent_applies_at_once(array($name, $price), 2, $t), 'one change above the tier keeps the whole answer a proposal');
+	pg_assert_true(ws_agent_applies_at_once(array($name, $price), 3, $t));
+	pg_assert_true(!ws_agent_applies_at_once(array(), 3, $t));
+	pg_assert_same(3, ws_change_row_tier(workspace_agent_undo_test_row('mcp_call', 'run', array()), $t), 'an unknown kind is tier 3');
+}
+
+function test_workspace_agent_undo_reverse()
+{
+	$t = workspace_agent_undo_test_types();
+
+	$update = ws_agent_undo_reverse(workspace_agent_undo_test_row('product', 'update', array(array('name' => 'name', 'from' => 'A', 'to' => 'B'))), $t);
+	pg_assert_same(array('action' => 'update', 'fields' => array(array('name' => 'name', 'from' => 'B', 'to' => 'A'))), $update, 'written back from the before value, checked against what the agent wrote');
+
+	$create = ws_agent_undo_reverse(workspace_agent_undo_test_row('product', 'create', array(array('name' => 'name', 'from' => '', 'to' => 'New'))), $t);
+	pg_assert_same(array('action' => 'delete', 'fields' => array(array('name' => 'name', 'from' => 'New', 'to' => ''))), $create, 'a new record is deleted');
+
+	pg_assert_same(null, ws_agent_undo_reverse(workspace_agent_undo_test_row('note', 'create', array(array('name' => 'title', 'from' => '', 'to' => 'N'))), $t), 'a kind that cannot delete');
+	pg_assert_same(null, ws_agent_undo_reverse(workspace_agent_undo_test_row('product', 'update', array(array('name' => 'price', 'from' => 1, 'to' => 2))), $t), 'tier 3 is irreversible');
+	pg_assert_same(null, ws_agent_undo_reverse(workspace_agent_undo_test_row('product', 'update', array(array('name' => 'tags', 'from' => '', 'to' => array(1)))), $t), 'a value the record does not keep');
+	pg_assert_same(null, ws_agent_undo_reverse(workspace_agent_undo_test_row('product', 'update', array(array('name' => 'name', 'from' => 'A', 'to' => 'B')), array('record_id' => 0)), $t));
+}
+
+function test_workspace_agent_undo_open()
+{
+	$row = workspace_agent_undo_test_row('task', 'update', array());
+
+	pg_assert_true(ws_agent_undo_open($row, 1000 + WS_AGENT_UNDO_SECONDS));
+	pg_assert_true(!ws_agent_undo_open($row, 1001 + WS_AGENT_UNDO_SECONDS), 'seven days');
+	pg_assert_true(!ws_agent_undo_open(array_merge($row, array('applied_by_kind' => 'user')), 1000), 'a person applied it');
+	pg_assert_true(!ws_agent_undo_open(array_merge($row, array('status' => 'undone')), 1000));
+	pg_assert_true(!ws_agent_undo_open(array_merge($row, array('decided_at' => 0)), 1000));
+}
