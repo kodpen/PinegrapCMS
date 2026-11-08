@@ -339,34 +339,6 @@ jQuery Collapse call (v6 has no jQuery plugins).
         });
 >>>
 
-DataTables' Bootstrap 5 integration writes v5 classes into the controls it
-builds (the length select, the layout grid): the panel's lists get the v6
-names before the first table is built.
-
-@@ assets/js/backend.src.js
-<<<
-    var options = {};
-    // The panel language's DataTables 2 texts from the local copy; English
-===
-    // DataTables' Bootstrap 5 integration names v5 classes for the controls
-    // it builds; the panel runs Bootstrap 6.
-    if ($.fn.dataTable) {
-        $.extend(true, $.fn.dataTable.ext.classes, {
-            length: { select: 'form-control form-control-sm' },
-            layout: {
-                row: 'row mt-3 justify-content-between',
-                cell: 'md:d-flex justify-content-between align-items-center',
-                start: 'dt-layout-start md:col-auto me-auto',
-                end: 'dt-layout-end md:col-auto ms-auto',
-                full: 'dt-layout-full md:col'
-            }
-        });
-    }
-
-    var options = {};
-    // The panel language's DataTables 2 texts from the local copy; English
->>>
-
 The product builder's switch helper builds its input class in code.
 
 @@ product_builder.php

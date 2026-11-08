@@ -53,15 +53,6 @@ function test_bs6_js_leftovers_image_tiles()
 	}
 }
 
-function test_bs6_js_leftovers_datatables_collection()
-{
-	$source = bs6_js_leftovers_source('assets/js/backend.src.js');
-
-	pg_assert_contains('$.fn.dataTable.Buttons.defaults.dom.collection', $source);
-	pg_assert_contains("content: { className: 'dropdown-menu menu show' }", $source);
-	pg_assert_contains("liner: { className: 'dropdown-item menu-item' }", $source);
-}
-
 function test_bs6_js_leftovers_text_colours()
 {
 	pg_assert_contains('text-uppercase h5 fg-primary fw-bold', bs6_js_leftovers_source('erp_dashboard.php'));

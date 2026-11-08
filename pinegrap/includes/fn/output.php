@@ -101,9 +101,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     $translate = array(
         'No data available in table' => lang('No data available in table'),
         'Query failed.' => lang('Query failed.'),
-        'Reset' => lang('Reset'),
-        'Column Visiblity' => lang('Column Visiblity'),
-        'Column Reorder and Column Visiblity reset?' => lang('Column Reorder and Column Visiblity reset?'),
         'Hold, move and reposition' => lang('Hold, move and reposition'),
         'Pin' => lang('Pin'),
         'Remove' => lang('Remove'),
@@ -287,13 +284,10 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <style>@layer colors, config, root, reboot, layout, content, forms, components, vendor, custom, helpers, utilities;</style>
     <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/lib/bootstrap-6/css/bootstrap.min.css') . '"/>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '") layer(vendor);</style>
-    <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.css") layer(vendor);</style>
     <style>@import url("' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/material-icons/material-icons.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/fonts/material-icons/material-icons.css') . '") layer(vendor);</style>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.min.js"></script>
     <script type="module" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_bs6_bridge.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_bs6_bridge.js') . '"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/pg_ui.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/pg_ui.js') . '"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/DataTables/datatables.min.js"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery_datatables_checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/lazy.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/multiselect-checkbox/jquery-multiselect-checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
@@ -400,8 +394,7 @@ function pg_logo_markup($id_suffix = '')
  * covered until the document is ready and the curtain fades out in 100 ms.
  * A screen still building after that (the visual editor) sets
  * window.pgPreloaderHold and calls window.pgPreloaderDone() once painted;
- * only that curtain shows the mark in the middle. A list screen (table.chart)
- * is held the same way without the mark until DataTables has drawn its table.
+ * only that curtain shows the mark in the middle.
  *
  * Leaving: no curtain. The old page stays visible; once a navigation has
  * been under way for 150 ms a thin bar runs across the top and the pointer
@@ -472,26 +465,14 @@ function pg_preloader_markup()
             host.classList.add('is-done');
         }
 
-        // A list screen prints its table.chart hidden and shows it only
-        // once DataTables has drawn it (backend.src.js), so its curtain
-        // waits for that pgPreloaderDone() instead of lifting over an empty
-        // card. Read on DOM ready: the table is not parsed yet up here. No
-        // is-hold: an everyday list never draws the mark.
-        function arrived() {
-            if (document.querySelector('table.chart') && window.jQuery && jQuery.fn && jQuery.fn.DataTable) {
-                return;
-            }
-            hide();
-        }
-
         window.pgPreloaderDone = hide;
 
         if (window.pgPreloaderHold) {
             host.classList.add('is-hold');
         } else if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', arrived);
+            document.addEventListener('DOMContentLoaded', hide);
         } else {
-            arrived();
+            hide();
         }
         timer = setTimeout(hide, 9000);
 
@@ -2131,7 +2112,7 @@ function pg_css_bundles()
 // Cloudflare's Email Address Obfuscation rewrites every address in an HTML
 // response into "[email protected]" and a script that decodes it in the
 // browser. On the software's own screens that breaks what the script does
-// not reach (table cells drawn again by DataTables, title attributes, text
+// not reach (table cells drawn again by script, title attributes, text
 // copied into inputs) and shows staff the placeholder instead of the
 // address. Cloudflare leaves alone what sits between these two comments, so
 // the panel chrome wraps the whole body in them. Pages built in the

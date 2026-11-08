@@ -1796,11 +1796,6 @@ $(document).ready(function () {
 
 
 
-    // Panel languages with a file in assets/lib/DataTables/i18n/.
-    var DATATABLES_LANGUAGES = { tr: true };
-
-
-
     /*
     Select All Checker
     An Example:
@@ -1847,257 +1842,6 @@ $(document).ready(function () {
         pgSyncCheckboxLists();
     }
 
-
-    // DataTables' Bootstrap 5 integration names v5 classes for the controls
-    // it builds; the panel runs Bootstrap 6.
-    if ($.fn.dataTable) {
-        $.extend(true, $.fn.dataTable.ext.classes, {
-            length: { select: 'form-control form-control-sm' },
-            layout: {
-                row: 'row mt-3 justify-content-between',
-                cell: 'md:d-flex justify-content-between align-items-center',
-                start: 'dt-layout-start md:col-auto me-auto',
-                end: 'dt-layout-end md:col-auto ms-auto',
-                full: 'dt-layout-full md:col'
-            }
-        });
-    }
-
-    // The Buttons integration draws the column visibility list as a v5
-    // dropdown; Bootstrap 6 styles it as a menu. dropdown-menu stays, since
-    // DataTables' own rule for it keeps the list in place instead of the
-    // menu's absolute position.
-    if ($.fn.dataTable && $.fn.dataTable.Buttons) {
-        $.extend(true, $.fn.dataTable.Buttons.defaults.dom.collection, {
-            container: { content: { className: 'dropdown-menu menu show' } },
-            button: { liner: { className: 'dropdown-item menu-item' } }
-        });
-    }
-
-    var options = {};
-    // The panel language's DataTables 2 texts from the local copy; English
-    // is DataTables' own. The CDN's 1.13.6 Turkish file was loaded for every
-    // language, lacked the 2.x keys ("All", pagination names) and held the
-    // table back until a third party answered.
-    if (DATATABLES_LANGUAGES[software_system_language]) {
-        options["language"] = {
-            url: path + software_directory + "/assets/lib/DataTables/i18n/" + software_system_language + ".json"
-        };
-    }
-
-    options["stateSave"] = false;
-    options["serverside"] = false;
-    options["bInfo"] = false;
-    options["bProcessing"] = true;
-    options["ordering"] = false;
-    options["bSort"] = false;
-    options["deferRender"] = true;
-    options["scroller"] = false;
-    options["select"] = false;
-    options["processing"] = false;
-    options["scrollX"] = true;
-    options["fixedHeader"] = {
-        headerOffset: $("#header").outerHeight()
-    }
-
-
-    options["drawCallback"] = function (settings) {
-        // Reset checkbox states and row selections
-        $("table.chart.chart:not(.datatable-restricted-mode) .select-all input[type=checkbox]").prop("checked", false).removeClass('selected');
-        $("table.chart.chart #select_all").prop("checked", false);
-        chart_checkbox_state_change();
-        $("table.chart:not(.datatable-restricted-mode) tr.selected").removeClass('selected');
-
-        // Hide pagination if only one page exists
-        const api = $.fn.dataTable.Api(settings);
-        const pageInfo = api.page.info();
-        const pagination = $(api.table().container()).find('div.dt-paging');
-
-        if (pageInfo.pages <= 1) {
-            pagination.css('display', 'none');
-        } else {
-            pagination.css('display', 'block'); // or 'block' depending on your layout
-        }
-    };
-
-
-
-    options["fnInitComplete"] = function () {
-        // The table is printed hidden; a measure before show() reads nothing.
-        $('table.chart').show();
-
-
-        $("#select_all").multiselectCheckbox({
-            checkboxes: "tr:not(.unselectable) .select-all input",
-            sync: "table.chart tbody tr:not(.child):not(.unselectable)",
-            syncEvent: "click",
-            checkedClassName: "selected",
-            checkedKeyDataAttributeName: "jquery-multi-select-checkbox-checked-key",
-            onNotAllChecked: function (selectedMap) {
-                chart_checkbox_state_change();
-            },
-            onAllChecked: function (selectedMap) {
-                chart_checkbox_state_change();
-            },
-            onAllUnchecked: function (selectedMap) {
-                chart_checkbox_state_change();
-            }
-        });
-        $("table.dataTable #select_all").prop("checked", false);
-
-        // One measure, now that the table is visible. No draw() after it:
-        // the first draw already opened on the page restored from
-        // history.state (displayStart), and every draw re-measures the
-        // scrollX head.
-        datatable.columns.adjust();
-
-        // DataTables names its pager landmark "pagination" in English
-        // whatever the language; the panel language's file names it.
-        $(datatable.table().container()).find('div.dt-paging nav').attr('aria-label', datatable.i18n('aria.paging', 'Pagination'));
-        $('table.dataTable tbody tr td.dataTables_empty').parent('tr').addClass('unselectable');
-
-        // The loading curtain waited for the list (pg_preloader_markup()).
-        pgListCurtainDone();
-    };
-
-
-
-    options["dom"] = "<'container-fluid p-5 pt-7'<'row'<'col-12 md:col-6 text-center md:text-start'li><'col-12 md:col-6 text-center md:text-end'BRf>>>rt<'p-3 text-center'i><'p-3'p>";
-    options["buttons"] = {
-        buttons: [{
-            text: lang('Reset'),
-            className: "btn btn-sm bi-me-2 bi bi-arrow-clockwise",
-            action: function (e, dt, node, config) {
-                if (confirm(lang('Column Reorder and Column Visiblity reset?')) == true) {
-                    datatable.colReorder.reset();
-                    datatable.columns().visible(true, true);
-                }
-
-            }
-        }, {
-            extend: "colvis",
-            className: "pg-menu-caret btn btn-sm bi-me-2 bi bi-layout-three-columns",
-            text: lang('Column Visiblity'),
-            collectionLayout: "fixed two-column",
-            columns: ":not(.noVis)",
-            columnText: function (dt, idx, title) {
-                // The heading's own words: an icon or a button inside it
-                // (the Pages list's device toggle) is not part of the name.
-                var header = dt.column(idx).header();
-
-                if (header) {
-                    var copy = header.cloneNode(true);
-
-                    $(copy).find('.material-icons, .bi, [aria-hidden="true"], a, button').remove();
-
-                    var words = $.trim($(copy).text());
-
-                    // A heading that is all link keeps the text it had.
-                    if (words !== '') {
-                        title = words;
-                    }
-                }
-
-                title = title.replace("unfold_more", "");
-                title = title.replace("keyboard_arrow_down", "");
-                title = title.replace("keyboard_arrow_up", "");
-                return (idx + 1) + ': ' + title;
-            },
-        }],
-        dom: {
-            container: {
-                tag: 'div',
-                className: 'dtable-button-container p-3'
-            },
-            button: {
-                tag: 'a',
-                className: ' btn btn-sm '
-            }
-        }
-    };
-
-
-    if ($('table.chart').length) {
-        if ($('table.chart').hasClass('datatable-restricted-mode')) {
-            options["bPaginate"] = false;
-            options["paging"] = false;
-            options["bLengthChange"] = false;
-            options["searching"] = false;
-        } else {
-            options["bPaginate"] = true;
-            options["paging"] = true;
-            options["pageLength"] = 100;
-            options["searching"] = true;
-            options["lengthMenu"] = [
-                [10, 25, 50, 100, 1000, -1],
-                [10, 25, 50, 100, 1000, "Unlimited"],
-            ];
-        }
-        if ($('table.chart').hasClass('datatable-no-info')) {
-            options["info"] = false;
-        } else {
-            options["info"] = true;
-        }
-
-        // A list comes back on the page, length and search it was left on:
-        // panel pages are sent no-store, so Back loads the screen again.
-        // Every table.chart shares these options, so only a single list is
-        // restored. DataTables' stateSave stays off: it would also keep the
-        // column order and visibility the Reset button starts afresh.
-        var pgListKey = null;
-        if ($('table.chart').length === 1 && options["paging"]) {
-            pgListKey = $('table.chart').attr('id') || '0';
-            var pgListKept = pgListState(pgListKey);
-            if (pgListKept && options["lengthMenu"][0].indexOf(pgListKept.length) !== -1) {
-                options["displayStart"] = pgListKept.start;
-                options["pageLength"] = pgListKept.length;
-                options["search"] = { search: pgListKept.search };
-            }
-        }
-
-        // A DataTables error or a throw here must not leave the curtain
-        // up until its 9 s timer.
-        $('table.chart').one('error.dt', pgListCurtainDone);
-        try {
-            var datatable = $("table.chart").DataTable(options);
-        } catch (e) {
-            pgListCurtainDone();
-            throw e;
-        }
-        datatable.buttons().container().appendTo($(".chart-buttons"));
-        // A Turkish panel finds "Yıldız" for "YILDIZ" in a list searched in
-        // the browser; a list paged on the server searches in SQL.
-        if (/^tr/i.test(String(software_system_language || '')) && options["searching"]
-            && !options.serverSide) {
-            pgListTurkishSearch(datatable);
-        }
-        // Each draw follows a page, length or search change, after
-        // DataTables has settled the start (a new search goes to page 1).
-        if (pgListKey !== null) {
-            datatable.on('draw.dt', function () {
-                var info = datatable.page.info();
-                pgListKeep(pgListKey, { start: info.start, length: info.length, search: String(datatable.search()) });
-            });
-        }
-        datatable.on('draw.dt column-sizing.dt fixedheader-mode.dt', function (e) {
-            pgListHeadingCopies(e.dt);
-        });
-        datatable.tables().every(function () {
-            pgListHeadingCopies(this);
-        });
-        // No window resize listener: with scrollX, DataTables watches its
-        // own wrapper width with a throttled ResizeObserver.
-    }
-    //software search no longer available, if there is query paramater in url, search it in datatable, and remove query paramater from url.
-    if (window.location.href.indexOf('?query=') > 0 || window.location.href.indexOf('&query=') > 0) {
-        if ($("table.chart").length > 0) {
-            const query = new URLSearchParams(window.location.search).get('query');
-            let params = new URLSearchParams(location.search);
-            params.delete('query');
-            history.replaceState(history.state, '', '?' + params + location.hash);
-            datatable.search(query).draw();
-        }
-    }
 
     //#notifications
     $('#notification_toggle').on('click', function () {
@@ -2989,54 +2733,6 @@ function software_image_picker(properties) {
     }
 }
 
-//::::::::::::::::::Table.chart Edit Contents Buttons::::::::::::::::::
-function edit_chart_content(action, name) {
-    var result;
-    if (typeof name === 'undefined') {
-        var name = 'item';
-    }
-    switch (action) {
-        case 'edit':
-            document.form.action.value = 'edit';
-            break;
-
-        case 'organize':
-            document.form.action.value = 'organize';
-            break;
-
-        case 'optin':
-            document.form.action.value = 'optin';
-            result = confirm(lang('WARNING: The selected {var}(s) will be opted-in.').replace('{var}', name))
-            break;
-
-        case 'optout':
-            document.form.action.value = 'optout';
-            result = confirm(lang('WARNING: The selected {var}(s) will be opted-out.').replace('{var}', name))
-            break;
-
-        case 'merge':
-            document.form.action.value = 'merge';
-            result = confirm(lang('WARNING: The selected duplicate {var}(s) will be merged together.').replace('{var}', name))
-            break;
-        case 'delete':
-            document.form.action.value = 'delete';
-            result = confirm(lang('WARNING: The selected {var}(s) will be permanently deleted.').replace('{var}', name))
-            break;
-    }
-    // if user select ok to confirmation, submit form
-    if (result == true) {
-        document.form.submit();
-    }
-}
-
-// The loading curtain of a list screen waits for its table
-// (pg_preloader_markup()); the first table drawn lifts it.
-function pgListCurtainDone() {
-    if (typeof window.pgPreloaderDone === 'function') {
-        window.pgPreloaderDone();
-    }
-}
-
 // A list table driver row's button (a delete in the mail queue) asks its
 // data-confirm-content question here: the software-wide confirm handler
 // binds at DOM ready to the buttons on the page then, before rows loaded
@@ -3051,8 +2747,8 @@ $(function () {
 });
 
 // Folds text for a Turkish list search with window.pgFoldTR (I, İ, ı and i
-// are one letter, ş is s, ç is c), then the other marks stripped as
-// DataTables strips them, the same on both sides of a comparison.
+// are one letter, ş is s, ç is c), then the other marks stripped, the same
+// on both sides of a comparison.
 function pgListTurkishFold(s) {
     s = window.pgFoldTR(s);
 
@@ -3061,9 +2757,9 @@ function pgListTurkishFold(s) {
 
 /**
  * Whether a row's search text holds every word of a search the way a Turkish
- * reader means it. The words are DataTables' smart search words: split on
- * spaces, a "quoted phrase" is one word, a !word must be missing. A word is
- * found when DataTables' own case-insensitive match finds it (IPHONE finds
+ * reader means it. The words are split on spaces, a "quoted phrase" is one
+ * word, a !word must be missing. A word is found by a case-insensitive
+ * match with its marks stripped (IPHONE finds
  * iPhone, DEMİR finds Demir) or when it occurs folded the Turkish way
  * (YILDIZ and yildiz find Yıldız, isik finds Işık).
  */
@@ -3072,8 +2768,8 @@ function pgListTurkishMatch(term, text) {
     var plain = String(text);
     var folded = pgListTurkishFold(plain);
 
-    // DataTables' own match: the text as it is and with its marks stripped,
-    // the word with its marks stripped, case-insensitive.
+    // The plain match: the text as it is and with its marks stripped, the
+    // word with its marks stripped, case-insensitive.
     if (plain.normalize) {
         plain = plain + '\n' + plain.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     }
@@ -3102,164 +2798,6 @@ function pgListTurkishMatch(term, text) {
     }
 
     return true;
-}
-
-/**
- * Searches a list drawn in the browser with pgListTurkishMatch(). The typed
- * text stays the table's search, so the search box, datatable.search() and
- * the kept list state still see the string; DataTables' filter reads the
- * search through a getter that hands it a matcher for that text, the one
- * search form whose test is not a case-insensitive RegExp (JavaScript never
- * pairs I with ı). A diacritics hook would lower both sides alike, and
- * lowering IPHONE to ıphone the Turkish way would lose iPhone.
- */
-function pgListTurkishSearch(datatable) {
-    datatable.settings().each(function (settings) {
-        var search = settings.oPreviousSearch;
-        var text = String(search.search || '');
-        var matcher = null;
-
-        Object.defineProperty(search, 'search', {
-            configurable: true,
-            enumerable: true,
-            get: function () {
-                if (text === '') {
-                    return '';
-                }
-
-                if (!matcher) {
-                    var typed = text;
-
-                    matcher = function (data) {
-                        return pgListTurkishMatch(typed, data);
-                    };
-                    // The search box compares its value with the search.
-                    matcher.toString = function () {
-                        return typed;
-                    };
-                }
-
-                return matcher;
-            },
-            set: function (value) {
-                value = (value === null || value === undefined) ? '' : String(value);
-
-                if (value !== text) {
-                    text = value;
-                    matcher = null;
-                }
-            }
-        });
-
-        // DataTables empties its box for a function search; the box shows
-        // the typed text again unless the reader is typing in it. Later:
-        // with the language file loading, DataTables binds its own handler
-        // after this one.
-        $(settings.nTable).on('search.dt', function (e, s) {
-            if (s === settings) {
-                setTimeout(function () {
-                    $(datatable.table(settings.nTable).container()).find('div.dt-search input').not(document.activeElement).val(text);
-                }, 0);
-            }
-        });
-
-        if (text !== '' && settings._bInitComplete) {
-            datatable.table(settings.nTable).draw(false);
-        }
-    });
-}
-
-/**
- * The page, length and search a paged list was left on, kept in the history
- * entry by pgListKeep() so Back opens it where it was; null when the entry
- * holds none for the list or holds something unusable.
- */
-function pgListState(key) {
-    var state = (window.history && $.isPlainObject(history.state)) ? history.state : {};
-    var lists = $.isPlainObject(state.pgList) ? state.pgList : {};
-    var kept = Object.prototype.hasOwnProperty.call(lists, key) ? lists[key] : null;
-
-    if (kept && typeof kept.start === 'number' && kept.start >= 0 && kept.start % 1 === 0
-        && typeof kept.length === 'number'
-        && typeof kept.search === 'string') {
-        return kept;
-    }
-
-    return null;
-}
-
-// Keeps a list's {start, length, search} in the current history entry,
-// beside whatever else the entry holds.
-function pgListKeep(key, kept) {
-    if (!window.history || !history.replaceState) {
-        return;
-    }
-
-    var state = $.extend({}, $.isPlainObject(history.state) ? history.state : null);
-    state.pgList = $.extend({}, $.isPlainObject(state.pgList) ? state.pgList : null);
-    state.pgList[key] = kept;
-
-    try {
-        history.replaceState(state, '', location.href);
-    } catch (e) {
-        // A refused state (size limit) leaves the entry as it was.
-    }
-}
-
-// With scrollX, DataTables keeps a copy of a list's heading in the body table
-// to size the columns, inside 0px boxes. Screen readers take the column
-// headers from that copy, so its text stays readable, but its sort links and
-// select-all box leave the Tab order: Tab used to pass through them a second
-// time with no focus to see. While FixedHeader floats the real heading, its
-// floating table is aria-hidden and a placeholder copy with live links stays
-// in place; the floating heading is shown to screen readers again and the
-// placeholder is made inert, as focus there is lost when it is removed.
-// FixedHeader builds both again on each mode change.
-function pgListHeadingCopies(api) {
-    var header = api.table().header();
-
-    $(api.table().node()).children('thead').not(header)
-        .find('a[href], button, input, select, textarea, [tabindex]').attr('tabindex', '-1')
-        .end()
-        .find('button, input, select, textarea').attr('aria-hidden', 'true');
-
-    var holder = $(header).closest('table');
-
-    if (holder.length && (holder[0] !== api.table().node()) && !$(api.table().container()).find(holder).length) {
-        holder.removeAttr('aria-hidden');
-
-        $(api.table().container()).find('div.dt-scroll-head thead').not(header)
-            .attr('inert', '')
-            .find('a[href], button, input, select, textarea, [tabindex]').attr('tabindex', '-1');
-    }
-}
-
-function chart_checkbox_state_change() {
-    // The multiselect plugin only ever sets the select-all box to all or
-    // nothing, so a part-ticked list read as "not checked". The count is taken
-    // over the enabled boxes of the rows the plugin itself selects.
-    var $boxes = $('tr:not(.unselectable) .select-all input').not(':disabled');
-    var ticked = $boxes.filter(':checked').length;
-
-    $('#select_all')
-        .prop('indeterminate', (ticked > 0) && (ticked < $boxes.length))
-        .prop('checked', (ticked > 0) && (ticked === $boxes.length));
-
-    // The property as well as the class: .btn.disabled only stops the pointer,
-    // so a bulk button outside the bottom bar stayed focusable and pressable
-    // with nothing ticked.
-    if ($('.select-all input[type=checkbox]').is(':checked')) {
-        $('.enable-on-selected button').removeClass('disabled').prop('disabled', false);
-        $('.dataTable .action-buttons *').each(function () {
-            $(this).attr('style', 'visibility:hidden !important;');
-        });
-
-    } else {
-        $('.enable-on-selected button').addClass('disabled').prop('disabled', true);
-        $('.dataTable .action-buttons *').each(function () {
-            $(this).attr('style', '');
-        });
-    };
 }
 
 //::::::::::::::::::PUSH NOTIFICATIONS::::::::::::::::::
@@ -13597,8 +13135,7 @@ $(document).on('submit', 'form', function (event) {
  *
  * A table that carries data-pg-sort gets buttons in its column headings: a
  * click sorts the body by that column, the second click reverses it and the
- * third puts the rows back in the order the server sent them. DataTables
- * tables (table.chart) sort themselves and are not touched here.
+ * third puts the rows back in the order the server sent them.
  *
  * Shift+click sorts by more than one column: it adds the column as the next
  * level, ascending, and on a column already sorted by turns ascending into
@@ -13975,8 +13512,8 @@ $(document).on('submit', 'form', function (event) {
     }
 
     // Shift+click on a heading of a list the server sorts follows the
-    // address that keeps the other levels. DataTables' fixed header copies
-    // the headings, so this listens on the document, not on each link.
+    // address that keeps the other levels. One listener on the document
+    // covers the headings of every list on the page.
     document.addEventListener('click', function (event) {
         var link = (event.shiftKey && event.target.closest) ? event.target.closest('a[data-pg-sort-add]') : null;
 
@@ -14122,19 +13659,6 @@ $(document).on('submit', 'form', function (event) {
         }, 1700);
     }
 
-    // DataTables keeps its own copy of each cell for its search box.
-    function refreshSearch(table, row) {
-        var $ = window.jQuery;
-
-        if ($ && $.fn && $.fn.dataTable && $.fn.dataTable.isDataTable(table)) {
-            try {
-                $(table).DataTable().row(row).invalidate('dom');
-            } catch (error) {
-                // The search sees the old value until the page is reloaded.
-            }
-        }
-    }
-
     // The same column on the next row (or the one before) that can change;
     // false when there is none (Tab on the last row, Shift+Tab on the first).
     function step(cell, direction) {
@@ -14197,10 +13721,6 @@ $(document).on('submit', 'form', function (event) {
         }
 
         flash(cell, 'pg-edit-saved');
-
-        if (row) {
-            refreshSearch(state.table, row);
-        }
 
         // A screen whose row holds more than its cells (filter data, a
         // button's name) follows the saved answer from here.

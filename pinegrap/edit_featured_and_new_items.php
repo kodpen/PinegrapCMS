@@ -131,8 +131,8 @@ if (!$_POST) {
                                     </div>
                                 </div>';
 
-    // output product group tree screen; the rows are a plain table, not a DataTable
-    // (table.chart): paging, search and column visibility take the rows and columns
+    // output product group tree screen; the rows are a plain table, not a
+    // paged list: paging, search and column visibility take the rows and columns
     // they hide out of the form, and the save clears every item whose boxes were not posted
     echo
     pg_page_shell([
