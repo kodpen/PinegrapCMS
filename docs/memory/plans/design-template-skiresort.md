@@ -13,7 +13,7 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 ## Steps (claim as `[plan:design-template-skiresort] <n> — <topic>`; each waits for the one before it, Working mode 1)
 - 1 (done, #7958): `parts.php`: node builders, the resort's data, pick lists, `$money`, `$query`, `$event_on`, page shell and helpers; `tests/design_template_skiresort_test.php`.
 - 2 (done, #7986): `cards.php`: shared parts (account bar, notice, header, footer, snow band, staff bar), the record and data cards, form fields, the comment thread, newsletter and blog parts; `tests/design_template_skiresort_cards_test.php`.
-- 3: `pages_public.php`: home (`home_slopes`, `home_events`, `home_posts` placed as widgets), `conditions`, `passes`, `rental`, `ski_school`, `lodging`, `about`, `faq`; test.
+- 3 (done, #8080): `pages_public.php`: home (`home_slopes`, `home_events`, `home_posts` placed as widgets), `conditions`, `passes`, `rental`, `ski_school`, `lodging`, `about`, `faq`; test.
 - 4: `slopes.php`: the Slopes collection (`slopes` by `?difficulty=` and `?area=`, `slope`, `slope_new`, `home_slopes`), the Lifts collection (`lifts`, `lift_new`); test.
 - 5: `mail.php` and `lessons.php`: lesson requests (`lesson_request` with `?lesson=`, `?level=`, `?age=`, `lesson_view`, `my_lessons`, `staff_lessons`, `privacy`, `email_reply`, `email_lesson_new`, `email_lesson_received`); test.
 - 6: `enquiries.php`: lodging and group enquiries (`group_enquiry` with `?stay=` and `?group=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
