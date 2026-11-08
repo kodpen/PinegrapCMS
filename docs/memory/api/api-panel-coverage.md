@@ -9,7 +9,7 @@ description: How far the external API covers what the panel manages (gap list #5
 
 ## What did the second audit (#7967, 2026-11-07) find?
 - On a sandbox with only the installer's sample records (ERP, Workspace on), 245 GET routes and 353 `dry_run` writes ran: no 500, no PHP output in a body. Not called (no `dry_run`): `POST /auth/login`, `/auth/pair`, `/auth/refresh`, `/auth/logout`, `/push/test`, `/experiments/{id}/start`, `/pause`, `/end`. Every `pg_announce()` name is in the event catalogue.
-- Gaps (plan `api-forms-for-agents.md`), screen mirrored -> what to add:
+- Gaps G1-G7 (all landed, #8097-#8121), screen mirrored -> route:
   - G1 `view_stock_moves.php` -> `GET /inventory/moves`: landed (PR #8097), `api-inventory-locations.md`.
   - G2 `edit_comment.php` Answer box -> `POST /comments/{id}/answer` through `pg_product_question_answer_save()` (`comments:write`): landed (PR #8116), `api-product-question-answer.md`.
   - G3 `edit_contact_group.php` -> `by_rule` on ContactGroup, `POST /contact-groups/{id}/refresh` (the audience_refresh action).
