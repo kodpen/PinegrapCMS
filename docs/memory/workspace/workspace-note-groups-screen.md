@@ -15,4 +15,4 @@ description: Note groups on the My Notes screen — workspace_note_groups.js (fo
 - New note while a note in a group is open: saved first, then placed last in that group (`placeNew()`).
 
 ## What is not there yet?
-- Drag and drop and long press (G3), tabs (G4), shared groups (G5/G6), the lock pane hiding a locked folder's notes (L steps).
+- Drag and drop and long press (G3), shared groups (G5/G6), the lock pane hiding a locked folder's notes (L steps). Tabs over an open note: `workspace-note-tabs.md`.

@@ -22121,8 +22121,45 @@
             };
         }
 
+        // The open note's group as tabs over it (workspace_note_tabs.js);
+        // drawn again with the list, so a rename or a move shows at once.
+        function drawTabs() {
+            var card = pane.querySelector('.ws-nb-card');
+            var old = card ? card.querySelector('.ws-nb-tabs') : null;
+            var tabs = null;
+
+            if (!card || !current || !groupsCtx() || !window.PGWsNoteTabs) {
+                if (old) {
+                    old.remove();
+                }
+
+                return;
+            }
+
+            tabs = window.PGWsNoteTabs.draw({
+                kit: window.PGWsKit,
+                note: current,
+                notes: lists.mine.concat(lists.shared),
+                groups: lists.groups,
+                search: search,
+                panel: card,
+                open: function (noteId) { openNote(noteId); },
+                newNote: function () { startNew(); },
+                reload: loadList
+            });
+
+            if (old && tabs) {
+                card.replaceChild(tabs, old);
+            } else if (old) {
+                old.remove();
+            } else if (tabs) {
+                card.insertBefore(tabs, card.firstChild);
+            }
+        }
+
         function drawList() {
             clear(list);
+            drawTabs();
 
             if (!lists.mine.length && !lists.shared.length && !search) {
                 var intro = el('div', 'ws-nb-intro');
@@ -24558,10 +24595,12 @@
 
             var body = el('div', 'card-body ws-nb-body');
 
+            card.id = 'ws-nb-note-card';
             card.appendChild(headNode);
             card.appendChild(infoNode);
             card.appendChild(body);
             pane.appendChild(card);
+            drawTabs();
             field = null;
             voiceRow = null;
             voiceList = el('div', 'ws-nb-voices d-flex flex-column gap-2 mt-4 d-none');
@@ -24687,8 +24726,9 @@
         }
 
         function startNew() {
-            // A new note goes into the group of the note open, if any.
-            var inGroup = (current && current.id) ? Number(current.group_id || 0) : 0;
+            // A new note goes into the group of the note open, if any (a
+            // new note not saved yet: the group it was started in).
+            var inGroup = current ? Number((current.id ? current.group_id : current.newGroup) || 0) : 0;
 
             save().then(function () {
                 current = { id: 0, title: '', body: '', access: 'owner', pinned: false, source: null, 'with': [], 'in': [], owner: null, updated_by: null, newGroup: inGroup };
