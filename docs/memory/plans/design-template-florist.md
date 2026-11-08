@@ -18,7 +18,7 @@ description: Plan: the Florist design template (pinegrap-florist): bouquets, occ
 - 5 (done, #7975): `enquiries.php`: event enquiries (`event_enquiry` with `?event=`, `event_enquiry_view`, `staff_events`), subscription requests (`subscribe` with `?plan=`, `subscription_view`), `consultation` (the booking widget's starter beside the event enquiry, [[booking-templates]]), their e-mails; test.
 - 6 (done, #8007): `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (bouquets by occasion, prepaid subscription bundles, vases and extras, gift cards); test.
 - 7 (done, #8026): `standard.php`: contact, inbox, conversation, newsletter, blog (Flower Journal), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 8 (done, #PRNUM): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
+- 8 (done, #8058): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 - 9: assembly: `pinegrap-florist.php` (order, search sections, look, fonts, `pfl-` rules, folders, contact group, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, booking-templates), `designer/design-template-florist.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where does the next session start?
