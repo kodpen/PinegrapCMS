@@ -546,6 +546,7 @@
     "Recorded and mixed by the band in their rehearsal room.": "Grup tarafından kendi prova odasında kaydedildi ve mikslendi.",
     "Recorded as a movement rather than written straight onto the balance, so it can be traced later like any other entry.": "Bakiyeye doğrudan yazılmaz, hareket olarak kaydedilir; böylece diğer kayıtlar gibi sonradan izlenebilir.",
     "Recorded by {var:1} on {var:2}.": "{var:2} tarihinde {var:1} tarafından kaydedildi.",
+    "Recorded for the network's supporters. Please keep it among supporters: it is not in the public feed.": "Ağın destekçileri için kaydedildi. Lütfen destekçiler arasında kalsın: herkese açık akışta yer almıyor.",
     "Recorded in Istanbul, heard everywhere": "İstanbul'da kaydedilir, her yerde dinlenir",
     "Recorded in the database, not in the config file. The upgrade applies every version after this one, so an earlier number here makes those steps run again; saving takes you straight to the upgrade screen.": "Veritabanına kayıtlı sürüm; config dosyasında değil. Yükseltme bu numaradan sonraki her sürümü çalıştırır, yani buraya daha eski bir numara yazmak o adımları yeniden çalıştırır. Kaydettiğinizde panel doğrudan yükseltme ekranına gider.",
     "Recorded live at the Harbour Hall. Mixed by Selin Arda.": "Liman Salonu'nda canlı kaydedildi. Miks Selin Arda'nın.",
