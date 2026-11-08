@@ -2428,6 +2428,8 @@ function ws_notes_js_strings()
         'notes_group_out_shared' => ws_js_template('The people in the group “{var:1}” lose this note unless it is shared with them on its own.', 1),
         'notes_group_into_locked' => ws_js_template('The group “{var:1}” is locked: locking takes this note’s shares back.', 1),
         'notes_group_own_only'  => lang('Only your own notes go into a shared group.'),
+        'notes_tab_new'         => lang('New note in this group'),
+        'notes_tab_shared'      => lang('Shared note'),
         'notes_export_all'      => lang('Export all'),
         'notes_import'          => lang('Import'),
         'notes_import_title'    => lang('Import notes'),

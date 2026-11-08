@@ -266,6 +266,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-note-group-shares.md: Shared note groups (note_group_shares.php, G5): group shares written as ws_note_shares rows with via_group, the sync, who puts notes in, leaving, bell lines, the hooks the lock calls
 - workspace-note-groups-screen.md: Note groups on the My Notes screen — workspace_note_groups.js (folders, New group, group menu, Move to group, drag and drop, search, closed folders in the browser) and its hooks in startNotes()
 - workspace-note-groups.md: Workspace note groups and the notes lock — tables of step 11.0.119, readiness probes ws_note_groups_ready() / ws_note_lock_ready()
+- workspace-note-tabs.md: Note tabs over an open note on My Notes — workspace_note_tabs.js (group as ARIA tablist, marks, +, keys, drag to reorder via ws_note_place) and drawTabs() in startNotes()
 - workspace-notes-deletions.md: Deleting a note over the API (PR #1674) and ws_note_deletions (schema 11.0.85): who may, whom a deletion or a person share taken back is kept for, how long, deleted in the changes listing, no MCP tool
 - workspace-notes-export.md: Notes leaving the Workspace as files (workspace_notes_export.php, notes_io.php): one note as Markdown with front matter, a print page, "Export all" as a zip vault; what the tags and attachments become
 - workspace-notes-import-enex.md: Evernote exports (.enex) as notes (notes_enex.php, PR #644): laid out in the stage as Markdown and attachment files, ENML to Markdown, limits and refusals

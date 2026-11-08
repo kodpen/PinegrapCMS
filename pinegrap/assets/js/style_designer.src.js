@@ -70372,9 +70372,48 @@ const StyleDesigner = (function () {
         if (!p) return false;
         if (_sdComponentOnly()) return false;             // never saved as a page
         if (p.page_id === 0) return true;                 // never saved
-        if (p.key === _activeKey) _pgReadFieldsIntoPage(p);
-        return _pgBaselineOf(p) !== p.baseline;
+        if (p.key === _activeKey) {
+            _pgReadFieldsIntoPage(p);
+            return _pgBaselineOf(p) !== p.baseline;
+        }
+        // A page not open: its answer is kept until something could change
+        // it (_pgDirtyMemoKey()), so the poll's sweep and every draw of the
+        // tab strip stop serialising pages nobody touched.
+        var key = _pgDirtyMemoKey(p);
+        var memo = _pgDirtyMemo[p.key];
+        if (memo && _pgDirtyMemoSame(memo, key)) return memo.dirty;
+        key.dirty = _pgBaselineOf(p) !== p.baseline;
+        _pgDirtyMemo[p.key] = key;
+        return key.dirty;
     }
+
+    // ── Lazy dirty checks
+    // The dirty answer of each page not open, by page key. Kept beside the
+    // pages, not on them: a page object is copied and sent, and the entry
+    // holds its tree.
+    var _pgDirtyMemo = {};
+
+    // What a kept answer depends on: the edit epoch (every saveState() and
+    // render() moves it, so any change made through the editor drops every
+    // kept answer), the tree object, the baseline it is compared with (a
+    // save or a reload replaces it) and the page's settings as the baseline
+    // writes them. The open page is never kept: typing in place changes its
+    // tree without moving the epoch.
+    function _pgDirtyMemoKey(p) {
+        return {
+            epoch: _sdEditEpoch,
+            tree: p.tree,
+            baseline: p.baseline,
+            fields: _pgSettingsJSON(p) + '|' + JSON.stringify(p.formSettings || {})
+        };
+    }
+
+    // True when kept answer `memo` still holds for `key`.
+    function _pgDirtyMemoSame(memo, key) {
+        return !!memo && !!key && memo.epoch === key.epoch && memo.tree === key.tree &&
+            memo.baseline === key.baseline && memo.fields === key.fields;
+    }
+    // ── end of lazy dirty checks
 
     // Shared fields: design name, theme, collection, body classes, social
     // position, and the three asset blobs the assets panel keeps in hidden

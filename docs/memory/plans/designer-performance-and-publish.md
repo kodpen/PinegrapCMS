@@ -15,7 +15,7 @@ description: Plan (owner 2026-11-06): the visual designer stops rebuilding every
 - D1 (S) Measure. Done (#7987): `designer/designer-performance.md`.
 - D2 (M) Incremental canvas. Done (#8048): `designer/designer-incremental-canvas.md`. A one-node text, property or style edit redraws that element in place; structure changes, shared components, parts and props other nodes read keep the full rebuild. Browser `edit` numbers of the probe still to be taken.
 - D3 (M) Panels on demand. Done (#8075): `designer/designer-panels-on-demand.md`. Hidden panels are skipped and drawn when shown; typing draws the panels after a pause; one node's Layers rows are redrawn in place.
-- D4 (S) Lazy dirty checks. After D3. The page baseline and the shared snapshots are compared on tab switch and at save, not after every render; `_pgPageUnchanged()` keeps its rules (`multi-page-designer-editor.md`).
+- D4 (S) Lazy dirty checks. Done (#8091): `designer/designer-lazy-dirty-checks.md`. The dirty answer of a page not open is kept until the epoch, its tree, baseline or settings change; the open page is compared every time. Before it, no dirty check ran per render (the 1.5 s poll compared the open page only after an edit), so the shared snapshots stay as they were: taken once per component.
 - D5 (M, several PRs) Parts. After D4. The file is cut into parts bundled in order by `tools/build_js.php` (as `pg_image_editor_<part>.js`, `ui/image-editor-parts.md`); the parts not needed to open a page (AI, code view, theme panel, Google fonts browser, interactions, import) load on first use through one loader; D1's probe shows the opening before and after. One PR per part.
 - D6 (M) Publish sheet. Done (#8009): `designer/designer-publish-sheet.md`.
 - D7 (S) Save feedback. Done (#8073): `designer/designer-publish-sheet.md`.
@@ -24,4 +24,4 @@ description: Plan (owner 2026-11-06): the visual designer stops rebuilding every
 - The save path and its checks (`pg_designer_save_page()`), the lock on the save path, the drafts model (`page-drafts.md`), the canvas's Bootstrap 5.3.8 output, the three-place rule for widget layouts. A new question goes to the architect.
 
 ## Where does it start?
-- D4 once D3 (#8075) has merged; D7 is free beside it.
+- D5 once D4 (#8091) has merged, one part per PR (start with the AI part: the largest and least needed to open a page); measure `open` with `?sd_perf=1` before the first part. D2-D4 still lack browser numbers of the probe.

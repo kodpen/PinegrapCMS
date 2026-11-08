@@ -58,7 +58,7 @@ function _test_launch_load()
 		'parts'       => array(
 			$model_card('mini'), $model_card('one'), $model_card('plus'),
 			$highlight_tile('design'), $press_quote($press_quotes[0]),
-			$spec_table('camera'), $spec_table('battery', array('one', 'plus')),
+			$spec_table('camera'), $spec_table('battery', array('models' => array('one', 'plus'))), $spec_table(array(), array('differ' => true)),
 			$page(array()), $staff_page(array()), $page_header(lang('Tech Specs'), lang('Text')),
 			$section_header(lang('Features'), lang('Features'), lang('See the specs'), '{{page:specs}}'),
 			$faq(1, lang('Question'), lang('Answer')), $post_card(), $ai_summary(),
@@ -201,23 +201,46 @@ function test_launch_header_and_footer_stand_without_the_shop()
 function test_launch_spec_table_reads_row_by_row()
 {
 	$d = _test_launch_load();
-	$table = call_user_func($d['spec_table'], 'battery', array('one', 'plus'));
+	$table = call_user_func($d['spec_table'], 'battery', array('models' => array('one', 'plus')));
+	pg_assert_same('pg-launch-specs', $table['props']['cssClass'], 'drawn as the launch-specs block');
 	$nodes = array();
 	_test_launch_nodes($table, $nodes);
 	$rows = 0;
+	$groups = 0;
 	foreach ($nodes as $n) {
 		if (($n['props']['tag'] ?? '') !== 'tr') continue;
-		$rows++;
-		pg_assert_same(3, count($n['children']), 'a feature cell and one per model named');
 		$first = $n['children'][0]['props'];
-		pg_assert_same('th', $first['tag'], 'the first cell is a header');
+		pg_assert_true(in_array($first['tag'], array('th', 'td'), true), 'a row starts with a cell');
 		$scope = '';
-		foreach ($first['_attrs'] as $a) {
+		foreach ($first['_attrs'] ?? array() as $a) {
 			if ($a['name'] === 'scope') $scope = $a['value'];
 		}
-		pg_assert_true($scope === 'row' || $scope === 'col', 'header cell has its scope');
+		if ($scope === 'rowgroup') {
+			$groups++;
+			pg_assert_same(1, count($n['children']), 'a group row is one header cell');
+			continue;
+		}
+		$rows++;
+		pg_assert_same(3, count($n['children']), 'a feature cell and one per model named');
+		pg_assert_true($first['tag'] === 'td' || $scope === 'row', 'a row header has its scope');
 	}
+	pg_assert_same(1, $groups, 'one group');
 	pg_assert_same(count($d['spec_groups']['battery']['rows']) + 1, $rows, 'a head row and a row per line');
+}
+
+// The compare table keeps only the rows whose values differ between the
+// models; each row of $spec_groups is either there or a shared line.
+function test_launch_spec_table_differences()
+{
+	$d = _test_launch_load();
+	$json = json_encode(call_user_func($d['spec_table'], array(), array('differ' => true)), JSON_UNESCAPED_UNICODE);
+	foreach ($d['spec_groups'] as $g) {
+		foreach ($g['rows'] as $r) {
+			$differs = count(array_unique($r[1])) > 1;
+			$label = json_encode($r[0], JSON_UNESCAPED_UNICODE);
+			pg_assert_same($differs, strpos($json, '"text":' . $label) !== false, $r[0] . ($differs ? ' differs: in the table' : ' is shared: left out'));
+		}
+	}
 }
 
 // Classes the template adds of its own start with plx-; another template's
@@ -235,7 +258,7 @@ function test_launch_classes_are_its_own()
 			if (strpos($c, 'plx-') === 0) $own[$c] = true;
 		}
 	}
-	foreach (array('plx-brand', 'plx-eyebrow', 'plx-price', 'plx-swatch', 'plx-specs', 'plx-glow', 'plx-lift', 'plx-figure') as $c) {
+	foreach (array('plx-brand', 'plx-eyebrow', 'plx-price', 'plx-swatch', 'plx-glow', 'plx-lift', 'plx-figure') as $c) {
 		pg_assert_true(isset($own[$c]), "$c is used");
 	}
 	foreach (array_keys($d['colours']) as $key) pg_assert_true(isset($own['plx-swatch-' . $key]), "swatch class of $key");

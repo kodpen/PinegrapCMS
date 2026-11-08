@@ -19,7 +19,7 @@ description: Plan: the Film Studio design template (pinegrap-filmstudio): showre
 
 - 4 (done, #7936): `mail.php` (e-mail builders), `enquiries.php`: project enquiries (`enquiry` with `?service=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`), studio hire requests (`studio_hire` with `?space=`, `studio_hire_view`, `my_studio_hires`, `staff_studio_hires`), `privacy`, `email_reply`; test.
 
-- 5: `careers.php`: crew calls as the Jobs collection (`careers`, `job` with an apply link `?job=`, `job_new`) and applications (`application`, `application_view`, `my_applications`, `staff_applications`); test.
+- 5 (done, #8088): `careers.php`: crew calls (Jobs collection) and applications; test.
 
 - 6: `standard.php`: contact, inbox, conversation, newsletter, the Journal (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
