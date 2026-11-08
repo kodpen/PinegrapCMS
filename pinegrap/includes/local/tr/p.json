@@ -247,6 +247,8 @@
     "Paid on": "Ödeme tarihi",
     "Paid on {var:1} from {var:2}. The amount and the date are what left the till; to change them, cancel the expense and record it again.": "{var:1} tarihinde {var:2} hesabından ödendi. Tutar ve tarih kasadan çıkan paradır; değiştirmek için gideri iptal edip yeniden kaydedin.",
     "Paid, but the renewal order could not be written.": "Ödendi, ancak yenileme siparişi yazılamadı.",
+    "Pains or goals": "Ağrılar ya da hedefler",
+    "Pains to talk through, or no free time that suits you? Send a fit request and the fitter finds a time with you.": "Konuşulacak ağrılar mı var, ya da size uyan boş saat yok mu? Bike fit talebi gönderin, uzman sizinle bir saat bulsun.",
     "Paint over what to keep or take away; the subject is found again.": "Korunacak ya da çıkarılacak yerin üzerini boyayın; konu yeniden bulunur.",
     "Paint pots and paper on a classroom table": "Sınıf masasında boya kapları ve kâğıtlar",
     "Paint, clay and wood, with room to leave a work unfinished until tomorrow.": "Boya, kil ve ahşap; yarım kalan işi yarına bırakacak yer de var.",
