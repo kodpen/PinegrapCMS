@@ -136,12 +136,16 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
 - design-template-construction.md: Construction Firm template (pinegrap-construction): services, a projects portfolio collection, quote requests and careers followed from the account, News, no shop, pcn- look, tests.
 - design-template-courses.md: Online Courses template (pinegrap-courses): courses as products granting a private folder, lessons as pages, membership library, enrolment and assignments, what is not built, pco- look, tests.
+- design-template-coworking-pages.md: Coworking template 2.0.0: home, plans and amenities on the palette blocks (workspace hero, spaces to hire, floor directory, alternating features), builders, motion, tests
 - design-template-coworking.md: Coworking template (pinegrap-coworking): spaces and events as collections, tour, office and event requests, meeting rooms booked online, memberships in the shop, pcw- look, tests.
 - design-template-dealership.md: Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account, pdl- look, tests.
+- design-template-drivingschool-pages.md: Driving School home and sector pages on its block family since 1.1.0: the block behind each section, entrances, what was dropped
 - design-template-drivingschool.md: Driving School template (pinegrap-drivingschool): licence classes, courses and pass stories as collections, enrolment and lesson requests, online lessons, no shop, pdr- look, tests.
 - design-template-events-words.md: Events template wording: "Events" is Etkinlikler (1.0.3, #4810), bilet, oturum dizisi, own keys for registration pages (1.0.1, #4825), ticket breadcrumb Biletler (1.0.4), heading order (1.0.2, #4824).
 - design-template-events.md: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- look, tests.
-- design-template-ferry.md: Ferry template (pinegrap-ferry): routes with a page each, ports, timetables and fares as words, Travel Notices collection, booking requests, group enquiries, no shop, pfy- look, tests.
+- design-template-ferry-pages.md: Ferry template 2.0.0: home, routes, route pages, timetables and fares on the Ferry blocks: the builders, each page's composition, motion, what left, the test
+- design-template-ferry.md: Ferry template (pinegrap-ferry, 2.0.0): routes with a page each, ports, timetables and fares as words, Travel Notices collection, booking requests, group enquiries, no shop, pfy- look, tests.
+- design-template-filmstudio.md: Film Studio template (pinegrap-filmstudio): showreel, services, projects as a collection by industry and service, studio hire, crew, project enquiries, crew calls, no shop, pfm- look, tests.
 - design-template-florist.md: Florist template (pinegrap-florist): bouquets, occasions, subscriptions, event flowers, delivery, Our Work collection, order requests from the account, consultations, shop catalog, pfl- look, tests.
 - design-template-form-fees.md: Fees and branches of the template forms (FL7): hidden fee products in the catalog, {{product:<key>}}, the Events optional fee, Cafe deposit, Courses enrolment fee, Cafe and Clinic shown_when
 - design-template-forum-blog.md: Forum template 1.3.0: the standard blog pages in the forum's look (blog, blog_post, blog_new, home_posts), the Blog Posts form and its samples, the post comments thread
@@ -281,7 +285,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
 - designer-panels-on-demand.md: The designer draws only the panels that can be seen, debounces them while a field is typed into, and redraws one node's Layers rows (D3, PR #8075)
-- designer-parts-on-demand.md: The visual designer's parts not needed to open a page: their own bundles (pg_designer_parts()), sdDesign.parts, the loader _sdPartLoad(), the assistant part (D5)
+- designer-parts-on-demand.md: The designer's parts not needed to open a page: own bundles (pg_designer_parts()), the loader _sdPartLoad(), definePart and the kit for parts cut from the core, the ai and import parts (D5)
 - designer-paste-clipboard.md: Designer Ctrl+V: node clipboard vs outside markup, /*pinegrap-nodes*/ prefix, conditional preventDefault, text sinks, where pastes land (into, or beside a node that looks like the paste).
 - designer-performance.md: How the visual designer's speed is measured (the ?sd_perf=1 probe, the paint table, the big fixture page and its Node timing) and the numbers measured so far
 - designer-picked-page-pending.md: Designer "Var Olan Sayfayı Seç": a picked page belongs to the other design until saved; three tab states, pickedPending, remove vs detach.

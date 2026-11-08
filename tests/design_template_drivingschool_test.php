@@ -32,8 +32,6 @@ function _test_ds_load()
 	static $out = null;
 	if ($out !== null) return $out;
 	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-drivingschool/parts.php';
-	$licence_cards = array();
-	foreach (array_keys($licences) as $key) $licence_cards[$key] = $licence_card($key);
 	$course_cards = array();
 	foreach (array_keys($courses) as $key) $course_cards[$key] = $course_card($key);
 	$instructor_cards = array();
@@ -73,7 +71,6 @@ function _test_ds_load()
 			'lesson_statuses'          => $lesson_statuses,
 		),
 		'radios'           => array('contact_choices' => $contact_choices),
-		'licence_cards'    => $licence_cards,
 		'course_cards'     => $course_cards,
 		'instructor_cards' => $instructor_cards,
 		'story_cards'      => $story_cards,
@@ -101,7 +98,7 @@ function _test_ds_nodes($node, &$out)
 function _test_ds_trees()
 {
 	$d = _test_ds_load();
-	return array_merge(array($d['header'], $d['footer']), $d['shared'], array_values($d['licence_cards']),
+	return array_merge(array($d['header'], $d['footer']), $d['shared'], 
 		array_values($d['course_cards']), $d['instructor_cards'], array_values($d['story_cards']));
 }
 
@@ -250,12 +247,6 @@ function test_drivingschool_filter_links_use_the_lists_words()
 	pg_assert_same(count($d['licences']), count($seen), 'a link per licence');
 	$json = json_encode($d['footer']);
 	foreach (array_keys($d['licences']) as $key) pg_assert_contains('{{page:licence_' . $key . '}}', $json, "the footer links licence_$key");
-	foreach ($d['licence_cards'] as $key => $card) {
-		$links = _test_ds_filter_links($card, 'courses');
-		pg_assert_same(1, count($links), "licence $key: one course link");
-		pg_assert_same($d['licences'][$key]['title'], $links[0]['licence'] ?? '', "licence $key: the list opens on it");
-		pg_assert_contains('{{page:licence_' . $key . '}}', json_encode($card), "licence $key: the card opens its page");
-	}
 	foreach ($d['instructor_cards'] as $n => $card) {
 		$links = _test_ds_filter_links($card, 'lesson_request');
 		pg_assert_same(1, count($links), "instructor $n: one lesson link");

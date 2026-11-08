@@ -11385,24 +11385,7 @@
             var self = this;
 
             if (!self.flowKit) {
-                var scripts = window.PGWsFlow ? [] : (CFG.flow_scripts || []);
-                var loaded = scripts.reduce(function (before, src) {
-                    return before.then(function () {
-                        return new Promise(function (resolve, reject) {
-                            var node = document.createElement('script');
-
-                            node.src = src;
-                            node.async = false;
-                            node.onload = resolve;
-                            node.onerror = function () {
-                                reject(new Error(t('error_generic')));
-                            };
-                            document.head.appendChild(node);
-                        });
-                    });
-                }, Promise.resolve());
-
-                self.flowKit = Promise.all([loaded, api('ws_flow_embed_config', {})]).then(function (done) {
+                self.flowKit = Promise.all([flowScripts(), api('ws_flow_embed_config', {})]).then(function (done) {
                     if (!window.PGWsFlow || !window.PGWsFlow.embed) {
                         throw new Error(t('error_generic'));
                     }
@@ -25164,6 +25147,239 @@
         return arrow;
     }
 
+    // ── The Flows editor over a channel ───────────────────────────────
+
+    // The canvas's two scripts (pg_graph_canvas.js, workspace_flow.js),
+    // fetched once a page in their order; the Flows screen prints them.
+    var flowScriptsLoad = null;
+
+    function flowScripts() {
+        if (!flowScriptsLoad) {
+            flowScriptsLoad = (window.PGWsFlow ? [] : (CFG.flow_scripts || [])).reduce(function (before, src) {
+                return before.then(function () {
+                    return new Promise(function (resolve, reject) {
+                        var node = document.createElement('script');
+
+                        node.src = src;
+                        node.async = false;
+                        node.onload = resolve;
+                        node.onerror = function () {
+                            reject(new Error(t('error_generic')));
+                        };
+                        document.head.appendChild(node);
+                    });
+                });
+            }, Promise.resolve());
+            flowScriptsLoad.catch(function () {
+                flowScriptsLoad = null;
+            });
+        }
+
+        return flowScriptsLoad;
+    }
+
+    // What the whole editor reads (ws_flow_editor_config): the Flows
+    // screen's config and texts, once a page.
+    var flowEditorLoad = null;
+
+    function flowEditorConfig() {
+        if (!flowEditorLoad) {
+            flowEditorLoad = api('ws_flow_editor_config', {});
+            flowEditorLoad.catch(function () {
+                flowEditorLoad = null;
+            });
+        }
+
+        return flowEditorLoad;
+    }
+
+    // The layer open (flowLayer()): { layer, title, link, body, opener,
+    // instance, inerted, closing }, null when none.
+    var flowLayerOpen = null;
+
+    // The Flows screen's address for a flow, its box or its run.
+    function flowScreenAddress(flowId, options) {
+        options = options || {};
+
+        return CFG.urls.flows + '?flow=' + encodeURIComponent(flowId)
+            + (options.box ? '&box=' + encodeURIComponent(options.box) : '')
+            + (options.run ? '&run=' + encodeURIComponent(options.run) : '');
+    }
+
+    // The whole Flows editor in a full-screen layer over the page (a
+    // channel), mounted in it (PGWsFlow.mount() with single), so a flow is
+    // designed without leaving the chat, which stays as it was beneath. Its
+    // bar: the flow's name, "Open on the Flows screen", Close. The page
+    // beneath is inert while it is open (its keys, its composer), the focus
+    // moves in and goes back to the opener; Escape closes it unless a box,
+    // a field or a dialog of the editor holds it. Closing saves first and,
+    // when changes stay unsaved, asks as leaving the page does. options:
+    // box, run (opened with the flow), opener (the control the focus goes
+    // back to, else the one focused now). One at a time: while one is open
+    // it stays.
+    function flowLayer(flowId, options) {
+        options = options || {};
+
+        if (flowLayerOpen || !(parseInt(flowId, 10) > 0)) {
+            return;
+        }
+
+        var open = {
+            opener: options.opener || document.activeElement,
+            layer: el('div', 'ws-flow-layer'),
+            title: el('h2', 'ws-flow-layer-title', t('fl_nav')),
+            link: el('a', 'btn btn-sm btn-text theme-secondary'),
+            body: el('div', 'ws-flow-layer-body'),
+            instance: null,
+            inerted: [],
+            closing: false
+        };
+        var bar = el('div', 'ws-flow-layer-bar');
+        var close = button('btn btn-sm btn-outline theme-secondary', t('close'), 'bi-x-lg');
+
+        open.layer.setAttribute('role', 'dialog');
+        open.layer.setAttribute('aria-modal', 'true');
+        open.layer.setAttribute('aria-labelledby', 'ws-flow-layer-title');
+        open.title.id = 'ws-flow-layer-title';
+        open.link.href = flowScreenAddress(flowId, options);
+        open.link.appendChild(icon('bi-box-arrow-up-right'));
+        open.link.appendChild(document.createTextNode(' ' + t('fl_layer_screen')));
+        close.setAttribute('data-ws-flow-layer-close', '');
+        close.addEventListener('click', function () {
+            flowLayerClose();
+        });
+        bar.appendChild(open.title);
+        bar.appendChild(open.link);
+        bar.appendChild(close);
+        open.body.appendChild(el('div', 'ws-empty', t('loading')));
+        open.layer.appendChild(bar);
+        open.layer.appendChild(open.body);
+
+        // Escape is the editor's first: a box selected lets go, a field or
+        // a dialog keeps it; then it closes the layer.
+        open.layer.addEventListener('keydown', function (event) {
+            var target = event.target;
+
+            if ((event.key !== 'Escape') || event.defaultPrevented || askUp || document.querySelector('dialog[open]')
+                || (target && target.closest && target.closest('input, textarea, select, [contenteditable="true"], [role="menu"], [role="listbox"]'))) {
+                return;
+            }
+
+            event.preventDefault();
+            flowLayerClose();
+        });
+
+        // The page beneath: its controls, keys and composer idle. Dialogs,
+        // toasts and menus opened over the editor are not part of it.
+        Array.prototype.forEach.call(document.body.children, function (node) {
+            if ((node.tagName !== 'DIALOG') && (node.tagName !== 'SCRIPT') && (node !== toastRoot) && !node.inert) {
+                node.inert = true;
+                open.inerted.push(node);
+            }
+        });
+
+        document.body.appendChild(open.layer);
+        document.documentElement.classList.add('ws-flow-layer-on');
+        flowLayerOpen = open;
+        close.focus({ preventScroll: true });
+
+        Promise.all([flowScripts(), flowEditorConfig()]).then(function (done) {
+            var config = done[1] || {};
+
+            if (flowLayerOpen !== open) {
+                return;
+            }
+
+            if (!window.PGWsFlow || !window.PGWsFlow.mount) {
+                throw new Error(t('error_generic'));
+            }
+
+            // The Flows screen's config (a superset of the page's flows
+            // part) and the texts the page may lack.
+            CFG.flows = config.flows || CFG.flows;
+            Object.keys(config.strings || {}).forEach(function (key) {
+                if (!Object.prototype.hasOwnProperty.call(S, key)) {
+                    S[key] = config.strings[key];
+                }
+            });
+
+            clear(open.body);
+            open.instance = window.PGWsFlow.mount(open.body, BOOT || {}, {
+                flow: parseInt(flowId, 10),
+                box: options.box || '',
+                run: parseInt(options.run, 10) || 0,
+                single: true,
+                onShow: function (flow) {
+                    open.title.textContent = flow.name || t('fl_nav');
+                },
+                onClose: function () {
+                    flowLayerEnd(open);
+                }
+            });
+
+            if (!open.instance) {
+                throw new Error(t('error_generic'));
+            }
+        }).catch(function (error) {
+            if (flowLayerOpen === open) {
+                fail(error);
+                flowLayerEnd(open);
+            }
+        });
+    }
+
+    // Close: what is unsaved is saved first; changes that stay unsaved (a
+    // failed save, a newer draft) are left only when the person says so.
+    function flowLayerClose() {
+        var open = flowLayerOpen;
+
+        if (!open || open.closing) {
+            return Promise.resolve(false);
+        }
+
+        open.closing = true;
+
+        return (open.instance ? open.instance.flush() : Promise.resolve(true)).then(function (saved) {
+            return saved ? true : ask(t('fl_leave_ask'), t('fl_leave'), true);
+        }).then(function (go) {
+            open.closing = false;
+
+            if (go) {
+                flowLayerEnd(open);
+            }
+
+            return !!go;
+        });
+    }
+
+    // The layer taken away: the editor destroyed, the page live again, the
+    // focus back on the opener.
+    function flowLayerEnd(open) {
+        if (flowLayerOpen !== open) {
+            return;
+        }
+
+        flowLayerOpen = null;
+
+        if (open.instance) {
+            open.instance.destroy();
+            open.instance = null;
+        }
+
+        open.inerted.forEach(function (node) {
+            node.inert = false;
+        });
+        document.documentElement.classList.remove('ws-flow-layer-on');
+
+        if (open.layer.parentNode) {
+            open.layer.parentNode.removeChild(open.layer);
+        }
+
+        if (open.opener && open.opener.focus && document.body.contains(open.opener)) {
+            open.opener.focus({ preventScroll: true });
+        }
+    }
+
     // What the screens kept in files of their own lean on here
     // (workspace_palette.js, workspace_board_channel.js, workspace_flow.js):
     // the small helpers, the dialogs and menus, the people picker the note
@@ -25198,6 +25414,8 @@
             scheduledList: scheduledList,
             priorityFilter: priorityFilter,
             directMessage: directMessage,
+            // The whole Flows editor over the page (flowLayer()).
+            flowLayer: flowLayer,
             openTask: function (taskId, defaults, onSaved) {
                 taskDrawer.open(taskId, defaults, onSaved);
             },
@@ -25243,6 +25461,14 @@
         if (CFG.mode !== 'record') {
             window.addEventListener('keydown', function (event) {
                 if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || (String(event.key).toLowerCase() !== 'k') || !window.PGWsPalette) {
+                    return;
+                }
+
+                // The Flows editor over the page keeps the search closed:
+                // the key does nothing there.
+                if (flowLayerOpen) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
                     return;
                 }
 

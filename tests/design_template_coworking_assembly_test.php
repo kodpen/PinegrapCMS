@@ -233,3 +233,58 @@ function test_coworking_assembly_google_reviews()
 		pg_assert_true(strpos($home, '"templateWidget":"' . $w . '"') !== false, 'the home places ' . $w);
 	}
 }
+
+// Home, plans and amenities are built on the palette's blocks (Coworking:
+// Workspace Hero, Locations: Spaces to Hire and Floor Directory): every pg-
+// class they write is a block rule the template's User Styles ship, their
+// interactions are kept as written by pg_fx_normalize(), and each page
+// moves where its blocks do; no story band is left on them.
+function test_coworking_assembly_signature_pages_on_blocks()
+{
+	$tpl = _test_cw_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$source = _pg_designer_block_css_source();
+	$seen = array();
+	foreach ($tpl['pages'] as $p) {
+		if (!in_array($p['key'], array('home', 'plans', 'amenities'), true)) continue;
+		$seen[] = $p['key'];
+		$nodes = array();
+		_test_cw_asm_nodes($p['tree'], $nodes);
+		$effects = array();
+		$classes = '';
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (!isset($n['props']['_fx'])) continue;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			pg_assert_true(is_array($kept), $p['key'] . ': ' . json_encode($n['props']['_fx']) . ' is an interaction');
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $p['key'] . ': ' . $field . ' is kept as written');
+			}
+			$effects[] = $n['props']['_fx']['effect'] . '/' . $n['props']['_fx']['trigger'];
+		}
+		preg_match_all('/(?<![\w-])pg-[a-z0-9-]+/', $classes, $m);
+		pg_assert_true(!empty($m[0]), $p['key'] . ': places palette blocks');
+		foreach (array_unique($m[0]) as $class) {
+			$rule = '';
+			foreach ($source['rules'] as $text) {
+				if (preg_match('/\.' . preg_quote($class, '/') . '(?![\w-])/', $text)) {
+					$rule = $text;
+					break;
+				}
+			}
+			pg_assert_true($rule !== '' && strpos($css, $rule) !== false, $p['key'] . ": the rule of $class ships with the template");
+		}
+		$json = json_encode($p['tree']);
+		if ($p['key'] === 'home') {
+			foreach (array('slide-up/load', 'fade/load', 'slide-up/view') as $e) pg_assert_true(in_array($e, $effects, true), "home moves: $e");
+			pg_assert_same(5, substr_count($json, 'pg-cw-way '), 'home: a way in per kind of space');
+		} elseif ($p['key'] === 'plans') {
+			pg_assert_same(3, count(array_keys($effects, 'slide-up/view', true)), 'plans: the plans, offices and rooms come in on view');
+		} else {
+			pg_assert_same(5, count(array_keys($effects, 'slide-up/view', true)), 'amenities: the grid, three rows and the floors come in on view');
+			pg_assert_same(3, substr_count($json, 'pg-floor-level'), 'amenities: a level per floor');
+		}
+	}
+	pg_assert_same(array('home', 'plans', 'amenities'), $seen, 'the three pages are in the template');
+}

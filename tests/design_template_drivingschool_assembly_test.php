@@ -48,7 +48,7 @@ function test_drivingschool_assembly_template_offered()
 	pg_assert_true(isset($all['pinegrap-drivingschool']), 'the template is offered');
 	pg_assert_true(!isset($all['parts']) && !isset($all['courses']) && !isset($all['enrolments']), 'the parts folder is not read as a template');
 	$tpl = _test_ds_asm_tpl();
-	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
+	pg_assert_true(version_compare($tpl['version'], '1.1.0', '>='), 'a version');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-car-front', $tpl['icon']);
 	pg_assert_same(111, $tpl['order']);
@@ -158,6 +158,12 @@ function test_drivingschool_assembly_template_search_and_look()
 	sort($ruled);
 	sort($used);
 	pg_assert_same($ruled, $used, 'pdr- classes and rules match');
+	// The palette blocks the pages place bring their rules in the same entry.
+	preg_match_all('/\bpg-drv-[a-z0-9-]+/', $classes, $m);
+	$blocks = array_values(array_unique($m[0]));
+	sort($blocks);
+	pg_assert_same(array('pg-drv-plate', 'pg-drv-sheet', 'pg-drv-sign', 'pg-drv-sign-ban', 'pg-drv-sign-warn'), $blocks, 'the family blocks the pages place');
+	foreach ($blocks as $c) pg_assert_true((bool)preg_match('/\.' . preg_quote($c, '/') . '(?![\w-])/', $css), "$c has its rule in User Styles");
 	pg_assert_same(2, count(json_decode($tpl['assets']['fonts'], true)), 'two fonts');
 }
 

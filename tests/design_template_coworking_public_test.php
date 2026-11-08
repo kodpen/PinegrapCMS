@@ -29,7 +29,7 @@ function _test_cwp_load()
 	include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-coworking/parts.php';
 	$public_part = include PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-coworking/pages_public.php';
 	$prices = array();
-	foreach (array_keys($spaces) as $key) $prices[$key] = $space_price($key);
+	foreach (array_keys($spaces) as $key) $prices[$key] = $money($spaces[$key]['price']);
 	$out = array('part' => $public_part, 'spaces' => $spaces, 'plans' => $plans, 'prices' => $prices,
 		'kind_titles' => $kind_titles, 'tour_choices' => $tour_choices);
 	return $out;

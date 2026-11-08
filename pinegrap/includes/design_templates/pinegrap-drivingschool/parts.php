@@ -260,22 +260,25 @@ $instructors = array(
         'bio' => lang('Drove trucks for years before teaching, and can reverse a trailer into any bay.')),
 );
 
-// The topics of the theory test (the theory page and the home).
+// The topics of the theory test (the theory page and the home), each with
+// the road sign that leads its card: a warning triangle, a speed-limit
+// circle with its figure, or an information square.
 $theory_topics = array(
-    array('icon' => 'bi-sign-stop', 'title' => lang('Road signs and markings'), 'text' => lang('What each sign and line asks of you, and which one wins when they disagree.')),
-    array('icon' => 'bi-signpost-split', 'title' => lang('Rules of the road'), 'text' => lang('Right of way, speed limits, junctions, roundabouts and overtaking.')),
-    array('icon' => 'bi-eye', 'title' => lang('Hazard awareness'), 'text' => lang('Seeing danger early: children, cyclists, parked cars and the weather.')),
-    array('icon' => 'bi-heart-pulse', 'title' => lang('First aid'), 'text' => lang('What to do at the scene of an accident until help arrives.')),
-    array('icon' => 'bi-gear', 'title' => lang('The vehicle'), 'text' => lang('The checks before a journey, tyres, lights, fluids and warning lamps.')),
-    array('icon' => 'bi-tree', 'title' => lang('Eco-safe driving'), 'text' => lang('Driving smoothly to save fuel and keep everyone around you safe.')),
+    array('icon' => 'bi-sign-stop', 'sign' => 'warn', 'sign_icon' => 'bi-exclamation-lg', 'title' => lang('Road signs and markings'), 'text' => lang('What each sign and line asks of you, and which one wins when they disagree.')),
+    array('icon' => 'bi-signpost-split', 'sign' => 'ban', 'mark' => '50', 'title' => lang('Rules of the road'), 'text' => lang('Right of way, speed limits, junctions, roundabouts and overtaking.')),
+    array('icon' => 'bi-eye', 'sign' => 'warn', 'sign_icon' => 'bi-eye', 'title' => lang('Hazard awareness'), 'text' => lang('Seeing danger early: children, cyclists, parked cars and the weather.')),
+    array('icon' => 'bi-heart-pulse', 'sign' => 'info', 'sign_icon' => 'bi-heart-pulse', 'title' => lang('First aid'), 'text' => lang('What to do at the scene of an accident until help arrives.')),
+    array('icon' => 'bi-gear', 'sign' => 'info', 'sign_icon' => 'bi-gear', 'title' => lang('The vehicle'), 'text' => lang('The checks before a journey, tyres, lights, fluids and warning lamps.')),
+    array('icon' => 'bi-tree', 'sign' => 'info', 'sign_icon' => 'bi-tree', 'title' => lang('Eco-safe driving'), 'text' => lang('Driving smoothly to save fuel and keep everyone around you safe.')),
 );
 
-// The practical test day, in order (the practical test page).
+// The practical test day, in order, with the time each part takes (the
+// practical test page and the licence pages).
 $test_day = array(
-    array('title' => lang('A warm-up lesson'), 'text' => lang('Your instructor picks you up an hour before the test for a last drive round the test routes.')),
-    array('title' => lang('Eyesight and vehicle questions'), 'text' => lang('The examiner checks your eyesight and asks how you would check the car before a trip.')),
-    array('title' => lang('The drive'), 'text' => lang('About forty minutes on town and country roads, with a manoeuvre and a stretch of independent driving.')),
-    array('title' => lang('The result'), 'text' => lang('The examiner tells you the result and goes through the faults, with your instructor beside you if you wish.')),
+    array('time' => lang('1 hour before'), 'title' => lang('A warm-up lesson'), 'text' => lang('Your instructor picks you up an hour before the test for a last drive round the test routes.')),
+    array('time' => lang('5 min'), 'title' => lang('Eyesight and vehicle questions'), 'text' => lang('The examiner checks your eyesight and asks how you would check the car before a trip.')),
+    array('time' => lang('40 min'), 'title' => lang('The drive'), 'text' => lang('About forty minutes on town and country roads, with a manoeuvre and a stretch of independent driving.')),
+    array('time' => lang('5 min'), 'title' => lang('The result'), 'text' => lang('The examiner tells you the result and goes through the faults, with your instructor beside you if you wish.')),
 );
 
 // The school's branches, the place a learner prefers to start from.
@@ -1042,32 +1045,6 @@ $enrol_band = function () use ($el, $heading, $para, $link, $container, $row, $c
 // A licence class's letter as a number-plate badge.
 $plate = function ($code, $class = '', $extra = array()) use ($el) {
     return $el('span', trim('pdr-plate d-inline-flex align-items-center justify-content-center fw-bold ' . $class), lang('Licence Class'), array(), array_merge(array('text' => $code), $extra));
-};
-
-// A licence class's card (the home and the licences page): the plate, the
-// title linking the class's page, the summary, the minimum age and the
-// way to its courses (?licence=).
-$licence_card = function ($key) use ($el, $para, $link, $col, $icon, $span, $plate, $licences, $query) {
-    $l = $licences[$key];
-    return $col(array(
-        $el('article', 'card h-100 border-0 shadow-sm rounded-3 pdr-lift', lang('Licence Card'), array(
-            $el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
-                $el('div', 'd-flex align-items-center gap-3 mb-3', lang('Licence Class'), array(
-                    $plate($l['code'], 'fs-5'),
-                    $icon($l['icon'], 'fs-3 text-primary'),
-                )),
-                $el('h3', 'pdr-display h5 mb-2', lang('Licence Name'), array(
-                    $link($l['title'], '{{page:licence_' . $key . '}}', 'link-body-emphasis text-decoration-none'),
-                )),
-                $para($l['summary'], 'small text-body-secondary mb-3'),
-                $el('p', 'd-flex align-items-center gap-1 small fw-semibold mb-3', lang('Minimum Age'), array(
-                    $icon('bi-person', 'text-primary'),
-                    $span($l['age'], '', lang('Text')),
-                )),
-                $link(lang('See the courses'), '{{page:courses}}?' . $query(array('licence' => $l['title'])), 'link-primary fw-semibold small mt-auto'),
-            )),
-        )),
-    ), '6', '4');
 };
 
 // The facts of a course in one list: licence, format, gearbox, lessons

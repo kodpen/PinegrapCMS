@@ -15,11 +15,10 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 - Reduced motion by default; `--motion` keeps fades. `--shots` pictures each end state (light, or `--dark`).
 
 ## What do the scenarios cover?
-- 30 scenarios (`flows_canvas_scenarios.js`): boxes at their places and sizes, arrows port to port, zoom, fit, pinch, pan (drag, wheel, Space, middle button), select, Tab order, arrow keys, drag on the grid, Esc, connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow; palette and drop, problems, Publish, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
+- 32 scenarios (`flows_canvas_scenarios.js`; the last two: `workspace-flow-layer.md`): boxes at their places and sizes, arrows port to port, zoom, fit, pinch, pan (drag, wheel, Space, middle button), select, Tab order, arrow keys, drag on the grid, Esc, connect by port, C and the side panel, outcomes, Delete, undo, data threads (drag to bind, toggle kept), outline, phone, autosave after 1.5 s, 409, keepalive on hide and leave, the 60 000-byte limit, Ctrl+S, blur, Retry, back to the list for another flow; palette and drop, problems, Publish, read-only, ⋯ Share and Delete, no flow, New flow, Run and its token, runs list, polling.
 
 ## What does it give?
-- 2026-11-01: 30 of 30, from sources and with `--min` (Chromium 153, Linux; Chrome 156, Windows 11 after #4418). The C › "Add the arrow" focus and the double keepalive on leave pass since #4322.
-- Before #3983 only 4 of 30 passed: the harness still waited for the first flow to open by itself (adapted in #4316).
+- 2026-11-08: 32 of 32 (Chromium 153, sources and `--min`). 2026-11-01: 30 of 30, from sources and with `--min` (Chromium 153, Linux; Chrome 156, Windows 11 after #4418). The C › "Add the arrow" focus and the double keepalive on leave pass since #4322.
 - Seen: after Fit the first boxes sit under the palette (`fit()` ignores it); the no-flow screen shows an empty palette frame.
 
 ## Why does a scenario switch touch emulation itself?

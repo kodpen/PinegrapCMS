@@ -112,6 +112,7 @@ function _test_bk_page_keys()
 		'classes', 'class', 'class_new',
 		'cake_order', 'cake_order_view', 'my_cake_orders', 'staff_cake_orders',
 		'class_booking', 'booking_view', 'my_bookings', 'staff_bookings', 'privacy', 'email_reply',
+		'email_cake_order_new', 'email_cake_order_received', 'email_booking_new', 'email_booking_received',
 		'wholesale_enquiry', 'enquiry_view', 'my_enquiries', 'staff_enquiries',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',

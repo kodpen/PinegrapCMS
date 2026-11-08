@@ -185,3 +185,60 @@ function test_drivingschool_public_turkish_words()
 		if (preg_match('/\blessons?\b/i', $key)) pg_assert_true(mb_stripos($tr, 'ders', 0, 'UTF-8') !== false, "'$key' says ders");
 	}
 }
+
+// The home and the sector's pages are built on the palette blocks (the
+// Driving School family and the numbered steps), with no stock band: no
+// framed story band, figures band or ask band. Their rows rise in through
+// the interactions, the home's opening as the page loads.
+function test_drivingschool_public_signature_pages_place_the_blocks()
+{
+	$d = _test_dsp_load();
+	$pages = _test_dsp_pages();
+	$signature = array('home', 'licences', 'theory', 'practical_test');
+	foreach (array_keys($d['licences']) as $key) $signature[] = 'licence_' . $key;
+	$facts = array();
+	foreach ($signature as $key) {
+		$nodes = array();
+		_test_ds_nodes($pages[$key]['tree'], $nodes);
+		$f = array('labels' => array(), 'classes' => array(), 'fx' => array(), 'scopes' => array(), 'hidden_signs' => 0);
+		foreach ($nodes as $n) {
+			$p = $n['props'];
+			if (isset($p['_label'])) $f['labels'][] = $p['_label'];
+			$cls = preg_split('/\s+/', (string)($p['cssClass'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+			$f['classes'] = array_merge($f['classes'], $cls);
+			if (isset($p['_fx'])) $f['fx'][] = $p['_fx'];
+			foreach ((array)($p['_attrs'] ?? array()) as $a) {
+				if ($a['name'] === 'scope') $f['scopes'][] = $a['value'];
+				if ($a['name'] === 'aria-hidden' && in_array('pg-drv-sign', $cls, true)) $f['hidden_signs']++;
+			}
+		}
+		foreach (array('Picture Frame', 'Figures', 'Write to Us') as $stock) {
+			pg_assert_false(in_array(lang($stock), $f['labels'], true), "$key: no stock band ($stock)");
+		}
+		pg_assert_true(count($f['fx']) > 0, "$key: something rises in");
+		foreach ($f['fx'] as $fx) {
+			pg_assert_same('slide-up', $fx['effect'] ?? '', "$key: an entrance");
+			pg_assert_true(in_array($fx['trigger'] ?? '', array('view', 'load'), true), "$key: played on view or load");
+		}
+		$facts[$key] = $f;
+	}
+
+	$count = function ($key, $class) use (&$facts) { return count(array_keys($facts[$key]['classes'], $class, true)); };
+	$n = count($d['licences']);
+	pg_assert_same(2 * $n, $count('home', 'pg-drv-plate'), 'home: a plate per class in the opening and on the board');
+	pg_assert_same($n, $count('licences', 'pg-drv-plate'), 'licences: the board, a plate per class');
+	pg_assert_true(in_array('load', array_column($facts['home']['fx'], 'trigger'), true), 'home: the opening rises as the page loads');
+	foreach (array('home', 'theory') as $key) {
+		pg_assert_same(6, $count($key, 'pg-drv-sign'), "$key: a road sign per theory topic");
+		pg_assert_same(6, $facts[$key]['hidden_signs'], "$key: the signs are decoration");
+	}
+	foreach (array('home', 'licences') as $key) {
+		pg_assert_same(4, count(array_keys($facts[$key]['labels'], lang('Step Card'), true)), "$key: the four numbered steps");
+	}
+	pg_assert_same(1, $count('practical_test', 'pg-drv-sheet'), 'practical_test: the examiner\'s sheet');
+	pg_assert_same(array('col', 'col', 'col', 'col', 'row', 'row', 'row', 'row', 'row', 'row'), $facts['practical_test']['scopes'], 'practical_test: the fault table names its heads');
+	$home = json_encode($pages['home']['tree']);
+	foreach (array_keys($d['licences']) as $key) {
+		pg_assert_same(2, substr_count($home, '{{page:licence_' . $key . '}}'), "home: the plate and the card open licence_$key");
+	}
+}

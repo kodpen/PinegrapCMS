@@ -2790,6 +2790,7 @@ function ws_flow_js_strings()
 {
     return array(
         'fl_nav'              => lang('Flows'),
+        'fl_layer_screen'     => lang('Open on the Flows screen'),
         'fl_sa_moved'         => lang('Your scheduled actions are in Flows.'),
         'fl_toolbar'          => lang('Flow tools'),
         'fl_settings'         => lang('Settings of what is selected'),

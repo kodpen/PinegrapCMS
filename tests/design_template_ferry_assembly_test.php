@@ -244,3 +244,51 @@ function test_ferry_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"home_notices"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false,
 		'the home places the travel notices and the News');
 }
+
+// Home, routes, every route's page, timetables and fares are built on the
+// Ferry blocks: each pg- class they use ships its rule in User Styles, each
+// interaction survives pg_fx_normalize() as written, the home opens with
+// the dark departure board and the crossing strip, and none of these pages
+// carries the stock bands (figures row, story band, ask band, FAQ).
+function test_ferry_assembly_pages_on_ferry_blocks()
+{
+	$tpl = _test_fy_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$wanted = array('home' => 'pg-ferry-wake', 'routes' => 'pg-ferry-wake', 'timetables' => 'pg-ferry-figures', 'fares' => 'pg-ferry-figures');
+	$seen = array();
+	foreach ($tpl['pages'] as $p) {
+		if (!isset($wanted[$p['key']]) && strpos($p['key'], 'route_') !== 0) continue;
+		$seen[] = $p['key'];
+		$nodes = array();
+		_test_fy_asm_nodes($p['tree'], $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $p['key'] . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-ferry-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $p['key'] . ': the rule of ' . $class . ' ships');
+		if (isset($wanted[$p['key']])) pg_assert_contains($wanted[$p['key']], $classes, $p['key'] . ': on the ferry blocks');
+		pg_assert_true($effects >= 1, $p['key'] . ': something rises in');
+		foreach (array('pfy-stat', 'accordion') as $stock) pg_assert_false((bool)preg_match('/(?<![\w-])' . $stock . '(?![\w-])/', $classes), $p['key'] . ': no ' . $stock);
+		foreach (array('Write to Us', 'Figures') as $band) pg_assert_false(in_array($band, $labels, true), $p['key'] . ': no ' . $band . ' band');
+	}
+	pg_assert_same(8, count($seen), 'home, routes, four routes, timetables, fares');
+
+	$home = null;
+	foreach ($tpl['pages'] as $p) if ($p['key'] === 'home') $home = $p['tree'];
+	$json = json_encode($home, JSON_UNESCAPED_UNICODE);
+	pg_assert_contains('"id":"fy-home-board"', $json, 'the home places the departure board');
+	pg_assert_contains('{"name":"data-bs-theme","value":"dark"}', $json, 'the board is a dark band');
+	pg_assert_contains('"trigger":"load"', $json, 'the hero rises in on load');
+	pg_assert_false(strpos($json, '.pfy-time') !== false || strpos($css, '.pfy-time') !== false, 'the old time rule is gone');
+}
