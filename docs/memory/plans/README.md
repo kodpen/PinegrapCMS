@@ -38,8 +38,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-coworking.md: Plan: the Coworking design template (pinegrap-coworking): desks, offices and meeting rooms, memberships and day passes, tours, community events; ~1,000-line steps
 - design-template-drivingschool-design.md: Design of plans/design-template-drivingschool.md: what the Driving School template reuses, what it does not build, its look and Turkish words
 - design-template-drivingschool.md: Plan: the Driving School design template (pinegrap-drivingschool): licences, priced courses, instructors, lesson requests, pass stories; ~1,000-line steps
-- design-template-ferry-design.md: Design of plans/design-template-ferry.md: which shipped features the Ferry template reuses for routes, timetables, fares, bookings and notices, what it does not build, its look and Turkish words
-- design-template-ferry.md: Plan: the Ferry design template (pinegrap-ferry): routes and ports, timetables and fares as words, booking requests, travel notices, onboard services; ~1,000-line steps
 - design-template-filmstudio-design.md: Design of plans/design-template-filmstudio.md: which shipped features the Film Studio template reuses, what it does not build, its look and Turkish words
 - design-template-filmstudio.md: Plan: the Film Studio design template (pinegrap-filmstudio): showreel, projects by industry and service, services, the studio's stages for hire, crew, project enquiries, crew calls
 - design-template-florist-design.md: Design of plans/design-template-florist.md: shipped features reused for bouquets, delivery dates, subscriptions and enquiries, what is not built, look and Turkish words
