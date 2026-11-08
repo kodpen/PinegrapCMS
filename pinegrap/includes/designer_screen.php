@@ -2733,7 +2733,9 @@ function pg_designer_pick_page_modal()
  * design with its state and whether it changed, checkboxes for the pages to
  * put on the site, "Publish selected", and the two actions that keep pages
  * off the site. The rows are drawn by the script; the texts it shows are
- * the hidden data-sdp-text spans.
+ * the hidden data-sdp-text spans. During the save the sheet stays open and
+ * the Publish button shows progress; after it, data-sdp-result lists where
+ * each page went and Done closes the sheet.
  */
 function pg_designer_publish_sheet()
 {
@@ -2744,6 +2746,10 @@ function pg_designer_publish_sheet()
         'state-held'      => lang('Held by an experiment'),
         'changed'         => lang('Changed'),
         'locked'          => lang('No content rights'),
+        'busy'            => lang('Publishing…'),
+        'result-live'     => lang('On the site now'),
+        'result-draft'    => lang('Stayed drafts, off the site'),
+        'result-kept'     => lang('Not saved: the changes stay in the editor'),
     );
     $spans = '';
     foreach ($texts as $k => $v) {
@@ -2757,11 +2763,12 @@ function pg_designer_publish_sheet()
                         <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body p-0">
-                        <div class="d-flex align-items-center gap-3 px-5 pt-4 pb-3">
+                        <div class="d-flex align-items-center gap-3 px-5 pt-4 pb-3" data-sdp-pick>
                             <p class="small fg-secondary mb-0 flex-grow-1">' . h(lang('The checked pages go on the site with one save. Drafts left unchecked are saved and stay off the site.')) . '</p>
                             <button type="button" class="btn btn-sm btn-text theme-primary text-nowrap" data-sdp-act="all">' . h(lang('Select all')) . '</button>
                         </div>
                         <div class="list-group list-group-flush" data-sdp-list></div>
+                        <div class="d-none pb-3" data-sdp-result aria-live="polite"></div>
                         <p class="small fg-warning px-5 pt-3 mb-0 d-none" data-sdp-hold-note><span class="bi bi-exclamation-triangle me-1" aria-hidden="true"></span>' . h(lang('Unchecked changed pages are not saved: their changes stay in the editor and the site keeps the version it has.')) . '</p>
                         <div class="d-none" aria-hidden="true">' . $spans . '</div>
                     </div>
@@ -2769,6 +2776,7 @@ function pg_designer_publish_sheet()
                         <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="page-draft"><span class="bi bi-eye-slash me-2" aria-hidden="true"></span>' . h(lang('Save this page as a draft')) . '</button>
                         <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="all-draft"><span class="bi bi-cloud-slash me-2" aria-hidden="true"></span>' . h(lang('Take every page of the design off the site')) . '</button>
                         <button type="button" class="btn btn-sm btn-solid theme-primary ms-auto" data-sdp-act="publish"><span class="bi bi-rocket-takeoff me-2" aria-hidden="true"></span>' . h(lang('Publish selected')) . '</button>
+                        <button type="button" class="btn btn-sm btn-solid theme-primary ms-auto d-none" data-sdp-act="done">' . h(lang('Done')) . '</button>
                     </div>
         </dialog>';
 }

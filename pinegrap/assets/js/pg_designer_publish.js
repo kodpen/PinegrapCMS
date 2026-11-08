@@ -13,8 +13,12 @@
  * The editor (style_designer.js) owns the pages and the save; it opens the
  * sheet with a bridge:
  *   rows()                 the pages, see defaults() for their shape
- *   publish(keys, hold)    keys: drafts to put on the site; hold: pages on
- *                          the site to leave out of the save
+ *   publish(keys, hold, report)
+ *                          keys: drafts to put on the site; hold: pages on
+ *                          the site to leave out of the save; report(reply)
+ *                          once the save is over: the server's reply, or
+ *                          null when it did not run (it returns whether the
+ *                          sheet showed the result, see outcome())
  *   takeOff(keys)          keep these pages off the site (asks first)
  * The markup (#sdPublishSheet) and its texts (data-sdp-text, from lang())
  * are printed by includes/designer_screen.php.
@@ -66,9 +70,29 @@ var PgDesignerPublish = (function () {
         return out;
     }
 
+    // Where the save left each page, from the reply's `pages` ({ key,
+    // draft }): `live` on the site, `draft` off it, `kept` not saved - held
+    // back by the sheet, or held by another user (no state in the reply).
+    // Names in the rows' order; a page the reply does not name is left out.
+    function outcome(rows, pages, hold) {
+        var got = {};
+        (Array.isArray(pages) ? pages : []).forEach(function (m) { if (m && m.key) got[m.key] = m; });
+        var held = {};
+        (hold || []).forEach(function (k) { held[k] = true; });
+        var out = { live: [], draft: [], kept: [] };
+        (rows || []).forEach(function (r) {
+            var m = got[r.key];
+            if (!m) return;
+            if (held[r.key] || typeof m.draft === 'undefined') out.kept.push(r.name);
+            else out[m.draft ? 'draft' : 'live'].push(r.name);
+        });
+        return out;
+    }
+
     var bridge = null;
     var current = [];   // the rows read when the sheet opened
     var checked = {};
+    var saving = false;
 
     function el() { return document.getElementById('sdPublishSheet'); }
 
@@ -144,6 +168,79 @@ var PgDesignerPublish = (function () {
         sync();
     }
 
+    // The pick view (rows, Select all, the foot actions) or the result view
+    // (where the pages went, Done).
+    function view(result) {
+        var root = el();
+        if (!root) return;
+        var q = function (sel) { return root.querySelector(sel); };
+        ['[data-sdp-pick]', '[data-sdp-list]'].forEach(function (sel) { var n = q(sel); if (n) n.classList.toggle('d-none', result); });
+        var res = q('[data-sdp-result]');
+        if (res) res.classList.toggle('d-none', !result);
+        ['publish', 'page-draft', 'all-draft'].forEach(function (act) {
+            var b = q('[data-sdp-act="' + act + '"]');
+            if (b && result) b.classList.add('d-none');
+        });
+        var go = q('[data-sdp-act="publish"]');
+        if (go && !result) go.classList.remove('d-none');
+        var done = q('[data-sdp-act="done"]');
+        if (done) done.classList.toggle('d-none', !result);
+        if (result) { var n = q('[data-sdp-hold-note]'); if (n) n.classList.add('d-none'); }
+    }
+
+    // The save in flight: the Publish button turns into a progress label,
+    // the rows and the other actions wait.
+    function busy(on) {
+        var root = el();
+        if (!root) return;
+        saving = on;
+        var go = root.querySelector('[data-sdp-act="publish"]');
+        if (go) {
+            if (on) {
+                go._sdpLabel = go.innerHTML;
+                go.textContent = '';
+                var sp = document.createElement('span');
+                sp.className = 'spinner-border spinner-border-sm me-2';
+                sp.setAttribute('aria-hidden', 'true');
+                go.appendChild(sp);
+                go.appendChild(document.createTextNode(text('busy')));
+            } else if (go._sdpLabel) {
+                go.innerHTML = go._sdpLabel;
+                delete go._sdpLabel;
+            }
+            go.setAttribute('aria-busy', on ? 'true' : 'false');
+        }
+        root.querySelectorAll('[data-sdp-act], [data-sdp-list] input').forEach(function (n) {
+            if (on) n.disabled = true;
+        });
+        if (!on) {
+            root.querySelectorAll('[data-sdp-act], [data-sdp-list] input').forEach(function (n) { n.disabled = false; });
+            draw();
+        }
+    }
+
+    function drawResult(out) {
+        var res = el() ? el().querySelector('[data-sdp-result]') : null;
+        if (!res) return;
+        res.textContent = '';
+        ['live', 'draft', 'kept'].forEach(function (k) {
+            if (!out[k].length) return;
+            var head = document.createElement('div');
+            head.className = 'small fw-semibold px-5 pt-4 pb-2 sd-publish-result-' + k;
+            head.textContent = text('result-' + k);
+            res.appendChild(head);
+            var list = document.createElement('ul');
+            list.className = 'list-group list-group-flush';
+            out[k].forEach(function (name) {
+                var li = document.createElement('li');
+                li.className = 'list-group-item bg-transparent text-truncate';
+                li.textContent = name;
+                list.appendChild(li);
+            });
+            res.appendChild(list);
+        });
+    }
+
     // Closes the sheet, then runs fn: a confirmation it opens must not sit
     // under a dialog still closing.
     function closeThen(fn) {
@@ -168,8 +265,23 @@ var PgDesignerPublish = (function () {
                 draw();
             } else if (act === 'publish') {
                 var p = plan(rows, Object.keys(checked));
-                if (!p.save) return;
-                closeThen(function () { bridge.publish(p.publish, p.hold); });
+                if (!p.save || saving) return;
+                // The sheet stays open: the button shows the save, then the
+                // sheet lists where the pages went. A save that did not run
+                // (its reason is shown by the editor) gives the pick back.
+                var report = function (reply) {
+                    var root = el();
+                    if (!saving) return false;
+                    busy(false);
+                    if (!reply) return false;
+                    drawResult(outcome(rows, reply.pages, p.hold));
+                    view(true);
+                    return !!(root && root.open);
+                };
+                busy(true);
+                bridge.publish(p.publish, p.hold, report);
+            } else if (act === 'done') {
+                closeThen(function () {});
             } else if (act === 'page-draft') {
                 var a = rows.filter(function (r) { return r.active; });
                 closeThen(function () { bridge.takeOff(a.map(function (r) { return r.key; })); });
@@ -182,7 +294,9 @@ var PgDesignerPublish = (function () {
     function open(b) {
         var root = el();
         if (!root || !b) return false;
+        if (saving) { if (window.pgUI) pgUI.dialog.show(root); return true; }
         bridge = b;
+        view(false);
         current = bridge.rows() || [];
         checked = {};
         defaults(current).forEach(function (k) { checked[k] = true; });
@@ -192,5 +306,5 @@ var PgDesignerPublish = (function () {
         return true;
     }
 
-    return { defaults: defaults, plan: plan, open: open };
+    return { defaults: defaults, plan: plan, outcome: outcome, open: open };
 })();
