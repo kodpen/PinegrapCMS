@@ -69987,7 +69987,11 @@ const StyleDesigner = (function () {
                                       : _sdT('Saved. This page is a draft, off the site.');
                     _okDur = _liveToo ? 4500 : 2500;
                 }
-                sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                // opts.reportSaved: the Publish sheet lists the result
+                // itself while it is open, so no toast repeats it.
+                if (!(typeof opts.reportSaved === 'function' && opts.reportSaved(res.data))) {
+                    sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                }
                 // The canvas's classic system regions are drawn from the saved pages.
                 _sdLegacyRegionForget();
                 // Update last-modified statusbar label without a full page reload
@@ -74037,17 +74041,26 @@ const StyleDesigner = (function () {
     function _pgActiveIsDraft()   { var a = _pgActivePage(); return _pgDraftsReady() && !!(a && a.page_draft); }
 
     // hold: keys of changed pages on the site to leave out of the save (the
-    // Publish sheet's unchecked rows, _pgPublishRows()).
-    function _pgSetDraft(keys, on, hold) {
-        if (!_pgDraftsCanChange()) return;
+    // Publish sheet's unchecked rows, _pgPublishRows()). report: the sheet's
+    // callback, given the save's reply, or null when no save ran.
+    function _pgSetDraft(keys, on, hold, report) {
+        var _unreported = report;
+        report = function (reply) { var r = _unreported; _unreported = null; return r ? r(reply) : false; };
+        var _r = _pgSetDraftRun(keys, on, hold, report);
+        if (_r === false) report(null);
+    }
+
+    // _pgSetDraft()'s work; false when it stopped before a save.
+    function _pgSetDraftRun(keys, on, hold, report) {
+        if (!_pgDraftsCanChange()) return false;
         // The state reaches the server with a save. When no save can run
         // now, nothing is marked: a mark left behind would show a state the
         // site does not have.
         if (_sharedLoadInFlight > 0) {
             sdToast(_sdT('The shared components are still loading — wait a second.'), 'info', 2400);
-            return;
+            return false;
         }
-        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return false; }
         _pgTabsPersistActive();
         var list = keys.map(_pgPageByKey).filter(function (p) {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
@@ -74056,7 +74069,7 @@ const StyleDesigner = (function () {
         var held = on ? [] : list.filter(_pgExperimentHeld);
         if (held.length) {
             list = list.filter(function (p) { return !_pgExperimentHeld(p); });
-            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return; }
+            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return false; }
         }
         // The home page stays on the site; the server would refuse it too.
         var home = on ? list.filter(function (p) { return p.page_home; }) : [];
@@ -74064,7 +74077,7 @@ const StyleDesigner = (function () {
         if (!list.length) {
             sdToast(esc(home.length ? _sdT('The home page stays on the site.')
                                     : (on ? _sdT('Nothing to take off the site.') : _sdT('Nothing to publish.'))), 'info', 3500);
-            return;
+            return false;
         }
         var go = function () {
             // The keys as the save sends them: a new page gets its id and a
@@ -74106,6 +74119,7 @@ const StyleDesigner = (function () {
             };
             saveAjax({
                 hold: hold || [],
+                reportSaved: report,
                 successMessage: function (data) {
                     var n = applied(data).length;
                     if (!n) return '';
@@ -74122,13 +74136,13 @@ const StyleDesigner = (function () {
                     // site actually has.
                     if (rest.length) unmark(rest, true);
                 },
-                onError: function () { unmark(marked, false); }
+                onError: function () { unmark(marked, false); report(null); }
             });
         };
         // Taking a page that visitors can open off the site is asked first;
         // a page that was never published has nobody to lose.
         var live = on ? list.filter(function (p) { return p.page_id > 0; }) : [];
-        if (!live.length) { go(); return; }
+        if (!live.length) { go(); return true; }
         var ask = (live.length > 1)
             ? _sdT('{var} pages will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open them; administrators will.', live.length)
             : _sdT('"{var}" will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open it; administrators will.', live[0].page_name || _sdT('New Page'));
@@ -74136,10 +74150,13 @@ const StyleDesigner = (function () {
         if (typeof window.pgConfirm === 'function') {
             window.pgConfirm({ title: _sdT('Take off the site'), message: ask,
                                confirmText: _sdT('Yes, make it a draft'), cancelText: _sdT('No'), variant: 'warning' })
-                .then(function (ok) { if (ok) go(); });
+                .then(function (ok) { if (ok) go(); else report(null); });
         } else if (window.confirm(ask)) {
             go();
+        } else {
+            return false;
         }
+        return true;
     }
 
     // The draft switch of Page Settings shows the active page; the home page
@@ -74402,9 +74419,9 @@ const StyleDesigner = (function () {
         if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
         window.PgDesignerPublish.open({
             rows: _pgPublishRows,
-            publish: function (keys, hold) {
-                if (keys.length) _pgSetDraft(keys, false, hold);
-                else saveAjax({ hold: hold });
+            publish: function (keys, hold, report) {
+                if (keys.length) _pgSetDraft(keys, false, hold, report);
+                else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
             },
             takeOff: function (keys) { _pgSetDraft(keys, true); }
         });

@@ -2350,6 +2350,7 @@
     "Not saved": "Kaydedilmedi",
     "Not saved yet": "Henüz kaydedilmedi",
     "Not saved yet: {var}": "Henüz kaydedilmemiş: {var}",
+    "Not saved: the changes stay in the editor": "Kaydedilmedi: değişiklikler editörde kalıyor",
     "Not scanned": "Taranmadı",
     "Not scheduled: Run Cron Jobs Automatically is off in Site Settings › Updates and maintenance › Cron Jobs.": "Zamanlanmamış: Site Ayarları › Güncellemeler ve Bakım › Cron işleri bölümünde Cron İşlerini Otomatik Yürüt kapalı.",
     "Not scheduled: it runs only when Run now is pressed.": "Zamanlanmamış: yalnızca Şimdi çalıştır'a basıldığında çalışır.",
