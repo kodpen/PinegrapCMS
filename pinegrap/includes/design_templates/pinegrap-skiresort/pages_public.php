@@ -98,7 +98,7 @@ $conditions_board = function ($id, $title, $lead, $links)
 // The lift status (skiresort-lifts): a card per area, a line per lift with
 // its kind, ride, capacity and status. The staff change the status each
 // morning; the lift list page shows the same lifts from the Lifts form.
-$lift_status = function ($id) use ($el, $heading, $para, $span, $icon, $link, $container, $row, $col, $searchable, $areas, $lifts, $lift_kinds, $open_count, $status_pill, $rise) {
+$lift_status_block = function ($id) use ($el, $heading, $para, $span, $icon, $link, $container, $row, $col, $searchable, $areas, $lifts, $lift_kinds, $open_count, $status_pill, $rise) {
     $kind_icons = array('gondola' => 'bi-arrow-up-right', 'chair' => 'bi-arrow-up-right', 'drag' => 'bi-arrow-up', 'carpet' => 'bi-arrow-right');
     $cols = array();
     foreach ($areas as $area_key => $a) {
@@ -350,7 +350,7 @@ $public_pages[] = array(
             array(lang('All Slopes'), '{{page:slopes}}'),
             array(lang('Lift Passes'), '{{page:passes}}'),
         )),
-        $lift_status('skr-lifts'),
+        $lift_status_block('skr-lifts'),
         $snow_report('skr-snow'),
         $el('section', 'py-5', lang('Opening Hours'), array(
             $container(array(
