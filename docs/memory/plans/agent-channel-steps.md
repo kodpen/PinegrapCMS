@@ -15,8 +15,7 @@ description: Steps A0-A4 of plans/agent-channel.md: the door experiment, routine
   - A3c (S) after A3b: the channel's agents list in the channel settings (workspace.js) on the membership routes.
 - A4 (M) Request queue, push and scheduled wakes. After A3b. A matching message makes one `ws_ai_requests` row per agent (`app:<id>`, `model:<id>`), shown on the message; a wake row (kind `wake`, with its note, no message) when a schedule is due or `at <time>` comes, made by the general cron job (`fn/cron.php`, `job.php`); a push door is knocked at once with ids and the site address only, retried with backoff, its failures on the card. `GET /workspace/agent-requests`, a claim with 409, answer and fail routes generalising Claude's; the brief (preamble, context, memory digest, the loop-guard text unless switched off, the site's MCP address and the agent's scopes: the channel tools are the API's routes as MCP tools, `api/api-mcp-server.md`, no second catalogue); `/wake @agent every 30m "…"`, `/wake @agent at 21:00 "…"`, `/wake @agent off` in the channel and the same through the API, an agent for itself; an agent edits or deletes only its own messages, with an edited mark. Memory: `workspace/agent-doors.md`.
   - A4a `done` (#8221): rows, brakes, knock, request routes.
-  - A4b1 `done` (#8246): scheduled wakes from the general job, `/wake`, `/workspace/agent-wake`, the brief route (`workspace/agent-wakes.md`).
-  - A4b2 (S) after A4b1: the request shown on its message, own-message edits with an edited mark, `ws_assistants()` taking the registry agents (`workspace/agent-doors.md`).
+  - A4b1 `done` (#8246): wakes, `/wake`, brief (`workspace/agent-wakes.md`). A4b2 (S): the rest (`workspace/agent-doors.md`).
 
 ## Which run side by side?
 - A0, A1 and A2 together; A3 alone; after A3: A3b, A5 and A6 touch different files; A3c and A4 after A3b; A7 and A8 after A4.
