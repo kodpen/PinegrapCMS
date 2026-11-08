@@ -67,6 +67,7 @@
     "Under one year": "Bir yaşından küçük",
     "Under the Bakery": "Fırının Altında",
     "Under the comment they answer": "Yanıtladıkları yorumun altında",
+    "Under the dome and the telescopes": "Kubbenin ve teleskopların altında",
     "Under the old roof beams, the Family Sea Loft has a double bed below and two single beds on a mezzanine that children love. The balcony faces the sea, and the bathroom has both a bath and a shower.": "Eski çatı kirişlerinin altındaki Deniz Manzaralı Aile Loftu'nda aşağıda çift kişilik bir yatak, çocukların bayıldığı asma katta iki tek kişilik yatak vardır. Balkon denize bakar; banyoda hem küvet hem duş bulunur.",
     "Under the prompt, open the environment and create a new one. Network access: Custom, and allow this site's domain. On Team and Enterprise plans add the variables PINEGRAP_KEY and PINEGRAP_SECRET with the application's key and secret; on Pro and Max plans an API credential for this domain (header Authorization, Basic, key:secret) keeps them out of the session. Remove every connector.": "İstemin altında ortamı açıp yeni bir ortam oluşturun. Network access: Custom seçin ve bu sitenin alan adına izin verin. Team ve Enterprise planlarında PINEGRAP_KEY ve PINEGRAP_SECRET değişkenlerine uygulamanın anahtarını ve gizli değerini girin; Pro ve Max planlarında bu alan adı için bir API credential (başlık Authorization, Basic, anahtar:gizli) onları oturumun dışında tutar. Bütün bağlayıcıları (connectors) çıkarın.",
     "Under the sea": "Denizin altında",
