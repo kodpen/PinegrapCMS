@@ -115,6 +115,191 @@ $class_tile = function ($c) use ($el, $heading, $para, $col, $programmes) {
     ), '6', '4');
 };
 
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 90) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
+// Where each programme sits on the age scale of the School: Age Ladder
+// block (the age it starts at and the age it ends at, 2 to 10), and the
+// path every child walks (nursery, kindergarten, primary), tinted there.
+$programme_span = array(
+    'nursery'      => array(2, 3, true),
+    'kindergarten' => array(3, 6, true),
+    'primary'      => array(6, 10, true),
+    'clubs'        => array(4, 10, false),
+    'summer'       => array(3, 10, false),
+);
+
+// School: Hero. The school in a sentence beside the garden, the next open
+// morning on the picture, and the age finder (pg-school-finder): a tile per
+// programme, its ages and its name as the link to its page. The words rise
+// and the picture fades in, both on load.
+$school_hero = function () use ($el, $heading, $para, $link, $image, $icon, $span, $container, $row, $col, $attr, $photo, $school, $programmes, $events, $fx) {
+    $tiles = array();
+    foreach ($programmes as $key => $p) {
+        $tiles[] = $el('li', 'position-relative px-3 py-2', $p['title'], array(
+            $span($p['ages'], 'd-block small text-body-secondary', lang('Ages')),
+            $link($p['title'], '{{page:programme_' . $key . '}}', 'stretched-link fw-semibold text-body text-decoration-none'),
+        ));
+    }
+    $text = $col(array(
+        $para(lang('Nursery, kindergarten and primary school'), 'psh-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+        $heading('h1', lang('A school where every child is known'), 'psh-display display-4 mb-3'),
+        $para($school['tagline'] . '.', 'lead text-body-secondary mb-4'),
+        $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(
+            $link(lang('Apply Now'), '{{page:apply}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+            $link(lang('Book a School Visit'), '{{page:visit}}', 'btn btn-outline-secondary btn-lg rounded-pill px-4'),
+        )),
+        $el('nav', 'pg-school-finder', lang('Programmes by Age'), array(
+            $para(lang('Find a programme by your child\'s age'), 'small fw-semibold mb-2'),
+            $el('ul', 'list-unstyled d-flex flex-wrap gap-2 mb-0', lang('Programmes'), $tiles),
+        ), array('_attrs' => array($attr('aria-label', lang('Programmes by Age'))))),
+    ), '', '6');
+    $open = $events['open_morning'];
+    $picture = $col(array(
+        $el('div', 'position-relative', lang('Picture Frame'), array(
+            $el('div', 'ratio ratio-4x3 rounded-4 overflow-hidden bg-body-tertiary', lang('Picture'), array(
+                $image($photo('hero', 1400, 1050), lang('The school garden with a vegetable patch and a wooden playhouse'), 'object-fit-cover'),
+            )),
+            $el('div', 'position-absolute bottom-0 start-0 m-3 p-3 rounded-4 bg-body shadow d-flex align-items-center gap-3 col-10 col-sm-8', lang('Open Morning Card'), array(
+                $el('div', 'd-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-circle bg-primary-subtle text-primary-emphasis p-2 lh-1', lang('Icon Box'), array(
+                    $icon('bi-door-open', 'fs-4'),
+                )),
+                $el('div', '', lang('Open Morning'), array(
+                    $para($open['title'], 'fw-semibold mb-0'),
+                    $para($open['when'], 'small text-body-secondary mb-0'),
+                )),
+            )),
+        )),
+    ), '', '6');
+    return $el('section', 'psh-hero py-5 overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $row(array(
+                $fx($text, array('effect' => 'slide-up', 'trigger' => 'load', 'duration' => 700)),
+                $fx($picture, array('effect' => 'fade', 'trigger' => 'load', 'duration' => 1000, 'delay' => 200)),
+            ), '4', '', 'align-items-center g-lg-5'),
+        )),
+    ));
+};
+
+// School: Age Ladder. Every programme on one age scale (pg-school-ages),
+// each card the way to its page, with the class groups under it. The
+// programmes rise one after another on view.
+$age_ladder = function ($id, $title, $lead, $class = 'py-5', $more = array()) use ($el, $heading, $para, $link, $icon, $span, $container, $attr, $programmes, $programme_span, $classes, $searchable, $rise) {
+    $ticks = array();
+    for ($age = 2; $age <= 9; $age++) {
+        $kids = array($span((string)$age, '', lang('Age')));
+        if ($age === 9) $kids[] = $span('10', '', lang('Age'));
+        $ticks[] = $el('div', 'pg-school-from-' . $age . ' pg-school-to-' . ($age + 1) . ' small d-flex justify-content-between pe-1', lang('Age'), $kids);
+    }
+    $rungs = array();
+    foreach ($programmes as $key => $p) {
+        list($from, $to, $main) = $programme_span[$key];
+        $rungs[] = $el('li', 'pg-school-from-' . $from . ' pg-school-to-' . $to, $p['title'], array(
+            $el('div', 'position-relative h-100 p-3 rounded-4 border ' . ($main ? 'bg-primary-subtle border-primary-subtle' : 'bg-body'), lang('Programme Card'), array(
+                $icon($p['icon'], 'd-block fs-4 text-primary mb-2'),
+                $el('h3', 'psh-display h6 mb-1', lang('Title'), array(
+                    $link($p['title'], '{{page:programme_' . $key . '}}', 'stretched-link text-body text-decoration-none'),
+                )),
+                $span($p['ages'], 'small text-body-secondary', lang('Ages')),
+            )),
+        ));
+    }
+    $groups = array();
+    foreach ($classes as $c) {
+        $groups[] = $el('li', 'd-flex align-items-center gap-2 px-3 py-2 rounded-pill border bg-body small', $c['name'], array(
+            $span($c['name'], 'fw-semibold', lang('Name')),
+            $span($c['ages'], 'text-body-secondary', lang('Ages')),
+        ));
+    }
+    return $el('section', $class, lang('Age Ladder'), array(
+        $container(array_merge(array(
+            $el('div', 'text-center col-lg-8 mx-auto mb-5', lang('Section Header'), array(
+                $para(lang('From two to ten'), 'psh-eyebrow small text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', $title, 'psh-display display-6 mb-3'),
+                $para($lead, 'lead text-body-secondary mb-0'),
+            )),
+            $el('div', 'pg-school-ages d-none d-lg-grid mb-2', lang('Age Scale'), $ticks, array('_attrs' => array($attr('aria-hidden', 'true')))),
+            $rise($el('ol', 'pg-school-ages list-unstyled mb-5', lang('Programmes'), $rungs), 100),
+            $el('div', 'text-center', lang('Class Groups'), array(
+                $heading('h3', lang('Our class groups'), 'h6 text-uppercase fw-semibold text-body-secondary mb-3'),
+                $el('ul', 'list-unstyled d-flex flex-wrap justify-content-center gap-2 mb-0', lang('Groups'), $groups),
+            )),
+        ), $more)),
+    ), $searchable($id, lang('nursery, preschool, kindergarten, primary, after-school, summer camp, class, group, age group')));
+};
+
+// School: School Year. The three terms side by side (pg-school-term), what
+// each brings and the word home at its end, the holiday after the first
+// two (pg-school-break), and summer school in the long holiday. The terms
+// rise one after another on view.
+$school_year = function ($id, $class = 'py-5 bg-body-tertiary') use ($el, $heading, $para, $link, $icon, $span, $container, $searchable, $rise) {
+    $term = function ($length, $title, $text, $items, $report, $rest) use ($el, $heading, $para, $icon, $span) {
+        $highlights = array();
+        foreach ($items as $t) {
+            $highlights[] = $el('li', 'd-flex gap-2 mb-2', lang('Highlight'), array(
+                $icon('bi-star', 'text-primary flex-shrink-0'),
+                $span($t, '', lang('Text')),
+            ));
+        }
+        $card = array($el('div', 'pg-school-term d-flex flex-column h-100 p-4 rounded-4 bg-body shadow-sm', lang('Term Card'), array(
+            $para($length, 'psh-eyebrow small text-uppercase fw-semibold text-primary mb-2'),
+            $heading('h3', $title, 'psh-display h4 mb-2'),
+            $para($text, 'text-body-secondary mb-3'),
+            $el('ul', 'list-unstyled mb-3', lang('Highlights'), $highlights),
+            $el('div', 'small fw-semibold d-flex gap-2 mt-auto', lang('Report'), array(
+                $icon('bi-file-earmark-text', 'text-primary flex-shrink-0'),
+                $span($report, '', lang('Text')),
+            )),
+        )));
+        if ($rest) {
+            $card[] = $el('div', 'pg-school-break d-flex align-items-center gap-2 mt-3 pt-3 small', lang('Holiday'), array(
+                $icon($rest[0], 'flex-shrink-0'),
+                $span($rest[1], '', lang('Text')),
+            ));
+        }
+        return $el('li', 'col d-flex flex-column', $title, $card);
+    };
+    return $el('section', $class, lang('The School Year'), array(
+        $container(array(
+            $el('div', 'text-center col-lg-8 mx-auto mb-5', lang('Section Header'), array(
+                $para(lang('The school year'), 'psh-eyebrow small text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', lang('A year in three terms'), 'psh-display display-6 mb-3'),
+                $para(lang('Each term has its projects, its celebrations and a word home at its end, with a holiday between them.'), 'lead text-body-secondary mb-0'),
+            )),
+            $rise($el('ol', 'list-unstyled row row-cols-1 row-cols-lg-3 g-4 mb-4', lang('Terms'), array(
+                $term(lang('About fourteen weeks'), lang('Autumn term'),
+                    lang('New classes settle in and the year\'s first projects begin.'),
+                    array(lang('Settling in for new children'), lang('Harvest from the vegetable patch'), lang('A meeting with every family')),
+                    lang('A short note on how your child has settled'),
+                    array('bi-snow', lang('Then a winter holiday of about two weeks'))),
+                $term(lang('About twelve weeks'), lang('Spring term'),
+                    lang('The longest projects of the year, and the stage for the school show.'),
+                    array(lang('Science week'), lang('Book week and a visiting author'), lang('The school show')),
+                    lang('A meeting with the class teacher'),
+                    array('bi-flower1', lang('Then a spring holiday of one week'))),
+                $term(lang('About eleven weeks'), lang('Summer term'),
+                    lang('Days outdoors, trips close to the school and a goodbye to the oldest children.'),
+                    array(lang('Sports day'), lang('Trips close to the school'), lang('Moving-up day for every class')),
+                    lang('The written report of the year'),
+                    null),
+            )), 120),
+            $el('div', 'd-flex flex-column flex-sm-row align-items-sm-center justify-content-center gap-3 text-center', lang('Year Foot'), array(
+                $para(lang('In the long holiday, summer school is open to every child.'), 'small text-body-secondary mb-0'),
+                $link(lang('Summer School'), '{{page:programme_summer}}', 'btn btn-outline-primary rounded-pill px-4 text-nowrap'),
+            )),
+        )),
+    ), $searchable($id, lang('school year, terms, holidays, calendar, reports, parent meetings')));
+};
+
 // The cards and tiles of the shared data, in their order.
 $why_tiles = array();
 foreach ($why_us as $w) $why_tiles[] = $feature_tile($w['icon'], $w['title'], $w['text']);
@@ -130,8 +315,6 @@ $testimonial_cols = array();
 foreach (array_keys($testimonials) as $n) $testimonial_cols[] = $testimonial_card($n);
 $staff_cols = array();
 foreach (array_keys($staff) as $n) $staff_cols[] = $staff_card($n);
-$class_cols = array();
-foreach ($classes as $c) $class_cols[] = $class_tile($c);
 
 // ── Home ────────────────────────────────────────────────────────────────
 
@@ -142,35 +325,16 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('A private nursery, kindergarten and primary school with small groups, a big garden and teachers who know every child.'),
     'tree'             => $page(array(
-        // The way in: the school in a sentence, the two ways on and a
-        // picture of the garden.
-        $el('section', 'psh-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Nursery, kindergarten and primary school'), 'psh-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('A school where every child is known'), 'psh-display display-3 mb-3'),
-                        $para($school['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Apply Now'), '{{page:apply}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                            $link(lang('Book a School Visit'), '{{page:visit}}', 'btn btn-outline-secondary btn-lg rounded-pill px-4'),
-                        )),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('The school garden with a vegetable patch and a wooden playhouse'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
+        // The way in: the school in a sentence, the next open morning and
+        // a way into each programme by the child's age.
+        $school_hero(),
 
-        $figures_band(),
-
-        $el('section', 'py-5', lang('Programmes'), array(
-            $container(array(
-                $section_header(lang('From two to ten'), lang('Our programmes'), lang('All Programmes'), '{{page:programmes}}'),
-                $row($programme_cols, '4'),
-            )),
-        ), $searchable('sh-home-programmes', lang('nursery, preschool, kindergarten, primary, after-school, summer camp'))),
+        // The path through the school: every programme on one age scale.
+        $age_ladder('sh-home-programmes', lang('Our programmes'),
+            lang('One school from the first day of nursery to the last day of primary, with clubs after school and weeks of summer school.'), 'py-5',
+            array($el('div', 'text-center mt-4', lang('Buttons'), array(
+                $link(lang('All Programmes'), '{{page:programmes}}', 'btn btn-outline-primary rounded-pill px-4'),
+            )))),
 
         $el('section', 'py-5 bg-body-tertiary', lang('A Day at School'), array(
             $container(array(
@@ -178,28 +342,25 @@ $public_pages[] = array(
                     $col(array(
                         $para(lang('Hour by hour'), 'psh-eyebrow text-uppercase fw-semibold text-primary mb-2'),
                         $heading('h2', lang('A day in kindergarten'), 'psh-display h2 mb-4'),
-                        $day_list(array_slice($day, 0, 5)),
+                        $rise($day_list(array_slice($day, 0, 5))),
                         $link(lang('See the whole day'), '{{page:day}}', 'btn btn-outline-secondary rounded-pill px-4 mt-2'),
                     ), '', '6'),
-                    $col(array($framed($photo('home-day', 1200, 900), lang('Paint pots and paper on a classroom table'))), '', '6'),
+                    $col(array($fx($framed($photo('home-day', 1200, 900), lang('Paint pots and paper on a classroom table')),
+                        array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900))), '', '6'),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
         ), $searchable('sh-home-day', lang('daily routine, timetable, schedule, lunch, nap'))),
 
-        $el('section', 'py-5', lang('Why Families Choose Us'), array(
-            $container(array(
-                $section_header(lang('Our promise'), lang('Why families choose us'), lang('About Us'), '{{page:about}}'),
-                $row($why_tiles, '4'),
-            )),
-        ), $searchable('sh-why-us', lang('small classes, safe, teachers, long day, reports'))),
-
         // The featured events, read from the Events collection.
-        $el('section', 'py-5 bg-body-tertiary', lang('Coming Up'), array(
+        $el('section', 'py-5', lang('Coming Up'), array(
             $container(array(
                 $section_header(lang('Events'), lang('Coming up at school'), lang('All Events'), '{{page:events}}'),
                 $widget('home_events'),
             )),
         )),
+
+        // The school year in its three terms and the holidays between.
+        $school_year('sh-home-year'),
 
         // What parents say: sample words for the school to replace, and
         // beside them its own Google reviews, which show once Google Reviews
@@ -231,18 +392,16 @@ $public_pages[] = array(
     'meta_description' => lang('Nursery, kindergarten, primary school, after-school clubs and summer school for children from two to ten.'),
     'tree'             => $page(array(
         $page_header(lang('Programmes'), lang('Five programmes, one school: a child can start in nursery and leave us ready for secondary school.')),
-        $el('section', 'py-5', lang('Programmes'), array(
+        // The path first: the programmes on the age scale with the class
+        // groups, then each programme's card.
+        $age_ladder('sh-programmes-ages', lang('From the first day to the last'),
+            lang('Find your child\'s age on the scale: the tinted programmes are the path through the school, the others sit beside it.')),
+        $el('section', 'py-5 bg-body-tertiary', lang('Programmes'), array(
             $container(array(
-                $row($programme_cols, '4'),
+                $section_header(lang('Five programmes'), lang('Each programme'), lang('A Day at School'), '{{page:day}}'),
+                $rise($row($programme_cols, '4')),
             )),
         ), $searchable('sh-programmes', lang('nursery, preschool, kindergarten, primary, after-school, summer camp'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Our Classes'), array(
-            $container(array(
-                $section_header(lang('Class groups'), lang('Our classes'), lang('A Day at School'), '{{page:day}}'),
-                $row($class_cols, '4'),
-            )),
-        ), $searchable('sh-classes', lang('class, group, year, age group'))),
-        $ask_band(lang('Not sure which programme fits?'), lang('Tell us about your child and our admissions team calls you back.')),
     )),
 );
 
@@ -288,7 +447,7 @@ foreach ($programmes as $key => $p) {
         $sections[] = $el('section', 'py-5 bg-body-tertiary', lang('Our Classes'), array(
             $container(array(
                 $section_header(lang('Class groups'), lang('Our classes')),
-                $row($programme_classes, '4'),
+                $rise($row($programme_classes, '4')),
             )),
         ));
     }
@@ -315,7 +474,7 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('A Day at School'), array(
             $container(array(
                 $row(array(
-                    $col(array($day_list($day)), '', '6'),
+                    $col(array($rise($day_list($day), 80)), '', '6'),
                     $col(array(
                         $framed($photo('day-garden', 1200, 900), lang('Rain boots in a row by the garden door')),
                         $framed($photo('day-lunch', 1200, 900), lang('A table laid for lunch in the dining room'), '4x3'),
@@ -323,13 +482,8 @@ $public_pages[] = array(
                 ), '4', '', 'g-lg-5'),
             )),
         ), $searchable('sh-day', lang('daily routine, timetable, schedule, lunch, nap, pick-up, drop-off'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Our Classes'), array(
-            $container(array(
-                $section_header(lang('Class groups'), lang('Our classes')),
-                $row($class_cols, '4'),
-            )),
-        )),
-        $ask_band(lang('A question about the day?'), lang('Meals, naps, allergies or pick-up times: write to us and the office answers.')),
+        // From the day to the year: its terms and holidays.
+        $school_year('sh-day-year'),
     )),
 );
 

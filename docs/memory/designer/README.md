@@ -191,6 +191,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-restaurant.md: Restaurant template (pinegrap-restaurant): menu and events as collections, reservation requests, chef's table, private dining enquiries, gift vouchers in the shop, prt- look, tests.
 - design-template-salon-words.md: Beauty Salon template wording (1.1.1, #4807): hizmet and randevu, own keys for the booking field, staff shortcut and statuses, e-posta page names; sample days and times fit the opening hours (#4944).
 - design-template-salon.md: Beauty Salon template (pinegrap-salon): its parts folder, the booking on the Clinic's request pattern, what is not built, the psl- look, tests.
+- design-template-school-pages.md: School template 2.0.0: home, programmes and the day page on the School blocks: the builders, each page's composition, motion, what left, the test
 - design-template-school.md: Private School template (pinegrap-school): programmes with a page each, events collection, admission applications and visit requests followed from the account, News, no shop, psh- look, tests.
 - design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
 - design-template-skiresort.md: Ski Resort template (pinegrap-skiresort): slopes, lifts and events as collections, lesson requests and stay or group enquiries, passes and rental in the shop, conditions, News, psk- look, tests.
