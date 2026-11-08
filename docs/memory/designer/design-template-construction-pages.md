@@ -4,7 +4,7 @@ description: Construction template 2.0.0: home, projects and safety on the Const
 ---
 
 ## Which builders draw the blocks?
-- Version 2.0.0 (#8292 family, then its pages, construction-2): home, `projects` and `safety` place the Construction blocks ([[designer-blocks-construction]]); their rules ship through `pg_design_template_user_styles(array('construction-hero', 'construction-progress', 'construction-notice'), $construction_css)`.
+- Version 2.0.0 (#8292 family, then its pages, #8324): home, `projects` and `safety` place the Construction blocks ([[designer-blocks-construction]]); their rules ship through `pg_design_template_user_styles(array('construction-hero', 'construction-progress', 'construction-notice'), $construction_css)`.
 - `parts.php` (after `$figure_row`): `$fx`, `$rise` (slide-up on view, stagger 80), `$cn_stripe`, `$board_hero($eyebrow, $title, $lead, $buttons, $src, $alt, $facts)` (the page's only `h1`, keeps `pcn-hero`; four `$facts` label => value; photograph fades, board rises, on load), `$site_progress($key, $id, $class)` (a project of `$projects` with its stages in `$site_stages`: the share done is 25, 50 or 75, drawn by a `w-` class, never an inline style), `$street_notice($id, $class)` (calls `$firm['phone']`).
 - A stage to come has no class: the family has rules for `pg-cn-done` and `pg-cn-now` only, and the test wants every placed `pg-cn-` class to have its rule.
 
