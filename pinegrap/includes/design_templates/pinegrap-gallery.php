@@ -188,7 +188,7 @@ return array(
     'name'        => lang('Art Gallery'),
     'version'     => '1.0.0',
     'framework'   => 'bootstrap5',
-    'order'       => 127,
+    'order'       => 133,
     'icon'        => 'bi-easel2',
     'description' => lang('A contemporary art gallery: the artists it represents with a page each and their works, exhibitions now on, coming soon and past with their opening nights, the works with their wall labels, enquiries about a work and private viewing requests the visitor follows from their account, art advisory, signed editions, small works and catalogues with the shop on, the Journal, a newsletter, an inbox, a staff area and a help page that searches the whole site.'),
 
