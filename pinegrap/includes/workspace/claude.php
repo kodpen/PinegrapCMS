@@ -133,6 +133,15 @@ function ws_claude_config($fresh = false)
             'hold_until'  => (int) ($row['ws_claude_hold_until'] ?? 0),
             'error'       => (string) ($row['ws_claude_error'] ?? ''),
         );
+
+        // The routine is Claude's push door in the agent registry once the
+        // upgrade made it (11.0.172); config's columns are read only before.
+        $agent = function_exists('ws_agent_claude_row') ? ws_agent_claude_row() : null;
+
+        if ($agent) {
+            $config['routine_url'] = (string) $agent['door_url'];
+            $config['token_set'] = (strpos((string) ($agent['door_secret_sealed'] ?? ''), ':') !== false);
+        }
     }
 
     return $config;
@@ -146,15 +155,9 @@ function ws_claude_config($fresh = false)
  */
 function ws_claude_token()
 {
-    $stored = (string) db_value("SELECT ws_claude_token FROM config LIMIT 1");
+    $agent = function_exists('ws_agent_claude_row') ? ws_agent_claude_row() : null;
 
-    if (($stored === '') || (strpos($stored, ':') === false) || !function_exists('decode_ssl_keys') || !defined('ENCRYPTION_KEY')) {
-        return '';
-    }
-
-    list($cipher, $iv) = explode(':', $stored, 2);
-
-    return (string) decode_ssl_keys($cipher, $iv);
+    return ws_agent_unseal($agent ? $agent['door_secret_sealed'] : db_value("SELECT ws_claude_token FROM config LIMIT 1"));
 }
 
 /**
@@ -2084,22 +2087,34 @@ function ws_claude_settings_post($viewer, $action, $liveform, $user)
     $sets = array(
         "ws_claude_enabled = '" . ($enabled ? 1 : 0) . "'",
         "ws_claude_app_id = '" . $app_id . "'",
-        "ws_claude_routine_url = '" . e($url) . "'",
         "ws_claude_error = ''",
         "ws_claude_hold_until = 0",
     );
 
     // The token is written, never shown: left empty, the stored one stays.
+    $sealed = null;
+
     if ($token !== '') {
-        if (!function_exists('encrypt_string_with_iv') || !defined('ENCRYPTION_KEY') || (ENCRYPTION_KEY === '')) {
+        $sealed = ws_agent_seal($token);
+
+        if ($sealed === '') {
             $liveform->add_error(lang('The token cannot be stored: encryption is not available on this site.'));
             return;
         }
-
-        list($cipher, $iv) = encrypt_string_with_iv($token);
-        $sets[] = "ws_claude_token = '" . e($cipher . ':' . $iv) . "'";
     } elseif (!empty($_POST['claude_token_clear'])) {
-        $sets[] = "ws_claude_token = NULL";
+        $sealed = '';
+    }
+
+    // The routine is Claude's door in the agent registry; before the upgrade
+    // made the registry it stays in config.
+    if (ws_agents_ready()) {
+        ws_agent_claude_save($url, $sealed);
+    } else {
+        $sets[] = "ws_claude_routine_url = '" . e($url) . "'";
+
+        if ($sealed !== null) {
+            $sets[] = ($sealed === '') ? "ws_claude_token = NULL" : "ws_claude_token = '" . e($sealed) . "'";
+        }
     }
 
     if (ws_claude_summary_ready() && isset($_POST['claude_summary_hour'])) {

@@ -17,16 +17,17 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 - 4 (done, #8102): `slopes.php`: the Slopes collection (`slopes` by `?difficulty=` and `?area=`, `slope`, `slope_new`, `home_slopes`), the Lifts collection (`lifts`, `lift_new`); test.
 - 5 (done, #8118): `mail.php` and `lessons.php`: lesson requests (`lesson_request` with `?lesson=`, `?level=`, `?age=`, `lesson_view`, `my_lessons`, `staff_lessons`, `privacy`, `email_reply`, `email_lesson_new`, `email_lesson_received`); test.
 - 6 (done, #8135): `enquiries.php`: lodging and group enquiries (`group_enquiry` with `?stay=` and `?group=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
-- 7: `events.php`: the Events collection by date (`events` from today on, `event`, `event_new`, `home_events`); test.
-- 8 (done, #8152): `shop.php`: the catalog (three groups, SKUs `SKI-PASS-`, `SKI-SEASON-`, `SKI-RENT-<key>`), `buy_passes`, `rental_shop`, product, cart, checkout, order, `email_order`; test.
-- 9: `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 10: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the account e-mail pages; test.
+- 7 (done, #8155): `events.php`: the Events collection by date (`events` from today on, `event`, `event_new`, `home_events`); test.
+- 8 (done, #8152): `shop.php`: the catalog (SKUs `SKI-PASS-`, `SKI-SEASON-`, `SKI-RENT-<key>`), `buy_passes`, `rental_shop`, the shop pages, `email_order`; test.
+- 9 (done, #8169): `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), post, help search, error ([[design-templates-standard-pages]]); test.
+- 10 (done, #8168): `account.php`: sign-in and My Account, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the account e-mail pages; test.
 - 11: assembly: `pinegrap-skiresort.php` (order, search sections, look, fonts, `psk-` rules, folders, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, custom-form-rules, url-params), `designer/design-template-skiresort.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
 - The lowest step not marked done. Models: `pinegrap-museum/`; `pinegrap-restaurant/` for dated events (`$event_on`, `$bind_date`, `current date` filter). `_test_sk_page_keys()` and `_test_sk_shop_keys()` (step 1 test) list every page key. Lists: `?lesson=` `$lesson_choices`, `?level=` `$level_titles`, `?age=` `$age_titles`, `?stay=` `$stay_choices`, `?group=` `$group_kinds`, `?difficulty=` `$difficulty_titles`, `?area=` `$area_titles`. Never `?view=`.
 - Steps 3-4 place the `skiresort-` family blocks ([[designer-blocks-skiresort]]).
 - The request pieces (`$request_page`, `$request_list`, `$request_detail`…) live in `lessons.php`; `enquiries.php` reuses them.
+- Include order: parts, cards, pages_public, slopes, mail, lessons, enquiries, events (needs `slopes.php`).
 
 ## Open questions
 - None: everything above reuses shipped features. A step that finds it needs new behaviour asks the architect (Working mode 10).

@@ -19,11 +19,11 @@ description: Plan: the Bakery design template (pinegrap-bakery): daily bake, cak
 
 - 4 (done, #7941): `mail.php` (e-mail builders) and `requests.php` (cake orders, class place requests, `privacy`, `email_reply`, the request e-mails; shared `$bk_…` page and list builders for step 5); test.
 
-- 5: `wholesale.php`: wholesale enquiries (`wholesale_enquiry` with `?range=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, the enquiry e-mails); test.
+- 5 (done, #8164): `wholesale.php`: wholesale enquiries (`wholesale_enquiry` with `?range=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, the enquiry e-mails); test.
 
 - 6: `shop.php`: `shop`, product, cart, checkout, order, `email_order`, the catalog (Breads, Pastries, Cakes, Gift Boxes and Baking Classes groups; class places `shippable => false`); test.
 
-- 7: `standard.php`: contact, inbox, conversation, newsletter, Journal (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
+- 7 (done, #8161): `standard.php`: contact, inbox, conversation, newsletter, Journal (the blog), blog post, help search, error ([[design-templates-standard-pages]]); test.
 
 - 8: `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the e-mail pages; test.
 

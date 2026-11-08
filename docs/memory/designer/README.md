@@ -128,6 +128,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-architecture.md: Architecture & Interiors Studio template (pinegrap-architecture): projects by type and location, enquiries, consultations and careers followed from the account, no shop, pai- look, tests.
 - design-template-blog-cover.md: A design template's blog or article Cover Image input takes image/* and carries _cf.kind = image; templates whose $file helper defaults to documents pass it explicitly (#7513)
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates
+- design-template-brewery.md: Craft Brewery template (pinegrap-brewery): beers and taproom events as collections, tour booking requests, private tastings booked online, packs and Beer Club terms in the shop, pbw- look, tests.
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-campsite.md: Campsite template (pinegrap-campsite): kinds of stay, Pitches and Cabins collection, prices as words, stay requests and group enquiries, no shop, pcp- look, tests.
 - design-template-carrental.md: Car Rental template (pinegrap-carrental): the fleet as a collection, booking requests with extras and deals, business rentals, desks, extras, deals and terms as fixed content, pcr- look, tests.
@@ -223,8 +224,12 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-ferry.md: The Ferry block family (ferry- prefix, its own palette group): departure board, route timetable, crossing strip, fares by vehicle; the general blocks a ferry site places instead; rules and test
 - designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors)
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
+- designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
 - designer-blocks-news-maintenance-creative.md: Maintenance, news and creative blocks (2026.11.0): palette groups, the family branch and helpers, maintenance blocks without site links, attribute-dropping nodes, block details, the palette test.
+- designer-blocks-pharmacy.md: The Pharmacy block family (pharmacy- prefix): duty panel, reference readings, travel vaccines, medicine schedule; general blocks reused instead; no motion; rule and test
 - designer-blocks-skiresort.md: The Ski Resort block family (skiresort- prefix, its own palette group): the five blocks, what each draws, its pg-ski-* rules, why the pass cards are not a pricing or compare block, its test
+- designer-blocks-sportsclub.md: The Sports Club block family (sportsclub-): match day, fixtures and results, league table, squad by position; what a club places instead; rules; test
+- designer-blocks-wedding.md: The Wedding block family (wedding- prefix, its own palette group): invitation hero, real wedding story, planning checklist; the general blocks a wedding site places instead; rules and test
 - designer-blocks-zoo.md: The Zoo block family (zoo- prefix, its own palette group): the four blocks, what each draws, the blocks reused instead, its pg-zoo-* rules, motion and test
 - designer-body-tag-merge.md: Designer <body> tag: class/style/id from Body Settings and the Attributes panel are merged, not dropped; three lockstep code paths; page_tree_code is a snapshot.
 - designer-bootstrap-vocabulary.md: The Bootstrap 5 vocabulary of the designer's smart completion (assets/js/designer_vocab/bootstrap5.json): how it is generated and kept, its keys and what each entry holds

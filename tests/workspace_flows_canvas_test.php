@@ -3371,3 +3371,37 @@ function test_workspace_flows_canvas_layer_wiring()
 	pg_assert_true((bool) preg_match('/\.ws-flow-layer \{[^}]*position: fixed;[^}]*inset: 0;/', $css), 'full screen on every width');
 	pg_assert_contains("'fl_layer_screen'", ws_flows_canvas_test_strings_source(), 'its text handed over');
 }
+
+/**
+ * The ways in to a flow from a Workspace page open the layer, not the Flows
+ * screen: the scheduled flow window's canvas button, the draft card's box
+ * link, the run card's Open the run, a scheduled action's Edit and the
+ * flows made by Duplicate or from a draft; on the Flows screen itself they
+ * still go by the address.
+ */
+function test_workspace_flows_canvas_layer_ways_in()
+{
+	$kit = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	$go = ws_flows_canvas_test_script_function($kit, 'flowGo');
+	$link = ws_flows_canvas_test_script_function($kit, 'flowLinkOpens');
+	$opened = ws_flows_canvas_test_script_function($kit, 'flowOpened');
+	$edit = ws_flows_canvas_test_script_function($kit, 'scheduledEdit');
+
+	pg_assert_true($go !== '' && $link !== '', 'flowGo() and flowLinkOpens() are there');
+	pg_assert_contains("if (CFG.mode === 'flows') {\n            window.location.href = flowScreenAddress(flowId, options);", $go, 'the Flows screen keeps its own editor');
+	pg_assert_contains('flowLayer(flowId, options);', $go, 'elsewhere the layer');
+	pg_assert_contains('event.preventDefault();', $link, 'a plain click opens the layer');
+	pg_assert_contains('event.ctrlKey || event.metaKey', $link, 'a new tab follows the address');
+	pg_assert_contains('flowGo(result.flow_id)', $opened, 'a made flow opens in the layer');
+	pg_assert_contains('leave(function () { flowGo(result.flow_id); });', $opened, 'after the window it came from is gone');
+	pg_assert_contains('flowGo(result.flow_id, { opener: trigger });', $edit, 'an Edit converted opens in the layer');
+	pg_assert_contains("hideOffcanvas(node, next);", $kit, 'the scheduled flow window closes before the layer opens');
+	pg_assert_contains('flowGo(run.flow_id, { run: run.id });', $kit, 'Open the run in the layer');
+	pg_assert_contains('flowGo(item.flow.id, { opener: edit });', $kit, 'Edit of a converted action in the layer');
+	pg_assert_contains('flowLinkOpens(link, view.flow_id, { box: node.id });', $kit, 'a draft card\'s box in the layer');
+	pg_assert_contains('flowLinkOpens(flow, change.flow_id);', $kit, 'an applied draft\'s flow in the layer');
+
+	foreach (['flowOpened', 'scheduledEdit'] as $name) {
+		pg_assert_true(strpos(ws_flows_canvas_test_script_function($kit, $name), 'window.location.href') === false, $name . '() leaves the page no more');
+	}
+}
