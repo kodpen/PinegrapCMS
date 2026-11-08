@@ -4,7 +4,7 @@ description: The Zoo block family (zoo- prefix, its own palette group): the four
 ---
 
 ## Where does it live?
-- `assets/js/style_designer_blocks_zoo.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `zoo-`, palette group "Zoo" (`bi-tree`). Built for the Zoo template ([[design-template-zoo-design]]), usable by any zoo, aquarium, safari or wildlife park.
+- `assets/js/style_designer_blocks_zoo.js`, one `StyleDesigner.registerBlockFamily()` call ([[designer-block-family-files]]); prefix `zoo-`, palette group "Zoo" (`bi-tree`). Built for the Zoo template ([[design-template-zoo]]), usable by any zoo, aquarium, safari or wildlife park.
 
 ## Which blocks does it hold?
 - `zoo-today`: today's opening line, a kind legend, an `ol` of slots (a `<time>` per slot, the title `h3`, a Feeding or Keeper talk pill, "Habitat {var:1} · {var:2}"); the next slot has `aria-current="time"`, a "Next up" badge and a raised surface; a "Good to know" card with a map link.
@@ -25,4 +25,4 @@ description: The Zoo block family (zoo- prefix, its own palette group): the four
 ## How is it tested?
 - `tests/designer_blocks_test.php` checks the file like every family file; `tests/designer_blocks_zoo_test.php` runs it under Node: one `h2` and no skipped level per block, no fixed colour or `pzo-`/`zoo-` class, `{var}` filled, no year, interactions kept by `_sdFxNormalize()`, the time slots and the current one, the status levels, the pins, the project pills, the rules reaching the block stylesheet.
 
-Related: docs/memory/designer/design-template-own-look.md, docs/memory/plans/design-template-zoo.md
+Related: docs/memory/designer/design-template-own-look.md, docs/memory/designer/design-template-zoo.md
