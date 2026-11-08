@@ -1134,6 +1134,7 @@
     "That flow could not be found.": "Bu akış bulunamadı.",
     "That form could not be found.": "Bu form bulunamadı.",
     "That group could not be found.": "Bu grup bulunamadı.",
+    "That handle is a person's user name. Choose another, so @ means one thing.": "Bu tanıtıcı bir kişinin kullanıcı adı. @ tek bir anlama gelsin diye başka bir tane seçin.",
     "That header is set by the connection itself and cannot carry the credential.": "Bu başlığı bağlantının kendisi belirler, kimlik bilgisini taşıyamaz.",
     "That invoice cannot be closed by this kind of movement.": "Bu fatura bu tür bir hareketle kapatılamaz.",
     "That invoice could not be found.": "Bu fatura bulunamadı.",
