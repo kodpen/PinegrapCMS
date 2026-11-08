@@ -255,7 +255,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                                 kit.tag('tr', '', _sdT('Header Row'), [
                                     kit.tag('td', '', _sdT('Corner Cell')),
                                     _lsModel(_sdT('One mini'), _sdT('From $699')),
-                                    _lsModel(_sdT('One'), _sdT('From $799')),
+                                    _lsModel(_sdT('ACME One'), _sdT('From $799')),
                                     _lsModel(_sdT('One Plus'), _sdT('From $999'))
                                 ])
                             ]),
@@ -317,7 +317,7 @@ StyleDesigner.registerBlockFamily(function (kit) {
                     kit.intro(_sdT('Get yours'), _sdT('Free delivery, and free returns within 14 days.')),
                     fx(kit.row(_sdT('Models Row'), [
                         _lbCard(1, 'launch-buy-mini', _sdT('One mini'), _sdT('Small enough for any pocket.'), _sdT('From $699'), _sdT('or $29.13/mo.'), false),
-                        _lbCard(2, 'launch-buy-one', _sdT('One'), _sdT('The one most people choose.'), _sdT('From $799'), _sdT('or $33.29/mo.'), true),
+                        _lbCard(2, 'launch-buy-one', _sdT('ACME One'), _sdT('The one most people choose.'), _sdT('From $799'), _sdT('or $33.29/mo.'), true),
                         _lbCard(3, 'launch-buy-plus', _sdT('One Plus'), _sdT('The biggest screen and battery.'), _sdT('From $999'), _sdT('or $41.63/mo.'), false)
                     ]), { effect: 'slide-up', trigger: 'view', duration: 700, stagger: 150 })
                 ]);

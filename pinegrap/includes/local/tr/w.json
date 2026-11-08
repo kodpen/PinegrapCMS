@@ -1870,6 +1870,7 @@
     "Whether this VKN is registered for e-Invoice has not been asked yet; the provider decides when the document is sent.": "Bu VKN'nin e-Fatura mükellefi olup olmadığı henüz sorulmadı; belge gönderilirken sağlayıcı karar verir.",
     "Whether this number is registered for e-Invoice has not been asked yet.": "Bu numaranın e-Fatura mükellefi olup olmadığı henüz sorulmadı.",
     "Whether İşbaşı lets it be cancelled depends on what it became; İşbaşı is asked before anything changes.": "İptal edilip edilemeyeceği belgenin İşbaşı'nda neye dönüştüğüne bağlı; herhangi bir şey değişmeden önce İşbaşı'ya sorulur.",
+    "Which ACME One is right for you?": "Size hangi ACME One uygun?",
     "Which AI assistants and AI search indexers read the site's pages, the pages they read most, the visits their answers sent and the sitemap pages none of them read. Fetches are counted by day for bots the firewall verified; days are kept for 400 days.": "Sitenin sayfalarını hangi yapay zekâ asistanlarının ve yapay zekâ arama dizinleyicilerinin okuduğu, en çok okudukları sayfalar, yanıtlarının gönderdiği ziyaretler ve hiçbirinin okumadığı site haritası sayfaları. Okumalar, güvenlik duvarının doğruladığı botlar için gün gün sayılır; günler 400 gün saklanır.",
     "Which Page Layout would you like to use?": "Hangi Sayfa Düzenini kullanmak istersiniz?",
     "Which beers are on today?": "Bugün hangi biralar var?",
