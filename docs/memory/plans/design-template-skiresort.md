@@ -19,8 +19,8 @@ description: Plan: the Ski Resort design template (pinegrap-skiresort): slopes, 
 - 6 (done, #8135): `enquiries.php`: lodging and group enquiries (`group_enquiry` with `?stay=` and `?group=`, `enquiry_view`, `my_enquiries`, `staff_enquiries`, `email_enquiry_new`, `email_enquiry_received`); test.
 - 7 (done, #8155): `events.php`: the Events collection by date (`events` from today on, `event`, `event_new`, `home_events`); test.
 - 8 (done, #8152): `shop.php`: the catalog (SKUs `SKI-PASS-`, `SKI-SEASON-`, `SKI-RENT-<key>`), `buy_passes`, `rental_shop`, the shop pages, `email_order`; test.
-- 9: `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), blog post, help search, error ([[design-templates-standard-pages]]); test.
-- 10 (done, #8168): `account.php`: sign-in and My Account pages, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the account e-mail pages; test.
+- 9 (done, #8169): `standard.php`: contact, inbox, conversation, newsletter, News (`blog`), post, help search, error ([[design-templates-standard-pages]]); test.
+- 10 (done, #8168): `account.php`: sign-in and My Account, `staff`, `blog_new`, `staff_directory`, `staff_entry`, the account e-mail pages; test.
 - 11: assembly: `pinegrap-skiresort.php` (order, search sections, look, fonts, `psk-` rules, folders, shared parts), `…_assembly_test.php`, the template in the shared test lists (collection-form, account-email, submitter-name, consent-privacy, faded-text, custom-form-rules, url-params), `designer/design-template-skiresort.md`; the PR body names the `[NEW]` line; this plan and its design file are deleted.
 
 ## Where to start?
