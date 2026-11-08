@@ -5545,6 +5545,22 @@
             body.insertBefore(template.node, body.firstChild);
         }
 
+        // The channel's memory (assets/js/workspace_memory.js): a channel
+        // with an agent shows it as a tab, any other opens it from here.
+        if (channel && channel.memory && !channel.memory.tab && window.PGWsMemory && app.channel && (app.channel.id === channel.id)) {
+            var memoryRow = el('div', 'mb-5');
+            var memoryOpen = button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('mem_open'), 'bi-journal-bookmark');
+            memoryOpen.addEventListener('click', function () {
+                hideOffcanvas(node, function () {
+                    app.tab = 'memory';
+                    app.drawCenter();
+                });
+            });
+            memoryRow.appendChild(memoryOpen);
+            memoryRow.appendChild(el('div', 'form-text', t('mem_help')));
+            body.appendChild(memoryRow);
+        }
+
         var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', channel ? t('save') : t('create_channel'), 'bi-check2');
         var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
         cancel.setAttribute('data-bs-dismiss', 'drawer');
@@ -8690,6 +8706,12 @@
                 tabList.push(['board', t('tab_board')]);
             }
 
+            // The Memory tab: in a channel with an agent, or opened from the
+            // channel settings (workspace_memory.js).
+            if (window.PGWsMemory && channel.memory && (channel.memory.tab || (self.tab === 'memory'))) {
+                tabList.push(['memory', t('tab_memory')]);
+            }
+
             var paneId = nextId('ws-pane-');
 
             // Tab semantics in full: the chosen tab is selected and the only
@@ -8811,6 +8833,8 @@
                 self.drawFiles();
             } else if (self.tab === 'tasks') {
                 self.drawTasks();
+            } else if ((self.tab === 'memory') && window.PGWsMemory && channel.memory) {
+                window.PGWsMemory.mount(pane, channel);
             } else if ((self.tab === 'board') && self.hasBoard(channel)) {
                 window.PGWsChannelBoard.mount(pane, channel, {
                     openMessage: function (messageId) { self.open(channel.id, messageId); },

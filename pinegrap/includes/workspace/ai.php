@@ -3627,6 +3627,10 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         $parts[] = pg_ai_data_block('people', ws_ai_team_text());
         $parts[] = '';
 
+        if ($claude && $channel && ws_can_read_channel($asker, $channel)) {
+            $parts = array_merge($parts, ws_ai_memory_parts($asker, $channel));
+        }
+
         if (!empty($context['earlier'])) {
             $parts[] = 'What the assistants were asked on this task before, and what they answered:';
             $earlier = array();
@@ -3696,6 +3700,12 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         $parts[] = pg_ai_data_block('people', ws_ai_team_text());
         $parts[] = '';
 
+        // The channel's memory as an index (an agent reads the entries it
+        // needs through the API) and its decision lines.
+        if ($claude) {
+            $parts = array_merge($parts, ws_ai_memory_parts($asker, $channel));
+        }
+
         // Written as a reply (to one of the assistant's answers, say): the
         // message it answers.
         $parent = ((int) $message['parent_id'] > 0) ? ws_message($message['parent_id']) : null;
@@ -3723,6 +3733,22 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
     $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);
 
     return array('ok' => true, 'error' => '', 'parts' => $parts, 'request' => $request_text, 'message' => $message, 'text' => ws_ai_briefing_text($text, ws_ai_request_language($request_text)));
+}
+
+/**
+ * The lines of a brief that carry a channel's memory index and its
+ * decisions (ws_memory_brief()), inside a data block: the entries are
+ * written by members and agents. None when the channel has neither.
+ *
+ * @param array $asker
+ * @param array $channel
+ * @return string[]
+ */
+function ws_ai_memory_parts($asker, $channel)
+{
+    $digest = function_exists('ws_memory_brief') ? ws_memory_brief($asker, $channel) : '';
+
+    return ($digest === '') ? array() : array(pg_ai_data_block('channel memory', $digest), '');
 }
 
 /**

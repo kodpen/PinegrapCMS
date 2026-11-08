@@ -3388,6 +3388,67 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('messages' => ws_channel_decisions($viewer, $channel['id'])));
 
+        // A channel's memory (channel_memory.php): every entry with its
+        // text, the expired ones too; written by whoever may post here.
+        case 'ws_memory_list':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            return ws_action_ok(array(
+                'entries'  => array_map('ws_memory_present', ws_memory_rows($channel['id'])),
+                'can_post' => ws_can_post_channel($viewer, $channel),
+            ));
+
+        case 'ws_memory_save':
+            $channel = ws_action_channel($viewer, $request);
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            $current = null;
+
+            if ((int) ($request['id'] ?? 0) > 0) {
+                $current = ws_memory_row((int) $request['id']);
+
+                if (!$current || ((int) $current['channel_id'] !== (int) $channel['id'])) {
+                    return ws_action_error(lang('That memory entry could not be found.'));
+                }
+            }
+
+            // The expiry comes as the date field's day, kept to its end.
+            $expires = trim((string) ($request['expires'] ?? ''));
+            $input = array(
+                'title'      => (string) ($request['title'] ?? ''),
+                'text'       => (string) ($request['text'] ?? ''),
+                'tags'       => (string) ($request['tags'] ?? ''),
+                'pinned'     => !empty($request['pinned']),
+                'expires_at' => ($expires === '') ? 0 : (int) strtotime($expires . ' 23:59:59'),
+            );
+            $check = ws_memory_check($viewer, $channel, $input, $current);
+
+            if (!$check['ok']) {
+                return ws_action_error($check['error'], $check['field']);
+            }
+
+            $id = ws_memory_save($channel['id'], $check['values'], 'user', $viewer['id'], $current);
+
+            return ws_action_ok(array('entry' => ws_memory_present(ws_memory_row($id))));
+
+        case 'ws_memory_delete':
+            $row = ws_memory_row((int) ($request['id'] ?? 0));
+
+            if (!$row || !ws_can_read_channel($viewer, ws_channel($row['channel_id']))) {
+                return ws_action_error(lang('That memory entry could not be found.'));
+            }
+
+            $result = ws_memory_delete($viewer, $row);
+
+            return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
+
         case 'ws_channel_files':
             $channel = ws_action_channel($viewer, $request);
 

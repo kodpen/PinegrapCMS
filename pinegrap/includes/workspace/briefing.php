@@ -699,7 +699,7 @@ function ws_recap_channel($viewer, $channel, $since_id)
 
     $out['decisions'] = (int) db_value("SELECT COUNT(*) FROM ws_messages
         WHERE channel_id = '" . $channel_id . "' AND kind = 'decision' AND deleted_at = 0
-        AND marked_at > '" . $since . "' AND marked_by <> '" . $me . "'");
+        AND marked_at > '" . $since . "' AND " . (ws_marks_kind_ready() ? "(marked_by <> '" . $me . "' OR marked_by_kind = 'app')" : "marked_by <> '" . $me . "'"));
 
     $out['tasks'] = (int) db_value("SELECT COUNT(*) FROM ws_task_assignees a
         INNER JOIN ws_tasks t ON t.id = a.task_id

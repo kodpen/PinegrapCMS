@@ -150,7 +150,7 @@ function ws_message_payloads($viewer, $rows, $options = array())
             $task_ids[] = (int) $row['task_id'];
         }
 
-        if ((int) $row['marked_by'] > 0) {
+        if (((int) $row['marked_by'] > 0) && !ws_mark_by_app($row)) {
             $senders[] = (int) $row['marked_by'];
         }
     }
@@ -361,7 +361,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'task_id'     => (int) $row['task_id'],
         'task_html'   => '',
         'marked'      => in_array($row['kind'], array('decision', 'note'), true)
-            ? lang(array('string' => 'Marked by {var:1}', 'vars' => ($people[(int) $row['marked_by']]['name'] ?? '')))
+            ? lang(array('string' => 'Marked by {var:1}', 'vars' => ws_mark_by_name($row, $people)))
             : '',
         // A locked decision is the trace of a record change: nobody edits it,
         // and only staff may delete it or take its mark off.
@@ -377,7 +377,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
             || (($row['sender_kind'] === 'guest') && ($viewer['role'] < 3))),
         // Deleted for the person alone, whoever wrote it.
         'can_hide'    => !$deleted && ($row['kind'] !== 'system') && ws_message_hides_ready(),
-        'can_mark'    => !$past && !$deleted && ($row['sender_kind'] === 'user') && in_array($row['kind'], array('message', 'note', 'decision'), true) && (empty($row['locked']) || ($viewer['role'] < 3)),
+        'can_mark'    => !$past && !$deleted && in_array($row['sender_kind'], array('user', 'app'), true) && in_array($row['kind'], array('message', 'note', 'decision'), true) && (empty($row['locked']) || ($viewer['role'] < 3)),
         'can_react'   => !$deleted && $can_post && ($row['kind'] !== 'system') && ws_interact_ready(),
         'reactions'   => $deleted ? array() : ($extra['reactions'][$id] ?? array()),
         'poll'        => $deleted ? null : ($extra['polls'][$id] ?? null),
@@ -1729,35 +1729,68 @@ function ws_message_seen_by($viewer, $message)
 }
 
 /**
- * Marks a message as a decision or a note, or takes the mark off.
+ * Whether a message may be marked as a decision or a note, or the mark
+ * taken off (kind message): a message of a person or of an application
+ * (an agent's own agreement too), not deleted, in a channel the viewer may
+ * post in. A locked decision keeps its mark against the User role.
  *
  * @param array  $viewer
- * @param array  $message
- * @param string $kind decision | note | message
- * @return array ok, error
+ * @param array  $message ws_messages
+ * @param string $kind    decision | note | message
+ * @return array ok, error, forbidden
  */
-function ws_message_mark($viewer, $message, $kind)
+function ws_message_mark_check($viewer, $message, $kind)
 {
     if (!in_array($kind, array('decision', 'note', 'message'), true)
-        || ($message['sender_kind'] !== 'user') || ((int) $message['deleted_at'] > 0)
+        || !in_array($message['sender_kind'], array('user', 'app'), true) || ((int) $message['deleted_at'] > 0)
         || !in_array($message['kind'], array('message', 'note', 'decision'), true)) {
-        return array('ok' => false, 'error' => lang('Invalid request.'));
+        return array('ok' => false, 'error' => lang('Invalid request.'), 'forbidden' => false);
     }
 
     if (!empty($message['locked']) && ($viewer['role'] >= 3)) {
-        return array('ok' => false, 'error' => lang('This decision records a change to a record. People with the User role cannot take its mark off.'));
+        return array('ok' => false, 'error' => lang('This decision records a change to a record. People with the User role cannot take its mark off.'), 'forbidden' => true);
     }
 
     if (!ws_can_post_channel($viewer, ws_channel($message['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'forbidden' => true);
+    }
+
+    return array('ok' => true, 'error' => '', 'forbidden' => false);
+}
+
+/**
+ * Marks a message as a decision or a note, or takes the mark off. With an
+ * application id the application (an agent) is the marker, never the person
+ * it acts for: a person's mark from the owner's account is an owner
+ * decision, an agent's is not.
+ *
+ * @param array  $viewer
+ * @param array  $message
+ * @param string $kind   decision | note | message
+ * @param int    $app_id the application that marks, 0 for the viewer
+ * @return array ok, error, forbidden
+ */
+function ws_message_mark($viewer, $message, $kind, $app_id = 0)
+{
+    $check = ws_message_mark_check($viewer, $message, $kind);
+
+    if (!$check['ok']) {
+        return $check;
     }
 
     $marked = ($kind !== 'message');
+    $by_app = $marked && ((int) $app_id > 0);
+
+    // Without the column an application's id would read as a person's.
+    if ($by_app && !ws_marks_kind_ready()) {
+        return array('ok' => false, 'error' => lang('The database has to be updated first.'), 'forbidden' => false);
+    }
 
     db("UPDATE ws_messages SET
             kind = '" . e($kind) . "',
-            marked_by = '" . ($marked ? (int) $viewer['id'] : 0) . "',
-            marked_at = '" . ($marked ? time() : 0) . "'
+            marked_by = '" . ($marked ? ($by_app ? (int) $app_id : (int) $viewer['id']) : 0) . "',
+            marked_at = '" . ($marked ? time() : 0) . "'"
+            . (ws_marks_kind_ready() ? ", marked_by_kind = '" . ($by_app ? 'app' : 'user') . "'" : '') . "
         WHERE id = '" . (int) $message['id'] . "'");
 
     ws_message_touch($message['id']);
@@ -1765,7 +1798,7 @@ function ws_message_mark($viewer, $message, $kind)
     // Marked in a discussion: the channel gets the decision (threads.php).
     ws_thread_copy_sync($message['id']);
 
-    return array('ok' => true, 'error' => '');
+    return array('ok' => true, 'error' => '', 'forbidden' => false);
 }
 
 /**

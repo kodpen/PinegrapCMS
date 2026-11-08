@@ -319,6 +319,7 @@ function pg_panel_actions()
         'ws_file_text', 'ws_file_text_save', 'ws_file_history', 'ws_channel_notify',
         'ws_channel_pin', 'ws_channel_order', 'ws_channel_summary',
         'ws_channel_decisions', 'ws_channel_files', 'ws_channel_tasks',
+        'ws_memory_list', 'ws_memory_save', 'ws_memory_delete',
         'ws_search', 'ws_palette', 'ws_channel_board', 'ws_ref_search',
         'ws_record_refs', 'ws_record_fields', 'ws_record_fields_save',
         'ws_record_create',

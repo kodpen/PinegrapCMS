@@ -1162,6 +1162,7 @@ function ws_thread_copy_sync($message_id)
                 file_name = '" . e($message['file_name']) . "',
                 marked_by = '" . (int) $message['marked_by'] . "',
                 marked_at = '" . (int) $message['marked_at'] . "'"
+                . (ws_marks_kind_ready() ? ", marked_by_kind = '" . (ws_mark_by_app($message) ? 'app' : 'user') . "'" : '')
                 . ($locked ? ", locked = '" . (int) ($message['locked'] ?? 0) . "'" : '') . "
             WHERE id = '" . (int) $copied['id'] . "'");
 
@@ -1185,6 +1186,11 @@ function ws_thread_copy_sync($message_id)
 
     if ($copy_id <= 0) {
         return;
+    }
+
+    // An agent's mark stays the agent's in the channel's copy.
+    if (ws_marks_kind_ready() && ws_mark_by_app($message)) {
+        db("UPDATE ws_messages SET marked_by_kind = 'app' WHERE id = '" . $copy_id . "'");
     }
 
     db("UPDATE ws_channels SET last_message_id = '" . $copy_id . "', last_message_at = '" . $now . "' WHERE id = '" . (int) $parent['id'] . "'");
@@ -1248,6 +1254,10 @@ function ws_threads_purge($limit = WS_THREAD_PURGE_BATCH)
 
         foreach (array('ws_polls', 'ws_refs', 'ws_blocks', 'ws_note_shares', 'ws_channel_eras', 'ws_ai_drafts', 'ws_ai_changes', 'ws_ai_requests', 'design_proposals') as $table) {
             db("DELETE FROM " . $table . " WHERE channel_id = '" . $thread_id . "'");
+        }
+
+        if (function_exists('ws_memory_ready') && ws_memory_ready()) {
+            db("DELETE FROM ws_channel_memory WHERE channel_id = '" . $thread_id . "'");
         }
 
         db("DELETE FROM ws_messages WHERE channel_id = '" . $thread_id . "'");

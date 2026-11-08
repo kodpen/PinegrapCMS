@@ -1727,9 +1727,19 @@ function ws_api_message_preamble($params)
     $name = trim((string) ($app['name'] ?? ''));
     $asker = array('name' => ws_mcp_agent_author($message));
 
+    $place = $parent ? ws_ai_agent_place('thread', (string) $parent['name']) : ws_ai_agent_place('channel', $channel ? (string) $channel['name'] : '');
+
+    // The channel's memory index and decisions after the place; the agent
+    // reads the entries it needs with workspace.memory.get.
+    $memory = $channel ? ws_ai_memory_parts($viewer, $channel) : array();
+
+    if ($memory) {
+        $place .= "\n\n" . $memory[0];
+    }
+
     $text = ws_ai_agent_preamble(
         ws_ai_briefing_head($asker, 'agent', ($name !== '') ? $name : lang('Application')),
-        $parent ? ws_ai_agent_place('thread', (string) $parent['name']) : ws_ai_agent_place('channel', $channel ? (string) $channel['name'] : ''),
+        $place,
         '',
         ws_ai_request_language((string) $message['body'])
     );
@@ -4580,8 +4590,9 @@ function ws_api_decision_present($viewer, $row, $refs, $channels, $people, $chan
 
     $marked_by = null;
 
+    // An agent marks as its application: no person behind the mark.
     if ((int) $row['marked_by'] > 0) {
-        $marked_by = array('user_id' => (int) $row['marked_by'], 'name' => (string) ($people[(int) $row['marked_by']]['name'] ?? ''));
+        $marked_by = array('user_id' => ws_mark_by_app($row) ? null : (int) $row['marked_by'], 'name' => ws_mark_by_name($row, $people));
     }
 
     $file = null;
@@ -4617,6 +4628,7 @@ function ws_api_decision_present($viewer, $row, $refs, $channels, $people, $chan
         'sender_kind'   => (string) $row['sender_kind'],
         'sender'        => $sender,
         'marked_by'     => $marked_by,
+        'marked_by_kind' => ((int) $row['marked_by'] > 0) ? (ws_mark_by_app($row) ? 'app' : 'user') : null,
         'locked'        => !empty($row['locked']),
         'claude_change' => $change,
         'file'          => $file,
@@ -4637,7 +4649,8 @@ function ws_api_decision_schema()
         'body'          => 'string',
         'sender_kind'   => 'string',
         'sender'        => 'WorkspaceMessageSender?',
-        'marked_by'     => 'WorkspacePerson?',
+        'marked_by'     => 'WorkspaceMessageSender?',
+        'marked_by_kind' => 'string?',
         'locked'        => 'boolean',
         'claude_change' => 'WorkspaceDecisionChange?',
         'file'          => 'WorkspaceDecisionFile?',
@@ -4723,7 +4736,7 @@ function ws_api_decisions_list($params)
             $people_ids[] = (int) $row['sender_id'];
         }
 
-        if ((int) $row['marked_by'] > 0) {
+        if (((int) $row['marked_by'] > 0) && !ws_mark_by_app($row)) {
             $people_ids[] = (int) $row['marked_by'];
         }
     }
