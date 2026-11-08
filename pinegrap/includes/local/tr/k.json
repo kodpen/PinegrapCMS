@@ -79,6 +79,7 @@
     "Keep this on only while developing; the error text is shown to visitors.": "Yalnızca geliştirme sırasında açık tutun; hata metinleri ziyaretçiye görünür.",
     "Keep this signature with the quote and mark it accepted? A signature cannot be removed.": "Bu imza teklifle saklansın ve teklif kabul edildi olarak işaretlensin mi? İmza sonradan kaldırılamaz.",
     "Keep this window open. Cancel writes nothing.": "Bu pencere açık kalmalı. İptal edilirse hiçbir dosya yazılmaz.",
+    "Keep to marked slopes; closed slopes are roped off": "İşaretli pistlerde kalın; kapalı pistler iple kapatılır",
     "Keep visitor records for": "Ziyaretçi kayıtlarını sakla",
     "Keep visitor records for 0 days (no limit), or for {var:1} to {var:2} days.": "Ziyaretçi kayıtlarını 0 gün (sınırsız) ya da {var:1} ile {var:2} gün arası saklayın.",
     "Keep your home in good shape": "Evinizi iyi durumda tutun",
