@@ -99,7 +99,14 @@ $room_pages[] = array(
     'meta_description' => lang('Guest rooms, suites and family rooms by the sea or over the olive garden, with photos, sizes and the rate for a night.'),
     'tree'             => $page(array(
         $page_header(lang('Rooms and Suites'), lang('Every room looks at the sea or the garden. Choose a kind of room or a view to narrow the list.')),
-        $el('section', 'py-5', lang('Rooms'), array(
+        // The top of the house in depth before the list (Hotel: Room
+        // Showcase); its second button goes to the rates, the list is
+        // under it.
+        $room_showcase('terrace', 'ht-rooms-showcase', 'h2', 'py-5', array(
+            $link(lang('Ask for This Room'), '{{page:book}}?' . $query(array('room' => $rooms['terrace']['name'])), 'btn btn-primary rounded-pill px-4'),
+            $link(lang('See the rates'), '{{page:rates}}', 'btn btn-outline-secondary rounded-pill px-4'),
+        )),
+        $el('section', 'py-5 border-top', lang('Rooms'), array(
             $container(array($room_filter_bar(), $widget('rooms_list'))),
         )),
     )),

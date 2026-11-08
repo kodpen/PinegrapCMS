@@ -165,6 +165,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-gym.md: Gym template (pinegrap-gym): classes and a timetable, trainers, plans, class booking and join requests, memberships in the shop with a members' area, pgy- look, tests.
 - design-template-hello.md: Hello template 2.6.0: threads and the reply e-mail card on the Comments widget, product reviews, the Favourites page and its shop-only links, Google Reviews beside the testimonials
 - design-template-homeservices.md: Home Services template (pinegrap-homeservices): services and team as collections, visit bookings and estimate requests, service areas, price guide, care plans in the shop, phs- look, tests.
+- design-template-hotel-pages.md: Hotel template 2.0.0: home, rooms and rates on the Hotel blocks: the builders, each page's composition, motion, what left, the test
 - design-template-hotel.md: Hotel template (pinegrap-hotel): rooms as a collection with rates, booking requests and event enquiries followed from the account, gift vouchers in the shop, pht- look, tests.
 - design-template-launch-home.md: Launch template's home and features pages on the Product Launch blocks: builders, sections, motion, the colour picker's swatch classes, what left
 - design-template-launch-pages.md: Launch template's camera, specs and compare pages on the Product Launch blocks: the spec comparison from $spec_groups, the differences-only compare, motion, what was dropped

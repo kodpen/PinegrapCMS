@@ -1165,3 +1165,159 @@ $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_whe
     ), $show_when('has_ai_links'));
 };
 
+
+// ── The Hotel blocks ────────────────────────────────────────────────────
+// The home, the rooms page and the rates page place the Hotel blocks (room
+// showcase, stay clock); their pg-hotel- rules ship in the template's User
+// Styles.
+
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A list or a row whose items rise in one after another on view.
+$rise = function ($node, $stagger = 80) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
+};
+
+// The Hotel: Room Showcase block: the sample room $key as a guest weighs
+// it. A figure.pg-hotel-gallery of its three pictures (the first,
+// pg-hotel-main, spans two rows from md up) with its view as a badge;
+// beside it the kind of room, the name ($tag: an h1 when the block opens
+// the page), the summary, the rate a night in pg-hotel-figure, a
+// dl.pg-hotel-facts (guests, floor area, beds, view), four amenities and
+// $buttons (null: Ask for This Room with the room filled in, and All
+// Rooms). The pictures fade and the facts rise on view, or on load when
+// the block opens the page. A search section under $id.
+$room_showcase = function ($key, $id, $tag = 'h2', $class = 'py-5', $buttons = null)
+    use ($el, $heading, $para, $link, $image, $icon, $span, $container, $row, $col, $fx, $attr, $searchable, $query, $photo, $rooms, $room_types, $views, $room_rates, $money) {
+    $r = $rooms[$key];
+    $view = $views[$r['view']];
+    $trigger = $tag === 'h1' ? 'load' : 'view';
+    $lazy = $tag === 'h1' ? array() : array('_attrs' => array($attr('loading', 'lazy')));
+    $shot = function ($class, $seed, $alt) use ($el, $image, $photo, $lazy) {
+        return $el('div', trim('pg-hotel-shot ' . $class), lang('Picture'), array(
+            $image($photo($seed, 1200, 900), $alt, '', $lazy),
+        ));
+    };
+    $fact = function ($icon_name, $label, $value) use ($el, $icon, $span) {
+        return $el('div', '', $label, array(
+            $el('dt', 'd-flex align-items-center gap-2', lang('Label'), array(
+                $icon($icon_name, 'text-primary'),
+                $span($label, '', lang('Label')),
+            )),
+            $el('dd', '', $label, array($span($value, '', lang('Value')))),
+        ));
+    };
+    $amenities = array();
+    foreach (array_slice($r['amenities'], 0, 4) as $a) {
+        $amenities[] = $el('li', 'd-flex gap-2 mb-2', $a, array(
+            $icon('bi-check2', 'text-primary flex-shrink-0'),
+            $span($a, '', lang('Text')),
+        ));
+    }
+    if ($buttons === null) {
+        $buttons = array(
+            $link(lang('Ask for This Room'), '{{page:book}}?' . $query(array('room' => $r['name'])), 'btn btn-primary rounded-pill px-4'),
+            $link(lang('All Rooms'), '{{page:rooms}}', 'btn btn-outline-secondary rounded-pill px-4'),
+        );
+    }
+    $gallery = $el('figure', 'pg-hotel-gallery position-relative', lang('Pictures'), array(
+        $shot('pg-hotel-main', 'room-' . $key, $r['summary']),
+        $shot('', 'room-' . $key . '-2', $r['amenities'][0]),
+        $shot('', 'room-' . $key . '-3', $r['beds']),
+        $el('div', 'badge rounded-pill text-bg-primary d-inline-flex align-items-center gap-1 position-absolute top-0 start-0 m-3', lang('Room view'), array(
+            $icon($view['icon']),
+            $span($view['title'], '', lang('Text')),
+        )),
+    ));
+    return $el('section', $class, lang('Hotel (Room Showcase)'), array(
+        $container(array(
+            $row(array(
+                $col(array(
+                    $fx($gallery, array('effect' => 'fade', 'trigger' => $trigger, 'duration' => 900)),
+                ), '', '7'),
+                $col(array(
+                    $para($room_types[$r['type']]['title'], 'pht-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                    $heading($tag, $r['name'], 'pht-display ' . ($tag === 'h1' ? 'display-5' : 'h2') . ' mb-3'),
+                    $para($r['summary'], 'lead text-body-secondary mb-3'),
+                    $el('div', 'd-flex align-items-baseline gap-2 mb-4', lang('Price'), array(
+                        $span(lang('Starting from'), 'small text-body-secondary', lang('Text')),
+                        $span($money($room_rates[$key]), 'pg-hotel-figure pht-price fs-2 fw-bold', lang('Price')),
+                        $span(lang('/ night'), 'text-body-secondary', lang('Text')),
+                    )),
+                    $fx($el('dl', 'pg-hotel-facts border-top mb-4', lang('Facts'), array(
+                        $fact('bi-people', lang('Guests'), sprintf(lang('Up to %s'), $r['guests'])),
+                        $fact('bi-arrows-angle-expand', lang('Floor Area'), $r['size'] . ' m²'),
+                        $fact('bi-moon', lang('Beds'), $r['beds']),
+                        $fact($view['icon'], lang('Room view'), $view['title']),
+                    )), array('effect' => 'slide-up', 'trigger' => $trigger, 'stagger' => 80)),
+                    $heading($tag === 'h1' ? 'h2' : 'h3', lang('In the room'), 'pht-display h5 mb-3'),
+                    $el('ul', 'list-unstyled row row-cols-1 row-cols-sm-2 g-0 mb-4', lang('Amenities'), $amenities),
+                    $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), $buttons),
+                ), '', '5'),
+            ), '4', '', 'g-lg-5 align-items-center'),
+        )),
+    ), $searchable($id, lang('room, suite, beds, size, view, amenities, rate')));
+};
+
+// The Hotel: Stay Clock block: the arrival and the departure as <time>s of
+// $hotel (check-in, check-out) in three pg-hotel-end cards on a
+// pg-hotel-clock row, the stay between them, and the reception's phone
+// under it. The header fades and the cards rise on view. A search section
+// under $id.
+$stay_clock = function ($id, $class = 'py-5 bg-body-tertiary')
+    use ($el, $heading, $para, $link, $icon, $span, $container, $row, $col, $fx, $rise, $attr, $searchable, $hotel) {
+    $line = function ($icon_name, $text) use ($el, $icon, $span) {
+        return $el('li', 'd-flex gap-2 mb-2', $text, array(
+            $icon($icon_name, 'text-primary flex-shrink-0'),
+            $span($text, '', lang('Text')),
+        ));
+    };
+    $card = function ($icon_name, $title, $lead, $time, $notes, $md) use ($el, $heading, $para, $icon, $col, $attr) {
+        $inner = array(
+            $icon($icon_name, 'fs-3 text-primary d-block mb-2'),
+            $heading('h3', $title, 'pht-display h5 mb-1'),
+            $para($lead, 'small text-body-secondary ' . ($time === '' ? 'mb-3' : 'mb-2')),
+        );
+        if ($time !== '') {
+            $inner[] = $el('time', 'pg-hotel-figure pht-price d-block display-5 fw-bold mb-3', lang('Time'), array(), array(
+                'text' => $time, '_attrs' => array($attr('datetime', $time))));
+        }
+        $inner[] = $el('ul', 'list-unstyled small text-start mb-0', lang('Notes'), $notes);
+        return $col(array($el('div', 'pg-hotel-end h-100 p-4 text-center', $title, $inner)), $md, '4');
+    };
+    return $el('section', $class, lang('Hotel (Stay Clock)'), array(
+        $container(array(
+            $fx($el('div', 'text-center col-lg-8 mx-auto mb-5', lang('Section Header'), array(
+                $para(lang('Your stay'), 'pht-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+                $heading('h2', lang('From arrival to departure'), 'pht-display h2 mb-2'),
+                $para(lang('Tell us when you arrive with your request; we keep the room ready and your luggage safe.'), 'lead text-body-secondary mb-0'),
+            )), array('effect' => 'fade', 'trigger' => 'view', 'duration' => 700)),
+            $rise($row(array(
+                $card('bi-door-open', lang('Arrival'), lang('Your room is ready from'), $hotel['check_in'], array(
+                    $line('bi-suitcase', lang('Arriving early? We keep your luggage and the pool is yours.')),
+                    $line('bi-car-front', lang('A driver at the airport on the day you arrive, if you ask for it with your booking.')),
+                ), '6'),
+                $card('bi-moon-stars', lang('During your stay'), $hotel['reception'], '', array(
+                    $line('bi-cup-hot', lang('Breakfast from 7:30 to 10:30')),
+                    $line('bi-water', lang('Pool, garden and beach towels')),
+                    $line('bi-wifi', lang('Fast Wi-Fi')),
+                    $line('bi-p-circle', lang('Free Parking')),
+                ), '12'),
+                $card('bi-box-arrow-right', lang('Departure'), lang('Please leave the room by'), $hotel['check_out'], array(
+                    $line('bi-clock-history', lang('Late check-out until 14:00 when the room is free; ask at the reception.')),
+                    $line('bi-bag', lang('Leaving later? Your bags wait at the reception.')),
+                ), '6'),
+            ), '4', 'center', 'pg-hotel-clock'), 120),
+            $el('div', 'd-flex flex-wrap align-items-center justify-content-center gap-2 gap-sm-3 mt-4', lang('Reception'), array(
+                $icon('bi-telephone', 'fs-5 text-primary flex-shrink-0'),
+                $span(lang('Reception'), 'fw-semibold', lang('Text')),
+                $link($hotel['phone'], 'tel:' . preg_replace('/[^0-9+]/', '', $hotel['phone']), 'fw-semibold link-primary'),
+            )),
+        )),
+    ), $searchable($id, lang('check-in, check-out, arrival, departure, luggage, late check-out')));
+};
