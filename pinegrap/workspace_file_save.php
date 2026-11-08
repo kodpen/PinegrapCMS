@@ -25,6 +25,12 @@
  *     { token, doc, picture, name? } -> { status, mode: 'new', name, url, message_id }
  *   workspace_file_save.php?note=<id>      a new canvas kept for a note
  *     { token, doc, picture, name? } -> { status, mode: 'new', id, name, url }
+ *   workspace_file_save.php?note=<id>&file=<stored name>   a canvas of the
+ *     note's own folder: { token, action: 'canvas' } -> { status, doc } as
+ *     for a message; a save { token, doc, picture } writes the canvas drawn
+ *     again as a new file of the note -> { status, mode: 'replace', id,
+ *     name, url }, and the screen links it in the old one's place. The old
+ *     file stays in the folder, linked from the note's earlier version.
  *   workspace_file_save.php?message=<id>   with doc.artboard: as above, the
  *     canvas drawn again replacing or answering the message's picture
  *   A canvas's pictures from this computer (pictures [{id, data, name}])
@@ -112,6 +118,25 @@ if (isset($_GET['note'])) {
         ws_file_save_refuse(lang('That note could not be found.'));
     }
 
+    // A canvas already in the note: only a file of the note's own folder.
+    $edited = null;
+
+    if (isset($_GET['file'])) {
+        $folder_id = ws_note_folder_id($note, 0, false);
+        $edited = ($folder_id > 0)
+            ? db_item("SELECT id, name FROM files WHERE name = '" . e((string) $_GET['file']) . "' AND folder = '" . (int) $folder_id . "'")
+            : null;
+
+        if (!$edited) {
+            ws_file_save_refuse(lang('The file could not be found.'));
+        }
+
+        if (($request['action'] ?? '') === 'canvas') {
+            echo encode_json(array('status' => 'success', 'doc' => ws_canvas_open_doc((int) $edited['id'])));
+            exit();
+        }
+    }
+
     $picture = $canvas ? ws_canvas_picture($request) : array('error' => lang('Invalid request.'), 'data' => '');
 
     if ($picture['error'] !== '') {
@@ -126,7 +151,7 @@ if (isset($_GET['note'])) {
 
     $kept = ws_canvas_keep($result['id'], $doc_object, $viewer['id'], $request['pictures'] ?? null);
 
-    echo encode_json(array('status' => 'success', 'mode' => 'new', 'id' => (int) $result['id'], 'name' => $result['name'], 'url' => $result['url'], 'pictures' => $kept['pictures']));
+    echo encode_json(array('status' => 'success', 'mode' => $edited ? 'replace' : 'new', 'id' => (int) $result['id'], 'name' => $result['name'], 'url' => $result['url'], 'pictures' => $kept['pictures']));
     exit();
 }
 

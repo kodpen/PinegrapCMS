@@ -18,6 +18,6 @@ description: Steps L1-L4, M1-M3 and N9 of plans/workspace-notes-groups-lock.md: 
 
 - M2 (M) Media, writing box. Done (#8178). `workspace_editor.js`: such a line as a `media` card (contentEditable false, its markup kept) opening `viewImages()` or `previewFile()`; `attach()` and `drawCanvas()` put the file on a line of its own (`insertFile()`); a voice link on a line of its own takes the inline player (`PGWsVoice.player()`), and "Recordings in this note" keeps only the others.
 
-- M3 (S) A canvas edited again. After M2. On a canvas picture in a note, Edit the picture opens the editor with its layers (`workspace_file_save.php?note=&file=`); the save replaces the file, the old one kept as an earlier version.
+- M3 (S) A canvas edited again. Done (#8198). On a canvas picture in a note, Edit the picture opens the editor with its layers (`workspace_file_save.php?note=&file=`); the save replaces the file, the old one kept as an earlier version.
 
 - N9 (S) Close-out. Last. A keyboard and screen-reader pass over groups, tabs, drag and drop and the lock; lasting decisions into topic files; these four plan files deleted; index.
