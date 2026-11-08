@@ -115,8 +115,9 @@ decision questions.
    not `.min.js` bundles or language files; tests, tools and memory never
    count). A bigger feature is a plan cut into steps of that size.
 6. **On to the next step when it lands.** When your PR is merged, check the
-   queue limit; under it, claim your plan's next step that no open PR holds,
-   else end. At most three steps in a row, then hand over through the plan
+   queue limit; under it, claim your plan's next step that no open PR holds
+   (a design template plan's only when `php tools/free_work.php` lists no
+   other free step), else end. At most three steps in a row, then hand over through the plan
    file and end: a long session pays for its whole context on every wake.
 7. **Shared hot files.** A PR never edits `changelog.txt`: its body names the
    `[NEW]` line or the `[SCHEME]` item. Translation keys go in only with
