@@ -6063,6 +6063,7 @@
     "Arrival Row": "Varış Satırı",
     "Arrival and departure": "Varış ve ayrılış",
     "Arrival and free play": "Karşılama ve serbest oyun",
+    "Arrival by Sea": "Denizden Varış",
     "Arrival date": "Giriş tarihi",
     "Arrival date ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Varış tarihi ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından değiştirildi.",
     "Arrival date ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Varış tarihi ({var:1}) API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından oluşturuldu.",

@@ -180,7 +180,7 @@ $marina_css = implode("\n", array(
 
 return array(
     'name'        => lang('Marina'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 105,
     'icon'        => 'bi-life-preserver',
@@ -234,10 +234,10 @@ return array(
         'email_footer' => array('name' => lang('Marina E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pmn- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the rules of the Marina blocks its pages
+    // place and its pmn- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $marina_css),
+        'css'   => pg_design_template_user_styles(array('marina-pontoons', 'marina-arrival'), $marina_css),
         'fonts' => json_encode($marina_fonts),
     ),
 );
