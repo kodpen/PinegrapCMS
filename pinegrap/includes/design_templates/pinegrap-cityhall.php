@@ -173,7 +173,7 @@ $cityhall_css = implode("\n", array(
 
 return array(
     'name'        => lang('City Hall'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 101,
     'icon'        => 'bi-building',
@@ -227,10 +227,10 @@ return array(
         'email_footer'  => array('name' => lang('City Hall E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pcy- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the City Hall blocks' pg-cityhall- rules and
+    // its pcy- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $cityhall_css),
+        'css'   => pg_design_template_user_styles(array('cityhall-hero', 'cityhall-service', 'cityhall-council'), $cityhall_css),
         'fonts' => json_encode($cityhall_fonts),
     ),
 );

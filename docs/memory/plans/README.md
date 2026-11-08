@@ -16,7 +16,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 ## Files
 
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- agent-canvas.md: Plan (owner 2026-11-08): agents create, read and edit Workspace canvases by writing SVG in any channel with an agent; the channel's browser draws the picture; C1, C2, C3a, C4 done, C3b left
+- agent-canvas.md: Plan (owner 2026-11-08): agents create, read and edit Workspace canvases by writing SVG in any channel with an agent; the channel's browser draws the picture; C1-C4 done
 - agent-channel-flag.md: Plan (owner 2026-11-08): a channel becomes an agent channel with /agent-channel, a column of its own; its decisions stay apart from the other channels' decisions; one step AC
 - agent-channel-questions.md: Plan (owner 2026-11-08): agents ask people with a checklist in an agent channel, read the ticks over the API, wake on a tick or a person's message; one step AQ
 - agent-channel-steps-2.md: Steps A5-A9 of plans/agent-channel.md: channel memory and decision marks, model assistants, risk tiers, further doors (Claude Code plugin, per-person sessions, chat box), the canvas as an agent tool
@@ -36,8 +36,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-own-looks.md: Plan (owner 2026-11-07): block families in their own source files (B0), Launch as an Apple-like product page (L1-L3), then a polishing round for every template
 - design-template-planetarium-design.md: Design of plans/design-template-planetarium.md: the shipped features the Planetarium template reuses, what it does not build, its look and Turkish words
 - design-template-planetarium.md: Plan: the Planetarium and Observatory design template (pinegrap-planetarium): dome shows by date, telescope nights, school visits, tickets and memberships, astronomy news; small steps
-- design-template-podcast-design.md: Design of plans/design-template-podcast.md: what the Podcast template reuses for podcasts, episodes, sponsorship and supporters, what it does not build, its look and Turkish words
-- design-template-podcast.md: Plan: the Podcast Network design template (pinegrap-podcast): podcasts and episodes as collections, hosts, sponsorship enquiries, supporters' membership with bonus episodes; ~1,000-line steps
 - design-template-zoo-design.md: Design of plans/design-template-zoo.md: the shipped features the Zoo template reuses, what it does not build, its look and Turkish words
 - design-template-zoo.md: Plan: the Zoo and Aquarium design template (pinegrap-zoo): animals by habitat, feeding times, park map, tickets, adoptions, visit requests, events; small steps
 - designer-performance-and-publish.md: Plan (owner 2026-11-06): the visual designer stops rebuilding everything on every edit and opens faster, and Publish lists the pages to put on the site; steps D1-D7, one worker at a time on the script

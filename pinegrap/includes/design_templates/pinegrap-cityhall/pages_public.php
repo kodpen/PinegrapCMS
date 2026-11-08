@@ -129,17 +129,6 @@ foreach ($neighbourhoods as $name) {
     ), '4', '3', '', '6');
 }
 
-// The quick ways in under the home's opening: the things residents come
-// for most often.
-$quick_link = function ($icon_name, $text, $href) use ($el, $icon, $span, $col) {
-    return $col(array(
-        $el('a', 'd-flex align-items-center gap-3 h-100 p-3 rounded-3 bg-body border shadow-sm link-body-emphasis text-decoration-none pcy-lift', $text, array(
-            $icon($icon_name, 'fs-4 text-primary'),
-            $span($text, 'fw-semibold', lang('Link Text')),
-        ), array('href' => $href)),
-    ), '4', '2', '', '6');
-};
-
 // ── Home ────────────────────────────────────────────────────────────────
 
 $public_pages[] = array(
@@ -149,44 +138,21 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('Your city hall online: services, public notices and tenders, events, the council and requests answered by the right department.'),
     'tree'             => $page(array(
-        // The way in: the city hall in a sentence, the two ways on and a
-        // picture of the square.
-        $el('section', 'pcy-hero py-5 overflow-hidden', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Welcome to your city hall'), 'pcy-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Services, notices and answers in one place'), 'pcy-display display-4 mb-3'),
-                        $para($city['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('Make a Request'), '{{page:request}}', 'btn btn-primary btn-lg px-4'),
-                            $link(lang('Find a Service'), '{{page:services}}', 'btn btn-outline-secondary btn-lg px-4'),
-                        )),
-                    ), '', '6'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('The city hall on Republic Square with trees in front'), '4x3', false),
-                    ), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
+        // The way in: the things residents come to do, each a tile of its
+        // own, and the citizen line (City Hall: Task Hero).
+        $task_hero(lang('Welcome to your city hall'), lang('How can we help you today?'), $city['tagline'] . '.', array(
+            array('bi-exclamation-triangle', lang('Report a problem'), lang('A pothole, a dark street or rubbish left behind'), '{{page:request}}'),
+            array('bi-calendar-check', lang('Book a meeting'), lang('Meet the mayor or a department'), '{{page:meet}}'),
+            array('bi-megaphone', lang('Public Notices'), lang('Tenders, council decisions and vacancies'), '{{page:notices}}'),
+            array('bi-people', lang('Council meetings'), lang('The agenda and the decisions'), '{{page:council}}'),
+            array('bi-geo-alt', lang('Service points'), lang('Where to go and when they are open'), '{{page:service_points}}'),
+            array('bi-telephone', lang('Useful numbers'), lang('Faults, emergencies and the citizen line'), '{{page:numbers}}'),
         )),
-
-        $el('section', 'pb-5', lang('Quick Links'), array(
-            $container(array(
-                $row(array(
-                    $quick_link('bi-chat-square-text', lang('Make a Request'), '{{page:request}}'),
-                    $quick_link('bi-megaphone', lang('Public Notices'), '{{page:notices}}'),
-                    $quick_link('bi-calendar-event', lang('Events'), '{{page:events}}'),
-                    $quick_link('bi-geo-alt', lang('Service Points'), '{{page:service_points}}'),
-                    $quick_link('bi-telephone', lang('Useful Numbers'), '{{page:numbers}}'),
-                    $quick_link('bi-person-lines-fill', lang('My Requests'), '{{page:my_requests}}'),
-                ), '3'),
-            )),
-        ), $searchable('cy-home-quick', lang('online services, e-services, quick links'))),
 
         $el('section', 'py-5 bg-body-tertiary', lang('City Services'), array(
             $container(array(
                 $section_header(lang('What we do'), lang('City services'), lang('All Services'), '{{page:services}}'),
-                $row($area_cols, '4'),
+                $rise($row($area_cols, '4')),
             )),
         ), $searchable('cy-home-services', lang('permits, roads, rubbish, recycling, social help, courses, parks, licences, wedding'))),
 
@@ -198,7 +164,12 @@ $public_pages[] = array(
             )),
         )),
 
-        $figures_band(),
+        // The next council session and its agenda (City Hall: Council
+        // Agenda).
+        $council_agenda('cy-home-council', array(
+            $link(lang('Council Decisions'), '{{page:notices}}?' . $query(array('type' => $notice_types['decision'])), 'btn btn-primary px-4'),
+            $link(lang('Meet the Council'), '{{page:council}}', 'btn btn-outline-secondary px-4'),
+        ), 'py-5 bg-body-tertiary'),
 
         // The featured events, read from the Events collection.
         $el('section', 'py-5', lang('Coming Up'), array(
@@ -215,14 +186,7 @@ $public_pages[] = array(
                 $link(lang('The Mayor'), '{{page:mayor}}', 'btn btn-primary px-4'),
                 $link(lang('Meet the Mayor\'s Office'), '{{page:meet}}', 'btn btn-outline-secondary px-4'),
             ))),
-            lang('mayor, message, meeting, appointment'), 'py-5 bg-body-tertiary'),
-
-        $el('section', 'py-5', lang('Our Commitments'), array(
-            $container(array(
-                $section_header(lang('How we work'), lang('Our commitments to residents'), lang('Our City'), '{{page:city}}'),
-                $row($pillar_tiles, '4'),
-            )),
-        ), $searchable('cy-home-pillars', lang('transparency, accountability, environment, accessibility'))),
+            lang('mayor, message, meeting, appointment')),
 
         $el('section', 'py-5 bg-body-tertiary', lang('Latest News'), array(
             $container(array(
@@ -245,7 +209,7 @@ $public_pages[] = array(
         $page_header(lang('City Services'), lang('Find a service by area: what it is, the documents to bring and where to apply.')),
         $el('section', 'py-5', lang('City Services'), array(
             $container(array(
-                $row($area_cols, '4'),
+                $rise($row($area_cols, '4')),
             )),
         ), $searchable('cy-services', lang('permits, roads, rubbish, recycling, social help, courses, parks, licences, wedding, funeral'))),
         $el('section', 'py-5 bg-body-tertiary', lang('How a Request Works'), array(
@@ -272,9 +236,9 @@ $public_pages[] = array(
     )),
 );
 
-// One page per service area: what the area covers, its services with the
-// documents to bring, the department that runs it and the request form
-// with the area chosen. Its address is a translated slug, so a Turkish
+// One page per service area: what the area covers, then each service as a
+// guide (where to apply, the documents to bring, the request form with the
+// area chosen) beside the department that runs it. Its address is a translated slug, so a Turkish
 // site reads Turkish addresses.
 $area_slugs = array(
     'building' => lang('building-and-zoning'),
@@ -286,8 +250,6 @@ $area_slugs = array(
     'civil'    => lang('licences-and-ceremonies'),
 );
 foreach ($service_areas as $key => $a) {
-    $service_cols = array();
-    foreach (array_keys($a['services']) as $n) $service_cols[] = $service_card($key, $n);
     $public_pages[] = array(
         'key'              => 'service_' . $key,
         'name'             => $area_slugs[$key],
@@ -296,7 +258,7 @@ foreach ($service_areas as $key => $a) {
         'meta_description' => $a['summary'],
         'tree'             => $page(array(
             $page_header($a['title'], $a['summary']),
-            $el('section', 'py-5', $a['title'], array(
+            $el('section', 'pt-5', $a['title'], array(
                 $container(array(
                     $row(array(
                         $col(array(
@@ -306,18 +268,9 @@ foreach ($service_areas as $key => $a) {
                     ), '4'),
                 )),
             ), $searchable('cy-area-' . $key)),
-            $el('section', 'pb-5', lang('Our Services'), array(
-                $container(array(
-                    $section_header(lang('Our Services'), lang('What you can apply for')),
-                    $row($service_cols, '4'),
-                )),
-            ), $searchable('cy-area-' . $key . '-services')),
-            $el('section', 'py-5 bg-body-tertiary', lang('Department'), array(
-                $container(array(
-                    $section_header(lang('Who to ask'), lang('The department in charge'), lang('City Departments'), '{{page:departments}}'),
-                    $row(array($department_card($a['department'])), '4'),
-                )),
-            ), $searchable('cy-area-' . $key . '-department', lang('office, contact, phone, floor'))),
+            // Each service as a guide beside the department in charge
+            // (City Hall: Service Guide).
+            $service_guide($key),
         )),
     );
 }
@@ -360,18 +313,20 @@ $public_pages[] = array(
     'title'            => lang('City Council'),
     'meta_description' => lang('The members of the city council, its committees, when it meets and where to read its agenda and decisions.'),
     'tree'             => $page(array(
-        $page_header(lang('City Council'), $council_meetings, array(
-            $el('div', 'd-flex flex-wrap gap-2 mt-3', lang('Buttons'), array(
-                $link(lang('Agenda and Decisions'), '{{page:notices}}?' . $query(array('type' => $notice_types['decision'])), 'btn btn-primary px-4'),
-            )),
+        $page_header(lang('City Council'), lang('The members elected by the residents, the committees that prepare their work and the next session\'s agenda.')),
+        // The next session and its agenda first: what residents come to
+        // this page for (City Hall: Council Agenda).
+        $council_agenda('cy-council-agenda', array(
+            $link(lang('Agenda and Decisions'), '{{page:notices}}?' . $query(array('type' => $notice_types['decision'])), 'btn btn-primary px-4'),
+            $link(lang('Book a meeting'), '{{page:meet}}', 'btn btn-outline-secondary px-4'),
         )),
-        $el('section', 'py-5', lang('Council Members'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Council Members'), array(
             $container(array(
                 $section_header(lang('Elected by the residents'), lang('Council members')),
-                $row($council_cols, '4'),
+                $rise($row($council_cols, '4')),
             )),
         ), $searchable('cy-council', lang('councillors, members, deputy mayor, elected'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Committees'), array(
+        $el('section', 'py-5', lang('Committees'), array(
             $container(array(
                 $section_header(lang('Where the work is prepared'), lang('Committees')),
                 $row($committee_tiles, '4'),

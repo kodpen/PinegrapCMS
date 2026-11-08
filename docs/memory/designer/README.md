@@ -136,6 +136,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-campsite.md: Campsite template (pinegrap-campsite): kinds of stay, Pitches and Cabins collection, prices as words, stay requests and group enquiries, no shop, pcp- look, tests.
 - design-template-carrental.md: Car Rental template (pinegrap-carrental): the fleet as a collection, booking requests with extras and deals, business rentals, desks, extras, deals and terms as fixed content, pcr- look, tests.
 - design-template-charity.md: Charity template (pinegrap-charity): causes and campaigns with progress, gifts as donation products, pledges and volunteers followed from the account, events, reports, News, pch- look, tests.
+- design-template-cityhall-pages.md: City Hall template 2.0.0: home, council and the service-area pages on the City Hall blocks: the builders, each page's composition, motion, what left, the test
 - design-template-cityhall.md: City Hall template (pinegrap-cityhall): services directory, Notices and Events collections, citizen and meeting requests, no shop, pcy- look, tests.
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
 - design-template-construction-pages.md: Construction template 2.0.0: home, projects and safety on the Construction blocks: the builders, each page's composition, motion, what left, the test
@@ -189,6 +190,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-pharmacy.md: Pharmacy template (pinegrap-pharmacy): services, health checks, on duty, pharmacists, prescription requests and questions, health products shop, Health Advice by topic, prx- look, tests.
 - design-template-photo-pages.md: Photography Studio template 2.0.0: home, how it works, packages and about on the Photo blocks: the builders, each page's composition, motion, what left, the test
 - design-template-photo.md: Photography Studio template (pinegrap-photo): galleries collection, shoot booking requests, private proofing folders and selections, deposits and vouchers, pph- look, tests.
+- design-template-podcast.md: Podcast Network template (pinegrap-podcast): podcasts and episodes as collections, bound player, sponsorship and pitch requests, supporters' membership folder, ppd- look, tests.
 - design-template-portfolio.md: Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services with three packages, a project brief followed from the account, pdp- look, tests.
 - design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
 - design-template-recruitment.md: Recruitment Agency template (pinegrap-recruitment): jobs as a collection, applications and staff requests followed from the account, Career Advice, job alerts, no shop, prc- look, tests.
@@ -242,6 +244,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-blocks-general.md: General sections the sector templates share: the existing block that covers each, and the ones added in general family files (hours-seasons, locations-spaces, locations-floors)
 - designer-blocks-launch.md: The launch- block family (Product Launch): seven blocks, their interactions, the CSS colour switch, bento-features reused, the sticky spec head
 - designer-blocks-marina.md: The Marina block family (marina- prefix, its own palette group): the pontoon plan and the arrival by sea, the blocks a marina places instead of adding, its pg-marina-* rules, its test
+- designer-blocks-museum.md: The Museum block family (museum- prefix, own palette group): exhibition hero, look closer, highlights trail; general blocks placed instead; rules, test
 - designer-blocks-news-maintenance-creative.md: Maintenance, news and creative blocks (2026.11.0): palette groups, the family branch and helpers, maintenance blocks without site links, attribute-dropping nodes, block details, the palette test.
 - designer-blocks-pharmacy.md: The Pharmacy block family (pharmacy- prefix): duty panel, reference readings, travel vaccines, medicine schedule; general blocks reused instead; no motion; rule and test
 - designer-blocks-photo.md: The Photo block family (photo- prefix, its own palette group): filmstrip hero, proof contact sheet, behind the shot; the general blocks a photography site places instead; rules and test

@@ -20,8 +20,9 @@ description: Order of the polishing round after Launch: every shipped template's
 - School: `-1` #8233, `-2` #8257 done.
 - Architecture: `-1` #8264, `-2` #8280 done.
 - Campsite: `-1` #8269, `-2` #8301 done.
-- Cityhall: `-1` #8291 done.
+- Cityhall: `-1` #8291, `-2` #8308 done.
 - Construction: `-1` #8292, `-2` #8324 done.
+- Museum: `-1` #8306 done.
 
 ## Where do the open template plans come?
 - Their files are not edited here (open PRs hold most). In each, the assembly step (look, fonts, rules) adds no new stock band. Their pages are built, so each one's `-1`, `-2` joins the list once its assembly lands, ahead of unclaimed groups: bakery, brewery, carrental, coworking, drivingschool, ferry, filmstudio, florist, homeservices, library (assembly #7982 open), marina, pharmacy, podcast, recruitment, restaurant, sportsclub, theatre, veterinary.
@@ -30,8 +31,11 @@ description: Order of the polishing round after Launch: every shipped template's
 - Coworking: `-1` #8113, `-2` #8127 done.
 - Drivingschool: `-1` (family, #8117) and `-2` (pages, 1.1.0, #8138) done.
 - Marina: `-1` #8159, `-2` #8185 done.
+
 - Ferry: `-1` #8123, `-2` #8142 done.
+
 - Sportsclub: `-1` #8140, `-2` #8175 done.
+
 - Pharmacy: `-1` #8160, `-2` #8181 done.
 - A template plan opened after 2026-11-07 starts with its family step ([[design-template-own-look]]) and needs no polishing step.
 
