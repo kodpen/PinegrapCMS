@@ -6,7 +6,7 @@
  * (includes/design_templates/pinegrap-bikeshop/parts.php): the shop's data
  * hangs together (every job, fit package and product with a price in every
  * currency; products in a known group with a code of their group; bikes of
- * a known kind, only bikes kept from the post; rides with a known pace and
+ * a known kind, only parts and accessories posted; rides with a known pace and
  * drop rule falling after today), the pick lists follow the data without
  * an answer twice, a price is written as the shop writes it, the page
  * shell places the shared parts, the helpers link only template pages, the
@@ -158,9 +158,9 @@ function test_bikeshop_data_hangs_together()
 	}
 	foreach ($d['price_texts'] as $kind => $text) pg_assert_true((bool)preg_match('/[0-9]/', $text), "$kind: a price is written with its figure");
 	// The catalog: its four groups with their codes; bikes collected in the
-	// shop, the rest posted.
+	// shop, vouchers sent by e-mail, parts and accessories posted.
 	pg_assert_same(array('BKS-BIKE-', 'BKS-PART-', 'BKS-ACC-', 'BKS-GIFT-'), array_column($d['product_groups'], 'sku'), 'the group codes');
-	foreach ($d['product_groups'] as $key => $g) pg_assert_same($key !== 'bikes', $g['shippable'], "group $key: posted unless bikes");
+	foreach ($d['product_groups'] as $key => $g) pg_assert_same(in_array($key, array('parts', 'accessories'), true), $g['shippable'], "group $key: only parts and accessories are posted");
 	$groups = array();
 	$skus = array();
 	$featured = 0;
