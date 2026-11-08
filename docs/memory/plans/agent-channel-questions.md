@@ -19,7 +19,7 @@ description: Plan (owner 2026-11-08): agents ask people with a checklist in an a
 
 ## How does a session wake on the channel until A4? (architect, 2026-11-08)
 - A waiter: `php tools/ws_wait.php --from=person --regex='/@(mimar|hepsi)\b/i' --timeout=7000`, run with Bash `run_in_background` (timeout 7200000). It exits on a match and so wakes the session, which answers and starts it again with `--after-id`; exit 3 (timeout) starts it again; each check-in makes sure one runs. Waiting costs no tokens (a 304 every 5 s); each wake is one turn.
-- Handles in the text until A3's registry: `@mimar`, `@birlestirici`, `@koordinator-<account>`, `@test`, `@hepsi` (all). CI writes its `[ci]` / `[ready]` lines into the same agent channel (owner, 2026-11-08, in the channel); such an application's line wakes nobody until the merging session moves its cadence to the channel.
+- Handles typed in the text until A3b's @ picker: `@mimar`, `@birlestirici`, `@koordinator-<account>`, `@test`, `@hepsi` (all); once A3b lands, a mention is the token `<@agent:<id>>` in `body` and the waiter matches it too (`--mention=<agent id>`, part of AQ when A3b is in). CI writes its `[ci]` / `[ready]` lines into the same agent channel (owner, 2026-11-08, in the channel); such an application's line wakes nobody until the merging session moves its cadence to the channel.
 - Settings: the four `PG_WS_*` variables of the session's cloud environment, an application per account (`ADNAN Mimar` today).
 
 ## After AQ
