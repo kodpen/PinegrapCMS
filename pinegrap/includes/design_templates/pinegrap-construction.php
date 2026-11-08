@@ -170,7 +170,7 @@ $construction_css = implode("\n", array(
 
 return array(
     'name'        => lang('Construction Firm'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 89,
     'icon'        => 'bi-bricks',
@@ -224,10 +224,10 @@ return array(
         'email_footer' => array('name' => lang('Construction E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pcn- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the Construction blocks' pg-cn- rules and
+    // its pcn- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $construction_css),
+        'css'   => pg_design_template_user_styles(array('construction-hero', 'construction-progress', 'construction-notice'), $construction_css),
         'fonts' => json_encode($construction_fonts),
     ),
 );

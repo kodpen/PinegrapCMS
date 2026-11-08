@@ -3099,6 +3099,7 @@
     "Written in your name when the box runs. {{node.ID.text}} puts in what an earlier box of the run did, {{node.ID.message_id}} the message it posted; {{date}} and the other words of scheduled actions work too.": "Kutu çalıştığında sizin adınıza yazılır. {{node.ID.text}} çalıştırmadaki önceki bir kutunun yaptığını, {{node.ID.message_id}} gönderdiği mesajı yazar; {{date}} ve programlanmış işlerin diğer sözcükleri de çalışır.",
     "Written into the channel's summary when it has none yet.": "Kanalın henüz özeti yoksa özetine yazılır.",
     "Written into the task when it opens.": "Görev açıldığında içine yazılır.",
+    "Written on each site's notice, with the date of the handover": "Her şantiyenin duyurusunda, teslim tarihiyle birlikte yazılıdır",
     "Written once the order is complete.": "Sipariş tamamlandığında kesilir.",
     "Written out by this browser's built-in AI, for you only": "Bu tarayıcının yerleşik yapay zekâsı yazdı, yalnızca sizin için",
     "Written to pay, due {var:1} days later.": "Ödenecek olarak yazılır, vadesi {var:1} gün sonra.",
