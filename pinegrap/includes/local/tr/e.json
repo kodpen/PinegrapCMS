@@ -1701,6 +1701,7 @@
     "Every reservation request, newest first: confirm the table, set the status and write to the guest under each.": "Tüm rezervasyon talepleri, en yenisi önce: masayı onaylayın, durumu belirleyin ve her birinin altından misafire yazın.",
     "Every reservation, newest first: set the title aside, set the status and tell the reader under each.": "Tüm ayırtmalar, en yenisi önce: eseri ayırın, durumu belirleyin ve her birinin altından okura haber verin.",
     "Every revision younger than this, however many there are. 1 to {var:1}.": "Bundan yeni her sürüm, kaç tane olursa olsun. 1 ile {var:1} arası.",
+    "Every ride from today": "Bugünden itibaren tüm sürüşler",
     "Every ring Hannah makes starts as something else: a spoon from a market stall, a chain with a broken clasp, a single lost earring.": "Hannah'nın yaptığı her yüzük başka bir şey olarak başlar: pazar tezgâhından bir kaşık, kopçası kırık bir zincir, eşini kaybetmiş bir küpe.",
     "Every room booking request, newest first: check the room is free, set the status and write to the reader under each.": "Tüm salon ayırtma istekleri, en yenisi önce: salonun boş olup olmadığına bakın, durumu belirleyin ve her birinin altından okura yazın.",
     "Every room booking request, with the day and time the member prefers. Mark each one when the room is booked.": "Üyenin tercih ettiği gün ve saatle birlikte her salon ayırtma isteği. Salon ayırtıldığında her birini işaretleyin.",

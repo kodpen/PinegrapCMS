@@ -28,7 +28,7 @@ description: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and 
 
 - 5 (done, #8283): `mail.php` and `requests.php`: service requests (`service_request`, `service_view`, `my_services`, `staff_services`), fit requests (`fit_request`, `fit_view`, `my_fits`, `staff_fits`), `book_online` ([[booking-templates]]), `privacy`, the request e-mails; test.
 
-- 6: `rides.php`: the Group Rides collection by date (`rides` from today on, by `?pace=`, `ride`, `ride_new`, `home_rides`); test.
+- 6 (done, #8298): `rides.php`: Group Rides by date (`rides`, `ride`, `ride_new`, `home_rides`); test.
 
 - 7: `shop.php`: the catalog (Bikes, Parts, Accessories, Workshop Vouchers; SKUs `BKS-BIKE-`, `-PART-`, `-ACC-`, `-GIFT-`), product, cart, checkout, order, `email_order`; test.
 
