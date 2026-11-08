@@ -1308,6 +1308,7 @@
     "h:mm AM/PM": "h:mm AM/PM",
     "h:mm AM/PM, leave blank to send at any time.": "h:mm AM/PM, herhangi bir zamanda gönderilmesi için boş bırakın.",
     "habitat, zone, animals by habitat": "yaşam alanı, bölge, yaşam alanına göre hayvanlar",
+    "habitat, zone, savanna, rainforest, polar, aquarium, australia, farm": "yaşam alanı, bölge, savan, yağmur ormanı, kutup, akvaryum, avustralya, çiftlik",
     "had design turned {var:1}": "tasarım {var:1} konuma çevrildi",
     "had mobile {var:1}page style changed to {var:2}": "mobil {var:1}sayfası stili {var:2} olarak değiştirildi",
     "had site search turned {var:1}": "site araması şuna çevrildi:{var:1}",
