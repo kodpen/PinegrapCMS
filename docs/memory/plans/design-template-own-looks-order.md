@@ -22,7 +22,7 @@ description: Order of the polishing round after Launch: every shipped template's
 - Skiresort: step 2 (`cards.php`, #7986) lands as it is. `skiresort-1` (its family: conditions board, lift status, slope map, pass cards, snow report) done (#8050); steps 3-4 then build home, conditions and slopes on it, and it needs no `-2`.
 - Coworking: `-1` ([[designer-blocks-coworking]]) and `-2` ([[design-template-coworking-pages]]) done (#8113, #8127).
 - Drivingschool: `-1` (family, #8117) and `-2` (pages, 1.1.0, #8138) done.
-- Marina: `-1` (#8159) and `-2` (#8185) done.
+- Marina: `-1` #8159, `-2` #8185 done.
 - Ferry: `-1` ([[designer-blocks-ferry]], #8123) and `-2` ([[design-template-ferry-pages]], #8142) done.
 - Sportsclub: `-1` ([[designer-blocks-sportsclub]], #8140) done; `-2` rebuilds home, fixtures, teams, membership on it.
 - Pharmacy: `-1` ([[designer-blocks-pharmacy]], #8160) done; `-2` places it on home, duty and service pages.
