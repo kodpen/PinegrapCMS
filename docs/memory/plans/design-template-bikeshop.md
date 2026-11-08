@@ -22,7 +22,7 @@ description: Plan: the Bike Shop design template (pinegrap-bikeshop): bikes and 
 
 - 2 (done, #8230): `parts.php` (data, pick lists, helpers); test.
 
-- 3: `cards.php`: shared parts (account bar, notice, header, footer, staff bar), record and data cards, form fields, comment thread, newsletter and blog parts; test.
+- 3 (done, #8258): `cards.php`: shared parts (account bar, notice, header, footer, staff bar), record and data cards, form fields, comment thread, newsletter and blog parts; test.
 
 - 4: `pages_public.php`: home (`home_rides`, `home_posts` placed as widgets, `home_bikes` from the catalog), `workshop`, `sizes`, `fit`, `about`; places the `bikeshop-` blocks; test.
 

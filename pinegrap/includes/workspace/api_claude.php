@@ -309,6 +309,7 @@ function ws_api_claude_request_present($viewer, $row)
         $body = ws_claude_summary_instruction();
     }
 
+    $wake = function_exists('ws_agent_wake_of') ? ws_agent_wake_of($row) : null;
     $kind = '';
 
     if ($channel) {
@@ -346,6 +347,12 @@ function ws_api_claude_request_present($viewer, $row)
         'design'           => $design,
         'task'             => $task,
         'summary'          => $summary,
+        // An agent's scheduled wake (agent_wake.php): no message asked.
+        'wake'             => array(
+            'kind'   => $wake ? $wake['kind'] : '',
+            'note'   => $wake ? $wake['note'] : '',
+            'due_at' => ($wake && ($wake['due'] > 0)) ? api_time($wake['due']) : null,
+        ),
         'requested_by'     => array('user_id' => (int) $row['requested_by'], 'name' => ws_person_name($row['requested_by'])),
         'reply_message_id' => ((int) $row['reply_message_id'] > 0) ? (int) $row['reply_message_id'] : null,
         'error'            => (string) $row['error'],
@@ -366,6 +373,7 @@ function ws_api_claude_request_schema()
         'design'           => array('page_id' => 'integer', 'page_name' => 'string', 'node_id' => 'string', 'scope' => 'string', 'from_editor' => 'boolean'),
         'task'             => ws_api_claude_task_schema(),
         'summary'          => 'boolean',
+        'wake'             => array('kind' => 'string', 'note' => 'string', 'due_at' => 'string?'),
         'requested_by'     => array('user_id' => 'integer', 'name' => 'string'),
         'reply_message_id' => 'integer?',
         'error'            => 'string',

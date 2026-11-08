@@ -415,6 +415,27 @@ function pg_connect_endpoint($provider, $app, $name)
 }
 
 /**
+ * Where a connection's token is ended. A provider that names the application
+ * in the path (GitHub: /applications/{client_id}/token) gets its client ID put
+ * in.
+ *
+ * @param array $provider
+ * @param array $app
+ * @return string
+ */
+function pg_connect_revoke_url($provider, $app)
+{
+    $url = pg_connect_endpoint($provider, $app, 'revoke_url');
+    $client_id = (is_array($app) && isset($app['client_id'])) ? (string) $app['client_id'] : '';
+
+    if (strpos($url, '{client_id}') === false) {
+        return $url;
+    }
+
+    return ($client_id === '') ? '' : str_replace('{client_id}', rawurlencode($client_id), $url);
+}
+
+/**
  * The address the person is sent to on the provider.
  *
  * @param array $provider
@@ -469,10 +490,18 @@ function pg_connect_authorize_url($provider, $app, $request)
  * @param int   $default_ttl seconds, when the answer gives no expires_in (a
  *                           provider whose tokens do not end says so with its
  *                           'default_ttl')
+ * @param string $delimiter  what separates the granted scopes besides white
+ *                           space (GitHub: a comma; 'scope_delimiter')
  * @return array
  */
-function pg_connect_token_response($data, $now, $default_ttl = 3600)
+function pg_connect_token_response($data, $now, $default_ttl = 3600, $delimiter = '')
 {
+    $granted = isset($data['scope']) ? (string) $data['scope'] : '';
+
+    if ($delimiter !== '') {
+        $granted = str_replace($delimiter, ' ', $granted);
+    }
+
     $expires_in = isset($data['expires_in']) ? (int) $data['expires_in'] : 0;
 
     if ($expires_in <= 0) {
@@ -483,7 +512,7 @@ function pg_connect_token_response($data, $now, $default_ttl = 3600)
         'access_token'  => isset($data['access_token']) ? (string) $data['access_token'] : '',
         'refresh_token' => isset($data['refresh_token']) ? (string) $data['refresh_token'] : '',
         'expires_at'    => (int) $now + $expires_in,
-        'scopes'        => pg_connect_scope_list(isset($data['scope']) ? $data['scope'] : ''),
+        'scopes'        => pg_connect_scope_list($granted),
         'id_token'      => isset($data['id_token']) ? (string) $data['id_token'] : '',
     );
 }
@@ -562,22 +591,30 @@ function pg_connect_claims_problem($provider, $claims, $client_id, $nonce, $now)
 /**
  * Who the account is, from id_token claims or a userinfo answer.
  *
+ * A provider that is not an OpenID provider names its own fields
+ * ('identity_fields' in its file): GitHub's /user answers a numeric id and a
+ * login, not sub and email.
+ *
  * @param array $claims
+ * @param array $fields optional 'id' => field, 'label' => fields in order
  * @return array array('id' => string, 'label' => string)
  */
-function pg_connect_identity($claims)
+function pg_connect_identity($claims, $fields = array())
 {
+    $id_field = isset($fields['id']) ? (string) $fields['id'] : 'sub';
+    $label_fields = (isset($fields['label']) && is_array($fields['label'])) ? $fields['label'] : array('email', 'preferred_username', 'name');
+
     $label = '';
 
-    foreach (array('email', 'preferred_username', 'name') as $field) {
-        if (isset($claims[$field]) && (trim((string) $claims[$field]) !== '')) {
+    foreach ($label_fields as $field) {
+        if (isset($claims[$field]) && is_scalar($claims[$field]) && (trim((string) $claims[$field]) !== '')) {
             $label = trim((string) $claims[$field]);
             break;
         }
     }
 
     return array(
-        'id'    => isset($claims['sub']) ? (string) $claims['sub'] : '',
+        'id'    => (isset($claims[$id_field]) && is_scalar($claims[$id_field])) ? (string) $claims[$id_field] : '',
         'label' => function_exists('mb_substr') ? mb_substr($label, 0, 255) : substr($label, 0, 255),
     );
 }
@@ -871,6 +908,18 @@ function pg_connect_default_ttl($provider)
 }
 
 /**
+ * What a provider's token answer separates its granted scopes with, besides
+ * white space: '' for the standard (RFC 6749 3.3), ',' for GitHub.
+ *
+ * @param array $provider
+ * @return string
+ */
+function pg_connect_scope_delimiter($provider)
+{
+    return isset($provider['scope_delimiter']) ? (string) $provider['scope_delimiter'] : '';
+}
+
+/**
  * Saves a provider's application. A secret of null or '' keeps the stored one.
  *
  * @param string      $provider_key
@@ -1074,7 +1123,7 @@ function pg_connect_disconnect($id)
         $token = pg_connect_cached_access($secret, 'default', time(), 0);
     }
 
-    if (is_array($provider) && ($token !== '') && (pg_connect_endpoint($provider, $app, 'revoke_url') !== '')) {
+    if (is_array($provider) && ($token !== '') && (pg_connect_revoke_url($provider, $app) !== '')) {
         require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
 
         if (isset($provider['revoke_auth']) && ($provider['revoke_auth'] === 'bearer')) {
@@ -1084,9 +1133,24 @@ function pg_connect_disconnect($id)
             $access = pg_connect_access_token($row['id']);
 
             if ($access['ok']) {
-                api_http_request('POST', pg_connect_endpoint($provider, $app, 'revoke_url'), array(
+                api_http_request('POST', pg_connect_revoke_url($provider, $app), array(
                     'body'    => 'null',
                     'headers' => array('Authorization: Bearer ' . $access['token'], 'Content-Type: application/json'),
+                    'timeout' => 10,
+                    'agent'   => 'connect',
+                ));
+            }
+        } elseif (isset($provider['revoke_auth']) && ($provider['revoke_auth'] === 'basic_json')) {
+            // GitHub: the application names itself with its own id and
+            // secret, and the token to end goes in a JSON body.
+            if (is_array($app) && ($app['client_secret'] !== '')) {
+                api_http_request(isset($provider['revoke_method']) ? (string) $provider['revoke_method'] : 'POST', pg_connect_revoke_url($provider, $app), array(
+                    'body'    => json_encode(array('access_token' => $token)),
+                    'headers' => array(
+                        'Authorization: Basic ' . base64_encode($app['client_id'] . ':' . $app['client_secret']),
+                        'Content-Type: application/json',
+                        'Accept: application/json',
+                    ),
                     'timeout' => 10,
                     'agent'   => 'connect',
                 ));
@@ -1110,7 +1174,7 @@ function pg_connect_disconnect($id)
                 }
             }
 
-            api_http_request('POST', pg_connect_endpoint($provider, $app, 'revoke_url'), array(
+            api_http_request('POST', pg_connect_revoke_url($provider, $app), array(
                 'body'    => http_build_query($params, '', '&'),
                 'headers' => $headers,
                 'timeout' => 10,
@@ -1318,7 +1382,11 @@ function pg_connect_refresh($row, $provider, $secret, $scopes, $key)
     $refresh_token = isset($secret['refresh_token']) ? (string) $secret['refresh_token'] : '';
 
     if ($refresh_token === '') {
-        pg_connect_mark_reauth($row, lang('The provider gave no lasting permission.'));
+        // A provider whose tokens do not end (GitHub) gets here only when its
+        // token was refused: the permission was withdrawn.
+        pg_connect_mark_reauth($row, !empty($provider['refresh_optional'])
+            ? lang('The provider no longer accepts the permission.')
+            : lang('The provider gave no lasting permission.'));
 
         return array('ok' => false, 'token' => '', 'error' => lang('The account has to be connected again.'));
     }
@@ -1355,7 +1423,7 @@ function pg_connect_refresh($row, $provider, $secret, $scopes, $key)
     }
 
     $now = time();
-    $parsed = pg_connect_token_response($response['data'], $now, pg_connect_default_ttl($provider));
+    $parsed = pg_connect_token_response($response['data'], $now, pg_connect_default_ttl($provider), pg_connect_scope_delimiter($provider));
 
     $secret = pg_connect_store_access($secret, $key, $parsed['access_token'], $parsed['expires_at'], $now);
 
@@ -1454,6 +1522,36 @@ function pg_connect_api($connection_id, $method, $url, $options = array(), $scop
     $result['data'] = json_decode((string) $result['body'], true);
 
     return $result;
+}
+
+
+/**
+ * Whether a connection still works, for the Check button of Connected
+ * accounts. A provider whose tokens renew is asked for a fresh token; one
+ * whose token does not end (GitHub) has nothing to renew, so its check_url is
+ * called with the token instead, and a refusal there marks the account to be
+ * connected again (pg_connect_api()).
+ *
+ * @param array $account pg_connect_account()
+ * @return array ok, error
+ */
+function pg_connect_check($account)
+{
+    $provider = pg_connect_provider($account['provider']);
+
+    if (is_array($provider) && !empty($provider['check_url'])) {
+        $result = pg_connect_api($account['id'], 'GET', (string) $provider['check_url'], array('headers' => array('Accept: application/json')));
+
+        if ($result['ok']) {
+            return array('ok' => true, 'error' => '');
+        }
+
+        return array('ok' => false, 'error' => ($result['error'] !== '') ? $result['error'] : ('HTTP ' . (int) $result['status']));
+    }
+
+    $token = pg_connect_access_token($account['id'], array(), true);
+
+    return array('ok' => $token['ok'], 'error' => $token['error']);
 }
 
 
@@ -1660,7 +1758,7 @@ function pg_connect_finish($query, $user)
     }
 
     $now = time();
-    $tokens = pg_connect_token_response($response['data'], $now, pg_connect_default_ttl($provider));
+    $tokens = pg_connect_token_response($response['data'], $now, pg_connect_default_ttl($provider), pg_connect_scope_delimiter($provider));
 
     // A provider that names no account (an MCP server) has one connection
     // per owner, under a fixed id.
@@ -1689,7 +1787,9 @@ function pg_connect_finish($query, $user)
         $claims = $info['ok'] ? json_decode((string) $info['body'], true) : null;
     }
 
-    $identity = pg_connect_identity(is_array($claims) ? $claims : array());
+    $identity = pg_connect_identity(
+        is_array($claims) ? $claims : array(),
+        (isset($provider['identity_fields']) && is_array($provider['identity_fields'])) ? $provider['identity_fields'] : array());
 
     if ($identity['id'] === '') {
         return $fail(lang(array(

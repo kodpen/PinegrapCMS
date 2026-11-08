@@ -7,6 +7,11 @@
  * after parts.php in the same scope (its builders and the studio's data);
  * returns array('pages' => ..., 'widgets' => ...).
  *
+ * The home and how it works stand on the Photo palette blocks (filmstrip
+ * hero, proof contact sheet, behind the shot): the trees draw the blocks'
+ * structure and classes, and their pg-photo- rules ship with the template's
+ * User Styles (pinegrap-photo.php).
+ *
  * Every figure comes from parts.php ($studio, $categories, $packages,
  * $package_prices, $package_deposits, $addons, $shoot_steps, $why_us,
  * $figures, $testimonials), so a change made there reaches every page here.
@@ -83,30 +88,168 @@ $figure_row = function () use ($el, $para, $row, $col, $figures) {
     return $row($cols, '4');
 };
 
-// A band that sends a question to the contact page.
-$ask_band = function ($title, $text) use ($el, $heading, $para, $link, $container) {
-    return $el('section', 'py-5', lang('Write to Us'), array(
-        $container(array(
-            $el('div', 'd-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3', lang('Text'), array(
-                $el('div', '', lang('Text'), array(
-                    $heading('h2', $title, 'pph-display h4 mb-1'),
-                    $para($text, 'text-body-secondary mb-0'),
-                )),
-                $link(lang('Contact Us'), '{{page:contact}}', 'btn btn-primary rounded-pill px-4 text-nowrap'),
-            )),
-        )),
-    ));
+// A node with an interaction (props._fx, played by pg_fx; reduced motion
+// is honoured there).
+$fx = function ($node, $effect) {
+    $node['props']['_fx'] = $effect;
+    return $node;
+};
+// A row or a list whose items rise in one after another on view.
+$rise = function ($node, $stagger = 90) {
+    $node['props']['_fx'] = array('effect' => 'slide-up', 'trigger' => 'view', 'stagger' => $stagger);
+    return $node;
 };
 
-// A category's tile: its icon and name, opening the gallery list filtered
-// on it in the words the Category list uses.
-$category_tile = function ($c) use ($el, $span, $col, $icon, $query) {
-    return $col(array(
-        $el('a', 'd-flex flex-column align-items-center gap-2 h-100 p-4 rounded-4 border bg-body text-center link-body-emphasis text-decoration-none pph-lift', $c['title'], array(
-            $icon($c['icon'], 'fs-2 text-primary'),
-            $span($c['title'], 'fw-semibold', lang('Category')),
-        ), array('href' => '{{page:galleries}}?' . $query(array('category' => $c['title'])))),
-    ), '4', '2', '', '6');
+// Photo: Filmstrip Hero. The studio in a sentence over a strip of film
+// (pg-photo-strip), one numbered frame per category; each frame's caption
+// opens the gallery list filtered on it in the words the Category list
+// uses. The strip scrolls sideways on a narrow screen, so it is a named
+// region a keyboard reaches.
+$filmstrip_hero = function () use ($el, $heading, $para, $link, $image, $span, $container, $attr, $photo, $studio, $categories, $galleries, $query, $fx, $searchable) {
+    $frames = array();
+    $n = 0;
+    foreach ($categories as $key => $c) {
+        $n++;
+        $alt = $c['title'];
+        foreach ($galleries as $g) {
+            if ($g['category'] === $key) {
+                $alt = $g['title'];
+                break;
+            }
+        }
+        $extra = $n > 3 ? array('_attrs' => array($attr('loading', 'lazy'))) : array();
+        $frames[] = $el('li', '', lang('Frame'), array(
+            $el('figure', 'mb-0', lang('Frame'), array(
+                $image($photo('strip-' . $key, 600, 400), $alt, 'rounded-1', $extra),
+                $el('figcaption', 'd-flex justify-content-between gap-2 small mt-2', lang('Caption'), array(
+                    $span(sprintf('%02d', $n), 'font-monospace', lang('Frame Number')),
+                    $link($c['title'], '{{page:galleries}}?' . $query(array('category' => $c['title'])), 'fw-semibold text-uppercase link-light text-decoration-none'),
+                )),
+            )),
+        ));
+    }
+    $text = $el('div', 'text-center col-lg-8 mx-auto mb-5', lang('Hero Text'), array(
+        $para(lang('Photography studio'), 'pph-eyebrow text-uppercase fw-semibold text-primary mb-3'),
+        $heading('h1', lang('Photos that feel like you'), 'pph-display display-3 mb-3'),
+        $para($studio['tagline'] . '.', 'lead text-body-secondary mb-4'),
+        $el('div', 'd-flex flex-wrap justify-content-center gap-2', lang('Buttons'), array(
+            $link(lang('See the Galleries'), '{{page:galleries}}', 'btn btn-primary btn-lg rounded-pill px-4'),
+            $link(lang('Book a Shoot'), '{{page:book}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
+        )),
+        $para($studio['promise'] . '.', 'small text-body-secondary mt-4 mb-0'),
+    ));
+    $strip = $el('div', 'pg-photo-strip rounded-3', lang('Filmstrip'), array(
+        $el('ol', 'list-unstyled d-flex gap-3 overflow-x-auto mb-0', lang('Frames'), $frames, array('_attrs' => array(
+            $attr('role', 'region'), $attr('aria-label', lang('Our work in six frames')), $attr('tabindex', '0'),
+        ))),
+    ));
+    return $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
+        $container(array(
+            $fx($text, array('effect' => 'fade', 'trigger' => 'load', 'duration' => 800)),
+            $fx($strip, array('effect' => 'slide-left', 'trigger' => 'load', 'duration' => 900, 'delay' => 200)),
+        )),
+    ), $searchable('ph-categories', lang('wedding photographer, portrait, family photos, newborn, event, product photography')));
+};
+
+// Photo: Proof Contact Sheet. How a client chooses their favourites beside
+// a sheet of twelve numbered proofs (pg-photo-sheet), the picks ringed
+// (pg-photo-picked) and marked for a screen reader. The section is a search
+// section under $id; $more are links after the client area's.
+$contact_sheet = function ($id, $eyebrow, $title, $intro, $topics, $more = array()) use ($el, $heading, $para, $link, $image, $icon, $span, $container, $row, $col, $attr, $photo, $fx, $searchable) {
+    $picks = array(4, 7, 11);
+    $proofs = array();
+    for ($n = 1; $n <= 12; $n++) {
+        $number = sprintf('%02d', $n);
+        $picked = in_array($n, $picks, true);
+        $kids = array(
+            $image($photo('proof-' . $n, 360, 240), str_replace('{var}', $number, lang('Proof frame {var}')), $picked ? 'pg-photo-picked rounded-1' : 'rounded-1',
+                array('_attrs' => array($attr('loading', 'lazy')))),
+            $span($number, 'position-absolute top-0 start-0 m-1 badge bg-body text-body font-monospace', lang('Frame Number')),
+        );
+        if ($picked) {
+            $kids[] = $el('div', 'position-absolute top-0 end-0 m-1 badge bg-primary', lang('Picked'), array(
+                $icon('bi-heart-fill'),
+                $span(lang('Selected'), 'visually-hidden', lang('Text')),
+            ));
+        }
+        $proofs[] = $el('li', 'position-relative', str_replace('{var}', $number, lang('Frame {var}')), $kids);
+    }
+    $how = array(
+        array(lang('Look through your proofs'), lang('Take your time; the gallery stays open until you send your selection.')),
+        array(lang('Note the frame numbers'), lang('Write down the numbers of the photos you love and anything to retouch.')),
+        array(lang('Send your selection'), lang('We edit your favourites by hand and tell you when they are ready.')),
+    );
+    $steps = array();
+    foreach ($how as $n => $h) {
+        $steps[] = $el('li', 'd-flex gap-3 mb-3', lang('Step'), array(
+            $span((string)($n + 1), 'd-inline-flex align-items-center justify-content-center flex-shrink-0 rounded-circle bg-primary-subtle text-primary-emphasis fw-semibold p-2 lh-1', lang('Step Number')),
+            $el('div', '', lang('Text'), array(
+                $heading('h3', $h[0], 'h6 mb-1'),
+                $para($h[1], 'small text-body-secondary mb-0'),
+            )),
+        ));
+    }
+    $body = $el('div', '', lang('Text'), array(
+        $para($eyebrow, 'pph-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+        $heading('h2', $title, 'pph-display h2 mb-3'),
+        $para($intro, 'text-body-secondary mb-4'),
+        $el('ol', 'list-unstyled mb-4', lang('Steps'), $steps),
+        $para(str_replace('{var}', '04, 07, 11', lang('Your selection: {var}')), 'small fw-semibold font-monospace mb-3'),
+        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array_merge(array(
+            $link(lang('Open the Client Area'), '{{page:client_area}}', 'btn btn-outline-primary rounded-pill px-4'),
+        ), $more)),
+    ));
+    return $el('section', 'py-5 bg-body-tertiary', lang('Proof Contact Sheet'), array(
+        $container(array(
+            $row(array(
+                $col(array($fx($body, array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700))), '', '5'),
+                $col(array($fx($el('ol', 'pg-photo-sheet list-unstyled rounded-3 mb-0', lang('Proofs'), $proofs),
+                    array('effect' => 'fade', 'trigger' => 'view', 'duration' => 600, 'stagger' => 60))), '', '7'),
+            ), '4', '', 'g-lg-5 align-items-center'),
+        )),
+    ), $searchable($id, $topics));
+};
+
+// Photo: Behind the Shot. One photograph and the story of how it was made,
+// its camera settings as a description list (pg-photo-exif) with figures
+// in even columns. The figures are plain text, not words to translate.
+$behind_shot = function ($id, $topics) use ($el, $heading, $para, $link, $image, $span, $container, $row, $col, $attr, $photo, $query, $fx, $searchable) {
+    $settings = array(
+        array(lang('Lens'), '85 mm'),
+        array(lang('Aperture'), 'f/1.8'),
+        array(lang('Shutter'), '1/250 s'),
+        array(lang('ISO'), '400'),
+        array(lang('Light'), lang('Window light')),
+        array(lang('Edit'), lang('By hand')),
+    );
+    $pairs = array();
+    foreach ($settings as $s) {
+        $pairs[] = $el('div', 'col', $s[0], array(
+            $el('dt', 'small fw-normal text-body-secondary', lang('Term'), array(), array('text' => $s[0])),
+            $el('dd', 'fw-semibold mb-0', lang('Value'), array(), array('text' => $s[1])),
+        ));
+    }
+    $picture = $el('figure', 'mb-0', lang('Photograph'), array(
+        $image($photo('shot', 1200, 1500), lang('A bride turning towards the window, lit from the side'), 'img-fluid rounded-4 w-100',
+            array('_attrs' => array($attr('loading', 'lazy')))),
+        $el('figcaption', 'small text-body-secondary mt-2', lang('Caption'), array(), array('text' => lang('Photographed by Deniz, in the studio'))),
+    ));
+    $body = $el('div', '', lang('Text'), array(
+        $para(lang('Behind the shot'), 'pph-eyebrow text-uppercase fw-semibold text-primary mb-2'),
+        $heading('h2', lang('One window, one minute of light'), 'pph-display h2 mb-3'),
+        $para(lang('Late in the afternoon the sun reaches the north window at an angle for a few minutes. We waited for it, asked her to turn slowly, and took this on the third turn.'), 'text-body-secondary mb-4'),
+        $heading('h3', lang('Camera settings'), 'h6 text-uppercase fw-semibold mb-2'),
+        $el('dl', 'pg-photo-exif row row-cols-2 row-cols-sm-3 g-3 pt-3 mb-4', lang('Settings'), $pairs),
+        $link(lang('See the gallery'), '{{page:galleries}}?' . $query(array('category' => lang('Portraits'))), 'btn btn-outline-primary rounded-pill px-4'),
+    ));
+    return $el('section', 'py-5', lang('Behind the Shot'), array(
+        $container(array(
+            $row(array(
+                $col(array($fx($picture, array('effect' => 'fade', 'trigger' => 'view', 'duration' => 900))), '', '7'),
+                $col(array($fx($body, array('effect' => 'slide-up', 'trigger' => 'view', 'duration' => 700, 'delay' => 150))), '', '5'),
+            ), '4', '', 'g-lg-5 align-items-center'),
+        )),
+    ), $searchable($id, $topics));
 };
 
 // The steps of a shoot as a numbered list.
@@ -116,8 +259,6 @@ foreach ($shoot_steps as $n => $s) $shoot_step_items[] = $step($n + 1, $s['title
 // The cards of the shared data, in their order.
 $why_tiles = array();
 foreach ($why_us as $w) $why_tiles[] = $feature_tile($w['icon'], $w['title'], $w['text']);
-$category_tiles = array();
-foreach ($categories as $c) $category_tiles[] = $category_tile($c);
 $package_cols = array();
 foreach (array_keys($packages) as $key) $package_cols[] = $package_card($key);
 // The home shows the two popular packages and the mini session.
@@ -137,30 +278,9 @@ $public_pages[] = array(
     'title'            => lang('Home Page'),
     'meta_description' => lang('A photography studio for weddings, portraits, families, newborns, events and brands, with private online galleries.'),
     'tree'             => $page(array(
-        // The way in: the studio in a sentence, the two ways on and a photo.
-        $el('section', 'py-5 overflow-hidden pph-hero', lang('Hero'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('Photography studio'), 'pph-eyebrow text-uppercase fw-semibold text-primary mb-3'),
-                        $heading('h1', lang('Photos that feel like you'), 'pph-display display-3 mb-3'),
-                        $para($studio['tagline'] . '.', 'lead text-body-secondary mb-4'),
-                        $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                            $link(lang('See the Galleries'), '{{page:galleries}}', 'btn btn-primary btn-lg rounded-pill px-4'),
-                            $link(lang('Book a Shoot'), '{{page:book}}', 'btn btn-outline-primary btn-lg rounded-pill px-4'),
-                        )),
-                        $para($studio['promise'] . '.', 'small text-body-secondary mt-4 mb-0'),
-                    ), '', '5'),
-                    $col(array(
-                        $framed($photo('hero', 1400, 1050), lang('A couple laughing in soft evening light'), '4x3', false),
-                    ), '', '7'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        )),
-
-        $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
-            $container(array($figure_row())),
-        )),
+        // The way in: the studio in a sentence over a strip of its work, a
+        // frame per category.
+        $filmstrip_hero(),
 
         // The featured galleries, read from the Galleries collection.
         $el('section', 'py-5', lang('Featured Galleries'), array(
@@ -170,59 +290,32 @@ $public_pages[] = array(
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('Categories'), array(
-            $container(array(
-                $section_header(lang('What we photograph'), lang('Browse by category')),
-                $row($category_tiles, '3'),
-            )),
-        ), $searchable('ph-categories', lang('wedding photographer, portrait, family photos, newborn, event, product photography'))),
-
-        $el('section', 'py-5', lang('Packages'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('Packages'), array(
             $container(array(
                 $section_header(lang('Sessions and prices'), lang('Choose your session'), lang('All Packages'), '{{page:packages}}'),
-                $row($home_package_cols, '4'),
+                $rise($row($home_package_cols, '4')),
             )),
         )),
 
-        $el('section', 'py-5 bg-body-tertiary', lang('How It Works'), array(
-            $container(array(
-                $row(array(
-                    $col(array(
-                        $para(lang('From the first message to the last download'), 'pph-eyebrow text-uppercase fw-semibold text-primary mb-2'),
-                        $heading('h2', lang('How a shoot works'), 'pph-display h2 mb-4'),
-                        $el('ol', 'list-unstyled mb-4', lang('Steps'), $shoot_step_items),
-                        $link(lang('How It Works'), '{{page:experience}}', 'btn btn-outline-primary rounded-pill px-4'),
-                    ), '', '6'),
-                    $col(array($framed($photo('home-steps', 1200, 900), lang('A photographer showing a client photos on a laptop'))), '', '6'),
-                ), '4', '', 'g-lg-5 align-items-center'),
-            )),
-        ), $searchable('ph-home-steps', lang('process, booking, proofing, delivery, download'))),
+        $behind_shot('ph-home-shot', lang('natural light, lens, camera settings, how we photograph')),
 
-        $el('section', 'py-5', lang('Why Choose Us'), array(
-            $container(array(
-                $section_header(lang('The way we work'), lang('Why clients choose us'), lang('About Us'), '{{page:about}}'),
-                $row($why_tiles, '4'),
-            )),
-        ), $searchable('ph-why-us', lang('natural light, retouching, private gallery, relaxed session'))),
-
-        $story_band('ph-home-clients', lang('Client Area'), lang('Your photos, in a gallery only you can open'),
-            array(lang('After your shoot the proofs wait in a private gallery: sign in, choose your favourites and tell us what to retouch.'), lang('Your finished photos arrive in the same place, ready to download in full size.')),
-            $photo('home-clients', 1200, 900), lang('A grid of photos on a tablet screen'), true,
-            array($link(lang('Open the Client Area'), '{{page:client_area}}', 'btn btn-outline-primary rounded-pill px-4')),
-            lang('proofing, client gallery, download photos, password, private')),
+        $contact_sheet('ph-home-clients', lang('Client Area'), lang('Your photos, in a gallery only you can open'),
+            lang('After your shoot the proofs wait in a private gallery: sign in, choose your favourites and tell us what to retouch.'),
+            lang('proofing, client gallery, download photos, password, private'),
+            array($link(lang('How It Works'), '{{page:experience}}', 'btn btn-link link-body-emphasis px-2'))),
 
         // What clients say: sample words for the studio to replace, and
         // beside them its own Google reviews, which show once Google Reviews
         // is set up under Site Settings.
-        $el('section', 'py-5 bg-body-tertiary', lang('Testimonials'), array(
+        $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
-                $section_header(lang('Our clients'), lang('What clients say')),
-                $row($testimonial_cols, '4'),
+                $section_header(lang('Our clients'), lang('What clients say'), lang('About Us'), '{{page:about}}'),
+                $rise($row($testimonial_cols, '4'), 120),
                 $widget('google_reviews'),
             )),
         )),
 
-        $el('section', 'py-5', lang('From the Journal'), array(
+        $el('section', 'py-5 bg-body-tertiary', lang('From the Journal'), array(
             $container(array(
                 $section_header(lang('Photo Journal'), lang('Stories and tips'), lang('All stories'), '{{page:blog}}'),
                 $widget('home_posts'),
@@ -267,7 +360,7 @@ $public_pages[] = array(
         $page_header(lang('Packages'), lang('Every package includes a private online gallery and the download of every edited photo. Choose one and ask for a date.')),
         $el('section', 'py-5', lang('Packages'), array(
             $container(array(
-                $row($package_cols, '4'),
+                $rise($row($package_cols, '4')),
             )),
         ), $searchable('ph-packages', lang('price, prices, cost, how much, session fee, wedding package'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Prices and Deposits'), array(
@@ -297,15 +390,15 @@ $public_pages[] = array(
                     $col(array(
                         $para(lang('Make it yours'), 'pph-eyebrow text-uppercase fw-semibold text-primary mb-2'),
                         $heading('h2', lang('Add to any package'), 'pph-display h2 mb-3'),
-                        $para(lang('Name what you would like to add in your booking request; we add it to the price when we confirm.'), 'text-body-secondary mb-0'),
+                        $para(lang('Name what you would like to add in your booking request; we add it to the price when we confirm.'), 'text-body-secondary mb-3'),
+                        $link(lang('Frequently Asked Questions'), '{{page:faq}}', 'link-primary fw-semibold'),
                     ), '', '5'),
                     $col(array(
-                        $el('ul', 'list-group list-group-flush border rounded-4 overflow-hidden', lang('Add-ons'), $addon_items),
+                        $rise($el('ul', 'list-group list-group-flush border rounded-4 overflow-hidden', lang('Add-ons'), $addon_items), 60),
                     ), '', '7'),
                 ), '4', '', 'g-lg-5'),
             )),
         ), $searchable('ph-addons', lang('album, prints, extra photos, express, extra hour'))),
-        $ask_band(lang('Not sure which package fits?'), lang('Tell us about the day or the people; we suggest a session and answer within a day.')),
     )),
 );
 
@@ -334,7 +427,7 @@ $public_pages[] = array(
                     $col(array(
                         $para(lang('Step by step'), 'pph-eyebrow text-uppercase fw-semibold text-primary mb-2'),
                         $heading('h2', lang('How a shoot works'), 'pph-display h2 mb-4'),
-                        $el('ol', 'list-unstyled mb-4', lang('Steps'), $shoot_step_items),
+                        $rise($el('ol', 'list-unstyled mb-4', lang('Steps'), $shoot_step_items), 100),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Book a Shoot'), '{{page:book}}', 'btn btn-primary rounded-pill px-4'),
                             $link(lang('Book a Studio Mini Session'), '{{page:book_online}}', 'btn btn-outline-primary rounded-pill px-4'),
@@ -347,19 +440,16 @@ $public_pages[] = array(
         $el('section', 'py-5 bg-body-tertiary', lang('Preparing for Your Shoot'), array(
             $container(array(
                 $section_header(lang('Before the day'), lang('Preparing for your shoot')),
-                $row($prepare_tiles, '4'),
+                $rise($row($prepare_tiles, '4')),
             )),
         ), $searchable('ph-prepare', lang('what to wear, outfit, location, kids, shot list'))),
-        $story_band('ph-proofing', lang('After the shoot'), lang('Choosing your favourites'),
-            array(lang('Within two weeks your proofs wait in a private gallery that only you can open after signing in. Each photo carries a frame number.'), lang('Send us the frame numbers you love and anything to retouch with the selection form; we edit them by hand and tell you when they are ready.')),
-            $photo('proofing', 1200, 900), lang('Printed proofs spread on a table with a loupe'), true,
-            array($link(lang('Open the Client Area'), '{{page:client_area}}', 'btn btn-outline-primary rounded-pill px-4')),
+        $contact_sheet('ph-proofing', lang('After the shoot'), lang('Choosing your favourites'),
+            lang('Within two weeks your proofs wait in a private gallery that only you can open after signing in. Each photo carries a frame number.'),
             lang('proofs, selection, favourites, retouch, private gallery')),
         $story_band('ph-delivery', lang('Your photos'), lang('Downloads, prints and albums'),
             array(lang('Your edited photos arrive in the same private gallery in full size, ready to download, share and print.'), lang('Prints and a printed album can be added to any package; we keep a backup of your gallery until you have downloaded it.')),
             $photo('delivery', 1200, 900), lang('A photo album open on a wooden table'), false, array(),
             lang('download, delivery, full resolution, prints, album, backup')),
-        $ask_band(lang('Something else to ask?'), lang('Write to us with your question; the photographer who will take your photos answers.')),
     )),
 );
 
@@ -383,7 +473,8 @@ $public_pages[] = array(
         $page_header(lang('About Us'), $studio['tagline'] . '.'),
         $story_band('ph-our-story', lang('Our story'), lang('One camera and a north window'),
             array($studio['story'], lang('We photograph a few sessions a week, so every client has our full attention from the first message to the last download.')),
-            $photo('about-studio', 1200, 900), lang('The studio with its large north window and a plain backdrop'), false, array(),
+            $photo('about-studio', 1200, 900), lang('The studio with its large north window and a plain backdrop'), false,
+            array($link(lang('Would you like to meet first?'), '{{page:contact}}', 'btn btn-outline-primary rounded-pill px-4')),
             lang('history, founder, team, who we are, studio')),
         $el('section', 'py-4 border-top border-bottom bg-body-tertiary', lang('Figures'), array(
             $container(array($figure_row())),
@@ -391,22 +482,21 @@ $public_pages[] = array(
         $el('section', 'py-5', lang('Our Values'), array(
             $container(array(
                 $section_header(lang('What we care about'), lang('How we work')),
-                $row($about_value_tiles, '4'),
+                $rise($row($about_value_tiles, '4')),
             )),
         ), $searchable('ph-values', lang('values, consent, privacy, pricing'))),
         $el('section', 'py-5 bg-body-tertiary', lang('Why Choose Us'), array(
             $container(array(
                 $section_header(lang('The way we work'), lang('Why clients choose us')),
-                $row($why_tiles, '4'),
+                $rise($row($why_tiles, '4')),
             )),
         ), $searchable('ph-about-why', lang('natural light, retouching, private gallery, relaxed session'))),
         $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
                 $section_header(lang('Our clients'), lang('What clients say')),
-                $row($testimonial_cols, '4'),
+                $rise($row($testimonial_cols, '4'), 120),
             )),
         )),
-        $ask_band(lang('Would you like to meet first?'), lang('Come by the studio for a coffee and a look at our albums; write to us for a time.')),
     )),
 );
 

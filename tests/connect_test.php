@@ -32,10 +32,17 @@ function test_connect_providers_load_with_their_endpoints()
 		pg_assert_same(0, strpos($provider['token_url'], 'https://'), $key . ': token over https');
 		// A sign-in-only provider (Apple) is never connected, so it asks for
 		// what its sign-in needs instead (tests/signin_test.php).
-		if (!isset($provider['accounts']) || ($provider['accounts'] !== false)) {
-			pg_assert_true(in_array('openid', $provider['identity_scopes'], true), $key . ': asks who the account is');
+		// A provider that is not an OpenID provider (GitHub) names the
+		// fields of its userinfo answer instead and has no issuer to check.
+		if (!empty($provider['identity_fields'])) {
+			pg_assert_same(0, strpos($provider['userinfo_url'], 'https://'), $key . ': asks who the account is over https');
+			pg_assert_true(isset($provider['identity_fields']['id']), $key . ': names its id field');
+		} else {
+			if (!isset($provider['accounts']) || ($provider['accounts'] !== false)) {
+				pg_assert_true(in_array('openid', $provider['identity_scopes'], true), $key . ': asks who the account is');
+			}
+			pg_assert_true(!empty($provider['issuers']) || !empty($provider['issuer_pattern']), $key . ': knows its issuer');
 		}
-		pg_assert_true(!empty($provider['issuers']) || !empty($provider['issuer_pattern']), $key . ': knows its issuer');
 		pg_assert_true(is_array($provider['setup']) && $provider['setup'], $key . ': setup steps');
 	}
 
@@ -284,6 +291,57 @@ function test_connect_identity_label()
 	pg_assert_same(array('id' => 's', 'label' => 'a@example.com'), pg_connect_identity(array('sub' => 's', 'email' => 'a@example.com', 'name' => 'A')), 'e-mail first');
 	pg_assert_same(array('id' => 's', 'label' => 'a@contoso.com'), pg_connect_identity(array('sub' => 's', 'email' => ' ', 'preferred_username' => 'a@contoso.com')), 'Microsoft user name');
 	pg_assert_same(array('id' => '', 'label' => ''), pg_connect_identity(array()), 'nothing');
+}
+
+// GitHub is not an OpenID provider: its /user answer has a numeric id and a
+// login, and its token answer lists the scopes with commas.
+function test_connect_github_identity_and_scopes()
+{
+	$github = pg_connect_provider('github');
+
+	pg_assert_true(is_array($github), 'GitHub is a provider');
+
+	$user = array('id' => 583231, 'login' => 'octocat', 'name' => 'The Octocat', 'email' => null, 'sub' => 'ignored');
+
+	pg_assert_same(array('id' => '583231', 'label' => 'octocat'), pg_connect_identity($user, $github['identity_fields']), 'id and login');
+	pg_assert_same(array('id' => '', 'label' => ''), pg_connect_identity(array('id' => array(1), 'login' => array('x')), $github['identity_fields']), 'no id from a list');
+
+	$token = pg_connect_token_response(array('access_token' => 'gho_x', 'token_type' => 'bearer', 'scope' => 'admin:repo_hook,read:org'),
+		1000, pg_connect_default_ttl($github), pg_connect_scope_delimiter($github));
+
+	pg_assert_same(array('admin:repo_hook', 'read:org'), $token['scopes'], 'comma-separated scopes');
+	pg_assert_same('', $token['refresh_token'], 'no refresh token');
+	pg_assert_true($token['expires_at'] > 1000 + 365 * 86400, 'a token that does not end is kept for years');
+	pg_assert_true(!empty($github['refresh_optional']), 'connected without a refresh token');
+
+	$standard = pg_connect_token_response(array('access_token' => 'at', 'scope' => 'a,b c'), 1000);
+
+	pg_assert_same(array('a,b', 'c'), $standard['scopes'], 'a comma stays part of a standard scope');
+	pg_assert_same('', pg_connect_scope_delimiter(pg_connect_provider('google')), 'Google: white space only');
+
+	$purpose = pg_connect_purpose('channel_links');
+
+	pg_assert_same(array('admin:repo_hook'), pg_connect_request_scopes($github, $purpose), 'channel links ask only for hooks');
+	pg_assert_true(pg_connect_purpose_allows($purpose, 'github', 'site'), 'the site\'s own account');
+	pg_assert_false(pg_connect_purpose_allows($purpose, 'github', 'person'), 'not a person\'s');
+	pg_assert_false(pg_connect_purpose_allows($purpose, 'google', 'site'), 'only GitHub');
+	pg_assert_same('channel_links', $github['connect_purpose'], 'Connected accounts connects it for channel links');
+
+	$url = pg_connect_authorize_url($github, array('client_id' => 'Iv1.abc'), array('redirect_uri' => 'https://example.com/pinegrap/connect.php',
+		'scopes' => pg_connect_request_scopes($github, $purpose), 'state' => 's', 'challenge' => 'c'));
+
+	pg_assert_contains('scope=admin%3Arepo_hook', $url, 'the scope');
+	pg_assert_contains('allow_signup=false', $url, 'no sign-up on the way');
+	pg_assert_false(strpos($url, 'nonce=') !== false, 'no nonce');
+}
+
+function test_connect_revoke_url_names_the_application()
+{
+	$github = pg_connect_provider('github');
+
+	pg_assert_same('https://api.github.com/applications/Iv1.a%2Fb/token', pg_connect_revoke_url($github, array('client_id' => 'Iv1.a/b')), 'the client ID in the path');
+	pg_assert_same('', pg_connect_revoke_url($github, array('client_id' => '')), 'none without a client ID');
+	pg_assert_same('https://api.dropboxapi.com/2/auth/token/revoke', pg_connect_revoke_url(pg_connect_provider('dropbox'), array('client_id' => 'x')), 'a fixed address stays');
 }
 
 // The return address cannot leave the panel or carry a header.
