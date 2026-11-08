@@ -14,8 +14,12 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 - Done: N1 #4692, N2 #4766, N3 #4756, N4 #4768, N5 #4856, N6 #4888, N7 #4861, N8 #4865, N9 #4881, N9b #5031, N10a #4973, N10b #4895, N10c #5017, N11a #4994, N11b #5013, N11c #5080, N12a #4981, N12b #5001, N13 #4975, N14 #6145, V0 #5054, V1 #6166, V2 #6263, N10d #6464.
 
 - V (visual pass, owner 2026-11-01). One step per screen group, M each.
-  - Taken by the owner's local agent that drew the screens (owner, 2026-11-03); cloud workers do not claim V steps.
-  - V3 05-11 edit, gallery, share and top options, V4 12-14 backdrops, compact and lights, V5 16-19 shop and other cards, V6 20 phone: the screen opened in the sandbox beside its picture, every difference in colour, spacing, type, radius, shadow and icon fixed. The System Status gauge (SVG and animation) stays as it is.
+  - V3-V6 are open to any worker, one per claim, in order; each V PR asks the owner through an approval issue (below).
+  - Every V step: the screen opened in the sandbox beside its picture, every difference in colour, spacing, type, radius, shadow and icon fixed. The System Status gauge (SVG and animation) stays as it is.
+  - V3 (M) pictures 05-11: edit, gallery, share and top options.
+  - V4 (M) pictures 12-14: backdrops, compact and lights.
+  - V5 (M) pictures 16-19: shop and other cards.
+  - V6 (M) picture 20: phone.
   - Where V3 starts: edit mode and the side panel (`pg_dash_edit.js`, `pg_dash_panel.js`, the "Edit mode" and "Side panel" sections of `pg_dash.src.css`), pictures 05-11; the palette and card parts are V1's and V2's.
   - Every picture belongs to one V step. A part the sandbox has no data for is drawn from the picture's texts by its own renderer and compared too; a difference kept on purpose is listed on the step's comparison page.
   - Each V PR carries before/after/picture shots and asks the owner through an approval issue (`workflow/architect-asking.md`).

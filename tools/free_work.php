@@ -12,7 +12,9 @@
  * plan files one by one, which filled a new coordinator's context in its
  * first turn.
  *
- * Usage:  php tools/free_work.php
+ * Usage:  php tools/free_work.php [--worktree]
+ *         --worktree reads the plans from this checkout instead, to see what
+ *         a plan edit not yet pushed would list.
  * Exit:   0; 1 when git or gh fails.
  *
  * The plans are read from origin/development after a fetch, so a stale clone
@@ -64,48 +66,181 @@ function free_work_low_priority($file, $description = '')
 		|| (bool) preg_match('/\blow priority\b/i', (string) $description);
 }
 
-// The step lines of a plan file: "- <ID> …" with an ID such as AP3, BK10,
-// X12a or N10d, bold or not, under a "## Which steps …?" heading; a file
-// with no such heading has them in any section. Lines under the order and
-// side-by-side headings name steps without being one, and so do lines whose
-// ID is followed by a comma, a colon or "alone", "first", "is done".
+// The step lines of a plan file: "- <ID> …" or "<n>. <ID> …" with an ID
+// such as AP3, BK10, X12a or N10d, bold or not, under a "## Which steps …?"
+// heading; a file with no such heading has them in any section. Lines under
+// the order, side-by-side and "beside" headings name steps without being
+// one, and so do lines whose ID is followed by a comma, a colon or "alone",
+// "first", "is done".
 // A bare number (the design templates' "- 4 Topic: …", "- 4: …",
 // "- 4 (done, #n): …", "- 4 Done (#n). …") is a step only under a steps
 // heading, where "- 4: …" is one too (its colon is dropped); a number
 // followed by "-" or "×" is a date, a range or a size, not a step.
+// An indented "  - <ID> …" line is a step of its own, or more of the step
+// above when it names the same ID; an indented line that is no list item
+// ("   Cut in two: …") is more of the step above. "- Done: N1 #n, V2 #n"
+// marks the steps it names done. A step done in several PRs whose line says
+// "Next: part <n>" is open as "<ID> part <n>".
 // Returns a list of array(id, rest of the line).
 function free_work_steps($text)
 {
 	$lines = preg_split('/\R/', (string) $text);
-	$headed = (bool) preg_grep('/^## (?=.*step)(?!.*(?:side by side|\brun\b|order|\bown\b|start|taken))/i', $lines);
+	$aside = 'side by side|\brun\b|order|\bown\b|start|taken|\bbeside\b';
+	$headed = (bool) preg_grep('/^## (?=.*step)(?!.*(?:' . $aside . '))/i', $lines);
 	$steps = array();
+	$done = array();
 	$take = !$headed;
+	$last = -1;
 
 	foreach ($lines as $line) {
 		if (strpos($line, '## ') === 0) {
-			$order = preg_match('/side by side|\brun\b|order|\bown\b|start|taken/i', $line);
-			$take = !$order && (!$headed || preg_match('/step/i', $line));
+			$take = !preg_match('/' . $aside . '/i', $line) && (!$headed || preg_match('/step/i', $line));
+			$last = -1;
 
 			continue;
 		}
 
-		if (!$take || !preg_match('/^- \**([A-Z]{1,3})?(\d+[a-z]?)\b\**(?![-\x{2013}\x{00D7}\d])\s*(.*)$/u', $line, $match)) {
+		if (!$take || (trim($line) === '')) {
 			continue;
 		}
 
-		$numbered = ($match[1] === '');
-		$rest = $match[3];
+		if (preg_match('/^- \**Done:\**\s*(.*)$/', $line, $match)) {
+			preg_match_all('/\b([A-Z]{1,3}\d+[a-z]?)\s+#\d+/', $match[1], $ids);
+			$done += array_flip($ids[1]);
+			$last = -1;
 
-		if ($numbered) {
-			if (!$headed) {
-				continue;
+			continue;
+		}
+
+		$nested = (bool) preg_match('/^\s/', $line);
+
+		if (!preg_match('/^(\s*)(?:-|(\d+)\.) \**([A-Z]{1,3})?(\d+[a-z]?)\b\**(?![-\x{2013}\x{00D7}\d])\s*(.*)$/u', $line, $match)) {
+			if ($nested && ($last >= 0) && !preg_match('/^\s*-\s/', $line)) {
+				$steps[$last][1] .= ' ' . trim($line);
+			} elseif (!$nested) {
+				$last = -1;
 			}
 
+			continue;
+		}
+
+		$numbered = ($match[3] === '');
+		$id = $match[3] . $match[4];
+		$rest = $match[5];
+
+		if ($numbered && ($nested || ($match[2] !== '') || !$headed)) {
+			if (!$nested) {
+				$last = -1;
+			}
+
+			continue;
+		}
+
+		if ($numbered) {
 			$rest = preg_replace('/^:\s*/', '', $rest);
 		}
 
-		if (!preg_match('/^(?:[,:]|alone\b|first\b|is done\b)/i', $rest)) {
-			$steps[] = array($match[1] . $match[2], trim($rest));
+		if (preg_match('/^(?:[,:]|alone\b|first\b|is done\b)/i', $rest)) {
+			continue;
+		}
+
+		if ($nested && ($last >= 0) && ($steps[$last][0] === $id)) {
+			$steps[$last][1] .= ' ' . trim($rest);
+
+			continue;
+		}
+
+		$steps[] = array($id, trim($rest));
+		$last = count($steps) - 1;
+	}
+
+	$open = array();
+
+	foreach ($steps as $step) {
+		if (isset($done[$step[0]])) {
+			continue;
+		}
+
+		if (preg_match('/\bNext:\s*(part \d+)\W*(.*)$/', $step[1], $match)) {
+			$step = array($step[0] . ' ' . $match[1], $match[2]);
+		}
+
+		$open[] = $step;
+	}
+
+	return $open;
+}
+
+// Whether a step is not for a worker: the owner's work ("(S, owner's
+// machine)", "(S, the owner's public keys)"), or a step without `free` in a
+// plan whose holder marks the free lines `free`.
+function free_work_step_blocked($rest, $plan_text)
+{
+	if (preg_match("/^\\([^)]*\\bowner's\\b/", (string) $rest)) {
+		return true;
+	}
+
+	return (strpos((string) $plan_text, 'marks lines `free`') !== false)
+		&& (strpos((string) $rest, '`free`') === false);
+}
+
+// Whether a plan's steps run one after another ("each waits for the one
+// before it"): then only its first step not done is work.
+function free_work_sequential($text)
+{
+	return (bool) preg_match('/each waits for the one before it/i', (string) $text);
+}
+
+// The polishing round's next step per template (design-template-own-looks-
+// order.md): `<name>-1`, the blocks, then `<name>-2`, the pages. Templates
+// with a "- Name: `-1` …" status line come first, in their order, then the
+// names of the numbered order lists. A step is done when "done" follows its
+// `-1` or `-2`; "needs no `-2`" ends a template at `-1`. Returns a list of
+// array(id, started), started when its `-1` is done; empty for any other
+// plan file.
+function free_work_own_looks($text)
+{
+	if (strpos((string) $text, 'Step `<id>-1`') === false) {
+		return array();
+	}
+
+	$lines = preg_split('/\R/', (string) $text);
+	$state = array();
+
+	foreach ($lines as $line) {
+		if (preg_match('/^- ([A-Z][a-z]+): (.*`-1`.*)$/', $line, $match)) {
+			$after_one = substr($match[2], strpos($match[2], '`-1`'));
+			$two_at = strpos($match[2], '`-2`');
+			$after_two = ($two_at === false) ? '' : substr($match[2], $two_at + 4);
+			$state[strtolower($match[1])] = array(
+				(bool) preg_match('/\bdone\b/', $after_one),
+				(bool) preg_match('/\bdone\b/', $after_two) || (strpos($match[2], 'needs no `-2`') !== false),
+			);
+		}
+	}
+
+	foreach ($lines as $line) {
+		if (preg_match('/^\d+\. (.*)$/', $line, $match) && !preg_match('/\bDone\b/', $line)) {
+			$names = preg_replace('/\s*\([^()]*\)/', '', $match[1]);
+			$names = substr($names, strrpos($names, ': ') ?: 0);
+
+			foreach (explode(',', trim($names, " :.")) as $name) {
+				$name = trim($name);
+
+				if (preg_match('/^[a-z]+$/', $name) && !isset($state[$name])) {
+					$state[$name] = array(false, false);
+				}
+			}
+		}
+	}
+
+	$steps = array();
+
+	foreach ($state as $name => $done) {
+		if (!$done[0]) {
+			$steps[] = array($name . '-1', false);
+		} elseif (!$done[1]) {
+			$steps[] = array($name . '-2', true);
 		}
 	}
 
@@ -114,12 +249,13 @@ function free_work_steps($text)
 
 // Whether a step line says the step is done: "`done` (#n)", "Done in #n",
 // "Done (#n)", "done in PR #n", ": PR #n" or ": PRs #a, #b", "merged",
-// "… are done", or a capitalised "Done" anywhere.
+// "… are done", "<ID> done", or a capitalised "Done" anywhere.
 function free_work_step_done($line)
 {
 	$line = (string) $line;
 
 	return (bool) (preg_match('/`done`|\bdone\b\W{0,3}(?:in\s+)?(?:PRs?\s+)?#\d+|:\s*PRs?\s+#\d+|\bmerged\b|\bare done\b/i', $line)
+		|| preg_match('/\b[A-Z]{1,3}\d+[a-z]?\s+done\b/', $line)
 		|| preg_match('/\bDone\b/', $line));
 }
 
@@ -229,9 +365,12 @@ foreach (free_work_gh_lines('pulls?state=open&per_page=100', '.[]|[.number,.draf
 
 $files = array();
 
-foreach (free_work_run('git ls-tree --name-only origin/development docs/memory/plans/') as $path) {
+$worktree = in_array('--worktree', $argv, true);
+$paths = $worktree ? glob('docs/memory/plans/*.md') : free_work_run('git ls-tree --name-only origin/development docs/memory/plans/');
+
+foreach ($paths as $path) {
 	if ((substr($path, -3) === '.md') && (basename($path) !== 'README.md')) {
-		$text = implode("\n", free_work_run('git show ' . escapeshellarg('origin/development:' . $path)));
+		$text = $worktree ? (string) file_get_contents($path) : implode("\n", free_work_run('git show ' . escapeshellarg('origin/development:' . $path)));
 		$description = preg_match('/^description:\s*(.*)$/m', $text, $match) ? $match[1] : '';
 		$files[basename($path)] = array(free_work_plan_name($path, $description), $description, $text);
 	}
@@ -271,6 +410,11 @@ foreach ($files as $file => $plan) {
 		continue;
 	}
 
+	// A low-priority plan's free steps go to their own list.
+	$plan_free = array();
+	$sequential = free_work_sequential($text);
+	$waiting = false;
+
 	foreach (free_work_steps($text) as $step) {
 		list($id, $rest) = $step;
 
@@ -278,15 +422,52 @@ foreach ($files as $file => $plan) {
 			continue;
 		}
 
+		// "D5 part 4" is held by a PR on D5.
+		$holder = free_work_holder($name, strtok($id, ' '), $titles);
+
+		if ($holder) {
+			$held[] = "$name $id #$holder";
+		} elseif (!$waiting && !free_work_step_blocked($rest, $text)) {
+			$plan_free[] = '  ' . free_work_cut("$name $id $rest");
+		}
+
+		// The later steps wait for this one.
+		$waiting = $sequential;
+	}
+
+	// The polishing round: up to four templates at a time; a started one
+	// (its `-1` done) or one with an open PR takes a place.
+	$looks = array();
+	$busy = 0;
+
+	foreach (free_work_own_looks($text) as $look) {
+		list($id, $started) = $look;
 		$holder = free_work_holder($name, $id, $titles);
 
 		if ($holder) {
 			$held[] = "$name $id #$holder";
-		} elseif (isset($low[$name])) {
-			$free_low[] = '  ' . free_work_cut("$name $id $rest");
-		} else {
-			$free[] = '  ' . free_work_cut("$name $id $rest");
 		}
+
+		if ($holder || $started) {
+			$busy++;
+		}
+
+		if (!$holder) {
+			$looks[] = $look;
+		}
+	}
+
+	foreach ($looks as $look) {
+		if ($look[1] || ($busy < 4)) {
+			$plan_free[] = "  $name {$look[0]}" . ($look[1] ? ' pages on its blocks' : ' blocks');
+			$busy += $look[1] ? 0 : 1;
+		}
+	}
+
+	if (isset($low[$name])) {
+		$free_low = array_merge($free_low, $plan_free);
+	} else {
+		$free = array_merge($free, $plan_free);
 	}
 }
 
