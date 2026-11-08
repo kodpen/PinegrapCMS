@@ -165,9 +165,6 @@ $ferry_css = implode("\n", array(
     '.pfy-brand{font-family:var(--pg-font-heading);font-weight:700;letter-spacing:.08em;text-transform:uppercase}',
     // A fare: figures of one width, so the fare table's figures line up.
     '.pfy-price{font-variant-numeric:tabular-nums}',
-    // A sailing time: the condensed sans, figures of one width, like a
-    // departures board.
-    '.pfy-time{font-family:var(--pg-font-heading);font-size:1.0625rem;font-variant-numeric:tabular-nums;letter-spacing:.02em}',
     // A key figure: the condensed sans, figures of one width.
     '.pfy-stat{font-family:var(--pg-font-heading);font-variant-numeric:tabular-nums}',
     // What a traveller says: the body sans, a little larger.
@@ -184,7 +181,7 @@ $ferry_css = implode("\n", array(
 
 return array(
     'name'        => lang('Ferry'),
-    'version'     => '1.0.0',
+    'version'     => '2.0.0',
     'framework'   => 'bootstrap5',
     'order'       => 117,
     'icon'        => 'bi-water',
@@ -238,10 +235,10 @@ return array(
         'email_footer' => array('name' => lang('Ferry E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its pfy- rules in one User Styles entry, and
-    // its two fonts.
+    // The template's own look: the ferry blocks' rules its pages place and
+    // its pfy- rules in one User Styles entry, and its two fonts.
     'assets'      => array(
-        'css'   => pg_design_template_user_styles(array(), $ferry_css),
+        'css'   => pg_design_template_user_styles(array('ferry-departures', 'ferry-timetable', 'ferry-crossings', 'ferry-fares'), $ferry_css),
         'fonts' => json_encode($ferry_fonts),
     ),
 );

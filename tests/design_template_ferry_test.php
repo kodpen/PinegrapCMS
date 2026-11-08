@@ -41,7 +41,7 @@ function _test_fy_load()
 		$route_fact_lists[$key] = $route_facts($key);
 		$timetables[$key] = $timetable($key);
 		$route_words[$key] = array('ports' => $route_ports($key), 'from_fare' => $from_fare($key),
-			'low' => $sailings_a_day($key, 'low'), 'times' => $sailing_times($key, 'high', 'out'));
+			'low' => $sailings_a_day($key, 'low'));
 	}
 	$port_cards = array();
 	foreach (array_keys($ports) as $key) $port_cards[$key] = $port_card($key);
@@ -244,7 +244,6 @@ function test_ferry_fares_are_words()
 	pg_assert_same('', call_user_func($d['fare'], 'cabin', 'bay_gull'), 'no cabin fare on a short crossing');
 	pg_assert_same(sprintf(lang('Foot passengers from %s'), $figure($d['fares']['adult']['short'])), $d['route_words']['north_cedar']['from_fare'], 'a route\'s lowest fare');
 	pg_assert_same(sprintf(lang('%d sailings a day each way'), 2), $d['route_words']['bay_cedar']['low'], 'sailings a day');
-	pg_assert_same(implode(' · ', $d['routes']['gull_cedar']['sailings']['high']['out']), $d['route_words']['gull_cedar']['times'], 'the times in one line');
 }
 
 function test_ferry_page_links_name_template_pages()
@@ -331,22 +330,38 @@ function _test_fy_count($tree, $tag)
 	return $n;
 }
 
-// The fare table shows a row per kind and a fare per route (one route when
-// given); a timetable a row per season and the times from each port.
+// The fare table: a row group per kind of fare with a row per kind, a
+// column per crossing length (the one route when given), a fare a crossing
+// does not offer in words; a timetable: a card per port and season, every
+// departure a <time> with its value.
 function test_ferry_tables()
 {
 	$d = _test_fy_load();
 	$kinds = count($d['fare_kinds']);
-	pg_assert_same($kinds + 1, _test_fy_count($d['fare_table'], 'tr'), 'a head row and a row per fare');
-	pg_assert_same($kinds * count($d['routes']), _test_fy_count($d['fare_table'], 'td'), 'a fare per kind and route');
+	pg_assert_same(3, _test_fy_count($d['fare_table'], 'tbody'), 'foot passengers, vehicles and extras');
+	pg_assert_same(1 + 3 + $kinds, _test_fy_count($d['fare_table'], 'tr'), 'a head row, a row per group and per fare');
+	pg_assert_same($kinds * 2, _test_fy_count($d['fare_table'], 'td'), 'a fare per kind and crossing length');
 	pg_assert_same($kinds, _test_fy_count($d['fare_table_one'], 'td'), 'one route: a fare per kind');
 	$json = json_encode($d['fare_table_one'], JSON_UNESCAPED_UNICODE);
 	pg_assert_contains(call_user_func($d['fare'], 'car', 'bay_gull'), $json, 'the car fare');
-	pg_assert_contains('"text":"–"', $json, 'a dash for the cabin a short crossing has not');
+	pg_assert_contains('"text":"Not offered"', $json, 'the cabin a short crossing has not, in words');
+	pg_assert_contains('"value":"rowgroup"', $json, 'a group heads its rows');
 	foreach ($d['timetables'] as $key => $t) {
-		pg_assert_same(count($d['seasons']) + 1, _test_fy_count($t, 'tr'), "timetable $key: a head row and a row per season");
-		pg_assert_same(count($d['seasons']) * 2, _test_fy_count($t, 'td'), "timetable $key: the times from each port");
-		pg_assert_contains($d['routes'][$key]['sailings']['high']['back'][0], json_encode($t), "timetable $key: a return time");
+		pg_assert_same(count($d['seasons']) * 2, _test_fy_count($t, 'h3'), "timetable $key: a card per port and season");
+		$nodes = array();
+		_test_fy_nodes($t, $nodes);
+		$times = array();
+		foreach ($nodes as $n) {
+			if (($n['props']['tag'] ?? '') !== 'time') continue;
+			pg_assert_same(array(array('name' => 'datetime', 'value' => $n['props']['text'])), $n['props']['_attrs'], "timetable $key: a time carries its value");
+			$times[] = $n['props']['text'];
+		}
+		$all = array();
+		foreach ($d['seasons'] as $season => $s) {
+			$all = array_merge($all, $d['routes'][$key]['sailings'][$season]['out'], $d['routes'][$key]['sailings'][$season]['back']);
+		}
+		pg_assert_same($all, $times, "timetable $key: every departure, by season and port");
+		pg_assert_contains('pg-ferry-figures', json_encode($t), "timetable $key: the block's figures rule");
 	}
 }
 
@@ -411,7 +426,7 @@ function test_ferry_classes_are_its_own()
 		$id = (string)($n['props']['id'] ?? '');
 		if ($id !== '' && strpos($id, '-') !== false) pg_assert_true(strpos($id, 'fy-') === 0, "id $id is the template's");
 	}
-	foreach (array('pfy-brand', 'pfy-display', 'pfy-eyebrow', 'pfy-lift', 'pfy-stat', 'pfy-quote', 'pfy-price', 'pfy-time') as $c) {
+	foreach (array('pfy-brand', 'pfy-display', 'pfy-eyebrow', 'pfy-lift', 'pfy-stat', 'pfy-quote', 'pfy-price') as $c) {
 		pg_assert_true(isset($own[$c]), "$c is used");
 	}
 }
