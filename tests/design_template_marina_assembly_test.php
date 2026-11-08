@@ -48,7 +48,7 @@ function test_marina_assembly_template_offered()
 	pg_assert_true(isset($all['pinegrap-marina']), 'the template is offered');
 	pg_assert_true(!isset($all['parts']) && !isset($all['charters']) && !isset($all['requests']), 'the parts folder is not read as a template');
 	$tpl = _test_mn_asm_tpl();
-	pg_assert_true(version_compare($tpl['version'], '1.0.0', '>='), 'a version');
+	pg_assert_true(version_compare($tpl['version'], '2.0.0', '>='), 'a version');
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-life-preserver', $tpl['icon']);
 	pg_assert_same(105, $tpl['order']);
@@ -232,4 +232,54 @@ function test_marina_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_charters"') !== false && strpos($home, '"templateWidget":"home_events"') !== false
 		&& strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places the charter boats, the events and the News');
+}
+
+// The home, the berths and the arriving page place the Marina blocks: every
+// pg-marina-* class's rule ships, the interactions are kept as written,
+// something rises on each, and the stock bands left them.
+function test_marina_assembly_pages_on_marina_blocks()
+{
+	$tpl = _test_mn_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	$wanted = array('home' => array('mn-home-berths', 'mn-home-arriving'), 'berths' => array('mn-berths-pontoons'), 'arriving' => array('mn-arriving', 'mn-arriving-pontoons'));
+	$seen = array();
+	foreach ($tpl['pages'] as $p) {
+		if (!isset($wanted[$p['key']]) && strpos($p['key'], 'berth_') !== 0) continue;
+		if ($p['key'] === 'berth_request') continue;
+		$seen[] = $p['key'];
+		$nodes = array();
+		_test_mn_asm_nodes($p['tree'], $nodes);
+		$classes = '';
+		$labels = array();
+		$ids = array();
+		$effects = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if (isset($n['props']['id'])) $ids[] = $n['props']['id'];
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $p['key'] . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-marina-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) pg_assert_contains('.' . $class, $css, $p['key'] . ': the rule of ' . $class . ' ships');
+		pg_assert_true($effects >= 1, $p['key'] . ': something rises in');
+		if (!isset($wanted[$p['key']])) continue;
+		foreach ($wanted[$p['key']] as $id) pg_assert_true(in_array($id, $ids, true), $p['key'] . ': places ' . $id);
+		pg_assert_contains('pg-marina-figures', $classes, $p['key'] . ': on the marina blocks');
+		pg_assert_false((bool)preg_match('/(?<![\w-])(pmn-stat|accordion)(?![\w-])/', $classes), $p['key'] . ': no figures row or accordion');
+		foreach (array('Write to Us', 'Figures', 'Why Crews Come Back') as $band) pg_assert_false(in_array($band, $labels, true), $p['key'] . ': no ' . $band . ' band');
+	}
+	pg_assert_same(8, count($seen), 'home, berths, five kinds of berth, arriving');
+
+	$home = null;
+	foreach ($tpl['pages'] as $p) if ($p['key'] === 'home') $home = $p['tree'];
+	$json = json_encode($home, JSON_UNESCAPED_UNICODE);
+	pg_assert_contains('{"name":"data-bs-theme","value":"dark"}', $json, 'the arrival is a dark band');
+	pg_assert_contains('"trigger":"load"', $json, 'the hero rises in on load');
+	pg_assert_same(4, substr_count($json, 'pg-marina-pontoon flex-shrink-0'), 'four pontoons');
 }

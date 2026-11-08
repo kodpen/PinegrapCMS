@@ -960,6 +960,8 @@
     "Your order is your ticket: show it on your phone or printed at the gate.": "Siparişiniz biletinizdir: kapıda telefonunuzda ya da çıktı olarak gösterin.",
     "Your order opens its own page, and an account for you if you have none.": "Siparişiniz kendi sayfasını açar; hesabınız yoksa sizin için bir hesap da açılır.",
     "Your order requests, their status and our answers, newest first.": "Sipariş talepleriniz, durumları ve yanıtlarımız; en yenisi önce.",
+    "Your order waits at the counter with your name on it on the day you chose, between 10:00 and 18:00; bring this number. For a class place we write within a day to agree the class day.": "Siparişiniz seçtiğiniz gün 10:00 ile 18:00 arasında üzerinde adınızla tezgâhta bekler; bu numarayı getirin. Atölye yeri için bir gün içinde atölye gününde anlaşmak üzere yazarız.",
+    "Your order waits with your name on it between 10:00 and 18:00; we mail class places with the class day.": "Siparişiniz 10:00 ile 18:00 arasında üzerinde adınızla bekler; atölye yerlerini atölye günüyle birlikte e-postayla bildiririz.",
     "Your organization has not allowed this site to read OneDrive files yet: an administrator has to grant the application the SharePoint permission MyFiles.Read.": "Kuruluşunuz bu sitenin OneDrive dosyalarını okumasına henüz izin vermedi: bir yöneticinin uygulamaya SharePoint MyFiles.Read iznini vermesi gerekiyor.",
     "Your own account is connected ({var:1}).": "Kendi hesabınız bağlı ({var:1}).",
     "Your own account is disconnected from @{var:1}.": "Kendi hesabınızın @{var:1} bağlantısı kesildi.",

@@ -24562,6 +24562,66 @@
             }).catch(fail);
         }
 
+        // The canvas document a picture of the note's own folder was drawn
+        // from, or null (workspace_file_save.php?note=&file=); asked once a
+        // file, as a card is drawn again on every change.
+        var canvasDocs = {};
+
+        function noteCanvasDoc(noteId, name) {
+            var key = noteId + '/' + name;
+
+            if (!canvasDocs[key]) {
+                canvasDocs[key] = fetch(CFG.urls.file_save + '?note=' + encodeURIComponent(noteId) + '&file=' + encodeURIComponent(name), {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ token: CFG.token, action: 'canvas' })
+                }).then(function (res) {
+                    return res.json();
+                }).then(function (data) {
+                    return (data && (data.status === 'success') && data.doc && data.doc.artboard) ? data.doc : null;
+                }).catch(function () {
+                    delete canvasDocs[key];
+                    return null;
+                });
+            }
+
+            return canvasDocs[key];
+        }
+
+        // Edit the picture on a canvas of the note: the editor opens with
+        // its layers, and the canvas drawn again is a new file of the note
+        // linked in the old one's place; the old file stays in the note's
+        // folder, linked from its earlier version.
+        function editNoteCanvas(media) {
+            if (!current || !current.id || !editable() || !field) {
+                return;
+            }
+
+            var note = current;
+
+            Promise.all([loadImageEditor(), noteCanvasDoc(note.id, media.name)]).then(function (loaded) {
+                var doc = loaded[1];
+
+                if (!doc) {
+                    return;
+                }
+
+                return window.pgImageEditor.open({
+                    blank: doc.artboard,
+                    doc: doc,
+                    fileName: media.label,
+                    save: { mode: 'url', url: CFG.urls.file_save + '?note=' + note.id + '&file=' + encodeURIComponent(media.name), label: t('file_edit_put') }
+                }).then(function (result) {
+                    if (current && (current.id === note.id) && field && result && result.file) {
+                        field.rich.replaceFile(media.url, result.file.name, result.file.url);
+                    }
+                });
+            }).catch(function () {
+                toast(t('file_editor_missing'), 'danger');
+            });
+        }
+
         // A recording made in the note: kept as the note's own file like a
         // dropped one (attach(), ws_note_file) and linked where the caret
         // was. The recorder's row stands above the text while it runs.
@@ -24842,6 +24902,16 @@
                         return (window.PGWsVoice && window.PGWsVoice.isVoice(media.label))
                             ? window.PGWsVoice.player({ name: media.label, url: media.url, kind: 'audio' }, featureHelpers(), {})
                             : null;
+                    },
+                    // A canvas of the note opens again with its layers.
+                    action: function (media) {
+                        if (media.kind !== 'image' || !current || !current.id || !editable()) {
+                            return null;
+                        }
+
+                        return noteCanvasDoc(current.id, media.name).then(function (doc) {
+                            return doc ? { icon: 'bi-pencil', label: t('file_edit_image'), run: function () { editNoteCanvas(media); } } : null;
+                        });
                     }
                 },
                 // A picture pasted into the note is attached, as a dropped one.
