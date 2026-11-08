@@ -813,7 +813,8 @@ function _test_blocks_heading_literals($code)
 	return $levels;
 }
 
-// Helpers declared inside createFromPalette() as `var _name = function`:
+// Helpers declared inside createFromPalette() as `var _name = function`, and
+// the _sdBlockKit() builders it takes by name:
 // name => list of array('at', 'levels', 'scope'), 'scope' being the range of
 // the innermost builder test holding the declaration (null for a helper
 // shared by a whole family, such as _bkIntro() or _bkMenuItem()).
@@ -856,6 +857,27 @@ function _test_blocks_helpers()
 			'levels' => _test_blocks_heading_literals(substr($js, $body[0], $body[1] - $body[0])),
 			'scope'  => $scope,
 		);
+	}
+	// The shared builders of _sdBlockKit() (kit.intro = function …), under
+	// the names the block branch gives them (_bkIntro = _bkKit.intro).
+	$kit_at = strpos($js, 'function _sdBlockKit(');
+	$kit = $kit_at === false ? null : _test_blocks_block($kit_at);
+	if ($kit) {
+		$kit_src = substr($js, $kit[0], $kit[1] - $kit[0]);
+		preg_match_all('/(_[A-Za-z0-9]+) = _bkKit\.([A-Za-z0-9]+)\b/', $cfp, $aliases, PREG_SET_ORDER);
+		foreach ($aliases as $alias) {
+			if (!preg_match('/kit\.' . $alias[2] . ' = function\s*\(/', $kit_src, $def, PREG_OFFSET_CAPTURE)) {
+				continue;
+			}
+			$body = _test_blocks_block($kit[0] + $def[0][1]);
+			if ($body) {
+				$helpers[$alias[1]][] = array(
+					'at'     => $kit[0] + $def[0][1],
+					'levels' => _test_blocks_heading_literals(substr($js, $body[0], $body[1] - $body[0])),
+					'scope'  => null,
+				);
+			}
+		}
 	}
 	return $helpers;
 }
@@ -1181,4 +1203,122 @@ function test_designer_blocks_weather_cities_follow_the_look()
 	$classes = is_array($city['classes']) ? $city['classes'] : array();
 	pg_assert_same(array(), array_values(array_diff(array('bg-body', 'border', 'rounded', 'text-nowrap'), $classes)), 'chip classes a city lacks');
 	pg_assert_same(array(), array_values(array_filter($classes, '_test_blocks_freezes_shape')), 'classes on a city that fix its shape');
+}
+
+// ── Block family files (assets/js/style_designer_blocks_<family>.js) ────────
+
+// The family files the designer bundles, plus the sample under
+// tests/fixtures, so the checks below are known to read a real one.
+function _test_blocks_family_files()
+{
+	$out = array();
+	foreach (array_slice(pg_designer_js_sources(), 1) as $relative) {
+		$out[$relative] = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+	}
+	$out['tests/fixtures/designer/style_designer_blocks_sample.js'] = (string) file_get_contents(dirname(__FILE__) . '/fixtures/designer/style_designer_blocks_sample.js');
+	return $out;
+}
+
+// What is wrong with one family file, as readable lines: its registration,
+// its prefix and palette entries (each with a builder, none twice, none a
+// core block), its rules (each naming its key, no !important, none
+// redefining a core rule) and the rules its blocks need and write.
+function _test_blocks_family_file_problems($label, $js)
+{
+	$problems = array();
+	if (strpos($js, 'StyleDesigner.registerBlockFamily(function (kit) {') === false) {
+		$problems[] = $label . ': no StyleDesigner.registerBlockFamily(function (kit) { … }) call';
+	}
+	if (!preg_match("/^        prefix:\\s*'([a-z0-9-]+-)'/m", $js, $m)) {
+		return array_merge($problems, array($label . ': no prefix: \'<family>-\''));
+	}
+	$prefix = $m[1];
+	$own_group = (bool) preg_match('/^        group:\\s*\\{/m', $js);
+	$core_prefixes = _test_blocks_group_prefixes();
+	if ($own_group && in_array($prefix, $core_prefixes, true)) {
+		$problems[] = $label . ': its own group takes the core prefix ' . $prefix;
+	}
+	if (!$own_group && !in_array($prefix, $core_prefixes, true)) {
+		$problems[] = $label . ': no group, and ' . $prefix . ' is no core group prefix';
+	}
+
+	preg_match_all("/componentType:\\s*'([a-z0-9-]+)'/", $js, $types);
+	if (!$types[1]) {
+		$problems[] = $label . ': no palette entry';
+	}
+	if (array_values(array_unique($types[1])) !== $types[1]) {
+		$problems[] = $label . ': a block is listed twice';
+	}
+	$core_types = _test_blocks_palette_ctypes();
+	foreach ($types[1] as $ctype) {
+		if (strpos($ctype, $prefix) !== 0) {
+			$problems[] = $label . ': ' . $ctype . ' does not start with ' . $prefix;
+		}
+		if (in_array($ctype, $core_types, true)) {
+			$problems[] = $label . ': ' . $ctype . ' is a core block';
+		}
+		if (strpos($js, "ctype === '" . $ctype . "'") === false) {
+			$problems[] = $label . ': ' . $ctype . ' has no builder';
+		}
+	}
+
+	$own = _pg_designer_block_css_parse($js);
+	$core = _pg_designer_block_css_parse(_test_blocks_js());
+	foreach ($own['rules'] as $name => $css) {
+		if (isset($core['rules'][$name])) {
+			$problems[] = $label . ': ' . $name . ' redefines a core rule';
+		}
+		if (!_test_blocks_css_has_class($css, $name)) {
+			$problems[] = $label . ': ' . $name . ' does not use its key as a class';
+		}
+		if (stripos($css, '!important') !== false) {
+			$problems[] = $label . ': ' . $name . ' uses !important';
+		}
+	}
+	$known = array_merge(array_keys($core['rules']), array_keys($own['rules']));
+	foreach ($own['needs'] as $ctype => $rules) {
+		if (!in_array($ctype, $types[1], true)) {
+			$problems[] = $label . ': needs a row for ' . $ctype . ', which it does not list';
+		}
+		foreach (array_diff($rules, $known) as $rule) {
+			$problems[] = $label . ': ' . $ctype . ' needs ' . $rule . ', which no rule defines';
+		}
+	}
+	// Every pg-* class the file writes comes with a rule its block needs.
+	$needed = array();
+	foreach ($own['needs'] as $rules) {
+		$needed = array_merge($needed, $rules);
+	}
+	$body = preg_replace('/^\\s*var _SD_BLOCK_CSS(?:_NEEDS)? = \\{.*?^    \\};/ms', '', $js);
+	preg_match_all("/'([^'\\n]*)'/", (string) $body, $literals);
+	foreach ($literals[1] as $literal) {
+		if (preg_match_all('/(?<![\\w-])pg-[a-z0-9-]*[a-z0-9]/', $literal, $classes)) {
+			foreach (array_diff($classes[0], $needed) as $class) {
+				$problems[] = $label . ': writes ' . $class . ' but no block of it needs that rule';
+			}
+		}
+	}
+	return array_values(array_unique($problems));
+}
+
+function test_designer_blocks_family_files_hold_their_rules()
+{
+	$files = _test_blocks_family_files();
+	pg_assert_true(isset($files['tests/fixtures/designer/style_designer_blocks_sample.js']) && $files['tests/fixtures/designer/style_designer_blocks_sample.js'] !== '', 'the sample family file is read');
+	$problems = array();
+	foreach ($files as $label => $js) {
+		$problems = array_merge($problems, _test_blocks_family_file_problems($label, $js));
+	}
+	pg_assert_same(array(), $problems, 'block family files');
+
+	// Each check speaks up: a broken copy of the sample is caught.
+	$sample = $files['tests/fixtures/designer/style_designer_blocks_sample.js'];
+	$broken = str_replace(array("if (ctype === 'sample-tiles')", "'pg-sample-band':  '.pg-sample-band", "['pg-sample-tile']"),
+		array("if (ctype === 'sample-other')", "'pg-sample-band':  '.pg-band", "['pg-sample-gone']"), $sample);
+	pg_assert_same(array(
+		'sample: sample-tiles has no builder',
+		'sample: pg-sample-band does not use its key as a class',
+		'sample: sample-tiles needs pg-sample-gone, which no rule defines',
+		'sample: writes pg-sample-tile but no block of it needs that rule',
+	), _test_blocks_family_file_problems('sample', $broken), 'problems found in a broken sample');
 }

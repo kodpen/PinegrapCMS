@@ -48,6 +48,8 @@ $language_file = 'includes/local/tr.json';
 
 $designer_file = 'assets/js/style_designer.src.js';
 
+$designer_family_pattern = '~^assets/js/style_designer_blocks_[a-z0-9_]+\.js$~';
+
 $root = isset($argv[1]) ? rtrim($argv[1], '/\\') : dirname(__DIR__) . '/pinegrap';
 
 $root_real = realpath($root);
@@ -255,7 +257,9 @@ foreach ($iterator as $file) {
 
 	$relative = str_replace($root_real . DIRECTORY_SEPARATOR, '', $path);
 
-	$is_designer = (str_replace('\\', '/', $relative) === $designer_file);
+	// The designer's core and its block family files (pg_designer_js_sources()).
+	$is_designer = (str_replace('\\', '/', $relative) === $designer_file)
+		|| (preg_match($designer_family_pattern, str_replace('\\', '/', $relative)) === 1);
 
 	// Minified twins are generated from their .src.js, so they are not scanned.
 	if (($extension === 'js') && (!$is_designer)) {

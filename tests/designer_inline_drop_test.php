@@ -51,7 +51,7 @@ function designer_inline_drop_test_run($setup, $cases)
 
 	$script = 'var _sharedCache = {}; var tree = null;'
 		. 'function hasLockedAncestor(n) { var p = _parentOf(n); while (p) { if (p.props && p.props._locked) return true; p = _parentOf(p); } return false; }'
-		. 'function _sdDragSharedIds() { return []; } function _sdSharedOwnerOf() { return 0; } function _sdSharedReaches() { return false; }'
+		. 'function _sdDragSharedIds() { return []; } function _sdSharedOwnerOf() { return 0; } function _sdSharedReaches() { return false; } function _sdBlockFamilyOf() { return null; }'
 		. 'function _subtreeContainsLoopArea() { return false; } function _resolveSharedSid() { return 0; }'
 		. 'function _sdDragIsList() { return false; } function _sdListIsSourced() { return false; } function _sdListsAbove() { return []; }'
 		. 'function isDescendantOf() { return false; }'
