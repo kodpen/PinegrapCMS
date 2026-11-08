@@ -3332,3 +3332,42 @@ function test_workspace_flows_canvas_editor_config_action()
 	pg_assert_contains("ws_flow_js_config(\$viewer, 'flows')", $body, 'the Flows screen\'s config, its rights and builder kinds');
 	pg_assert_contains('ws_flow_js_strings()', $body, 'and its texts');
 }
+
+// The layer over a channel (flowLayer() in workspace.js): the whole editor
+// mounted with single, named by the flow it shows, the page beneath inert
+// and its Ctrl+K idle, Escape only once the editor lets it go, Close saving
+// first and asking as leaving the page does, full screen in the stylesheet.
+function test_workspace_flows_canvas_layer_wiring()
+{
+	$kit = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	$layer = ws_flows_canvas_test_script_function($kit, 'flowLayer');
+	$close = ws_flows_canvas_test_script_function($kit, 'flowLayerClose');
+	$end = ws_flows_canvas_test_script_function($kit, 'flowLayerEnd');
+
+	pg_assert_true($layer !== '' && $close !== '' && $end !== '', 'flowLayer(), flowLayerClose() and flowLayerEnd() are there');
+	pg_assert_contains("api('ws_flow_editor_config'", ws_flows_canvas_test_script_function($kit, 'flowEditorConfig'), 'the editor\'s config, once a page');
+	pg_assert_contains('window.PGWsFlow.mount(open.body', $layer, 'the editor mounted in the layer');
+	pg_assert_contains('single: true', $layer, 'one flow, no list, no address');
+	pg_assert_contains('onShow: function (flow)', $layer, 'the bar named by the flow shown');
+	pg_assert_contains("t('fl_layer_screen')", $layer, 'the way to the Flows screen');
+	pg_assert_contains('flowScreenAddress(flowId, options)', $layer, 'with its box or run');
+	pg_assert_contains('node.inert = true', $layer, 'the page beneath inert');
+	pg_assert_contains("(node.tagName !== 'DIALOG')", $layer, 'not the dialogs over the editor');
+	pg_assert_contains('event.defaultPrevented', $layer, 'Escape is the editor\'s first');
+	pg_assert_contains("document.querySelector('dialog[open]')", $layer, 'a dialog keeps Escape');
+	pg_assert_contains('open.instance.flush()', $close, 'Close saves first');
+	pg_assert_contains("ask(t('fl_leave_ask'), t('fl_leave'), true)", $close, 'and asks when changes stay unsaved');
+	pg_assert_contains('open.instance.destroy()', $end, 'the editor destroyed');
+	pg_assert_contains('open.opener.focus(', $end, 'the focus back on the opener');
+	pg_assert_contains('flowLayer: flowLayer', ws_flows_canvas_test_script_function($kit, 'shareKit'), 'lent to the screens');
+	pg_assert_contains("if (flowLayerOpen) {\n                    event.preventDefault();", $kit, 'Ctrl+K idle while the layer is open');
+	pg_assert_contains('flowScripts()', $kit, 'the draft card and the layer load the canvas scripts once');
+
+	$flow = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	pg_assert_contains('state.mounted.onShow({ id: flow.id, name: flow.name })', ws_flows_canvas_test_script_function($flow, 'shownFlow'), 'the editor tells the flow it shows');
+	pg_assert_contains('shownFlow(flow);', ws_flows_canvas_test_script_function($flow, 'show'), 'as each flow is shown');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true((bool) preg_match('/\.ws-flow-layer \{[^}]*position: fixed;[^}]*inset: 0;/', $css), 'full screen on every width');
+	pg_assert_contains("'fl_layer_screen'", ws_flows_canvas_test_strings_source(), 'its text handed over');
+}

@@ -831,6 +831,8 @@
     //            the way back to the list calls onClose
     //   onClose  called when a single editor would go back to the list (the
     //            flow deleted, or one that cannot be opened)
+    //   onShow   called with { id, name } each time a flow is shown and as
+    //            its name is changed (the layer's title)
     // Returns { destroy(), flush() }, null without the Workspace kit:
     // destroy() stops the run's looks and the timers, saves what is unsaved
     // and empties root, giving the save's promise; flush() saves what is
@@ -881,7 +883,7 @@
         });
         mountState();
         state.screen = true;
-        state.mounted = { root: root, single: !!options.single, onClose: (typeof options.onClose === 'function') ? options.onClose : null, instance: instance, ready: !!FL.ready };
+        state.mounted = { root: root, single: !!options.single, onClose: (typeof options.onClose === 'function') ? options.onClose : null, onShow: (typeof options.onShow === 'function') ? options.onShow : null, instance: instance, ready: !!FL.ready };
         K.clear(root);
 
         if (!FL.ready) {
@@ -1031,6 +1033,13 @@
         state.listing = false;
 
         return saved;
+    }
+
+    // The flow shown, told to whoever mounted the editor (onShow).
+    function shownFlow(flow) {
+        if (state.mounted && state.mounted.onShow) {
+            state.mounted.onShow({ id: flow.id, name: flow.name });
+        }
     }
 
     // A single editor: one flow in a layer over another screen.
@@ -2733,6 +2742,7 @@
         ui.conflictBox.classList.add('d-none');
 
         setAddress('?flow=' + flow.id);
+        shownFlow(flow);
 
         listEntry(flow);
         drawBar();
@@ -2874,6 +2884,7 @@
             ui.name.addEventListener('input', function () {
                 if (ui.name.value.trim() !== '') {
                     flow.name = ui.name.value.trim();
+                    shownFlow(flow);
                     changed(false);
                 }
             });
