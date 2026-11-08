@@ -47,3 +47,13 @@ function test_workspace_note_groups_shared_assign()
 	pg_assert_same(array(30, 4), array($out[4]['group_id'], $out[4]['group_sort']), 'in two shared groups: the lower group id, the same on every load');
 	pg_assert_same(array(), ws_note_groups_shared_assign(array(), array(), $places), 'no notes, nothing');
 }
+
+function test_workspace_note_groups_shared_script_in_the_bundle()
+{
+	$bundles = pg_js_bundles();
+	$list = $bundles['assets/js/workspace.min.js'];
+	$shares = array_search('assets/js/workspace_note_group_shares.js', $list, true);
+
+	pg_assert_true($shares !== false, 'the shared groups script is bundled');
+	pg_assert_true(($shares !== false) && ($shares < array_search('assets/js/workspace_replies.js', $list, true)), 'before the replies script, which stays right before workspace.js');
+}

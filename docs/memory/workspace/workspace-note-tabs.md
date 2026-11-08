@@ -17,5 +17,5 @@ description: Note tabs over an open note on My Notes — workspace_note_tabs.js 
 - Reorder: drag a tab (HTML5 drag, a line shows where it lands) or Ctrl+Shift+Left/Right; both send `ws_note_place` with `position` (counted without the moved note), then reload the list; focus follows the moved tab. Off during a search (the list then holds only hits, so positions would be wrong) and with fewer than two tabs.
 - On a phone the row scrolls sideways (`overflow-x: auto`); the open tab is scrolled into view without moving the page.
 
-## What is left for later steps?
-- A shared group's mark beside the group name and its Share entry (G6), the lock pane on a locked tab (L4).
+## What about shared groups and the lock?
+- Shared groups (G6): the row also serves a group shared with the person, with a people mark; no + on a read-only group; a person-plus button opens the owner's Share dialog (`workspace-note-groups-shared-screen.md`). The lock pane on a locked tab comes with L4.
