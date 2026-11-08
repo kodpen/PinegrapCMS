@@ -4,8 +4,8 @@ description: PGWsFlow.mount(root, boot, options) in workspace_flow.js: the Flows
 ---
 
 ## What is it?
-- `window.PGWsFlow.mount(root, boot, options)` draws the whole Flows editor (toolbar, palette, canvas, side panel, outline, run view) into `root` and returns `{ destroy(), flush() }`, null without `window.PGWsKit`. `start(root, boot)` is `mount()` with `addressOptions(location.search)` (`?flow=`, `?box=`, `?run=`). Step L1 of `plans/flows-canvas-in-channel.md`.
-- options: `flow` (id to open), `box` (selected once open), `run` (shown once open), `single`, `onClose`.
+- `window.PGWsFlow.mount(root, boot, options)` draws the whole Flows editor (toolbar, palette, canvas, side panel, outline, run view) into `root` and returns `{ destroy(), flush() }`, null without `window.PGWsKit`. `start(root, boot)` is `mount()` with `addressOptions(location.search)` (`?flow=`, `?box=`, `?run=`). For the layer over a channel (`workspace-flow-layer.md`), #8100.
+- options: `flow` (id to open), `box` (selected once open), `run` (shown once open), `single`, `onClose`, `onShow`, `home` (with `single` and no flow: the channel a new flow is made with, `newHome()`; its blank untouched flow is dropped on destroy).
 
 ## What does `single` change?
 - One flow in a layer over another screen: no `ws_flow_list` read, no New flow button, no `history.replaceState` (`setAddress()`), no `K.viewBack()` (`viewBack()` puts a way back such as the template gallery's into the editor's own bar; `backToList()` draws nothing).
