@@ -805,9 +805,10 @@ function ws_api_wtable_import_file($file_id, $max)
 
     $row = api_row(api_file_select() . " WHERE files.id = '" . (int) $file_id . "' AND " . api_files_public_clause() . " LIMIT 1");
     $name = pg_basename((string) ($row['name'] ?? ''));
-    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    // Through the local copy: the bytes may be kept in object storage.
+    $path = ($row === null) ? '' : pg_file_local_copy((int) $file_id);
 
-    if (($row === null) || ($name === '') || !is_file($path)) {
+    if (($row === null) || ($name === '') || ($path === '') || !is_file($path)) {
         api_fail_not_found(lang('File'));
     }
 
