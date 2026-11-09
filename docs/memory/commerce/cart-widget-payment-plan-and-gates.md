@@ -5,7 +5,7 @@ description: Who writes cart recurring payment plan columns, the Messages-node-b
 
 ## Who writes the recurring payment plan on cart lines? (2026-09-16)
 - Columns `recurring_payment_period` / `recurring_number_of_payments` / `recurring_start_date` are written ONLY by the cart update (`add_order_item()` does not).
-- In legacy the visitor reaches checkout through that POST; the widget's "Ödemeye Geç" is a plain link, so the renderer writes a recurring row's empty plan with product defaults on first display (`_pg_cart_recurring_defaults`), and `cart_action.php` writes every recurring row on each update: what the customer submitted if editable (legacy field names, gateway rules), else the default. A rejected row keeps its stored plan.
+- In legacy the visitor reaches checkout through that POST; the widget's "Ödemeye Geç" is a plain link, so the renderer writes a recurring row's empty plan with product defaults on first display (`_pg_cart_recurring_defaults`), and writes them again for a row the customer may not edit once its stored start date is before today (`_pg_cart_recurring_needs_defaults()`, #7602; a customer-edited past date is left for `cart_action.php` to refuse), and `cart_action.php` writes every recurring row on each update: what the customer submitted if editable (legacy field names, gateway rules), else the default. A rejected row keeps its stored plan.
 - Tokens: `__item_recurring_schedule_html` (appended to line end if not placed), `__item_recurring_editable`, `__item_recurring_start_date`.
 
 ## Why do row builders read `$_pg_cart_lf_snapshot` and not the liveform?
