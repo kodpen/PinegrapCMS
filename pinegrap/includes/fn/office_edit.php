@@ -748,7 +748,11 @@ function pg_office_xlsx_scan($reader, $until_row, $open_styles, $column_styles =
                     break;
                 }
 
-                if ((string) $reader->getAttribute('t') === 'array') {
+                // A What-If data table is written like an array formula: its
+                // formula on the top left result cell, the rest of its ref
+                // range only cached values (Excel shows them as {=TABLE()}
+                // and refuses a change to part of one), so it locks the same.
+                if (in_array((string) $reader->getAttribute('t'), array('array', 'dataTable'), true)) {
                     $range = pg_office_xlsx_range((string) $reader->getAttribute('ref'));
 
                     if (($range !== null) && (++$ranges <= PG_OFFICE_EDIT_MAX_RANGES)) {

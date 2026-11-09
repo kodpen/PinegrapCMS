@@ -825,12 +825,16 @@ if ($file['attachment'] == 1) {
                                 (form_item_view_pages.page_id = '" . $form_list_view['form_item_view_page_id'] . "')
                                 AND (form_item_view_pages.collection = 'a')");
 
-                        // If the layout contains a variable for the attachment field,
-                        // and the visitor has view access to the form item view,
-                        // then continue to check if the visitor should have access to
-                        // view attachment.
+                        // If the item view page still exists (form_item_view_page_id
+                        // is not cleared when the page is deleted, and a missing
+                        // folder would read as public), and the layout contains a
+                        // variable for the attachment field, and the visitor has
+                        // view access to the form item view, then continue to check
+                        // if the visitor should have access to view attachment.
                         if (
-                            ($attachment_field_media || (preg_match('/\^\^' . preg_quote($submitted_form['attachment_field_name'], '/') . '\^\^/i', $form_item_view['layout']) != 0))
+                            is_array($form_item_view)
+                            && ($form_item_view['folder_id'] !== null)
+                            && ($attachment_field_media || (preg_match('/\^\^' . preg_quote($submitted_form['attachment_field_name'], '/') . '\^\^/i', $form_item_view['layout']) != 0))
                             && (check_view_access($form_item_view['folder_id']) == true)
                         ) {
                             // If submitter security is enabled for the form item view,
@@ -1404,6 +1408,14 @@ if ($workspace_file) {
 // would serve it to visitors the page does not show it to, and keep a record
 // taken back to draft open for a week.
 if ($designed_attachment) {
+    $cache_control_type = 'private';
+}
+
+// A submitted-form or comment attachment was let through by the attachment
+// check above, which a shared cache never runs: a CDN that keeps a public
+// copy (by extension: .pdf, .jpg, .docx) would hand it to the next anonymous
+// request for the same address, whatever the folder's access says.
+if ($file['attachment'] == 1) {
     $cache_control_type = 'private';
 }
 
