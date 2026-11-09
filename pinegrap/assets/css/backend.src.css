@@ -14099,16 +14099,13 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-note-compose {
   position: relative;
 }
+/* A note box without the formatted editor: its list over the box, as wide
+   as it. A formatted box's list opens at the caret (.ws-picker-caret). */
 .ws-note-compose .ws-picker {
   left: 0;
   right: 0;
   width: auto;
   bottom: calc(100% + .25rem);
-}
-/* The description sits high in the drawer: its picker opens below it. */
-.ws-desc-field .ws-picker {
-  top: calc(100% + .25rem);
-  bottom: auto;
 }
 /* The formatted box in the task drawer (description and notes). */
 .ws-rich.ws-rich-field {
@@ -15304,7 +15301,6 @@ a.ws-chip:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, .15);
   overflow: hidden;
 }
-/* One row of kinds that scrolls sideways: there are too many to wrap. */
 /* The "/" list of a note's inserts, under the caret. */
 .ws-picker.ws-slash {
   position: fixed;
@@ -15312,6 +15308,17 @@ a.ws-chip:hover {
   width: 15rem;
   z-index: 1080;
 }
+/* The @ and # list of a formatted box, at the caret: placePicker() in
+   workspace.js measures it at this width, then sets its left, top, width
+   and height so it stays inside the field's column and the window. */
+.ws-picker.ws-picker-caret {
+  position: fixed;
+  right: auto;
+  bottom: auto;
+  width: min(26rem, calc(100vw - 1rem));
+}
+/* One row of kinds that scrolls sideways inside the list's width: there
+   are too many to wrap. */
 .ws-picker-types {
   display: flex;
   flex-wrap: nowrap;

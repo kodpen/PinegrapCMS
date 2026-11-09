@@ -266,7 +266,6 @@
             var area = null;
 
             if (rich) {
-                rich.caretPicker = true;
                 rich.set(data.draft || '', {});
                 wrap.appendChild(rich.input);
                 wrap.appendChild(rich.tools(false));
