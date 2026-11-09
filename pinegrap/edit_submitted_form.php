@@ -138,6 +138,7 @@ $pretty_urls = check_if_pretty_urls_are_enabled($custom_form_page_id);
 
 include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/submitted_form_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_picker.php');
 $liveform = new liveform('edit_submitted_form', $id);
 
 // An attachment over post_max_size makes PHP throw the whole request away.
@@ -414,6 +415,23 @@ if (!$_POST) {
     $send_to = pg_safe_redirect_path(pg_send_to_url(''), '/__none__');
     if ($send_to === '/__none__') $send_to = '';
 
+    // The form editor. A manager or above finds the account as they type,
+    // among the users they see on the users list (user_search_action.php);
+    // the typed text can also be picked as it is, so a username outside that
+    // list is still taken. The save checks the username either way. A role-3
+    // forms manager cannot list users and types the username.
+    $form_editor_value = $liveform->field_in_session('form_editor_username') ? $liveform->get_field_value('form_editor_username') : $form_editor_username;
+    $form_editor_value = is_scalar($form_editor_value) ? trim((string) $form_editor_value) : '';
+
+    if (pg_user_picker_may_search($user['role'])) {
+        $output_form_editor_field = '<select class="form-control' . ($liveform->check_field_error('form_editor_username') ? ' is-invalid' : '') . '" id="form_editor_username" name="form_editor_username" data-pg-combobox data-pg-source="user_search_action.php?value=username" data-pg-min-length="2" data-pg-free-text data-placeholder="' . h(lang('Search for a user')) . '">
+                                            <option value=""></option>'
+            . (($form_editor_value !== '') ? '<option value="' . h($form_editor_value) . '" selected>' . h(pg_user_picker_label($form_editor_value, 'username')) . '</option>' : '') . '
+                                        </select>' . pg_fields_script();
+    } else {
+        $output_form_editor_field = $liveform->output_field(array('type'=>'text', 'name'=>'form_editor_username', 'id'=>'form_editor_username', 'value'=>$form_editor_username, 'class'=>'form-control', 'maxlength'=>'100'));
+    }
+
     echo
     pg_page_shell(
         array(
@@ -455,7 +473,7 @@ if (!$_POST) {
                                         <div class="mt-3">' . $output_workspace_button . '</div>' : ''))
                             . pg_submitted_form_status_card(lang('Form Editor'), '
                                         <label for="form_editor_username" class="form-label">' . lang('Username') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'form_editor_username', 'id'=>'form_editor_username', 'value'=>$form_editor_username, 'class'=>'form-control', 'maxlength'=>'100')))
+                                        ' . $output_form_editor_field)
                             . pg_submitted_form_status_card(lang('Details'), '
                                         <dl class="mb-0">'
                                 . pg_submitted_form_status_row(lang('Address Name'), ($output_address_name ? $output_address_name : '-'), false)

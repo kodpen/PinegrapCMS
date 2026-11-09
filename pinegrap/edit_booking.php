@@ -311,7 +311,7 @@ if ($booking_id === 0) {
                             <div class="col-12 md:col-4">
                                 <div class="form-field">
                                     <label class="form-label" for="choice_staff">' . h(lang('Staff')) . '</label>
-                                    <select class="form-control" id="choice_staff" name="staff_id"' . (($booking_scope !== null) ? ' disabled' : '') . '>' . $staff_options . '</select>
+                                    <select class="form-control" id="choice_staff" name="staff_id" data-pg-combobox' . (($booking_scope !== null) ? ' disabled' : '') . '>' . $staff_options . '</select>
                                 </div>
                             </div>
                             <div class="col-12 md:col-4">
@@ -331,7 +331,13 @@ if ($booking_id === 0) {
                     </div>
                 </form>
                 <script>
-                    document.getElementById("booking_choice").addEventListener("change", function () {
+                    document.getElementById("booking_choice").addEventListener("change", function (event) {
+                        // The staff search box (it has no name) changes as
+                        // the operator types; only a pick reloads.
+                        if (event.target.closest(".pg-combobox-menu")) {
+                            return;
+                        }
+
                         // The reload draws the day again; the customer details
                         // typed so far wait in this tab and are put back.
                         var details = document.getElementById("booking_details"), draft = {};

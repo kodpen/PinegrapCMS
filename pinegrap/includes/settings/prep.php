@@ -1906,8 +1906,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $chat_allow_images_checked = ($chat_allow_images == 1) ? ' checked="checked"' : '';
     $chat_allow_audio_checked = ($chat_allow_audio == 1) ? ' checked="checked"' : '';
 
-    // Operator list: only staff (role <= 2) can be selected.
+    // Operator list: only staff (role <= 2) can be selected, searched in the
+    // browser (data-pg-combobox). The stored operator stays chosen when the
+    // account is no longer staff or is gone, so saving the card keeps it.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_picker.php');
+
     $output_chat_operator_options = '<option value="0">' . lang('Select') . '</option>';
+    $chat_operator_listed = false;
 
     $chat_operator_users = db_items("
         SELECT user.user_id AS id, user.user_username AS username,
@@ -1918,17 +1923,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         ORDER BY user.user_username");
 
     foreach ($chat_operator_users as $chat_operator_user) {
-        $chat_operator_name = trim($chat_operator_user['first_name'] . ' ' . $chat_operator_user['last_name']);
-
-        if ($chat_operator_name != '') {
-            $chat_operator_name .= ' (' . $chat_operator_user['username'] . ')';
-        } else {
-            $chat_operator_name = $chat_operator_user['username'];
-        }
+        $chat_operator_chosen = ((int) $chat_operator_user['id'] === $chat_operator_user_id);
+        $chat_operator_listed = $chat_operator_listed || $chat_operator_chosen;
 
         $output_chat_operator_options .= '<option value="' . (int) $chat_operator_user['id'] . '"'
-            . (((int) $chat_operator_user['id'] === $chat_operator_user_id) ? ' selected="selected"' : '')
-            . '>' . h($chat_operator_name) . '</option>';
+            . ($chat_operator_chosen ? ' selected="selected"' : '')
+            . '>' . h(pg_user_picker_text($chat_operator_user['first_name'], $chat_operator_user['last_name'], $chat_operator_user['username'])) . '</option>';
+    }
+
+    if (($chat_operator_user_id > 0) && !$chat_operator_listed) {
+        $output_chat_operator_options .= '<option value="' . $chat_operator_user_id . '" selected="selected">' . h(pg_user_picker_label($chat_operator_user_id)) . '</option>';
     }
 
     $output_chat_retention_options = '';

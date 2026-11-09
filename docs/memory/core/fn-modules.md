@@ -236,6 +236,7 @@ description: Generated from the module field of the memory files: each includes/
 - `update`: [[ca-store-choice]], [[migration-screen]]
 - `user_list`: [[user-list-folder-filters]], [[user-screens-names-and-dates]]
 - `user_list_edit`: [[list-table-quick-edit-users]]
+- `user_picker`: [[user-picker-search]]
 - `user_write`: [[user-write]]
 - `variant_set_copy`: [[product-group-copy]]
 - `variant_set_list`: [[list-table-variant-sets]]
