@@ -15,7 +15,7 @@ description: Plan (owner 2026-11-09): a channel's conversation downloads as Mark
 - An export writes an audit line (`pg_audit('export', …)`) that names the channel and the range: a channel may hold customers' data.
 
 ## Which steps are there?
-- CE1 (M, no schema) The export. A root file beside `workspace_notes_export.php` in its shape (`ws_screen_gate()`, a send function, the print page with `window.print()`), with the header and the lists a new root file needs (`core/`). The messages are read in pages (`ws_messages_page()`). A pure builder turns the payloads into Markdown, with tests: tags, a thread, a poll's line, a deleted message left out, the range. The drawer in `workspace.js`; texts through `lang()` and `php tools/tr_add.php`; `php tools/build_js.php` after the edit. Memory: `workspace/workspace-channel-export.md`. Claim as `[plan:channel-export] CE1 — channel export`.
+- CE1 (M, no schema) Done (PR #8429). The export. A root file beside `workspace_notes_export.php` in its shape (`ws_screen_gate()`, a send function, the print page with `window.print()`), with the header and the lists a new root file needs (`core/`). The messages are read in pages (`ws_messages_page()`). A pure builder turns the payloads into Markdown, with tests: tags, a thread, a poll's line, a deleted message left out, the range. The drawer in `workspace.js`; texts through `lang()` and `php tools/tr_add.php`; `php tools/build_js.php` after the edit. Memory: `workspace/workspace-channel-export.md`. Claim as `[plan:channel-export] CE1 — channel export`.
 
 ## What is left for later?
 - A zip with the files themselves, as the notes vault has; an export route in the API (agents read messages by the API already).
