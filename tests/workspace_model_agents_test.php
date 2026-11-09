@@ -225,8 +225,10 @@ function test_workspace_model_http_error_names_the_assistant()
 }
 
 // Where a model assistant may be asked: its own row in the channel decides,
-// as it decides an application agent's answer, so a private channel nobody
-// opened to Pinegrap AI does not keep out an assistant its people added.
+// as it decides an application agent's answer. Pinegrap AI's switch
+// (ai_access) is Pinegrap AI's alone, as Claude's is Claude's: neither a
+// private channel nobody opened to Pinegrap AI nor a channel closed to it
+// keeps out an assistant the channel's people added.
 function test_workspace_model_channel_verdict()
 {
 	$row = array('channel_id' => 30, 'agent_id' => 7, 'allowed' => 1);
@@ -235,13 +237,14 @@ function test_workspace_model_channel_verdict()
 	pg_assert_true(ws_model_channel_verdict($private, false, $row), 'a private channel nobody opened to Pinegrap AI');
 	pg_assert_true(ws_model_channel_verdict(array('ai_access' => 1) + $private, false, $row), 'a private channel opened to Pinegrap AI');
 	pg_assert_true(ws_model_channel_verdict(array('kind' => 'public') + $private, false, $row), 'a public channel');
+	pg_assert_true(ws_model_channel_verdict(array('ai_access' => 2) + $private, false, $row), 'a private channel closed to Pinegrap AI');
+	pg_assert_true(ws_model_channel_verdict(array('kind' => 'public', 'ai_access' => 2) + $private, false, $row), 'a public channel closed to Pinegrap AI');
 
 	pg_assert_false(ws_model_channel_verdict($private, false, null), 'the assistant is not in the channel');
 	pg_assert_false(ws_model_channel_verdict(array('kind' => 'public') + $private, false, null), 'nor in a public one it was not added to');
 	pg_assert_false(ws_model_channel_verdict($private, false, array('allowed' => 0) + $row), 'its row no longer allows it');
+	pg_assert_false(ws_model_channel_verdict(array('ai_access' => 1) + $private, false, null), 'a channel opened to Pinegrap AI is not opened to an assistant nobody added');
 
-	pg_assert_false(ws_model_channel_verdict(array('ai_access' => 2) + $private, false, $row), 'a channel closed to Pinegrap AI on purpose stays closed');
-	pg_assert_false(ws_model_channel_verdict(array('kind' => 'public', 'ai_access' => 2) + $private, false, $row), 'a public one closed on purpose too');
 	pg_assert_false(ws_model_channel_verdict(array('kind' => 'guest') + $private, false, $row), 'never in a guest\'s room');
 	pg_assert_false(ws_model_channel_verdict($private, true, $row), 'never where a guest reads along');
 	pg_assert_false(ws_model_channel_verdict(null, false, $row), 'no channel');

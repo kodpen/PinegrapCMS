@@ -22,4 +22,4 @@ description: Model assistants (ws_agents kind 'model'): providers and their data
 
 ## What is not done yet?
 - Never tried live against a real provider. In a throwaway local install against a stand-in chat API (2026-11-10) a request was answered, and failed under the assistant's name, in a public and in a private channel.
-- What still says "Pinegrap AI" for it, and the open question on a channel closed to Pinegrap AI: `model-assistant-channel-rule.md`.
+- What still says "Pinegrap AI" for it: `model-assistant-channel-rule.md`.

@@ -459,10 +459,11 @@ function ws_model_loop_sentence($agent, $which)
  * May a model assistant be asked in a channel, from what is known of the
  * two? Its own row there decides (ws_channel_agents.allowed), as it decides
  * an application agent's answer (ws_api_agent_request_place()): the
- * channel's people added it, so a private channel nobody opened to Pinegrap
- * AI does not keep it out. It is not asked where the assistants never are (a
- * guest's room, a channel a guest reads along in), nor in a channel closed
- * to Pinegrap AI on purpose (ai_access 2). Pure.
+ * channel's people added it. The channel's ai_access is Pinegrap AI's switch
+ * alone, as claude_access is Claude's, so neither a private channel nobody
+ * opened to Pinegrap AI nor a channel closed to it keeps the assistant out.
+ * It is not asked where the assistants never are: a guest's room, a channel
+ * a guest reads along in. Pure.
  *
  * @param array|null $channel     the channel; for a discussion, the channel it belongs to
  * @param bool       $guest_reads it is shared with somebody outside the team (ws_channel_share_open())
@@ -472,10 +473,6 @@ function ws_model_loop_sentence($agent, $which)
 function ws_model_channel_verdict($channel, $guest_reads, $row)
 {
     if (!is_array($channel) || (($channel['kind'] ?? '') === 'guest') || $guest_reads) {
-        return false;
-    }
-
-    if ((int) ($channel['ai_access'] ?? 0) === 2) {
         return false;
     }
 
