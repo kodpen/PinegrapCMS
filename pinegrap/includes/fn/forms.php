@@ -2657,8 +2657,10 @@ function logout()
         ? $_SESSION['software']['logged_in_as_different_user'] : false;
 
     // Revoke this browser's remember-me token in the database before the session
-    // goes, so a copied cookie cannot outlive the logout.
-    if (isset($_COOKIE['software']['auth'])) {
+    // goes, so a copied cookie cannot outlive the logout. Not after "log in as":
+    // the cookie is the operator's own token, kept below so the operator is
+    // signed back in under their own account.
+    if (($logged_in_as_different_user == false) && isset($_COOKIE['software']['auth'])) {
         $auth_parts = explode(':', (string) $_COOKIE['software']['auth'], 2);
         if ($auth_parts[0] !== '') {
             pg_auth_token_revoke($auth_parts[0]);
@@ -3529,28 +3531,8 @@ function generate_affiliate_code()
 // create function to get current URL
 function get_request_uri()
 {
-    // the order of the conditionals below is important, because newer versions of IIS supply a REQUEST_URI value,
-    // but the value does not contain the original pretty URL and might also have other problems
-
-    // if HTTP_X_REWRITE_URL is set (i.e. ISAPI_Rewrite is being used on IIS)
-    if (isset($_SERVER['HTTP_X_REWRITE_URL'])) {
-        return $_SERVER['HTTP_X_REWRITE_URL'];
-
-        // else if REQUEST_URI is set (i.e. non IIS web server)
-    } elseif (isset($_SERVER['REQUEST_URI'])) {
-        return $_SERVER['REQUEST_URI'];
-
-        // else no REQUEST_URI or HTTP_X_REWRITE_URL can be found (i.e. IIS web server without ISAPI_Rewrite)
-    } else {
-        // if QUERY_STRING is set then return PHP_SELF and QUERY_STRING
-        if (isset($_SERVER['QUERY_STRING']) && $_SERVER['QUERY_STRING'] !== '') {
-            return $_SERVER['PHP_SELF'] . '?' . $_SERVER['QUERY_STRING'];
-
-            // else QUERY_STRING is not set, so return just PHP_SELF
-        } else {
-            return $_SERVER['PHP_SELF'];
-        }
-    }
+    // X-Rewrite-URL counts on IIS only (pg_request_uri_from_server()).
+    return pg_request_uri_from_server($_SERVER);
 }
 
 
@@ -3750,23 +3732,33 @@ function prepare_form_data_for_input($data, $type)
             case 'date and time':
                 // Already ISO ('2026-10-26T17:00', as an <input
                 // type="datetime-local"> posts it, or with a space): read
-                // the site's way it was stored as '0026-10-2026 17:00'.
-                if (preg_match('/^\s*(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})/', (string)$data, $iso)) {
+                // the site's way it was stored as '0026-10-2026 17:00'. Only a
+                // 24-hour time to the end of the text is taken as it is; any
+                // other time ('2026-10-26 5:00 PM') is read below with its
+                // AM/PM, which was dropped when the hour alone was matched.
+                if (preg_match('/^\s*(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})(?::(\d{2}))?\s*$/', (string)$data, $iso)) {
                     return sprintf('%04d-%02d-%02d %02d:%02d', $iso[1], $iso[2], $iso[3], $iso[4], $iso[5]);
                 }
-                // Parts missing from a value that is not in a date and time
-                // format (e.g. a search term) count as empty.
-                $date_and_time_parts = explode(' ', $data, 2) + array('', '');
-                $date = $date_and_time_parts[0];
-                $time = $date_and_time_parts[1];
-                $date_parts = preg_split('/[-,\/]/', $date) + array('', '', '');
-                $year = $date_parts[2];
-                if (DATE_FORMAT == 'month_day') {
-                    $month = $date_parts[0];
-                    $day = $date_parts[1];
+                if (preg_match('/^\s*(\d{4})-(\d{1,2})-(\d{1,2})[T ](.*)$/', (string)$data, $iso)) {
+                    $year = $iso[1];
+                    $month = $iso[2];
+                    $day = $iso[3];
+                    $time = $iso[4];
                 } else {
-                    $month = $date_parts[1];
-                    $day = $date_parts[0];
+                    // Parts missing from a value that is not in a date and time
+                    // format (e.g. a search term) count as empty.
+                    $date_and_time_parts = explode(' ', $data, 2) + array('', '');
+                    $date = $date_and_time_parts[0];
+                    $time = $date_and_time_parts[1];
+                    $date_parts = preg_split('/[-,\/]/', $date) + array('', '', '');
+                    $year = $date_parts[2];
+                    if (DATE_FORMAT == 'month_day') {
+                        $month = $date_parts[0];
+                        $day = $date_parts[1];
+                    } else {
+                        $month = $date_parts[1];
+                        $day = $date_parts[0];
+                    }
                 }
                 $year = str_pad($year, 4, '0', STR_PAD_LEFT);
                 $month = str_pad($month, 2, '0', STR_PAD_LEFT);
@@ -5805,4 +5797,16 @@ function pg_eaf_limit_log($ip)
     if (function_exists('waf_text_log')) {
         waf_text_log('DENY', (string) $ip, array('status' => 429, 'rule' => 'form-eaf'));
     }
+}
+
+// Whether a form list view page lists its records now. A page with neither
+// search nor a usable browse (a browse field with at least one filter) has
+// nothing for the visitor to do first, so it always lists; otherwise it lists
+// when "Show Results by Default" is on or the visitor has browsed or searched.
+function pg_form_list_view_shows_results($search, $browse_enabled, $show_results_by_default, $visitor_filtered)
+{
+    if ((int) $search === 0 && !$browse_enabled) {
+        return true;
+    }
+    return (int) $show_results_by_default === 1 || (bool) $visitor_filtered;
 }

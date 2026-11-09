@@ -31,7 +31,8 @@ function designer_code_view_binding_test_run($steps)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	// The code view's typed-changes engine is in its part (style_designer_code.js).
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js') . "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
 	$from = strpos($source, 'var _SD_CODE_BIND_RE =');
 	$to = strpos($source, 'function _sdCodeNodeAtPos(', $from);
 	$set_from = strpos($source, 'function _sdNodeSetBinding(');

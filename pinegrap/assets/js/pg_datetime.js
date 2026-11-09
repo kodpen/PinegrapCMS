@@ -207,22 +207,46 @@
     // The library hangs the popup off <body>, under an open <dialog> in the
     // top layer; it goes into the box's overlay host (pgUI.overlayHost(),
     // when the panel has it) and is placed under the box there, the host
-    // being its containing block.
+    // being its containing block, or above the box (opensAbove()).
     function placeInHost(box, cal, hostOf) {
         var host = hostOf ? hostOf(box) : null;
-        if (!cal || cal === box || !host || host === document.body) {
+        if (!cal || cal === box) {
+            return;
+        }
+        if (!host || host === document.body) {
+            placeOnPage(box, cal);
             return;
         }
         if (cal.parentNode !== host) {
             host.appendChild(cal);
         }
-        var f = box.getBoundingClientRect(), h = host.getBoundingClientRect();
+        var f = box.getBoundingClientRect(), h = host.getBoundingClientRect(), height = cal.offsetHeight || 0;
         var left = f.left - h.left - host.clientLeft + host.scrollLeft;
         // A field near the right edge of a narrow dialog: the calendar stays
         // inside it rather than being cut off.
         var right = host.scrollLeft + host.clientWidth - (cal.offsetWidth || 0);
-        cal.style.top = (f.bottom - h.top - host.clientTop + host.scrollTop) + 'px';
+        cal.style.top = ((opensAbove(f, height) ? f.top - height : f.bottom) - h.top - host.clientTop + host.scrollTop) + 'px';
         cal.style.left = Math.max(0, Math.min(left, right)) + 'px';
+    }
+
+    // A popup on the page itself: the library put it under the box, in page
+    // coordinates (the box's top plus the page's scroll, as its own offset
+    // helper reads them); above the box when it opens there.
+    function placeOnPage(box, cal) {
+        var height = cal.offsetHeight || 0, f = height ? box.getBoundingClientRect() : null, root = document.documentElement;
+        if (f && opensAbove(f, height)) {
+            cal.style.top = (f.top + (window.pageYOffset || 0) - ((root && root.clientTop) || 0) - height) + 'px';
+        }
+    }
+
+    // A calendar under a field near the bottom of the window would be cut
+    // off: a dialog does not scroll the page, and the last field of a screen
+    // (a store credit's last day) has no page left under it. It opens above
+    // the field when it does not fit below and there is more room above, as
+    // the browser's own picker does.
+    function opensAbove(field, height) {
+        var view = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
+        return !!(height && view && (view - field.bottom < height) && (field.top > view - field.bottom));
     }
 
     function monthOf(iso) {

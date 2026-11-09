@@ -20,14 +20,20 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// The CSS text of one _SD_BLOCK_CSS entry, read from the JS source line by
+// The CSS text of one _SD_BLOCK_CSS entry, read from the JS sources line by
 // line and decoded as JSON strings: a reading independent of the product's
 // parser. The entry is its key's line plus the lines that continue it with +.
 function _test_dta_js_rule($name)
 {
 	static $lines = null;
 	if ($lines === null) {
-		$lines = explode("\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
+		// The core, then its block family files (pg_designer_js_sources()): the
+		// first entry of a name wins, as in the product's reader.
+		$text = '';
+		foreach (pg_designer_js_sources() as $source) {
+			$text .= (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $source) . "\n";
+		}
+		$lines = explode("\n", $text);
 	}
 	$css = '';
 	$inside = false;

@@ -102,18 +102,39 @@ function test_record_revisions_source_labels()
 	pg_assert_true(strlen(PG_RECORD_REVISION_SOURCES) > 0 && max(array_map('strlen', pg_record_revision_sources())) <= 16, 'fits VARCHAR(16)');
 }
 
+// A writer's source: a file under the product tree, or one API handler.
+function record_revisions_test_writer_source($name)
+{
+	if (strpos($name, '/') !== false || substr($name, -4) === '.php') {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $name);
+	}
+
+	if (!defined('PG_API_PANEL')) {
+		define('PG_API_PANEL', true);
+	}
+
+	require_once(PG_FUNCTIONS_DIR . '/includes/api/resources/forms.php');
+
+	$function = new ReflectionFunction($name);
+	$lines    = file($function->getFileName());
+
+	return implode('', array_slice($lines, $function->getStartLine() - 1, $function->getEndLine() - $function->getStartLine() + 1));
+}
+
 // Each writer takes the state before its write and records after the
 // address name is renamed, with its own source.
 function test_record_revisions_writers()
 {
 	$writers = array(
 		'edit_submitted_form.php'          => array('UPDATE forms', "'edit'"),
-		'includes/api/resources/forms.php' => array('UPDATE forms', "'api'"),
 		'includes/workspace/changes.php'   => array('UPDATE forms', "'workspace'"),
+		// The API's two writers share a file: each handler is read on its own.
+		'api_form_submission_update'           => array('UPDATE forms', "'api'"),
+		'api_form_submission_revision_restore' => array('UPDATE forms', "'restore'"),
 	);
 
 	foreach ($writers as $file => $expect) {
-		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		$source = record_revisions_test_writer_source($file);
 		$before = strpos($source, 'pg_record_revision_before(');
 		$after  = strpos($source, 'pg_record_revision_after(');
 

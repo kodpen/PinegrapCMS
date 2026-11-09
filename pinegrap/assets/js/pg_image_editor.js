@@ -39,8 +39,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function () {
@@ -1067,13 +1067,20 @@
         var seg = el('div', { class: 'pgie-seg pgie-modes', role: 'group', 'aria-label': t('railMode') });
 
         item.modes.forEach(function (m) {
-            var on = (m === self.tool), label = t((strings['mode_' + m] !== undefined) ? 'mode_' + m : 'tool_' + m);
-
-            seg.appendChild(el('button', { type: 'button', class: on ? 'on' : '', 'aria-pressed': on ? 'true' : 'false', text: label, onclick: function () {
+            var on = (m === self.tool), label = t((strings['mode_' + m] !== undefined) ? 'mode_' + m : 'tool_' + m), key = M.toolKey(m, self.tools.list);
+            var b = el('button', { type: 'button', class: on ? 'on' : '', 'aria-pressed': on ? 'true' : 'false', text: label, onclick: function () {
                 if (m !== self.tool) {
                     self.pickTool(m);
                 }
-            } }));
+            } });
+
+            // The mode's letter, as a tool button carries its own.
+            if (key) {
+                b.title = label + ' (' + key + ')';
+                b.setAttribute('aria-keyshortcuts', key);
+            }
+
+            seg.appendChild(b);
         });
 
         return seg;
@@ -1406,7 +1413,14 @@
         }
     };
 
+    // After a tool's own state, the question and a crop, Escape clears what
+    // is selected, what shows first: layers the tool outlines, then the
+    // selected area's marching ants (shown with every tool), then layers
+    // the tool holds without outlining them. Then it leaves full screen,
+    // then closes.
     Editor.prototype.onEscape = function () {
+        var outlined;
+
         if (this.saving) {
             return;
         }
@@ -1417,10 +1431,16 @@
             }
         }
 
+        outlined = (Editor.selectTools.indexOf(this.tool) >= 0) && (this.sel.length > 0);
+
         if (this.confirmBox) {
             this.closeConfirm();
         } else if (this.cropping()) {
             this.cancelCrop();
+        } else if (outlined) {
+            this.select([]);
+        } else if (this.areaSelected && this.areaSelected()) {
+            this.areaClear();
         } else if (this.sel.length) {
             this.select([]);
         } else if (this.full) {

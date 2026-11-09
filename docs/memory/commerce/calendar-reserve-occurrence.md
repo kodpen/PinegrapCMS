@@ -12,3 +12,6 @@ module: calendar_writes
 
 ## What did it fix?
 - The number came from the hidden field of the event page (the link's `recurrence_number`) unchecked. A number past the last occurrence, or a removed one, had no `remaining_reservation_spots` row, so `get_calendar_event()` gave the initial spots: a full event could be booked again, and the visitor paid for a date that does not take place.
+
+## Which page does the designed event page post?
+- The calendar event view widget's reservation form posts `page_id` from `pg_sw_drawn_page_id()` (the page being drawn, home page included). `_pg_sw_current_page_id()` reads only `?page=`, so on the home page it posted 0 and `reserve_calendar_event.php` refused every reservation as a page that does not exist.

@@ -146,6 +146,48 @@ function ws_note_sources_ready()
 }
 
 /**
+ * Has the database the note groups (2026.11.0, 11.0.119): the groups, each
+ * person's places of notes, group shares and the via_group column of note
+ * shares that a group's share writes?
+ *
+ * @return bool
+ */
+function ws_note_groups_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has')
+            && pg_schema_has('ws_note_groups')
+            && pg_schema_has('ws_note_places')
+            && pg_schema_has('ws_note_group_shares')
+            && pg_schema_has('ws_note_shares', 'via_group');
+    }
+
+    return $ready;
+}
+
+/**
+ * Has the database the notes lock (2026.11.0, 11.0.119): the PIN table and
+ * the locked marks of notes and groups?
+ *
+ * @return bool
+ */
+function ws_note_lock_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('pg_schema_has')
+            && pg_schema_has('ws_note_locks')
+            && pg_schema_has('ws_notes', 'locked')
+            && pg_schema_has('ws_note_groups', 'locked');
+    }
+
+    return $ready;
+}
+
+/**
  * The note a file brought in before became, by the id it is known by in the
  * app it came from (ws_note_source_id()).
  *
@@ -571,6 +613,9 @@ function ws_notes_present($viewer, $rows, $full = false)
 
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
     $out = array();
+    // The reader's notes lock (note_lock.php): a note behind it, while the
+    // lock is closed, keeps its title and loses its text.
+    $lock = function_exists('ws_note_lock_view') ? ws_note_lock_view((int) $viewer['id']) : null;
     $news = ws_note_news_map($viewer, array_map(function ($row) { return (int) $row['id']; }, $rows));
 
     foreach ($rows as $row) {
@@ -664,6 +709,10 @@ function ws_notes_present($viewer, $rows, $full = false)
         if ($full) {
             $note = array_merge($note, ws_note_body_view($viewer, $body));
             $note['claude'] = function_exists('ws_note_claude_state') ? ws_note_claude_state($viewer, $id) : array();
+        }
+
+        if ($lock) {
+            $note = ws_note_lock_present($note, $row, (int) $viewer['id'], $lock, time());
         }
 
         $out[] = $note;
@@ -843,7 +892,7 @@ function ws_notes_list_columns()
 {
     return "n.id, n.user_id, n.title, LEFT(n.body, " . WS_NOTE_LIST_BODY . ") AS body, n.pinned,
         n.source_message_id, n.source_channel_id, n.source_user_id, n.channel_id, n.updated_by, n.folder_id,
-        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '');
+        n.created_at, n.updated_at" . (ws_note_revision_ready() ? ', n.revision' : '') . (ws_note_lock_ready() ? ', n.locked' : '');
 }
 
 /**
@@ -891,7 +940,7 @@ function ws_notes_filter_sql($search, $updated_since = 0, $shared_at = '')
 function ws_notes_list($viewer, $search = '')
 {
     if (!ws_notes_ready()) {
-        return array('mine' => array(), 'shared' => array());
+        return array('mine' => array(), 'shared' => array(), 'groups' => array());
     }
 
     $me = (int) $viewer['id'];
@@ -910,10 +959,36 @@ function ws_notes_list($viewer, $search = '')
         $mine[$index]['access'] = 'owner';
     }
 
-    return array(
-        'mine'   => ws_notes_present($viewer, $mine),
-        'shared' => ws_notes_present($viewer, $shared),
+    // The person's groups, and the group each note is kept in (group_id,
+    // group_sort; note_groups.php).
+    $out = array(
+        'mine'   => ws_note_places_add($viewer, ws_notes_present($viewer, $mine)),
+        'shared' => ws_note_places_add($viewer, ws_notes_present($viewer, $shared)),
+        'groups' => ws_note_groups($viewer),
     );
+
+    // Groups shared with the person, and the notes drawn in them
+    // (note_group_shares.php).
+    if (function_exists('ws_note_groups_shared_with') && ws_note_groups_ready()) {
+        $with = ws_note_groups_shared_with($viewer);
+        $own = array_map(function ($group) { return (int) $group['id']; }, $out['groups']);
+
+        $out['groups'] = ws_note_groups_mark_shared($out['groups']);
+        $out['shared_groups'] = $with['groups'];
+        $out['mine'] = ws_note_groups_shared_assign($out['mine'], $own, $with['places']);
+        $out['shared'] = ws_note_groups_shared_assign($out['shared'], $own, $with['places']);
+    }
+
+    // Behind a closed lock: a locked group's notes are not listed, and a
+    // search finds a locked note by its title alone (note_lock.php).
+    if (function_exists('ws_note_lock_list_filter') && ws_note_lock_ready() && ws_note_lock_has($me)) {
+        $list_open = ws_note_lock_is_open($me);
+
+        $out['mine'] = ws_note_lock_list_filter($out['mine'], $list_open, $search);
+        $out['shared'] = ws_note_lock_list_filter($out['shared'], $list_open, $search);
+    }
+
+    return $out;
 }
 
 /**
@@ -1086,6 +1161,13 @@ function ws_note_save_check($viewer, $data)
             return $fail(lang('That note could not be found.'));
         }
 
+        // Behind the person's closed notes lock (note_lock.php).
+        $locked = function_exists('ws_note_lock_gate') ? ws_note_lock_gate($viewer, $note) : '';
+
+        if ($locked !== '') {
+            return $fail($locked, $note_id);
+        }
+
         if (ws_note_stale($note, $data, (int) $viewer['id'])) {
             $error = ((int) $note['updated_by'] !== (int) $viewer['id'])
                 ? lang(array('string' => '{var:1} changed this note meanwhile.', 'vars' => ws_person_name($note['updated_by'])))
@@ -1228,6 +1310,12 @@ function ws_note_delete_check($viewer, $note)
 {
     if (!is_array($note) || ((int) $note['user_id'] !== (int) $viewer['id'])) {
         return array('ok' => false, 'error' => lang('Only the one who wrote a note can delete it.'));
+    }
+
+    $locked = function_exists('ws_note_lock_gate') ? ws_note_lock_gate($viewer, $note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked);
     }
 
     return array('ok' => true, 'error' => '');
@@ -1408,6 +1496,7 @@ function ws_note_delete($viewer, $note)
 
     db("DELETE FROM ws_note_shares WHERE note_id = '" . $id . "'");
     db("DELETE FROM ws_notes WHERE id = '" . $id . "'");
+    ws_note_places_forget_note($id);
     ws_ref_source_write('note', array($id => array()));
 
     // The same file brought in again is a new note.
@@ -1512,6 +1601,12 @@ function ws_note_from_message($viewer, $message)
  */
 function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
 {
+    $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked, 'shared' => 0);
+    }
+
     $shared = 0;
     $now = time();
 
@@ -1520,7 +1615,9 @@ function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
             continue;
         }
 
-        $existing = (int) db_value("SELECT id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . $user_id . "' LIMIT 1");
+        // A share a shared group wrote (via_group) is the group's: a direct
+        // share is a row of its own, which stays when the group is taken back.
+        $existing = (int) db_value("SELECT id FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . $user_id . "'" . (ws_note_groups_ready() ? " AND via_group = 0" : '') . " LIMIT 1");
 
         if ($existing > 0) {
             db("UPDATE ws_note_shares SET can_edit = '" . ($can_edit ? 1 : 0) . "' WHERE id = '" . $existing . "'");
@@ -1558,11 +1655,17 @@ function ws_note_share_people($viewer, $note, $user_ids, $can_edit)
  */
 function ws_note_share_channel($viewer, $note, $channel)
 {
+    $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked, 'message_id' => 0);
+    }
+
     if (!ws_can_post_channel($viewer, $channel)) {
         return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'message_id' => 0);
     }
 
-    $existing = db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND channel_id = '" . (int) $channel['id'] . "' LIMIT 1");
+    $existing = db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND channel_id = '" . (int) $channel['id'] . "'" . (ws_note_groups_ready() ? " AND via_group = 0" : '') . " LIMIT 1");
 
     if (is_array($existing)) {
         return array('ok' => false, 'error' => lang('This note is already shared in that channel.'), 'message_id' => (int) $existing['message_id']);
@@ -1599,10 +1702,18 @@ function ws_note_unshare($viewer, $note, $share_id = 0)
 
     $share = ((int) $share_id > 0)
         ? db_item("SELECT * FROM ws_note_shares WHERE id = '" . (int) $share_id . "' AND note_id = '" . (int) $note['id'] . "'")
-        : db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . (int) $viewer['id'] . "' LIMIT 1");
+        : db_item("SELECT * FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "' AND user_id = '" . (int) $viewer['id'] . "'" . (ws_note_groups_ready() ? " ORDER BY via_group" : '') . " LIMIT 1");
 
     if (!is_array($share) || (!$owner && ((int) $share['user_id'] !== (int) $viewer['id']))) {
         return array('ok' => false, 'error' => lang('That share could not be found.'));
+    }
+
+    // A shared group's row would be written again by the group: the note
+    // leaves through the group (note_group_shares.php).
+    if ((int) ($share['via_group'] ?? 0) > 0) {
+        return array('ok' => false, 'error' => $owner
+            ? lang('This note is shared through a group: take it out of the group or take the group back.')
+            : lang('This note came with a shared group: leave the group to stop seeing it.'));
     }
 
     // The note leaves the person's list, for the apps that keep notes in
@@ -1615,6 +1726,9 @@ function ws_note_unshare($viewer, $note, $share_id = 0)
     }
 
     db("DELETE FROM ws_note_shares WHERE id = '" . (int) $share['id'] . "'");
+
+    // Without a share by name left, the note leaves the person's group.
+    ws_note_places_forget_reader((int) $share['user_id'], (int) $note['id']);
 
     if (((int) $share['user_id'] > 0) && ws_notes_inbox_ready()) {
         ws_inbox_delete("user_id = '" . (int) $share['user_id'] . "' AND note_id = '" . (int) $note['id'] . "'");
@@ -1703,6 +1817,12 @@ function ws_note_cards_map($viewer, $message_ids)
  */
 function ws_note_to_channel($viewer, $note, $data)
 {
+    $locked = function_exists('ws_note_lock_share_refusal') ? ws_note_lock_share_refusal($note) : '';
+
+    if ($locked !== '') {
+        return array('ok' => false, 'error' => $locked, 'field' => '', 'channel_id' => 0);
+    }
+
     if (trim((string) ($data['name'] ?? '')) === '') {
         $data['name'] = ws_note_title($viewer, $note);
     }
@@ -2041,6 +2161,11 @@ function ws_note_claude_ask($viewer, $note, $text)
 {
     $text = trim(mb_substr(str_replace(array("\r", "\n"), ' ', (string) $text), 0, 2000));
 
+    // No assistant reads a locked note, open or not (note_lock.php).
+    if (function_exists('ws_note_locked_by_owner') && ws_note_locked_by_owner($note)) {
+        return array('ok' => false, 'error' => lang('No assistant is asked in a locked note.'), 'request_id' => 0);
+    }
+
     // Pinegrap AI (ai.php) is asked the same way, with its own tag.
     $agent = (function_exists('ws_ai_asked') && ws_ai_schema_ready() && ws_ai_asked($text) && !ws_claude_asked($text)) ? 'ai' : 'claude';
 
@@ -2228,7 +2353,7 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
  */
 function ws_note_inbox_kinds()
 {
-    return array('note_shared', 'note_updated', 'note_answer', 'note_answer_ai');
+    return array('note_shared', 'note_updated', 'note_answer', 'note_answer_ai', 'note_group_added');
 }
 
 /**
@@ -2353,6 +2478,39 @@ function ws_notes_js_strings()
         'nav_notes'             => lang('My Notes'),
         'notes_export_md'       => lang('Download as Markdown'),
         'notes_print'           => lang('Print'),
+        'notes_group_new'       => lang('New group'),
+        'notes_group_edit'      => lang('Change the group'),
+        'notes_group_name'      => lang('Group name'),
+        'notes_group_delete'    => lang('Delete the group'),
+        'notes_group_delete_ask' => ws_js_template('Delete the group “{var:1}”? Its notes are not deleted: they go back to no group.', 1),
+        'notes_group_empty'     => lang('No notes in this group yet.'),
+        'notes_group_locked'    => lang('Locked'),
+        'notes_group_move'      => lang('Move to group'),
+        'notes_group_move_to'   => ws_js_template('Move “{var:1}” to a group', 1),
+        'notes_group_none'      => lang('No group'),
+        'notes_group_up'        => lang('Move up'),
+        'notes_group_down'      => lang('Move down'),
+        'notes_group_into_shared' => ws_js_template('Everyone in the group “{var:1}” will see this note.', 1),
+        'notes_group_out_shared' => ws_js_template('The people in the group “{var:1}” lose this note unless it is shared with them on its own.', 1),
+        'notes_group_into_locked' => ws_js_template('The group “{var:1}” is locked: locking takes this note’s shares back.', 1),
+        'notes_group_own_only'  => lang('Only your own notes go into a shared group.'),
+        'notes_tab_new'         => lang('New note in this group'),
+        'notes_tab_shared'      => lang('Shared note'),
+        'notes_group_shared'    => lang('Shared group'),
+        'notes_group_share'     => lang('Share the group'),
+        'notes_group_share_title' => ws_js_template('Share the group “{var:1}”', 1),
+        'notes_group_share_help' => lang('Everyone you share it with sees every note in it. People who can add notes put in their own notes, which stay theirs.'),
+        'notes_group_share_locked' => lang('A locked group cannot be shared.'),
+        'notes_group_can_add'   => lang('Can add notes'),
+        'notes_group_channel'   => lang('Or share it in a channel'),
+        'notes_group_no_channel' => lang('No channel'),
+        'notes_group_only_you'  => lang('Only you can see this group.'),
+        'notes_group_shared_ok' => lang('The group is shared.'),
+        'notes_group_leave'     => lang('Leave the group'),
+        'notes_group_leave_ask' => ws_js_template('Leave the group “{var:1}”? Your notes in it are taken out of it; they are not deleted.', 1),
+        'notes_group_card'      => lang('Group of notes'),
+        'notes_group_open'      => lang('Open in My Notes'),
+        'notes_group_not_listed' => lang('This group is not among your notes. Its notes can be read from the card where it was shared.'),
         'notes_export_all'      => lang('Export all'),
         'notes_import'          => lang('Import'),
         'notes_import_title'    => lang('Import notes'),

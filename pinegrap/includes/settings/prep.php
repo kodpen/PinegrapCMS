@@ -757,73 +757,33 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     // The site's own icon (includes/fn/site_icon.php): a PNG or SVG of the
     // Files screen, kept in config_text, never an attachment or an ERP
-    // document (pg_public_image_files_where()). A stored name that no longer
-    // matches a file is kept as its own option, so saving cannot clear it.
+    // document. The picker prints the stored name only and searches the
+    // rest (kind site_icon, pg_public_image_files_where() on the server); a
+    // stored name that no longer matches a file is kept as its own option,
+    // marked, so saving cannot clear it.
     if (pg_schema_has('config_text')) {
         $site_icon = pg_site_icon_name();
-        $site_icon_options = '<option value="">' . lang('(not selected)') . '</option>';
-        $site_icon_matched = ($site_icon === '');
-
-        foreach (db_items("SELECT name FROM files WHERE ((type = 'png') || (type = 'svg')) AND " . pg_public_image_files_where() . " ORDER BY name ASC") as $site_icon_file) {
-            $site_icon_options .= '<option value="' . h($site_icon_file['name']) . '"' . (($site_icon_file['name'] === $site_icon) ? ' selected="selected"' : '') . '>' . h($site_icon_file['name']) . '</option>';
-
-            if ($site_icon_file['name'] === $site_icon) {
-                $site_icon_matched = true;
-            }
-        }
-
-        if (!$site_icon_matched) {
-            $site_icon_options .= pg_public_image_stored_option($site_icon);
-        }
+        $site_icon_options = pg_file_picker_public_options($site_icon, lang('(not selected)'));
 
         $output_site_icon_picker = '
                                         <div class="pg-f-md">
                                             <label for="site_icon" class="form-label">' . lang('Site Icon') . '</label>
-                                            <select name="site_icon" id="site_icon" class="form-control">' . $site_icon_options . '</select>
+                                            <select name="site_icon" id="site_icon" class="form-control"' . pg_file_picker_attributes('site_icon') . '>' . $site_icon_options . '</select>
                                             <div class="form-text">' . lang('Shown in browser tabs, in search results and on home screens. Choose a square PNG of at least 512x512 (the smaller sizes are made from it) or an SVG. Leave it empty to keep the design\'s own icon.') . '</div>
                                         </div>';
     }
     $output_structured_data_dependent = '';
 
     if (waf_table_has_column('config', 'og_default_image')) {
-        // The pickers list the site's image files. A stored value that no
-        // longer matches anything (an old hand-typed address) is kept as its
-        // own option, so opening and saving this screen cannot silently
-        // clear it.
-        // No attachment and no ERP document: what is chosen here is shown
-        // to everyone (pg_public_image_files_where()).
-        $seo_image_files = db_items(
-            "SELECT name FROM files
-            WHERE
-                (type IN ('" . implode("', '", pg_public_image_file_types()) . "'))
-                AND " . pg_public_image_files_where() . "
-            ORDER BY name ASC");
-
-        $og_image_options = '<option value="">' . lang('(not selected)') . '</option>';
-        $logo_image_options = '<option value="">' . lang('(not selected)') . '</option>';
-        $og_value_matched = ($og_default_image == '');
-        $logo_value_matched = ($organization_logo == '');
-
-        foreach ($seo_image_files as $seo_image_file) {
-            $og_image_options .= '<option value="' . h($seo_image_file['name']) . '"' . (($seo_image_file['name'] == $og_default_image) ? ' selected="selected"' : '') . '>' . h($seo_image_file['name']) . '</option>';
-            $logo_image_options .= '<option value="' . h($seo_image_file['name']) . '"' . (($seo_image_file['name'] == $organization_logo) ? ' selected="selected"' : '') . '>' . h($seo_image_file['name']) . '</option>';
-
-            if ($seo_image_file['name'] == $og_default_image) {
-                $og_value_matched = true;
-            }
-
-            if ($seo_image_file['name'] == $organization_logo) {
-                $logo_value_matched = true;
-            }
-        }
-
-        if (!$og_value_matched) {
-            $og_image_options .= pg_public_image_stored_option($og_default_image);
-        }
-
-        if (!$logo_value_matched) {
-            $logo_image_options .= pg_public_image_stored_option($organization_logo);
-        }
+        // The pickers search the site's image files (kind public_image): no
+        // attachment, no ERP document and only folders every visitor may
+        // open, because what is chosen here is shown to everyone
+        // (pg_public_image_files_where() on the server). Only the stored
+        // value is printed; one that no longer matches anything (an old
+        // hand-typed address) is kept as its own option, so opening and
+        // saving this screen cannot silently clear it.
+        $og_image_options = pg_file_picker_public_options($og_default_image, lang('(not selected)'));
+        $logo_image_options = pg_file_picker_public_options($organization_logo, lang('(not selected)'));
 
         // The icon the panel wears once it is installed on a phone or a desktop.
         // Same list as the share images, because it is the same question - which
@@ -833,27 +793,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // picture whole rather than cropping it.
         if (waf_table_has_column('config', 'app_icon')) {
 
-            $app_icon_options = '<option value="">' . lang('(not selected)') . '</option>';
-            $app_icon_matched = ($app_icon == '');
-
-            foreach ($seo_image_files as $seo_image_file) {
-
-                $app_icon_options .= '<option value="' . h($seo_image_file['name']) . '"' . (($seo_image_file['name'] == $app_icon) ? ' selected="selected"' : '') . '>' . h($seo_image_file['name']) . '</option>';
-
-                if ($seo_image_file['name'] == $app_icon) {
-                    $app_icon_matched = true;
-                }
-            }
-
-            if (!$app_icon_matched) {
-                $app_icon_options .= pg_public_image_stored_option($app_icon);
-            }
+            $app_icon_options = pg_file_picker_public_options($app_icon, lang('(not selected)'));
 
             $output_app_icon_picker = '
                                         <div id="pgsub-app" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Installed Application') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="app_icon" class="form-label">' . lang('Application Icon') . '</label>
-                                            <select name="app_icon" id="app_icon" class="form-control">' . $app_icon_options . '</select>
+                                            <select name="app_icon" id="app_icon" class="form-control"' . pg_file_picker_attributes('public_image') . '>' . $app_icon_options . '</select>
                                             <div class="form-text">' . lang('Shown on the home screen when the panel is installed as an application. The picture is fitted whole onto a square, so nothing is cropped; a square picture of at least 512x512 looks best.') . '</div>
                                         </div>';
         }
@@ -871,7 +817,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_share_image_pickers = '
                                         <div class="pg-f-md">
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
-                                            <select name="og_default_image" id="og_default_image" class="form-control">' . $og_image_options . '</select>
+                                            <select name="og_default_image" id="og_default_image" class="form-control"' . pg_file_picker_attributes('public_image') . '>' . $og_image_options . '</select>
                                             <div class="form-text">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>' . $og_default_forms_notice . '
                                         </div>';
 
@@ -880,7 +826,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_organization_logo_picker = '
                     <div class="pg-f-lg">
                         <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>
-                        <select name="organization_logo" id="organization_logo" class="form-control">' . $logo_image_options . '</select>
+                        <select name="organization_logo" id="organization_logo" class="form-control"' . pg_file_picker_attributes('public_image') . '>' . $logo_image_options . '</select>
                         <div class="form-text">' . lang('Used in the structured data that introduces your organization and as the publisher logo on blog posts.') . '</div>
                     </div>';
 
@@ -1541,17 +1487,25 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $query = "SELECT name FROM files WHERE (type = 'pem')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $ecommerce_first_data_global_gateway_pem_file_name_options = '';
+    $pem_file_matched = ((string) $ecommerce_first_data_global_gateway_pem_file_name === '');
     while ($pem_row = mysqli_fetch_assoc($result)) {
         // if file is the current selected pem file, select it by default
         if ($pem_row['name'] == $ecommerce_first_data_global_gateway_pem_file_name) {
             $selected_or_not = ' selected="selected"';
+            $pem_file_matched = true;
         } else {
             $selected_or_not = '';
         }
 
         $ecommerce_first_data_global_gateway_pem_file_name_options .= '<option value="' . h($pem_row['name']) . '"' . $selected_or_not . '>' . h($pem_row['name']) . '</option>';
     }
-    
+
+    // A stored name no pem file carries any more stays chosen, marked, so
+    // saving the commerce settings does not silently clear it.
+    if (!$pem_file_matched) {
+        $ecommerce_first_data_global_gateway_pem_file_name_options .= pg_stored_file_option($ecommerce_first_data_global_gateway_pem_file_name, pg_stored_file_exists($ecommerce_first_data_global_gateway_pem_file_name));
+    }
+
     // initialize variables for holding select information for payment gateway pick list
     $ecommerce_payment_gateway_authorizenet = '';
     $ecommerce_payment_gateway_clearcommerce = '';
@@ -1906,8 +1860,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $chat_allow_images_checked = ($chat_allow_images == 1) ? ' checked="checked"' : '';
     $chat_allow_audio_checked = ($chat_allow_audio == 1) ? ' checked="checked"' : '';
 
-    // Operator list: only staff (role <= 2) can be selected.
+    // Operator list: only staff (role <= 2) can be selected, searched in the
+    // browser (data-pg-combobox). The stored operator stays chosen when the
+    // account is no longer staff or is gone, so saving the card keeps it.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_picker.php');
+
     $output_chat_operator_options = '<option value="0">' . lang('Select') . '</option>';
+    $chat_operator_listed = false;
 
     $chat_operator_users = db_items("
         SELECT user.user_id AS id, user.user_username AS username,
@@ -1918,17 +1877,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         ORDER BY user.user_username");
 
     foreach ($chat_operator_users as $chat_operator_user) {
-        $chat_operator_name = trim($chat_operator_user['first_name'] . ' ' . $chat_operator_user['last_name']);
-
-        if ($chat_operator_name != '') {
-            $chat_operator_name .= ' (' . $chat_operator_user['username'] . ')';
-        } else {
-            $chat_operator_name = $chat_operator_user['username'];
-        }
+        $chat_operator_chosen = ((int) $chat_operator_user['id'] === $chat_operator_user_id);
+        $chat_operator_listed = $chat_operator_listed || $chat_operator_chosen;
 
         $output_chat_operator_options .= '<option value="' . (int) $chat_operator_user['id'] . '"'
-            . (((int) $chat_operator_user['id'] === $chat_operator_user_id) ? ' selected="selected"' : '')
-            . '>' . h($chat_operator_name) . '</option>';
+            . ($chat_operator_chosen ? ' selected="selected"' : '')
+            . '>' . h(pg_user_picker_text($chat_operator_user['first_name'], $chat_operator_user['last_name'], $chat_operator_user['username'])) . '</option>';
+    }
+
+    if (($chat_operator_user_id > 0) && !$chat_operator_listed) {
+        $output_chat_operator_options .= '<option value="' . $chat_operator_user_id . '" selected="selected">' . h(pg_user_picker_label($chat_operator_user_id)) . '</option>';
     }
 
     $output_chat_retention_options = '';

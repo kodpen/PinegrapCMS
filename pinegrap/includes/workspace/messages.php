@@ -150,7 +150,7 @@ function ws_message_payloads($viewer, $rows, $options = array())
             $task_ids[] = (int) $row['task_id'];
         }
 
-        if ((int) $row['marked_by'] > 0) {
+        if (((int) $row['marked_by'] > 0) && !ws_mark_by_app($row)) {
             $senders[] = (int) $row['marked_by'];
         }
     }
@@ -215,6 +215,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'outside'    => array(),
         // Notes shared in the channel, as they are now (notes.php).
         'note_cards' => function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array(),
+        // Note groups shared in the channel, one card each (note_group_shares.php).
+        'note_group_cards' => function_exists('ws_note_group_cards_map') ? ws_note_group_cards_map($viewer, $ids) : array(),
         // Scheduled actions written in the channel (scheduled.php).
         'scheduled'  => function_exists('ws_scheduled_cards_map') ? ws_scheduled_cards_map($viewer, $ids) : array(),
         // Flow runs started from the composer (flow_run_cards.php).
@@ -359,7 +361,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'task_id'     => (int) $row['task_id'],
         'task_html'   => '',
         'marked'      => in_array($row['kind'], array('decision', 'note'), true)
-            ? lang(array('string' => 'Marked by {var:1}', 'vars' => ($people[(int) $row['marked_by']]['name'] ?? '')))
+            ? lang(array('string' => 'Marked by {var:1}', 'vars' => ws_mark_by_name($row, $people)))
             : '',
         // A locked decision is the trace of a record change: nobody edits it,
         // and only staff may delete it or take its mark off.
@@ -370,12 +372,12 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // An approval request stays what the people were asked to approve.
         // A note card's text is only the card's caption; the note itself is
         // edited on the notes screen.
-        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]) && !isset($extra['approvals'][$id]) && !isset($extra['note_cards'][$id]),
+        'can_edit'    => !$past && $mine && !$deleted && empty($row['locked']) && in_array($row['kind'], array('message', 'note', 'decision'), true) && !isset($extra['scheduled'][$id]) && !isset($extra['copies'][$id]) && !isset($extra['approvals'][$id]) && !isset($extra['note_cards'][$id]) && !isset($extra['note_group_cards'][$id]),
         'can_delete'  => !$past && !$deleted && ((($row['sender_kind'] === 'user') && ($mine || ($viewer['role'] < 3)) && (empty($row['locked']) || ($viewer['role'] < 3)))
             || (($row['sender_kind'] === 'guest') && ($viewer['role'] < 3))),
         // Deleted for the person alone, whoever wrote it.
         'can_hide'    => !$deleted && ($row['kind'] !== 'system') && ws_message_hides_ready(),
-        'can_mark'    => !$past && !$deleted && ($row['sender_kind'] === 'user') && in_array($row['kind'], array('message', 'note', 'decision'), true) && (empty($row['locked']) || ($viewer['role'] < 3)),
+        'can_mark'    => !$past && !$deleted && in_array($row['sender_kind'], array('user', 'app'), true) && in_array($row['kind'], array('message', 'note', 'decision'), true) && (empty($row['locked']) || ($viewer['role'] < 3)),
         'can_react'   => !$deleted && $can_post && ($row['kind'] !== 'system') && ws_interact_ready(),
         'reactions'   => $deleted ? array() : ($extra['reactions'][$id] ?? array()),
         'poll'        => $deleted ? null : ($extra['polls'][$id] ?? null),
@@ -404,6 +406,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         // Mentioned, but not in the channel (see ws_message_mention_invite()).
         'invite'      => $deleted ? array() : ($extra['outside'][$id] ?? array()),
         'note_card'   => $deleted ? null : ($extra['note_cards'][$id] ?? null),
+        'note_group_card' => $deleted ? null : ($extra['note_group_cards'][$id] ?? null),
         'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
         'flow_run'    => $deleted ? null : ($extra['flow_runs'][$id] ?? null),
         'quotes'      => $deleted ? array() : ($extra['quotes'][$id] ?? array()),
@@ -419,9 +422,21 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         if ($stored !== '') {
             $kind = ws_file_kind($row['file_name']);
 
+            // A canvas's picture: shown under its version's address, and
+            // drawn here by a member who may write while an agent's version
+            // waits for it (assets/js/workspace_canvas_picture.js).
+            $canvas = (($kind === 'image') && ($extension === 'png') && function_exists('ws_canvas_message_state')) ? ws_canvas_message_state((int) $row['file_id']) : null;
+
             $payload['file'] = array(
                 'name'     => (string) $row['file_name'],
-                'url'      => PATH . encode_url_path($stored),
+                'url'      => ws_canvas_picture_url(PATH . encode_url_path($stored), $canvas),
+                // The version a browser draws and posts (canvas_picture), 0 for none.
+                'canvas_pending' => ($canvas && $canvas['pending'] && $can_post) ? $canvas['version_no'] : 0,
+                // A person's canvas an agent edited: "Edited by @handle", and
+                // Undo for whoever may edit the message (ws_canvas_undo()
+                // checks it again).
+                'canvas_edit'    => function_exists('ws_canvas_edit_mark') ? ws_canvas_edit_mark($canvas, (string) $row['sender_kind'],
+                    !empty($payload['can_edit']) && $can_post) : null,
                 'image'    => ($kind === 'image'),
                 'kind'     => $kind,
                 'ext'      => $extension,
@@ -728,9 +743,12 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 
     $now = time();
     $marked = in_array($kind, array('note', 'decision'), true);
+    // An application posting a decision marks it as itself, never as the
+    // person it acts for (channel_memory.php).
+    $app_mark = $marked && ($app_id > 0) && ws_marks_kind_ready();
 
     db("INSERT INTO ws_messages (channel_id, parent_id, sender_kind, sender_id, kind, body, task_id, file_id, file_name,
-            marked_by, marked_at, created_at)
+            marked_by, marked_at, created_at" . ($app_mark ? ', marked_by_kind' : '') . ")
         VALUES (
             '" . (int) $channel['id'] . "',
             '" . $parent_id . "',
@@ -741,9 +759,9 @@ function ws_message_send($viewer, $channel, $body, $options = array())
             '" . (int) ($options['task_id'] ?? 0) . "',
             '" . $file_id . "',
             '" . e(mb_substr((string) ($options['file_name'] ?? ''), 0, 255)) . "',
-            '" . ($marked ? (int) $viewer['id'] : 0) . "',
+            '" . ($marked ? ($app_mark ? $app_id : (int) $viewer['id']) : 0) . "',
             '" . ($marked ? $now : 0) . "',
-            '" . $now . "')");
+            '" . $now . "'" . ($app_mark ? ", 'app'" : '') . ")");
 
     $message_id = (int) mysqli_insert_id(db::$con);
 
@@ -833,7 +851,9 @@ function ws_message_send($viewer, $channel, $body, $options = array())
  * @param array  $channel
  * @param int    $message_id
  * @param string $body as written
- * @return array claude, agent, ai: whether a request was queued for each
+ * @return array claude, agent, ai: whether a request was queued for each;
+ *               agents: the registry agents woken (app:<id>, model:<id>);
+ *               models: a model agent among them, carried on as ai is
  */
 function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 {
@@ -849,6 +869,13 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 
     // A message written to an agent's alias is the agent's alone.
     $ai = ($agent === null) && function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body);
+
+    // The registry's agents the channel lets this message wake
+    // (agent_queue.php): a model agent is answered by the site's own loop.
+    $woken = function_exists('ws_agent_after_send') ? ws_agent_after_send($viewer, $channel, $message_id, $body) : array();
+    $models = !empty(array_filter($woken, function ($value) {
+        return strpos($value, 'model:') === 0;
+    }));
 
     if ($follows) {
         $followed = ws_thread_follow_agent($channel['id']);
@@ -870,7 +897,7 @@ function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
         ws_thread_assistant_asked($channel, $claude ? 'claude' : 'ai');
     }
 
-    return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai);
+    return array('claude' => $claude, 'agent' => ($agent === true), 'ai' => $ai, 'agents' => $woken, 'models' => $models);
 }
 
 /**
@@ -1385,6 +1412,22 @@ function ws_channel_news($channel_id, $held_id, $since, $options = array())
 }
 
 /**
+ * Is a message the writer's own: a person's by them, or, with $as_app, the
+ * application's. Pure.
+ *
+ * @param array $message sender_kind, sender_id
+ * @param int   $user_id
+ * @param int   $as_app  the application writing as itself, 0 for a person
+ * @return bool
+ */
+function ws_message_is_own($message, $user_id, $as_app = 0)
+{
+    return ((int) $as_app > 0)
+        ? (((string) $message['sender_kind'] === 'app') && ((int) $message['sender_id'] === (int) $as_app))
+        : (((string) $message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $user_id));
+}
+
+/**
  * Whether a message may be changed to this text: the checks of
  * ws_message_edit(), made on their own so that the API's dry run meets the
  * same refusals.
@@ -1392,11 +1435,13 @@ function ws_channel_news($channel_id, $held_id, $since, $options = array())
  * @param array  $viewer
  * @param array  $message
  * @param string $body
+ * @param int    $as_app an agent's application changing its own message
+ *                       (ws_api_agent_own_app()), 0 for a person
  * @return array ok, error, body (the new text as it would be stored), channel
  */
-function ws_message_edit_check($viewer, $message, $body)
+function ws_message_edit_check($viewer, $message, $body, $as_app = 0)
 {
-    if (($message['sender_kind'] !== 'user') || ((int) $message['sender_id'] !== (int) $viewer['id'])
+    if (!ws_message_is_own($message, $viewer['id'], $as_app)
         || ((int) $message['deleted_at'] > 0) || !in_array($message['kind'], array('message', 'note', 'decision'), true)) {
         return array('ok' => false, 'error' => lang('You can only change your own messages.'));
     }
@@ -1434,11 +1479,12 @@ function ws_message_edit_check($viewer, $message, $body)
  * @param array  $viewer
  * @param array  $message
  * @param string $body
+ * @param int    $as_app an agent's application changing its own message, 0 for a person
  * @return array ok, error
  */
-function ws_message_edit($viewer, $message, $body)
+function ws_message_edit($viewer, $message, $body, $as_app = 0)
 {
-    $checked = ws_message_edit_check($viewer, $message, $body);
+    $checked = ws_message_edit_check($viewer, $message, $body, $as_app);
 
     if (!$checked['ok']) {
         return array('ok' => false, 'error' => $checked['error']);
@@ -1455,7 +1501,7 @@ function ws_message_edit($viewer, $message, $body)
     db("UPDATE ws_messages SET body = '" . e($body) . "', edited_at = '" . time() . "' WHERE id = '" . (int) $message['id'] . "'");
 
     if (function_exists('ws_blocks_index')) {
-        ws_blocks_index('message', (int) $message['id'], $body, (int) $message['sender_id'], (int) $message['channel_id']);
+        ws_blocks_index('message', (int) $message['id'], $body, ((int) $as_app > 0) ? 0 : (int) $message['sender_id'], (int) $message['channel_id']);
     }
 
     ws_checks_remap($message['id'], $message['body'], $body);
@@ -1492,11 +1538,24 @@ function ws_message_edit($viewer, $message, $body)
  *
  * @param array $viewer
  * @param array $message
+ * @param int   $as_app an agent's application deleting its own message
+ *                      (ws_api_agent_own_app()), 0 for a person
  * @return array ok, error, mine
  */
-function ws_message_delete_check($viewer, $message)
+function ws_message_delete_check($viewer, $message, $as_app = 0)
 {
-    $mine = ($message['sender_kind'] === 'user') && ((int) $message['sender_id'] === (int) $viewer['id']);
+    $mine = ws_message_is_own($message, $viewer['id'], $as_app);
+
+    // An agent deletes only its own messages, and no locked decision.
+    if ((int) $as_app > 0) {
+        if (!$mine || !empty($message['locked'])) {
+            return array('ok' => false, 'error' => lang('You can only delete your own messages.'), 'mine' => $mine);
+        }
+
+        return ws_can_read_channel($viewer, ws_channel($message['channel_id']))
+            ? array('ok' => true, 'error' => '', 'mine' => true)
+            : array('ok' => false, 'error' => lang('Access denied.'), 'mine' => true);
+    }
 
     // A guest's message is taken out by staff.
     if (!in_array($message['sender_kind'], array('user', 'guest'), true) || (!$mine && ($viewer['role'] >= 3))) {
@@ -1521,11 +1580,12 @@ function ws_message_delete_check($viewer, $message)
  *
  * @param array $viewer
  * @param array $message
+ * @param int   $as_app an agent's application deleting its own message, 0 for a person
  * @return array ok, error
  */
-function ws_message_delete($viewer, $message)
+function ws_message_delete($viewer, $message, $as_app = 0)
 {
-    $checked = ws_message_delete_check($viewer, $message);
+    $checked = ws_message_delete_check($viewer, $message, $as_app);
 
     if (!$checked['ok']) {
         return array('ok' => false, 'error' => $checked['error']);
@@ -1726,35 +1786,82 @@ function ws_message_seen_by($viewer, $message)
 }
 
 /**
- * Marks a message as a decision or a note, or takes the mark off.
+ * Whether a message may be marked as a decision or a note, or the mark
+ * taken off (kind message): a message of a person or of an application
+ * (an agent's own agreement too), not deleted, in a channel the viewer may
+ * post in. A locked decision keeps its mark against the User role.
  *
  * @param array  $viewer
- * @param array  $message
- * @param string $kind decision | note | message
- * @return array ok, error
+ * @param array  $message ws_messages
+ * @param string $kind    decision | note | message
+ * @return array ok, error, forbidden
  */
-function ws_message_mark($viewer, $message, $kind)
+function ws_message_mark_check($viewer, $message, $kind)
 {
     if (!in_array($kind, array('decision', 'note', 'message'), true)
-        || ($message['sender_kind'] !== 'user') || ((int) $message['deleted_at'] > 0)
+        || !in_array($message['sender_kind'], array('user', 'app'), true) || ((int) $message['deleted_at'] > 0)
         || !in_array($message['kind'], array('message', 'note', 'decision'), true)) {
-        return array('ok' => false, 'error' => lang('Invalid request.'));
+        return array('ok' => false, 'error' => lang('Invalid request.'), 'forbidden' => false);
     }
 
     if (!empty($message['locked']) && ($viewer['role'] >= 3)) {
-        return array('ok' => false, 'error' => lang('This decision records a change to a record. People with the User role cannot take its mark off.'));
+        return array('ok' => false, 'error' => lang('This decision records a change to a record. People with the User role cannot take its mark off.'), 'forbidden' => true);
     }
 
     if (!ws_can_post_channel($viewer, ws_channel($message['channel_id']))) {
-        return array('ok' => false, 'error' => lang('You cannot post in that channel.'));
+        return array('ok' => false, 'error' => lang('You cannot post in that channel.'), 'forbidden' => true);
+    }
+
+    return array('ok' => true, 'error' => '', 'forbidden' => false);
+}
+
+/**
+ * The application that wrote a message, 0 when a person (or the system)
+ * did: a poll or an approval an agent asked is settled in its name.
+ *
+ * @param int $message_id
+ * @return int
+ */
+function ws_message_app_id($message_id)
+{
+    $row = db_item("SELECT sender_kind, sender_id FROM ws_messages WHERE id = '" . (int) $message_id . "'");
+
+    return (is_array($row) && (($row['sender_kind'] ?? '') === 'app')) ? (int) $row['sender_id'] : 0;
+}
+
+/**
+ * Marks a message as a decision or a note, or takes the mark off. With an
+ * application id the application (an agent) is the marker, never the person
+ * it acts for: a person's mark from the owner's account is an owner
+ * decision, an agent's is not.
+ *
+ * @param array  $viewer
+ * @param array  $message
+ * @param string $kind   decision | note | message
+ * @param int    $app_id the application that marks, 0 for the viewer
+ * @return array ok, error, forbidden
+ */
+function ws_message_mark($viewer, $message, $kind, $app_id = 0)
+{
+    $check = ws_message_mark_check($viewer, $message, $kind);
+
+    if (!$check['ok']) {
+        return $check;
     }
 
     $marked = ($kind !== 'message');
+    $by_app = $marked && ((int) $app_id > 0);
+
+    // Without the column an application's id would read as a person's.
+    if ($by_app && !ws_marks_kind_ready()) {
+        return array('ok' => false, 'error' => lang('The database has to be updated first.'), 'forbidden' => false);
+    }
 
     db("UPDATE ws_messages SET
             kind = '" . e($kind) . "',
-            marked_by = '" . ($marked ? (int) $viewer['id'] : 0) . "',
-            marked_at = '" . ($marked ? time() : 0) . "'
+            marked_by = '" . ($marked ? ($by_app ? (int) $app_id : (int) $viewer['id']) : 0) . "',
+            marked_at = '" . ($marked ? time() : 0) . "'"
+            . (ws_marks_kind_ready() ? ", marked_by_kind = '" . ($by_app ? 'app' : 'user') . "'" : '') . "
         WHERE id = '" . (int) $message['id'] . "'");
 
     ws_message_touch($message['id']);
@@ -1762,7 +1869,7 @@ function ws_message_mark($viewer, $message, $kind)
     // Marked in a discussion: the channel gets the decision (threads.php).
     ws_thread_copy_sync($message['id']);
 
-    return array('ok' => true, 'error' => '');
+    return array('ok' => true, 'error' => '', 'forbidden' => false);
 }
 
 /**

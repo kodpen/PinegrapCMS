@@ -151,15 +151,17 @@ function pg_short_link_form_label_blank($options, $label)
  * @param liveform $liveform
  * @param array $form  'extra_rows' (markup after the name row), 'status'
  *                     (cards under the summary in the status column),
- *                     'keep' (the page_id, product_group_id, product_id and
- *                     file_id the link points at, which stay on their lists
- *                     while in the Recycle Bin; nothing on create)
+ *                     'keep' (the page_id, product_group_id and product_id
+ *                     the link points at, which stay on their lists while in
+ *                     the Recycle Bin; nothing on create). The file picker
+ *                     prints only its chosen file, marked when it is in the
+ *                     bin, and searches the rest (pg_file_picker_id_options())
  * @return string
  */
 function pg_short_link_form_cards($liveform, $form)
 {
     $form = array_merge(array('extra_rows' => '', 'status' => '', 'keep' => array()), $form);
-    $keep = array_merge(array('page_id' => 0, 'product_group_id' => array(), 'product_id' => 0, 'file_id' => 0), $form['keep']);
+    $keep = array_merge(array('page_id' => 0, 'product_group_id' => array(), 'product_id' => 0), $form['keep']);
     $style = pg_short_link_form_row_styles($liveform->get_field_value('destination_type'));
     $address_base = URL_SCHEME . HOSTNAME . OUTPUT_PATH;
     $name = (string) $liveform->get_field_value('name');
@@ -238,7 +240,7 @@ function pg_short_link_form_cards($liveform, $form)
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $style['file'] . '>
                                                 <label for="file" class="form-label">' . lang('File') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>get_file_options(true, $keep['file_id']))) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>pg_file_picker_id_options($liveform->get_field_value('file'))) + pg_file_picker_field_attributes('file')) . pg_fields_script() . '
                                             </div>
                                         </div>
                                     </div>

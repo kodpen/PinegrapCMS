@@ -141,6 +141,7 @@ echo '<!DOCTYPE html>
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <title>' . $title . '</title>
+' . pg_old_browser_notice() . '
 <link rel="stylesheet" href="' . $software . '/assets/lib/bootstrap-6/css/bootstrap.min.css?v=' . $version('/assets/lib/bootstrap-6/css/bootstrap.min.css') . '">
 <link rel="stylesheet" href="' . $software . '/assets/fonts/bootstrap-icons/bootstrap-icons.min.css?v=' . $version('/assets/fonts/bootstrap-icons/bootstrap-icons.min.css') . '">
 <link rel="stylesheet" href="' . $software . '/assets/css/workspace_approval.css?v=' . $version('/assets/css/workspace_approval.css') . '">

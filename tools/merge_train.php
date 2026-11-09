@@ -58,7 +58,9 @@ define('MERGE_TRAIN_IDENTITY_NAME', 'Erdal Güral');
 define('MERGE_TRAIN_IDENTITY_EMAIL', 'erdaltyy@gmail.com');
 define('MERGE_TRAIN_SIZE_LIMIT', 1000);
 define('MERGE_TRAIN_MAX_PRS', 12);
+define('MERGE_TRAIN_TOTAL_LIMIT', 2000);
 define('MERGE_TRAIN_QUIET_SECONDS', 3600);
+define('MERGE_TRAIN_OVERSIZED_WAIT_SECONDS', 3600);
 define('MERGE_TRAIN_FIX_LINE', '[FIX] Miscellaneous bug fixes and new features.');
 define('MERGE_TRAIN_SECURITY_LINE', '[SECURITY] Implemented various security fixes.');
 define('MERGE_TRAIN_MODULE_LIST', 'docs/memory/core/fn-modules.md');
@@ -135,6 +137,55 @@ function merge_train_eligible(array $labels, $green, $pushed_at, $now)
 	return in_array('ready', $labels, true) || (($now - $pushed_at) >= MERGE_TRAIN_QUIET_SECONDS);
 }
 
+// The issue a PR asks the owner's approval in: the N of an "Approval: #N"
+// line of its body (architect-asking.md), or 0.
+function merge_train_approval_issue($body)
+{
+	return preg_match('/^\s*Approval:\s*#(\d+)\b/mi', (string) $body, $match) ? (int) $match[1] : 0;
+}
+
+// Whether the owner approved, from the approval issue's comment bodies: a
+// decision comment (a line opening with "Karar" or "Decision") that says
+// Onaylıyorum / Onaylandı / Approved and asks for no change.
+function merge_train_approval_given(array $comments)
+{
+	foreach ($comments as $body) {
+		$body = (string) $body;
+
+		if (preg_match('/^\W*(?:Karar|Decision)\b/mu', $body)
+			&& preg_match('/Onayl(?:\x{0131}yorum|and\x{0131})|\bApproved\b/iu', $body)
+			&& !preg_match('/De\x{011F}i\x{015F}iklik istiyorum|\bChanges requested\b/iu', $body)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// The approval issue a PR still waits on (open and not approved), or 0.
+function merge_train_approval_waiting($pr)
+{
+	$issue = merge_train_approval_issue(isset($pr['body']) ? $pr['body'] : '');
+
+	if ($issue <= 0) {
+		return 0;
+	}
+
+	$row = merge_train_gh('GET', 'issues/' . $issue);
+
+	if (!isset($row['state']) || ($row['state'] !== 'open')) {
+		return 0;
+	}
+
+	$comments = array();
+
+	foreach (merge_train_gh_all('issues/' . $issue . '/comments') as $comment) {
+		$comments[] = isset($comment['body']) ? $comment['body'] : '';
+	}
+
+	return merge_train_approval_given($comments) ? 0 : $issue;
+}
+
 // Whether a PR's branch lives in this repository, as the pulls endpoint
 // describes the PR. Checks and labels say nothing about who wrote a change,
 // so a PR from a fork, or from a deleted fork (no head repository), never
@@ -161,12 +212,49 @@ function merge_train_branch_name($time)
 	return 'merge-train/' . gmdate('Ymd-Hi', $time);
 }
 
+// The time a green PR became eligible, from the check runs of its head: a
+// ready PR from its last finished run, a quiet one an hour after its first
+// run started. The ready label's own time is not read, so a label put on
+// later counts from the green checks.
+function merge_train_eligible_since(array $runs, $ready)
+{
+	$started = null;
+	$completed = null;
+
+	foreach ($runs as $run) {
+		if (!empty($run['started_at'])) {
+			$time = strtotime($run['started_at']);
+			$started = ($started === null) ? $time : min($started, $time);
+		}
+
+		if (!empty($run['completed_at'])) {
+			$time = strtotime($run['completed_at']);
+			$completed = ($completed === null) ? $time : max($completed, $time);
+		}
+	}
+
+	$quiet = ($started === null) ? null : $started + MERGE_TRAIN_QUIET_SECONDS;
+
+	if ($ready) {
+		return ($completed === null) ? $quiet : $completed;
+	}
+
+	return $quiet;
+}
+
 // The train order of eligible PRs, each array('number', 'product_lines',
-// 'docs_only'): 'alone' the docs-only PRs, 'train' the others smaller first
-// up to MERGE_TRAIN_MAX_PRS within the size limit, 'later' the rest. A PR
-// over the limit rides only a train of its own, so a red train is easy to
-// blame: it is the train when no PR within the limit waits.
-function merge_train_order(array $prs)
+// 'docs_only', optional 'eligible_since'): 'alone' the docs-only PRs,
+// 'train' the others within the size limit, longest-waiting first (equal
+// waits smaller first) up to MERGE_TRAIN_MAX_PRS and, together, within
+// MERGE_TRAIN_TOTAL_LIMIT product lines, 'later' the rest: one that does not
+// fit waits at the head of the next train while a smaller one behind it
+// rides. A PR over the limit rides only a train of its
+// own, so a red train is easy to blame: it is the train when no PR within
+// the limit waits, or, given $now, when it has been eligible for
+// MERGE_TRAIN_OVERSIZED_WAIT_SECONDS or more (the longest-waiting one, ahead
+// of the small PRs, which take the next train). Small PRs arrive all day, so
+// without the wait an oversized PR would never ride.
+function merge_train_order(array $prs, $now = null)
 {
 	$alone = array();
 	$small = array();
@@ -199,13 +287,78 @@ function merge_train_order(array $prs)
 		return $out;
 	};
 
+	// Longest-waiting first: by size alone, small PRs that keep arriving
+	// would starve the larger ones under the limit. Equal waits fall back to
+	// the size order; an unknown wait goes after the known ones.
+	$by_wait = function ($a, $b) use ($by_size) {
+		$a_since = isset($a['eligible_since']) ? $a['eligible_since'] : null;
+		$b_since = isset($b['eligible_since']) ? $b['eligible_since'] : null;
+
+		if ($a_since !== $b_since) {
+			if ($a_since === null) {
+				return 1;
+			}
+
+			if ($b_since === null) {
+				return -1;
+			}
+
+			return ($a_since < $b_since) ? -1 : 1;
+		}
+
+		return $by_size($a, $b);
+	};
+
 	usort($alone, $by_size);
-	usort($small, $by_size);
+	usort($small, $by_wait);
 	usort($large, $by_size);
 
-	if ($small) {
-		$train = array_slice($small, 0, MERGE_TRAIN_MAX_PRS);
-		$later = array_merge(array_slice($small, MERGE_TRAIN_MAX_PRS), $large);
+	$overdue = array();
+
+	if ($now !== null) {
+		foreach ($large as $pr) {
+			if (isset($pr['eligible_since']) && (($now - $pr['eligible_since']) >= MERGE_TRAIN_OVERSIZED_WAIT_SECONDS)) {
+				$overdue[] = $pr;
+			}
+		}
+
+		// usort() is not stable before PHP 8, so equal waits fall back to
+		// the size order explicitly.
+		usort($overdue, function ($a, $b) use ($by_size) {
+			if ($a['eligible_since'] !== $b['eligible_since']) {
+				return ($a['eligible_since'] < $b['eligible_since']) ? -1 : 1;
+			}
+
+			return $by_size($a, $b);
+		});
+	}
+
+	if ($overdue) {
+		$train = array($overdue[0]);
+		$rest = array();
+
+		foreach ($large as $pr) {
+			if ($pr['number'] !== $overdue[0]['number']) {
+				$rest[] = $pr;
+			}
+		}
+
+		$later = array_merge($small, $rest);
+	} elseif ($small) {
+		$train = array();
+		$later = array();
+		$lines = 0;
+
+		foreach ($small as $pr) {
+			if ((count($train) < MERGE_TRAIN_MAX_PRS) && (($lines + $pr['product_lines']) <= MERGE_TRAIN_TOTAL_LIMIT)) {
+				$train[] = $pr;
+				$lines += $pr['product_lines'];
+			} else {
+				$later[] = $pr;
+			}
+		}
+
+		$later = array_merge($later, $large);
 	} else {
 		$train = array_slice($large, 0, 1);
 		$later = array_slice($large, 1);
@@ -497,8 +650,21 @@ function merge_train_open_trains(array $open)
 	return $trains;
 }
 
-// The eligible PRs with their product lines, as merge_train_order() takes
-// them, plus 'title' and 'why' for the list.
+// The green PRs left out for an approval not given yet, as
+// merge_train_candidates() met them: with $add one more, without the list.
+function merge_train_waiting_approval($add = null)
+{
+	static $waiting = array();
+
+	if ($add !== null) {
+		$waiting[] = $add;
+	}
+
+	return $waiting;
+}
+
+// The eligible PRs with their product lines and eligible time, as
+// merge_train_order() takes them, plus 'title' and 'why' for the list.
 function merge_train_candidates()
 {
 	$open = merge_train_gh_all('pulls?state=open&base=development');
@@ -548,6 +714,14 @@ function merge_train_candidates()
 			continue;
 		}
 
+		// Screenshots the owner has not approved yet (architect-asking.md).
+		$approval = merge_train_approval_waiting($pr);
+
+		if ($approval > 0) {
+			merge_train_waiting_approval(array('number' => (int) $pr['number'], 'issue' => $approval, 'title' => $pr['title']));
+			continue;
+		}
+
 		$files = array();
 
 		foreach (merge_train_gh_all('pulls/' . $pr['number'] . '/files') as $file) {
@@ -560,6 +734,7 @@ function merge_train_candidates()
 			'docs_only' => merge_train_docs_only(array_keys($files)),
 			'title' => $pr['title'],
 			'why' => in_array('ready', $labels, true) ? 'ready' : 'quiet',
+			'eligible_since' => merge_train_eligible_since($runs, in_array('ready', $labels, true)),
 		);
 	}
 
@@ -617,7 +792,7 @@ function merge_train_list()
 		$by_number[$pr['number']] = $pr;
 	}
 
-	$order = merge_train_order($candidates);
+	$order = merge_train_order($candidates, time());
 	$headings = array('alone' => 'Land alone (docs, CLAUDE.md, .github only)', 'train' => 'Train', 'later' => 'A later train');
 
 	foreach ($headings as $group => $heading) {
@@ -631,6 +806,10 @@ function merge_train_list()
 		if (!$order[$group]) {
 			fwrite(STDOUT, "  none\n");
 		}
+	}
+
+	foreach (merge_train_waiting_approval() as $pr) {
+		fwrite(STDOUT, sprintf("Waits on the owner's approval (#%d): #%d %s\n", $pr['issue'], $pr['number'], $pr['title']));
 	}
 }
 
@@ -691,7 +870,12 @@ function merge_train_settle()
 			merge_train_run(array(PHP_BINARY, $tool), $out);
 			fwrite(STDOUT, $out);
 
-			foreach ($generated[$kind] as $path) {
+			// The generator also rewrites files of its kind that merged
+			// cleanly but now list stale content (a folder's INDEX.md beside
+			// a README that conflicted): they go into the commit too.
+			merge_train_run(array('git', 'status', '--porcelain', '--untracked-files=all'), $status);
+
+			foreach (array_unique(array_merge($generated[$kind], merge_train_generated_changed((string) $status, $kind))) as $path) {
 				merge_train_stage_if_clean($path);
 			}
 		}
@@ -700,13 +884,30 @@ function merge_train_settle()
 	return merge_train_unmerged();
 }
 
-// The generator that writes a path: 'index' (the memory README indexes and
-// the module list, memory_index.php), 'script' (.min.js bundles,
+// The paths of `git status --porcelain` output that $kind's generator
+// writes (merge_train_generated()), renames left out. Pure.
+function merge_train_generated_changed($porcelain, $kind)
+{
+	$paths = array();
+
+	foreach (explode("\n", str_replace("\r", '', $porcelain)) as $line) {
+		$path = trim(substr($line, 3));
+
+		if (($path !== '') && (strpos($path, ' -> ') === false) && (merge_train_generated($path) === $kind)) {
+			$paths[] = $path;
+		}
+	}
+
+	return $paths;
+}
+
+// The generator that writes a path: 'index' (the memory README and INDEX
+// files and the module list, memory_index.php), 'script' (.min.js bundles,
 // build_js.php), 'style' (.min.css stylesheets, build_css.php), or '' for a
 // file written by hand.
 function merge_train_generated($path)
 {
-	if (((strpos($path, 'docs/memory/') === 0) && (basename($path) === 'README.md')) || ($path === MERGE_TRAIN_MODULE_LIST)) {
+	if (((strpos($path, 'docs/memory/') === 0) && in_array(basename($path), array('README.md', 'INDEX.md'), true)) || ($path === MERGE_TRAIN_MODULE_LIST)) {
 		return 'index';
 	}
 
@@ -755,7 +956,7 @@ function merge_train_build(array $numbers, array $options)
 	$branch = merge_train_require_train_branch();
 
 	if (!$numbers) {
-		$order = merge_train_order(merge_train_candidates());
+		$order = merge_train_order(merge_train_candidates(), time());
 		$numbers = $order['train'];
 
 		if (!$numbers) {
@@ -772,6 +973,13 @@ function merge_train_build(array $numbers, array $options)
 
 		if (($pr['state'] !== 'open') || !empty($pr['draft'])) {
 			fwrite(STDOUT, "#$number is not open and ready; left out.\n");
+			continue;
+		}
+
+		$approval = merge_train_approval_waiting($pr);
+
+		if ($approval > 0) {
+			fwrite(STDOUT, "#$number waits on the owner's approval in #$approval; left out.\n");
 			continue;
 		}
 

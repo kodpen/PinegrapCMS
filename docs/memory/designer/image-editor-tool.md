@@ -4,6 +4,7 @@ description: The visual designer's "Edit image" on an image field: the field con
 ---
 
 ## How does the designer open the editor?
+- The editor itself (what it is, its decisions, browser and server): `ui/image-editor-overview.md`.
 - `sdOpenImageEditor(fieldId)` (`style_designer.src.js`) reads the field's address, keeps only a file of this site, and calls `window.openImageEditor({ fileName, onSaved })`: the alias of the image editor's loader, which `includes/designer_screen.php` prints with `pg_image_editor_includes()` (`ui/image-editor-callers.md`). The file is opened by name through `image_editor_api.php`.
 - The editor saves over the file; a file the operator may not write over (a design file for a manager, an animated picture) is saved as a copy (`platform/image-editor-save.md`).
 

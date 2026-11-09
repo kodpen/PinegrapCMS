@@ -19,8 +19,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 if (!defined('PG_FUNCTIONS_DIR')) {
@@ -333,6 +333,9 @@ function pg_designer_screen_render($ctx)
         'hiddenPages'   => $hidden_pages,
         // The assistant panel (assets/js/designer_ai.js): designers only.
         'ai'            => $sd_ai,
+        // The editor's parts not needed to open a page, run on first use
+        // (pg_designer_parts()): their file addresses by name.
+        'parts'         => (object) pg_designer_part_urls(array_merge(array('import', 'code', 'theme', 'fonts', 'interactions'), !empty($sd_ai['enabled']) ? array('ai') : array())),
         // The Translate section of the options panel: the site's other
         // languages, null on a site with one language.
         'translate'     => function_exists('pg_tr_editor_config') ? pg_tr_editor_config($user) : null,
@@ -549,23 +552,10 @@ function pg_designer_screen_render($ctx)
                                  narrow screens; the title still names it. -->
                             <button type="button" id="sd-ajax-save" name="submit_save" value="Save" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn" title="' . ($sd_component ? lang('Save') : lang('Publish')) . '"><span class="bi ' . ($sd_component ? 'bi-floppy' : 'bi-rocket-takeoff') . '" aria-hidden="true"></span><span class="sd-publish-txt">' . ($sd_component ? lang('Save') : lang('Publish')) . '</span></button>
                             ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? '<!-- A draft page has two actions: the main button saves it
-                                 (it stays a draft), this one puts it on the
-                                 site. Hidden while the page on screen is on
-                                 the site. -->
-                            <button type="button" id="sd-publish-page" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn d-none" title="' . h(lang('Publishes this page and saves the design.')) . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>
-                            <!-- Draft or on the site: this page, or every page of the design.
-                                 Each item sets the state and saves, the same
-                                 save the main button makes. -->
-                            <div class="pg-menu-wrap sd-publish-more">
-                                <button type="button" id="sd-publish-more" class="sd-icon-btn sd-icon-btn-primary sd-publish-more-btn" data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" title="' . h(lang('Publishing options')) . '" aria-label="' . h(lang('Publishing options')) . '"><span class="bi bi-chevron-down" aria-hidden="true"></span></button>
-                                <ul data-bs-theme="dark" class="menu pg-menu-end">
-                                    <li><button type="button" class="menu-item" data-sd-status="page-draft"><span class="bi bi-eye-slash me-3" aria-hidden="true"></span>' . lang('Save this page as a draft') . '</button></li>
-                                    <li><button type="button" class="menu-item" data-sd-status="page-publish"><span class="bi bi-rocket-takeoff me-3" aria-hidden="true"></span>' . lang('Publish this page') . '</button></li>
-                                    <li><hr class="menu-divider"></li>
-                                    <li><button type="button" class="menu-item" data-sd-status="all-draft"><span class="bi bi-cloud-slash me-3" aria-hidden="true"></span>' . lang('Take every page of the design off the site') . '</button></li>
-                                    <li><button type="button" class="menu-item" data-sd-status="all-publish"><span class="bi bi-cloud-check me-3" aria-hidden="true"></span>' . lang('Publish every page of the design') . '</button></li>
-                                </ul>
-                            </div>' : '') . '
+                                 (it stays a draft), this one opens the Publish
+                                 sheet. Hidden while the page on screen is on
+                                 the site, where the main button opens it. -->
+                            <button type="button" id="sd-publish-page" class="sd-icon-btn sd-icon-btn-primary sd-publish-btn d-none" title="' . h(lang('Choose the pages to put on the site.')) . '"><span class="bi bi-rocket-takeoff" aria-hidden="true"></span><span class="sd-publish-txt">' . lang('Publish') . '</span></button>' : '') . '
                             <a href="#" id="sd-view-page" class="sd-icon-btn" target="_blank" rel="noopener" title="' . lang('View Page') . '" style="display:none"><span class="bi bi-box-arrow-up-right"></span></a>
                         </div>
                     </div>
@@ -590,6 +580,7 @@ function pg_designer_screen_render($ctx)
                 ' . pg_designer_settings_modal($ctx) . '
                 ' . pg_designer_ai_alt_template($ctx) . '
                 ' . pg_designer_pick_page_modal() . '
+                ' . (($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready() && !$sd_component) ? pg_designer_publish_sheet() : '') . '
                 ' . pg_designer_import_modal() . '
                 ' . pg_designer_make_template_modal() . '
             </form>
@@ -651,9 +642,9 @@ function pg_designer_screen_render($ctx)
         <!-- For the Prototype view: the graph canvas core, the link resolver and the link
              collector: they only define their globals, so no defer. -->
         ' . pg_js_bundle_tags('assets/js/pg_graph_canvas.min.js', false) . pg_js_bundle_tags('assets/js/pg_link_resolve.min.js', false) . pg_js_bundle_tags('assets/js/pg_proto_hotspots.min.js', false) . '
+        <script src="assets/js/pg_designer_publish.js?v=' . pg_designer_asset_stamp('assets/js/pg_designer_publish.js') . '"></script>
         ' . pg_js_bundle_tags('assets/js/style_designer.min.js', false) . '
         ' . pg_ai_write_assets() . '
-        ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
         <script>
             $(document).ready(function() {
                 StyleDesigner.init({
@@ -697,7 +688,7 @@ function pg_designer_screen_render($ctx)
                 if (_saveBtn) {
                     _saveBtn.addEventListener("click", function (e) {
                         e.preventDefault();
-                        StyleDesigner.saveAjax({ button: _saveBtn });
+                        StyleDesigner.publish({ button: _saveBtn });
                     });
                 }
             });
@@ -2735,6 +2726,59 @@ function pg_designer_pick_page_modal()
                         <div class="list-group list-group-flush" id="sd-pick-page-list">
                             <div class="list-group-item bg-transparent fg-secondary small">' . lang('Loading...') . '</div>
                         </div>
+                    </div>
+        </dialog>';
+}
+
+/**
+ * The Publish sheet (assets/js/pg_designer_publish.js): every page of the
+ * design with its state and whether it changed, checkboxes for the pages to
+ * put on the site, "Publish selected", and the two actions that keep pages
+ * off the site. The rows are drawn by the script; the texts it shows are
+ * the hidden data-sdp-text spans. During the save the sheet stays open and
+ * the Publish button shows progress; after it, data-sdp-result lists where
+ * each page went and Done closes the sheet.
+ */
+function pg_designer_publish_sheet()
+{
+    $texts = array(
+        'state-live'      => lang('On the site'),
+        'state-draft'     => lang('Draft'),
+        'state-scheduled' => lang('Scheduled'),
+        'state-held'      => lang('Held by an experiment'),
+        'changed'         => lang('Changed'),
+        'locked'          => lang('No content rights'),
+        'busy'            => lang('Publishing…'),
+        'result-live'     => lang('On the site now'),
+        'result-draft'    => lang('Stayed drafts, off the site'),
+        'result-kept'     => lang('Not saved: the changes stay in the editor'),
+    );
+    $spans = '';
+    foreach ($texts as $k => $v) {
+        $spans .= '<span data-sdp-text="' . h($k) . '">' . h($v) . '</span>';
+    }
+
+    return '
+        <dialog class="dialog dialog-scrollable" id="sdPublishSheet" aria-labelledby="sdPublishSheetLabel" data-bs-theme="dark" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
+                    <div class="dialog-header" style="border-color:#30363d;">
+                        <h5 class="dialog-title fs-md" id="sdPublishSheetLabel"><span class="bi bi-rocket-takeoff me-3" aria-hidden="true"></span>' . h(lang('Publish')) . '</h5>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="dialog-body p-0">
+                        <div class="d-flex align-items-center gap-3 px-5 pt-4 pb-3" data-sdp-pick>
+                            <p class="small fg-secondary mb-0 flex-grow-1">' . h(lang('The checked pages go on the site with one save. Drafts left unchecked are saved and stay off the site.')) . '</p>
+                            <button type="button" class="btn btn-sm btn-text theme-primary text-nowrap" data-sdp-act="all">' . h(lang('Select all')) . '</button>
+                        </div>
+                        <div class="list-group list-group-flush" data-sdp-list></div>
+                        <div class="d-none pb-3" data-sdp-result aria-live="polite"></div>
+                        <p class="small fg-warning px-5 pt-3 mb-0 d-none" data-sdp-hold-note><span class="bi bi-exclamation-triangle me-1" aria-hidden="true"></span>' . h(lang('Unchecked changed pages are not saved: their changes stay in the editor and the site keeps the version it has.')) . '</p>
+                        <div class="d-none" aria-hidden="true">' . $spans . '</div>
+                    </div>
+                    <div class="dialog-footer flex-wrap gap-2" style="border-color:#30363d;">
+                        <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="page-draft"><span class="bi bi-eye-slash me-2" aria-hidden="true"></span>' . h(lang('Save this page as a draft')) . '</button>
+                        <button type="button" class="btn btn-sm btn-outline theme-secondary d-none" data-sdp-act="all-draft"><span class="bi bi-cloud-slash me-2" aria-hidden="true"></span>' . h(lang('Take every page of the design off the site')) . '</button>
+                        <button type="button" class="btn btn-sm btn-solid theme-primary ms-auto" data-sdp-act="publish"><span class="bi bi-rocket-takeoff me-2" aria-hidden="true"></span>' . h(lang('Publish selected')) . '</button>
+                        <button type="button" class="btn btn-sm btn-solid theme-primary ms-auto d-none" data-sdp-act="done">' . h(lang('Done')) . '</button>
                     </div>
         </dialog>';
 }

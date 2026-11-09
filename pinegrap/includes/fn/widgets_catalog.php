@@ -59,6 +59,35 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //
 // URL parameters (shared with form_list_view):  page_number, query
 
+/**
+ * The catalog listing's search condition over some columns, with the values
+ * written in (the listing's count and page queries and the sub-group cards
+ * are built as text): the word found in any of the columns, with I, İ, ı and
+ * i as one letter (pg_list_search_where(), the rule of the site search and
+ * the panel lists). Pure apart from e(), which adds slashes without a
+ * connection.
+ *
+ * @param string $search_query
+ * @param array  $columns SQL columns, written into the query as they are
+ * @param string $charset pg_list_search_connection_charset(); '' leaves out the fold
+ * @return string '(… OR …)'
+ */
+function pg_catalog_listing_search_sql($search_query, array $columns, $charset)
+{
+    $where = pg_list_search_where(array((string) $search_query), $columns, array(), (string) $charset);
+
+    // The placeholders are the only "?" of the condition: the columns are
+    // trusted names and the values are not in it yet.
+    $pieces = explode('?', $where['sql']);
+    $sql = array_shift($pieces);
+
+    foreach ($pieces as $index => $piece) {
+        $sql .= "'" . e(isset($where['params'][$index]) ? (string) $where['params'][$index] : '') . "'" . $piece;
+    }
+
+    return $sql;
+}
+
 // ============================================================================
 // Recursive helper: build a nested <ul>/<li> tree of product_groups starting
 // at $parent_id. Used by both the new `group_tree` binding section and the
@@ -676,6 +705,9 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
  * against its components bought one by one at their own prices, with the
  * currency sign as the discount amount is written, '' when there is none.
  * The saving is read from the price the visitor pays (an offer included).
+ * It is text, escaped with the card's other values: the sign stored as an
+ * entity (&#8378;) is its character, as escaping the entity would show it
+ * as "&#8378;".
  *
  * @param bool   $is_bundle
  * @param array  $contents        the bundle's components (pg_bundle_contents_of())
@@ -689,7 +721,7 @@ function _pg_catalog_bundle_values($is_bundle, $contents, $price_cents, $currenc
 
     return array(
         '__is_bundle'               => $is_bundle ? '1' : '0',
-        '__bundle_saving_formatted' => ($saving > 0) ? pg_visitor_money($saving / 100, $currency_symbol) : '',
+        '__bundle_saving_formatted' => ($saving > 0) ? pg_visitor_money_text($saving / 100, $currency_symbol) : '',
     );
 }
 
@@ -1174,7 +1206,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                             ? $cfg['search_width'] : 'full';
     $search_width_cls = $search_width_map[$search_width_key];
     $search_label = (isset($cfg['search_label']) && is_string($cfg['search_label']) && $cfg['search_label'] !== '')
-                        ? substr($cfg['search_label'], 0, 100) : (string)lang('Search...');
+                        ? mb_substr($cfg['search_label'], 0, 100, 'UTF-8') : (string)lang('Search...');
 
     $empty_message = (isset($cfg['empty_message']) && is_string($cfg['empty_message']) && $cfg['empty_message'] !== '')
                         ? $cfg['empty_message'] : (string)lang('No products found.');
@@ -1538,24 +1570,23 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // ("yeşil" should find products with Renk=Yeşil attribute). Result
         // was inconsistent search ("kısmen çalışıyor"). Wider field set
         // makes search match visitor expectations across the board.
-        // A % or _ the visitor types is a plain character, not a wildcard.
-        $q_like = e(pg_list_like_pattern($search_query));
+        // A % or _ the visitor types is a plain character, not a wildcard,
+        // and I, İ, ı and i are one letter, as in the site search: a plain
+        // LIKE under utf8mb4_unicode_ci keeps ı apart, so "LAMBASI" missed
+        // "Masa Lambası".
+        $_pg_search_charset = pg_list_search_connection_charset();
         $extra_conditions .= " AND (
-              products.name              LIKE '$q_like'
-           OR products.short_description LIKE '$q_like'
-           OR products.full_description  LIKE '$q_like'
-           OR products.details           LIKE '$q_like'
-           OR products.keywords          LIKE '$q_like'
-           OR products.meta_keywords     LIKE '$q_like'
-           OR products.meta_description  LIKE '$q_like'
-           OR products.address_name      LIKE '$q_like'
+              " . pg_catalog_listing_search_sql($search_query, array(
+                  'products.name', 'products.short_description', 'products.full_description', 'products.details',
+                  'products.keywords', 'products.meta_keywords', 'products.meta_description', 'products.address_name',
+              ), $_pg_search_charset) . "
            OR EXISTS (
                 SELECT 1
                 FROM products_attributes_xref _pas
                 INNER JOIN product_attribute_options _pao
                   ON _pao.id = _pas.option_id
                 WHERE _pas.product_id = products.id
-                  AND _pao.label LIKE '$q_like'
+                  AND " . pg_catalog_listing_search_sql($search_query, array('_pao.label'), $_pg_search_charset) . "
               )
         ) ";
     }
@@ -1965,7 +1996,6 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $price_decimal        = $price_cents / 100;
         $original_price_dec   = $original_price_cents / 100;
         $price_formatted      = pg_visitor_money($price_decimal, $currency_symbol);
-        $original_price_formatted = pg_visitor_money($original_price_dec, $currency_symbol);
         $has_discount         = ($price_cents < $original_price_cents) ? 1 : 0;
         $disc_save_cents      = $original_price_cents - $price_cents;
         $disc_save_pct        = ($original_price_cents > 0 && $disc_save_cents > 0)
@@ -2026,12 +2056,13 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             // CSS rule). The `__price`/`__price_formatted` token is the
             // SOLE price visible in that case. When a discount IS active,
             // both tokens have values → the designer's strike-through +
-            // discounted price both render.
+            // discounted price both render. The two amounts are text,
+            // escaped with the rest of the map below.
             '__original_price'           => $has_discount ? number_format($original_price_dec, 2, '.', '') : '',
-            '__original_price_formatted' => $has_discount ? $original_price_formatted : '',
+            '__original_price_formatted' => $has_discount ? pg_visitor_money_text($original_price_dec, $currency_symbol) : '',
             '__has_discount'             => (string)$has_discount,
             '__discount_amount'          => $disc_save_cents > 0 ? number_format($disc_save_cents / 100, 2, '.', '') : '',
-            '__discount_amount_formatted'=> $disc_save_cents > 0 ? pg_visitor_money($disc_save_cents / 100, $currency_symbol) : '',
+            '__discount_amount_formatted'=> $disc_save_cents > 0 ? pg_visitor_money_text($disc_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $disc_save_pct > 0 ? (string)$disc_save_pct : '',
             // The price before the discount the shop's rule names
             // (Settings › Ecommerce › Reference Price); both empty when
@@ -2566,7 +2597,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // behind a click and quoted the whole group's price range, not the
         // matching items' — it read as a result that did not match.
         if ($search_active) {
-            $_q = e(pg_list_like_pattern($search_query));
+            $_q_sql = pg_catalog_listing_search_sql($search_query, array('product_groups.name', 'product_groups.short_description', 'product_groups.address_name'), pg_list_search_connection_charset());
             $children = db_items(
                 "SELECT product_groups.id, product_groups.name, product_groups.address_name,
                        product_groups.image_name, product_groups.short_description,
@@ -2576,11 +2607,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 FROM product_groups
                 WHERE product_groups.parent_id = '" . $_pg_parent_filter . "'
                   AND product_groups.enabled = 1
-                  AND (
-                       product_groups.name              LIKE '$_q'
-                    OR product_groups.short_description LIKE '$_q'
-                    OR product_groups.address_name      LIKE '$_q'
-                  )
+                  AND " . $_q_sql . "
                 ORDER BY product_groups.sort_order ASC, product_groups.name ASC"
             );
         } else {
@@ -2743,7 +2770,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                     // designer's "indirim" markup works on group cards too.
                     '__has_discount'             => $_pg_grp_disc ? '1' : '0',
                     '__original_price'           => ($_pg_grp_disc && $_pg_grp_orig > 0) ? number_format($_pg_grp_orig / 100, 2, '.', '') : '',
-                    '__original_price_formatted' => ($_pg_grp_disc && $_pg_grp_orig > 0) ? pg_visitor_money($_pg_grp_orig / 100, $currency_symbol) : '',
+                    '__original_price_formatted' => ($_pg_grp_disc && $_pg_grp_orig > 0) ? pg_visitor_money_text($_pg_grp_orig / 100, $currency_symbol) : '',
                     '__has_variants'      => '1',
                     // Real product count in the subtree (was hard-coded 1/0).
                     '__variant_count'     => $_pg_gp ? (string)(int)$_pg_gp['count'] : '0',
@@ -4789,6 +4816,21 @@ function _pg_civ_fill_payment_methods(&$tree, $rows)
     }
 }
 
+/**
+ * The inline script that hands a product group's variants to
+ * pg_civ_variants.js. Tags and ampersands in the JSON are written as \u
+ * escapes, so a description holding "</script>" cannot end the script.
+ *
+ * @param array $variant_data
+ * @return string
+ */
+function pg_civ_variants_script($variant_data)
+{
+    return '<script>window.pgCivVariants = window.pgCivVariants || [];'
+        . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) . ');'
+        . '</script>';
+}
+
 // ============================================================================
 // Render a catalog_item_view system widget — single product detail.
 //
@@ -5493,7 +5535,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         }
         // The price before the discount of every variant, in one read for
         // the group (pg_price_reference_page()); the variant script swaps
-        // reference_price / reference_label with the rest.
+        // reference_price / reference_label with the rest. It writes the
+        // payload's prices as HTML (innerHTML), so the token's text is
+        // escaped for it.
         $_civ_ref_items = array();
         foreach ($vproducts as $_pid => $_vp) {
             $_civ_ref_items[$_pid] = array('price' => (int)$_vp['price_cents'], 'reduced' => (int)$_vp['price_cents'] < (int)$_vp['original_price_cents']);
@@ -5501,7 +5545,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_references = pg_price_reference_page($_civ_ref_items);
         foreach ($vproducts as $_pid => &$_vp_ref3) {
             $_vp_ref_tokens = pg_price_reference_tokens(isset($_civ_references[$_pid]) ? $_civ_references[$_pid] : null, $currency_symbol);
-            $_vp_ref3['reference_price'] = $_vp_ref_tokens['__reference_price'];
+            $_vp_ref3['reference_price'] = h($_vp_ref_tokens['__reference_price']);
             $_vp_ref3['reference_label'] = $_vp_ref_tokens['__reference_label'];
         }
         unset($_vp_ref3);
@@ -5824,7 +5868,6 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $price_decimal            = $price_cents / 100;
         $original_price_decimal   = $original_price_cents / 100;
         $price_formatted          = pg_visitor_money($price_decimal, $currency_symbol);
-        $original_price_formatted = pg_visitor_money($original_price_decimal, $currency_symbol);
         $has_discount             = ($price_cents < $original_price_cents) ? 1 : 0;
         $discount_save_cents      = $original_price_cents - $price_cents;
         // The variant read above already holds the product shown; a plain
@@ -5893,12 +5936,13 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // EMPTY when no discount applies → the designer's bound
             // strike-through element auto-hides (via CSS :empty rule).
             // Only when an actual offer is in effect do these tokens
-            // carry the original price for visible strike-through.
+            // carry the original price for visible strike-through. The
+            // amounts are text, escaped with the rest of the map.
             '__original_price'           => $has_discount ? number_format($original_price_decimal, 2, '.', '') : '',
-            '__original_price_formatted' => $has_discount ? $original_price_formatted : '',
+            '__original_price_formatted' => $has_discount ? pg_visitor_money_text($original_price_decimal, $currency_symbol) : '',
             '__has_discount'             => (string)$has_discount,
             '__discount_amount'          => $discount_save_cents > 0 ? number_format($discount_save_cents / 100, 2, '.', '') : '',
-            '__discount_amount_formatted'=> $discount_save_cents > 0 ? pg_visitor_money($discount_save_cents / 100, $currency_symbol) : '',
+            '__discount_amount_formatted'=> $discount_save_cents > 0 ? pg_visitor_money_text($discount_save_cents / 100, $currency_symbol) : '',
             '__discount_percent'         => $discount_save_pct > 0 ? (string)$discount_save_pct : '',
             // The price before the discount the shop's rule names; the
             // variant payload carries the same per variant.
@@ -6260,9 +6304,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
         $_civ_v_v   = '10';  // bump on pg_civ_variants.js source changes
-        $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
-            . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
-            . '</script>'
+        $_civ_variant_script = pg_civ_variants_script($variant_data)
             . '<script src="' . h($_civ_v_base) . 'pg_civ_variants.js?v=' . $_civ_v_v . '" defer></script>';
     }
 

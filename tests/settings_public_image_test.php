@@ -46,12 +46,21 @@ function test_public_image_choice_verdict()
 	pg_assert_true(pg_public_image_choice_verdict('old.gif', 'old.gif', $types, array('type' => 'gif', 'attachment' => '0', 'erp_doc_type' => '', 'public' => true)), 'a stored public file of another type is kept');
 }
 
-// The four pickers read the shared filter, the four saves the shared check.
+// The four pickers search with the shared filter (file_picker_search.php),
+// the four saves read the shared check.
 function test_public_image_pickers_and_saves_wired()
 {
 	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
-	pg_assert_same(2, substr_count($prep, 'AND " . pg_public_image_files_where()'), 'the site icon list and the share image, logo and app icon list');
+	pg_assert_same(1, substr_count($prep, "pg_file_picker_attributes('site_icon')"), 'the site icon searches PNG and SVG pictures visitors may open');
+	pg_assert_same(3, substr_count($prep, "pg_file_picker_attributes('public_image')"), 'the share image, logo and app icon search the public pictures');
+	pg_assert_false(strpos($prep, 'SELECT name FROM files WHERE ((type = \'png\')') !== false, 'the site icon no longer lists every file');
 	pg_assert_false(strpos($prep, 'AND (attachment = 0) ORDER BY') !== false, 'no list filters on attachment alone');
+
+	$kinds = pg_file_picker_kinds();
+	pg_assert_true($kinds['site_icon']['public'] && $kinds['public_image']['public'], 'both kinds keep to the public folders');
+	pg_assert_same(array('png', 'svg'), $kinds['site_icon']['types']);
+	pg_assert_same(pg_public_image_file_types(), $kinds['public_image']['types']);
+	pg_assert_contains('pg_public_image_files_where()', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/file_picker_search.php'), 'the search applies the shared filter');
 
 	$seo = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/seo.save.php');
 	pg_assert_contains("pg_public_image_choice_ok(\$site_icon_input", $seo);
@@ -62,8 +71,10 @@ function test_public_image_pickers_and_saves_wired()
 	pg_assert_contains("pg_public_image_choice_ok(\$organization_logo_input", $general);
 
 	foreach (array('$site_icon', '$og_default_image', '$organization_logo', '$app_icon') as $value) {
-		pg_assert_contains('pg_public_image_stored_option(' . $value . ')', $prep, 'a stored value the list lacks is marked: ' . $value);
+		pg_assert_contains('pg_file_picker_public_options(' . $value . ', ', $prep, 'the stored value is printed and marked: ' . $value);
 	}
+
+	pg_assert_contains('pg_public_image_stored_option($value)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/file_picker_search.php'), 'through the shared mark');
 }
 
 // Public along the parent chain, never in the Recycle Bin.

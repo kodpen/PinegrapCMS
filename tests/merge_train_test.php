@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the pure parts of tools/merge_train.php: which PRs may ride a
- * train and in what order, the product-line count, reading the Changelog
+ * train and in what order, an approval the owner has not given yet, the product-line count, reading the Changelog
  * section of a PR body and writing it into changelog.txt, quoting a
  * command's arguments on Windows.
  *
@@ -68,6 +68,7 @@ function test_merge_train_docs_only()
 function test_merge_train_generated_and_sources()
 {
 	pg_assert_same('index', merge_train_generated('docs/memory/ui/README.md'));
+	pg_assert_same('index', merge_train_generated('docs/memory/ui/INDEX.md'));
 	pg_assert_same('index', merge_train_generated('docs/memory/core/fn-modules.md'));
 	pg_assert_same('script', merge_train_generated('pinegrap/assets/js/pg_image_editor.min.js'));
 	pg_assert_same('style', merge_train_generated('pinegrap/assets/css/pg_image_editor.min.css'));
@@ -109,6 +110,24 @@ function test_merge_train_eligible()
 	pg_assert_false(merge_train_eligible(array(), true, $now - 3599, $now));
 	pg_assert_false(merge_train_eligible(array('ready'), false, $now - 7200, $now));
 	pg_assert_false(merge_train_eligible(array('ready-for-review'), true, $now - 60, $now));
+}
+
+// A PR naming an approval issue waits for the owner's decision comment.
+function test_merge_train_approval_issue_and_answer()
+{
+	pg_assert_same(8229, merge_train_approval_issue("Approval: #8229 (the owner approves the screenshots before merge).\n\nStep V3"));
+	pg_assert_same(6565, merge_train_approval_issue("Step B11.\n\napproval: #6565"));
+	pg_assert_same(0, merge_train_approval_issue('Fixes the approval screen (#6565).'));
+
+	$analysis = "## Mimar analizi\n**Türkçe özet:** Onay sorusu, karar sahibin.";
+
+	pg_assert_false(merge_train_approval_given(array()));
+	pg_assert_false(merge_train_approval_given(array($analysis)));
+	pg_assert_true(merge_train_approval_given(array($analysis, "**Karar (sahip):** Onaylıyorum — #6562 indiği gibi kalır.")));
+	pg_assert_true(merge_train_approval_given(array("## Karar (sahip)\nOnaylandı. #6384'ün görünümü")));
+	pg_assert_true(merge_train_approval_given(array("Decision (owner): Approved.")));
+	pg_assert_false(merge_train_approval_given(array("## Karar (sahip)\nDeğişiklik istiyorum: başlık daha küçük.")));
+	pg_assert_false(merge_train_approval_given(array("Onaylıyorum seçeneği listede.")));
 }
 
 // Only a branch of this repository rides a train: a fork's branch, a deleted
@@ -155,7 +174,7 @@ function test_merge_train_branch_name()
 	pg_assert_same('merge-train/20261026-2105', merge_train_branch_name(gmmktime(21, 5, 0, 10, 26, 2026)));
 }
 
-// Docs-only PRs land alone; the rest smaller first, up to twelve; a PR over
+// Docs-only PRs land alone; the rest (no wait known) smaller first, up to twelve; a PR over
 // the size limit rides only a train of its own.
 function test_merge_train_order()
 {
@@ -188,6 +207,61 @@ function test_merge_train_order_caps_the_train()
 	pg_assert_same(array(2013, 2014), $order['later']);
 }
 
+// PRs within the limit ride longest-waiting first, so a large one under the
+// limit is not starved by smaller ones that keep arriving; equal waits
+// smaller first, an unknown wait after the known ones.
+function test_merge_train_order_small_longest_waiting_first()
+{
+	$now = strtotime('2026-11-07T17:00:00Z');
+	$prs = array(
+		array('number' => 1930, 'product_lines' => 20, 'docs_only' => false, 'eligible_since' => $now - 600),
+		array('number' => 1931, 'product_lines' => 979, 'docs_only' => false, 'eligible_since' => $now - 10800),
+		array('number' => 1932, 'product_lines' => 5, 'docs_only' => false, 'eligible_since' => null),
+		array('number' => 1933, 'product_lines' => 818, 'docs_only' => false, 'eligible_since' => $now - 9000),
+		array('number' => 1934, 'product_lines' => 100, 'docs_only' => false, 'eligible_since' => $now - 600),
+		array('number' => 1935, 'product_lines' => 1500, 'docs_only' => false, 'eligible_since' => $now - 60),
+	);
+
+	$expected = array('alone' => array(), 'train' => array(1931, 1933, 1930, 1934, 1932), 'later' => array(1935));
+	pg_assert_same($expected, merge_train_order($prs, $now));
+	pg_assert_same($expected, merge_train_order($prs));
+
+	// The cap keeps the longest-waiting twelve.
+	$prs = array();
+
+	for ($i = 1; $i <= 14; $i++) {
+		$prs[] = array('number' => 2100 + $i, 'product_lines' => 15 - $i, 'docs_only' => false, 'eligible_since' => $now - (1000 * $i));
+	}
+
+	$order = merge_train_order($prs, $now);
+	pg_assert_same(array(2114, 2113, 2112), array_slice($order['train'], 0, 3));
+	pg_assert_same(12, count($order['train']));
+	pg_assert_same(array(2102, 2101), $order['later']);
+}
+
+// Together the train stays within MERGE_TRAIN_TOTAL_LIMIT product lines: a
+// PR that does not fit waits at the head of the next train, while a smaller
+// one behind it still rides.
+function test_merge_train_order_total_limit()
+{
+	$now = strtotime('2026-11-07T22:00:00Z');
+	$prs = array(
+		array('number' => 2201, 'product_lines' => 660, 'docs_only' => false, 'eligible_since' => $now - 5000),
+		array('number' => 2202, 'product_lines' => 522, 'docs_only' => false, 'eligible_since' => $now - 4000),
+		array('number' => 2203, 'product_lines' => 499, 'docs_only' => false, 'eligible_since' => $now - 3000),
+		array('number' => 2204, 'product_lines' => 781, 'docs_only' => false, 'eligible_since' => $now - 2000),
+		array('number' => 2205, 'product_lines' => 246, 'docs_only' => false, 'eligible_since' => $now - 1000),
+	);
+
+	pg_assert_same(2000, MERGE_TRAIN_TOTAL_LIMIT);
+	pg_assert_same(array('alone' => array(), 'train' => array(2201, 2202, 2203, 2205), 'later' => array(2204)), merge_train_order($prs, $now));
+
+	// The next train starts with the one left behind.
+	$prs = array($prs[3], array('number' => 2206, 'product_lines' => 990, 'docs_only' => false, 'eligible_since' => $now - 500),
+		array('number' => 2207, 'product_lines' => 300, 'docs_only' => false, 'eligible_since' => $now - 100));
+	pg_assert_same(array('alone' => array(), 'train' => array(2204, 2206), 'later' => array(2207)), merge_train_order($prs, $now));
+}
+
 // With only oversized PRs waiting, the smallest of them is a train alone.
 function test_merge_train_order_oversized_alone()
 {
@@ -197,6 +271,60 @@ function test_merge_train_order_oversized_alone()
 	);
 
 	pg_assert_same(array('alone' => array(), 'train' => array(1905), 'later' => array(1902)), merge_train_order($prs));
+}
+
+// Small PRs arrive all day, so an oversized PR that has waited an hour or
+// more since it became eligible takes the next train, alone, ahead of them;
+// the longest-waiting one first.
+function test_merge_train_order_oversized_after_an_hour()
+{
+	$now = 1700000000;
+	$prs = array(
+		array('number' => 1910, 'product_lines' => 40, 'docs_only' => false, 'eligible_since' => $now - 60),
+		array('number' => 1911, 'product_lines' => 1500, 'docs_only' => false, 'eligible_since' => $now - 3600),
+		array('number' => 1912, 'product_lines' => 1100, 'docs_only' => false, 'eligible_since' => $now - 1800),
+		array('number' => 1913, 'product_lines' => 1300, 'docs_only' => false, 'eligible_since' => $now - 7200),
+		array('number' => 1914, 'product_lines' => 0, 'docs_only' => true, 'eligible_since' => $now - 60),
+	);
+
+	pg_assert_same(array(
+		'alone' => array(1914),
+		'train' => array(1913),
+		'later' => array(1910, 1912, 1911),
+	), merge_train_order($prs, $now));
+}
+
+// Under an hour, or without the time, small PRs still go first.
+function test_merge_train_order_oversized_waits_under_an_hour()
+{
+	$now = 1700000000;
+	$prs = array(
+		array('number' => 1920, 'product_lines' => 40, 'docs_only' => false, 'eligible_since' => $now),
+		array('number' => 1921, 'product_lines' => 1500, 'docs_only' => false, 'eligible_since' => $now - 3599),
+	);
+	$expected = array('alone' => array(), 'train' => array(1920), 'later' => array(1921));
+
+	pg_assert_same($expected, merge_train_order($prs, $now));
+	pg_assert_same($expected, merge_train_order($prs));
+
+	// Equal waits: the smaller PR first.
+	$prs[] = array('number' => 1922, 'product_lines' => 1200, 'docs_only' => false, 'eligible_since' => $now - 3599);
+	$prs[1]['eligible_since'] = $now - 4000;
+	$prs[2]['eligible_since'] = $now - 4000;
+	pg_assert_same(array('alone' => array(), 'train' => array(1922), 'later' => array(1920, 1921)), merge_train_order($prs, $now));
+}
+
+// A ready PR is eligible from its last green check run, a quiet one from an
+// hour after its first check run started.
+function test_merge_train_eligible_since()
+{
+	$runs = array(
+		array('started_at' => '2026-11-07T00:00:00Z', 'completed_at' => '2026-11-07T00:03:00Z'),
+		array('started_at' => '2026-11-07T00:00:05Z', 'completed_at' => '2026-11-07T00:08:00Z'),
+	);
+
+	pg_assert_same(strtotime('2026-11-07T00:08:00Z'), merge_train_eligible_since($runs, true));
+	pg_assert_same(strtotime('2026-11-07T01:00:00Z'), merge_train_eligible_since($runs, false));
 }
 
 function test_merge_train_changelog_section()
@@ -289,3 +417,13 @@ function test_merge_train_changelog_apply_without_version()
 	pg_assert_same(false, merge_train_changelog_apply("No versions here.\n", $entry));
 }
 
+// After a generator runs, the files of its kind that merged cleanly but were
+// rewritten are staged as well as the conflicted ones.
+function test_merge_train_generated_changed()
+{
+	$status = "UU docs/memory/ui/README.md\n M docs/memory/ui/INDEX.md\n M pinegrap/changelog.txt\n?? docs/memory/erp/INDEX.md\nR  docs/memory/a.md -> docs/memory/b/README.md\n M pinegrap/assets/js/pg_dash.min.js\n";
+
+	pg_assert_same(array('docs/memory/ui/README.md', 'docs/memory/ui/INDEX.md', 'docs/memory/erp/INDEX.md'), merge_train_generated_changed($status, 'index'));
+	pg_assert_same(array('pinegrap/assets/js/pg_dash.min.js'), merge_train_generated_changed($status, 'script'));
+	pg_assert_same(array(), merge_train_generated_changed('', 'index'));
+}

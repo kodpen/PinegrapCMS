@@ -382,9 +382,11 @@ function pg_search_promoted_row(array $entry)
 
     $url = $path . encode_url_path($name) . substr($address, strlen($name));
 
-    if (function_exists('pg_tr_text')) {
-        $title = pg_tr_text($title, 'text', 'seo');
-        $excerpt = pg_tr_text($excerpt, 'text', 'seo');
+    // Another page's words: they never keep the results page out of the
+    // search engines (pg_tr_data_text()).
+    if (function_exists('pg_tr_data_text')) {
+        $title = pg_tr_data_text($title, 'text', 'seo');
+        $excerpt = pg_tr_data_text($excerpt, 'text', 'seo');
     }
 
     return array(

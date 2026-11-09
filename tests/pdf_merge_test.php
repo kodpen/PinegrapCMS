@@ -117,6 +117,34 @@ function test_pdf_merge_keeps_every_page_in_order()
 	pg_assert_true(strpos($merged, '/ObjStm') === false, 'object streams unpacked');
 }
 
+// A document whose page tree lists its pages in another order than the
+// objects stand in the file keeps the page tree's order.
+function test_pdf_merge_keeps_the_page_tree_order()
+{
+	$one = "BT /F1 12 Tf 10 10 Td (PAGE ONE) Tj ET";
+	$two = "BT /F1 12 Tf 10 10 Td (PAGE TWO) Tj ET";
+	$pdf = pdf_merge_test_document(array(
+		1 => "<< /Type /Catalog /Pages 2 0 R >>",
+		2 => "<< /Type /Pages /Kids [4 0 R 3 0 R] /Count 2 /MediaBox [0 0 100 100] >>",
+		3 => "<< /Type /Page /Parent 2 0 R /Contents 6 0 R >>",
+		4 => "<< /Type /Page /Parent 2 0 R /Contents 5 0 R >>",
+		5 => "<< /Length " . strlen($one) . " >>\nstream\n" . $one . "\nendstream",
+		6 => "<< /Length " . strlen($two) . " >>\nstream\n" . $two . "\nendstream",
+	), 1);
+
+	$merged = pg_pdf_merge(array($pdf, pdf_merge_test_one()));
+	$document = pg_pdf_parse($merged);
+	$texts = array();
+
+	foreach (pg_pdf_page_numbers($document) as $number) {
+		preg_match('#/Contents\s+(\d+)\s+0\s+R#', $document['objects'][$number], $match);
+		preg_match('#\((PAGE ONE|PAGE TWO|endobj ONE)\)#', $document['objects'][(int) $match[1]], $text);
+		$texts[] = $text[1];
+	}
+
+	pg_assert_same(array('PAGE ONE', 'PAGE TWO', 'endobj ONE'), $texts, 'pages in page tree order, documents in the order given');
+}
+
 // Every reference points at an object the file has, and the xref table
 // points at each object's first byte.
 function test_pdf_merge_references_and_xref_agree()

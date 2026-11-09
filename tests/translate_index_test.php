@@ -53,8 +53,8 @@ function test_translate_index_decide_follows_the_policy()
 	pg_assert_false(pg_tr_index_decide('reviewed', 0), 'reviewed, answered noindex');
 }
 
-// No kept answer is no: the page's own texts cannot tell what the records,
-// the catalog and the components drawn on it say.
+// No kept answer is no: the page's stored texts cannot tell what the
+// components, menus and record drawn on it say.
 function test_translate_index_decide_unknown_is_not_offered()
 {
 	pg_assert_false(pg_tr_index_decide('reviewed', null), 'not drawn since the answer was dropped');
@@ -117,9 +117,8 @@ function test_translate_index_robots_says_noindex()
 }
 
 // Only a reviewed translation keeps the pages' "index" answers. Any machine
-// write drops them, a text's first one included: a text printed from the
-// database (pg_tr_db_text()) is not counted while it has no translation, but
-// once it has a machine one the page turns noindex.
+// write drops them, a text's first one included: the store does not know
+// which pages count the text as their own words.
 function test_translate_index_write_keeps_verdicts()
 {
 	pg_assert_true(pg_tr_write_keeps_verdicts('reviewed'), 'reviewed');

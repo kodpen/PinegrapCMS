@@ -21,4 +21,7 @@ module: list_table_edit
 - The edit URL carries the view (`view_pages.php?filter=…`) so the answer re-reads the row in the same view (`pg_list_table_record_row()`); a page that left the view gets its cell from the stored value.
 - Page type (`pg_page_quick_type_write()`): options are `select_page_type()`'s; the cell is a field only when the user may set the present type. A custom form with submissions keeps its type; the old type's row, form list links and search keywords go; the new type starts as a new page (`pg_page_quick_type_properties()`); site map off for a type it does not list. The notice sends a new form to the form designer.
 
+## Why does the same type write nothing?
+- `pg_page_quick_stored()` reads `page.page_type` with the other columns, so `$was` carries the type and the "same value writes nothing" guard of `pg_page_quick_update()` holds for it too. Without the column every post, the unchanged type included, ran `pg_page_quick_type_write()`, which recreated the `<type>_pages` row with defaults (the type's options were reset) and logged empty before/after values.
+
 Related: docs/memory/ui/list-table-quick-edit-values.md, docs/memory/ui/list-table-quick-edit.md

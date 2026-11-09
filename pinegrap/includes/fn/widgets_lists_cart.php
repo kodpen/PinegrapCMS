@@ -176,10 +176,14 @@ function pg_sw_list_cart_sources()
 // array('cart.items' => key => rows). $items: the cart widget's items
 // (item_id, name, short_description, qty, unit_price, line_total, image,
 // url, remove_url, ship_to_id), in cart order. Key 0 holds every line, a
-// recipient's id its lines. Raw values: the pass escapes them once.
+// recipient's id its lines. Raw values: the pass escapes them once. The
+// prices come as the widgets write them (pg_visitor_money()), with the
+// currency sign as stored, an entity for some (&#8378;): they are decoded
+// to text here, as the entity escaped would show as "&#8378;5,00".
 function pg_sw_list_cart_rows($items)
 {
     $out = array('cart.items' => array());
+    $text = function ($money) { return html_entity_decode($money, ENT_QUOTES | ENT_HTML5, 'UTF-8'); };
     foreach ((array)$items as $item) {
         if (!is_array($item)) continue;
         $g = function ($k) use ($item) { return isset($item[$k]) ? (string)$item[$k] : ''; };
@@ -188,8 +192,8 @@ function pg_sw_list_cart_rows($items)
             '__item_name'              => $g('name'),
             '__item_short_description' => $g('short_description'),
             '__item_qty'               => (string)(int)$g('qty'),
-            '__item_price'             => $g('unit_price'),
-            '__item_total'             => $g('line_total'),
+            '__item_price'             => $text($g('unit_price')),
+            '__item_total'             => $text($g('line_total')),
             '__item_image'             => $g('image'),
             '__item_image_alt'         => ($g('short_description') !== '') ? $g('short_description') : $g('name'),
             '__item_url'               => ($g('url') !== '') ? $g('url') : '#',

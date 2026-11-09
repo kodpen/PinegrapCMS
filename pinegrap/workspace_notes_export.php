@@ -96,6 +96,12 @@ if ($note === null) {
     output_error(lang('That note could not be found.'), 404);
 }
 
+// A note behind the person's closed notes lock: opened on the notes screen
+// first (note_lock.php).
+if (function_exists('ws_note_lock_closed') && ws_note_lock_closed($viewer, $note)) {
+    output_error(lang('This note is locked. Open it with your PIN.'), 403);
+}
+
 $refs = ws_refs_resolve($viewer, ws_tokens((string) $note['body']));
 $title = ws_note_title($viewer, $note);
 
@@ -167,6 +173,13 @@ echo '<!DOCTYPE html>
   .body .ws-code-head { font-size: .8em; color: #6b7280; }
   .body .ws-code-copy { display: none; }
   .body img { max-width: 100%; height: auto; }
+  .body .ws-media { display: block; margin: .5rem 0; }
+  .body .ws-media-image img { max-height: 20rem; }
+  .body .ws-media-video video { width: 100%; max-height: 20rem; }
+  .body .ws-media-audio audio { width: 100%; max-width: 28rem; }
+  .body .ws-media-file { display: inline-flex; gap: .6em; align-items: center; padding: .4rem .7rem; border: 1px solid #d0d7de; border-radius: .4rem; color: inherit; }
+  .body .ws-media-file i { display: none; }
+  .body .ws-media-size { color: #6b7280; font-size: .85em; }
   .body .ws-block-title { font-weight: 700; margin: 1rem 0 .25rem; }
   @media print {
     body { padding: 0; max-width: none; }

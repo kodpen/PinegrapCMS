@@ -29,4 +29,4 @@ description: Referring address and user agent of a visit kept once each in visit
 - Refused (MyISAM, MySQL 5.7, MariaDB 10.2: MySQL 1845 / syntax error): plain `install_add_column()` when the table has ≤ 250,000 rows (bounded COUNT); otherwise nothing changes, a note says to re-run the step from Software Repair once the cleanup made it smaller, and visits keep their texts.
 - Database Engine › Visitor records card: "Addresses and browsers" = number of values, or "Kept in each record" before/without the columns.
 
-Related: visitor-retention-and-cleanup, visitor-table-size-figures, docs/memory/plans/visitor-records-deferred.md
+Related: visitor-retention-and-cleanup, visitor-table-size-figures

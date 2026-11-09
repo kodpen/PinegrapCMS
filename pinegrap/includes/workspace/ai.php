@@ -221,7 +221,11 @@ function ws_ai_config($fresh = false)
         );
     }
 
-    return $config;
+    // A model assistant's request is answered with its own application and
+    // model (model_agents.php).
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    return $running ? ws_model_config_over($config, $running) : $config;
 }
 
 /**
@@ -330,6 +334,13 @@ function ws_ai_license_problem()
 function ws_ai_http($method, $path, $payload = null, $timeout = 15)
 {
     $out = array('http' => 0, 'json' => null, 'body' => '', 'headers' => '', 'errno' => 0, 'error' => '');
+
+    // A model assistant's conversation goes to its own API with its key.
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running && ($path === '/chat/completions')) {
+        return ws_model_http($running, $method, $path, $payload, $timeout);
+    }
 
     if (!function_exists('curl_init')) {
         $out['error'] = lang('This server cannot make outgoing HTTPS requests (cURL is missing).');
@@ -1137,10 +1148,6 @@ function ws_ai_tick()
  */
 function ws_ai_job()
 {
-    if (!ws_ai_schema_ready() || !ws_ai_config()['enabled']) {
-        return;
-    }
-
     ws_ai_kick(300);
 }
 
@@ -1162,8 +1169,17 @@ function ws_ai_job()
  */
 function ws_ai_kick($budget = WS_AI_BUDGET)
 {
+    // The model assistants' requests first: they do not wait on Pinegrap
+    // AI's licence or hold (model_agents.php).
+    $models = function_exists('ws_model_kick') ? ws_model_kick($budget) : 'idle';
+
+    // Push doors that failed are knocked again once their wait is over.
+    if (function_exists('ws_agent_knocks_retry')) {
+        ws_agent_knocks_retry();
+    }
+
     if (!ws_ai_schema_ready() || !ws_ai_config()['enabled']) {
-        return array('status' => 'idle');
+        return array('status' => $models);
     }
 
     ws_ai_watchdog();
@@ -1286,6 +1302,13 @@ function ws_ai_claim($row)
  */
 function ws_ai_hold($seconds, $error)
 {
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        ws_model_hold($running, $error);
+        return;
+    }
+
     db("UPDATE config SET ws_ai_hold_until = '" . (time() + (int) $seconds) . "', ws_ai_error = '" . e(mb_substr((string) $error, 0, 250)) . "'");
 
     ws_ai_config(true);
@@ -1582,6 +1605,14 @@ function ws_ai_step($row)
  */
 function ws_ai_response_problem($response)
 {
+    // A model assistant's failure is its own: never the licence's, never
+    // Pinegrap AI's hold.
+    $running = function_exists('ws_model_running') ? ws_model_running() : null;
+
+    if ($running) {
+        return ws_model_response_problem($running, $response);
+    }
+
     $verdict = ws_ai_license_verdict($response);
 
     if ($verdict !== '') {
@@ -1740,10 +1771,11 @@ function ws_ai_finish_answer($row, $state, $text, $steps, $content = '', $call_i
         && ws_ai_asks_for_task($state) && ($steps < WS_AI_MAX_STEPS - 2)) {
         $result = array('ok' => false, 'error' => 'The request asks for a task: call propose_task for it first, then call answer again.');
         $state['task_nudged'] = 1;
-    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['proposals']['flows']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
+    } elseif (empty($state['proposals']['changes']) && empty($state['proposals']['pages']) && empty($state['proposals']['scheduled']) && empty($state['proposals']['flows']) && empty($state['canvas_done']) && empty($state['done_nudged']) && ((int) ($row['note_id'] ?? 0) === 0) && empty($state['design'])
         && ws_ai_claims_done($text) && ($steps < WS_AI_MAX_STEPS - 2)) {
         // An answer that says a record was changed, with no change
-        // proposed: nothing was changed, and the words must not say so.
+        // proposed (a canvas drawn or edited is done, not proposed):
+        // nothing was changed, and the words must not say so.
         $result = array('ok' => false, 'error' => 'You cannot change anything yourself, and nothing was changed. If the request asks for a change, find the record and propose it with propose_change, then answer that you propose it. Otherwise answer without saying that anything was changed.');
         $state['done_nudged'] = 1;
     } else {
@@ -1858,7 +1890,7 @@ function ws_ai_claims_done($text)
  */
 function ws_ai_tool_names()
 {
-    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'send_voice_message', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite');
+    return array('answer', 'fail', 'read_channel', 'read_task', 'search_records', 'read_record', 'propose_task', 'propose_change', 'propose_bulk_change', 'propose_scheduled_action', 'propose_flow', 'read_flow', 'add_task_note', 'send_voice_message', 'read_page', 'page_set', 'page_replace', 'page_insert', 'page_remove', 'page_css', 'page_rewrite', 'draw_canvas', 'read_canvas', 'edit_canvas');
 }
 
 /**
@@ -2245,6 +2277,10 @@ function ws_ai_finish_fail($row, $reason)
     }
 
     ws_ai_react((int) $row['message_id'], '👀', false);
+
+    if (function_exists('ws_step_agent_request_closed')) {
+        ws_step_agent_request_closed((int) $row['id']);
+    }
 }
 
 /**
@@ -2520,6 +2556,12 @@ function ws_ai_deliver($row, $text, $proposals)
     ws_ai_react((int) $row['message_id'], '✅', true);
 
     ws_ai_log(lang(array('string' => 'Pinegrap AI answered a request in #{var:1}', 'vars' => $channel['name'])));
+
+    // A flow's agent box waiting on a model agent's request goes on
+    // (flow_agent_box.php).
+    if (function_exists('ws_step_agent_request_closed')) {
+        ws_step_agent_request_closed((int) $row['id']);
+    }
 
     return array('ok' => true, 'error' => '');
 }
@@ -3428,10 +3470,14 @@ function ws_ai_briefing_head($asker, $agent, $name = '')
         );
     }
 
+    $running = (($agent === 'ai') && function_exists('ws_model_running')) ? ws_model_running() : null;
+
     return array(
         ($agent === 'claude')
             ? 'You are Claude, the assistant people call with @Claude in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.'
-            : 'You are Pinegrap AI, the assistant people call with @ai in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.',
+            : ($running
+                ? 'You are ' . (string) $running['name'] . ', the assistant people call with @' . (string) $running['handle'] . ' in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.'
+                : 'You are Pinegrap AI, the assistant people call with @ai in the Workspace of the Pinegrap site ' . HOSTNAME_SETTING . '.'),
         'Now: ' . $today . '.',
         'The request comes from ' . ws_person_name($asker['id']) . ' <@user:' . (int) $asker['id'] . '>.',
     );
@@ -3550,7 +3596,8 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
     } elseif ((int) ($row['note_id'] ?? 0) > 0) {
         $note = function_exists('ws_note') ? ws_note($row['note_id']) : null;
 
-        if (!$note) {
+        // A note locked after it asked is not read (note_lock.php).
+        if (!$note || (function_exists('ws_note_locked_by_owner') && ws_note_locked_by_owner($note))) {
             return $fail(lang('The note could not be found.'));
         }
 
@@ -3596,6 +3643,10 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         $parts[] = 'People in the workspace:';
         $parts[] = pg_ai_data_block('people', ws_ai_team_text());
         $parts[] = '';
+
+        if ($claude && $channel && ws_can_read_channel($asker, $channel)) {
+            $parts = array_merge($parts, ws_ai_memory_parts($asker, $channel));
+        }
 
         if (!empty($context['earlier'])) {
             $parts[] = 'What the assistants were asked on this task before, and what they answered:';
@@ -3666,6 +3717,12 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         $parts[] = pg_ai_data_block('people', ws_ai_team_text());
         $parts[] = '';
 
+        // The channel's memory as an index (an agent reads the entries it
+        // needs through the API) and its decision lines.
+        if ($claude) {
+            $parts = array_merge($parts, ws_ai_memory_parts($asker, $channel));
+        }
+
         // Written as a reply (to one of the assistant's answers, say): the
         // message it answers.
         $parent = ((int) $message['parent_id'] > 0) ? ws_message($message['parent_id']) : null;
@@ -3693,6 +3750,22 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
     $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);
 
     return array('ok' => true, 'error' => '', 'parts' => $parts, 'request' => $request_text, 'message' => $message, 'text' => ws_ai_briefing_text($text, ws_ai_request_language($request_text)));
+}
+
+/**
+ * The lines of a brief that carry a channel's memory index and its
+ * decisions (ws_memory_brief()), inside a data block: the entries are
+ * written by members and agents. None when the channel has neither.
+ *
+ * @param array $asker
+ * @param array $channel
+ * @return string[]
+ */
+function ws_ai_memory_parts($asker, $channel)
+{
+    $digest = function_exists('ws_memory_brief') ? ws_memory_brief($asker, $channel) : '';
+
+    return ($digest === '') ? array() : array(pg_ai_data_block('channel memory', $digest), '');
 }
 
 /**
@@ -3945,6 +4018,11 @@ function ws_ai_tools($row)
         if ($asker && ws_design_ai() && pg_design_ai_tools_allowed($row, $asker)) {
             $tools = array_merge($tools, pg_design_ai_tools());
         }
+
+        // Canvases drawn as SVG and edited in place (canvas_ai.php).
+        if (ws_canvas_ai_offered($row, $asker)) {
+            $tools = array_merge($tools, ws_canvas_ai_tools($tool));
+        }
     }
 
     return $tools;
@@ -3973,6 +4051,10 @@ function ws_ai_tool_run($row, &$state, $name, $args)
 
     if (($name === 'read_page') || (strpos($name, 'page_') === 0)) {
         return ws_design_ai() ? pg_design_ai_tool_run($row, $state, $name, $args, $asker) : array('error' => 'Pages cannot be changed on this site.');
+    }
+
+    if (in_array($name, ws_canvas_ai_tool_names(), true)) {
+        return ws_canvas_ai_tool_run($row, $state, $name, $args, $asker);
     }
 
     $readable = ws_ai_readable_types($asker);
@@ -4902,3 +4984,14 @@ function ws_ai_settings_card($self_url, $viewer)
             </div>
         </div>';
 }
+
+// The model assistants, answered with this file's loop.
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/model_agents.php');
+
+// The agents' request queue and push door.
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_queue.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_wake.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/agent_shown.php');
+
+// Canvases the assistants draw and edit (tools of ws_ai_step()).
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_ai.php');

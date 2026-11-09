@@ -2790,6 +2790,7 @@ function ws_flow_js_strings()
 {
     return array(
         'fl_nav'              => lang('Flows'),
+        'fl_layer_screen'     => lang('Open on the Flows screen'),
         'fl_sa_moved'         => lang('Your scheduled actions are in Flows.'),
         'fl_toolbar'          => lang('Flow tools'),
         'fl_settings'         => lang('Settings of what is selected'),
@@ -3162,10 +3163,25 @@ function ws_flow_js_strings()
         'fl_ai_found'         => lang('Found (1 or 0)'),
         'fl_ai_closes'        => lang('Hours to wait for the answer'),
         'fl_ai_closes_help'   => lang('1 to 720 hours. Pinegrap AI is asked again every hour until it answers; with no answer by then the box leaves on failed.'),
-        'fl_rows_get_row_help' => lang('The row\'s number, or one value, such as {{trigger.row_id}}. A row that is not there gives found 0 and empty cells.'),
+        'fl_kind_agent'       => lang('Ask an agent'),
+        'fl_agent'            => lang('Agent'),
+        'fl_agent_pick'       => lang('Choose an agent'),
+        'fl_agent_help'       => lang('The agents allowed in a channel the flow\'s owner may write in. The agent changes records within the tier it is allowed there.'),
+        'fl_agent_channel'    => lang('Channel it is asked in'),
+        'fl_agent_channel_pick' => lang('Choose a channel'),
+        'fl_agent_channel_help' => lang('The prompt is written there in the owner\'s name, naming the agent; its answer comes there too.'),
+        'fl_agent_prompt_help' => lang('What the agent is asked; values are filled in. The agent\'s answer is the box\'s answer.'),
+        'fl_agent_closes_help' => lang('1 to 720 hours. With no answer by then the box leaves on failed.'),
+        'fl_rows_get_missing_help' => ws_js_template('A row that is not there gives “{var:1}” 0 and empty cells.', 1),
+        'fl_rows_by'          => lang('Find the row'),
+        'fl_rows_by_position' => lang('By its number in the table'),
+        'fl_rows_by_id'       => lang('By its id'),
+        'fl_rows_by_last'     => lang('The last row'),
+        'fl_rows_position_help' => lang('The row\'s number as the table lists it: 1 is the first row. A value may give it, such as the item number of a For each box.'),
+        'fl_rows_id_help'     => lang('The row\'s id, as a value gives it: the row that started the flow, or one an earlier box added or read.'),
+        'fl_rows_last_help'   => lang('The row at the bottom of the table, such as the one added last.'),
         'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
         'fl_rows_row'         => lang('Row'),
-        'fl_rows_row_help'    => lang('The row\'s number, or one value, such as the row a box before added.'),
         'fl_rows_cells'       => lang('Cells'),
         'fl_rows_add_help'    => lang('A column left empty stays empty in the new row.'),
         'fl_rows_set_help'    => lang('A column left empty keeps what the row has.'),
@@ -3182,6 +3198,8 @@ function ws_flow_js_strings()
         'fl_rows_link_kind'   => lang('Kind of record'),
         'fl_rows_link_id'     => lang('Record number'),
         'fl_rows_meta'        => ws_js_template('{var:1} · row {var:2}', 2),
+        'fl_rows_meta_id'     => ws_js_template('{var:1} · row id {var:2}', 2),
+        'fl_rows_meta_last'   => ws_js_template('{var:1} · last row', 1),
         'fl_record_meta'      => ws_js_template('{var:1} · {var:2}', 2),
         'fl_record_none'      => lang('No kind of record chosen'),
         'fl_day_mon'         => lang('Monday'),
@@ -3296,6 +3314,7 @@ function ws_flow_js_strings()
         'fl_values_missing'   => lang('No box before this one gives this value.'),
         'fl_values_gone'      => lang('The box that gave this value was deleted.'),
         'fl_values_none'      => lang('No box before this one gives a value yet: connect it after a box or a start.'),
+        'fl_values_none_before' => ws_js_template('What comes before this box gives no value here: {var:1}. Type the value, or put a box that gives one before it.', 1),
         'fl_add_manual'       => lang('Start manually'),
         'fl_add_task'         => lang('Task'),
         'fl_add_end'          => lang('End'),
@@ -3668,6 +3687,9 @@ function ws_flow_js_config($viewer, $mode)
         // The Pinegrap AI box is offered while the site has it set up
         // (ws_step_ai_check()).
         $steps['ai'] = function_exists('ws_ai_ready') && ws_ai_ready();
+        // The agents an agent box may ask, each with the channels the owner
+        // may write in where it is allowed (flow_agent_box.php).
+        $steps['agents'] = function_exists('ws_step_agent_form_list') ? ws_step_agent_form_list($viewer) : array();
 
         // A box on customers who stopped ordering, to whoever reads orders
         // and contacts.
@@ -3736,6 +3758,26 @@ function ws_flow_js_config($viewer, $mode)
         'derived'  => function_exists('ws_flow_derived_rules') ? ws_flow_derived_lists() : array(),
         'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20,
             'web_fields' => defined('WS_FLOW_WEB_FIELDS_MAX') ? WS_FLOW_WEB_FIELDS_MAX : 20),
+    );
+}
+
+/**
+ * What the whole Flows editor needs on a Workspace page other than the Flows
+ * screen (a layer over a channel, PGWsFlow.mount() with single): the flows
+ * part of the screen's config, with the screen's rights (the member gate of
+ * ws_handle_action(), as ws_screen_gate() on workspace_flows.php) and the
+ * builder kinds ws_flow_js_config() applies, and the canvas texts. The panel
+ * action ws_flow_editor_config gives it once per page.
+ *
+ * @param array $viewer
+ * @return array flows (ws_flow_js_config() for mode flows), strings
+ *               (ws_flow_js_strings())
+ */
+function ws_flow_editor_config($viewer)
+{
+    return array(
+        'flows'   => ws_flow_js_config($viewer, 'flows'),
+        'strings' => ws_flow_js_strings(),
     );
 }
 

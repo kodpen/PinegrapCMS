@@ -10,6 +10,10 @@ description: Cloudflare Tools Add/Edit DNS Record dialogs (#3628): hidden type g
 ## Why did Edit reset an MX priority?
 - The row's Edit button only carried SRV and CAA `data` keys. Cloudflare returns an MX priority at the top level of the record, so the MX row now gets `data-priority` from `$r['priority']` (SRV falls back to it when `data.priority` is missing), and the Edit show handler fills `edit_priority` before the toggle runs.
 
+## Why did Edit turn a TTL of 1800 into Auto?
+- The TTL list offers 1, 60, 300, 3600 and 86400. A record with another TTL (1800, 120 set outside the panel) left no option selected, the form posted no `ttl` and the payload fell back to 1 (Auto).
+- The Edit show handler now adds an option for a TTL the list lacks (labelled in seconds, as the table prints it) and selects it; a record save (`add_record`, `edit_record`) that posts no `ttl` is refused with "TTL is required." instead of saving Auto.
+
 ## When is Content required?
 - Whenever it is shown: A, AAAA, CNAME, TXT, MX and NS. SRV and CAA hide it, and the toggle clears `required` with it, so the browser stops a blank value instead of Cloudflare refusing it in English after the redirect.
 - Number boxes carry `min`/`max`: 0–65535 for priority, weight and port, 0–255 for CAA flags.

@@ -98,8 +98,8 @@ function pg_tr_page_id_of_path($url, $root, $index)
  * Whether a language's address of a page may be offered to the search
  * engines - listed in sitemap.xml, named as an alternate on any page - under
  * the language's index policy (pg_tr_index_decide()). For "reviewed" the
- * page answers with its own robots meta, which weighs every text drawn on it
- * (shared components, menus, the records a list shows, the catalog); what it
+ * page answers with its own robots meta, which weighs the page's own words as
+ * drawn (shared components, menus, a record view's record); what it
  * answered the last time it was drawn in the language is kept
  * (pg_tr_page_verdict_keep()) and read here. An address below a page, one
  * with a query string, and a page not drawn in the language since its answer
@@ -133,9 +133,10 @@ function pg_tr_indexable($row, $url, $one_page = false)
  * The one rule behind sitemap.xml and every hreflang alternate: never for the
  * "none" policy, always for "all", and for "reviewed" only when the page's
  * own address answered "index" the last time it was drawn in the language.
- * No answer is no: the texts a page draws from elsewhere (records, the
- * catalog, data values) are known only by drawing it, so counting the
- * page's own texts instead listed addresses whose robots meta said noindex.
+ * No answer is no: the words a page draws from elsewhere (shared components,
+ * menus, a record view's record) are known only by drawing it, so counting
+ * the page's stored texts instead listed addresses whose robots meta said
+ * noindex.
  *
  * @param string   $policy  site_languages.index_policy
  * @param int|null $verdict 1 index, 0 noindex, null not known

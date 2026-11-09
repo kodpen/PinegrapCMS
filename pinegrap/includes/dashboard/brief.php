@@ -171,6 +171,7 @@ function pg_dashboard_brief($user, $changelog_sections, $view = array())
         'staff_online'      => null,
         'backup_state'      => null,
         'backup_href'       => null,
+        'backup_copy_failed' => false,
         'update_state'      => null,
         'update_href'       => null,
         'cron_state'        => null,
@@ -398,6 +399,13 @@ function pg_dashboard_brief($user, $changelog_sections, $view = array())
 
                         $sig[$greeting_check_name . '_state'] = (string) ($greeting_check['state'] ?? '');
                         $sig[$greeting_check_name . '_href']  = (string) ($greeting_check['href'] ?? '');
+
+                        // The backup check's only expandable rows are failed
+                        // remote copies: with rows its warning may be about
+                        // the copy and not the age.
+                        if ($greeting_check_name === 'backup') {
+                            $sig['backup_copy_failed'] = !empty($greeting_check['detail']);
+                        }
                     }
                 }
             }
@@ -805,22 +813,10 @@ function pg_dashboard_brief($user, $changelog_sections, $view = array())
     // The checks the system status widget has already run, taken one at a time.
     // Each of these screens is manager and above (validate_area_access 'manager',
     // role <= 2), so the advice is only offered to someone the link will let in.
-    if (in_array($sig['backup_state'], array('warn', 'fail'), true) && ($user['role'] <= 2)) {
-
-        $greeting_backup_href = ($sig['backup_href'] !== '') ? $sig['backup_href'] : 'backups.php';
-
-        // 'warn' is a backup that is a few days old; 'fail' is one over a week old
-        // or none at all, and "older than it should be" would be untrue of none.
-        $greeting_options[] = array('tier' => 1, 'topic' => 'backup', 'text' => ($sig['backup_state'] === 'warn')
-            ? lang(array(
-                'string' => 'The last backup is older than it should be, and {var:1} is a five minute job.',
-                'vars' => $greeting_link($greeting_backup_href, lang('taking a fresh one'))))
-            : lang(array(
-                'string' => 'There is no backup from the last week, and {var:1} is a five minute job.',
-                'vars' => $greeting_link($greeting_backup_href, lang('taking a fresh one')))));
-        $greeting_options[] = array('tier' => 1, 'topic' => 'backup', 'text' => lang(array(
-            'string' => 'Nothing here has been backed up recently; {var:1} is where to fix that.',
-            'vars' => $greeting_link($greeting_backup_href, lang('the backup screen')))));
+    if ($user['role'] <= 2) {
+        foreach (pg_dashboard_brief_backup_advice((string) $sig['backup_state'], $sig['backup_copy_failed'], (string) $sig['backup_href']) as $greeting_backup_text) {
+            $greeting_options[] = array('tier' => 1, 'topic' => 'backup', 'text' => $greeting_backup_text);
+        }
     }
 
     // A release waiting to be downloaded. The check also turns amber when the
@@ -1890,6 +1886,52 @@ function pg_dashboard_brief($user, $changelog_sections, $view = array())
         'strip'    => $output_greeting_ws,
         'next'     => ($sig['ws'] !== null) ? pg_dashboard_brief_next($sig['ws']['events_next'], time()) : '',
         'ws'       => $sig['ws'],
+    );
+}
+
+/**
+ * The greeting's advice about backups, escaped, from the System Status
+ * backup check: nothing while it passes (a backup under a month old,
+ * pg_backup_age_state()) or reads grey (a switched-off schedule); for 'fail'
+ * there is no backup at all, so nothing calls one old; for 'warn' the newest
+ * is more than a month old, or the remote copy failed ($copy_failed). Pure.
+ *
+ * @param string $state       the check's state: ok, warn, fail, info or ''
+ * @param bool   $copy_failed the check carries a failed remote copy
+ * @param string $href        the check's screen; '' for backups.php
+ * @return array escaped sentences, one of which is said
+ */
+function pg_dashboard_brief_backup_advice($state, $copy_failed, $href)
+{
+    $href = ($href !== '') ? $href : 'backups.php';
+
+    $link = function ($target, $text) {
+        return '<a class="pg-brief-link" href="' . h($target) . '">' . h($text) . '</a>';
+    };
+
+    if ($state === 'fail') {
+        return array(lang(array(
+            'string' => 'No backup of this site has been taken yet, and {var:1} is a five minute job.',
+            'vars' => $link($href, lang('taking the first one')))));
+    }
+
+    if ($state !== 'warn') {
+        return array();
+    }
+
+    if ($copy_failed) {
+        return array(lang(array(
+            'string' => 'The last remote backup copy failed; {var:1} say why.',
+            'vars' => $link('settings_maintenance.php#pgset-backup', lang('the backup settings')))));
+    }
+
+    return array(
+        lang(array(
+            'string' => 'The last backup is more than a month old, and {var:1} is a five minute job.',
+            'vars' => $link($href, lang('taking a fresh one')))),
+        lang(array(
+            'string' => 'Nothing here has been backed up for over a month; {var:1} is where to fix that.',
+            'vars' => $link($href, lang('the backup screen')))),
     );
 }
 

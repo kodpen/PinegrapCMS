@@ -16,7 +16,7 @@ description: data-pg-date, data-pg-datetime, data-pg-time on the pg_datetime.js 
 - Clock and words: `data-pg-calendar` on the `pg_datetime.js` tag (`pg_calendar_settings()`): `timeMode` 24 when `pg_time_format_code()` is `H:i`, else 12 (#2040: every picker follows the site's clock; the native time box followed the browser), the Done word and the calendar's screen-reader names in `lang()`. The hour goes in zero-padded (`05:00 PM`): the library's 12-hour pattern refuses `5:00 PM` and shows midnight. AM/PM stay English (the library's).
 
 ## Dialogs and drawers?
-- The popup hangs off `<body>`, under an open `<dialog>`; on show and resize it moves into `pgUI.overlayHost(field)`, placed under the field.
+- The popup hangs off `<body>`, under an open `<dialog>`; on show and resize it moves into `pgUI.overlayHost(field)`, under the field or above it (`opensAbove()`).
 - In a `.drawer` the calendar sits in a `.pg-date-inline` wrapper after the field, hidden until the field asks for it (`pg-datepicker-drawer.md`).
 - The library's `destroy()` puts a copy of the input, as it was at creation, in its place; the control puts the real element back at the same index, or the field loses its listeners, `pgField*` state and value (`switchKind()` on the calendar all-day box).
 

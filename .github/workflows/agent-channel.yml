@@ -1,0 +1,55 @@
+# Tells the agent channel that a pull request was handed over: when the
+# `ready` label is put on a pull request to development, one "[ready] …" line
+# is written with the CI application's own key (tools/ws_post.php), so the
+# merging session waiting with tools/ws_wait.php --prefix=[ready] wakes on
+# it. Skipped in silence while the repository has no PG_WS_SITE /
+# PG_WS_CHANNEL / PG_WS_CI_KEY / PG_WS_CI_SECRET secrets. The "[ci] …" line
+# is the channel job of php-checks.yml. A pull request from a fork gets no
+# secrets and is skipped the same way.
+name: Agent channel
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  ready:
+    name: report the hand-over to the agent channel
+    if: ${{ github.event.label.name == 'ready' && github.base_ref == 'development' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - name: Check out
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP
+        if: ${{ hashFiles('tools/ws_post.php') != '' }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: curl
+          coverage: none
+          tools: none
+
+      - name: Write the [ready] line (tools/ws_post.php)
+        if: ${{ hashFiles('tools/ws_post.php') != '' }}
+        continue-on-error: true
+        env:
+          PG_WS_SITE: ${{ secrets.PG_WS_SITE }}
+          PG_WS_CHANNEL: ${{ secrets.PG_WS_CHANNEL }}
+          PG_WS_KEY: ${{ secrets.PG_WS_CI_KEY }}
+          PG_WS_SECRET: ${{ secrets.PG_WS_CI_SECRET }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_KEY: ready-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+        run: |
+          php tools/ws_post.php --skip-missing "--idempotency-key=$RUN_KEY" -- \
+            "[ready] #$PR_NUMBER $HEAD_REF ${HEAD_SHA:0:7} $PR_TITLE"

@@ -73,8 +73,8 @@ function test_workspace_flow_row_write_kinds()
 	$catalogue = array_column(ws_flow_kind_catalogue(), null, 'kind');
 
 	pg_assert_same(array('table_id', 'cells', 'retry', 'retry_after'), array_column($catalogue['row_add']['settings'], 'key'), 'its settings, then the tries');
-	pg_assert_same(array('table_id', 'row', 'cells', 'retry', 'retry_after'), array_column($catalogue['row_set']['settings'], 'key'));
-	pg_assert_same(array('integer', 'text', 'text'), array_slice(array_column($catalogue['row_set']['settings'], 'type'), 0, 3), 'the row and the cells are texts');
+	pg_assert_same(array('table_id', 'by', 'row', 'cells', 'retry', 'retry_after'), array_column($catalogue['row_set']['settings'], 'key'));
+	pg_assert_same(array('integer', 'text', 'text', 'text'), array_slice(array_column($catalogue['row_set']['settings'], 'type'), 0, 4), 'the way, the row and the cells are texts');
 	pg_assert_same(array('row', 'cells'), $catalogue['row_set']['texts']);
 }
 
@@ -84,9 +84,9 @@ function test_workspace_flow_row_write_kinds()
 function test_workspace_flow_row_write_config()
 {
 	pg_assert_same(array('table_id' => 12, 'cells' => '{"3":"Demir","8":2}'), ws_step_config_normalize('row_add', array('table_id' => '12', 'cells' => array('3' => 'Demir', '8' => 2), 'row' => '9', 'other' => 1)));
-	pg_assert_same(array('table_id' => 0, 'row' => '{{trigger.row_id}}', 'cells' => '{"5": "won"}'), ws_step_config_normalize('row_set', array('table_id' => -3, 'row' => " {{trigger.row_id}}\n", 'cells' => ' {"5": "won"} ')));
-	pg_assert_same(array('table_id' => 0, 'row' => '15', 'cells' => ''), ws_step_config_normalize('row_set', array('row' => 15)));
-	pg_assert_same(array('table_id' => 0, 'row' => '', 'cells' => ''), ws_step_config_normalize('row_set', array('row' => array(15), 'cells' => true)));
+	pg_assert_same(array('table_id' => 0, 'by' => 'id', 'row' => '{{trigger.row_id}}', 'cells' => '{"5": "won"}'), ws_step_config_normalize('row_set', array('table_id' => -3, 'row' => " {{trigger.row_id}}\n", 'cells' => ' {"5": "won"} ')));
+	pg_assert_same(array('table_id' => 0, 'by' => 'id', 'row' => '15', 'cells' => ''), ws_step_config_normalize('row_set', array('row' => 15)));
+	pg_assert_same(array('table_id' => 0, 'by' => 'id', 'row' => '', 'cells' => ''), ws_step_config_normalize('row_set', array('row' => array(15), 'cells' => true)));
 	pg_assert_same(WS_STEP_ROW_CELLS_MAX, mb_strlen(ws_step_config_normalize('row_add', array('cells' => str_repeat('x', WS_STEP_ROW_CELLS_MAX + 10)))['cells']));
 	pg_assert_same(array('table_id' => 4, 'cells' => '', 'retry' => 2, 'retry_after' => 30), ws_flow_config_normalize('row_add', array('table_id' => 4, 'retry' => 2, 'retry_after' => 30)), 'a table box may try again after a failure');
 }
@@ -147,7 +147,7 @@ function test_workspace_flow_row_write_problems()
 	pg_assert_contains('needs at least one cell', $problems('row_add', array('table_id' => 4)));
 	pg_assert_contains('not a JSON object', $problems('row_add', array('table_id' => 4, 'cells' => '{"3": {{trigger.cell_2}}}')));
 	pg_assert_contains('needs the row it changes', $problems('row_set', array('table_id' => 4, 'cells' => array('5' => 'won'))));
-	pg_assert_contains('by its id', $problems('row_set', array('table_id' => 4, 'row' => 'the last one', 'cells' => array('5' => 'won'))));
+	pg_assert_contains('write the row\'s id', $problems('row_set', array('table_id' => 4, 'row' => 'the last one', 'cells' => array('5' => 'won'))));
 }
 
 // The cells and the row are the texts the flow's check reads: a value of a

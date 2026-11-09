@@ -668,21 +668,21 @@ function pg_ops_alert_recent($days = 7)
 // ----------------------------------------------------------------------------
 
 /**
- * Whether the newest backup is too old to be the weekly backup.
+ * Whether the newest backup is old enough to be told about.
  *
- * Eight days: the automatic backup is weekly, so one missed run is a day late
- * and a stopped schedule is a week late. A site that has never been backed up
- * is not told so every day - System Status says it - because that is a
- * setting nobody made, not something that broke.
+ * The age is judged by pg_backup_age_state(), as on the System Status tile:
+ * more than a month old. A weekly schedule that missed a run or two is not
+ * worth an e-mail. A site that has never been backed up is not told so every
+ * day - System Status says it - because that is a setting nobody made, not
+ * something that broke.
  *
- * @param int $newest  unix time of the newest backup, 0 for none
+ * @param int $newest unix time of the newest backup, 0 for none
  * @param int $now
- * @param int $max_age seconds
  * @return bool
  */
-function pg_ops_backup_stale($newest, $now, $max_age = 691200)
+function pg_ops_backup_stale($newest, $now)
 {
-    return ((int) $newest > 0) && (((int) $now - (int) $newest) > (int) $max_age);
+    return (pg_backup_age_state($newest, $now) === 'warn');
 }
 
 /**
@@ -761,7 +761,7 @@ function pg_ops_cron_stalled(array $jobs, array $runs, $now, array $dispatched, 
 }
 
 /**
- * Backups: a newest backup more than eight days old.
+ * Backups: a newest backup more than a month old.
  *
  * A failed run and a failed remote copy are told by the backup itself, at the
  * moment they happen (auto_backup.php, pg_backup_remote_record()).

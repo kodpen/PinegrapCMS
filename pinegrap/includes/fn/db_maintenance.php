@@ -701,6 +701,32 @@ function pg_db_health_report()
 }
 
 /**
+ * The counts the "Check all tables" notice gives for a
+ * check_and_repair_database_tables() report: an error and a check that could
+ * not run ('check_failed') are issues, as the findings list shows them; a
+ * repair is a repair. No database access.
+ *
+ * @param array $report table => list of states
+ * @return array('issues' => int, 'repaired' => int)
+ */
+function pg_db_check_summary($report)
+{
+    $summary = array('issues' => 0, 'repaired' => 0);
+
+    foreach ((array) $report as $states) {
+        foreach ((array) $states as $state) {
+            if (($state === 'error') || ($state === 'check_failed')) {
+                $summary['issues']++;
+            } elseif ($state === 'repaired') {
+                $summary['repaired']++;
+            }
+        }
+    }
+
+    return $summary;
+}
+
+/**
  * The bytes a table's files take, free space included, from its catalog row.
  *
  * MyISAM and Aria report the holes deleted rows left inside the data file as

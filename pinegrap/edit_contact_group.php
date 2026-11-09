@@ -258,6 +258,13 @@ if (!$_POST) {
 
             db_q('UPDATE contact_groups SET kind = ?, rules = ?' . ($due ? ', computed_at = 0' : '') . ' WHERE id = ?', array($posted_rules['kind'], $posted_rules['rules'], $id)) or output_error('Query failed.');
 
+            // A pass that stopped part-way would go on from its cursor with
+            // the old rules' ids: a change of rules or of kind starts the
+            // next pass from the first contact with an empty state.
+            if ($due || ($posted_rules['kind'] !== $group_rules['kind'])) {
+                pg_audience_pass_restart($id) or output_error('Query failed.');
+            }
+
             // The switch review's choice for the rows the group had while
             // static runs once the switch is saved; keep touches nothing.
             if (($posted_rules['kind'] === 'dynamic') && ($group_rules['kind'] !== 'dynamic')) {

@@ -11,6 +11,7 @@ description: approve_affiliate.php draws its request card, Summary and save bar 
 
 ## What stays in the screen?
 - The gates (`validate_user()`, `validate_contacts_access()`, `validate_contact_access()`), the contact load (now with the request's columns and the last editor's name), the POST approval through `pg_affiliate_approve()`, the notices and the redirect to the contact.
+- The notice is queued under the `edit_contact` liveform, which Edit Contact prints under its toolbar and removes once drawn. It went to a `view_contact` form nobody read, so the screen showed nothing and the notice waited in the session for a site page's messages region (#7734).
 - The GET shows only; the approval is a POST with the session token (the e-mail link cannot carry it). Only a pending request gets the form tag and the Approve Affiliate button in the save bar; an approved one gets Go to Contact there and no form.
 - The Cancel button is gone: the back arrow and the breadcrumb lead back (`back-arrow-no-copies.md`).
 

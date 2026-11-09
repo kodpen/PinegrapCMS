@@ -138,3 +138,28 @@ function test_office_docx_reader_run_properties_off_words()
 	pg_assert_true(strpos($html, '<em>ItalicTrue</em>') !== false, 'i true is italic');
 	pg_assert_true(strpos($html, '<s>StrikeBare</s>') !== false, 'a bare strike is struck');
 }
+
+// A body that is one large table is cut near the limit too, between rows,
+// and the answer says it was cut.
+function test_office_docx_reader_cuts_a_large_table()
+{
+	if (!pg_office_ready()) {
+		pg_assert_true(true, 'no zip extension here: the reader is not run');
+		return;
+	}
+
+	$text = str_repeat('x', 200);
+	$rows = str_repeat('<w:tr>' . office_docx_reader_test_cell($text) . '</w:tr>', (int) ceil(PG_OFFICE_MAX_HTML / 200) + 500);
+	$w = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+	$path = office_test_package(array(
+		'[Content_Types].xml' => '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>',
+		'word/document.xml' => '<?xml version="1.0"?><w:document xmlns:w="' . $w . '"><w:body><w:tbl>' . $rows . '</w:tbl></w:body></w:document>',
+	));
+	$doc = pg_office_read($path, 'test.docx');
+	unlink($path);
+
+	pg_assert_true($doc['ok'], 'read');
+	pg_assert_true($doc['truncated'], 'the answer says it was cut');
+	pg_assert_true(strlen($doc['html']) < PG_OFFICE_MAX_HTML + 2000, 'cut near the limit, not drawn whole: ' . strlen($doc['html']));
+	pg_assert_same('</tr></table>', substr($doc['html'], -13), 'between rows, the table closed');
+}

@@ -13,6 +13,11 @@
  *  - Keyboard shortcuts
  *
  * Dependencies: Bootstrap 5.3.8 (loaded in iframe), jQuery (already in backend)
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 const StyleDesigner = (function () {
     'use strict';
@@ -9377,7 +9382,125 @@ const StyleDesigner = (function () {
     }
 
     // ========================= RENDER =========================
+    // ── Panels on demand
+    // The Layers tree, the HTML tree and the Attributes and Styles panels
+    // are drawn only while they can be seen: a hidden one (the bottom panel
+    // folded, the Overview folded or on its Notes tab) is marked stale and
+    // drawn when it shows again (_sdPanelsFlush()). Typing in a field draws
+    // the canvas on every key and the other panels once the typing pauses
+    // (_sdPanelsSoon()); an edit of one node redraws only that node's rows
+    // in the Layers tree (_sdTreeRowsRedraw()).
+    var _sdPanelStale = {};
+    var SD_PANELS_TYPING_MS = 180;
+    var _sdPanelsTimer = 0, _sdPanelsNode = null, _sdPanelsMixed = false;
+
+    // The element whose visibility decides whether panel `name` is drawn.
+    function _sdPanelHost(name) {
+        var id = { tree: 'sd-overview-tree-wrap', html: 'sd-html-tree', attrs: 'sd-bp-attrs', styles: 'sd-bp-styles' }[name];
+        return id ? document.getElementById(id) : null;
+    }
+
+    // True when `host` cannot be seen: not laid out (it or an ancestor is
+    // display:none) or inside the folded bottom panel. No host: not hidden,
+    // the panel's own function decides what to do.
+    function _sdPanelHidden(host) {
+        if (!host) return false;
+        if (host.closest && host.closest('.sd-panel-bottom.collapsed')) return true;
+        return !(host.getClientRects && host.getClientRects().length);
+    }
+
+    // Asked first by a panel's drawing function: true when the panel is
+    // hidden, which marks it to be drawn once it shows. Showing it again
+    // is noticed by the folds and tabs that show it, and by a resize
+    // observer on the host for any other way.
+    function _sdPanelDefer(name) {
+        var host = _sdPanelHost(name);
+        if (!_sdPanelHidden(host)) { delete _sdPanelStale[name]; return false; }
+        _sdPanelStale[name] = true;
+        if (host && !host._sdPanelObs && typeof ResizeObserver === 'function') {
+            host._sdPanelObs = new ResizeObserver(function () { _sdPanelsFlush(); });
+            host._sdPanelObs.observe(host);
+        }
+        return true;
+    }
+
+    // Draws every stale panel that can be seen now.
+    function _sdPanelsFlush() {
+        var paint = { tree: renderTree, html: renderHtmlTree, attrs: renderAttrsPanel, styles: renderStylesPanel };
+        Object.keys(_sdPanelStale).forEach(function (n) {
+            if (paint[n] && !_sdPanelHidden(_sdPanelHost(n))) paint[n]();
+        });
+    }
+
+    // The panels a keystroke in a field changes, drawn once the typing
+    // pauses; `node` is the node typed into (null: not one node). Keys
+    // typed into two nodes before the pause draw the whole Layers tree.
+    function _sdPanelsSoon(node) {
+        if (_sdPanelsTimer && _sdPanelsNode !== (node || null)) _sdPanelsMixed = true;
+        _sdPanelsNode = node || null;
+        clearTimeout(_sdPanelsTimer);
+        _sdPanelsTimer = setTimeout(_sdPanelsNow, SD_PANELS_TYPING_MS);
+    }
+
+    // Draws now what _sdPanelsSoon() put off.
+    function _sdPanelsNow() {
+        var node = _sdPanelsMixed ? null : _sdPanelsNode;
+        _sdPanelsCancel();
+        _sdTreeRefresh(node);
+        renderStatusBar();
+        renderAttrsPanel();
+        renderHtmlTree();
+        _sdLivePreviewSchedule();
+    }
+
+    // Drops what _sdPanelsSoon() put off: render() draws every panel.
+    function _sdPanelsCancel() {
+        clearTimeout(_sdPanelsTimer);
+        _sdPanelsTimer = 0;
+        _sdPanelsNode = null;
+        _sdPanelsMixed = false;
+    }
+
+    // The Layers tree after an edit of `node` (null: anything).
+    function _sdTreeRefresh(node) {
+        if (node && _sdTreeRowsRedraw(node)) return;
+        renderTree();
+    }
+
+    // Redraws the rows of `node` and its descendants in place, when the
+    // tree on screen was drawn from this page and is not stale. Its
+    // ancestors' rows read nothing of its props (label, id, badges and
+    // icon are the row's own node's), so they stay. False when the whole
+    // tree must be drawn: a node of a shared component (its rows are drawn
+    // inside the component's open marks), the root, no row for the node.
+    function _sdTreeRowsRedraw(node) {
+        var list = document.getElementById('sd-tree-list');
+        if (!list || !node || node === tree || list._sdTreeOf !== tree || _sdPanelStale.tree) return false;
+        if (_resolveSharedSid(node) > 0) return false;
+        if (_sdPanelDefer('tree')) return true;
+        var row = _sdTreeRowOf(list, node);
+        if (!row || !row.parentNode) return false;
+        var depth = parseInt(row.style.getPropertyValue('--depth'), 10) || 1;
+        var next = row.nextElementSibling;
+        var kids = (next && next.classList.contains('sd-tree-children')) ? next : null;
+        var fresh = document.createElement('ul');
+        _sdSharedOpen = {};
+        buildTreeItems(fresh, node, depth);
+        var parent = row.parentNode;
+        while (fresh.firstChild) parent.insertBefore(fresh.firstChild, row);
+        parent.removeChild(row);
+        if (kids) parent.removeChild(kids);
+        // The rows match the tree as it is now (_sdTreeSelectInPlace()).
+        list._sdTreeEpoch = _sdEditEpoch;
+        return true;
+    }
+    // ── end of panels on demand
+
     function render() {
+        // The node an edit limited this render to (_sdRenderNode()), read
+        // before renderCanvas() takes it.
+        var _scope = _sdCanvasScope;
+        _sdPanelsCancel();
         // The tree may have changed since the last paint; the editable-area
         // set is derived from it.
         _sdEditableInvalidate();
@@ -9391,7 +9514,7 @@ const StyleDesigner = (function () {
         renderCanvas();
         renderProperties();
         renderStatusBar();
-        renderTree();
+        _sdTreeRefresh(_scope);
         renderHtmlTree();
         renderAttrsPanel();
         renderStylesPanel();
@@ -9685,9 +9808,11 @@ const StyleDesigner = (function () {
             _canvasDetailsState[id] = { open: d.open, def: d._sdOpenDefault };
         });
     }
-    function _restoreDetailsState() {
+    // `root` limits it to one redrawn element: the <details> outside it
+    // keep the default they were drawn with.
+    function _restoreDetailsState(root) {
         if (!canvasDoc) return;
-        var all = Array.prototype.slice.call(canvasDoc.querySelectorAll('details'));
+        var all = Array.prototype.slice.call((root || canvasDoc).querySelectorAll('details'));
         // Every default is read first: opening one of a named group closes
         // the others.
         var defs = all.map(function (d) { return d.open; });
@@ -10772,8 +10897,127 @@ const StyleDesigner = (function () {
         });
     }
 
+    // ── Incremental canvas
+    // A text, property or style edit changes one node: renderCanvas() then
+    // draws that node's element again in place (_sdCanvasRedrawNode())
+    // instead of emptying the body and building the whole page. The edit
+    // paths name the node with _sdRenderNode(); every other caller (add,
+    // move, delete, undo, a tab switch, an edit inside a shared component)
+    // names none and gets the full rebuild. Anything the node's element
+    // cannot be redrawn alone for falls back to the full rebuild too.
+    var _sdCanvasScope = null;
+
+    // Runs `fn` (render() by default, or renderCanvas()) with the canvas
+    // limited to `node`. The scope lasts for this call only: a later render
+    // is never limited by an edit made before it.
+    function _sdRenderNode(node, fn) {
+        _sdCanvasScope = node || null;
+        try { (fn || render)(); } finally { _sdCanvasScope = null; }
+    }
+
+    // The node renderCanvas() was limited to, read once.
+    function _sdCanvasScopeTake() {
+        var n = _sdCanvasScope;
+        _sdCanvasScope = null;
+        return n;
+    }
+
+    // Props another node or the page's structure reads: an element id
+    // (labels, toggles and anchors point at it), the region a node shows,
+    // the search section's anchor, a placed part, an editable area or a lock
+    // (their marks reach the descendants and the content level), the tag (a
+    // summary draws as its own wrapper, a table tag changes the builder).
+    var _SD_SCOPE_FULL_PROPS = ['id', 'regionType', 'regionName', 'searchSection', 'partOf', '_editable', '_locked', 'tag'];
+
+    // True when a change of `prop` needs the whole canvas.
+    function _sdScopeFullProp(prop) {
+        return _SD_SCOPE_FULL_PROPS.indexOf(String(prop || '')) !== -1;
+    }
+
+    // The nodes from `root` down to `node`, both included; null when `node`
+    // is not in that tree.
+    function _sdNodePath(root, node) {
+        if (!root || !node) return null;
+        var stack = [[root, [root]]];
+        while (stack.length) {
+            var top = stack.pop(), n = top[0], path = top[1];
+            if (n === node) return path;
+            var kids = n.children || [];
+            for (var i = kids.length - 1; i >= 0; i--) {
+                if (kids[i]) stack.push([kids[i], path.concat([kids[i]])]);
+            }
+        }
+        return null;
+    }
+
+    // Whether `node`'s element can be drawn again alone: a node of the page
+    // tree `root` (not the root, whose element is the body), the page the
+    // canvas shows (`drawnPage` is the page last drawn, `activePage` the
+    // active one), outside every shared component and system widget (their
+    // trees are drawn with their widget's context and snapshots), not a
+    // shared reference itself, and neither a placed part nor inside one.
+    function _sdCanvasScopeOk(node, root, drawnPage, activePage) {
+        if (!node || !root || node === root || node.type === 'root') return false;
+        if (!drawnPage || drawnPage !== activePage) return false;
+        if (node.type === 'shared_ref' || _resolveSharedSid(node) > 0) return false;
+        var path = _sdNodePath(root, node);
+        if (!path) return false;
+        for (var i = 1; i < path.length; i++) {
+            if (_sdPartOf(path[i])) return false;
+        }
+        return true;
+    }
+
+    // The canvas wrappers of a page node (_findCanvasEl() finds the first).
+    function _sdCanvasWrapsOf(node) {
+        if (!canvasDoc || !node) return [];
+        return Array.prototype.slice.call(canvasDoc.querySelectorAll('[data-sd-id="' + node._id + '"]:not([data-sw-sid])'));
+    }
+
+    // Draws `node`'s element again in place: buildNodeEl() of its subtree
+    // replaces the old wrapper, so the rest of the canvas keeps its DOM, its
+    // scroll position and the state the operator gave it. What a full
+    // rebuild keeps is kept here too: the tabs and <details> the operator
+    // opened, a collapse opened by a click (copied into the tree first), a
+    // modal, offcanvas or dropdown menu open inside the node. The canvas
+    // passes that bind the page's scripts run again; each binds only what
+    // is not bound yet. False, and nothing changed, when the node has no
+    // single wrapper on the canvas.
+    function _sdCanvasRedrawNode(node) {
+        var wraps = _sdCanvasWrapsOf(node);
+        if (wraps.length !== 1 || !wraps[0].parentNode) return false;
+        var old = wraps[0];
+        _syncToggleableShowStateFromDom();
+        _captureTabState();
+        _captureDetailsState();
+        var open = _sdCanvasOpenCapture(old);
+        injectGoogleFonts();
+        _sdSharedOpen = {};
+        var el = buildNodeEl(node);
+        old.parentNode.replaceChild(el, old);
+        _sdCanvasOpenRestore(el, open, _sdFindNodeForEl);
+        _reExecuteCanvasScripts(el);
+        _sdThemeSwitchers();
+        _sdScrollers();
+        _sdFxCanvas();
+        _initCanvasTooltips();
+        _restoreTabState();
+        _restoreDetailsState(el);
+        _sdBootModuleWidgets();
+        _sdApplyImageStamps();
+        _sdTextInnerMark();
+        requestAnimationFrame(function () { adjustCanvasToolbars(); updateIconResizeHandle(); });
+        return true;
+    }
+    // ── end of incremental canvas
+
     function renderCanvas() {
         if (!canvasDoc || !canvasDoc.body || !iframeReady) return;
+        // An edit of one node redraws that node alone (_sdRenderNode()).
+        var _scope = _sdCanvasScopeTake();
+        if (_scope && canvasDoc._sdDrawn && !_sdPendingScrollY && !_sdPendingOpen &&
+            _sdCanvasScopeOk(_scope, tree, canvasDoc.body._sdDrawnPage, _pgActivePage()) &&
+            _sdCanvasRedrawNode(_scope)) return;
         // Preserve scroll position so options changes don't jump the canvas to top
         var _scrollY = (canvasDoc.documentElement ? canvasDoc.documentElement.scrollTop : 0) ||
                        canvasDoc.body.scrollTop || 0;
@@ -10952,7 +11196,8 @@ const StyleDesigner = (function () {
     // (pg_fx.min.js), loaded into the frame once and bound again after
     // every render. pgFxEditing makes a node drawn again by a later render
     // show in place instead of playing its entrance on every change; the
-    // Interactions section's Play button replays one. While the canvas's
+    // Interactions section's Play button replays one (the part
+    // 'interactions'). While the canvas's
     // motion is paused the frame answers reduced motion, so nothing moves.
     function _sdFxCanvas() {
         if (!canvasDoc || !canvasDoc.querySelector('[data-pg-fx]')) return;
@@ -10964,20 +11209,6 @@ const StyleDesigner = (function () {
         scr.id = 'pg-fx-js';
         try { scr.src = new URL('assets/js/pg_fx.min.js', document.baseURI).href; } catch (e) { return; }
         canvasDoc.head.appendChild(scr);
-    }
-
-    // The Play button of the Interactions section: the node's interaction
-    // once on the canvas, whether the canvas's motion plays or not.
-    function _sdFxReplay(node) {
-        var el = _sdCanvasInnerOf(node);
-        if (el && !el.hasAttribute('data-pg-fx')) el = el.querySelector('[data-pg-fx]');
-        var win = canvasDoc && canvasDoc.defaultView;
-        if (!el || !win) return;
-        if (win.pgFx && typeof win.pgFx.replay === 'function') { win.pgFx.replay(el); return; }
-        // The file is not in the frame yet: load it, then play.
-        _sdFxCanvas();
-        var scr = canvasDoc.getElementById('pg-fx-js');
-        if (scr) scr.addEventListener('load', function () { if (win.pgFx && win.pgFx.replay) win.pgFx.replay(el); });
     }
 
     function _reExecuteCanvasScripts(root) {
@@ -14213,6 +14444,11 @@ const StyleDesigner = (function () {
                     if (_semBP.target) sem.target = _semBP.target;
                     if (_semBP.rel) sem.rel = _semBP.rel;
                 }
+                // A video's bound poster draws the picture sample; a bound
+                // player address draws none, so the canvas fetches no media.
+                if (String(node.props.tag || '').toLowerCase() === 'video' && node.props._bindings && node.props._bindings.poster && _semBP.poster) {
+                    sem.setAttribute('poster', _semBP.poster);
+                }
                 if (node.props.tag === 'button') {
                     var btnTypeVal = node.props.btnType || 'button';
                     sem.setAttribute('type', btnTypeVal);
@@ -15083,7 +15319,7 @@ const StyleDesigner = (function () {
             return _rec ? '[' + _rec.label + ']' : '';
         }
         if (prop === 'src' && _SD_AVATAR_TOKENS[fieldName]) return _sdAvatarSample();
-        if (prop === 'src')  return _sdImgPlaceholderForToken(fieldName);
+        if (prop === 'src' || prop === 'poster') return _sdImgPlaceholderForToken(fieldName);
         if (prop === 'href') return '#';
         // A field of a referenced record ('__ref', SW_REF_TOKEN).
         if ((prop === 'text' || prop === 'alt') && fieldName === '__ref') return _sdT('Example');
@@ -15889,7 +16125,7 @@ const StyleDesigner = (function () {
                     // A child deleted from the DOM while typing is still in
                     // the tree — redraw so the canvas shows it again.
                     if (_chrome.some(function (n) { return !n.isConnected; })) {
-                        setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
+                        setTimeout(function () { try { _sdRenderNode(node, renderCanvas); } catch (e) {} }, 0);
                     }
                     if (newText !== origText && newText !== origShown) {
                         // liveTextObs already wrote `newText` into node.props
@@ -15899,7 +16135,7 @@ const StyleDesigner = (function () {
                         node.props[item.prop] = newText;
                         _sdSharedMarkEdited(node);
                         renderProperties();
-                        renderTree();
+                        _sdTreeRefresh(node);
                         _sdLivePreviewSchedule();
                     } else {
                         // No real change \u2192 drop the pre-emptive snapshot so
@@ -15945,7 +16181,7 @@ const StyleDesigner = (function () {
                         if (_chrome.length) {
                             // Writing the text back would wipe the children
                             // out of the element; redraw it from the tree.
-                            setTimeout(function () { try { renderCanvas(); } catch (e) {} }, 0);
+                            setTimeout(function () { try { _sdRenderNode(node, renderCanvas); } catch (e) {} }, 0);
                         }
                         else if (isRichText || keepsMarkup) item.el.innerHTML = origText || '';
                         else item.el.textContent = origText || '';
@@ -17167,9 +17403,16 @@ const StyleDesigner = (function () {
             case 'widget_part': return _sdPaletteCreate(extra);
             case 'component':
                 var ctype = extra.componentType;
+                // A family file's block: its rules join _SD_BLOCK_CSS_NEEDS
+                // when the families are read, before the line below.
+                var _ctFamily = _sdBlockFamilyOf(ctype);
                 // Rules this block needs go to the Styles panel, not inline;
                 // not while the drop rules only look at the block's shape.
                 if (!_sdPaletteDry) _sdEnsureBlockStyles(_SD_BLOCK_CSS_NEEDS[ctype]);
+                if (_ctFamily) {
+                    var _ctFamilyNode = _ctFamily.build(ctype);
+                    if (_ctFamilyNode) return _ctFamilyNode;
+                }
                 
                 // Nested Component Expansion (Bootstrap Studio Style)
                 
@@ -19927,50 +20170,12 @@ const StyleDesigner = (function () {
                 // legal blocks at the end of the branch share them, and so do
                 // the maintenance/launch, news and creative blocks after them.
                 if (/^(services|booking|steps|hours|locations|menu|events|notice|catering|loyalty|legal|maintenance|coming-soon|news|bento|marquee|showcase|quote|gallery|scroller)-/.test(ctype) || ctype === 'team-profiles' || ctype === 'testimonial-ratings') {
-                    var _bkUid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
-                    var _bkDiv = function (cls, name, kids, attrs) {
-                        var p = { tag: 'div', cssClass: cls, customName: name };
-                        if (attrs) p._attrs = attrs;
-                        return createNode('semantic', p, kids || []);
-                    };
-                    var _bkTag = function (tag, cls, name, kids, attrs) {
-                        var p = { tag: tag, cssClass: cls, customName: name };
-                        if (attrs) p._attrs = attrs;
-                        return createNode('semantic', p, kids || []);
-                    };
-                    var _bkSection = function (cls, name, kids) {
-                        return createNode('semantic', { tag: 'section', cssClass: cls, customName: name }, [
-                            createNode('container', { fluid: false, cssClass: '' }, kids)
-                        ]);
-                    };
-                    var _bkRow = function (name, kids, cls) {
-                        return createNode('row', { gutter: '4', justify: '', align: '', cssClass: cls || '', customName: name }, kids);
-                    };
-                    var _bkCol = function (name, kids, lg, md, sm, cls) {
-                        return createNode('col', { xs: '12', sm: sm || '', md: md || '', lg: lg || '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
-                    };
-                    var _bkH = function (tag, text, cls) { return createNode('content', { contentType: 'heading', tag: tag, text: text, cssClass: cls || '' }); };
-                    var _bkP = function (text, cls) { return createNode('content', { contentType: 'paragraph', text: text, cssClass: cls || '' }); };
-                    var _bkIcon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
-                    var _bkBtn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
-                    var _bkLink = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
-                    // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
-                    var _bkTime = function (datetime, text, cls, name) {
-                        return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
-                    };
-                    // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
-                    var _bkRegion = function (label) {
-                        return [
-                            { name: 'role',       value: 'region' },
-                            { name: 'aria-label', value: label },
-                            { name: 'tabindex',   value: '0' }
-                        ];
-                    };
-                    // An icon-only link (social, share, email), named by its aria-label.
-                    var _bkIconLink = function (icon, label, cls, href) {
-                        return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
-                            _attrs: [{ name: 'aria-label', value: label }] }, [ _bkIcon(icon) ]);
-                    };
+                    // The shared builders (_sdBlockKit()), the ones a family file gets too.
+                    var _bkKit = _sdBlockKit();
+                    var _bkUid = _bkKit.uid, _bkDiv = _bkKit.div, _bkTag = _bkKit.tag, _bkSection = _bkKit.section;
+                    var _bkRow = _bkKit.row, _bkCol = _bkKit.col, _bkH = _bkKit.h, _bkP = _bkKit.p, _bkIcon = _bkKit.icon;
+                    var _bkBtn = _bkKit.btn, _bkLink = _bkKit.link, _bkTime = _bkKit.time, _bkRegion = _bkKit.region;
+                    var _bkIconLink = _bkKit.iconLink, _bkImg = _bkKit.img, _bkIntro = _bkKit.intro;
                     // Pause control of a pg-marquee block: one wrapper (hidden
                     // under reduced motion) around a btn-check and its label.
                     // The label must follow the input: Bootstrap styles it
@@ -19988,13 +20193,6 @@ const StyleDesigner = (function () {
                                 _bkIcon('bi-play-fill'),
                                 _bkH('span', label, 'visually-hidden')
                             ], [{ name: 'for', value: id }])
-                        ]);
-                    };
-                    var _bkImg = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
-                    var _bkIntro = function (title, lead) {
-                        return _bkDiv('text-center mb-5', _sdT('Section Header'), [
-                            _bkH('h2', title, 'fw-bold mb-2'),
-                            _bkP(lead, 'lead text-body-secondary mb-0')
                         ]);
                     };
                     // One menu line: name, a rule that leads the eye to the
@@ -23438,6 +23636,7 @@ const StyleDesigner = (function () {
                 var searchBox = document.getElementById('sd-ov-search-wrap');
                 if (treeWrap)  treeWrap.style.display  = sub === 'tree'  ? '' : 'none';
                 if (notesWrap) notesWrap.style.display = sub === 'notes' ? '' : 'none';
+                if (sub === 'tree') _sdPanelsFlush();
                 // Header title mirrors the active sub-tab — same pattern the
                 // right panel uses for Design ↔ Themes so both ends feel
                 // consistent. Icon swaps too.
@@ -24745,6 +24944,7 @@ const StyleDesigner = (function () {
             var isNowCollapsed = p.classList.contains('collapsed');
             if (colBtn) { colBtn.classList.toggle('bi-chevron-up', isNowCollapsed); colBtn.classList.toggle('bi-chevron-down', !isNowCollapsed); }
             try { localStorage.setItem(_BP_COL_KEY, isNowCollapsed ? '1' : '0'); } catch(e) {}
+            if (!isNowCollapsed) _sdPanelsFlush();
         }
         // Restore collapsed state
         try { if (localStorage.getItem(_BP_COL_KEY) === '1') { p.classList.add('collapsed'); if (colBtn) { colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up'); } } } catch(e) {}
@@ -26146,14 +26346,14 @@ const StyleDesigner = (function () {
     // collapsible bottom strip à la Bootstrap Studio.
     function renderStylesPanel() {
         var stylesPane = document.getElementById('sd-bp-styles');
-        if (!stylesPane) return;
+        if (!stylesPane || _sdPanelDefer('styles')) return;
         var el = _selectedCanvasEl();
         renderStylesTabPane(stylesPane, el);
     }
 
     function renderAttrsPanel() {
         var panel = document.getElementById('sd-bp-attrs');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('attrs')) return;
 
         // ── Multi-select mode ──
         if (selectedNodes.length > 1) {
@@ -26385,7 +26585,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 propUndo();
                 n.props[propKey] = this.value;
-                renderCanvas();
+                _sdRenderNode(_sdScopeFullProp(propKey) ? null : n, renderCanvas);
                 renderHtmlTree();
             });
             inp.addEventListener('change', function () {
@@ -26412,7 +26612,7 @@ const StyleDesigner = (function () {
                 saveState();
                 n.props.cssClass = (n.props.cssClass || '').split(' ').filter(function (c) { return c.trim() && c !== cls; }).join(' ');
                 renderAttrsPanel();
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
                 renderProperties();
                 renderHtmlTree();
             });
@@ -26488,7 +26688,7 @@ const StyleDesigner = (function () {
                 inp.addEventListener('input', function () {
                     valueUndo();
                     n.props._attrs[parseInt(this.dataset.idx, 10)].value = this.value;
-                    renderCanvas();
+                    _sdRenderNode(n, renderCanvas);
                     renderHtmlTree();
                     // The Properties panel reads the same _attrs (Value, ID,
                     // Placeholder, Pattern…). Without this it keeps showing
@@ -26521,7 +26721,7 @@ const StyleDesigner = (function () {
                     saveState();
                     n.props._attrs.splice(parseInt(this.dataset.idx, 10), 1);
                     renderAttrsPanel();
-                    renderCanvas();
+                    _sdRenderNode(n, renderCanvas);
                     renderHtmlTree();
                     renderProperties();
                 });
@@ -26582,7 +26782,7 @@ const StyleDesigner = (function () {
             }).join(' ').trim();
             node.props.cssClass = cleaned;
             renderAttrsPanel();
-            renderCanvas();
+            _sdRenderNode(node, renderCanvas);
             renderProperties();
             renderHtmlTree();
             if (ci) ci.value = '';
@@ -26599,7 +26799,7 @@ const StyleDesigner = (function () {
             existing.push(val);
             node.props.cssClass = existing.join(' ').trim();
             renderAttrsPanel();
-            renderCanvas();
+            _sdRenderNode(node, renderCanvas);
             renderProperties();
             renderHtmlTree();
         }
@@ -27012,7 +27212,7 @@ const StyleDesigner = (function () {
 
     function renderStylesPanel() {
         var panel = document.getElementById('sd-bp-styles');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('styles')) return;
 
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-styles-empty"><span class="bi bi-palette2 d-block mb-1" style="font-size:1.3rem"></span>' + esc(_sdT('No element selected')) + '</div>';
@@ -27083,7 +27283,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 n.props._styles[parseInt(this.dataset.idx, 10)].prop = this.value;
                 syncInlineStyle(n);
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
             inp.addEventListener('change', function () { saveState(); });
         });
@@ -27091,7 +27291,7 @@ const StyleDesigner = (function () {
             inp.addEventListener('input', function () {
                 n.props._styles[parseInt(this.dataset.idx, 10)].val = this.value;
                 syncInlineStyle(n);
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
             inp.addEventListener('change', function () { saveState(); });
         });
@@ -27100,8 +27300,7 @@ const StyleDesigner = (function () {
                 saveState();
                 n.props._styles.splice(parseInt(this.dataset.idx, 10), 1);
                 syncInlineStyle(n);
-                
-                renderCanvas();
+                _sdRenderNode(n, renderCanvas);
             });
         });
 
@@ -27391,6 +27590,9 @@ const StyleDesigner = (function () {
     function renderTree() {
         var list = document.getElementById('sd-tree-list');
         if (!list) return;
+        // Hidden (the Notes tab, a folded Overview): drawn when shown; the
+        // notes list it also refreshes may be the one on screen.
+        if (_sdPanelDefer('tree')) { if (_refreshNotesPanel) _refreshNotesPanel(); return; }
         _sdTreeOpenToSelection();
         list.innerHTML = '';
 
@@ -28078,7 +28280,7 @@ const StyleDesigner = (function () {
         // The code view draws the same page as text (_sdCodeRefresh()).
         if (_sdCodeEnabled()) { _sdCodeRefresh(); return; }
         var panel = document.getElementById('sd-html-tree');
-        if (!panel) return;
+        if (!panel || _sdPanelDefer('html')) return;
         panel.innerHTML = '';
 
         var frame = _sdPageFrameRows();
@@ -28331,7 +28533,6 @@ const StyleDesigner = (function () {
         applying: false,    // true while typed changes are being put into the tree
         lockToastAt: 0
     };
-    var _SD_CODE_APPLY_MS = 400;
     var _SD_CODE_KEY = 'pinegrap_designer_code_view';
 
     function _sdCodeEnabled() { return !!(_sdCode.on && _sdCode.ed); }
@@ -28403,279 +28604,58 @@ const StyleDesigner = (function () {
         if (wanted) _sdCodeToggle(true);
     }
 
+    // ── The code view's runtime: the part 'code' ──────────────────────────
+    // Switching the view on, its document and selection, the file tabs and
+    // the search in all tabs live in assets/js/style_designer_code.js, run
+    // the first time one of these is used. Once the part has run, a call
+    // goes straight to it (the view's own redraws are synchronous); before,
+    // nothing is open that a redraw, a flush or Ctrl+S would reach.
+    function _sdCodePart() {
+        return _sdPartLoaded('code') ? (_sdPartApis.code || null) : null;
+    }
+
     function _sdCodeToggle(on) {
-        var quad = document.getElementById('sd-bp-quad-tl');
-        var btn  = document.getElementById('sd-html-code-toggle');
-        if (!quad || !_sdCode.host) return;
-        if (!on) {
-            _sdCode.on = false;
-            quad.classList.remove('sd-code-on');
-            if (btn) btn.classList.remove('active');
-            try { localStorage.setItem(_SD_CODE_KEY, '0'); } catch (e) {}
-            renderHtmlTree();
-            return;
-        }
-        if (typeof PgCodeEditor === 'undefined') return;
-        _sdCode.on = true;
-        quad.classList.add('sd-code-on');
-        if (btn) btn.classList.add('active');
-        try { localStorage.setItem(_SD_CODE_KEY, '1'); } catch (e) {}
-        if (_sdCode.ed) { _sdCodeRefresh(); return; }
-        if (_sdCode.loading) return;
-        _sdCode.loading = true;
-        PgCodeEditor.open(_sdCode.pageHost, {
-            language: 'html',
-            value: '',
-            readOnly: !_sdCodeMayEdit(),
-            phrases: _sdCodePhrases(),
-            labels: { syntaxError: _sdT('Syntax error') },
-            // The lock markers of the HTML tree, beside the locked lines.
-            lockGutter: true,
-            lockTitle: _sdCodeLockTitle,
-            onSelection: _sdCodeOnSelection,
-            onChange: _sdCodeOnChange,
-            onLockHit: _sdCodeOnLockHit,
-            keys: [_sdCodeFindKey()]
-        }).then(function (ed) {
-            _sdCode.loading = false;
-            _sdCode.ed = ed;
-            _sdCode.tabs[0].ed = ed;
-            _sdCode.editable = _sdCodeMayEdit();
-            // Switched off while the bundle was on its way.
-            if (!_sdCode.on) return;
-            _sdCode.text = '';
-            _sdCodeRefresh();
-            _sdCodeTabsFlush();
-        }, function (err) {
-            _sdCode.loading = false;
-            sdToast('<strong>' + esc(_sdT('The code editor could not be loaded.')) + '</strong><br>' + esc(err && err.message ? err.message : ''), 'error', 6000);
-            _sdCodeToggle(false);
-        });
+        var api = _sdCodePart();
+        if (api) { api.toggle(on); return; }
+        if (on) _sdPartCall('code', 'toggle', [on]).catch(_sdPartFailed);
     }
 
-    // The document for the editor: its text, the range map (one entry per
-    // node and per frame row, with the islands an edit may touch) and the
-    // locks derived from it.
-    function _sdCodeDocument() {
-        var text = '';
-        var entries = [];
-        var locks = [];
-        var lang = _sdDocLang();
-        var frame = _sdPageFrameRows();
-        var addRow = function (r, indent, role) {
-            var line = '    '.repeat(indent) + _sdFrameRowText(r);
-            var from = text.length;
-            text += line + '\n';
-            entries.push({ key: role + ':' + entries.length, node: null, from: from, to: from + line.length, lock: 'full', role: role });
-        };
-        var addLine = function (line) {
-            var from = text.length;
-            text += line + '\n';
-            entries.push({ key: 'frame:' + entries.length, node: null, from: from, to: from + line.length, lock: 'full', role: 'frame' });
-        };
-
-        addLine('<!DOCTYPE html>');
-        addLine('<html lang="' + esc(lang) + '">');
-        addLine('<head>');
-        frame.head.forEach(function (r) { addRow(r, 1, 'head'); });
-        addLine('</head>');
-
-        // The <body> tag: the root node's attributes may change, the tag may not.
-        var bodyOpen = '<body';
-        var bodyIslands = [];
-        _sdPageBodyAttrs().forEach(function (a) {
-            bodyOpen += ' ' + a[0] + '="';
-            var vf = bodyOpen.length;
-            bodyOpen += esc(a[1]);
-            bodyIslands.push([vf, bodyOpen.length]);
-            bodyOpen += '"';
-        });
-        bodyOpen += '>';
-        var bodyFrom = text.length;
-        text += bodyOpen + '\n';
-        var rootLock = _sdCodeLockOf(tree);
-        entries.push({ key: 'body', node: tree, from: bodyFrom, to: bodyFrom + bodyOpen.length, lock: 'half', role: 'body',
-            islands: (rootLock.attrs ? bodyIslands.map(function (p) { return [bodyFrom + p[0], bodyFrom + p[1]]; }) : []) });
-
-        // The body: the emitter with its range map, widgets written whole.
-        var sink = { ranges: [], scope: 0, full: true };
-        var bodyStart = text.length;
-        if (tree && tree.children) {
-            tree.children.forEach(function (c) { text += _sdEmitNode(c, 1, text.length, sink); });
-        }
-        // Where the page's own content is: what is typed between the body
-        // tag and the scripts belongs to the root node. Grows at both ends
-        // so a line typed right after <body> or right before the scripts
-        // counts.
-        var contentEnd = text.length;
-        entries.push({ key: 'content', node: tree, from: bodyStart, to: contentEnd, lock: '', role: 'content', grow: true });
-
-        var recorded = new Set();
-        sink.ranges.forEach(function (r) { recorded.add(r.node); });
-        sink.ranges.forEach(function (r) {
-            if (r.to <= r.from) return;
-            var type = r.node.type;
-            // A loop area is its two marker lines; the rows between them
-            // are nodes of their own. A shared reference and a widget's root
-            // wrapper hold nothing of their own either: what is inside decides.
-            if (type === 'loop_area' || type === 'recipient_loop_area') {
-                var openEnd = text.indexOf('-->', r.from) + 3;
-                var closeAt = text.lastIndexOf('<!--', r.to);
-                if (openEnd > 2 && closeAt > r.from) {
-                    entries.push({ key: r.sid + ':' + r.node._id + ':open', node: r.node, sid: r.sid, from: r.from, to: openEnd, lock: 'full', role: 'loop' });
-                    entries.push({ key: r.sid + ':' + r.node._id + ':close', node: r.node, sid: r.sid, from: closeAt, to: text.indexOf('-->', closeAt) + 3, lock: 'full', role: 'loop' });
-                }
-                return;
-            }
-            if (type === 'root' || type === 'shared_ref') return;
-            // The range is the element itself: from its "<" to its last
-            // character, without the indentation and the line break the
-            // emitter puts around it, so a tag typed just before it is a
-            // new element and not a change to it.
-            var from = r.from, to = r.to;
-            var open = _sdCodeOpenTag(text, from, to);
-            if (open) from = open.from;
-            else { while (from < to && /\s/.test(text[from])) from++; }
-            while (to > from && /\s/.test(text[to - 1])) to--;
-            if (to <= from) return;
-            var lock = _sdCodeLockOf(r.node);
-            var e = { key: r.sid + ':' + r.node._id, node: r.node, sid: r.sid, from: from, to: to, lock: lock.level, role: 'node',
-                      kind: _sdCodeTextKind(r.node),
-                      // Children the emitter could not locate (a component
-                      // that rewrote them) stay as they are: the text is
-                      // read for the element itself only.
-                      atomic: !!(r.node.children && r.node.children.length && r.node.children.some(function (c) { return !recorded.has(c); })) };
-            if (lock.level === 'half') e.islands = _sdCodeIslands(text, { from: from, to: to, node: r.node }, lock);
-            entries.push(e);
-        });
-
-        frame.foot.forEach(function (r) { addRow(r, 1, 'foot'); });
-        addLine('</body>');
-        text += '</html>';
-        var endFrom = text.length - 7;
-        entries.push({ key: 'frame:end', node: null, from: endFrom, to: text.length, lock: 'full', role: 'frame' });
-
-        entries.forEach(function (e) {
-            if (e.lock === 'full') locks.push({ from: e.from, to: e.to, tag: e.role });
-            else if (e.lock === 'half') locks.push({ from: e.from, to: e.to, tag: e.role, allow: e.islands || [] });
-        });
-        return { text: text, entries: entries, locks: locks, bodyStart: bodyStart };
-    }
-
-    // What a hand may change on a node, in the code view's terms:
-    // { level: 'full' | 'half' | '', attrs: bool, text: bool }. The same
-    // questions the canvas asks (_sdCanEditNode(), the layer lock, the
-    // shared component), answered once per node while the document is built.
-    function _sdCodeLockOf(node) {
-        if (!node) return { level: 'full', attrs: false, text: false };
-        if (node.type === 'region') return { level: 'full', attrs: false, text: false };
-        if (!_collab.mayEdit) return { level: 'full', attrs: false, text: false };
-        var structural = _sdCanEditNode(node);
-        if (node.type === 'root') return { level: 'half', attrs: structural, text: false };
-        // A text island only where _sdCodeApplyText() writes it back: a
-        // component prints its own label (a btn, a badge), so a keystroke
-        // there would be taken and then dropped by the next redraw.
-        var textOk = structural || (_sdCanEditNode(node, 'text') && _sdCodeTextKind(node) !== 'none');
-        if (!structural) {
-            // A content role outside its area: the text, nothing else.
-            return textOk ? { level: 'half', attrs: false, text: true } : { level: 'full', attrs: false, text: false };
-        }
-        // A sentence with values: its attribute values; its words and the
-        // places of its values are the panel's (_sdSentenceLayout()).
-        if (_sdIsSentence(node)) return { level: 'half', attrs: true, text: false };
-        // A locked layer, a shared component or a widget (owner's rule:
-        // half-locked): values and text, never the structure.
-        if ((node.props && node.props._locked) || hasLockedAncestor(node) || _resolveSharedSid(node) > 0) {
-            return { level: 'half', attrs: true, text: true };
-        }
-        return { level: '', attrs: true, text: true };
-    }
-
-    // The islands of a half-locked node: its attribute values (when values
-    // may change) and its own text (when the text may). Read from the text
-    // itself, so a component's output needs no map of its own.
-    function _sdCodeIslands(text, r, lock) {
-        var out = [];
-        var open = _sdCodeOpenTag(text, r.from, r.to);
-        if (!open) return out;
-        if (lock.attrs) {
-            open.attrs.forEach(function (a) { if (a.valueFrom !== null) out.push([a.valueFrom, a.valueTo]); });
-        }
-        // The text as the emitter printed it: a bound text is its {{token}}
-        // even when the node has no text of its own.
-        var raw = (lock.text && r.node.props) ? _sdCodeBoundProps(r.node).text : '';
-        if (typeof raw === 'string' && raw !== '') {
-            var needle = (r.node.type === 'semantic') ? esc(raw) : raw;
-            var at = text.indexOf(needle, open.end);
-            if (at !== -1 && at + needle.length <= r.to) out.push([at, at + needle.length]);
-        }
-        return out;
-    }
-
-    // The opening tag at the start of a node's text: where the tag name is,
-    // each attribute's name and value, and where the tag ends. null when the
-    // text does not begin with a tag (a region placeholder, raw markup).
-    function _sdCodeOpenTag(text, from, to) {
-        var i = from;
-        while (i < to && (text[i] === ' ' || text[i] === '\t' || text[i] === '\n')) i++;
-        if (text[i] !== '<' || text[i + 1] === '!' || text[i + 1] === '/') return null;
-        var m = /^<([A-Za-z][\w:-]*)/.exec(text.slice(i, Math.min(to, i + 200)));
-        if (!m) return null;
-        var out = { from: i, tagFrom: i + 1, tagTo: i + 1 + m[1].length, attrs: [], end: 0 };
-        var p = out.tagTo;
-        var attrRe = /\s+([^\s=\/>"']+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?|\s*\/?>/y;
-        while (p < to) {
-            attrRe.lastIndex = p;
-            var a = attrRe.exec(text);
-            if (!a) return null;
-            if (a[1] === undefined) { out.end = attrRe.lastIndex; return out; }
-            var entry = { name: a[1], nameFrom: a.index + (a[0].length - a[0].replace(/^\s+/, '').length), nameTo: 0, valueFrom: null, valueTo: null };
-            entry.nameTo = entry.nameFrom + a[1].length;
-            if (a[2] !== undefined || a[3] !== undefined || a[4] !== undefined) {
-                var val = a[2] !== undefined ? a[2] : (a[3] !== undefined ? a[3] : a[4]);
-                var quoted = a[4] === undefined;
-                entry.valueTo = attrRe.lastIndex - (quoted ? 1 : 0);
-                entry.valueFrom = entry.valueTo - val.length;
-            }
-            out.attrs.push(entry);
-            p = attrRe.lastIndex;
-        }
-        return null;
-    }
-
-    // Writes the document when it changed, then shows the selection. Only
-    // the part that differs is written (the longest common start and end
-    // of the old and the new text are left alone): a keystroke in a panel
-    // touches one attribute, and the cursor, the scroll position, the folds
-    // and the undo history of the editor stay as they were. The ranges and
-    // the locks are replaced whole: their positions in the new text are
-    // known from the emitter, and the set is cheap to rebuild.
     function _sdCodeRefresh() {
-        if (!_sdCodeEnabled()) return;
-        var ed = _sdCode.ed;
-        _sdCodeSyncMode();
-        var doc = _sdCodeDocument();
-        var current = ed.getValue();
-        if (doc.text !== current) {
-            _sdCode.busy = true;
-            try {
-                var d = _sdCodeTextDiff(current, doc.text);
-                ed.applyExternal(d.from, d.to, d.insert);
-                // The text is the tree's again: nothing typed is waiting.
-                _sdCode.dirty = null;
-                if (_sdCode.applyTimer) { clearTimeout(_sdCode.applyTimer); _sdCode.applyTimer = 0; }
-            } finally { _sdCode.busy = false; }
-        }
-        // The map and the locks are replaced on every pass, text change or
-        // not: a node the tree gained has no range yet even when its text
-        // is already there (typed, then applied).
-        ed.track(doc.entries.map(function (e) {
-            return { id: e.key, from: e.from, to: e.to, data: e, grow: !!e.grow };
-        }));
-        ed.lock(doc.locks);
-        _sdCode.text = doc.text;
-        _sdCode.entries = doc.entries;
-        _sdCodeRevealSelection();
+        var api = _sdCodePart();
+        if (api) api.refresh();
+    }
+
+    function _sdCodeSaveShortcut() {
+        var api = _sdCodePart();
+        return api ? api.saveShortcut() : false;
+    }
+
+    function _sdCodeTabOpen(spec) {
+        _sdPartCall('code', 'tabOpen', [spec]).catch(_sdPartFailed);
+    }
+
+    function _sdCodeTabActivate(key) {
+        _sdPartCall('code', 'tabActivate', [key]).catch(_sdPartFailed);
+    }
+
+    function _sdCodeTabClose(key) {
+        _sdPartCall('code', 'tabClose', [key]).catch(_sdPartFailed);
+    }
+
+    function _sdCodeTabSave(key) {
+        _sdPartCall('code', 'tabSave', [key]).catch(_sdPartFailed);
+    }
+
+    function _sdCodeFindShow(on) {
+        _sdPartCall('code', 'findShow', [on]).catch(_sdPartFailed);
+    }
+
+    function _sdLayoutCodeOpen(page, regenerate) {
+        _sdPartCall('code', 'layoutOpen', [page, regenerate]).catch(_sdPartFailed);
+    }
+
+    function _sdDregionCodeOpen(name) {
+        _sdPartCall('code', 'dregionOpen', [name]).catch(_sdPartFailed);
     }
 
     // Whether the editor may change the page right now: not in view mode.
@@ -28690,886 +28670,29 @@ const StyleDesigner = (function () {
             : _sdT('Show the page as code (click a line to select its element)'));
     }
 
-    // Read-only follows the page lock: a session that lost the page keeps
-    // the view but not the keyboard.
-    function _sdCodeSyncMode() {
-        var editable = _sdCodeMayEdit();
-        if (_sdCode.editable === editable) return;
-        _sdCode.editable = editable;
-        if (_sdCode.ed) _sdCode.ed.setReadOnly(!editable);
-        _sdCodeLabelSwitch(document.getElementById('sd-html-code-toggle'), editable);
-    }
-
-    // The one replacement that turns `before` into `after`: the common start
-    // and end are kept, what is between them is replaced. Compared by UTF-16
-    // units, which is what the editor's positions count.
-    function _sdCodeTextDiff(before, after) {
-        var a = before.length, b = after.length;
-        var start = 0, max = Math.min(a, b);
-        while (start < max && before.charCodeAt(start) === after.charCodeAt(start)) start++;
-        var end = 0;
-        while (end < max - start && before.charCodeAt(a - 1 - end) === after.charCodeAt(b - 1 - end)) end++;
-        return { from: start, to: a - end, insert: after.slice(start, b - end) };
-    }
-
-    // The entry of a node in the map, by identity (ids repeat across widgets).
-    function _sdCodeEntryOf(node) {
-        if (!node) return null;
-        var list = _sdCode.entries;
-        for (var i = 0; i < list.length; i++) if (list[i].node === node) return list[i];
-        return null;
-    }
-
-    // Marks the selected node's opening tag and brings it into view; a
-    // selection made in the editor itself is not scrolled to.
-    function _sdCodeRevealSelection() {
-        if (!_sdCodeEnabled()) return;
-        var ed = _sdCode.ed;
-        var entry = _sdCodeEntryOf(selectedNodes.length > 1 ? null : selectedNode);
-        if (!entry) { ed.mark('sel'); return; }
-        var live = ed.tracked(entry.key) || entry;
-        var open = _sdCodeOpenTag(ed.getValue(), live.from, live.to);
-        var from = open ? open.from : live.from, to = open ? open.end : Math.min(live.to, live.from + 200);
-        ed.mark('sel', from, to, 'pg-ce-mark');
-        if (!_sdCode.fromEditor && !_sdCode.applying) ed.scrollTo(from, { y: 'center' });
-    }
-
-    // The cursor moved by hand: the innermost element under it is selected
-    // on the canvas, as a click on a row of the tree does.
-    function _sdCodeOnSelection(inst, update) {
-        if (_sdCode.busy || !_sdCode.on) return;
-        var byHand = false;
-        for (var i = 0; i < update.transactions.length; i++) {
-            if (update.transactions[i].isUserEvent('select')) { byHand = true; break; }
-        }
-        if (!byHand) return;
-        var pos = inst.selection().head;
-        var hits = inst.trackedAt(pos);
-        var entry = null;
-        for (var j = 0; j < hits.length; j++) {
-            var e = hits[j].data;
-            if (e && e.node) { entry = e; break; }
-        }
-        if (!entry || entry.node === selectedNode) return;
-        _sdCode.fromEditor = true;
-        try {
-            selectedNode = entry.node;
-            selectedNodes = [];
-            _sdSelectRender();
-            scrollCanvasToNode(selectedNode);
-        } finally { _sdCode.fromEditor = false; }
-    }
-
-    // ========================= CODE VIEW: TYPED CHANGES INTO THE TREE =========================
-    // What is typed is read back from the editor's syntax tree after a pause
-    // and put into the nodes it belongs to. The range map says which element
-    // of the text is which node: an element whose "<" sits where a node's
-    // range starts is that node; one without a range is new. An existing
-    // node changes in place (tag, attributes, text), a free node's children
-    // are rebuilt from the elements inside it (so a deletion, a move or a
-    // paste in the text is one in the tree), a new element with no node
-    // inside it goes through the server's converter (the same one a paste
-    // uses) and stands as a Custom HTML node until the answer comes. Locks
-    // never reach here: the editor refused the keystroke. After the tree is
-    // written the normal render follows, and the refresh writes back the
-    // tree's own spelling of what was typed (quotes, escaping, indentation).
-
-    // The editor changed under the operator's hands: remember the span and
-    // apply after a pause. The facade's writes (busy) are not typing.
-    function _sdCodeOnChange(inst, update) {
-        if (_sdCode.busy || !_sdCode.on || !_sdCodeMayEdit()) return;
-        var d = _sdCode.dirty;
-        if (d) {
-            d.from = update.changes.mapPos(d.from, -1);
-            d.to = update.changes.mapPos(d.to, 1);
-        }
-        update.changes.iterChangedRanges(function (fromA, toA, fromB, toB) {
-            if (!d) d = { from: fromB, to: toB };
-            else { d.from = Math.min(d.from, fromB); d.to = Math.max(d.to, toB); }
-        });
-        _sdCode.dirty = d;
-        if (_sdCode.applyTimer) clearTimeout(_sdCode.applyTimer);
-        _sdCode.applyTimer = setTimeout(_sdCodeApply, _SD_CODE_APPLY_MS);
-    }
+    // ========================= CODE VIEW: TYPED CHANGES (IN THE PART) =========================
+    // What is typed goes into the tree in the code part
+    // (style_designer_code.js), with the {{token}} bindings and the locks of
+    // the document. The engine runs only once the view has run: before
+    // that nothing typed waits for a flush and no token is offered.
 
     // Whatever is waiting goes in now (a save, a tab switch).
     function _sdCodeFlush() {
-        if (!_sdCode.applyTimer) return;
-        clearTimeout(_sdCode.applyTimer);
-        _sdCode.applyTimer = 0;
-        _sdCodeApply();
+        var api = _sdCodePart();
+        if (api) api.flush();
     }
 
-    function _sdCodeOnLockHit(hit) {
-        var now = Date.now();
-        if (now - _sdCode.lockToastAt < 2500) return;
-        _sdCode.lockToastAt = now;
-        sdToast('<span class="bi bi-lock-fill me-1"></span>' + esc(_sdCodeLockTitle(hit.tag, true)), 'warning', 3500);
+    // The {{token}} completion of the page's code view, registered at open
+    // with the other completion sources; the part answers once it has run.
+    function _sdCodeBindingCompletion(context, syntax) {
+        var api = _sdCodeEnabled() ? _sdCodePart() : null;
+        return api ? api.bindingCompletion(context, syntax) : null;
     }
 
-    // Why a line is locked, by the lock's tag: the tooltip of the lock
-    // marker in the gutter and the toast of a refused keystroke. `partly`
-    // says the line (or the hit) has parts that may change.
-    function _sdCodeLockTitle(tag, partly) {
-        switch (tag) {
-            case 'head': case 'foot': case 'frame':
-                return _sdT('These lines come from the page settings and the design files; change them there.');
-            case 'body':
-                return _sdT('The body tag is fixed; its class, id and attribute values can change.');
-            case 'loop':
-                return _sdT('The loop markers of a system widget cannot change.');
-        }
-        return partly ? _sdT('This element is locked here: only its attribute values and its text can change.') : _sdT('Locked');
-    }
-
-    // The innermost thing whose text holds the whole typed span: a node, the
-    // body tag (its attributes) or the page content between the tags.
-    function _sdCodeScopeOf(dirty) {
-        var ed = _sdCode.ed;
-        var hits = ed.trackedAt(dirty.from);
-        for (var i = 0; i < hits.length; i++) {
-            var h = hits[i];
-            if (!(h.from <= dirty.from && dirty.to <= h.to)) continue;
-            var role = h.data && h.data.role;
-            if (role === 'node' || role === 'body' || role === 'content') return { entry: h.data, from: h.from, to: h.to };
-        }
-        return null;
-    }
-
-    // The node an element of the text stands for: the one whose range starts
-    // at the element's "<". Nothing there: the element is new.
-    function _sdCodeOwnerOf(item) {
-        var hits = _sdCode.ed.trackedAt(item.from);
-        for (var i = 0; i < hits.length; i++) {
-            if (hits[i].from === item.from && hits[i].data && hits[i].data.role === 'node') return hits[i].data;
-        }
-        return null;
-    }
-
-    // Reads the elements between `from` and `to` among the children of a
-    // syntax node: elements with their tags, attributes and children, text
-    // runs with their raw markup. null when the parser left an error there
-    // (an unclosed tag, a stray close tag): nothing is applied until the
-    // text parses, and the lint shows where it does not.
-    function _sdCodeParse(syntax, from, to, text) {
-        var items = [];
-        for (var child = syntax.firstChild; child; child = child.nextSibling) {
-            if (child.to <= from || child.from >= to) continue;
-            var name = child.name;
-            if (child.type.isError || name === 'MismatchedCloseTag' || name === 'IncompleteCloseTag') return null;
-            if (name === 'Element') {
-                var el = _sdCodeParseElement(child, text);
-                if (!el) return null;
-                items.push(el);
-            } else if (name === 'Text' || name === 'EntityReference' || name === 'CharacterReference' || name === 'InvalidEntity') {
-                var raw = text.slice(child.from, child.to);
-                var last = items.length ? items[items.length - 1] : null;
-                if (last && last.kind === 'text' && last.to === child.from) { last.to = child.to; last.raw += raw; }
-                else items.push({ kind: 'text', from: child.from, to: child.to, raw: raw });
-            }
-            // Comments, doctype and processing instructions are not nodes.
-        }
-        return items;
-    }
-
-    function _sdCodeParseElement(node, text) {
-        var open = node.getChild('OpenTag') || node.getChild('SelfClosingTag');
-        if (!open) return null;
-        var tagNode = open.getChild('TagName');
-        if (!tagNode) return null;
-        var item = {
-            kind: 'element', from: node.from, to: node.to,
-            tag: text.slice(tagNode.from, tagNode.to).toLowerCase(),
-            open: { from: open.from, to: open.to },
-            selfClosing: open.name === 'SelfClosingTag',
-            close: null, attrs: [], children: [], texts: []
-        };
-        var attrs = open.getChildren('Attribute');
-        for (var i = 0; i < attrs.length; i++) {
-            var an = attrs[i].getChild('AttributeName');
-            if (!an) continue;
-            var av = attrs[i].getChild('AttributeValue');
-            var au = av ? null : attrs[i].getChild('UnquotedAttributeValue');
-            var value = null;
-            if (av) {
-                var q = text.slice(av.from, av.to);
-                value = (q.length >= 2 && (q[0] === '"' || q[0] === "'")) ? q.slice(1, -1) : q;
-            } else if (au) {
-                value = text.slice(au.from, au.to);
-            }
-            item.attrs.push({ name: text.slice(an.from, an.to).toLowerCase(), value: value === null ? null : _sdCodeDecode(value) });
-        }
-        var close = node.getChild('CloseTag');
-        if (close) item.close = { from: close.from, to: close.to };
-        var innerFrom = open.to, innerTo = close ? close.from : node.to;
-        item.innerFrom = innerFrom; item.innerTo = innerTo;
-        // Raw-text elements: the text is what it is.
-        var raw = node.getChild('ScriptText') || node.getChild('StyleText') || node.getChild('TextareaText');
-        if (raw) { item.texts.push({ from: raw.from, to: raw.to, raw: text.slice(raw.from, raw.to) }); return item; }
-        if (innerTo <= innerFrom) return item;
-        var inner = _sdCodeParse(node, innerFrom, innerTo, text);
-        if (inner === null) return null;
-        for (var k = 0; k < inner.length; k++) {
-            if (inner[k].kind === 'element') item.children.push(inner[k]);
-            else item.texts.push(inner[k]);
-        }
-        item.items = inner;
-        return item;
-    }
-
-    function _sdCodeDecode(s) {
-        if (s.indexOf('&') === -1) return s;
-        var t = document.createElement('textarea');
-        t.innerHTML = s;
-        return t.value;
-    }
-
-    // How a node holds its text: 'plain' (a semantic element's text node),
-    // 'inner' (a content element's innerHTML), 'outer' (Custom HTML: the
-    // markup itself), 'none' (nothing of its own to read).
-    function _sdCodeTextKind(node) {
-        if (!node) return 'none';
-        // A sentence's words are written in the panel: its values sit
-        // between them as elements of their own.
-        if (_sdIsSentence(node)) return 'none';
-        if (node.type === 'semantic') return 'plain';
-        if (node.type === 'content') {
-            var ct = node.props.contentType;
-            if (ct === 'custom_html') return 'outer';
-            if (['heading', 'paragraph', 'span', 'text', 'link', 'button'].indexOf(ct) !== -1) return 'inner';
-        }
-        return 'none';
-    }
-
-    // Puts the typed span into the tree. Called after the pause, and
-    // before a save or a tab switch.
-    function _sdCodeApply() {
-        _sdCode.applyTimer = 0;
-        if (!_sdCodeEnabled() || !_sdCode.dirty || !_sdCodeMayEdit()) return;
-        var ed = _sdCode.ed;
-        var dirty = _sdCode.dirty;
-        var text = ed.getValue();
-        var syntax;
-        try { syntax = ed.syntaxTree(); } catch (e) { syntax = null; }
-        if (!syntax) return;
-        var scope = _sdCodeScopeOf(dirty);
-        if (!scope) { _sdCode.dirty = null; return; }
-
-        var changed = false;
-        var report = { derived: false, tag: false, imports: [] };
-        _sdCode.applying = true;
-        try {
-            if (scope.entry.role === 'body') {
-                // The body tag's attributes belong to the root node.
-                var bodyEl = _sdCodeElementAt(syntax, scope.from);
-                if (!bodyEl) return;
-                var body = _sdCodeParseElementShallow(bodyEl, text);
-                if (!body) return;
-                saveState('run:code');
-                _sdCodeApplyAttrs(tree, body, scope.entry, { level: 'half', attrs: true, text: false }, report);
-                changed = true;
-            } else if (scope.entry.role === 'content') {
-                // The page's own content, between the body tag and the scripts.
-                var bodyNode = _sdCodeElementAt(syntax, _sdCodeBodyOpenAt(text));
-                if (!bodyNode) return;
-                var items = _sdCodeParse(bodyNode, scope.from, scope.to, text);
-                if (items === null) return;   // not well-formed yet
-                saveState('run:code');
-                _sdCodeReconcileChildren(tree, items, 0, report);
-                changed = true;
-            } else {
-                var entry = scope.entry;
-                var el = _sdCodeElementAt(syntax, scope.from);
-                // The element must still cover the typed span; when the
-                // typing split it, the parent reads it as a whole.
-                if (!el || el.to < dirty.to) { _sdCodeApplyOuter(dirty); return; }
-                var item = _sdCodeParseElement(el, text);
-                if (!item) return;
-                saveState('run:code');
-                _sdCodeReconcileNode(entry.node, item, entry, report);
-                changed = true;
-            }
-        } finally {
-            _sdCode.applying = false;
-        }
-        if (!changed) return;
-        _sdCode.dirty = null;
-        if (selectedNode && !_sdCodeNodeExists(selectedNode)) { selectedNode = null; selectedNodes = []; }
-        _sdCode.applying = true;
-        try { render(); } finally { _sdCode.applying = false; }
-        if (report.derived) sdToast(esc(_sdT('A class set by the element\'s type cannot be removed in the code; use the options panel.')), 'warning', 4000);
-        if (report.tag) sdToast(esc(_sdT('The tag of this element is set by its type; use the options panel.')), 'warning', 4000);
-        report.imports.forEach(_sdCodeImport);
-    }
-
-    // The typed span is no longer inside one element (a close tag was typed
-    // or removed): widen to the enclosing one and try again from there.
-    function _sdCodeApplyOuter(dirty) {
-        var hits = _sdCode.ed.trackedAt(dirty.from);
-        var entry = null;
-        for (var i = 0; i < hits.length; i++) {
-            if (hits[i].from <= dirty.from && dirty.to <= hits[i].to && hits[i].data && hits[i].data.role === 'node') { entry = hits[i]; break; }
-        }
-        // Grow the span to the whole parent of the element that broke.
-        var parentHit = null;
-        for (var j = 0; j < hits.length; j++) {
-            if (entry && hits[j].data === entry.data) continue;
-            if (hits[j].from <= (entry ? entry.from : dirty.from) && (entry ? entry.to : dirty.to) <= hits[j].to && hits[j].data && (hits[j].data.role === 'node' || hits[j].data.role === 'content')) { parentHit = hits[j]; break; }
-        }
-        if (!parentHit) return;
-        _sdCode.dirty = { from: parentHit.from, to: parentHit.to };
-        _sdCodeApply();
-    }
-
-    function _sdCodeBodyOpenAt(text) {
-        var e = null;
-        for (var i = 0; i < _sdCode.entries.length; i++) if (_sdCode.entries[i].role === 'body') { e = _sdCode.entries[i]; break; }
-        var live = e ? _sdCode.ed.tracked(e.key) : null;
-        return live ? live.from : text.indexOf('<body');
-    }
-
-    // The Element syntax node whose opening "<" is at `pos`.
-    function _sdCodeElementAt(syntax, pos) {
-        var n = syntax.resolveInner(pos + 1, 1);
-        while (n) {
-            if (n.name === 'Element' && n.from === pos) return n;
-            n = n.parent;
-        }
-        return null;
-    }
-
-    function _sdCodeParseElementShallow(node, text) {
-        var open = node.getChild('OpenTag');
-        if (!open) return null;
-        var item = { kind: 'element', from: node.from, to: node.to, tag: 'body', open: { from: open.from, to: open.to }, attrs: [], children: [], texts: [] };
-        var attrs = open.getChildren('Attribute');
-        for (var i = 0; i < attrs.length; i++) {
-            var an = attrs[i].getChild('AttributeName');
-            if (!an) continue;
-            var av = attrs[i].getChild('AttributeValue');
-            var au = av ? null : attrs[i].getChild('UnquotedAttributeValue');
-            var value = null;
-            if (av) { var q = text.slice(av.from, av.to); value = (q.length >= 2 && (q[0] === '"' || q[0] === "'")) ? q.slice(1, -1) : q; }
-            else if (au) value = text.slice(au.from, au.to);
-            item.attrs.push({ name: text.slice(an.from, an.to).toLowerCase(), value: value === null ? null : _sdCodeDecode(value) });
-        }
-        return item;
-    }
-
-    function _sdCodeNodeExists(node) {
-        if (_nodeInTree(node, tree)) return true;
-        for (var k in _sharedCache) {
-            if (Object.prototype.hasOwnProperty.call(_sharedCache, k) && _sharedCache[k] && _sharedCache[k].tree && _nodeInTree(node, _sharedCache[k].tree)) return true;
-        }
-        return false;
-    }
-
-    // One element of the text against its node.
-    function _sdCodeReconcileNode(node, item, entry, report) {
-        var lock = _sdCodeLockOf(node);
-        if (lock.level === 'full' || node.type === 'region') return;
-        var sid = entry.sid || 0;
-        if (lock.attrs) _sdCodeApplyTag(node, item, entry, report);
-        if (lock.attrs) _sdCodeApplyAttrs(node, item, entry, lock, report);
-        if (lock.text) _sdCodeApplyText(node, item, entry, report);
-        // The structure follows the text only for a free node whose children
-        // the emitter could place; a locked one keeps its children.
-        if (lock.level === '' && !entry.atomic && entry.kind !== 'inner' && entry.kind !== 'outer' && node.type !== 'shared_ref') {
-            _sdCodeReconcileChildren(node, item.items || [], sid, report);
-        }
-        if (sid) _sharedDirty[sid] = true;
-    }
-
-    // A parent's children, rebuilt from the elements inside it in the text.
-    function _sdCodeReconcileChildren(parent, items, sid, report) {
-        var kids = [];
-        var isPlain = parent.type === 'semantic';
-        var textRuns = items.filter(function (it) { return it.kind === 'text' && it.raw.trim() !== ''; });
-        var elements = items.filter(function (it) { return it.kind === 'element'; });
-        // Text beside elements in a plain element becomes spans, in order,
-        // as the converter does: a text node has one place, before or
-        // after all the children.
-        var mixed = isPlain && textRuns.length && elements.length && !_sdCodeTextSlot(parent, items);
-        items.forEach(function (it) {
-            if (it.kind === 'text') {
-                if (it.raw.trim() === '') return;
-                if (parent.type === 'root' || mixed) kids.push(_sdCodeNewSpan(it.raw));
-                return;
-            }
-            var owner = _sdCodeOwnerOf(it) || _sdCodeOwnerInside(it);
-            if (owner && (owner.sid || 0) !== sid) {
-                // The element belongs to a shared component or widget this
-                // parent places: the reference stays, its tree is its own.
-                var ref = _sdCodeSharedRefFor(parent, owner.sid);
-                if (ref && kids.indexOf(ref) === -1) kids.push(ref);
-                return;
-            }
-            if (owner && owner.node && owner.from === it.from) {
-                _sdCodeReconcileNode(owner.node, it, owner, report);
-                kids.push(owner.node);
-            } else if (_sdCodeHasOwnedInside(it)) {
-                var wrap = _sdCodeNewSemantic(it);
-                kids.push(wrap);
-                _sdCodeReconcileChildren(wrap, it.items || [], sid, report);
-            } else {
-                var html = _sdCode.ed.sliceDoc(it.from, it.to);
-                var holder = _sdCodeNewHolder(html);
-                kids.push(holder);
-                report.imports.push(holder);
-            }
-        });
-        parent.children = kids;
-        if (mixed) parent.props.text = '';
-    }
-
-    function _sdCodeHasOwnedInside(item) {
-        for (var i = 0; i < item.children.length; i++) {
-            if (_sdCodeOwnerOf(item.children[i]) || _sdCodeHasOwnedInside(item.children[i])) return true;
-        }
-        return false;
-    }
-
-    // The first owned element inside an element without an owner of its own
-    // (a widget's root wrapper prints no tag: its children are the first
-    // owned elements seen).
-    function _sdCodeOwnerInside(item) {
-        for (var i = 0; i < item.children.length; i++) {
-            var o = _sdCodeOwnerOf(item.children[i]);
-            if (o) return o;
-        }
-        return null;
-    }
-
-    // The shared_ref among a parent's children that places component `sid`.
-    function _sdCodeSharedRefFor(parent, sid) {
-        var kids = parent.children || [];
-        for (var i = 0; i < kids.length; i++) {
-            if (kids[i].type === 'shared_ref' && parseInt(kids[i].props && kids[i].props.sharedId, 10) === sid) return kids[i];
-        }
-        return null;
-    }
-
-    // A new element around existing nodes: a plain element with the typed
-    // tag and attributes, so the nodes inside keep what they are.
-    /* @pg-site-output */
-    function _sdCodeNewSemantic(item) {
-        var props = { tag: item.tag, cssClass: '' };
-        var attrs = [];
-        item.attrs.forEach(function (a) {
-            var v = a.value === null ? '' : a.value;
-            if (a.name === 'class') props.cssClass = v;
-            else if (a.name === 'id') props.id = v;
-            else if (item.tag === 'a' && (a.name === 'href' || a.name === 'target' || a.name === 'rel')) props[a.name] = v;
-            else attrs.push({ name: a.name, value: v });
-        });
-        if (attrs.length) props._attrs = attrs;
-        return { _id: gid(), type: 'semantic', props: props, children: [] };
-    }
-
-    /* @pg-site-output */
-    function _sdCodeNewSpan(raw) {
-        return { _id: gid(), type: 'content', props: { contentType: 'span', text: raw.trim(), cssClass: '' }, children: [] };
-    }
-
-    // The place a new element keeps until the converter answers: its own
-    // markup as Custom HTML, which prints the same text.
-    /* @pg-site-output */
-    function _sdCodeNewHolder(html) {
-        return { _id: gid(), type: 'content', props: { contentType: 'custom_html', html: html, cssClass: '', _sdPending: html }, children: [] };
-    }
-
-    // The converter reads the new element and the holder gives way to what
-    // it made. No answer, or nothing made: the holder stays as Custom HTML
-    // and the page prints the markup as typed.
-    function _sdCodeImport(holder) {
-        var html = holder.props._sdPending;
-        if (!html) return;
-        _pgApiPost('import_fragment', { html: html }).then(function (res) {
-            if (!_sdCodeNodeExists(holder)) return;
-            // Typed again meanwhile: ask about the newer text instead.
-            if (holder.props.html !== html) { holder.props._sdPending = holder.props.html; _sdCodeImport(holder); return; }
-            delete holder.props._sdPending;
-            var kids = (res && res.status === 'success' && Array.isArray(res.children)) ? res.children : [];
-            if (!kids.length) { render(); return; }
-            _backfillIds({ type: 'root', props: {}, children: kids });
-            var owner = _sdAnyParent(holder);
-            if (!owner || !owner.parent) return;
-            var idx = owner.parent.children.indexOf(holder);
-            if (idx === -1) return;
-            Array.prototype.splice.apply(owner.parent.children, [idx, 1].concat(kids));
-            kids.forEach(function (k) { if (typeof _cfAdoptOnDrop === 'function') _cfAdoptOnDrop(k); });
-            if (owner.sid) _sharedDirty[owner.sid] = true;
-            if (selectedNode === holder) selectedNode = kids[kids.length - 1];
-            _sdCode.applying = true;
-            try { render(); } finally { _sdCode.applying = false; }
-        }).catch(function () {
-            delete holder.props._sdPending;
-        });
-    }
-
-    // The tag name: a plain element and a heading may change theirs; the
-    // rest wear the tag their type prints.
-    function _sdCodeApplyTag(node, item, entry, report) {
-        var oldOpen = _sdCodeOpenTag(_sdCode.text, entry.from, entry.to);
-        var oldTag = oldOpen ? _sdCode.text.slice(oldOpen.tagFrom, oldOpen.tagTo).toLowerCase() : '';
-        if (!oldTag || item.tag === oldTag) return;
-        if (!/^[a-z][a-z0-9-]*$/.test(item.tag)) return;
-        if (node.type === 'semantic') { node.props.tag = item.tag; return; }
-        if (node.type === 'content' && node.props.contentType === 'heading' && /^h[1-6]$/.test(item.tag)) { node.props.tag = item.tag; return; }
-        report.tag = true;
-    }
-
-    // Attributes: only those that differ from what the emitter printed are
-    // touched, each by the Attributes panel's rules.
-    function _sdCodeApplyAttrs(node, item, entry, lock, report) {
-        var oldOpen = _sdCodeOpenTag(_sdCode.text, entry.from, entry.to);
-        var oldMap = {};
-        if (oldOpen) oldOpen.attrs.forEach(function (a) {
-            oldMap[a.name.toLowerCase()] = a.valueFrom === null ? '' : _sdCodeDecode(_sdCode.text.slice(a.valueFrom, a.valueTo));
-        });
-        var newMap = {};
-        item.attrs.forEach(function (a) { newMap[a.name] = a.value === null ? '' : a.value; });
-        var names = {};
-        Object.keys(oldMap).forEach(function (n) { names[n] = 1; });
-        Object.keys(newMap).forEach(function (n) { names[n] = 1; });
-        Object.keys(names).forEach(function (name) {
-            var was = Object.prototype.hasOwnProperty.call(oldMap, name) ? oldMap[name] : undefined;
-            var now = Object.prototype.hasOwnProperty.call(newMap, name) ? newMap[name] : undefined;
-            if (was === now) return;
-            _sdCodeSetAttr(node, name, was, now, report);
-        });
-    }
-
-    function _sdCodeSetAttr(node, name, was, now, report) {
-        var p = node.props;
-        if (name === 'class') {
-            var oldT = (was || '').split(/\s+/).filter(Boolean), newT = (now || '').split(/\s+/).filter(Boolean);
-            var cls = (p.cssClass || '').split(/\s+/).filter(Boolean);
-            var isIcon = node.type === 'content' && p.contentType === 'icon';
-            oldT.forEach(function (t) {
-                if (newT.indexOf(t) !== -1) return;
-                var at = cls.indexOf(t);
-                if (at !== -1) cls.splice(at, 1);
-                else if (isIcon && /^bi-/.test(t)) { /* the icon itself: replaced below */ }
-                else if (t !== 'bi' || !isIcon) report.derived = true;
-            });
-            newT.forEach(function (t) {
-                if (oldT.indexOf(t) !== -1) return;
-                if (isIcon && /^bi-/.test(t)) { p.iconName = t; return; }
-                if (cls.indexOf(t) === -1) cls.push(t);
-            });
-            p.cssClass = cls.join(' ');
-            return;
-        }
-        if (name === 'id') {
-            if (node.type === 'root') { _sdCodeSetRootAttr(node, 'id', now); return; }
-            var oldId = p.id || '';
-            p.id = now || '';
-            _sdRetargetLabels(oldId, p.id);
-            return;
-        }
-        if (name === 'style') {
-            if (node.type === 'root') { _sdCodeSetRootAttr(node, 'style', now); return; }
-            // The typed style is the whole attribute: the old inline style
-            // field, printed ahead of the Attributes panel's style
-            // (_sdNodeStyle()), is folded into it.
-            if (p.inlineStyle) p.inlineStyle = '';
-            _sdApplyInlineStyle(node, _sdCodeTakeSizing(node, was, now || ''));
-            return;
-        }
-        var key = _sdCodeAttrProp(node, name);
-        // A value written as {{token}} inside a widget is a binding, not a
-        // literal; a literal written over a binding ends it.
-        if (_sdCodeApplyBoundValue(node, key || name, now)) return;
-        if (key) { p[key] = now || ''; return; }
-        if (_sdCodeSetTitleAttr(node, name, now)) return;
-        if (_sdCodeSetFxAttr(node, name, now)) return;
-        if (!Array.isArray(p._attrs)) p._attrs = [];
-        var idx = -1;
-        for (var i = 0; i < p._attrs.length; i++) {
-            if (p._attrs[i] && String(p._attrs[i].name || '').toLowerCase() === name) { idx = i; break; }
-        }
-        if (now === undefined) { if (idx !== -1) p._attrs.splice(idx, 1); }
-        else if (idx === -1) p._attrs.push({ name: name, value: now });
-        else p._attrs[idx].value = now;
-    }
-
-    // The Display & Sizing declarations a typed style held where the
-    // emitter printed them (getNodeExtraStyle(), between the type's own
-    // style and the Attributes panel's) go back to their props: a changed
-    // value sets the prop, a deleted one clears it, an unchanged one leaves
-    // it as stored ('600' printed as 600px). Returns the rest of the typed
-    // style for _sdApplyInlineStyle(); without this the sizing was copied
-    // into _attrs.style and printed twice, and deleting it changed nothing.
-    // An image's width and height stay with _sdInlineStyleProps(). When the
-    // printed style does not hold the sizing where expected (a component's
-    // own markup), the typed style is returned as it is.
-    function _sdCodeTakeSizing(node, was, now) {
-        var p = node.props;
-        var isContent = node.type === 'content';
-        var isImg = isContent && p.contentType === 'image';
-        if (!isContent && node.type !== 'semantic' && ['container', 'row', 'col'].indexOf(node.type) === -1) return now;
-        if (isImg && _sdImgInRatio(p)) return now;
-        var sizing = _parseInlineStyle(getNodeExtraStyle(isContent ? _sdContentSizingNode(node) : node));
-        if (!sizing.length) return now;
-        var wasDecls = _parseInlineStyle(was || '');
-        var user = _parseInlineStyle(_sdUserAttrValue(p._attrs, 'style'));
-        var at = wasDecls.length - sizing.length - user.length;
-        if (at < 0) return now;
-        for (var i = 0; i < sizing.length; i++) {
-            var w = wasDecls[at + i];
-            if (w.name !== sizing[i].name || w.value !== sizing[i].value) return now;
-        }
-        var props = {
-            'z-index': 'zIndex', 'width': 'width', 'min-width': 'minWidth', 'max-width': 'maxWidth',
-            'height': 'height', 'min-height': 'minHeight', 'max-height': 'maxHeight',
-            'overflow': 'overflow', 'overflow-x': 'overflowX', 'overflow-y': 'overflowY',
-            'top': 'top', 'right': 'right', 'bottom': 'bottom', 'left': 'left',
-            '--bs-aspect-ratio': 'aspectRatioCustom'
-        };
-        var nowDecls = _parseInlineStyle(now);
-        var lower = function (d) { return String(d.name).toLowerCase(); };
-        sizing.forEach(function (d, si) {
-            var name = d.name, prop = props[name];
-            if (!prop || (isImg && (name === 'width' || name === 'height'))) return;
-            // The sizing declaration is the n-th of its name in the printed
-            // style (a font or old inline style may have written one before).
-            var nth = 0;
-            for (var k = 0; k < at + si; k++) if (lower(wasDecls[k]) === name) nth++;
-            var hit = -1;
-            for (var j = 0; j < nowDecls.length; j++) {
-                if (lower(nowDecls[j]) === name && nth-- === 0) { hit = j; break; }
-            }
-            if (hit === -1) { p[prop] = ''; return; }
-            var v = String(nowDecls[hit].value).trim();
-            nowDecls.splice(hit, 1);
-            if (v !== d.value) p[prop] = v;
-        });
-        return _serializeInlineDecls(nowDecls);
-    }
-
-    // The title and tooltip attributes _sdNodeTitleAttrs() printed go back
-    // to the props they came from: the tooltip's text, placement and switch,
-    // or the plain title. false when the attribute is the Attributes
-    // panel's (an entry of that name, or another toggle's data-bs-toggle),
-    // which the caller then writes to the list.
-    function _sdCodeSetTitleAttr(node, name, now) {
-        var p = node.props;
-        if (name !== 'title' && name !== 'data-bs-placement' && name !== 'data-bs-toggle') return false;
-        var written = {};
-        (Array.isArray(p._attrs) ? p._attrs : []).forEach(function (a) {
-            if (a && a.name) written[String(a.name).toLowerCase()] = true;
-        });
-        if (written[name]) return false;
-        var tipOn = !!p.tooltipEnabled && !written['data-bs-toggle'];
-        if (name === 'title') {
-            if (tipOn) { p.tooltipTitle = now || ''; return true; }
-            if (p.title && ['content', 'semantic', 'container', 'row', 'col'].indexOf(node.type) !== -1) { p.title = now || ''; return true; }
-            return false;
-        }
-        if (name === 'data-bs-placement') {
-            if (tipOn) { p.tooltipPlacement = now || 'top'; return true; }
-            return false;
-        }
-        // data-bs-toggle="tooltip" is the tooltip's switch; another value
-        // typed over it turns the tooltip off and goes to the list.
-        if (!tipOn || !p.tooltipTitle) return false;
-        if (now === 'tooltip') return true;
-        p.tooltipEnabled = false;
-        return now === undefined;
-    }
-
-    // A data-pg-fx attribute edited in the code view goes back to the
-    // interaction it was printed from (_sdFxAttrs()): the node's attributes
-    // as printed, with this one changed, read back into props._fx. A
-    // data-pg-fx naming no known effect ends the interaction; false when the
-    // attribute is not the interaction's (another name, or a value typed on
-    // a node that has none and names no effect), which the caller then
-    // writes to the Attributes panel's list.
-    function _sdCodeSetFxAttr(node, name, now) {
-        if (name !== 'data-pg-fx' && name.indexOf('data-pg-fx-') !== 0) return false;
-        var p = node.props;
-        var had = _sdFxNormalize(p._fx);
-        if (!had && name !== 'data-pg-fx') return false;
-        var attrs = {};
-        _sdFxAttrs(p).replace(/\s(data-pg-fx[a-z-]*)(?:="([^"]*)")?/g, function (all, n, v) { attrs[n] = v === undefined ? '' : v; return all; });
-        if (now === undefined) delete attrs[name]; else attrs[name] = now;
-        var fx = { effect: attrs['data-pg-fx'] };
-        ['trigger', 'duration', 'delay', 'easing', 'stagger', 'distance', 'offset', 'speed'].forEach(function (f) {
-            if (attrs['data-pg-fx-' + f] !== undefined) fx[f] = attrs['data-pg-fx-' + f];
-        });
-        fx.repeat = attrs['data-pg-fx-repeat'] !== undefined;
-        fx = _sdFxNormalize(fx);
-        if (fx) { p._fx = fx; return true; }
-        if (!had) return false;
-        delete p._fx;
-        return true;
-    }
-
-    // The body tag's id and style live where the Attributes panel keeps the
-    // root node's: the dedicated field and the attribute list respectively.
-    function _sdCodeSetRootAttr(node, name, now) {
-        var p = node.props;
-        if (name === 'id') { p.id = now || ''; return; }
-        if (!Array.isArray(p._attrs)) p._attrs = [];
-        // The style printed is the font and inline style props plus
-        // _attrs.style; what is typed replaces the lot as _attrs.style.
-        p.fontFamily = '';
-        p.inlineStyle = '';
-        var idx = -1;
-        for (var i = 0; i < p._attrs.length; i++) if (p._attrs[i] && String(p._attrs[i].name || '').toLowerCase() === 'style') { idx = i; break; }
-        if (!now) { if (idx !== -1) p._attrs.splice(idx, 1); }
-        else if (idx === -1) p._attrs.push({ name: 'style', value: now });
-        else p._attrs[idx].value = now;
-    }
-
-    // The prop an attribute of this node is printed from, when it has one.
-    function _sdCodeAttrProp(node, name) {
-        var p = node.props, t = node.type, ct = p.contentType, cpt = p.componentType;
-        if (t === 'content' && ct === 'image' && /^(src|alt|width|height)$/.test(name)) return name;
-        var linkLike = (t === 'content' && ct === 'link') || (t === 'semantic' && String(p.tag || '').toLowerCase() === 'a')
-            || (t === 'component' && cpt === 'btn' && (p.btnElement || 'a') === 'a');
-        if (linkLike && /^(href|target|rel)$/.test(name)) return name;
-        if (t === 'component' && cpt === 'btn' && p.btnElement === 'input') { if (name === 'type') return 'btnType'; if (name === 'value') return 'text'; }
-        if (t === 'component' && cpt === 'btn' && p.btnElement === 'button' && name === 'type') return 'btnType';
-        return null;
-    }
-
-    // Where a plain element's single text sits against its children: before
-    // them all ('start'), after them all ('end'), or nowhere clean (null).
-    function _sdCodeTextSlot(node, items) {
-        var firstEl = -1, lastEl = -1, firstTx = -1, lastTx = -1;
-        items.forEach(function (it, i) {
-            if (it.kind === 'element') { if (firstEl === -1) firstEl = i; lastEl = i; }
-            else if (it.raw.trim() !== '') { if (firstTx === -1) firstTx = i; lastTx = i; }
-        });
-        if (firstTx === -1) return 'none';
-        if (firstEl === -1) return 'end';
-        if (lastTx < firstEl) return 'start';
-        if (firstTx > lastEl) return 'end';
-        return null;
-    }
-
-    // The node's own text, by the kind of node.
-    function _sdCodeApplyText(node, item, entry, report) {
-        var ed = _sdCode.ed;
-        var kind = entry.kind || _sdCodeTextKind(node);
-        if (kind === 'none') return;
-        if (kind === 'outer') { node.props.html = ed.sliceDoc(item.from, item.to); return; }
-        if (kind === 'inner') {
-            // Everything between the tags is the text, except the children
-            // that are nodes of their own (an icon inside a link); those
-            // stay children, in the order they are in, and one removed
-            // from the text goes.
-            var inner = '';
-            var pos = item.innerFrom;
-            var kept = [];
-            (item.items || []).forEach(function (it) {
-                var owner = (it.kind === 'element') ? _sdCodeOwnerOf(it) : null;
-                if (owner && owner.node) {
-                    inner += ed.sliceDoc(pos, it.from);
-                    pos = it.to;
-                    _sdCodeReconcileNode(owner.node, it, owner, report);
-                    kept.push(owner.node);
-                }
-            });
-            inner += ed.sliceDoc(pos, item.innerTo);
-            node.props.text = _sdCodeTextFromTyped(node, inner.trim());
-            if (_sdCodeLockOf(node).level === '' && !entry.atomic) node.children = kept;
-            return;
-        }
-        // plain: a semantic element's text node, entities decoded. Beside
-        // children it keeps its one slot; mixed with them it is split into
-        // spans by _sdCodeReconcileChildren().
-        var items = item.items || [];
-        var slot = _sdCodeTextSlot(node, items);
-        if (slot === null) return;   // handled as spans
-        var runs = items.filter(function (it) { return it.kind === 'text' && it.raw.trim() !== ''; });
-        var ws = ['pre', 'textarea', 'code'].indexOf(String(node.props.tag || '').toLowerCase()) !== -1;
-        var joined = runs.map(function (r) { return r.raw; }).join('');
-        node.props.text = _sdCodeTextFromTyped(node, ws ? _sdCodeDecode(joined) : _sdCodeDecode(joined.replace(/\s+/g, ' ').trim()));
-        var tag = String(node.props.tag || '').toLowerCase();
-        if ((tag === 'button' || tag === 'a') && slot !== 'none') node.props.textPosition = slot;
-    }
-
-    // ========================= CODE VIEW: DATA BINDINGS AS {{TOKENS}} =========================
-    // A value a system widget fills at render time (props._bindings.text,
-    // href, src, alt) is not in the page's HTML: the tree keeps the
-    // design-time value and the server puts the bound one in its place. The
-    // code view would show the design-time value, and a change to it would
-    // show nothing on the site, so there a bound value prints as {{token}}.
-    // Typing {{token}} over a bindable value of an element inside a widget
-    // binds it; writing a literal over a {{token}} ends the binding; typing
-    // {{ offers the tokens the Bind Data panel offers. Outside a widget the
-    // braces are text like any other.
-    var _SD_CODE_BIND_RE = /\{\{\s*([A-Za-z0-9_-]+)\s*\}\}/;
+    // A value a system widget fills at render time prints as {{token}} in
+    // the code view and the page's HTML (_sdEmitNode() with a sink).
 
     function _sdCodeBindToken(token) { return '{{' + token + '}}'; }
-
-    // A token still being typed or picked from the completion list: a {{
-    // with no }} after it, or an empty {{}} (closed brackets).
-    function _sdCodeHalfToken(value) {
-        return (typeof value === 'string') && (/\{\{(?![\s\S]*\}\})/.test(value) || /\{\{\s*\}\}/.test(value));
-    }
-
-    // The code view applies what is typed after a pause, so a token being
-    // typed over a bound (or bindable) value is applied half done: the
-    // binding ends and "{{" stands as the value. What the prop held before
-    // that is kept here, once, so the finished token gets the design-time
-    // text or value and the date format back (_sdCodeBindHeld()). A literal
-    // typed over it instead lets it go. One at a time: one token is typed
-    // at once.
-    function _sdCodeHoldBinding(node, prop, typed) {
-        var held = _sdCode.heldBinding;
-        var same = !!(held && held.node === node && held.prop === prop);
-        if (!_sdCodeHalfToken(typed)) {
-            if (same) _sdCode.heldBinding = null;
-            return;
-        }
-        if (same) return;
-        var p = node.props;
-        _sdCode.heldBinding = {
-            node: node,
-            prop: prop,
-            token: (p._bindings && p._bindings[prop]) || '',
-            has: Object.prototype.hasOwnProperty.call(p, prop),
-            value: p[prop],
-            format: (p._bindFormats && p._bindFormats[prop]) || ''
-        };
-    }
-
-    // Binds `prop` to `token` (_sdNodeSetBinding()), bringing back the date
-    // format held for the same token. The record held for this node and
-    // prop ({ has, value, ... }), or null when nothing was held.
-    function _sdCodeBindHeld(node, prop, token) {
-        var held = _sdCode.heldBinding;
-        if (held && held.node === node && held.prop === prop) _sdCode.heldBinding = null;
-        else held = null;
-        _sdNodeSetBinding(node, prop, token);
-        if (held && held.format && held.token === token) {
-            if (!node.props._bindFormats) node.props._bindFormats = {};
-            node.props._bindFormats[prop] = held.format;
-        }
-        return held;
-    }
-
-    // Whether `prop` of this node is a binding a widget reads: the node is
-    // inside a system widget and the Bind Data panel offers the prop. The
-    // panel offers a plain element's text only when it has one, so the text
-    // being typed stands in for it (`textHint`).
-    function _sdCodeBindable(node, prop, textHint) {
-        if (!node || !prop || !_isInsideSystemWidget(node)) return false;
-        var probe = node;
-        if (prop === 'text' && textHint && node.props && !node.props.text) {
-            var props = {};
-            for (var k in node.props) if (Object.prototype.hasOwnProperty.call(node.props, k)) props[k] = node.props[k];
-            props.text = textHint;
-            probe = { type: node.type, props: props, children: node.children };
-        }
-        var list = _getBindableProps(probe);
-        for (var i = 0; i < list.length; i++) if (list[i].prop === prop) return true;
-        return false;
-    }
 
     // The node's props as the code view prints them: a bound text, href,
     // src or alt as its {{token}}. The props themselves when nothing is
@@ -29579,17 +28702,18 @@ const StyleDesigner = (function () {
         var b = p._bindings;
         if (!b) return p;
         var out = null;
-        ['text', 'href', 'src', 'alt'].forEach(function (prop) {
+        ['text', 'href', 'src', 'alt', 'poster'].forEach(function (prop) {
             if (!b[prop]) return;
             if (!out) { out = {}; for (var k in p) if (Object.prototype.hasOwnProperty.call(p, k)) out[k] = p[k]; }
             var token = _sdCodeBindToken(b[prop]);
             if (prop === 'text') { out.text = _sdBindTextSlot(p.text, token); return; }
             out[prop] = token;
-            // A plain <img> keeps its src and alt in the attribute list.
-            if (n.type === 'semantic' && (prop === 'src' || prop === 'alt')) out._attrs = _sdCodeAttrsWith(p._attrs, prop, token);
+            // A plain <img> or player keeps its src, alt and poster in the attribute list.
+            if (n.type === 'semantic' && prop !== 'href') out._attrs = _sdCodeAttrsWith(p._attrs, prop, token);
         });
         return out || p;
     }
+
 
     function _sdCodeAttrsWith(list, name, value) {
         var out = [], found = false;
@@ -29599,137 +28723,6 @@ const StyleDesigner = (function () {
         });
         if (!found) out.push({ name: name, value: value });
         return out;
-    }
-
-    // The run of words a bound text's {{token}} stands for in the code
-    // view: what _sdBindTextSlot() replaces. The whole text when the markup
-    // wraps no single run.
-    function _sdCodeSlotRun(text) {
-        text = (text == null) ? '' : String(text);
-        if (!/<[a-z\/!]/i.test(text)) return text;
-        var parts = text.split(/(<[^>]*>)/);
-        var slot = -1;
-        for (var i = 0; i < parts.length; i += 2) {
-            if (parts[i] === '') continue;
-            if (_sdDecodeEntities(parts[i]).replace(/ /g, ' ').trim() === '') continue;
-            if (slot !== -1) return text;
-            slot = i;
-        }
-        if (slot === -1) return text;
-        return /^(\s*)([\s\S]*?)(\s*)$/.exec(parts[slot])[2];
-    }
-
-    // The text a typed value leaves on the node once its {{token}} is read:
-    // the token binds the text, and the words it stood for go back in its
-    // place, so the design-time text survives a change to the markup around
-    // the token. A text without a token typed over a bound text ends the
-    // binding and stands as written.
-    function _sdCodeTextFromTyped(node, typed) {
-        typed = (typed == null) ? '' : String(typed);
-        if (!_sdCodeBindable(node, 'text', typed)) return typed;
-        var cur = (node.props._bindings && node.props._bindings.text) || '';
-        var m = _SD_CODE_BIND_RE.exec(typed);
-        if (!m) {
-            _sdCodeHoldBinding(node, 'text', typed);
-            if (cur) _sdNodeSetBinding(node, 'text', '');
-            return typed;
-        }
-        var before = node.props.text;
-        if (m[1] !== cur) {
-            var held = _sdCodeBindHeld(node, 'text', m[1]);
-            if (held) before = held.has ? held.value : '';
-        }
-        var kept = typed.replace(m[0], _sdCodeSlotRun(before));
-        // Words typed beside the token are kept on the node but never
-        // shown: the page prints the bound value alone unless the markup
-        // wraps a single run of words (pg_binding_text_slot()). Said once,
-        // like a refused keystroke.
-        if (_sdBindTextSlot(kept, m[0]) !== typed && Date.now() - (_sdCode.bindToastAt || 0) > 2500) {
-            _sdCode.bindToastAt = Date.now();
-            sdToast(esc(_sdT('The words typed beside the token are not shown: a bound element shows the bound value alone. Give them an element of their own.')), 'warning', 4000);
-        }
-        return kept;
-    }
-
-    // A typed attribute value, or the value of an <input> button: {{token}}
-    // binds `prop`, a literal over a binding ends it. True when the value
-    // was the binding and the caller has nothing left to store.
-    function _sdCodeApplyBoundValue(node, prop, value) {
-        if (!_sdCodeBindable(node, prop, (prop === 'text') ? value : '')) return false;
-        var cur = (node.props._bindings && node.props._bindings[prop]) || '';
-        var m = (typeof value === 'string') ? /^\{\{\s*([A-Za-z0-9_-]+)\s*\}\}$/.exec(value) : null;
-        if (m) {
-            if (m[1] !== cur) {
-                var held = _sdCodeBindHeld(node, prop, m[1]);
-                // The design-time value comes back from under the "{{".
-                if (held && held.has) node.props[prop] = held.value;
-                else if (held) delete node.props[prop];
-            }
-            return true;
-        }
-        _sdCodeHoldBinding(node, prop, value);
-        if (cur) _sdNodeSetBinding(node, prop, '');
-        return false;
-    }
-
-    // The node whose element holds a position of the code view.
-    function _sdCodeNodeAtPos(pos) {
-        var hits = _sdCode.ed.trackedAt(pos);
-        for (var i = 0; i < hits.length; i++) {
-            var d = hits[i].data;
-            if (d && d.role === 'node' && d.node) return d.node;
-        }
-        return null;
-    }
-
-    // Inside an element's text, or the value of a bindable attribute, typing
-    // {{ offers the tokens of the element's widget. In any other attribute
-    // that takes a value of the record (_sdAttrBindNameOk()) it offers the
-    // tokens an attribute may print. Only in the page's code view: a file
-    // tab and the dialog have no nodes.
-    function _sdCodeBindingCompletion(context, syntax) {
-        if (!_sdCodeEnabled() || !_sdCode.ed.view) return null;
-        if (context.view ? (context.view !== _sdCode.ed.view) : (context.state.doc !== _sdCode.ed.view.state.doc)) return null;
-        var word = context.matchBefore(/\{\{\s*[A-Za-z0-9_-]*/);
-        if (!word) return null;
-        var sn = syntax.node;
-        var prop = '', inAttr = false;
-        if (sn.name === 'AttributeValue' || sn.name === 'UnquotedAttributeValue') {
-            var attr = sn.parent;
-            var nameNode = attr ? attr.getChild('AttributeName') : null;
-            prop = nameNode ? context.state.sliceDoc(nameNode.from, nameNode.to).toLowerCase() : '';
-            if (['href', 'src', 'alt', 'value'].indexOf(prop) === -1) {
-                if (!_sdAttrBindNameOk(prop)) return null;
-                inAttr = true;
-            }
-        } else if (sn.name === 'Text') {
-            prop = 'text';
-        } else {
-            return null;
-        }
-        var node = _sdCodeNodeAtPos(context.pos);
-        if (!node) return null;
-        if (inAttr) {
-            if (!_isInsideSystemWidget(node)) return null;
-        } else {
-            if (prop !== 'text') prop = _sdCodeAttrProp(node, prop) || prop;
-            if (prop === 'value' || !_sdCodeBindable(node, prop, (prop === 'text') ? word.text : '')) return null;
-        }
-        var options = _swBindTokenOptions(node);
-        if (inAttr) options = options.filter(function (o) { return o.token && _sdAttrTokenOk(o.token); });
-        if (!options.length) return null;
-        var typedFrom = word.from + word.text.replace(/[A-Za-z0-9_-]*$/, '').length;
-        var typed = context.state.sliceDoc(typedFrom, context.pos);
-        var closed = context.state.sliceDoc(context.pos, context.pos + 2) === '}}';
-        var seen = {}, out = [];
-        options.forEach(function (o) {
-            if (!o.token || seen[o.token] || o.token === typed) return;
-            seen[o.token] = true;
-            var opt = { label: o.token, type: 'variable', apply: closed ? o.token : o.token + '}}' };
-            if (o.label && o.label !== o.token) opt.detail = String(o.label).replace(/<[^>]*>/g, '');
-            out.push(opt);
-        });
-        return out.length ? { from: typedFrom, options: out, validFor: /^[A-Za-z0-9_-]*$/ } : null;
     }
 
     // ========================= CODE VIEW: CLASS COMPLETION =========================
@@ -29800,198 +28793,6 @@ const StyleDesigner = (function () {
     }
     function _sdCodeActiveTab() { return _sdCodeTabFind(_sdCode.active) || _sdCode.tabs[0]; }
 
-    // Opens (or shows) a file tab. The code view switches on for it; a
-    // request made before the bundle arrived waits in _sdCode.queued.
-    function _sdCodeTabOpen(spec) {
-        if (!_sdCode.host) return;
-        if (!_sdCode.on) _sdCodeToggle(true);
-        if (!_sdCode.ed) { _sdCode.queued = (_sdCode.queued || []).concat([spec]); return; }
-        var tab = _sdCodeTabFind(spec.key);
-        if (tab) {
-            if (spec.title) tab.title = spec.title;
-            tab.spec = spec;
-            _sdCodeTabActivate(spec.key);
-            return;
-        }
-        var pane = document.createElement('div');
-        pane.className = 'sd-code-pane pg-code-editor';
-        pane.setAttribute('data-key', spec.key);
-        document.getElementById('sd-code-panes').appendChild(pane);
-        tab = { key: spec.key, title: spec.title || '', icon: spec.icon || 'bi-file-earmark-code', pane: pane, ed: null, dirty: false, spec: spec, loaded: false };
-        _sdCode.tabs.push(tab);
-        tab.ed = PgCodeEditor.create(pane, {
-            language: spec.language || 'css',
-            value: '',
-            readOnly: true,
-            phrases: _sdCodePhrases(),
-            labels: { syntaxError: _sdT('Syntax error') },
-            keys: [{ key: 'Mod-s', run: function () { _sdCodeTabSave(spec.key); return true; } }, _sdCodeFindKey()],
-            onChange: function () {
-                if (!tab.loaded || tab.dirty) return;
-                tab.dirty = true;
-                _sdCodeTabsRender();
-            }
-        });
-        _sdCodeTabActivate(spec.key);
-        spec.load(function (res) {
-            if (!_sdCodeTabFind(spec.key)) return;   // closed meanwhile
-            if (res && res.ok) {
-                tab.ed.setValue(res.content || '');
-                tab.loaded = true;
-                tab.dirty = false;
-                tab.ed.setReadOnly(!!spec.readOnly);
-            } else {
-                tab.ed.setValue('/* ' + ((res && res.message) || _sdT('The file could not be read.')) + ' */');
-            }
-            _sdCodeTabsRender();
-            if (_sdCode.active === spec.key && !spec.readOnly) tab.ed.focus();
-        });
-    }
-    function _sdCodeTabsFlush() {
-        var q = _sdCode.queued || [];
-        _sdCode.queued = [];
-        q.forEach(_sdCodeTabOpen);
-    }
-
-    function _sdCodeTabActivate(key) {
-        var tab = _sdCodeTabFind(key);
-        if (!tab) return;
-        _sdCode.active = key;
-        _sdCode.tabs.forEach(function (t) { t.pane.classList.toggle('sd-code-pane-active', t === tab); });
-        _sdCodeTabsRender();
-        if (key === 'page') _sdCodeRefresh();
-        if (tab.ed && (key !== 'page' || _sdCodeMayEdit())) tab.ed.focus();
-    }
-
-    function _sdCodeTabClose(key) {
-        var tab = _sdCodeTabFind(key);
-        if (!tab || key === 'page') return;
-        if (tab.dirty && !window.confirm(_sdT('Close the file without saving the changes?'))) return;
-        if (tab.ed) tab.ed.destroy();
-        if (tab.pane.parentNode) tab.pane.parentNode.removeChild(tab.pane);
-        _sdCode.tabs = _sdCode.tabs.filter(function (t) { return t !== tab; });
-        if (_sdCode.active === key) _sdCodeTabActivate('page');
-        else _sdCodeTabsRender();
-    }
-
-    function _sdCodeTabSave(key) {
-        var tab = _sdCodeTabFind(key);
-        if (!tab || !tab.spec || !tab.ed || !tab.loaded) return;
-        if (tab.spec.readOnly) return;
-        var btn = document.getElementById('sd-code-file-save');
-        if (btn) btn.disabled = true;
-        tab.spec.save(tab.ed.getValue(), function (res) {
-            if (btn) btn.disabled = false;
-            if (res && res.ok) {
-                tab.dirty = false;
-                _sdCodeTabsRender();
-                sdToast(esc(_sdT('The file was saved')) + ' <span class="bi bi-check2"></span>', 'success', 2200);
-            } else {
-                sdToast('<strong>' + esc(_sdT('The file could not be saved:')) + '</strong><br>' + esc((res && res.message) || ''), 'error', 5000);
-            }
-        });
-    }
-
-    // A dynamic region's PHP code as a file tab: read and saved through
-    // api.php's dynamic_region_code, which admits administrators only (the
-    // right of edit_dynamic_region.php) and checks the form token; the row
-    // is the same dregion row the classic screen edits.
-    function _sdDregionCodeOpen(name) {
-        if (!name) return;
-        var post = function (sub, extra, cb) {
-            var body = { action: 'dynamic_region_code', sub_action: sub, name: name, token: _pgToken() };
-            if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
-            var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
-            fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin',
-                         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data && data.status === 'success') cb({ ok: true, content: data.content || '' });
-                    else cb({ ok: false, message: (data && data.message) || _sdT('Network error') });
-                })
-                .catch(function () { cb({ ok: false, message: _sdT('Network error') }); });
-        };
-        _sdCodeTabOpen({
-            key: 'dregion:' + name,
-            title: name + '.php',
-            icon: 'bi-filetype-php',
-            language: 'php',
-            readOnly: false,
-            url: null,
-            load: function (cb) { post('read', null, cb); },
-            save: function (content, cb) { post('save', { content: content }, cb); }
-        });
-    }
-
-    // A classic page's custom layout (the PHP its system region draws) as a
-    // file tab: read, regenerated and saved through api.php's layout_code,
-    // which admits the classic layout editor's role (designers and
-    // administrators) and checks the form token. A text saved equal to the
-    // generated layout, white space aside, leaves the page unmodified.
-    // Regenerate puts the generated layout in the tab; nothing is saved
-    // until the tab is. Read only on a hosted site, which ignores the file.
-    function _sdLayoutCodeOpen(page, regenerate) {
-        if (!page || !(page.page_id > 0)) return;
-        var key = 'layout:' + page.page_id;
-        var readOnly = !!(_design && _design.layoutReadOnly);
-        if (regenerate && readOnly) return;
-        var post = function (sub, extra, cb) {
-            var body = { action: 'layout_code', sub_action: sub, page_id: page.page_id, token: _pgToken() };
-            if (extra) Object.keys(extra).forEach(function (k) { body[k] = extra[k]; });
-            var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
-            fetch(url, { method: 'POST', body: JSON.stringify(body), credentials: 'same-origin',
-                         headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data && data.status === 'success') cb({ ok: true, content: data.content || '' });
-                    else cb({ ok: false, message: (data && data.message) || _sdT('Network error') });
-                })
-                .catch(function () { cb({ ok: false, message: _sdT('Network error') }); });
-        };
-        if (regenerate && !window.confirm(_sdT('Replace the layout in the editor with a newly generated one? Nothing is saved until you save the file.'))) return;
-        var open = _sdCodeTabFind(key);
-        var spec = {
-            key: key,
-            title: _sdT('Layout (PHP)') + (page.page_name ? ': ' + page.page_name : ''),
-            icon: 'bi-filetype-php',
-            language: 'php',
-            readOnly: readOnly,
-            url: null,
-            load: function (cb) {
-                if (!regenerate) { post('read', null, cb); return; }
-                // A new tab starts from the generated text, unsaved.
-                post('regenerate', null, function (res) {
-                    cb(res);
-                    var tab = _sdCodeTabFind(key);
-                    if (res.ok && tab) { tab.dirty = true; _sdCodeTabsRender(); }
-                });
-            },
-            save: function (content, cb) {
-                post('save', { content: content }, function (res) {
-                    if (res.ok) { _sdLegacyRegionForget(page.page_id); if (typeof renderCanvas === 'function') renderCanvas(); }
-                    cb(res);
-                });
-            }
-        };
-        _sdCodeTabOpen(spec);
-        if (!regenerate || !open) return;
-        if (!open.loaded) return;
-        post('regenerate', null, function (res) {
-            var tab = _sdCodeTabFind(key);
-            if (!tab || !tab.ed) return;
-            if (res.ok) tab.ed.setValue(res.content);
-            else sdToast(esc(res.message || ''), 'error', 5000);
-        });
-    }
-
-    // Ctrl+S with the keyboard in a file tab saves that file, not the design.
-    function _sdCodeSaveShortcut() {
-        var tab = _sdCodeActiveTab();
-        if (!tab || tab.key === 'page' || !tab.ed || !tab.ed.hasFocus()) return false;
-        _sdCodeTabSave(tab.key);
-        return true;
-    }
-
     // A file tab offers "Format code" (ed.format()) once its text is loaded,
     // while it can be edited and its language has a formatter: CSS,
     // JavaScript, JSON. The page tab is HTML printed by the emitter and a
@@ -30059,135 +28860,6 @@ const StyleDesigner = (function () {
     // included); PgCodeEditor.findAll() does the matching. Enter / Shift+
     // Enter in the field walk the hits, Escape closes the bar.
     var _sdCodeFind = { open: false, query: { search: '', caseSensitive: false, wholeWord: false, regexp: false }, hits: [], at: -1, timer: 0 };
-    var _SD_CODE_FIND_LIMIT = 500;   // hits per tab
-
-    function _sdCodeFindKey() {
-        return { key: 'Mod-Shift-f', run: function () { _sdCodeFindShow(true); return true; } };
-    }
-
-    function _sdCodeFindShow(on) {
-        var bar = document.getElementById('sd-code-find');
-        if (!bar) return;
-        _sdCodeFind.open = !!on;
-        bar.classList.toggle('d-none', !on);
-        _sdCodeTabsRender();
-        if (!on) { bar.innerHTML = ''; _sdCodeFind.hits = []; return; }
-        // A one-line selection in the active tab is what is looked for.
-        var tab = _sdCodeActiveTab();
-        if (tab && tab.ed) {
-            var sel = tab.ed.selection();
-            var picked = sel.to > sel.from ? tab.ed.sliceDoc(sel.from, sel.to) : '';
-            if (picked && picked.indexOf('\n') === -1) _sdCodeFind.query.search = picked;
-        }
-        var q = _sdCodeFind.query;
-        var opt = function (name, label, icon) {
-            return '<button type="button" class="sd-code-find-opt' + (q[name] ? ' active' : '') + '" data-opt="' + name + '" title="' + esc(label) + '" aria-pressed="' + (q[name] ? 'true' : 'false') + '">' + icon + '</button>';
-        };
-        bar.innerHTML =
-            '<div class="sd-code-find-row">' +
-                '<span class="bi bi-search"></span>' +
-                '<input type="search" class="sd-code-find-input" id="sd-code-find-input" placeholder="' + esc(_sdT('Search in all tabs')) + '" value="' + esc(q.search) + '" spellcheck="false">' +
-                opt('caseSensitive', _sdT('match case'), 'Aa') + opt('wholeWord', _sdT('by word'), 'ab') + opt('regexp', _sdT('regexp'), '.*') +
-                '<span class="sd-code-find-count" id="sd-code-find-count"></span>' +
-                '<button type="button" class="sd-code-find-opt" data-close="1" title="' + esc(_sdT('Close')) + '">&times;</button>' +
-            '</div>' +
-            '<div class="sd-code-find-results" id="sd-code-find-results"></div>';
-        var input = bar.querySelector('#sd-code-find-input');
-        input.addEventListener('input', function () {
-            q.search = this.value;
-            clearTimeout(_sdCodeFind.timer);
-            _sdCodeFind.timer = setTimeout(_sdCodeFindRun, 200);
-        });
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); _sdCodeFindShow(false); return; }
-            if (e.key !== 'Enter') return;
-            e.preventDefault();
-            clearTimeout(_sdCodeFind.timer);
-            if (q.search !== '' && !_sdCodeFind.hits.length) _sdCodeFindRun();
-            var n = _sdCodeFind.hits.length;
-            if (n) _sdCodeFindPick(((_sdCodeFind.at + (e.shiftKey ? -1 : 1)) % n + n) % n, true);
-        });
-        bar.querySelectorAll('.sd-code-find-opt').forEach(function (b) {
-            b.addEventListener('click', function () {
-                if (this.getAttribute('data-close')) { _sdCodeFindShow(false); return; }
-                var name = this.getAttribute('data-opt');
-                q[name] = !q[name];
-                this.classList.toggle('active', q[name]);
-                this.setAttribute('aria-pressed', q[name] ? 'true' : 'false');
-                _sdCodeFindRun();
-            });
-        });
-        bar.querySelector('#sd-code-find-results').addEventListener('click', function (e) {
-            var hit = e.target.closest('[data-hit]');
-            if (hit) _sdCodeFindPick(parseInt(hit.getAttribute('data-hit'), 10), false);
-        });
-        input.focus();
-        input.select();
-        _sdCodeFindRun();
-    }
-
-    function _sdCodeFindRun() {
-        var list = document.getElementById('sd-code-find-results');
-        var count = document.getElementById('sd-code-find-count');
-        if (!list || !count) return;
-        var q = _sdCodeFind.query;
-        var hits = [], html = '', error = '', truncated = false, tabs = 0;
-        if (q.search !== '' && typeof PgCodeEditor !== 'undefined') {
-            _sdCode.tabs.forEach(function (t) {
-                if (!t.ed || (t.key !== 'page' && !t.loaded) || error) return;
-                var r = PgCodeEditor.findAll(t.ed.getValue(), q, _SD_CODE_FIND_LIMIT);
-                if (r.error) { error = r.error; return; }
-                if (!r.matches.length) return;
-                truncated = truncated || r.truncated;
-                tabs++;
-                var title = t.key === 'page' ? _sdT('Page') : t.title;
-                html += '<div class="sd-code-find-tab"><span class="bi ' + esc(t.icon) + '"></span>' + esc(title) + '<span class="sd-code-find-n">' + r.matches.length + '</span></div>';
-                r.matches.forEach(function (m) {
-                    html += '<div class="sd-code-find-hit" data-hit="' + hits.length + '"><span class="sd-code-find-ln">' + m.line + '</span>' + _sdCodeFindPreview(m) + '</div>';
-                    hits.push({ key: t.key, from: m.from, to: m.to, text: m.text });
-                });
-            });
-        }
-        _sdCodeFind.hits = error ? [] : hits;
-        _sdCodeFind.at = -1;
-        if (error) {
-            count.textContent = _sdT('Invalid regular expression');
-            list.innerHTML = '';
-        } else {
-            count.textContent = q.search === '' ? '' : (hits.length ? _sdT('{var:1} results in {var:2} tabs', [hits.length + (truncated ? '+' : ''), tabs]) : _sdT('No results'));
-            list.innerHTML = html;
-        }
-        count.classList.toggle('fg-danger', !!error);
-    }
-
-    // The hit's line, cut to the words around the match, the match marked.
-    function _sdCodeFindPreview(m) {
-        var line = m.lineText, end = Math.min(line.length, m.col + m.text.length);
-        var start = Math.max(0, m.col - 40);
-        var before = line.slice(start, m.col).replace(/^\s+/, '');
-        var after = line.slice(end, end + 80);
-        return '<span class="sd-code-find-text">' + (start > 0 ? '&hellip;' : '') + esc(before) +
-            '<mark>' + esc(line.slice(m.col, end)) + '</mark>' + esc(after) + (end + 80 < line.length ? '&hellip;' : '') + '</span>';
-    }
-
-    // Opens the hit's tab and selects it; a text that changed since the
-    // search (typed, a canvas edit, a closed tab) is searched again first.
-    function _sdCodeFindPick(i, keepFocus) {
-        var hit = _sdCodeFind.hits[i];
-        if (!hit) return;
-        var tab = _sdCodeTabFind(hit.key);
-        if (!tab || !tab.ed || tab.ed.sliceDoc(hit.from, hit.to) !== hit.text) { _sdCodeFindRun(); return; }
-        _sdCodeFind.at = i;
-        if (_sdCode.active !== hit.key) _sdCodeTabActivate(hit.key);
-        tab.ed.goTo(hit.from, hit.to, { focus: !keepFocus });
-        var list = document.getElementById('sd-code-find-results');
-        if (!list) return;
-        list.querySelectorAll('.sd-code-find-hit.active').forEach(function (el) { el.classList.remove('active'); });
-        var row = list.querySelector('[data-hit="' + i + '"]');
-        if (row) { row.classList.add('active'); row.scrollIntoView({ block: 'nearest' }); }
-        if (keepFocus) { var input = document.getElementById('sd-code-find-input'); if (input) input.focus(); }
-    }
-
     // ── Shared Context Menu Builder ────────────────────────────────────────────────
     function showCtxMenu(x, y, items) {
         var old = document.getElementById('sd-tree-ctx-menu');
@@ -30489,8 +29161,8 @@ const StyleDesigner = (function () {
 
         showCtxMenu(x, y, [
             // The assistant panel is there only for the designers it serves.
-            ((!multi && node.type !== 'root' && _sdAccess() === 'full' && window.PgDesignerAI && findNodeById(node._id, tree))
-                ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { window.PgDesignerAI.open(node._id); } }
+            ((!multi && node.type !== 'root' && _sdAccess() === 'full' && _sdAiAvailable() && findNodeById(node._id, tree))
+                ? { icon: 'bi-stars', label: _sdT('Ask the assistant about this'), handler: function () { _sdAiRun(function (ai) { ai.open(node._id); }); } }
                 : null),
             ((!multi && typeof _sdNodeImage === 'function' && _sdNodeImage(node) && _sdCanEditNode(node, 'image'))
                 ? { icon: 'bi-brush', label: _sdT('Edit Image'), handler: function () { _sdOpenImageEditorForNode(node); } }
@@ -33010,98 +31682,38 @@ const StyleDesigner = (function () {
         return html.slice(0, at) + fx + html.slice(at);
     }
 
-    // The node's interaction after one field of the panel changed: the
-    // stored one with `field` set to `value`, normalized; null when the
-    // effect is cleared. Fields that no longer apply drop out; switching
-    // the effect keeps the timing.
-    function _sdFxSet(fx, field, value) {
-        if (field === 'effect' && !value) return null;
-        var cur = _sdFxNormalize(fx) || {}, next = {};
-        for (var k in cur) if (Object.prototype.hasOwnProperty.call(cur, k)) next[k] = cur[k];
-        next[field] = value;
-        return _sdFxNormalize(next);
-    }
-
+    // The section with an empty body: its rows and fields are the part
+    // 'interactions' (style_designer_interactions.js), which _sdFxBind()
+    // runs to fill it.
     function propsInteractions(n) {
         if (!_sdFxTakes(n)) return '';
-        var fx = _sdFxNormalize(n.props._fx) || { effect: '' };
-        var spec = _sdFxSpec();
-        var select = function (field, opts) {
-            return '<select class="form-control form-control-sm" data-fx="' + field + '">' + opts.map(function (o) {
-                return '<option value="' + esc(o[0]) + '"' + (o[0] === fx[field] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
-            }).join('') + '</select>';
-        };
-        var number = function (field, unit, placeholder) {
-            var r = spec.numbers[field];
-            var v = (field === 'distance' && !fx.distance) ? '' : fx[field];
-            return '<div class="input-group input-group-sm">' +
-                '<input type="number" class="form-control form-control-sm" data-fx="' + field + '" min="' + r[0] + '" max="' + r[1] + '" step="1" value="' + esc(String(v)) + '"' +
-                (placeholder ? ' placeholder="' + esc(String(placeholder)) + '"' : '') + '>' +
-                '<span class="input-group-text">' + unit + '</span></div>';
-        };
-        var h = row(_sdT('Effect'), select('effect', [
-            ['', _sdT('None')], ['fade', _sdT('Fade in')],
-            ['slide-up', _sdT('Slide up')], ['slide-down', _sdT('Slide down')],
-            ['slide-left', _sdT('Slide left')], ['slide-right', _sdT('Slide right')],
-            ['scale', _sdT('Scale')], ['sticky', _sdT('Sticky')], ['parallax', _sdT('Parallax')]
-        ]));
-        if (fx.trigger) {
-            var entrance = fx.trigger === 'load' || fx.trigger === 'view';
-            h += row(_sdT('Trigger'), select('trigger', [
-                ['view', _sdT('Scroll into view')], ['load', _sdT('Page load')],
-                ['hover', _sdT('Hover')], ['click', _sdT('Click')]
-            ]));
-            h += row(_sdT('Duration'), number('duration', 'ms'));
-            h += row(_sdT('Delay'), number('delay', 'ms'));
-            h += row(_sdT('Easing'), select('easing', [
-                ['ease-out', _sdT('Ease out')], ['ease', _sdT('Ease')], ['ease-in', _sdT('Ease in')],
-                ['ease-in-out', _sdT('Ease in and out')], ['linear', _sdT('Linear')]
-            ]));
-            if (/^slide-/.test(fx.effect)) h += row(_sdT('Distance'), number('distance', 'px', entrance ? 24 : 6));
-            if (entrance) h += row(_sdT('Stagger children'), number('stagger', 'ms'));
-            if (fx.trigger === 'view') h += row(_sdT('Every time'), swAttr('data-fx="repeat"', !!fx.repeat));
-        }
-        if (fx.effect === 'sticky') h += row(_sdT('Top offset'), number('offset', 'px'));
-        if (fx.effect === 'parallax') h += row(_sdT('Speed'), number('speed', '%'));
-        if (fx.trigger) {
-            h += row('', '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-fx-play>' +
-                '<span class="bi bi-play-fill"></span> ' + esc(_sdT('Play on the canvas')) + '</button>');
-        }
-        if (fx.effect) {
-            h += '<div class="sd-prop-row"><div class="form-text small mb-0">' +
-                esc(_sdT('Plays on the published page and in Preview. Visitors who ask for less motion see the element without it.')) +
-                '</div></div>';
-        }
-        return sect('bi-stars', _sdT('Interactions'), h);
+        return sect('bi-stars', _sdT('Interactions'), '<div data-sd-fx-body></div>');
     }
 
-    // The Interactions section's fields write props._fx (_sdFxSet()). A
-    // choice is one undo step and redraws the panel, whose rows follow the
-    // effect and trigger; a typed number is one undo step per focus and
-    // redraws the panel once it is left, showing the value kept.
+    // Fills the section's body once the panel is drawn. A collapsed
+    // section waits for its header to open it before the part is loaded
+    // for the first time; once the part has run it fills at once. A rule
+    // typed in the panel's search box is applied again to the new rows.
     function _sdFxBind(n) {
         var panel = document.getElementById('sd-properties');
-        if (!panel || !_sdFxTakes(n)) return;
-        var play = panel.querySelector('[data-fx-play]');
-        if (play) play.addEventListener('click', function () { _sdFxReplay(n); });
-        panel.querySelectorAll('[data-fx]').forEach(function (el) {
-            var field = el.getAttribute('data-fx');
-            var typed = el.type === 'number';
-            var before = typed ? _sdUndoBeforeFirstInput(el) : null;
-            el.addEventListener(typed ? 'input' : 'change', function () {
-                if (typed) before(); else saveState();
-                var fx = _sdFxSet(n.props._fx, field, el.type === 'checkbox' ? el.checked : el.value);
-                if (fx) n.props._fx = fx; else delete n.props._fx;
-                if (!typed) { render(); return; }
-                renderCanvas();
-                renderTree();
-                renderStatusBar();
-                renderAttrsPanel();
-                renderHtmlTree();
-                _sdLivePreviewSchedule();
+        var body = panel ? panel.querySelector('[data-sd-fx-body]') : null;
+        if (!body || !_sdFxTakes(n)) return;
+        var fill = function () {
+            _sdPartCall('interactions', 'fill', [body, n]).then(function () {
+                var srch = document.getElementById('sd-props-search');
+                if (body.isConnected && srch && srch.value.trim()) filterPropertiesPanel(srch.value.toLowerCase().trim());
+            }).catch(_sdPartFailed);
+        };
+        var sectBody = body.closest('.sd-sect-body');
+        var hdr = sectBody ? sectBody.previousElementSibling : null;
+        if (!_sdPartLoaded('interactions') && sectBody && sectBody.style.display === 'none' && hdr) {
+            hdr.addEventListener('click', function first() {
+                hdr.removeEventListener('click', first);
+                fill();
             });
-            if (typed) el.addEventListener('change', function () { render(); });
-        });
+            return;
+        }
+        fill();
     }
 
     // A design built without a framework (Custom) has nothing that styles
@@ -39702,7 +38314,7 @@ const StyleDesigner = (function () {
     // ('__page_link', designer/page-link-by-id.md), on every page. A
     // binding already set stays listed, so it can be seen and cleared.
     function _sdPageRecordBindRows(node) {
-        var bindable = _getBindableProps(node);
+        var bindable = _getBindableProps(node).filter(function (b) { return !b.widgetOnly; });
         if (!bindable.length) return '';
         var opts = _sdPageRecordValueOptions();
         var cur = (node.props && node.props._bindings) || {};
@@ -43104,6 +41716,11 @@ const StyleDesigner = (function () {
             } else if (tag === 'img') {
                 out.push({ prop: 'src',  label: _sdT('Image src'), kind: 'image' });
                 out.push({ prop: 'alt',  label: _sdT('Alt text'),  kind: 'text'  });
+            } else if (tag === 'audio' || tag === 'video' || tag === 'source') {
+                // A player's file (a video's poster too) from a record field,
+                // inside a widget only (pg_media_bound_attrs()).
+                out.push({ prop: 'src', label: _sdT('Media address'), kind: 'url', widgetOnly: true });
+                if (tag === 'video') out.push({ prop: 'poster', label: _sdT('Poster image'), kind: 'image', widgetOnly: true });
             } else if (node.props && (node.props.text || (node.props._bindings && node.props._bindings.text))) {
                 // A bound element needs no literal text of its own: a <div>
                 // bound to a ready-made HTML block (__currency_selector)
@@ -46878,7 +45495,8 @@ const StyleDesigner = (function () {
                                      'news-lead-grid', 'news-latest-mostread', 'news-category-columns', 'news-live-blog', 'news-article-header', 'news-author-box',
                                      'bento-features', 'bento-gallery', 'marquee-words', 'marquee-logos', 'showcase-floating', 'showcase-tabs', 'quote-pull', 'quote-spotlight', 'gallery-polaroid', 'scroller-cards',
                                      'events-cards', 'notice-promo', 'legal-accessibility-statement'];
-                if (_noWrapCtypes.indexOf((payload.extra || {}).componentType || '') === -1) {
+                var _nwCtype = (payload.extra || {}).componentType || '';
+                if (_noWrapCtypes.indexOf(_nwCtype) === -1 && !_sdBlockFamilyOf(_nwCtype)) {
                     n = createNode('container', { fluid: false, cssClass: '' }, [n]);
                 }
             }
@@ -49337,14 +47955,6 @@ const StyleDesigner = (function () {
     // 'rounded-top-3' → "Top 3"); the bare `shadow` reads "Regular". A
     // label with a word that has no translation keeps its class-derived
     // form in full ('Decoration none'), never half of it.
-    // Labels of the Themes panel's link decoration options; the values stay
-    // the CSS keywords.
-    function _sdThemeDecorationLabels() {
-        return {
-            'none': _sdT('No decoration'), 'underline': _sdT('Underline'),
-            'overline': _sdT('Overline'), 'line-through': _sdT('Strikethrough')
-        };
-    }
     function _sdStyleOptionLabel(cls) {
         var words = {
             'none': _sdT('None'), 'sm': _sdT('Small'), 'lg': _sdT('Large'),
@@ -51592,8 +50202,8 @@ const StyleDesigner = (function () {
                 // Mirror placement/trigger/title/content into the prop too
                 // (round-trip for forward-compat with structured props).
                 selectedNode.props['popover' + capFirst(key)] = this.value;
-                renderCanvas();
-                renderHtmlTree();
+                _sdRenderNode(selectedNode, renderCanvas);
+                _sdPanelsSoon(selectedNode);
             });
         });
 
@@ -51930,18 +50540,18 @@ const StyleDesigner = (function () {
                         _rewriteCssClassFromColProps(selectedNode);
                     }
                 }
+                // The node's own element is drawn again; a prop another
+                // node reads redraws the whole canvas (_sdScopeFullProp()).
+                var _scopeNode = _sdScopeFullProp(prop) ? null : selectedNode;
                 // For selects and checkboxes/switches, a full re-render
                 if (el.tagName === 'SELECT' || isCb) {
-                    render();
+                    _sdRenderNode(_scopeNode, render);
                 } else {
                     // For text/textarea, just update canvas (don't re-render props to keep focus)
-                    renderCanvas();
-                    renderTree();
-                    renderStatusBar();
-                    renderAttrsPanel();
-                    renderHtmlTree();
-                    // render() does not run on a keystroke here.
-                    _sdLivePreviewSchedule();
+                    _sdRenderNode(_scopeNode, renderCanvas);
+                    // The other panels once the typing pauses; render()
+                    // does not run on a keystroke here.
+                    _sdPanelsSoon(_scopeNode);
                 }
             });
         });
@@ -52012,9 +50622,9 @@ const StyleDesigner = (function () {
                 // Before the change, one undo step per run of typing.
                 saveState((el.tagName === 'SELECT') ? undefined : _sdEditRun('nodeattr:' + name));
                 setNodeAttr(selectedNode, name, this.value);
-                renderCanvas();
-                renderAttrsPanel();
-                renderHtmlTree();
+                _sdRenderNode(name === 'id' ? null : selectedNode, renderCanvas);
+                if (el.tagName === 'SELECT') { renderAttrsPanel(); renderHtmlTree(); }
+                else _sdPanelsSoon(name === 'id' ? null : selectedNode);
             });
         });
 
@@ -53476,44 +52086,18 @@ const StyleDesigner = (function () {
             '</div>';
         rightPanel.appendChild(wrap);
 
-        // ── Google Fonts Modal ─────────────────────────────────────────────────
-        var gfModalEl = document.createElement('div');
-        gfModalEl.id = 'sd-gf-modal';
-        gfModalEl.style.display = 'none';
-        gfModalEl.innerHTML =
-            '<div class="sd-gf-modal-dialog">' +
-                '<div class="sd-gf-modal-hdr">' +
-                    '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
-                    '<button id="sd-gf-modal-close" class="sd-gf-modal-close" type="button" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>' +
-                '</div>' +
-                '<div class="sd-gf-modal-body">' +
-                    '<div class="sd-gf-modal-left">' +
-                        '<div class="sd-gf-toolbar">' +
-                            '<span class="bi bi-search sd-gf-search-icon"></span>' +
-                            '<input type="text" id="sd-gf-search" class="sd-gf-search" placeholder="' + esc(_sdT('Search fonts...')) + '">' +
-                        '</div>' +
-                        '<div id="sd-gf-list" class="sd-gf-list"></div>' +
-                    '</div>' +
-                    '<div class="sd-gf-modal-right" id="sd-gf-detail">' +
-                        '<div class="sd-gf-detail-empty"><span class="bi bi-arrow-left"></span> ' + esc(_sdT('Pick a font from the list')) + '</div>' +
-                    '</div>' +
-                '</div>' +
-            '</div>';
-        document.body.appendChild(gfModalEl);
-
+        // ── Google Fonts browser ──────────────────────────────────────────────
+        // The browser is the part 'fonts' (style_designer_fonts.js), run the
+        // first time "Add a Google Font" is asked for. It reads and writes
+        // the design's fonts through this host.
+        var _gfHost = {
+            added: function () { return gfAdded; },
+            set: function (list) { gfAdded = list; saveGfField(); renderFontList(); },
+            catalogue: function () { return GOOGLE_FONTS.slice(); }
+        };
         function openGfModal() {
-            gfModalEl.style.display = 'flex';
-            renderGfBrowser('');
-            setTimeout(function() { var s = document.getElementById('sd-gf-search'); if (s) { s.value = ''; s.focus(); } }, 50);
+            _sdPartCall('fonts', 'open', [_gfHost]).catch(_sdPartFailed);
         }
-        function closeGfModal() {
-            gfModalEl.style.display = 'none';
-            var det = document.getElementById('sd-gf-detail');
-            if (det) det.innerHTML = '<div class="sd-gf-detail-empty"><span class="bi bi-arrow-left"></span> ' + esc(_sdT('Pick a font from the list')) + '</div>';
-            _gfOpenFamily = null;
-        }
-        document.getElementById('sd-gf-modal-close').addEventListener('click', closeGfModal);
-        gfModalEl.addEventListener('click', function(e) { if (e.target === gfModalEl) closeGfModal(); });
 
         function _fileIsExt(file)        { return file.type === 'external-css' || file.type === 'external-js'; }
         // Managed = backed by a real `files` row + on-disk file. Includes JSON
@@ -54391,157 +52975,8 @@ const StyleDesigner = (function () {
         _flushPendingOverlays = function (done) { done(); };
 
         // ── Theme: Bootstrap CSS variable overrides ─────────────────────────
-        // Edits write light values under
-        // `:root:not([data-bs-theme="dark"]), [data-bs-theme="light"] { … }`
-        // (variables Bootstrap gives a dark value) or
-        // `:root, [data-bs-theme="light"] { … }` (the rest, which also apply
-        // in dark mode), and dark values under `[data-bs-theme="dark"] { … }`,
-        // into the user-styles content (see _themeBlockFor()). Single source of truth — same place the bottom Styles
-        // panel and "Dosyaya Aktar" extract from.
-        //
-        // Each group has an `id` (used for collapse persistence), a friendly
-        // `label`, and a list of vars. Each var carries:
-        //   • name  — the CSS custom property (`--bs-…`)
-        //   • label — the human-friendly row label (e.g. "Primary")
-        //   • kind  — 'color' (native picker), 'colorRgba' (text only —
-        //             rgba()/hex8 not supported by input[type=color]),
-        //             'text', 'select'
-        //   • def   — `{ light: …, dark: … }` Bootstrap-5.3 stock values,
-        //             used as the picker's fallback colour AND as the
-        //             "is this row modified?" comparison source.
-        //   • theme — true for the 8 Bootstrap theme colors (primary/…/dark).
-        //             When set, changes also emit cascade override rules
-        //             (.btn-X, .bg-X, .text-X, …) so the colour propagates
-        //             through Bootstrap's component hierarchy.
-        //   • opts  — list of values for kind='select' rows.
-        var THEME_VAR_GROUPS = [
-            {
-                id: 'theme-colors',
-                label: _sdT('Theme Colors'),
-                defaultOpen: true,
-                vars: [
-                    { name: '--bs-primary',   label: _sdT('Primary'),   kind: 'color', theme: true, def: { light: '#0d6efd', dark: '#6ea8fe' } },
-                    { name: '--bs-secondary', label: _sdT('Secondary'), kind: 'color', theme: true, def: { light: '#6c757d', dark: '#a7acb1' } },
-                    { name: '--bs-success',   label: _sdT('Success'),   kind: 'color', theme: true, def: { light: '#198754', dark: '#75b798' } },
-                    { name: '--bs-info',      label: _sdT('Info'),      kind: 'color', theme: true, def: { light: '#0dcaf0', dark: '#6edff6' } },
-                    { name: '--bs-warning',   label: _sdT('Warning'),   kind: 'color', theme: true, def: { light: '#ffc107', dark: '#ffda6a' } },
-                    { name: '--bs-danger',    label: _sdT('Danger'),    kind: 'color', theme: true, def: { light: '#dc3545', dark: '#ea868f' } },
-                    { name: '--bs-light',     label: _sdT('Light'),     kind: 'color', theme: true, def: { light: '#f8f9fa', dark: '#343a40' } },
-                    { name: '--bs-dark',      label: _sdT('Dark'),      kind: 'color', theme: true, def: { light: '#212529', dark: '#dee2e6' } }
-                ]
-            },
-            {
-                id: 'body-colors',
-                label: _sdT('Body Colors'),
-                defaultOpen: true,
-                vars: [
-                    { name: '--bs-body-color',       label: _sdT('Text Color'),           kind: 'color',     def: { light: '#212529', dark: '#dee2e6' } },
-                    { name: '--bs-secondary-color',  label: _sdT('Secondary Text Color'), kind: 'colorRgba', def: { light: 'rgba(33, 37, 41, 0.75)', dark: 'rgba(222, 226, 230, 0.75)' } },
-                    { name: '--bs-tertiary-color',   label: _sdT('Tertiary Text Color'),  kind: 'colorRgba', def: { light: 'rgba(33, 37, 41, 0.5)',  dark: 'rgba(222, 226, 230, 0.5)'  } },
-                    { name: '--bs-body-bg',          label: _sdT('Background'),           kind: 'color',     def: { light: '#ffffff', dark: '#212529' } },
-                    { name: '--bs-secondary-bg',     label: _sdT('Secondary BG'),         kind: 'color',     def: { light: '#e9ecef', dark: '#343a40' } },
-                    { name: '--bs-tertiary-bg',      label: _sdT('Tertiary BG'),          kind: 'color',     def: { light: '#f8f9fa', dark: '#2b3035' } }
-                ]
-            },
-            {
-                id: 'text',
-                label: _sdT('Text'),
-                defaultOpen: true,
-                vars: [
-                    { name: '--bs-body-font-family', label: _sdT('Font Family'), kind: 'text', def: { light: 'var(--bs-font-sans-serif)', dark: 'var(--bs-font-sans-serif)' } },
-                    { name: '--bs-body-font-size',   label: _sdT('Font Size'),   kind: 'text', def: { light: '1rem', dark: '1rem' } },
-                    { name: '--bs-body-font-weight', label: _sdT('Font Weight'), kind: 'select', opts: ['100','200','300','400','500','600','700','800','900'], def: { light: '400', dark: '400' } },
-                    { name: '--bs-body-line-height', label: _sdT('Line Height'), kind: 'text', def: { light: '1.5', dark: '1.5' } }
-                ]
-            },
-            {
-                id: 'links',
-                label: _sdT('Links'),
-                defaultOpen: true,
-                vars: [
-                    { name: '--bs-link-color',           label: _sdT('Color'),            kind: 'color', def: { light: '#0d6efd', dark: '#6ea8fe' } },
-                    { name: '--bs-link-hover-color',     label: _sdT('Hover Color'),      kind: 'color', def: { light: '#0a58ca', dark: '#9ec5fe' } },
-                    { name: '--bs-link-decoration',      label: _sdT('Decoration'),       kind: 'select', opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(), def: { light: 'underline', dark: 'underline' } },
-                    { name: '--bs-link-hover-decoration',label: _sdT('Hover Decoration'), kind: 'select', opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(), def: { light: 'underline', dark: 'underline' } }
-                ]
-            },
-            {
-                id: 'borders',
-                label: _sdT('Borders'),
-                defaultOpen: false,
-                vars: [
-                    { name: '--bs-border-color',     label: _sdT('Border Color'),  kind: 'color', def: { light: '#dee2e6',  dark: '#495057'  } },
-                    { name: '--bs-border-width',     label: _sdT('Border Width'),  kind: 'text',  def: { light: '1px',      dark: '1px'      } },
-                    { name: '--bs-border-radius',    label: _sdT('Radius'),        kind: 'text',  def: { light: '0.375rem', dark: '0.375rem' } },
-                    { name: '--bs-border-radius-sm', label: _sdT('Radius SM'),     kind: 'text',  def: { light: '0.25rem',  dark: '0.25rem'  } },
-                    { name: '--bs-border-radius-lg', label: _sdT('Radius LG'),     kind: 'text',  def: { light: '0.5rem',   dark: '0.5rem'   } },
-                    { name: '--bs-border-radius-xl', label: _sdT('Radius XL'),     kind: 'text',  def: { light: '1rem',     dark: '1rem'     } }
-                ]
-            },
-            {
-                id: 'focus-ring',
-                label: _sdT('Focus Ring'),
-                defaultOpen: false,
-                vars: [
-                    { name: '--bs-focus-ring-color',   label: _sdT('Color'),   kind: 'colorRgba', def: { light: 'rgba(13, 110, 253, 0.25)', dark: 'rgba(110, 168, 254, 0.25)' } },
-                    { name: '--bs-focus-ring-width',   label: _sdT('Width'),   kind: 'text',      def: { light: '0.25rem', dark: '0.25rem' } },
-                    { name: '--bs-focus-ring-opacity', label: _sdT('Opacity'), kind: 'text',      def: { light: '0.25',    dark: '0.25'    } }
-                ]
-            }
-        ];
-
-        // Theme color cascade: which Bootstrap utility/component classes
-        // need an explicit override when the user changes a theme color.
-        // Each entry generates one CSS rule.
-        //
-        // Why this exists: Bootstrap's components don't read --bs-primary
-        // directly — they hardcode the colour at build time (e.g. .btn-primary
-        // sets `--bs-btn-bg: #0d6efd`). Without the cascade, changing
-        // --bs-primary would only affect a handful of utilities and leave
-        // .btn-primary, .alert-primary, .badge.text-bg-primary untouched.
-        //
-        // mode='light' emits unprefixed selectors (apply by default).
-        // mode='dark'  emits selectors prefixed with `[data-bs-theme="dark"]`
-        // so they only kick in when the user toggles dark mode and don't
-        // override the light cascade in light mode.
-        function _themeCascadeRulesFor(varName, value, mode) {
-            var slug = varName.replace(/^--bs-/, '');
-            var v = value;
-            var pref = (mode === 'dark') ? '[data-bs-theme="dark"] ' : '';
-            return [
-                pref + '.bg-'      + slug + ' { background-color: ' + v + ' !important; }',
-                pref + '.text-'    + slug + ' { color: '            + v + ' !important; }',
-                pref + '.border-'  + slug + ' { border-color: '     + v + ' !important; }',
-                pref + '.link-'    + slug + ' { color: '            + v + ' !important; }',
-                pref + '.text-bg-' + slug + ' { background-color: ' + v + ' !important; color: #fff !important; }',
-                pref + '.btn-'     + slug + ' {' +
-                    ' --bs-btn-bg: '                 + v + ';' +
-                    ' --bs-btn-border-color: '       + v + ';' +
-                    ' --bs-btn-hover-bg: '           + 'color-mix(in srgb, ' + v + ', black 15%);' +
-                    ' --bs-btn-hover-border-color: ' + 'color-mix(in srgb, ' + v + ', black 20%);' +
-                    ' --bs-btn-active-bg: '          + 'color-mix(in srgb, ' + v + ', black 20%);' +
-                    ' --bs-btn-active-border-color: '+ 'color-mix(in srgb, ' + v + ', black 25%);' +
-                    ' --bs-btn-disabled-bg: '        + v + ';' +
-                    ' --bs-btn-disabled-border-color: ' + v + ';' +
-                    ' }',
-                pref + '.btn-outline-' + slug + ' {' +
-                    ' --bs-btn-color: '              + v + ';' +
-                    ' --bs-btn-border-color: '       + v + ';' +
-                    ' --bs-btn-hover-bg: '           + v + ';' +
-                    ' --bs-btn-hover-border-color: ' + v + ';' +
-                    ' --bs-btn-active-bg: '          + v + ';' +
-                    ' --bs-btn-active-border-color: '+ v + ';' +
-                    ' --bs-btn-disabled-color: '     + v + ';' +
-                    ' --bs-btn-disabled-border-color: ' + v + ';' +
-                    ' }',
-                pref + '.alert-' + slug + ' {' +
-                    ' --bs-alert-color: '        + 'color-mix(in srgb, ' + v + ', black 50%);' +
-                    ' --bs-alert-bg: '           + 'color-mix(in srgb, ' + v + ', white 80%);' +
-                    ' --bs-alert-border-color: ' + 'color-mix(in srgb, ' + v + ', white 70%);' +
-                    ' --bs-alert-link-color: '   + 'color-mix(in srgb, ' + v + ', black 60%);' +
-                    ' }'
-            ].join('\n');
-        }
+        // The light, shared and dark blocks of the user-styles content the
+        // Themes tab writes its Bootstrap variables to (see _themeBlockFor()).
 
         // Active mode for the Theme panel. Switching this re-renders the
         // inputs against the corresponding selector block.
@@ -54812,117 +53247,7 @@ const StyleDesigner = (function () {
             return _themeModeDecls(content, mode)[varName] || '';
         }
 
-        // Update or remove a "cascade" block for a theme color. Marker
-        // comments make the block self-identifying so the writer can find
-        // and replace it idempotently. Empty `value` removes the block.
-        // Each mode has its own block: light cascade is unscoped (default
-        // styling), dark cascade is prefixed with `[data-bs-theme="dark"]`
-        // so it only kicks in when the user toggles dark mode and doesn't
-        // override the light cascade in light mode.
-        function _writeCascadeBlock(content, varName, value, mode) {
-            var slug = varName.replace(/^--bs-/, '');
-            var startMark = '/* === pg-theme-cascade:' + slug + ':' + mode + ':start === */';
-            var endMark   = '/* === pg-theme-cascade:' + slug + ':' + mode + ':end === */';
-            var startIdx = content.indexOf(startMark);
-            var endIdx   = (startIdx === -1) ? -1 : content.indexOf(endMark, startIdx);
-            var newBlock = '';
-            if (value) {
-                newBlock = startMark + '\n' + _themeCascadeRulesFor(varName, value, mode) + '\n' + endMark;
-            }
-            if (startIdx !== -1 && endIdx !== -1) {
-                // Replace existing — drop the whole region (markers + body).
-                var endLen = endIdx + endMark.length;
-                var pre = content.slice(0, startIdx).replace(/\n+$/, '');
-                var post = content.slice(endLen).replace(/^\n+/, '');
-                if (newBlock) {
-                    return (pre ? pre + '\n\n' : '') + newBlock + (post ? '\n\n' + post : '');
-                }
-                return (pre + (post ? '\n\n' + post : '')).replace(/^\s+|\s+$/g, '') + (post ? '' : '');
-            }
-            // No existing — append.
-            if (!newBlock) return content;
-            return (content.replace(/\s+$/, '') ? content.replace(/\s+$/, '') + '\n\n' : '') + newBlock + '\n';
-        }
 
-        // Write a single theme var into the user-styles content, creating
-        // the rule block on first write. Removes the declaration when
-        // `value` is empty so the user can revert to the Bootstrap default.
-        // For theme colors (primary/…/dark) ALSO emits a cascade block so
-        // .btn-primary, .bg-primary, .alert-primary etc. follow along.
-        function _writeThemeVar(mode, varName, value) {
-            // Snapshot BEFORE we touch cssFiles or the user-styles content.
-            // saveState() captures the css hidden field as part of `assets`,
-            // so undo restores the entire pre-edit user-styles block —
-            // variable + cascade rules together. Without this, theme-var
-            // edits silently bypass the undo history.
-            saveState();
-            var entryIdx = -1;
-            for (var i = 0; i < cssFiles.length; i++) {
-                if (cssFiles[i].meta === 'user-styles') { entryIdx = i; break; }
-            }
-            var entry;
-            if (entryIdx === -1) {
-                entry = { id: mkId(), name: _sdT('User Styles'), type: 'css', content: '', enabled: true, locked: false, meta: 'user-styles' };
-                cssFiles.push(entry);
-                entryIdx = cssFiles.length - 1;
-            } else {
-                entry = cssFiles[entryIdx];
-            }
-            // A light block in the old form is rewritten on every write, so a
-            // value set now never overrides a dark page. A light value lives
-            // in one block only: the one its variable belongs to.
-            var kind = _themeBlockFor(mode, varName);
-            var content = _themeUpgradeLightSelector(entry.content || '');
-            if (kind !== 'dark') content = _themeSetDecl(content, (kind === 'light') ? 'shared' : 'light', varName, '');
-            content = _themeSetDecl(content, kind, varName, value);
-
-            // For theme colors (primary/.../dark), also (re)emit the cascade
-            // override block for the current mode. Light cascade is unscoped;
-            // dark cascade is prefixed with [data-bs-theme="dark"] so the
-            // two modes don't collide.
-            var meta = _findThemeVarMeta(varName);
-            if (meta && meta.theme) {
-                content = _writeCascadeBlock(content, varName, value, mode);
-            }
-            entry.content = content;
-            saveFiles('sd-custom-css-field', cssFiles);
-            // Refresh the canvas iframe so the new variable + cascade rules
-            // take effect immediately. Without this, saveFiles only updates
-            // the hidden form field and the user has to interact with
-            // something else for the iframe to pick up the change.
-            applyAssetsToIframe();
-        }
-
-        // Look up a var's metadata (for `theme: true` checks etc.).
-        function _findThemeVarMeta(name) {
-            for (var i = 0; i < THEME_VAR_GROUPS.length; i++) {
-                var g = THEME_VAR_GROUPS[i];
-                for (var j = 0; j < g.vars.length; j++) {
-                    if (g.vars[j].name === name) return g.vars[j];
-                }
-            }
-            return null;
-        }
-
-        // Persisted collapse state per group. Defaults come from group def.
-        var _themeGrpCollapseKey = 'sd_theme_grp_collapse';
-        var _themeGrpCollapsed = {};
-        try {
-            var raw = localStorage.getItem(_themeGrpCollapseKey);
-            if (raw) _themeGrpCollapsed = JSON.parse(raw) || {};
-        } catch (e) {}
-        function _isGrpCollapsed(g) {
-            if (typeof _themeGrpCollapsed[g.id] === 'boolean') return _themeGrpCollapsed[g.id];
-            return !g.defaultOpen;
-        }
-        function _setGrpCollapsed(id, collapsed) {
-            _themeGrpCollapsed[id] = !!collapsed;
-            try { localStorage.setItem(_themeGrpCollapseKey, JSON.stringify(_themeGrpCollapsed)); } catch (e) {}
-        }
-
-        // Render the variable rows for the active mode. Called on init,
-        // when the mode changes, on tab switch, and after user-styles
-        // content is edited from elsewhere (bottom Styles panel etc.).
         // The variable blocks the panel edits (light + dark), as a standalone
         // stylesheet — what a saved theme file is made of.
         function _sdThemeCssFromUserStyles() {
@@ -54941,246 +53266,48 @@ const StyleDesigner = (function () {
             return out.trim();
         }
 
-        // Header of the Themes tab: which theme file the design loads (and
-        // that it wins over the variables below), plus "save as theme".
-        function _renderThemeHead() {
-            var head = document.getElementById('sd-theme-head');
-            if (!head) return;
-            var th = _sdActiveTheme();
-            // The design's look and palette (Settings > Theme) come
-            // first: they are what the variables below are laid over.
-            var _lk = _sdThemeFind('look', _sdThemeValue('look'));
-            var _pl = _sdThemeFind('palette', _sdThemeValue('palette'));
-            var lookRow = (_sdUsesBootstrap() && _sdThemes())
-                ? '<div class="sd-theme-head-row">' +
-                      '<span class="bi bi-brush sd-theme-head-icon"></span>' +
-                      '<span class="sd-theme-head-txt"><strong>' + esc(_lk ? _lk.name : _sdT('Plain Bootstrap')) + '</strong> · ' + esc(_pl ? _pl.name : _sdT('Bootstrap')) +
-                          '<br><span class="sd-theme-head-hint">' + esc(_sdT('Look and colour palette of the design')) + '</span></span>' +
-                      '<button type="button" class="sd-theme-head-btn" data-act="look" title="' + esc(_sdT('Change the look and the palette')) + '"><span class="bi bi-sliders"></span></button>' +
-                  '</div>'
-                : '';
-            // Without Bootstrap there are no variables below to speak of or
-            // to save as a theme; the theme file itself is any stylesheet.
-            var _bsVars = _sdUsesBootstrap();
-            head.innerHTML = lookRow +
-                '<div class="sd-theme-head-row">' +
-                    '<span class="bi bi-palette2 sd-theme-head-icon"></span>' +
-                    '<span class="sd-theme-head-txt">' +
-                        (th
-                            ? '<strong>' + esc(th.name) + '</strong><br><span class="sd-theme-head-hint">' + esc(_bsVars ? _sdT('Loads after every stylesheet and overrides the variables below.') : _sdT('Loads after every stylesheet of the design.')) + '</span>'
-                            : '<strong>' + esc(_sdT('No theme')) + '</strong><br><span class="sd-theme-head-hint">' + esc(_bsVars ? _sdT('The variables below live in User Styles.') : _sdT('A theme file loads after every stylesheet of the design.')) + '</span>') +
-                    '</span>' +
-                    '<button type="button" class="sd-theme-head-btn" data-act="pick" title="' + esc(_sdT('Choose a theme (Settings → Theme)')) + '"><span class="bi bi-gear"></span></button>' +
-                '</div>' +
-                (_bsVars
-                    ? '<button type="button" class="sd-theme-save-btn" data-act="save">' +
-                          '<span class="bi bi-save me-1"></span>' + esc(_sdT('Save these colours as a theme')) +
-                      '</button>'
-                    : '');
-            head.querySelector('[data-act="pick"]').addEventListener('click', _sdOpenDesignSettings);
-            var _saveBtn = head.querySelector('[data-act="save"]');
-            if (_saveBtn) _saveBtn.addEventListener('click', _sdSaveAsTheme);
-            var lookBtn = head.querySelector('[data-act="look"]');
-            if (lookBtn) lookBtn.addEventListener('click', _sdOpenThemeSettings);
-        }
-        if (!window._sdThemeHeadBound) {
-            window._sdThemeHeadBound = true;
-            document.addEventListener('pg-design-theme-change', function () { _renderThemeHead(); });
-        }
-
-        // Write the light/dark variable blocks to a new theme file and make
-        // it the design's theme. The variables stay in User Styles as well:
-        // the file is a snapshot the operator can reuse on other designs.
-        function _sdSaveAsTheme() {
-            var css = _sdThemeCssFromUserStyles();
-            if (!css) {
-                sdToast(_sdT('Nothing to save yet — change a colour or two first.'), 'warning', 4000);
-                return;
-            }
-            var name = window.prompt(_sdT('Theme name:'), '');
-            if (!name || !name.trim()) return;
-            _pgApiPost('theme_save', { name: name.trim(), css: css }).then(function (res) {
-                if (!res || res.status !== 'success') {
-                    sdToast((res && res.message) ? res.message : _sdT('The theme could not be saved.'), 'error', 6000);
-                    return;
+        // The Themes tab is the part 'theme' (assets/js/style_designer_theme.js):
+        // its variable rows, header and "save as a theme" are drawn the
+        // first time the tab is shown, and after that whenever the user
+        // styles change. The part reads and writes the user-styles content
+        // and its rule blocks through this host.
+        var _themeHost = {
+            wrap: wrap,
+            mode: function () { return _themeMode; },
+            userStyles: function () {
+                for (var i = 0; i < cssFiles.length; i++) {
+                    if (cssFiles[i].meta === 'user-styles') return cssFiles[i].content || '';
                 }
-                var sel = document.querySelector('select[name="theme_id"]');
-                if (sel) {
-                    var opt = document.createElement('option');
-                    opt.value = String(res.id); opt.textContent = res.name;
-                    sel.appendChild(opt);
-                    sel.value = String(res.id);
-                    sel.dispatchEvent(new Event('change', { bubbles: true }));   // canvas link + lists
+                return '';
+            },
+            setUserStyles: function (content) {
+                var entry = null;
+                for (var i = 0; i < cssFiles.length; i++) {
+                    if (cssFiles[i].meta === 'user-styles') { entry = cssFiles[i]; break; }
                 }
-                sdToast('<strong>' + esc(res.name) + '</strong> ' + esc(_sdT('was saved and selected as this design\'s theme. Save the design to keep the choice.')), 'success', 7000);
-            }).catch(function () { sdToast(_sdT('Network error.'), 'error'); });
-        }
+                if (!entry) {
+                    entry = { id: mkId(), name: _sdT('User Styles'), type: 'css', content: '', enabled: true, locked: false, meta: 'user-styles' };
+                    cssFiles.push(entry);
+                }
+                entry.content = content;
+                saveFiles('sd-custom-css-field', cssFiles);
+            },
+            activeTheme: _sdActiveTheme,
+            openDesignSettings: _sdOpenDesignSettings,
+            themeCss: _sdThemeCssFromUserStyles,
+            blockFor: _themeBlockFor,
+            setDecl: _themeSetDecl,
+            upgrade: _themeUpgradeLightSelector,
+            modeDecls: _themeModeDecls,
+            hasDarkDefault: _themeVarHasDarkDefault
+        };
 
+        // Draws the Themes tab. While the tab has never been shown there is
+        // nothing to draw: showing it draws it.
         function renderThemePanel() {
-            _renderThemeHead();
-            var host = document.getElementById('sd-theme-vars');
-            if (!host) return;
-            // The variables below are Bootstrap's (--bs-*): a design built
-            // without a framework, or on another one, reads none of them, so
-            // neither they nor the light/dark blocks they are written to are
-            // offered there.
-            var _modeTabs = wrap.querySelector('.sd-theme-mode-tabs');
-            if (_modeTabs) _modeTabs.style.display = _sdUsesBootstrap() ? '' : 'none';
-            if (!_sdUsesBootstrap()) {
-                host.innerHTML = '<p class="form-text small px-3 mb-0">' +
-                    esc(_sdT('This design is built without Bootstrap, so the Bootstrap variables (colours, fonts, borders) are not offered here. Put your own variables in one of the design\'s stylesheets, or choose a theme file above.')) + '</p>';
-                return;
-            }
-            // Gather current values once per render
-            var content = '';
-            for (var i = 0; i < cssFiles.length; i++) {
-                if (cssFiles[i].meta === 'user-styles') { content = cssFiles[i].content || ''; break; }
-            }
-            var current = _themeModeDecls(content, _themeMode);
-            // In dark mode a variable without a Bootstrap dark value shows
-            // the light value it inherits there as its placeholder.
-            var inherited = (_themeMode === 'dark') ? _themeModeDecls(content, 'light') : {};
-
-            var html = '';
-            THEME_VAR_GROUPS.forEach(function (g) {
-                var collapsed = _isGrpCollapsed(g);
-                html += '<div class="sd-theme-grp' + (collapsed ? ' collapsed' : '') + '" data-grp="' + g.id + '">' +
-                            '<div class="sd-theme-grp-hdr" data-grp="' + g.id + '">' +
-                                '<span class="bi bi-chevron-' + (collapsed ? 'right' : 'down') + ' sd-theme-grp-chev"></span>' +
-                                '<span class="sd-theme-grp-label">' + g.label + '</span>' +
-                                '<span class="sd-theme-grp-spacer"></span>' +
-                                '<button type="button" class="sd-theme-grp-act" data-act="reset-all" data-grp="' + g.id + '" title="' + esc(_sdT('Reset every change in this group')) + '"><span class="bi bi-arrow-counterclockwise"></span></button>' +
-                            '</div>' +
-                            '<div class="sd-theme-grp-body"' + (collapsed ? ' style="display:none"' : '') + '>';
-
-                g.vars.forEach(function (v) {
-                    var val = current[v.name] || '';
-                    var ph  = (typeof v.def[_themeMode] === 'string') ? v.def[_themeMode] : '';
-                    if (_themeMode === 'dark' && !_themeVarHasDarkDefault(v.name) && inherited[v.name]) ph = inherited[v.name];
-                    var modified = !!val;        // ← class hook for the blue label
-                    var displayColor = val || ph;
-
-                    var labelHtml = '<span class="sd-theme-row-name' + (modified ? ' modified' : '') + '"' +
-                                    ' data-var="' + v.name + '"' +
-                                    ' title="' + (modified ? _sdT('Click to return to the default') : v.name) + '">' +
-                                    v.label + '</span>';
-
-                    if (v.kind === 'color') {
-                        // Native <input type="color"> only understands #rrggbb.
-                        var hex = (displayColor || '').trim();
-                        if (!/^#[0-9a-fA-F]{6}$/.test(hex)) hex = (ph || '#000000');
-                        if (!/^#[0-9a-fA-F]{6}$/.test(hex)) hex = '#000000';
-                        html +=
-                            '<div class="sd-theme-row" data-var="' + v.name + '">' +
-                                labelHtml +
-                                '<input type="text" class="sd-theme-row-text" data-var="' + v.name + '" value="' + esc(val) + '" placeholder="' + esc(ph) + '">' +
-                                '<input type="color" class="sd-theme-row-color" data-var="' + v.name + '" value="' + hex + '">' +
-                            '</div>';
-                    } else if (v.kind === 'colorRgba') {
-                        // No native picker for rgba/hex8 — text-only.
-                        html +=
-                            '<div class="sd-theme-row sd-theme-row-rgba" data-var="' + v.name + '">' +
-                                labelHtml +
-                                '<input type="text" class="sd-theme-row-text" data-var="' + v.name + '" value="' + esc(val) + '" placeholder="' + esc(ph) + '">' +
-                                '<span class="sd-theme-row-swatch" style="background:' + esc(displayColor) + '"></span>' +
-                            '</div>';
-                    } else if (v.kind === 'select') {
-                        var opts = (v.opts || []).map(function (o) {
-                            var sel = (val === o) || (!val && ph === o);
-                            return '<option value="' + esc(o) + '"' + (sel ? ' selected' : '') + '>' + esc(v.optLabels && v.optLabels[o] ? v.optLabels[o] : o) + '</option>';
-                        }).join('');
-                        html +=
-                            '<div class="sd-theme-row sd-theme-row-select" data-var="' + v.name + '">' +
-                                labelHtml +
-                                '<select class="sd-theme-row-sel" data-var="' + v.name + '">' + opts + '</select>' +
-                            '</div>';
-                    } else {
-                        html +=
-                            '<div class="sd-theme-row sd-theme-row-text-only" data-var="' + v.name + '">' +
-                                labelHtml +
-                                '<input type="text" class="sd-theme-row-text" data-var="' + v.name + '" value="' + esc(val) + '" placeholder="' + esc(ph) + '">' +
-                            '</div>';
-                    }
-                });
-                html += '</div></div>';
-            });
-            host.innerHTML = html;
-
-            // ── Wire interactions ──────────────────────────────────────────
-            // Group header → toggle collapse (chevron + body).
-            host.querySelectorAll('.sd-theme-grp-hdr').forEach(function (hdr) {
-                hdr.addEventListener('click', function (e) {
-                    if (e.target.closest('.sd-theme-grp-act')) return;  // ignore toolbar clicks
-                    var id = this.dataset.grp;
-                    var grpEl = host.querySelector('.sd-theme-grp[data-grp="' + id + '"]');
-                    if (!grpEl) return;
-                    var nowCollapsed = !grpEl.classList.contains('collapsed');
-                    grpEl.classList.toggle('collapsed', nowCollapsed);
-                    var body = grpEl.querySelector('.sd-theme-grp-body');
-                    var chev = grpEl.querySelector('.sd-theme-grp-chev');
-                    if (body) body.style.display = nowCollapsed ? 'none' : '';
-                    if (chev) chev.className = 'bi bi-chevron-' + (nowCollapsed ? 'right' : 'down') + ' sd-theme-grp-chev';
-                    _setGrpCollapsed(id, nowCollapsed);
-                });
-            });
-            // Group action buttons: each group's reset.
-            host.querySelectorAll('.sd-theme-grp-act').forEach(function (btn) {
-                btn.addEventListener('click', function (e) {
-                    e.stopPropagation();
-                    var act = this.dataset.act;
-                    var id  = this.dataset.grp;
-                    if (act === 'reset-all') {
-                        var grp = null;
-                        for (var k = 0; k < THEME_VAR_GROUPS.length; k++) if (THEME_VAR_GROUPS[k].id === id) { grp = THEME_VAR_GROUPS[k]; break; }
-                        if (!grp) return;
-                        grp.vars.forEach(function (v) { _writeThemeVar(_themeMode, v.name, ''); });
-                        renderThemePanel();
-                        applyAssetsToIframe();
-                    }
-                });
-            });
-
-            // Color picker → mirror into text + write on change.
-            host.querySelectorAll('.sd-theme-row-color').forEach(function (cp) {
-                cp.addEventListener('input', function () {
-                    var row = this.closest('.sd-theme-row');
-                    var txt = row.querySelector('.sd-theme-row-text');
-                    if (txt) txt.value = this.value;
-                });
-                cp.addEventListener('change', function () {
-                    _writeThemeVar(_themeMode, this.dataset.var, this.value);
-                    renderThemePanel();
-                });
-            });
-            // Free text → mirror to color picker if hex, write on change.
-            host.querySelectorAll('.sd-theme-row-text').forEach(function (inp) {
-                inp.addEventListener('change', function () {
-                    var row = this.closest('.sd-theme-row');
-                    var cp  = row.querySelector('.sd-theme-row-color');
-                    if (cp && /^#[0-9a-fA-F]{6}$/.test(this.value)) cp.value = this.value;
-                    var sw  = row.querySelector('.sd-theme-row-swatch');
-                    if (sw) sw.style.background = this.value || '';
-                    _writeThemeVar(_themeMode, this.dataset.var, this.value.trim());
-                    renderThemePanel();
-                });
-            });
-            // Select dropdown → write on change.
-            host.querySelectorAll('.sd-theme-row-sel').forEach(function (sel) {
-                sel.addEventListener('change', function () {
-                    _writeThemeVar(_themeMode, this.dataset.var, this.value);
-                    renderThemePanel();
-                });
-            });
-
-            // Label-as-reset: clicking a modified label reverts the override.
-            host.querySelectorAll('.sd-theme-row-name').forEach(function (lbl) {
-                lbl.addEventListener('click', function () {
-                    if (!this.classList.contains('modified')) return;
-                    _writeThemeVar(_themeMode, this.dataset.var, '');
-                    renderThemePanel();
-                    applyAssetsToIframe();
-                });
-            });
+            var pane = document.getElementById('sd-tab-themes');
+            if (!_sdPartLoaded('theme') && (!pane || pane.style.display === 'none')) return;
+            _sdPartCall('theme', 'render', [_themeHost]).catch(_sdPartFailed);
         }
 
         // Mode tab switching — light vs dark. Routes through the shared
@@ -55240,125 +53367,6 @@ const StyleDesigner = (function () {
                 else showHdrCtx(t, e.clientX, e.clientY);
             });
         });
-
-        // ── Google Fonts browser ──────────────────────────────────────────────
-        var _gfOpenFamily = null;
-
-        function renderGfBrowser(query) {
-            var el = document.getElementById('sd-gf-list');
-            if (!el) return;
-            query = (query || '').toLowerCase().trim();
-            var fonts = GOOGLE_FONTS.filter(function(f) { return f !== 'Default' && (!query || f.toLowerCase().indexOf(query) !== -1); });
-            var addedFams = gfAdded.map(function(f) { return f.family; });
-            // Render the entire filtered list — the catalog (~180 entries)
-            // is small enough that a virtual scroller would be overkill, and
-            // the filter input on top means most queries narrow the list to
-            // a handful anyway. Earlier builds capped at 100 with a "+X
-            // more…" footer; that hid common picks like Roboto Slab and
-            // forced the user to type to find them.
-            el.innerHTML = fonts.map(function(f) {
-                var added = addedFams.indexOf(f) !== -1;
-                var activeCls = (_gfOpenFamily === f) ? ' active' : '';
-                return '<div class="sd-gf-item' + (added ? ' sd-gf-added-mark' : '') + activeCls + '" data-gf-pick="' + f + '"><span class="sd-gf-item-name">' + f + '</span>' + (added ? '<span class="bi bi-check2-circle sd-gf-icon-ok"></span>' : '<span class="bi bi-plus-circle sd-gf-icon-add"></span>') + '</div>';
-            }).join('');
-            el.querySelectorAll('[data-gf-pick]').forEach(function(item) {
-                item.addEventListener('click', function() { openGfPicker(this.dataset.gfPick, this); });
-            });
-        }
-
-        function openGfPicker(family, anchorEl) {
-            // Same-click toggle removed: the previous "click again to
-            // deselect" behaviour read as a bug — the user thought their
-            // click was lost. Now clicking a font always opens (or refreshes)
-            // its detail panel; selection is cleared only by the modal close.
-            _gfOpenFamily = family;
-            document.querySelectorAll('.sd-gf-item.active').forEach(function(el) { el.classList.remove('active'); });
-            // Active class derives from `_gfOpenFamily` rather than the
-            // anchorEl reference — that way a stale anchorEl from an old
-            // render (e.g. after Add re-renders the list) still highlights
-            // the correct row instead of silently doing nothing.
-            var liveAnchor = anchorEl;
-            if (!liveAnchor || !liveAnchor.isConnected) {
-                liveAnchor = document.querySelector('.sd-gf-item[data-gf-pick="' + family.replace(/"/g, '\\"') + '"]');
-            }
-            if (liveAnchor) liveAnchor.classList.add('active');
-            var existing = null; for (var i=0; i<gfAdded.length; i++) { if (gfAdded[i].family === family) { existing = gfAdded[i]; break; } }
-            var selWts = existing ? existing.weights.slice() : [400];
-            // Load preview font — the <link> targets the parent document so
-            // the preview area in the modal can render in the chosen face.
-            var prevLink = document.getElementById('sd-gf-preview-link');
-            if (!prevLink) { prevLink = document.createElement('link'); prevLink.id = 'sd-gf-preview-link'; prevLink.rel = 'stylesheet'; document.head.appendChild(prevLink); }
-            prevLink.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(family).replace(/%20/g, '+') + ':wght@100;200;300;400;500;600;700;800;900&display=swap';
-            var det = document.getElementById('sd-gf-detail');
-            if (!det) return;
-            // Detail layout (top-down): title → preview card → weights row
-            // (numbers in default UI font; small sample swatch shows what the
-            // weight looks like) → actions row.
-            // Sample text follows the user's preview convention but is given
-            // a card-style wrapper so the boundary between "preview text"
-            // and "weight controls" is visually obvious.
-            det.innerHTML =
-                '<div class="sd-gf-det-head">' +
-                    '<div class="sd-gf-det-title">' + family + '</div>' +
-                    (existing
-                        ? '<span class="sd-gf-det-status sd-gf-det-status-added"><span class="bi bi-check2-circle me-1"></span>' + esc(_sdT('Already added')) + '</span>'
-                        : '<span class="sd-gf-det-status">' + esc(_sdT('Not added yet')) + '</span>') +
-                '</div>' +
-                '<div class="sd-gf-det-preview-card">' +
-                    '<div class="sd-gf-det-preview-label">' + esc(_sdT('Preview')) + '</div>' +
-                    '<div class="sd-gf-det-preview" style="font-family:\'' + family + '\',sans-serif">AaBbCcDd 0123</div>' +
-                    '<div class="sd-gf-det-preview-pangram" style="font-family:\'' + family + '\',sans-serif">' + esc(_sdT('The quick brown fox jumps over the lazy dog.')) + '</div>' +
-                '</div>' +
-                '<div class="sd-gf-det-subtitle">' + esc(_sdT('Weights')) + '</div>' +
-                '<div class="sd-gf-det-wts">' + [100,200,300,400,500,600,700,800,900].map(function(w) {
-                    var isOn = selWts.indexOf(w) !== -1;
-                    return '<label class="sd-gf-det-wt' + (isOn ? ' active' : '') + '">' +
-                                '<input type="checkbox" value="' + w + '"' + (isOn ? ' checked' : '') + '>' +
-                                '<span class="sd-gf-det-wt-num">' + w + '</span>' +
-                                '<span class="sd-gf-det-wt-sample" style="font-family:\'' + family + '\',sans-serif;font-weight:' + w + '">Aa</span>' +
-                            '</label>';
-                }).join('') + '</div>' +
-                '<div class="sd-gf-det-actions">' +
-                    '<button class="sd-gf-det-add btn btn-solid theme-primary btn-sm" type="button"><span class="bi bi-plus-circle me-1"></span>' +
-                        (existing ? _sdT('Update') : _sdT('Add')) +
-                    '</button>' +
-                    (existing ? '<button class="sd-gf-det-remove btn btn-outline theme-danger btn-sm" type="button"><span class="bi bi-trash me-1"></span>' + esc(_sdT('Remove')) + '</button>' : '') +
-                '</div>';
-            // Active state on weight chips so the user sees their selection
-            // without staring at the tiny native checkbox.
-            det.querySelectorAll('.sd-gf-det-wt input').forEach(function (cb) {
-                cb.addEventListener('change', function () {
-                    var lbl = this.closest('.sd-gf-det-wt');
-                    if (lbl) lbl.classList.toggle('active', this.checked);
-                });
-            });
-            det.querySelector('.sd-gf-det-add').addEventListener('click', function() {
-                var wts = []; det.querySelectorAll('input:checked').forEach(function(c) { wts.push(parseInt(c.value,10)); });
-                if (!wts.length) wts = [400];
-                gfAdded = gfAdded.filter(function(f) { return f.family !== family; });
-                gfAdded.push({ family: family, weights: wts, enabled: true });
-                saveGfField(); renderFontList();
-                renderGfBrowser(document.getElementById('sd-gf-search') ? document.getElementById('sd-gf-search').value : '');
-                // Re-open with the now-existing entry so the title flips to
-                // "Update" and the Remove button appears.
-                openGfPicker(family);
-            });
-            var remBtn = det.querySelector('.sd-gf-det-remove');
-            if (remBtn) remBtn.addEventListener('click', function() {
-                gfAdded = gfAdded.filter(function(f) { return f.family !== family; });
-                saveGfField(); renderFontList();
-                renderGfBrowser(document.getElementById('sd-gf-search') ? document.getElementById('sd-gf-search').value : '');
-                // Keep _gfOpenFamily as-is so the font can be re-added
-                // immediately without having to re-find it in the list. The
-                // detail re-renders with the "Not added yet" status.
-                openGfPicker(family);
-            });
-        }
-
-        // GF search listener — element lives inside gfModalEl so it exists after append
-        gfModalEl.querySelector('#sd-gf-search').addEventListener('input', function() { renderGfBrowser(this.value); });
-        // Escape closes GF modal too
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && gfModalEl.style.display !== 'none') { e.stopPropagation(); closeGfModal(); } }, true);
 
         // ── Resize handle (with snap-to-collapse) ──────────────────────────────
         var _ASSETS_SNAP_THRESHOLD = 80;
@@ -66626,6 +64634,12 @@ const StyleDesigner = (function () {
                 var sbuilt = [];
                 if (_stgL === 'a') ['href', 'target', 'rel'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
                 if (_stgL === 'img') ['src', 'alt'].forEach(function (k) { if (P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); } });
+                // A player's bound address (a video's poster too), twin of
+                // pg_media_bound_attrs(): printed only when bound.
+                var _semMedia = { audio: ['src'], video: ['src', 'poster'], source: ['src'] }[_stgL];
+                if (_semMedia && n.props._bindings) _semMedia.forEach(function (k) {
+                    if (n.props._bindings[k] && P[k]) { shead += ' ' + k + '="' + esc(P[k]) + '"'; sbuilt.push(k); }
+                });
                 var sattrs = _sdNodeExtraAttrs(n.props, P._attrs, ['id'].concat(sbuilt));
                 var _semStyle = _sdNodeStyle({ fontFamily: n.props.fontFamily, inlineStyle: n.props.inlineStyle, _attrs: P._attrs }, '', getNodeExtraStyle(n));
                 if (_semStyle) sattrs += ' style="' + esc(_semStyle) + '"';
@@ -69954,7 +67968,7 @@ const StyleDesigner = (function () {
         // prepareFormData() runs the same validation + serialisation pipeline
         // as the legacy submit handler. A `false` return means a hard error
         // already surfaced its own toast — bail out quietly.
-        var _abandon = function () { if (typeof opts.onError === 'function') opts.onError(); };
+        var _abandon = function () { _pgSaveHold = {}; if (typeof opts.onError === 'function') opts.onError(); };
         _sdLgCancel(true);
         // Saving a draft is not publishing it, and the reply says which it
         // was. Read before the save serialises and flushes: one save writes
@@ -69969,6 +67983,10 @@ const StyleDesigner = (function () {
                             return !p.page_draft && p.access !== 'locked' && _pgPageDirty(p);
                         }) || (_styleBaseline !== null && _pgStyleJSON() !== _styleBaseline)
                            || Object.keys(_sharedDirty).length > 0);
+        // Pages left out of this save (the Publish sheet): sent as unchanged,
+        // so the server keeps their stored rows, and still unsaved after it.
+        _pgSaveHold = {};
+        (Array.isArray(opts.hold) ? opts.hold : []).forEach(function (k) { _pgSaveHold[k] = true; });
         if (prepareFormData() === false) { _abandon(); return; }
 
         // Disable the button for the duration of the request to prevent
@@ -70015,7 +68033,11 @@ const StyleDesigner = (function () {
                                       : _sdT('Saved. This page is a draft, off the site.');
                     _okDur = _liveToo ? 4500 : 2500;
                 }
-                sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                // opts.reportSaved: the Publish sheet lists the result
+                // itself while it is open, so no toast repeats it.
+                if (!(typeof opts.reportSaved === 'function' && opts.reportSaved(res.data))) {
+                    sdToast(esc(_okMsg || _pgSavedMessage(res.data)) + ' <span class="bi bi-check2"></span>', 'success', _okDur);
+                }
                 // The canvas's classic system regions are drawn from the saved pages.
                 _sdLegacyRegionForget();
                 // Update last-modified statusbar label without a full page reload
@@ -70028,6 +68050,7 @@ const StyleDesigner = (function () {
                 // New tabs learn their page ids, every baseline resets, the
                 // dirty dots clear.
                 _pgTabsAfterSave(res.data);
+                _pgSaveHold = {};
                 var _warnings = Array.isArray(res.data.warnings) ? res.data.warnings : [];
                 var _notes = Array.isArray(res.data.notes) ? res.data.notes : [];
                 // Server may request a redirect (used by add_system_style after creating
@@ -70070,6 +68093,9 @@ const StyleDesigner = (function () {
     // stacks and id counter on the outgoing page object and pulls the
     // incoming page's set in, so nothing else in the file has to know that
     // more than one page exists.
+
+    // Keys of the pages the save in flight leaves out (_saveAjaxImpl()).
+    var _pgSaveHold = {};
 
     var _PG_PAGE_FIELDS = [
         'page_name', 'page_folder', 'page_title', 'page_meta_description',
@@ -70149,9 +68175,48 @@ const StyleDesigner = (function () {
         if (!p) return false;
         if (_sdComponentOnly()) return false;             // never saved as a page
         if (p.page_id === 0) return true;                 // never saved
-        if (p.key === _activeKey) _pgReadFieldsIntoPage(p);
-        return _pgBaselineOf(p) !== p.baseline;
+        if (p.key === _activeKey) {
+            _pgReadFieldsIntoPage(p);
+            return _pgBaselineOf(p) !== p.baseline;
+        }
+        // A page not open: its answer is kept until something could change
+        // it (_pgDirtyMemoKey()), so the poll's sweep and every draw of the
+        // tab strip stop serialising pages nobody touched.
+        var key = _pgDirtyMemoKey(p);
+        var memo = _pgDirtyMemo[p.key];
+        if (memo && _pgDirtyMemoSame(memo, key)) return memo.dirty;
+        key.dirty = _pgBaselineOf(p) !== p.baseline;
+        _pgDirtyMemo[p.key] = key;
+        return key.dirty;
     }
+
+    // ── Lazy dirty checks
+    // The dirty answer of each page not open, by page key. Kept beside the
+    // pages, not on them: a page object is copied and sent, and the entry
+    // holds its tree.
+    var _pgDirtyMemo = {};
+
+    // What a kept answer depends on: the edit epoch (every saveState() and
+    // render() moves it, so any change made through the editor drops every
+    // kept answer), the tree object, the baseline it is compared with (a
+    // save or a reload replaces it) and the page's settings as the baseline
+    // writes them. The open page is never kept: typing in place changes its
+    // tree without moving the epoch.
+    function _pgDirtyMemoKey(p) {
+        return {
+            epoch: _sdEditEpoch,
+            tree: p.tree,
+            baseline: p.baseline,
+            fields: _pgSettingsJSON(p) + '|' + JSON.stringify(p.formSettings || {})
+        };
+    }
+
+    // True when kept answer `memo` still holds for `key`.
+    function _pgDirtyMemoSame(memo, key) {
+        return !!memo && !!key && memo.epoch === key.epoch && memo.tree === key.tree &&
+            memo.baseline === key.baseline && memo.fields === key.fields;
+    }
+    // ── end of lazy dirty checks
 
     // Shared fields: design name, theme, collection, body classes, social
     // position, and the three asset blobs the assets panel keeps in hidden
@@ -70657,31 +68722,12 @@ const StyleDesigner = (function () {
                 _pgTabsAddNew();
             });
         }
-        // The draft's Publish button: this page goes on the site with the
-        // save it makes.
+        // The draft's Publish button opens the Publish sheet.
         var pubPage = document.getElementById('sd-publish-page');
         if (pubPage && !pubPage._pgBound) {
             pubPage._pgBound = true;
-            pubPage.addEventListener('click', function () {
-                var a = _pgActivePage();
-                if (a) _pgSetDraft([a.key], false);
-            });
+            pubPage.addEventListener('click', function () { _pgPublishSheet({ button: pubPage }); });
         }
-        // The publishing menu beside the main button: this page or every
-        // page of the design, kept off the site or put on it.
-        document.querySelectorAll('[data-sd-status]').forEach(function (b) {
-            if (b._pgBound) return;
-            b._pgBound = true;
-            b.addEventListener('click', function () {
-                var what = b.getAttribute('data-sd-status');
-                var a = _pgActivePage();
-                var all = _pages.map(function (p) { return p.key; });
-                if (what === 'page-draft' && a)        _pgSetDraft([a.key], true);
-                else if (what === 'page-publish' && a) _pgSetDraft([a.key], false);
-                else if (what === 'all-draft')         _pgSetDraft(all, true);
-                else if (what === 'all-publish')       _pgSetDraft(all, false);
-            });
-        });
         // The switch in Page Settings changes the tab at once; it is applied
         // with the next publish, like the other page settings.
         var draftBox = document.getElementById('pg_page_draft');
@@ -72842,383 +70888,15 @@ const StyleDesigner = (function () {
     }
 
     // ── HTML / ZIP import ─────────────────────────────────────────────────
-    // designer_import.php does the parsing; this side opens what comes back
-    // as unsaved tabs and folds the assets into the shared panel.
+    // The part 'import' (assets/js/style_designer_import.js): the dialog, the
+    // upload to designer_import.php and the reply opened as unsaved tabs,
+    // shared by the paste-a-page dialog.
     function _pgImportOpen() {
-        var modalEl = document.getElementById('sdImportModal');
-        if (!modalEl) return;
-        var status = document.getElementById('sd-import-status');
-        if (status) { status.style.display = 'none'; status.innerHTML = ''; }
-        var file = document.getElementById('sd-import-file'); if (file) file.value = '';
-        var run = document.getElementById('sd-import-run');
-        if (run && !run._pgBound) {
-            run._pgBound = true;
-            run.addEventListener('click', _pgImportRun);
-        }
-        pgUI.dialog.show(modalEl);
-    }
-
-    function _pgImportRun() {
-        var fileEl = document.getElementById('sd-import-file');
-        var projEl = document.getElementById('sd-import-project');
-        var status = document.getElementById('sd-import-status');
-        var run    = document.getElementById('sd-import-run');
-        if (!fileEl || !fileEl.files || !fileEl.files.length) {
-            sdToast(_sdT('Choose a file first.'), 'warning', 3000);
-            return;
-        }
-        var f = fileEl.files[0];
-        var fd = new FormData();
-        fd.append('file', f, f.name);
-        fd.append('project_name', projEl ? projEl.value : '');
-        fd.append('token', _pgToken());
-        _pgTabsPersistActive();
-        fd.append('skip_names', JSON.stringify(_pages.map(function (p) { return p.page_name; }).filter(Boolean)));
-        // A design without a framework keeps the project's own Bootstrap.
-        fd.append('framework_bootstrap', _sdUsesBootstrap() ? '1' : '0');
-
-        if (run) { run.disabled = true; }
-        if (status) { status.style.display = ''; status.innerHTML = '<span class="spinner-border spinner-border-sm me-3"></span>' + esc(_sdT('Importing…')); }
-
-        var url = (window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/designer_import.php';
-        fetch(url, { method: 'POST', body: fd, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-        .then(function (r) { return r.text().then(function (t) { var j = null; try { j = JSON.parse(t); } catch (e) {} return { ok: r.ok, status: r.status, data: j, raw: t }; }); })
-        .then(function (res) {
-            if (run) run.disabled = false;
-            if (!res.data || res.data.status !== 'success') {
-                var msg = (res.data && res.data.message) ? res.data.message : (_sdT('Import failed') + ' (' + res.status + ').');
-                if (status) status.innerHTML = '<span class="fg-danger"><span class="bi bi-x-circle me-1"></span>' + esc(msg) + '</span>';
-                return;
-            }
-            _pgImportApply(res.data, projEl ? projEl.value : '');
-        })
-        .catch(function () {
-            if (run) run.disabled = false;
-            if (status) status.innerHTML = '<span class="fg-danger">' + esc(_sdT('Network error.')) + '</span>';
-        });
-    }
-
-    /**
-     * Open an import reply as tabs.
-     *
-     * Shared by the file import and the paste-a-page dialog: both produce the
-     * same {pages, css, js, fonts, warnings} shape, and a second copy of this
-     * would drift the moment one of them learned something the other did not.
-     */
-    /* ── Parts repeated across the imported pages ─────────────────────────
-     * A site exported page by page carries its header, footer, call to
-     * action band… once per page. Before the pages open, blocks that are the
-     * same on two or more pages are offered as shared components: accepted,
-     * each becomes one shared_components row and every copy a reference to
-     * it, so the next edit to the header is made once.
-     *
-     * "The same" is compared on the tree with the editor ids left out. A
-     * menu that marks the current page differs on every page only by its
-     * active link; such blocks are matched with the active states ignored,
-     * and the shared copy gets the smart active state, which marks the
-     * current page's link when the page is drawn.
-     *
-     * The rows are made at once (the canvas draws a reference from its row)
-     * and carry category "import:…"; leaving a never-published design
-     * discards them like a template's (pg_design_template_discard()).
-     */
-    var _PG_IMPORT_SHARED_DEPTH = 3;      // how deep under <body> blocks are looked for
-    var _PG_IMPORT_SHARED_MIN   = 3;      // descendants a block needs to be worth sharing
-
-    function _pgImportStripIds(node, activeToo) {
-        if (!node || typeof node !== 'object') return node;
-        var out = {};
-        Object.keys(node).forEach(function (k) {
-            if (k === '_id' || k.indexOf('_pgImp') === 0) return;
-            if (k === 'children') {
-                out.children = (node.children || []).map(function (c) { return _pgImportStripIds(c, activeToo); });
-                return;
-            }
-            if (k === 'props') {
-                var src = (node.props && !Array.isArray(node.props)) ? node.props : {};
-                var pr = {};
-                Object.keys(src).forEach(function (pk) { pr[pk] = src[pk]; });
-                if (activeToo) {
-                    if (typeof pr.cssClass === 'string') {
-                        pr.cssClass = pr.cssClass.split(/\s+/).filter(function (c) { return c && c !== 'active'; }).join(' ');
-                    }
-                    if (Array.isArray(pr._attrs)) {
-                        pr._attrs = pr._attrs.filter(function (a) { return !(a && String(a.name || '').toLowerCase() === 'aria-current'); });
-                    }
-                }
-                out.props = pr;
-                return;
-            }
-            out[k] = node[k];
-        });
-        return out;
-    }
-
-    function _pgImportSize(node) {
-        var n = 0;
-        (node.children || []).forEach(function (c) { n += 1 + _pgImportSize(c); });
-        return n;
-    }
-
-    function _pgImportText(node) {
-        var p = (node && node.props && !Array.isArray(node.props)) ? node.props : {};
-        var t = (typeof p.text === 'string' ? p.text : '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-        if (t) return t;
-        for (var i = 0; i < (node.children || []).length; i++) {
-            var c = _pgImportText(node.children[i]);
-            if (c) return c;
-        }
-        return '';
-    }
-
-    function _pgImportBlockName(node, projectName) {
-        var tag = (node.props && node.props.tag) || '';
-        var names = { header: _sdT('Site Header'), footer: _sdT('Site Footer'), nav: _sdT('Navigation'), aside: _sdT('Sidebar') };
-        var label = names[tag];
-        if (!label) {
-            // A band in the middle of the page reads by its first words.
-            var words = _pgImportText(node).slice(0, 30).trim();
-            label = (tag === 'section' ? _sdT('Section') : getNodeLabel(node)) + (words ? ' · ' + words : '');
-        }
-        return (projectName ? projectName + ' · ' : '') + label;
-    }
-
-    // The groups of blocks that two or more pages share, outermost first: a
-    // block inside a shared one is not offered on its own.
-    function _pgImportFindShared(pages) {
-        var groups = {};
-        var order = [];
-        pages.forEach(function (sp, pi) {
-            var walk = function (n, depth) {
-                (n.children || []).forEach(function (c) {
-                    if (!c || (c.type !== 'semantic' && c.type !== 'container')) return;
-                    if (_pgImportSize(c) >= _PG_IMPORT_SHARED_MIN) {
-                        var sig = JSON.stringify(_pgImportStripIds(c, true));
-                        var g = groups[sig];
-                        if (!g) { g = groups[sig] = { sig: sig, pages: {}, nodes: [], raw: {}, depth: depth }; order.push(g); }
-                        g.pages[pi] = true;
-                        g.nodes.push(c);
-                        g.raw[JSON.stringify(_pgImportStripIds(c, false))] = true;
-                        if (depth < g.depth) g.depth = depth;
-                    }
-                    if (depth < _PG_IMPORT_SHARED_DEPTH) walk(c, depth + 1);
-                });
-            };
-            if (sp.tree) walk(sp.tree, 1);
-        });
-        var list = order.filter(function (g) { return Object.keys(g.pages).length >= 2; });
-        list.sort(function (a, b) { return (a.depth - b.depth) || (_pgImportSize(b.nodes[0]) - _pgImportSize(a.nodes[0])); });
-        var mark = function (n) { (n.children || []).forEach(function (c) { c._pgImpInside = true; mark(c); }); };
-        var accepted = list.filter(function (g) {
-            if (g.nodes.every(function (n) { return n._pgImpInside; })) return false;
-            g.nodes.forEach(mark);
-            return true;
-        });
-        var unmark = function (n) { delete n._pgImpInside; (n.children || []).forEach(unmark); };
-        pages.forEach(function (sp) { if (sp.tree) unmark(sp.tree); });
-        return accepted;
-    }
-
-    // The question: one line per block, ticked; resolves with the chosen
-    // groups ([] when the operator keeps the pages as they are).
-    function _pgImportAskShared(groups, projectName) {
-        return new Promise(function (resolve) {
-            var rows = groups.map(function (g, i) {
-                var preview = _pgImportText(g.nodes[0]).slice(0, 70);
-                var tag = (g.nodes[0].props && g.nodes[0].props.tag) || g.nodes[0].type;
-                return '<label class="list-group-item d-flex gap-3 align-items-start">' +
-                    '<input class="check flex-shrink-0 mt-1" type="checkbox" checked data-sd-imp-group="' + i + '">' +
-                    '<span class="flex-grow-1 min-w-0">' +
-                        '<span class="d-block fw-semibold">' + esc(_pgImportBlockName(g.nodes[0], '')) +
-                            ' <code class="small">&lt;' + esc(tag) + '&gt;</code></span>' +
-                        '<span class="d-block small fg-secondary">' + esc(_sdT('On {var} pages', Object.keys(g.pages).length)) +
-                            (preview ? ' · ' + esc(preview) : '') + '</span>' +
-                    '</span>' +
-                '</label>';
-            }).join('');
-            var el = document.createElement('dialog');
-            el.className = 'dialog pg-dialog-centered dialog-scrollable';
-            el.tabIndex = -1;
-            el.setAttribute('role', 'dialog');
-            el.setAttribute('aria-modal', 'true');
-            el.setAttribute('aria-labelledby', 'sd-imp-shared-title');
-            el.innerHTML =
-                '<div class="dialog-header">' +
-                            '<h5 class="dialog-title" id="sd-imp-shared-title"><span class="bi bi-puzzle me-3" aria-hidden="true"></span>' + esc(_sdT('Make the repeated parts shared?')) + '</h5>' +
-                        '</div>' +
-                        '<div class="dialog-body">' +
-                            '<p class="small mb-5">' + esc(_sdT('These blocks are the same on more than one imported page. As shared components they are edited once and change on every page; left as they are, each page keeps its own copy.')) + '</p>' +
-                            '<div class="list-group">' + rows + '</div>' +
-                        '</div>' +
-                        '<div class="dialog-footer">' +
-                            '<button type="button" class="btn btn-solid theme-secondary" data-sd-imp="keep">' + esc(_sdT('Keep them on each page')) + '</button>' +
-                            '<button type="button" class="btn btn-solid theme-primary" data-sd-imp="share">' + esc(_sdT('Make shared')) + '</button>' +
-                        '</div>';
-            document.body.appendChild(el);
-            var chosen = [];
-            var modal = pgUI.dialog.get(el, { backdrop: 'static', keyboard: false });
-            el.querySelector('[data-sd-imp="share"]').addEventListener('click', function () {
-                el.querySelectorAll('[data-sd-imp-group]').forEach(function (cb) {
-                    if (cb.checked) chosen.push(groups[parseInt(cb.getAttribute('data-sd-imp-group'), 10)]);
-                });
-                modal.hide();
-            });
-            el.querySelector('[data-sd-imp="keep"]').addEventListener('click', function () { modal.hide(); });
-            pgUI.dialog.on(el, 'hidden', function () {
-                if (el.parentNode) el.parentNode.removeChild(el);
-                resolve(chosen);
-            });
-            modal.show();
-        });
-    }
-
-    // One row for a chosen group, then every copy on every page becomes a
-    // reference to it. Resolves with the number of rows made.
-    function _pgImportMakeShared(groups, pages, projectName) {
-        var made = 0;
-        var chain = Promise.resolve();
-        groups.forEach(function (g) {
-            chain = chain.then(function () {
-                var varies = Object.keys(g.raw).length > 1;
-                var tree = JSON.parse(JSON.stringify(_pgImportStripIds(g.nodes[0], varies)));
-                if (varies) {
-                    // The current page's link is marked when the page is drawn.
-                    var host = null, queue = [tree];
-                    while (queue.length && !host) {
-                        var n = queue.shift();
-                        if (_sdSmartActiveHost(n)) host = n;
-                        (n.children || []).forEach(function (c) { queue.push(c); });
-                    }
-                    (host || tree).props.smartActive = true;
-                }
-                _backfillIds(tree);
-                var url = (_design && _design.apiUrl) ? _design.apiUrl : ((window.OUTPUT_PATH || '/') + (typeof software_directory !== 'undefined' ? software_directory : 'pinegrap') + '/api.php');
-                return fetch(url, { method: 'POST', credentials: 'same-origin',
-                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                    body: JSON.stringify({ action: 'shared_component', sub_action: 'create', token: _pgToken(),
-                        name: _pgImportBlockName(g.nodes[0], projectName),
-                        tree_json: JSON.stringify(tree),
-                        category: 'import:' + String(projectName || 'paste').slice(0, 80) })
-                }).then(function (r) { return r.json(); }).then(function (res) {
-                    var sid = res && res.status === 'success' ? parseInt(res.id, 10) : 0;
-                    if (!(sid > 0)) return;
-                    made++;
-                    var name = res.name || _pgImportBlockName(g.nodes[0], projectName);
-                    _sharedCache[sid] = { name: name, tree: tree };
-                    _pgTemplateTrackRows({ shared: [{ id: sid }] });
-                    var swap = function (n) {
-                        (n.children || []).forEach(function (c, i) {
-                            if (g.nodes.indexOf(c) !== -1) {
-                                n.children[i] = { _id: gid(), type: 'shared_ref', props: { sharedId: sid, sharedName: name }, children: [] };
-                            } else {
-                                swap(c);
-                            }
-                        });
-                    };
-                    pages.forEach(function (sp) { if (sp.tree) swap(sp.tree); });
-                });
-            });
-        });
-        return chain.then(function () { return made; });
+        _sdPartCall('import', 'open').catch(_sdPartFailed);
     }
 
     function _pgImportApply(d, projectName) {
-        var pages = (d && d.pages) || [];
-        var groups = (pages.length > 1) ? _pgImportFindShared(pages) : [];
-        if (!groups.length) { _pgImportApplyPages(d, projectName, 0); return; }
-        var im = document.getElementById('sdImportModal');
-        if (im) pgUI.dialog.hide(im);
-        _pgImportAskShared(groups, projectName).then(function (chosen) {
-            if (!chosen.length) return 0;
-            return _pgImportMakeShared(chosen, pages, projectName).catch(function () {
-                sdToast(_sdT('The shared components could not all be made; the pages keep their own copies of the rest.'), 'warning', 7000);
-                return 0;
-            });
-        }).then(function (made) {
-            _pgImportApplyPages(d, projectName, made || 0);
-        });
-    }
-
-    function _pgImportApplyPages(d, projectName, sharedMade) {
-            // The new tabs' keys are settled first: a stylesheet or script
-            // that only some of the imported pages used (`page_names`, from
-            // pg_di_scope_assets()) is kept to those tabs, as "tab:<key>"
-            // until the save gives them ids.
-            var tabKeys = [], keyByName = {};
-            (d.pages || []).forEach(function (sp) {
-                _pgNewTabSeq++;
-                var k = 'new' + Date.now() + '_' + _pgNewTabSeq;
-                tabKeys.push(k);
-                if (sp.page_name) keyByName[sp.page_name] = k;
-            });
-            function scoped(list) {
-                return (Array.isArray(list) ? list : []).map(function (a) {
-                    if (!a || !Array.isArray(a.page_names)) return a;
-                    var c = Object.assign({}, a);
-                    delete c.page_names;
-                    var refs = a.page_names.filter(function (n) { return !!keyByName[n]; }).map(function (n) { return 'tab:' + keyByName[n]; });
-                    if (refs.length) c.pages = refs;
-                    return c;
-                });
-            }
-            // Assets first, so the canvas paints the new pages with their CSS.
-            var added = (typeof window.sdImportAssets === 'function') ? window.sdImportAssets({ css: scoped(d.css), js: scoped(d.js), fonts: d.fonts }) : { css: 0, js: 0, fonts: 0 };
-            // A brand-new design opens with one blank, unnamed tab. Once the
-            // import brings real pages, that placeholder is only in the way.
-            if ((d.pages || []).length) {
-                _pgTabsPersistActive();
-                _pages = _pages.filter(function (p) {
-                    var t = _pgTreeOf(p);
-                    var blank = p.page_id === 0 && !p.page_name && (!t || !t.children || !t.children.length);
-                    return !blank;
-                });
-            }
-            // Imported pages live in the project's Import/<name> folder, next
-            // to their files. The folder was created a moment ago, so the
-            // settings panel's folder list does not know it yet — add it.
-            var importFolder = parseInt(d.folder_id, 10) || 0;
-            if (importFolder > 0) {
-                var fsel = document.getElementById('pg_page_folder');
-                if (fsel && ![].some.call(fsel.options, function (o) { return o.value === String(importFolder); })) {
-                    var fo = document.createElement('option');
-                    fo.value = String(importFolder);
-                    fo.textContent = d.folder_label || (_sdT('Import / ') + (projectName || ''));
-                    fsel.appendChild(fo);
-                }
-            }
-            // Pages as unsaved tabs, in their order right of the open one.
-            var firstKey = null;
-            var afterKey = _activeKey;
-            (d.pages || []).forEach(function (sp, i) {
-                var tree = sp.tree || createDefaultTree();
-                _backfillIds(tree);
-                _normalizeToggleableShowState(tree);
-                var p = {
-                    key: tabKeys[i],
-                    page_id: 0, page_name: sp.page_name || '', page_folder: importFolder,
-                    page_title: sp.page_title || '', page_meta_description: sp.page_meta_description || '', page_meta_tags: '', page_custom_jsonld: '',
-                    page_canonical_url: '', page_noarchive: 0, page_max_snippet: '',
-                    page_search: 1, page_search_keywords: '', page_sitemap: 1, page_home: 0, page_noindex: 0, page_nofollow: 0,
-                    page_draft: _pgNewPageDraft(),
-                    pg_comments: 0, pg_comments_label: '', pg_comments_allow_new: 1, pg_comments_rating: 0,
-                    pg_comments_attachments: 0, pg_comments_select_name: 0, pg_comments_message: '', pg_comments_closed_message: '', pg_comments_watchers_managed: 0,
-                    tree: tree, undoStack: [], redoStack: [], nodeIdCounter: reindex(tree),
-                    baseline: null, treeLoadWarning: false
-                };
-                _pgTabsInsertAfter(p, afterKey);
-                afterKey = p.key;
-                if (!firstKey) firstKey = p.key;
-            });
-            var im = document.getElementById('sdImportModal');
-            if (im) pgUI.dialog.hide(im);
-            if (firstKey) _pgTabsSwitch(firstKey); else _pgTabsRender();
-            var summary = (d.pages || []).length + ' ' + _sdT('page(s)') + ', ' + added.css + ' CSS, ' + added.js + ' JS, ' + added.fonts + ' ' + _sdT('font(s)') +
-                (sharedMade ? ', ' + _sdT('{var} shared component(s)', sharedMade) : '');
-            if (sharedMade && typeof _refreshSharedPalette === 'function') _refreshSharedPalette();
-            sdToast('<strong>' + esc(_sdT('Imported:')) + '</strong> ' + esc(summary) + '<br>' + esc(_sdT('Review the tabs, then publish.')), 'success', 7000);
-            if (Array.isArray(d.warnings) && d.warnings.length) {
-                sdToast('<strong>' + esc(_sdT('Notes')) + '</strong><br>' + d.warnings.slice(0, 8).map(esc).join('<br>') + (d.warnings.length > 8 ? '<br>…' : ''), 'warning', 12000);
-            }
+        _sdPartCall('import', 'apply', [d, projectName]).catch(_sdPartFailed);
     }
 
     /* =====================================================================
@@ -73608,7 +71286,9 @@ const StyleDesigner = (function () {
             // row instead of writing, scoring, translating and logging every
             // page of the design on every save. Its tree, its settings and
             // the shared components it shows all count as touching it.
-            if (_pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
+            // A page held out of this save goes the same way: the site
+            // keeps its stored version, the editor keeps the changes.
+            if ((_pgSaveHold[p.key] && p.page_id > 0 && !p.pickedPending) || _pgPageUnchanged(p, t, vr)) rec.unchanged = 1;
             else rec.tree_json = JSON.stringify(t);
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
@@ -73714,10 +71394,14 @@ const StyleDesigner = (function () {
         _pgSyncDraftBox(_pgActivePage());
         // A rename changes the page's address; a return address that pointed
         // at the old one (the site's "Edit page" link sends it) follows it.
+        // A page held out of the save keeps its changes unsaved: its name,
+        // its baseline and its dirty dot stay as they were.
         _pages.forEach(function (p) {
+            if (_pgSaveHold[p.key]) return;
             if (p.page_id > 0 && p.savedName && p.savedName !== p.page_name) _pgFollowRename(p.savedName, p.page_name);
         });
         _pages.forEach(function (p) {
+            if (_pgSaveHold[p.key]) return;
             p.baseline = _pgBaselineOf(p);
             if (p.page_id > 0) p.savedName = p.page_name;
             // The redirect choice was for the rename just saved; the next
@@ -74073,16 +71757,27 @@ const StyleDesigner = (function () {
     function _pgNewPageDraft()    { return _pgDraftsCanChange() ? 1 : 0; }
     function _pgActiveIsDraft()   { var a = _pgActivePage(); return _pgDraftsReady() && !!(a && a.page_draft); }
 
-    function _pgSetDraft(keys, on) {
-        if (!_pgDraftsCanChange()) return;
+    // hold: keys of changed pages on the site to leave out of the save (the
+    // Publish sheet's unchecked rows, _pgPublishRows()). report: the sheet's
+    // callback, given the save's reply, or null when no save ran.
+    function _pgSetDraft(keys, on, hold, report) {
+        var _unreported = report;
+        report = function (reply) { var r = _unreported; _unreported = null; return r ? r(reply) : false; };
+        var _r = _pgSetDraftRun(keys, on, hold, report);
+        if (_r === false) report(null);
+    }
+
+    // _pgSetDraft()'s work; false when it stopped before a save.
+    function _pgSetDraftRun(keys, on, hold, report) {
+        if (!_pgDraftsCanChange()) return false;
         // The state reaches the server with a save. When no save can run
         // now, nothing is marked: a mark left behind would show a state the
         // site does not have.
         if (_sharedLoadInFlight > 0) {
             sdToast(_sdT('The shared components are still loading — wait a second.'), 'info', 2400);
-            return;
+            return false;
         }
-        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return false; }
         _pgTabsPersistActive();
         var list = keys.map(_pgPageByKey).filter(function (p) {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
@@ -74091,7 +71786,7 @@ const StyleDesigner = (function () {
         var held = on ? [] : list.filter(_pgExperimentHeld);
         if (held.length) {
             list = list.filter(function (p) { return !_pgExperimentHeld(p); });
-            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return; }
+            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return false; }
         }
         // The home page stays on the site; the server would refuse it too.
         var home = on ? list.filter(function (p) { return p.page_home; }) : [];
@@ -74099,7 +71794,7 @@ const StyleDesigner = (function () {
         if (!list.length) {
             sdToast(esc(home.length ? _sdT('The home page stays on the site.')
                                     : (on ? _sdT('Nothing to take off the site.') : _sdT('Nothing to publish.'))), 'info', 3500);
-            return;
+            return false;
         }
         var go = function () {
             // The keys as the save sends them: a new page gets its id and a
@@ -74140,6 +71835,8 @@ const StyleDesigner = (function () {
                 _pgTabsRender();
             };
             saveAjax({
+                hold: hold || [],
+                reportSaved: report,
                 successMessage: function (data) {
                     var n = applied(data).length;
                     if (!n) return '';
@@ -74156,13 +71853,13 @@ const StyleDesigner = (function () {
                     // site actually has.
                     if (rest.length) unmark(rest, true);
                 },
-                onError: function () { unmark(marked, false); }
+                onError: function () { unmark(marked, false); report(null); }
             });
         };
         // Taking a page that visitors can open off the site is asked first;
         // a page that was never published has nobody to lose.
         var live = on ? list.filter(function (p) { return p.page_id > 0; }) : [];
-        if (!live.length) { go(); return; }
+        if (!live.length) { go(); return true; }
         var ask = (live.length > 1)
             ? _sdT('{var} pages will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open them; administrators will.', live.length)
             : _sdT('"{var}" will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open it; administrators will.', live[0].page_name || _sdT('New Page'));
@@ -74170,10 +71867,13 @@ const StyleDesigner = (function () {
         if (typeof window.pgConfirm === 'function') {
             window.pgConfirm({ title: _sdT('Take off the site'), message: ask,
                                confirmText: _sdT('Yes, make it a draft'), cancelText: _sdT('No'), variant: 'warning' })
-                .then(function (ok) { if (ok) go(); });
+                .then(function (ok) { if (ok) go(); else report(null); });
         } else if (window.confirm(ask)) {
             go();
+        } else {
+            return false;
         }
+        return true;
     }
 
     // The draft switch of Page Settings shows the active page; the home page
@@ -74339,12 +72039,12 @@ const StyleDesigner = (function () {
     // The keys of the editor's save, as the panel writes a shortcut.
     var _SD_SAVE_KEYS = 'Ctrl+S | \u2318+S';
 
-    // Ctrl+S / Cmd+S: what the main button does - Save on a draft, Publish
-    // on a page on the site - or nothing while it cannot.
+    // Ctrl+S / Cmd+S: the one save of the whole design (the main button's
+    // Publish without the sheet), or nothing while it cannot.
     function _sdSaveShortcut() {
         if (_sdCodeSaveShortcut()) return;
         var b = document.getElementById('sd-ajax-save');
-        if (b && !b.disabled) b.click();
+        if (b && !b.disabled) saveAjax({ button: b });
     }
 
     // A toolbar button's hint. The panel gives every titled element a hover
@@ -74396,21 +72096,59 @@ const StyleDesigner = (function () {
         if (pub) {
             var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending && !_pgExperimentHeld(a);
             pub.classList.toggle('d-none', !both);
-            btn.classList.toggle('sd-publish-solo', both);
         }
         _pgExperimentSync(a);
-        var more = document.querySelector('.sd-publish-more');
-        if (!more) return;
-        var anyDraft = _pages.some(function (p) { return !!p.page_draft; });
-        var anyLive  = _pages.some(function (p) { return !p.page_draft && !p.page_home; });
-        var show = function (what, on) {
-            var b = more.querySelector('[data-sd-status="' + what + '"]');
-            if (b && b.parentNode) b.parentNode.classList.toggle('d-none', !on);
-        };
-        show('page-draft',   !!a && !draft && !a.page_home && !a.pickedPending);
-        show('page-publish', draft && !_pgExperimentHeld(a));
-        show('all-draft',    anyLive);
-        show('all-publish',  anyDraft);
+    }
+
+    // ── Publish sheet ─────────────────────────────────────────────────────
+    // The pages as the sheet lists them (assets/js/pg_designer_publish.js):
+    // state, whether the next save would write them, and whether this user
+    // may change them.
+    function _pgPublishRows() {
+        _pgTabsPersistActive();
+        return _pages.map(function (p) {
+            var state = !p.page_draft ? 'live'
+                      : (_pgExperimentHeld(p) ? 'held' : (_pgScheduleAhead(p.page_publish_at) ? 'scheduled' : 'draft'));
+            var t = _pgTreeOf(p);
+            return {
+                key: p.key,
+                name: p.page_name || _sdT('New Page'),
+                state: state,
+                changed: !(p.page_id > 0) || !_pgPageUnchanged(p, t || createDefaultTree(), null),
+                locked: p.access === 'locked',
+                home: !!p.page_home,
+                active: p.key === _activeKey
+            };
+        });
+    }
+
+    // Publish: the sheet where the design can have drafts; a plain save
+    // where it cannot (a shared component, a site without drafts, a user
+    // who cannot change states, or the sheet's script missing).
+    function _pgPublishSheet(opts) {
+        opts = opts || {};
+        var sheet = (typeof window.PgDesignerPublish !== 'undefined') && document.getElementById('sdPublishSheet');
+        if (!sheet || _sdComponentOnly() || !_pgDraftsReady() || !_pgDraftsCanChange()) { saveAjax(opts); return; }
+        if (_sharedLoadInFlight > 0) {
+            sdToast(_sdT('The shared components are still loading — wait a second.'), 'info', 2400);
+            return;
+        }
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        window.PgDesignerPublish.open({
+            rows: _pgPublishRows,
+            publish: function (keys, hold, report) {
+                if (keys.length) _pgSetDraft(keys, false, hold, report);
+                else saveAjax({ hold: hold, reportSaved: report, onError: function () { report(null); } });
+            },
+            takeOff: function (keys) { _pgSetDraft(keys, true); }
+        });
+    }
+
+    // The main button: Save on a draft (it stays off the site), the Publish
+    // sheet on a page on the site.
+    function _pgPublishClick(opts) {
+        if (_pgActiveIsDraft()) { saveAjax(opts); return; }
+        _pgPublishSheet(opts);
     }
 
     // What a save put on the site, in one sentence.
@@ -75476,13 +73214,129 @@ const StyleDesigner = (function () {
         try { localStorage.removeItem(RECENT_COMPS_KEY); } catch(e) {}
     }
 
+    // ── Block families in their own files ───────────────────────────────
+    // A block family (a template's sector sections, or general blocks under
+    // a core group's prefix) lives in assets/js/style_designer_blocks_<family>.js,
+    // bundled after this file by pg_js_bundles(), and hands itself over with
+    // StyleDesigner.registerBlockFamily(factory). The factory runs once, on
+    // first use, with _sdBlockKit(), and returns:
+    //   prefix  the componentType prefix of its blocks ('launch-')
+    //   group   { title, icon }: its own palette group; left out when its
+    //           blocks sit in a core group under that group's prefix
+    //   items   its palette items, the shape of _sdBlockPaletteItems()
+    //   build   function (ctype) -> the block's node tree, or null
+    //   css     rule name -> CSS text, added to _SD_BLOCK_CSS
+    //   needs   ctype -> rule names, added to _SD_BLOCK_CSS_NEEDS
+    // A core entry of the same name wins. A family block is a whole section:
+    // dropped on the page root, it is not wrapped in a container.
+    var _sdBlockFamilyFactories = [];
+    var _sdBlockFamilyList = null;
+    var _sdBlockFamilyByType = {};
+
+    function _sdRegisterBlockFamily(factory) {
+        if (typeof factory !== 'function') return;
+        _sdBlockFamilyFactories.push(factory);
+        _sdBlockFamilyList = null;
+    }
+
+    function _sdBlockFamilies() {
+        if (_sdBlockFamilyList) return _sdBlockFamilyList;
+        var list = [], byType = {}, kit = _sdBlockKit();
+        _sdBlockFamilyFactories.forEach(function (factory) {
+            var fam = null;
+            try { fam = factory(kit); } catch (e) { console.error('[SD] block family', e); }
+            if (!fam || typeof fam.prefix !== 'string' || !fam.prefix || typeof fam.build !== 'function') return;
+            // A type another family already lists stays with that family.
+            fam.items = (Array.isArray(fam.items) ? fam.items : []).filter(function (it) {
+                var ct = (it && it.extra && it.extra.componentType) || '';
+                if (!ct || byType[ct]) return false;
+                byType[ct] = fam;
+                return true;
+            });
+            [[fam.css, _SD_BLOCK_CSS], [fam.needs, _SD_BLOCK_CSS_NEEDS]].forEach(function (pair) {
+                Object.keys(pair[0] || {}).forEach(function (k) {
+                    if (!Object.prototype.hasOwnProperty.call(pair[1], k)) pair[1][k] = pair[0][k];
+                });
+            });
+            list.push(fam);
+        });
+        _sdBlockFamilyByType = byType;
+        _sdBlockFamilyList = list;
+        return list;
+    }
+
+    // The family that builds this componentType, or null for a core block.
+    function _sdBlockFamilyOf(ctype) {
+        _sdBlockFamilies();
+        return Object.prototype.hasOwnProperty.call(_sdBlockFamilyByType, ctype) ? _sdBlockFamilyByType[ctype] : null;
+    }
+
+    // The builders the ready-made blocks share, handed to every family
+    // factory; createFromPalette()'s block branch takes the same ones.
+    /* @pg-site-output */
+    function _sdBlockKit() {
+        var kit = { _sdT: _sdT, createNode: createNode };
+        kit.uid = function (prefix) { return prefix + '_' + Math.random().toString(36).substr(2, 6); };
+        kit.div = function (cls, name, kids, attrs) {
+            var p = { tag: 'div', cssClass: cls, customName: name };
+            if (attrs) p._attrs = attrs;
+            return createNode('semantic', p, kids || []);
+        };
+        kit.tag = function (tag, cls, name, kids, attrs) {
+            var p = { tag: tag, cssClass: cls, customName: name };
+            if (attrs) p._attrs = attrs;
+            return createNode('semantic', p, kids || []);
+        };
+        kit.section = function (cls, name, kids) {
+            return createNode('semantic', { tag: 'section', cssClass: cls, customName: name }, [
+                createNode('container', { fluid: false, cssClass: '' }, kids)
+            ]);
+        };
+        kit.row = function (name, kids, cls) {
+            return createNode('row', { gutter: '4', justify: '', align: '', cssClass: cls || '', customName: name }, kids);
+        };
+        kit.col = function (name, kids, lg, md, sm, cls) {
+            return createNode('col', { xs: '12', sm: sm || '', md: md || '', lg: lg || '', xl: '', xxl: '', offsetXs: '', offsetMd: '', order: '', cssClass: cls || '', customName: name }, kids);
+        };
+        kit.h = function (tag, text, cls) { return createNode('content', { contentType: 'heading', tag: tag, text: text, cssClass: cls || '' }); };
+        kit.p = function (text, cls) { return createNode('content', { contentType: 'paragraph', text: text, cssClass: cls || '' }); };
+        kit.icon = function (name, cls, size) { return createNode('content', { contentType: 'icon', iconName: name, cssClass: cls || '', fontSize: size || '' }); };
+        kit.btn = function (text, variant, size) { return createNode('component', { componentType: 'btn', text: text, variant: variant, size: size || '', href: '#', cssClass: '' }); };
+        kit.link = function (text, href, cls, name) { return createNode('semantic', { tag: 'a', cssClass: cls, href: href, target: '', text: text, customName: name }); };
+        // A <time> whose text the operator edits like a link's; datetime keeps the machine-readable value.
+        kit.time = function (datetime, text, cls, name) {
+            return createNode('semantic', { tag: 'time', cssClass: cls || '', text: text, customName: name, _attrs: [{ name: 'datetime', value: datetime }] });
+        };
+        // Attributes of a strip that scrolls sideways: keyboard users reach it and hear its name.
+        kit.region = function (label) {
+            return [
+                { name: 'role',       value: 'region' },
+                { name: 'aria-label', value: label },
+                { name: 'tabindex',   value: '0' }
+            ];
+        };
+        // An icon-only link (social, share, email), named by its aria-label.
+        kit.iconLink = function (icon, label, cls, href) {
+            return createNode('semantic', { tag: 'a', cssClass: cls, href: href || '#', target: '', customName: label,
+                _attrs: [{ name: 'aria-label', value: label }] }, [ kit.icon(icon) ]);
+        };
+        kit.img = function (seed, w, h, alt, cls) { return createNode('content', { contentType: 'image', src: 'https://picsum.photos/seed/' + seed + '/' + w + '/' + h, alt: alt, cssClass: cls }); };
+        kit.intro = function (title, lead) {
+            return kit.div('text-center mb-5', _sdT('Section Header'), [
+                kit.h('h2', title, 'fw-bold mb-2'),
+                kit.p(lead, 'lead text-body-secondary mb-0')
+            ]);
+        };
+        return kit;
+    }
+
     // Ready-made blocks. These are whole page sections, not building
     // elements, so they live in their own palette tab; the component tab
     // keeps the primitives. The list stays flat and the palette buckets it
     // by the prefix of the component type, so a new block only has to name
     // itself — nothing here is edited when one is added.
     function _sdBlockPaletteItems() {
-        return [
+        var items = [
             { label: _sdT('Navbar: Brand + Links + CTA'), type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-light-cta' } },
             { label: _sdT('Navbar: Search + Dropdown'),   type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-search' } },
             { label: _sdT('Navbar: Dark, Center Links'),  type: 'component', icon: 'bi-layout-navbar', extra: { componentType: 'navbar-dark-center' } },
@@ -75610,6 +73464,9 @@ const StyleDesigner = (function () {
             { label: _sdT('Scroller: Snap Cards'),         type: 'component', icon: 'bi-collection',             extra: { componentType: 'scroller-cards' } },
             { label: _sdT('Legal: Accessibility Statement'), type: 'component', icon: 'bi-universal-access',   extra: { componentType: 'legal-accessibility-statement' } }
         ];
+        // Then each family file's blocks, in bundle order.
+        _sdBlockFamilies().forEach(function (fam) { items = items.concat(fam.items); });
+        return items;
     }
 
     // Prefix -> group. A type that matches nothing still shows up, under
@@ -75631,6 +73488,9 @@ const StyleDesigner = (function () {
             { title: _sdT('Maintenance & Launch'), icon: 'bi-cone-striped',   match: ['maintenance-', 'coming-soon-'] },
             { title: _sdT('Legal'),            icon: 'bi-universal-access',   match: ['legal-'] }
         ];
+        _sdBlockFamilies().forEach(function (fam) {
+            if (fam.group && fam.group.title) groups.push({ title: fam.group.title, icon: fam.group.icon || 'bi-box', match: [fam.prefix] });
+        });
         var other = { title: _sdT('Other'), icon: 'bi-box', match: [], items: [] };
         groups.forEach(function (g) { g.items = []; });
 
@@ -78284,6 +76144,7 @@ const StyleDesigner = (function () {
     }
 
     function _sdPerfReport(command) {
+        if (command === 'probe') return _sdProbeReport();
         if (command === 'reset') {
             _sdPerf.surfaces = {}; _sdPerf.bursts = []; _sdPerf.marked = {};
             return 'sd-perf: counting again';
@@ -78355,6 +76216,366 @@ const StyleDesigner = (function () {
     applyIssueBadges  = _sdPerfWrap('applyIssueBadges',  applyIssueBadges);
     saveState         = _sdPerfWrap('saveState',         saveState);
 
+    // ── Timing probe (?sd_perf=1) ───────────────────────────────────────
+    //
+    // The milestones an operator feels, each as one number: the opening
+    // (navigation start to the end of the first draw), the first draw, every
+    // later draw (an edit), a tab switch and a save (the request until its
+    // answer). Each measure is written to the console and to a small badge
+    // in the corner. Only an address carrying sd_perf=1 turns it on; without
+    // it nothing is wrapped. StyleDesigner.perf('probe') prints count,
+    // median and worst per measure.
+    function _sdProbeEnabled(search) {
+        return /(?:^\?|&)sd_perf=1(?:&|#|$)/.test(String(search || ''));
+    }
+
+    var _sdProbe = { on: _sdProbeEnabled(window.location.search), samples: {}, last: {}, draws: 0, inSwitch: 0, badge: null };
+
+    // Count, median and worst of a list of milliseconds.
+    function _sdProbeStats(list) {
+        var s = list.slice().sort(function (a, b) { return a - b; });
+        var n = s.length;
+        if (!n) return { n: 0, median: 0, worst: 0 };
+        var mid = n >> 1;
+        return { n: n, median: (n % 2) ? s[mid] : (s[mid - 1] + s[mid]) / 2, worst: s[n - 1] };
+    }
+
+    function _sdProbeLine(name, ms, nodes) {
+        return '[sd-perf] ' + name + ' ' + (Math.floor(ms * 10) / 10).toFixed(1) + ' ms (' + nodes + ' nodes)';
+    }
+
+    function _sdProbeBadge() {
+        var badge = _sdProbe.badge;
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.id = 'sd-perf-badge';
+            badge.setAttribute('aria-hidden', 'true');
+            badge.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:2147483000;padding:4px 8px;border-radius:4px;' +
+                'background:rgba(0,0,0,.78);color:#fff;font:11px/1.4 monospace;pointer-events:none;white-space:pre';
+            document.body.appendChild(badge);
+            _sdProbe.badge = badge;
+        }
+        var parts = [];
+        ['open', 'first draw', 'edit', 'tab switch', 'save'].forEach(function (k) {
+            if (!_sdProbe.samples[k]) return;
+            var st = _sdProbeStats(_sdProbe.samples[k]);
+            parts.push(k + ' ' + Math.round(_sdProbe.last[k]) + (st.n > 1 ? ' (med ' + Math.round(st.median) + ', n ' + st.n + ')' : ''));
+        });
+        badge.textContent = parts.join('\n');
+    }
+
+    function _sdProbeRecord(name, ms) {
+        if (!_sdProbe.on) return;
+        (_sdProbe.samples[name] || (_sdProbe.samples[name] = [])).push(ms);
+        _sdProbe.last[name] = ms;
+        if (window.console && console.log) console.log(_sdProbeLine(name, ms, _sdPerfTreeSize()));
+        if (document.body) _sdProbeBadge();
+    }
+
+    function _sdProbeReport() {
+        var rows = [];
+        for (var k in _sdProbe.samples) {
+            if (!Object.prototype.hasOwnProperty.call(_sdProbe.samples, k)) continue;
+            var st = _sdProbeStats(_sdProbe.samples[k]);
+            rows.push({ measure: k, count: st.n, 'median ms': +st.median.toFixed(1), 'worst ms': +st.worst.toFixed(1) });
+        }
+        if (window.console && console.table) console.table(rows);
+        return rows;
+    }
+
+    // The first outermost draw is the first draw (and closes the opening);
+    // every later one outside a tab switch is an edit.
+    function _sdProbeWrapRender(fn) {
+        if (!_sdProbe.on) return fn;
+        var depth = 0;
+        return function () {
+            var t0 = performance.now();
+            depth++;
+            try {
+                return fn.apply(this, arguments);
+            } finally {
+                depth--;
+                if (depth === 0) {
+                    var t1 = performance.now();
+                    _sdProbe.draws++;
+                    if (_sdProbe.draws === 1) {
+                        _sdProbeRecord('first draw', t1 - t0);
+                        _sdProbeRecord('open', t1);
+                    } else if (!_sdProbe.inSwitch) {
+                        _sdProbeRecord('edit', t1 - t0);
+                    }
+                }
+            }
+        };
+    }
+
+    function _sdProbeWrapTabSwitch(fn) {
+        if (!_sdProbe.on) return fn;
+        return function () {
+            var t0 = performance.now();
+            _sdProbe.inSwitch++;
+            try {
+                return fn.apply(this, arguments);
+            } finally {
+                _sdProbe.inSwitch--;
+                _sdProbeRecord('tab switch', performance.now() - t0);
+            }
+        };
+    }
+
+    // From the call to the answer of a save that went through. The options
+    // are copied, never changed; a save that calls itself again (after
+    // loading the shared components) carries the first start time along.
+    function _sdProbeWrapSave(fn) {
+        if (!_sdProbe.on) return fn;
+        return function (opts) {
+            if (!opts || typeof opts !== 'object' || opts._sdProbeT0) return fn.apply(this, arguments);
+            var o = {};
+            for (var k in opts) if (Object.prototype.hasOwnProperty.call(opts, k)) o[k] = opts[k];
+            var t0 = performance.now();
+            var done = opts.onSuccess;
+            o._sdProbeT0 = t0;
+            o.onSuccess = function () {
+                _sdProbeRecord('save', performance.now() - t0);
+                if (typeof done === 'function') return done.apply(this, arguments);
+            };
+            return fn.call(this, o);
+        };
+    }
+
+    render            = _sdProbeWrapRender(render);
+    _pgTabsSwitch     = _sdProbeWrapTabSwitch(_pgTabsSwitch);
+    saveAjax          = _sdProbeWrapSave(saveAjax);
+
+
+    // ── Parts on demand ───────────────────────────────────────────────────
+    // A part of the editor not needed to open a page is a bundle of its own
+    // (pg_designer_parts(), includes/fn/output.php): the screen hands the
+    // addresses of its files over as sdDesign.parts.<name>, and the part runs
+    // the first time something asks for it. _sdPartLoad() answers a promise
+    // that settles once every file of the part has run, in order; asked again
+    // it answers the same promise, and after a failure the next ask tries
+    // again. A part the screen did not hand over is refused.
+    var _sdParts = {};
+
+    function _sdPartUrls(name) {
+        var parts = (_design && _design.parts) || null;
+        var urls = (parts && Object.prototype.hasOwnProperty.call(parts, name)) ? parts[name] : null;
+        return (Array.isArray(urls) && urls.length) ? urls : null;
+    }
+
+    function _sdPartLoaded(name) {
+        return !!(_sdParts[name] && _sdParts[name].done);
+    }
+
+    function _sdPartScript(url) {
+        return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = url;
+            s.async = false;
+            s.onload = function () { resolve(); };
+            s.onerror = function () {
+                if (s.parentNode) s.parentNode.removeChild(s);
+                reject(new Error('could not load ' + url));
+            };
+            document.head.appendChild(s);
+        });
+    }
+
+    function _sdPartLoad(name) {
+        if (_sdParts[name]) return _sdParts[name].promise;
+        var urls = _sdPartUrls(name);
+        if (!urls) return Promise.reject(new Error('no editor part ' + name));
+        var entry = _sdParts[name] = { done: false, promise: null };
+        // One file after the other: a later file of the part may use what an
+        // earlier one defined.
+        entry.promise = urls.reduce(function (chain, url) {
+            return chain.then(function () { return _sdPartScript(url); });
+        }, Promise.resolve()).then(function () {
+            entry.done = true;
+        }, function (err) {
+            delete _sdParts[name];
+            throw err;
+        });
+        return entry.promise;
+    }
+    // A part cut out of this file (assets/js/style_designer_<part>.js) runs
+    // outside the editor's closure: it registers with
+    // StyleDesigner.definePart(name, factory), which calls factory(kit) once
+    // and keeps what it returns as the part's entry points. _sdPartCall()
+    // runs the part, then one of them.
+    var _sdPartApis = {};
+
+    function _sdDefinePart(name, factory) {
+        if (Object.prototype.hasOwnProperty.call(_sdPartApis, name)) return;
+        var api = null;
+        try { api = factory(_sdPartKit()); } catch (e) { if (window.console) console.error('[SD] part ' + name, e); }
+        _sdPartApis[name] = (api && typeof api === 'object') ? api : {};
+    }
+
+    function _sdPartCall(name, method, args) {
+        return _sdPartLoad(name).then(function () {
+            var api = _sdPartApis[name];
+            if (!api || typeof api[method] !== 'function') throw new Error('editor part ' + name + ' has no ' + method);
+            return api[method].apply(null, args || []);
+        });
+    }
+
+    function _sdPartFailed() {
+        sdToast(esc(_sdT('This part of the editor could not be loaded. Check the connection and try again.')), 'error');
+    }
+
+    // What the parts cut out of this file may use: the editor's functions
+    // as they are when the first part runs (after the probe has wrapped its
+    // own), and its state as getters and setters, so a part always reads
+    // the live value (K.pages is the tab list now, not when the part ran).
+    // A part takes a name only from here (tests/designer_parts_test.php).
+    var _sdPartKitCache = null;
+
+    function _sdPartKit() {
+        if (_sdPartKitCache) return _sdPartKitCache;
+        var kit = {
+            _sdT: _sdT,
+            esc: esc,
+            sdToast: sdToast,
+            gid: gid,
+            getNodeLabel: getNodeLabel,
+            createDefaultTree: createDefaultTree,
+            reindex: reindex,
+            _backfillIds: _backfillIds,
+            _normalizeToggleableShowState: _normalizeToggleableShowState,
+            _pgNewPageDraft: _pgNewPageDraft,
+            _pgTabsInsertAfter: _pgTabsInsertAfter,
+            _pgTabsPersistActive: _pgTabsPersistActive,
+            _pgTabsRender: _pgTabsRender,
+            _pgTabsSwitch: _pgTabsSwitch,
+            _pgTemplateTrackRows: _pgTemplateTrackRows,
+            _pgToken: _pgToken,
+            _pgTreeOf: _pgTreeOf,
+            _refreshSharedPalette: _refreshSharedPalette,
+            _sdSmartActiveHost: _sdSmartActiveHost,
+            _sdUsesBootstrap: _sdUsesBootstrap,
+            _sdThemes: _sdThemes,
+            _sdThemeFind: _sdThemeFind,
+            _sdThemeValue: _sdThemeValue,
+            _sdOpenThemeSettings: _sdOpenThemeSettings,
+            applyAssetsToIframe: applyAssetsToIframe,
+            _SD_CODE_KEY: _SD_CODE_KEY,
+            _sdCode: _sdCode,
+            _sdCodeActiveTab: _sdCodeActiveTab,
+            _sdCodeBoundProps: _sdCodeBoundProps,
+            _sdCodeEnabled: _sdCodeEnabled,
+            _sdCodeFind: _sdCodeFind,
+            _sdCodeLabelSwitch: _sdCodeLabelSwitch,
+            _sdCodeMayEdit: _sdCodeMayEdit,
+            _sdCodePhrases: _sdCodePhrases,
+            _sdCodeTabFind: _sdCodeTabFind,
+            _sdCodeTabsRender: _sdCodeTabsRender,
+            _sdDocLang: _sdDocLang,
+            _sdEmitNode: _sdEmitNode,
+            _sdFrameRowText: _sdFrameRowText,
+            _sdLegacyRegionForget: _sdLegacyRegionForget,
+            _sdPageBodyAttrs: _sdPageBodyAttrs,
+            _sdPageFrameRows: _sdPageFrameRows,
+            _sdSelectRender: _sdSelectRender,
+            renderCanvas: renderCanvas,
+            renderHtmlTree: renderHtmlTree,
+            scrollCanvasToNode: scrollCanvasToNode,
+            _cfAdoptOnDrop: _cfAdoptOnDrop,
+            _collab: _collab,
+            _getBindableProps: _getBindableProps,
+            _isInsideSystemWidget: _isInsideSystemWidget,
+            _nodeInTree: _nodeInTree,
+            _parseInlineStyle: _parseInlineStyle,
+            _pgApiPost: _pgApiPost,
+            _resolveSharedSid: _resolveSharedSid,
+            _sdAnyParent: _sdAnyParent,
+            _sdApplyInlineStyle: _sdApplyInlineStyle,
+            _sdAttrBindNameOk: _sdAttrBindNameOk,
+            _sdAttrTokenOk: _sdAttrTokenOk,
+            _sdBindTextSlot: _sdBindTextSlot,
+            _sdCanEditNode: _sdCanEditNode,
+            _sdCodeAttrsWith: _sdCodeAttrsWith,
+            _sdCodeBindToken: _sdCodeBindToken,
+            _sdContentSizingNode: _sdContentSizingNode,
+            _sdDecodeEntities: _sdDecodeEntities,
+            _sdFxAttrs: _sdFxAttrs,
+            _sdFxCanvas: _sdFxCanvas,
+            _sdFxNormalize: _sdFxNormalize,
+            _sdFxSpec: _sdFxSpec,
+            _sdFxTakes: _sdFxTakes,
+            _sdCanvasInnerOf: _sdCanvasInnerOf,
+            _sdUndoBeforeFirstInput: _sdUndoBeforeFirstInput,
+            _sdLivePreviewSchedule: _sdLivePreviewSchedule,
+            renderTree: renderTree,
+            renderStatusBar: renderStatusBar,
+            renderAttrsPanel: renderAttrsPanel,
+            row: row,
+            swAttr: swAttr,
+            _sdImgInRatio: _sdImgInRatio,
+            _sdIsSentence: _sdIsSentence,
+            _sdNodeSetBinding: _sdNodeSetBinding,
+            _sdRetargetLabels: _sdRetargetLabels,
+            _sdUserAttrValue: _sdUserAttrValue,
+            _serializeInlineDecls: _serializeInlineDecls,
+            _sharedCache: _sharedCache,
+            _sharedDirty: _sharedDirty,
+            _swBindTokenOptions: _swBindTokenOptions,
+            getNodeExtraStyle: getNodeExtraStyle,
+            hasLockedAncestor: hasLockedAncestor,
+            render: render,
+            saveState: saveState
+        };
+        Object.defineProperties(kit, {
+            pages: { get: function () { return _pages; }, set: function (v) { _pages = v; } },
+            activeKey: { get: function () { return _activeKey; } },
+            newTabSeq: { get: function () { return _pgNewTabSeq; }, set: function (v) { _pgNewTabSeq = v; } },
+            sharedCache: { get: function () { return _sharedCache; } },
+            design: { get: function () { return _design; } },
+            canvasDoc: { get: function () { return canvasDoc; } },
+            tree: { get: function () { return tree; }, set: function (v) { tree = v; } },
+            selectedNode: { get: function () { return selectedNode; }, set: function (v) { selectedNode = v; } },
+            selectedNodes: { get: function () { return selectedNodes; }, set: function (v) { selectedNodes = v; } }
+        });
+        _sdPartKitCache = kit;
+        return kit;
+    }
+    // ── end of parts on demand ────────────────────────────────────────────
+
+    // The assistant panel is the part 'ai', handed over only to the designers
+    // it serves. Its toolbar button and the canvas menu's "Ask the assistant
+    // about this" run it on first use; a proposal opened from a link runs it
+    // at once, and otherwise it runs once the editor has settled, so the
+    // requests still waiting from an earlier visit are carried on as before.
+    function _sdAiAvailable() {
+        return !!_sdPartUrls('ai');
+    }
+
+    function _sdAiRun(then) {
+        _sdPartLoad('ai').then(function () {
+            if (window.PgDesignerAI && then) then(window.PgDesignerAI);
+        }, function () {
+            sdToast(esc(_sdT('The assistant could not be loaded. Check the connection and try again.')), 'error');
+        });
+    }
+
+    function _sdAiPartInit() {
+        if (!_sdAiAvailable()) return;
+        var btn = document.getElementById('sd-ai-btn');
+        if (btn) {
+            btn.addEventListener('click', function first() {
+                btn.removeEventListener('click', first);
+                // Once the part has run, its own listener on the button
+                // answers the click.
+                if (_sdPartLoaded('ai')) return;
+                _sdAiRun(function (ai) { ai.toggle(); });
+            });
+        }
+        var ai = _design && _design.ai;
+        setTimeout(function () {
+            _sdPartLoad('ai').catch(function () { /* the button asks again */ });
+        }, (ai && parseInt(ai.proposal, 10) > 0) ? 0 : 1500);
+    }
 
     // What the assistant panel (assets/js/designer_ai.js) reads and does in
     // the editor: the active tab's tree, page and selection, and one way to
@@ -78443,6 +76664,7 @@ const StyleDesigner = (function () {
                 checkAutosaveRestore(hadExistingTree);
                 _updateSaveButtonState();
             }
+            _sdAiPartInit();
         },
         getTree: function () { return tree; },
         getTreeJSON: function () { return JSON.stringify(tree); },
@@ -78460,6 +76682,7 @@ const StyleDesigner = (function () {
         undo: undo,
         redo: redo,
         saveAjax: saveAjax,
+        publish: _pgPublishClick,
         aiBridge: _sdAiBridge,
         perf: _sdPerfReport,
         // The layout a system widget of this kind opens with, the same one the
@@ -78468,6 +76691,10 @@ const StyleDesigner = (function () {
         // touch the page, so a screen other than the editor can load this
         // file to build a design template's widgets: the installer does, for
         // an installation made with a template (install/index.php).
+        // A block family file's hand-over (_sdRegisterBlockFamily()).
+        registerBlockFamily: _sdRegisterBlockFamily,
+        // A part cut out of this file hands its entry points over (_sdDefinePart()).
+        definePart: _sdDefinePart,
         starterTree: function (regionType) {
             return _swIsType(regionType) ? _buildStarterTree(regionType) : null;
         }

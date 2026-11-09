@@ -46,7 +46,13 @@ $release_pages[] = array(
     'meta_description' => lang('Every album, EP, single and live recording of the band, with the track listing and where to listen.'),
     'tree'             => $page(array(
         $page_header(lang('Discography'), lang('Every record we have made, newest first. Choose a format to narrow the list.')),
-        $el('section', 'py-5', lang('Discography'), array(
+        // The newest album in depth before the list (Music: Release Hero);
+        // the list is under it.
+        $release_hero('nightbus', 'mu-discography-album', 'h2', 'py-5', array(
+            $link(lang('Tour Dates'), '{{page:tour}}', 'btn btn-primary rounded-pill px-4'),
+            $link(lang('Press Kit'), '{{page:press}}', 'btn btn-outline-secondary rounded-pill px-4'),
+        )),
+        $el('section', 'py-5 border-top', lang('Discography'), array(
             $container(array(
                 $mu_filter_bar('discography', lang('Format'), 'format', $format_titles),
                 $widget('releases_list'),

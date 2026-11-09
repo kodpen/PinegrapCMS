@@ -139,9 +139,9 @@ function test_image_editor_access_key_map()
 	}
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
-	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'keysTimeline', 'keysView', 'keysTouch'), $r['photo'], 'photo groups, the timeline with the Animate tool');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'tool_area', 'tool_puppet', 'tool_builder', 'keysTimeline', 'keysView', 'keysTouch'), $r['photo'], 'photo groups, a group per tool with keys of its own, the timeline with the Animate tool');
 	pg_assert_same(array('keysTools', 'keysEdit', 'keysView', 'keysTouch'), $r['opt'], 'no layer keys for export only');
-	pg_assert_same(array('tool_select', 'tool_crop', 'tool_artboard', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_sticker', 'tool_frame', 'tool_vector', 'tool_motion'), $r['photoTools'], 'every photo tool has a letter, the photo canvas and the Animate tool included');
+	pg_assert_same(array('tool_select', 'tool_crop', 'tool_artboard', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_area', 'tool_sticker', 'tool_frame', 'tool_vector', 'tool_scissors', 'tool_warp', 'tool_puppet', 'tool_builder', 'tool_motion'), $r['photoTools'], 'every photo tool has a letter, the photo canvas, the Animate tool and the photo and vector modes included');
 	pg_assert_same(array('tool_arrow', 'tool_rect', 'tool_text', 'tool_pen', 'tool_redact'), $r['annTools'], 'every annotate tool has a letter');
 	pg_assert_same(array('touchPan', 'touchFit'), $r['optTouch'], 'no twist without layers');
 	pg_assert_same(array('touchPan', 'touchFit', 'touchTwist'), $r['photoTouch'], 'twist with layers');
@@ -213,4 +213,60 @@ function test_image_editor_access_motion_long()
 	pg_assert_true($r['thrice'], 'three times 2 seconds is 6 seconds');
 	pg_assert_false($r['empty'], 'nothing to play');
 	pg_assert_false($r['junk'], 'no numbers, no warning');
+}
+
+// The modes of the Photo and Vector rail items have letters of their own,
+// none taken from another tool or from Animate's K.
+function test_image_editor_access_mode_letters()
+{
+	$r = image_editor_access_node(
+		'var photo = M.PROFILES.photo, canvas = M.PROFILES.canvas, seen = {}, clash = [];' . "\n"
+		. 'Object.keys(M.KEY_TOOLS).forEach(function (k) { M.KEY_TOOLS[k].forEach(function (id) { if (seen[id]) { clash.push(id); } seen[id] = k; }); });' . "\n"
+		. 'console.log(JSON.stringify({ q: M.toolForKey("q", photo), x: M.toolForKey("x", canvas), g: M.toolForKey("G", photo), w: M.toolForKey("w", photo),' . "\n"
+		. ' n: M.toolForKey("n", canvas), qCanvas: M.toolForKey("q", canvas), k: M.toolForKey("k", photo), keyWarp: M.toolKey("warp", photo),' . "\n"
+		. ' clash: clash, letters: Object.keys(M.KEY_TOOLS).length }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same('area', $r['q'], 'Q is Select area');
+	pg_assert_same('scissors', $r['x'], 'X is Scissors');
+	pg_assert_same('builder', $r['g'], 'G is Shape builder');
+	pg_assert_same('warp', $r['w'], 'W is Warp');
+	pg_assert_same('puppet', $r['n'], 'N is Free deformation');
+	pg_assert_same(null, $r['qCanvas'], 'the canvas profile has no Select area');
+	pg_assert_same(null, $r['k'], 'K stays with Animate');
+	pg_assert_same('W', $r['keyWarp'], 'Warp shows W');
+	pg_assert_same(array(), $r['clash'], 'no tool has two letters');
+	pg_assert_same(21, $r['letters'], 'twenty-one letters');
+}
+
+// A tool's own keys show only with that tool; a finger reaches 22 px, a
+// mouse the tool's reach.
+function test_image_editor_access_tool_groups_and_reach()
+{
+	$r = image_editor_access_node(
+		'function titles(g) { return g.map(function (x) { return x.title; }); }' . "\n"
+		. 'var area = M.keyMap(["area"]), ann = M.keyMap(M.PROFILES.annotate), canvas = M.keyMap(M.PROFILES.canvas);' . "\n"
+		. 'var a = area.filter(function (g) { return g.title === "tool_area"; })[0];' . "\n"
+		. 'console.log(JSON.stringify({ area: titles(area), ann: titles(ann), canvas: titles(canvas), areaRows: a.rows.map(function (r) { return r.label; }),' . "\n"
+		. ' add: a.rows[0].keys, own: a.rows !== M.KEY_MODES.area,' . "\n"
+		. ' reach: [M.touchReach("touch", 10), M.touchReach("mouse", 10), M.touchReach("pen", 6), M.touchReach("touch", 30), M.touchReach(undefined, 8)] }));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'tool_area', 'keysView', 'keysTouch'), $r['area'], 'Select area alone has its group');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'keysView', 'keysTouch'), $r['ann'], 'the mini bar has no tool group');
+	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'tool_puppet', 'tool_builder', 'keysTimeline', 'keysView', 'keysTouch'), $r['canvas'], 'canvas: deformation, builder and the timeline');
+	pg_assert_same(array('keyAreaAdd', 'keyAreaSubtract', 'keyAreaClose', 'touchAreaClose'), $r['areaRows'], 'area rows');
+	pg_assert_same(array('Shift', 'Drag'), $r['add'], 'Shift and drag adds');
+	pg_assert_true($r['own'], 'the sheet gets a copy of the rows');
+	pg_assert_same(array(22, 10, 6, 30, 8), $r['reach'], 'touch reach');
 }

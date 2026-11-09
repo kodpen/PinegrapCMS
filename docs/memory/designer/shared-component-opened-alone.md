@@ -13,7 +13,7 @@ description: A shared component opened on its own in the designer (edit_system_s
 - `pg_designer_component_style()`: the `id` asked for when it is a visual design, else the first design that places the component on a page outside the recycle bin, else the first visual design. A site with no visual design is refused ("There is no visual design to open the shared component in."): an all-classic site cannot reach it yet.
 
 ## How does the editor behave?
-- `pg_designer_screen_render()` with `component`: one tab, key `c<id>`, named after the component, its tree `root > shared_ref`; `componentOnly` in the design payload; the pages group (add, settings, delete) and the publishing menu are not printed; the main button reads Save.
+- `pg_designer_screen_render()` with `component`: one tab, key `c<id>`, named after the component, its tree `root > shared_ref`; `componentOnly` in the design payload; the pages group (add, settings, delete), the draft's Publish button and the Publish sheet are not printed; the main button reads Save and saves (`_pgPublishSheet()` falls back to `saveAjax()`).
 - JS `_sdComponentOnly()`: `saveAjax()` calls `_sdSaveComponentOnly()`, which runs `_flushDirtyShared()` (`content_update` at content level, `update` for designers) and never posts the design form; `isDirty()` looks only at dirty components; the tab has no menu and no rename.
 
 ## Where are the links?

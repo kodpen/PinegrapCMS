@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-people-content-start-events
-description: People and content webhook events a flow can start on (flows-next C2): user account, consent, bounce, campaign, page, calendar reservation, store credit; record, right, kept payload, outputs
+description: People and content webhook events a flow can start on (PR #7416): user account, consent, bounce, campaign, page, calendar reservation, store credit; record, right, kept payload, outputs
 ---
 
 ## Which events, and where are they listed?

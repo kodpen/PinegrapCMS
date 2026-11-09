@@ -1834,7 +1834,7 @@ JS
 function test_workspace_flows_canvas_table_write_boxes()
 {
 	$result = ws_flows_canvas_test_node(
-		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'memberKind', 'paletteItems', 'rowTable', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'siteDecimal', 'siteNumber', 'siteShown', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
+		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'memberKind', 'paletteItems', 'rowTable', 'rowWay', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'siteDecimal', 'siteNumber', 'siteShown', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_set: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_set', 'fl_kind_row_set']];
@@ -1891,7 +1891,7 @@ JS
 	pg_assert_same(array('12.50', '{{trigger.amount}}', ''), $result['shown']);
 	pg_assert_same(array(125050, 125000, 1250, 1.5, 1500, '1250,50', '1,234'), $result['turkish'], 'a Turkish figure read the site\'s way, shown the same way');
 	pg_assert_same(array(125050, 1500), $result['english'], 'an English comma groups thousands');
-	pg_assert_same(array('fl_rows_meta Deals Add › Row', 'fl_rows_meta Deals 12', '#8', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('fl_rows_meta_id Deals Add › Row', 'fl_rows_meta_id Deals 12', '#8', 'fl_row_none'), $result['meta'], 'boxes saved before the choice name ids');
 	pg_assert_same(array('row', 'cells'), $result['texts'], 'the cells\' values are threaded');
 	pg_assert_same(array('row'), $result['open'], 'a value is never dropped into the JSON');
 	pg_assert_same(0, $result['openAdd']);
@@ -1903,7 +1903,7 @@ JS
 function test_workspace_flows_canvas_row_get_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowCellValues', 'rowWriteMeta', 'boxValues', 'fieldTexts'),
+		array('kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowWay', 'rowCellValues', 'rowWriteMeta', 'boxValues', 'fieldTexts'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_get: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_get', 'fl_kind_row_get']];
@@ -1935,15 +1935,99 @@ JS
 		'{{node.get.text}}:text', '{{node.get.outcome}}:text', '{{node.get.status}}:text',
 		'{{node.get.row_id}}:number', '{{node.get.found}}:number', '{{node.get.cell_7}}:text', '{{node.get.cell_9}}:number',
 	), $result['values'], 'the row, found and every cell of its table');
-	pg_assert_same(array('fl_rows_meta Counters 12', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('fl_rows_meta_id Counters 12', 'fl_row_none'), $result['meta'], 'a box saved before the choice names an id');
 	pg_assert_same(array('row'), $result['texts'], 'its row reads a value');
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	$fields = ws_flows_canvas_test_script_function($source, 'rowGetFields');
 
 	pg_assert_contains("stepLists().tables.map", $fields, 'every table the person reads is offered');
-	pg_assert_contains("t('fl_rows_get_row_help')", $fields, 'the row field says a missing row gives found 0');
+	pg_assert_contains("rowByField(box, node);", $fields, 'the way and the row follow the table');
 	pg_assert_contains("rowGetFields(box, node);", $source, 'the settings draw it');
+}
+
+// How a row box finds its row on the canvas: the ways in the list, the
+// way a box keeps (an unknown one by its id), its line on the box, the help
+// naming found as the value list names it, and a new box's settings: a read
+// starts on the first row, a change waits for its row.
+function test_workspace_flows_canvas_row_choice()
+{
+	$result = ws_flows_canvas_test_node(
+		array('stepLists', 'rowTable', 'rowWay', 'rowByOptions', 'rowWriteMeta'),
+		<<<'JS'
+var FL = { steps: { tables: [{ id: 5, name: 'Counters', edit: true, columns: [] }] } };
+var names = { '{{node.loop.index}}': { label: 'Repeat › Item number' } };
+function valueNames() { return names; }
+function meta(config, kind) { return rowWriteMeta({ id: 'get', kind: kind || 'row_get', config: config }); }
+console.log(JSON.stringify({
+    options: rowByOptions().map(function (item) { return item[0]; }),
+    ways: [rowWay({ by: 'position' }), rowWay({ by: 'last' }), rowWay({}), rowWay({ by: 'nearest' })],
+    meta: [
+        meta({ table_id: 5, by: 'position', row: '1' }),
+        meta({ table_id: 5, by: 'id', row: '14' }),
+        meta({ table_id: 5, by: 'last', row: '' }),
+        meta({ table_id: 5, by: 'position', row: '{{node.loop.index}}' }),
+        meta({ table_id: 5, by: 'position', row: '' }, 'row_set'),
+        meta({ table_id: 5, by: 'last' }, 'row_add')
+    ]
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('position', 'id', 'last'), $result['options'], 'its number in the table first');
+	pg_assert_same(array('position', 'last', 'id', 'id'), $result['ways']);
+	pg_assert_same(array(
+		'fl_rows_meta Counters 1',
+		'fl_rows_meta_id Counters 14',
+		'fl_rows_meta_last Counters',
+		'fl_rows_meta Counters Repeat › Item number',
+		'Counters',
+		'Counters',
+	), $result['meta']);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$field = ws_flows_canvas_test_script_function($source, 'rowByField');
+
+	pg_assert_contains("t('fl_rows_get_missing_help', found ? found.label : 'found')", $field, 'a missing row names found as the value list names it');
+	pg_assert_contains("if (by === 'last') {\n            return;\n        }", $field, 'the last row has no row field');
+	pg_assert_contains("config.row = '';", $field, 'choosing the last row clears the row');
+	pg_assert_contains("rowByField(box, node);", ws_flows_canvas_test_script_function($source, 'rowWriteFields'), 'a change finds its row the same way');
+	pg_assert_contains("config = { table_id: (readable.length === 1) ? readable[0].id : 0, by: 'position', row: '1' };", $source, 'a new read box reads the first row');
+	pg_assert_contains("config.by = 'position';\n                config.row = '';", $source, 'a new change box waits for its row');
+}
+
+// "Add value" with nothing to offer names what comes before the box when
+// something does (a manual start gives no value), else says nothing is
+// connected before it.
+function test_workspace_flows_canvas_values_none_names_the_start()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'arrowMaps', 'boxesBefore', 'valuesNone'),
+		<<<'JS'
+var KINDS = { manual: { name: 'fl_kind_manual', into: false, out: ['next'] }, row_get: { name: 'fl_kind_row_get', into: true, out: ['done', 'failed'] }, post: { name: 'fl_kind_post', into: true, out: ['done', 'failed'] } };
+function box(id, kind, label, y) { return { id: id, kind: kind, label: label, config: {}, x: 0, y: y }; }
+state = { graph: { nodes: [box('manual_1', 'manual', '', 0), box('row_get_1', 'row_get', 'UN', 1), box('post_1', 'post', '', 2)], edges: [
+    { from: 'manual_1', to: 'row_get_1', on: 'next' }
+] } };
+console.log(JSON.stringify({ connected: valuesNone(nodeById('row_get_1')), alone: valuesNone(nodeById('post_1')), start: valuesNone(nodeById('manual_1')) }));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('fl_values_none_before fl_kind_manual', $result['connected'], 'behind a manual start: the start is named');
+	pg_assert_same('fl_values_none', $result['alone'], 'nothing before it: connect it first');
+	pg_assert_same('fl_values_none', $result['start']);
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_contains("list.appendChild(el('div', 'small fg-secondary', valuesNone(node)));", ws_flows_canvas_test_script_function($source, 'valueField'));
 }
 
 // The groups of the flow boxes and their colours (dark theme as the visual
@@ -1956,7 +2040,7 @@ function ws_flows_canvas_test_groups()
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'record_get', 'ai'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set', 'row_get', 'record_get', 'ai', 'agent'))
 	);
 }
 
@@ -2712,10 +2796,11 @@ function test_workspace_flows_canvas_outline_draws_the_open_form_only()
 // flow with that run shown.
 function test_workspace_flows_canvas_address_opens_a_run()
 {
-	$start = ws_flows_canvas_test_script_function(str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js')), 'start');
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
 
-	pg_assert_contains('[?&]run=([0-9]+)', $start);
-	pg_assert_contains('openLastRun({ id: askedRun, flow_id: asked })', $start);
+	pg_assert_contains('[?&]run=([0-9]+)', ws_flows_canvas_test_script_function($source, 'addressOptions'));
+	pg_assert_contains('addressOptions(window.location.search)', ws_flows_canvas_test_script_function($source, 'start'));
+	pg_assert_contains('openLastRun({ id: askedRun, flow_id: asked })', ws_flows_canvas_test_script_function($source, 'mount'));
 }
 
 // A live flow's side panel says changes stay in the draft; the cancel
@@ -3126,4 +3211,319 @@ JS
 	pg_assert_true((bool) preg_match('/wsf-chip-remove\'\)\) \{.*?tokenGap\(.*?threadName\(\{/s', $source), 'the chip × applies tokenGap() and announces like the thread');
 	pg_assert_true(strpos($source, "state.refocus = 'title-' + id + ' outline-open-' + id;") !== false, 'the outline Remove falls back to the box line');
 	pg_assert_true((bool) preg_match('/var onCanvas = [^\n]*viewport\.contains\(document\.activeElement\).*?\(box \|\| ui\.viewport\)\.focus\(/s', $source), 'undo by key gives the focus back on the canvas');
+}
+
+// The editor is mountable: PGWsFlow.mount(root, boot, options) draws it into
+// any element and gives { destroy(), flush() }; start() is mount() with the
+// flow, box and run the address names. The window listeners are added once
+// and do nothing while no editor is mounted. A single-flow editor (a layer
+// over a channel) reads no flow list, never changes the address or the
+// page's back arrow, and its way back to the list calls onClose. destroy()
+// saves what is on its way, stops the run's looks and the timers, frees
+// the screen for an embedded drawing, and gives the page back its arrow.
+function test_workspace_flows_canvas_editor_mounts_and_destroys()
+{
+	$result = ws_flows_canvas_test_node(
+		array('addressOptions', 'start', 'mount', 'mountState', 'unmount', 'singleFlow', 'bindWindow', 'viewBack', 'backToList', 'setAddress', 'showNone', 'clearScreen'),
+		<<<'JS'
+var listeners = { window: {}, document: {} };
+window.addEventListener = function (type, fn) { (listeners.window[type] = listeners.window[type] || []).push(fn); };
+document.addEventListener = function (type, fn) { (listeners.document[type] = listeners.document[type] || []).push(fn); };
+window.location = { search: '?flow=7&box=post_2&run=31', pathname: '/workspace_flows.php' };
+var addressed = [], backs = [], opened = [], log = [], cleared = [];
+window.history = { replaceState: function (a, b, url) { addressed.push(url); } };
+window.matchMedia = function () { return { matches: false }; };
+window.clearTimeout = function (id) { if (id) { cleared.push(id); } };
+K.viewBack = function (label) { backs.push(label || null); };
+K.cfg = { flows: { ready: true, build: true } };
+K.t = t;
+window.PGWsKit = K;
+var CFG = {}, FL = {}, BOOT = {}, windowBound = false;
+var flushes = 0, leaves = 0, polls = 0, destroyed = 0;
+var canvas = { destroy: function () { destroyed++; } };
+function layout(root) {
+    ui.root = root;
+    ['bar', 'flows', 'app', 'side', 'boxes', 'palette', 'scheduled', 'gallery', 'problemBox', 'sketchBox', 'stage', 'empty', 'outlineBox', 'viewport'].forEach(function (key) { ui[key] = el('div'); });
+    root.appendChild(ui.bar);
+}
+function bindCanvas() { log.push('bindCanvas'); }
+function threadsShown() { return true; }
+function open(id) { opened.push(id); state.flow = { id: id, access: 'edit' }; return Promise.resolve(true); }
+function nodeById(id) { return { id: id }; }
+function select(selected) { log.push('select ' + selected.id); }
+function openLastRun(run) { log.push('run ' + run.id); }
+function drawList() { log.push('list'); }
+function drawFlows() {}
+function showGallery(into) { log.push('gallery ' + into); }
+var drops = 0;
+function dropUntouched() { drops++; }
+function closeSetup() {}
+function endRun() {}
+function graphOf() { return { nodes: [], edges: [] }; }
+function drawEdges() {}
+function newFlowButton() {}
+function listing(on) { state.listing = on; }
+function refocus() {}
+function stopPoll() { polls++; }
+function settle() {}
+function flush() { flushes++; return Promise.resolve(); }
+function saveOnLeave() { leaves++; }
+function save() {}
+function drafting() { return !!(state.flow && (state.flow.access === 'edit')); }
+function undoable() { return false; }
+function typing() { return false; }
+function runOpen() { return false; }
+function schedulePoll() {}
+function counts() { var out = {}; ['document', 'window'].sort().forEach(function (on) { Object.keys(listeners[on]).forEach(function (type) { out[on + ' ' + type] = listeners[on][type].length; }); }); var sorted = {}; Object.keys(out).sort().forEach(function (key) { sorted[key] = out[key]; }); return sorted; }
+function unload() { var asked = false; listeners.window.beforeunload.forEach(function (fn) { fn({ preventDefault: function () { asked = true; } }); }); return asked; }
+state = { embed: null, mounted: null, screen: false, poll: { timer: 0, delay: 0, busy: 0, note: null }, saveTimer: 4, settleTimer: 5, arriving: 6 };
+(async function () {
+    var out = {};
+    var root = new FakeNode('div');
+    var ended = 0;
+
+    out.noKit = (function () { window.PGWsKit = null; var none = mount(root, {}, {}); window.PGWsKit = K; return none; })();
+    out.address = addressOptions('?run=3&flow=12&box=email_4');
+    out.noAddress = addressOptions('');
+    state.embed = { destroy: function () { ended++; state.embed = null; } };
+    answers.push(function () { return Promise.resolve({ flows: [{ id: 7 }], scheduled: null }); });
+    var full = start(root, { people: [] });
+    await settle(); await settle(); await settle();
+    out.full = { calls: calls.slice(), opened: opened.slice(), log: log.slice(), screen: state.screen, embedEnded: ended, api: Object.keys(full).sort() };
+    state.dirty = true;
+    out.full.asks = unload();
+    listeners.window.pagehide[0]();
+    out.full.leaves = leaves;
+
+    calls = []; opened = []; log = []; backs = []; addressed = []; cleared = [];
+    var done = full.destroy();
+    out.destroyed = { promise: !!(done && done.then), drops: drops, flushes: flushes, polls: polls, canvas: destroyed, cleared: cleared.sort(), root: root.children.length, screen: state.screen, mounted: state.mounted, backs: backs.slice() };
+    out.after = { asks: unload() };
+    listeners.window.pagehide[0]();
+    listeners.window.blur[0]();
+    out.after.leaves = leaves;
+    out.after.again = full.destroy() !== undefined;
+
+    var closes = 0;
+    state.dirty = false;
+    backs = [];
+    var one = mount(root, {}, { flow: 9, box: 'task_1', single: true, onClose: function () { closes++; } });
+    await settle(); await settle();
+    out.single = { home: state.mounted.home, calls: calls.slice(), opened: opened.slice(), log: log.slice(), backs: backs.slice(), addressed: addressed.slice() };
+    backToList();
+    viewBack('fl_tpl_back', function () {}, 'tpl-back');
+    showNone();
+    out.single.afterNone = { closes: closes, backs: backs.slice(), addressed: addressed.slice(), listing: !!state.listing, bar: textOf(ui.bar) };
+    state.saveError = 'x';
+    out.single.flushed = await one.flush();
+    state.saveError = '';
+    out.single.clean = await one.flush();
+    out.listeners = counts();
+
+    log = [];
+    var two = mount(root, {}, { single: true, home: '6' });
+    out.replaced = { drops: drops, home: state.mounted.home, flushes: flushes, log: log.slice() };
+    two.destroy();
+    out.replaced.dropsAfter = drops;
+    log = [];
+    FL.build = false;
+    K.cfg = { flows: { ready: true, build: false } };
+    mount(root, {}, { single: true, onClose: function () { closes++; } });
+    out.noBuild = { closes: closes };
+    console.log(JSON.stringify(out));
+})();
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(is_array($result), 'the script printed its result');
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(null, $result['noKit'], 'nothing is mounted without the Workspace kit');
+	pg_assert_same(array('flow' => 12, 'box' => 'email_4', 'run' => 3), $result['address'], 'the address names a flow, a box and a run');
+	pg_assert_same(array('flow' => 0, 'box' => '', 'run' => 0), $result['noAddress'], 'an empty address names none');
+	pg_assert_same(array('ws_flow_list'), $result['full']['calls'], 'the Flows screen reads its list');
+	pg_assert_same(array(7), $result['full']['opened'], 'start() opens the flow the address names');
+	pg_assert_same(array('bindCanvas', 'list', 'select post_2', 'run 31'), $result['full']['log'], 'then its box and its run');
+	pg_assert_true($result['full']['screen'], 'the screen is taken');
+	pg_assert_same(1, $result['full']['embedEnded'], 'an embedded drawing ends first');
+	pg_assert_same(array('destroy', 'flush'), $result['full']['api'], 'mount() gives destroy() and flush()');
+	pg_assert_true($result['full']['asks'], 'leaving the page with changes asks while mounted');
+	pg_assert_same(2, $result['full']['leaves'], 'beforeunload and pagehide save while mounted');
+
+	pg_assert_true($result['destroyed']['promise'], 'destroy() gives the save on its way');
+	pg_assert_same(0, $result['destroyed']['drops'], 'the Flows screen\'s editor keeps a blank flow on destroy (its list holds it)');
+	pg_assert_same(1, $result['destroyed']['flushes'], 'destroy() saves what is unsaved');
+	pg_assert_same(1, $result['destroyed']['polls'], 'destroy() stops the run\'s looks');
+	pg_assert_same(1, $result['destroyed']['canvas'], 'the canvas lets its listeners go');
+	pg_assert_same(array(4, 5, 6), $result['destroyed']['cleared'], 'the save, settle and setup timers are stopped');
+	pg_assert_same(0, $result['destroyed']['root'], 'the root is emptied');
+	pg_assert_false($result['destroyed']['screen'], 'the screen is free for an embedded drawing');
+	pg_assert_same(null, $result['destroyed']['mounted'], 'no editor is mounted');
+	pg_assert_same(array(null), $result['destroyed']['backs'], 'the page\'s back arrow is taken away');
+	pg_assert_false($result['after']['asks'], 'the window listeners do nothing once destroyed');
+	pg_assert_same(2, $result['after']['leaves'], 'pagehide and blur do nothing once destroyed');
+	pg_assert_true($result['after']['again'], 'a second destroy() is harmless');
+
+	pg_assert_same(array(), $result['single']['calls'], 'a single-flow editor reads no flow list');
+	pg_assert_same(array(9), $result['single']['opened'], 'it opens the flow it is given');
+	pg_assert_same(array('bindCanvas', 'select task_1'), $result['single']['log'], 'and its box');
+	pg_assert_same(array(), $result['single']['backs'], 'it leaves the page\'s back arrow alone');
+	pg_assert_same(array(), $result['single']['addressed'], 'and the address');
+	pg_assert_same(1, $result['single']['afterNone']['closes'], 'its way back to the list calls onClose');
+	pg_assert_same(array(), $result['single']['afterNone']['backs'], 'no back arrow, no list');
+	pg_assert_same(array(), $result['single']['afterNone']['addressed'], 'the address stays');
+	pg_assert_false($result['single']['afterNone']['listing'], 'the list is not shown');
+	pg_assert_contains('fl_tpl_back', $result['single']['afterNone']['bar'], 'a way back inside the editor goes into its bar');
+	pg_assert_false($result['single']['flushed'], 'flush() says when changes stay unsaved');
+	pg_assert_true($result['single']['clean'], 'and when all is saved');
+	pg_assert_same(array('document keydown' => 1, 'document visibilitychange' => 1, 'window beforeunload' => 1, 'window blur' => 1, 'window pagehide' => 1), $result['listeners'], 'the window listeners are added once');
+
+	pg_assert_same(4, $result['replaced']['flushes'], 'mounting again destroys the editor mounted');
+	pg_assert_same(0, $result['replaced']['drops'], 'a single editor opened on a flow keeps it when destroyed');
+	pg_assert_same(1, $result['replaced']['dropsAfter'], 'one opened for a new flow drops its blank flow when destroyed');
+	pg_assert_same(0, $result['single']['home'], 'no home unless one is given');
+	pg_assert_same(6, $result['replaced']['home'], 'as a number');
+	pg_assert_same(array('bindCanvas', 'gallery null'), $result['replaced']['log'], 'a single editor with no flow starts at the ways to start one');
+	pg_assert_same(2, $result['noBuild']['closes'], 'and closes for somebody who cannot build');
+}
+
+// The whole editor's config on any Workspace page (the layer over a channel):
+// panel action ws_flow_editor_config, a row of the Workspace family (the
+// member gate the Flows screen has), answered with the flows part of the
+// screen's own config and the canvas texts, nothing narrower or wider.
+function test_workspace_flows_canvas_editor_config_action()
+{
+	$actions = pg_panel_actions();
+
+	pg_assert_true(isset($actions['ws_flow_editor_config']), 'ws_flow_editor_config listed');
+
+	if (isset($actions['ws_flow_editor_config'])) {
+		pg_assert_same('pg_panel_ws', $actions['ws_flow_editor_config']['handler'], 'the Workspace handler');
+		pg_assert_same('exempt', pg_panel_gate('ws_flow_editor_config'), 'the Workspace gate');
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$case = strpos($source, "case 'ws_flow_editor_config':");
+
+	pg_assert_true($case !== false, 'a case answers it');
+	pg_assert_contains('ws_flow_editor_config($viewer)', (string) substr($source, (int) $case, 300), 'with the viewer the member gate let in');
+
+	pg_assert_true(function_exists('ws_flow_editor_config'), 'ws_flow_editor_config() exists');
+
+	$flows = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
+	$start = strpos($flows, 'function ws_flow_editor_config(');
+	$body = ($start !== false) ? substr($flows, $start, strpos($flows, "\n}\n", $start) - $start) : '';
+
+	pg_assert_contains("ws_flow_js_config(\$viewer, 'flows')", $body, 'the Flows screen\'s config, its rights and builder kinds');
+	pg_assert_contains('ws_flow_js_strings()', $body, 'and its texts');
+}
+
+// The layer over a channel (flowLayer() in workspace.js): the whole editor
+// mounted with single, named by the flow it shows, the page beneath inert
+// and its Ctrl+K idle, Escape only once the editor lets it go, Close saving
+// first and asking as leaving the page does, full screen in the stylesheet.
+function test_workspace_flows_canvas_layer_wiring()
+{
+	$kit = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	$layer = ws_flows_canvas_test_script_function($kit, 'flowLayer');
+	$close = ws_flows_canvas_test_script_function($kit, 'flowLayerClose');
+	$end = ws_flows_canvas_test_script_function($kit, 'flowLayerEnd');
+
+	pg_assert_true($layer !== '' && $close !== '' && $end !== '', 'flowLayer(), flowLayerClose() and flowLayerEnd() are there');
+	pg_assert_contains("api('ws_flow_editor_config'", ws_flows_canvas_test_script_function($kit, 'flowEditorConfig'), 'the editor\'s config, once a page');
+	pg_assert_contains('window.PGWsFlow.mount(open.body', $layer, 'the editor mounted in the layer');
+	pg_assert_contains('single: true', $layer, 'one flow, no list, no address');
+	pg_assert_contains('onShow: function (flow)', $layer, 'the bar named by the flow shown');
+	pg_assert_contains("t('fl_layer_screen')", $layer, 'the way to the Flows screen');
+	pg_assert_contains('flowScreenAddress(flowId, options)', $layer, 'with its box or run');
+	pg_assert_contains('node.inert = true', $layer, 'the page beneath inert');
+	pg_assert_contains("(node.tagName !== 'DIALOG')", $layer, 'not the dialogs over the editor');
+	pg_assert_contains('event.defaultPrevented', $layer, 'Escape is the editor\'s first');
+	pg_assert_contains("document.querySelector('dialog[open]')", $layer, 'a dialog keeps Escape');
+	pg_assert_contains('open.instance.flush()', $close, 'Close saves first');
+	pg_assert_contains("ask(t('fl_leave_ask'), t('fl_leave'), true)", $close, 'and asks when changes stay unsaved');
+	pg_assert_contains('open.instance.destroy()', $end, 'the editor destroyed');
+	pg_assert_contains('open.opener.focus(', $end, 'the focus back on the opener');
+	pg_assert_contains('flowLayer: flowLayer', ws_flows_canvas_test_script_function($kit, 'shareKit'), 'lent to the screens');
+	pg_assert_contains("if (flowLayerOpen) {\n                    event.preventDefault();", $kit, 'Ctrl+K idle while the layer is open');
+	pg_assert_contains('flowScripts()', $kit, 'the draft card and the layer load the canvas scripts once');
+
+	$flow = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	pg_assert_contains('state.mounted.onShow({ id: flow.id, name: flow.name })', ws_flows_canvas_test_script_function($flow, 'shownFlow'), 'the editor tells the flow it shows');
+	pg_assert_contains('shownFlow(flow);', ws_flows_canvas_test_script_function($flow, 'show'), 'as each flow is shown');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true((bool) preg_match('/\.ws-flow-layer \{[^}]*position: fixed;[^}]*inset: 0;/', $css), 'full screen on every width');
+	pg_assert_contains("'fl_layer_screen'", ws_flows_canvas_test_strings_source(), 'its text handed over');
+}
+
+/**
+ * The ways in to a flow from a Workspace page open the layer, not the Flows
+ * screen: the scheduled flow window's canvas button, the draft card's box
+ * link, the run card's Open the run, a scheduled action's Edit and the
+ * flows made by Duplicate or from a draft; on the Flows screen itself they
+ * still go by the address.
+ */
+function test_workspace_flows_canvas_layer_ways_in()
+{
+	$kit = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	$go = ws_flows_canvas_test_script_function($kit, 'flowGo');
+	$link = ws_flows_canvas_test_script_function($kit, 'flowLinkOpens');
+	$opened = ws_flows_canvas_test_script_function($kit, 'flowOpened');
+	$edit = ws_flows_canvas_test_script_function($kit, 'scheduledEdit');
+
+	pg_assert_true($go !== '' && $link !== '', 'flowGo() and flowLinkOpens() are there');
+	pg_assert_contains("if (CFG.mode === 'flows') {\n            window.location.href = flowScreenAddress(flowId, options);", $go, 'the Flows screen keeps its own editor');
+	pg_assert_contains('flowLayer(flowId, options);', $go, 'elsewhere the layer');
+	pg_assert_contains('event.preventDefault();', $link, 'a plain click opens the layer');
+	pg_assert_contains('event.ctrlKey || event.metaKey', $link, 'a new tab follows the address');
+	pg_assert_contains('flowGo(result.flow_id)', $opened, 'a made flow opens in the layer');
+	pg_assert_contains('leave(function () { flowGo(result.flow_id); });', $opened, 'after the window it came from is gone');
+	pg_assert_contains('flowGo(result.flow_id, { opener: trigger });', $edit, 'an Edit converted opens in the layer');
+	pg_assert_contains("hideOffcanvas(node, next);", $kit, 'the scheduled flow window closes before the layer opens');
+	pg_assert_contains('flowGo(run.flow_id, { run: run.id });', $kit, 'Open the run in the layer');
+	pg_assert_contains('flowGo(item.flow.id, { opener: edit });', $kit, 'Edit of a converted action in the layer');
+	pg_assert_contains('flowLinkOpens(link, view.flow_id, { box: node.id });', $kit, 'a draft card\'s box in the layer');
+	pg_assert_contains('flowLinkOpens(flow, change.flow_id);', $kit, 'an applied draft\'s flow in the layer');
+
+	foreach (['flowOpened', 'scheduledEdit'] as $name) {
+		pg_assert_true(strpos(ws_flows_canvas_test_script_function($kit, $name), 'window.location.href') === false, $name . '() leaves the page no more');
+	}
+}
+
+/**
+ * Add › New flow in a channel's composer: staff who build flows, outside a
+ * thread, in a public or private channel; the layer opens with no flow and
+ * this channel as the home, the ways to start one first; every way to make
+ * the flow (empty canvas, template, Pinegrap AI) sends that home, never for
+ * a role-3 member's own flow; a blank one left untouched is not kept.
+ */
+function test_workspace_flows_canvas_layer_new_flow()
+{
+	$kit = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+	$layer = ws_flows_canvas_test_script_function($kit, 'flowLayer');
+
+	pg_assert_contains("(CFG.flows && CFG.flows.nav && CFG.flows.scheduled && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))", $kit, 'the Add item\'s gate');
+	pg_assert_contains("flowLayer(0, { home: self.channel.id, opener: insert });", $kit, 'the layer on a new flow homed here');
+	pg_assert_contains('!((flowId > 0) || (home > 0))', $layer, 'no flow needs a home');
+	pg_assert_contains('home: flowId ? 0 : home,', $layer, 'the home handed to the editor');
+	pg_assert_contains('open.link.href = flowScreenAddress(flow.id);', $layer, 'the bar\'s link follows the flow made');
+
+	$flow = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$mount = ws_flows_canvas_test_script_function($flow, 'mount');
+
+	pg_assert_contains("home: options.single ? (parseInt(options.home, 10) || 0) : 0", $mount, 'a home only for a single editor');
+	pg_assert_contains('showGallery(null);', $mount, 'the ways to start a flow first');
+	pg_assert_contains('(home > 0) && !FL.member ? { channel_id: home } : {}', ws_flows_canvas_test_script_function($flow, 'newHome'), 'no home for a member\'s own flow');
+	pg_assert_contains('newHome()', ws_flows_canvas_test_script_function($flow, 'createFlow'), 'the empty canvas');
+	pg_assert_contains('newHome()', ws_flows_canvas_test_script_function($flow, 'useTemplate'), 'a template');
+	pg_assert_contains("K.api('ws_flow_ai_sketch', Object.assign({ sentence: sentence }, newHome()))", ws_flows_canvas_test_script_function($flow, 'sketchCard'), 'Pinegrap AI');
+	pg_assert_contains('dropUntouched();', ws_flows_canvas_test_script_function($flow, 'unmount'), 'a blank one left as made is not kept');
 }

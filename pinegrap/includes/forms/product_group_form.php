@@ -378,6 +378,9 @@ function pg_product_group_form_products_card($form)
                                     .prop("indeterminate", (ticked > 0) && (ticked < $boxes.length))
                                     .prop("checked", (ticked > 0) && (ticked === $boxes.length));
                                 $boxes.each(function() { $(this).closest("tr").toggleClass("selected", this.checked); });
+                                // Modify Selected in the bar shows only while a product is
+                                // ticked; the property as well, so it is not reached by Tab.
+                                $(".enable-on-selected button").toggleClass("disabled", ticked === 0).prop("disabled", ticked === 0);
                             }
                             $productsTable.on("change", "#select_all", function() {
                                 $productsTable.find("tbody .select-all input[type=checkbox]").not(":disabled").prop("checked", this.checked);

@@ -25,27 +25,119 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * came unchanged from Google (the attribution the Cloud terms ask for hangs
  * on that one).
  *
+ * The page's own words (its texts, title and description, shared components,
+ * menus, and on a record view the record it shows) count in total, hits and
+ * machine, which the index verdict reads. What a list, the catalog or another
+ * database value draws counts in data_total, data_hits and data_machine
+ * (pg_tr_render_scope() 'data'): drawn in the source language until
+ * translated, it never keeps the page out. Google output counts once, in
+ * either scope.
+ *
  * @param string $op reset | get | or a counter name to increment
  * @return array|null
  */
 function pg_tr_render_counter($op = 'get')
 {
-    static $counts = array('total' => 0, 'hits' => 0, 'machine' => 0, 'google' => 0);
+    static $counts = null;
 
-    if ($op === 'reset') {
-        $counts = array('total' => 0, 'hits' => 0, 'machine' => 0, 'google' => 0);
-        return $counts;
+    if (($counts === null) || ($op === 'reset')) {
+        $counts = array('total' => 0, 'hits' => 0, 'machine' => 0, 'google' => 0, 'data_total' => 0, 'data_hits' => 0, 'data_machine' => 0);
+
+        if ($op === 'reset') {
+            return $counts;
+        }
     }
 
     if ($op === 'get') {
         return $counts;
     }
 
-    if (isset($counts[$op])) {
-        $counts[$op]++;
+    $key = pg_tr_render_count_key($op, pg_tr_render_scope());
+
+    if ($key !== '') {
+        $counts[$key]++;
     }
 
     return null;
+}
+
+/**
+ * What the texts drawn from here on are counted as: the page's own words
+ * ('own') or texts a list, the catalog or another database value draws
+ * ('data'). Given a scope, sets it and returns the one before, which the
+ * caller puts back when it is done.
+ *
+ * @param string|null $set own | data
+ * @return string the scope before the call
+ */
+function pg_tr_render_scope($set = null)
+{
+    static $scope = 'own';
+
+    $before = $scope;
+
+    if (in_array($set, array('own', 'data'), true)) {
+        $scope = $set;
+    }
+
+    return $before;
+}
+
+/**
+ * The counter a counter name goes to in a scope (pg_tr_render_counter()).
+ *
+ * @param string $op    total | hits | machine | google
+ * @param string $scope own | data
+ * @return string the counter, '' for a name that is none
+ */
+function pg_tr_render_count_key($op, $scope)
+{
+    if ($op === 'google') {
+        return 'google';
+    }
+
+    if (!in_array($op, array('total', 'hits', 'machine'), true)) {
+        return '';
+    }
+
+    return ($scope === 'data') ? 'data_' . $op : $op;
+}
+
+/**
+ * Whether the page's own words drawn so far are all translated and none is
+ * unreviewed machine output: the flag a cached body keeps
+ * (page_translations.reviewed), and half of the reviewed policy's verdict.
+ *
+ * @param array $counts pg_tr_render_counter('get')
+ * @return int 1 or 0
+ */
+function pg_tr_render_counts_reviewed($counts)
+{
+    return (((int) $counts['total'] === (int) $counts['hits']) && ((int) $counts['machine'] === 0)) ? 1 : 0;
+}
+
+/**
+ * The robots verdict of a page in a target language under its index policy:
+ * "none" always noindex, "all" never, "reviewed" while the page's own words
+ * - those of the cached body ($reviewed) and those drawn on this request -
+ * are not all reviewed translations.
+ *
+ * @param string $policy   site_languages.index_policy
+ * @param int    $reviewed the body's flag (pg_tr_render_body_flags())
+ * @param array  $counts   pg_tr_render_counter('get')
+ * @return bool true for noindex
+ */
+function pg_tr_render_noindex($policy, $reviewed, $counts)
+{
+    if ($policy === 'none') {
+        return true;
+    }
+
+    if ($policy !== 'reviewed') {
+        return false;
+    }
+
+    return ((int) $reviewed !== 1) || (pg_tr_render_counts_reviewed($counts) !== 1);
 }
 
 /**
@@ -124,6 +216,15 @@ function pg_tr_render_props($props, $type)
 {
     $fields = pg_tr_node_fields($type, $props);
 
+    // A custom HTML block is the page's own words, swapped by the
+    // finished-page pass, which counts as data: its machine output is
+    // counted here among the page's words, as that pass counted it before
+    // (a text it finds no translation for is not counted, as there).
+    if (!$fields && pg_tr_render_custom_html($type, $props)) {
+        pg_tr_map_load(pg_tr_language());
+        pg_tr_render_html_value($props['html']);
+    }
+
     if (!$fields) {
         return $props;
     }
@@ -147,6 +248,20 @@ function pg_tr_render_props($props, $type)
     }
 
     return pg_tr_render_lang_mark($props, $states, pg_tr_language(), pg_tr_source_language());
+}
+
+/**
+ * Whether a node is a custom HTML block, whose texts extraction stores with
+ * the page (pg_tr_custom_html_segments()).
+ *
+ * @param string $type
+ * @param array  $props
+ * @return bool
+ */
+function pg_tr_render_custom_html($type, $props)
+{
+    return ($type === 'content') && isset($props['contentType']) && ($props['contentType'] === 'custom_html')
+        && isset($props['html']) && is_string($props['html']);
 }
 
 /**
@@ -208,7 +323,7 @@ function pg_tr_render_lang_mark($props, $states, $language, $source)
  */
 function pg_tr_render_rules()
 {
-    return '2026.11.0-2';
+    return '2026.11.0-3';
 }
 
 /**
@@ -288,9 +403,11 @@ function pg_tr_render_page_body($page_id, $page_tree_code, $style_name, $additio
 
     $code = generate_style_code_from_tree($tree, $style_name, $additional_body_classes);
 
+    // The flag counts the page's own words only, as the verdict on a
+    // request that draws the body does (pg_tr_render_noindex()).
     $counts = pg_tr_render_counter('get');
     $coverage = ($counts['total'] > 0) ? (int) round(($counts['hits'] / $counts['total']) * 100) : 100;
-    $reviewed = (($counts['total'] === $counts['hits']) && ($counts['machine'] === 0)) ? 1 : 0;
+    $reviewed = pg_tr_render_counts_reviewed($counts);
     $mt_google = ($counts['google'] > 0) ? 1 : 0;
 
     pg_tr_render_body_flags(array('reviewed' => $reviewed, 'mt_google' => $mt_google, 'cached' => 0));
@@ -800,15 +917,11 @@ function pg_tr_render_finalize($content)
         }
 
         // Index policy: a language for visitors only, or one whose machine
-        // output is not to be indexed until somebody has read it. Counted
-        // again: the database texts swapped in above count as well.
-        $counts = pg_tr_render_counter('get');
-
-        if ($row['index_policy'] === 'none') {
-            $noindex = true;
-        } elseif ($row['index_policy'] === 'reviewed') {
-            $noindex = (($flags['reviewed'] !== 1) || ($counts['machine'] > 0) || ($counts['total'] > $counts['hits']));
-        }
+        // output is not to be indexed until somebody has read it. Only the
+        // page's own words weigh: the database texts swapped in above, a
+        // list's records and the catalog are drawn in the source language
+        // until translated and never keep the page out.
+        $noindex = pg_tr_render_noindex((string) $row['index_policy'], $flags['reviewed'], pg_tr_render_counter('get'));
 
         if ($noindex) {
             if (preg_match('~<meta\s+name="robots"\s+content="([^"]*)"~i', $content, $rm)) {
@@ -819,8 +932,8 @@ function pg_tr_render_finalize($content)
             }
         }
 
-        // Under the reviewed policy the answer depends on everything drawn
-        // on the page - shared components, menus, the catalog - which
+        // Under the reviewed policy the answer depends on the page's own
+        // words as drawn - shared components and menus included - which
         // sitemap.xml and the alternates on the other languages' pages
         // cannot draw to find out. It is kept for them (pg_tr_indexable()),
         // and the page names itself as an alternate by the answer kept, as

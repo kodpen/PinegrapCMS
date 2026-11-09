@@ -161,6 +161,12 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_contact_group_joined_campaigns(); // 11.0.170
 	upgrade_2026_11_0_credit_campaigns();         // 11.0.171
 	upgrade_2026_11_0_api_device_access_scopes(); // 11.0.71
+	upgrade_2026_11_0_workspace_note_groups();   // 11.0.119
+	upgrade_2026_11_0_ws_agents();               // 11.0.172
+	upgrade_2026_11_0_ws_channel_memory();       // 11.0.173
+	upgrade_2026_11_0_ws_agent_undo();           // 11.0.174
+	upgrade_2026_11_0_ws_channel_links();        // 11.0.175
+	upgrade_2026_11_0_bundle_backorder();        // 11.0.176
 
 }
 
@@ -5338,5 +5344,338 @@ function upgrade_2026_11_0_api_device_access_scopes() {
 	install_add_column('api_devices', 'access_scopes', "TEXT NULL");
 
 	install_note('OAuth connections: a refresh that asks for fewer permissions now gives an access token limited to them. Existing connections keep working as before.');
+
+}
+
+// Workspace note groups and the notes lock (2026.11.0, 11.0.119;
+// includes/workspace/note_groups.php).
+//
+// ws_note_groups: a person's own folders in My Notes (color is a ws_palette()
+// place, 0 none). ws_note_places: which group a person keeps a note in, one
+// row per person and note; a group's notes are its rows, whoever put them
+// there. ws_note_group_shares: a group shared with a person (read or edit) or
+// in a channel, shaped as ws_note_shares. A group's share is written as
+// ordinary ws_note_shares rows whose via_group names the group, so every
+// reader of note shares works on them unchanged and taking the group back
+// deletes only its own rows. ws_note_locks: a person's notes PIN (hash), how
+// long an opened lock stays open (open_minutes: 0 every time, 65535 until
+// sign-out) and the wrong tries; ws_notes.locked and ws_note_groups.locked
+// mark what is behind it. Running sites change nothing until a person makes
+// a group or sets a PIN.
+function upgrade_2026_11_0_workspace_note_groups() {
+
+	install_create_table('ws_note_groups', "CREATE TABLE ws_note_groups (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		name       VARCHAR(100) NOT NULL DEFAULT '',
+		color      TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		sort       INT UNSIGNED NOT NULL DEFAULT 0,
+		locked     TINYINT(1) NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id, sort)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_note_places', "CREATE TABLE ws_note_places (
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		note_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		group_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		sort       INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id, note_id),
+		KEY idx_group (group_id, sort)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_note_group_shares', "CREATE TABLE ws_note_group_shares (
+		id         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		group_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		channel_id INT UNSIGNED NOT NULL DEFAULT 0,
+		can_edit   TINYINT(1) NOT NULL DEFAULT 0,
+		message_id INT UNSIGNED NOT NULL DEFAULT 0,
+		shared_by  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_group (group_id),
+		KEY idx_user (user_id, group_id),
+		KEY idx_channel (channel_id, group_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_note_locks', "CREATE TABLE ws_note_locks (
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		pin_hash     VARCHAR(255) NOT NULL DEFAULT '',
+		open_minutes SMALLINT UNSIGNED NOT NULL DEFAULT 5,
+		fails        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		wait_until   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_notes', 'locked', "TINYINT(1) NOT NULL DEFAULT 0");
+	install_add_column('ws_note_shares', 'via_group', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_note_shares', 'idx_via_group', "INDEX idx_via_group (via_group, user_id)");
+
+	install_note('Workspace: notes can be kept in groups, groups can be shared, and notes and groups can be locked with a PIN. Nothing changes until someone makes a group or sets a PIN.');
+
+}
+
+// The agent registry and the channel-agent row (2026.11.0, 11.0.172;
+// includes/workspace/agents.php).
+//
+// ws_agents: one row per agent with a door, any number per kind (claude,
+// app, model), each called by its own handle (alias shape, never a person's
+// user name). The door is how the site wakes it: push (door_url, the sealed
+// door_secret) or poll; its failures, last knock and last error show on its
+// card. wake_every / wake_next_at / wake_note are its schedule.
+// ws_channel_agents: an agent in a channel - allowed (the member row), what
+// wakes it, the tier the channel's manager allows and the loop-guard switch.
+// It decides waking and the tier only: an application keeps reading with its
+// owner's reach. No row means the agent's defaults (Claude: claude_access).
+//
+// Today's Claude routine becomes the first row: its address and sealed token
+// are copied from config, whose columns stay unread for one release (files
+// can land before the upgrade runs). A site without a routine gets no row.
+function upgrade_2026_11_0_ws_agents() {
+
+	install_create_table('ws_agents', "CREATE TABLE ws_agents (
+		id                 INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		kind               VARCHAR(16) NOT NULL DEFAULT '',
+		handle             VARCHAR(32) NOT NULL DEFAULT '',
+		name               VARCHAR(100) NOT NULL DEFAULT '',
+		avatar             VARCHAR(255) NOT NULL DEFAULT '',
+		app_id             INT UNSIGNED NOT NULL DEFAULT 0,
+		provider           VARCHAR(32) NOT NULL DEFAULT '',
+		model              VARCHAR(100) NOT NULL DEFAULT '',
+		key_sealed         TEXT NULL,
+		status             VARCHAR(16) NOT NULL DEFAULT 'active',
+		door_kind          VARCHAR(8) NOT NULL DEFAULT 'poll',
+		door_url           VARCHAR(500) NOT NULL DEFAULT '',
+		door_secret_sealed TEXT NULL,
+		door_failures      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		door_last_knock    INT UNSIGNED NOT NULL DEFAULT 0,
+		door_error         VARCHAR(250) NOT NULL DEFAULT '',
+		wake_every         SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		wake_next_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		wake_note          VARCHAR(250) NOT NULL DEFAULT '',
+		created_by         INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_handle (handle),
+		KEY idx_app (app_id),
+		KEY idx_wake (wake_next_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_channel_agents', "CREATE TABLE ws_channel_agents (
+		channel_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		agent_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		allowed     TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		wake_rule   VARCHAR(16) NOT NULL DEFAULT 'mention',
+		wake_prefix VARCHAR(32) NOT NULL DEFAULT '',
+		tier        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		loop_guard  TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		added_by    INT UNSIGNED NOT NULL DEFAULT 0,
+		added_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (channel_id, agent_id),
+		KEY idx_agent (agent_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Claude's row, copied once: a second run finds it and leaves it, so a
+	// routine changed on the card since is never overwritten from config.
+	if ((int) db_value("SELECT COUNT(*) FROM ws_agents WHERE kind = 'claude'") > 0) {
+
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_agents claude')));
+
+	} elseif (!install_column_exists('config', 'ws_claude_routine_url') || !install_column_exists('config', 'ws_claude_token')) {
+
+		install_skipped('ws_agents: no Claude routine to copy');
+
+	} else {
+
+		$row = (array) db_item("SELECT ws_claude_routine_url, ws_claude_token FROM config LIMIT 1");
+		$url = (string) ($row['ws_claude_routine_url'] ?? '');
+		$token = (string) ($row['ws_claude_token'] ?? '');
+
+		if (($url === '') && ($token === '')) {
+
+			install_skipped('ws_agents: no Claude routine to copy');
+
+		} else {
+
+			db("INSERT INTO ws_agents (kind, handle, name, status, door_kind, door_url, door_secret_sealed, created_at, updated_at)
+				VALUES ('claude', 'claude', 'Claude', 'active', 'push', '" . e(substr($url, 0, 500)) . "', " . (($token === '') ? 'NULL' : "'" . e($token) . "'") . ", '" . time() . "', '" . time() . "')");
+
+			install_ran('ws_agents: the Claude routine\'s address and token copied into its row');
+
+		}
+
+	}
+
+	install_note('Workspace: agents with doors get their own registry and channel memberships. Claude\'s routine is moved into it and works as before; nothing else changes until an agent is added.');
+
+}
+
+// A channel's memory and an agent's decision mark (2026.11.0, 11.0.173;
+// includes/workspace/channel_memory.php).
+//
+// ws_channel_memory: the entries members and agents keep for a channel (any
+// channel, an agent channel or not): a title, a text, tags, pinned, an
+// expiry (0 never), who wrote it and who changed it last, each as a kind
+// (user, app) and an id like ws_messages.sender_kind / sender_id. An agent's
+// brief carries their index; it reads the texts it needs. Expired entries
+// leave the index; the workspace job deletes them 30 days later.
+// ws_messages.marked_by_kind: whether marked_by is a person or an
+// application, so an agent's mark never reads as a person's. Existing marks
+// were all made by people and stay 'user'.
+function upgrade_2026_11_0_ws_channel_memory() {
+
+	install_create_table('ws_channel_memory', "CREATE TABLE ws_channel_memory (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		title           VARCHAR(150) NOT NULL DEFAULT '',
+		text            TEXT NULL,
+		tags            VARCHAR(400) NOT NULL DEFAULT '',
+		pinned          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		expires_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		author_kind     ENUM('user','app') NOT NULL DEFAULT 'user',
+		author_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by_kind ENUM('user','app') NOT NULL DEFAULT 'user',
+		updated_by_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_channel (channel_id, pinned, updated_at),
+		KEY idx_expires (expires_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('ws_messages', 'marked_by_kind', "ENUM('user','app') NOT NULL DEFAULT 'user' AFTER marked_by");
+
+	install_note('Workspace: every channel gets a memory that its members and agents keep, and an agent may mark a message as a decision. Nothing changes until someone writes an entry or an agent marks a message.');
+
+}
+
+
+// The undo journal of an agent's applied change (2026.11.0, 11.0.174;
+// includes/workspace/agent_tiers.php).
+//
+// An agent allowed a tier in a channel (ws_channel_agents.tier) has a change
+// within it applied at once; the ws_ai_changes row is its journal line, with
+// the before values it already keeps in fields. applied_by_kind says whether
+// a person applied the row ('user', every existing row) or the agent's tier
+// did ('app'); status gains 'undone', and undone_by / undone_at say who put
+// the record back and when. A member allowed to change that kind may undo it
+// for 7 days, unless the record changed since.
+function upgrade_2026_11_0_ws_agent_undo() {
+
+	// The enum is widened from what is there, never narrowed: reading it first
+	// keeps any value a later release may have added.
+	$status = install_column_info('ws_ai_changes', 'status');
+
+	if (is_array($status) && (stripos((string) $status['Type'], "'undone'") === false)) {
+
+		preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $status['Type'], $matches);
+		$values = array();
+
+		foreach ($matches[1] as $value) {
+			$values[] = "'" . $value . "'";
+		}
+
+		$values[] = "'undone'";
+
+		// The default is kept as it stands too, not rewritten from memory.
+		$default = ((string) $status['Default'] !== '') ? (string) $status['Default'] : 'pending';
+
+		install_modify_column('ws_ai_changes', 'status', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+	}
+
+	install_add_column('ws_ai_changes', 'applied_by_kind', "ENUM('user','app') NOT NULL DEFAULT 'user' AFTER decided_at");
+	install_add_column('ws_ai_changes', 'undone_by', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER applied_by_kind");
+	install_add_column('ws_ai_changes', 'undone_at', "INT UNSIGNED NOT NULL DEFAULT 0 AFTER undone_by");
+
+	install_note('Workspace: a record change an agent makes within the tier its channel allows is applied at once and can be undone for 7 days. Nothing changes until a channel manager raises an agent\'s tier.');
+
+}
+
+// ws_channel_links: a repository of an outside service (GitHub first) linked
+// to a Workspace channel through a connected account (connection_id). The
+// site adds a webhook to the repository (hook_id) signed with a secret of
+// the link's own, kept sealed with the site's key; events and labels say
+// which lines it writes. One repository is linked to a channel once.
+// ws_channel_link_deliveries: the delivery ids a link has written, so a
+// delivery the service sends again, or two copies in parallel, write one
+// line; rows older than 7 days are deleted.
+function upgrade_2026_11_0_ws_channel_links() {
+
+	install_create_table('ws_channel_links', "CREATE TABLE ws_channel_links (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		channel_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		provider       VARCHAR(32) NOT NULL DEFAULT '',
+		connection_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		repository     VARCHAR(150) NOT NULL DEFAULT '',
+		events         VARCHAR(255) NOT NULL DEFAULT '',
+		labels         VARCHAR(400) NOT NULL DEFAULT '',
+		hook_id        BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		secret         TEXT NULL,
+		last_error     VARCHAR(255) NOT NULL DEFAULT '',
+		last_error_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_channel_repository (channel_id, provider, repository),
+		KEY idx_connection (connection_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_channel_link_deliveries', "CREATE TABLE ws_channel_link_deliveries (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		link_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		delivery_id  CHAR(36) NOT NULL DEFAULT '',
+		received_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_link_delivery (link_id, delivery_id),
+		KEY idx_received (received_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: a GitHub repository can be linked to a channel, so its CI results, pull requests and labels are written into the channel. Nothing changes until someone links a repository.');
+
+}
+
+// A bundle's own back order choice (includes/fn/bundles.php).
+//
+// products.backorder of a bundle is a cache: the choice only while every
+// tracked component takes back orders. Kept in that one column, the choice
+// was lost as soon as a component stopped taking them, and the bundle never
+// took back orders again. bundle_backorder keeps the choice; the cache is
+// worked out from it (pg_bundle_backorder()). The fill copies the cache of
+// the bundles once, when the column is added: on a rerun it would overwrite
+// choices saved since with the cache.
+function upgrade_2026_11_0_bundle_backorder() {
+
+	if (!install_column_exists('products', 'bundle')) {
+
+		install_skipped('products.bundle does not exist, skipped');
+
+		return;
+
+	}
+
+	$existed = install_column_exists('products', 'bundle_backorder');
+
+	if (!install_add_columns_instant('products', array('bundle_backorder' => "TINYINT(1) NOT NULL DEFAULT 0"))) {
+
+		install_add_column('products', 'bundle_backorder', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	}
+
+	if (!$existed && install_column_exists('products', 'bundle_backorder')) {
+
+		db("UPDATE products SET bundle_backorder = 1 WHERE bundle = 1 AND backorder = 1");
+
+	}
+
+	install_note('Product bundles: a bundle keeps its own Backorder choice apart from what its components allow, so it takes back orders again once they do. A bundle that lost the choice already takes it back when it is saved once.');
 
 }

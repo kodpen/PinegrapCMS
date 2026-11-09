@@ -293,6 +293,12 @@ if (!$_POST) {
 
         log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was created','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);
 
+        // A record the screen's user (who may edit the form's records)
+        // completed: its texts go to the languages that translate on save.
+        if ($new_complete == 1) {
+            pg_tr_records_saved($page_id, $user['id']);
+        }
+
         // If the save for later button was clicked.
         if ($save_for_later_clicked) {
             $message = lang('The form has been created and saved for later.');

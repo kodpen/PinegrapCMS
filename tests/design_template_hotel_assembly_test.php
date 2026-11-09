@@ -226,3 +226,71 @@ function test_hotel_assembly_google_reviews()
 	pg_assert_true(strpos($home, '"templateWidget":"google_reviews"') !== false, 'the home places the Google reviews');
 	pg_assert_true(strpos($home, '"templateWidget":"home_rooms"') !== false && strpos($home, '"templateWidget":"home_posts"') !== false, 'the home places the rooms and the journal');
 }
+
+// Home, the rooms page and the rates page place the Hotel blocks: every
+// pg-hotel- class's rule ships in the User Styles, the interactions are
+// kept as written and something moves on each, one h1 on each; the home
+// opens with a load entrance, shows the Junior Suite in depth and the stay
+// clock, its figures band left for the about page; the rooms page shows
+// the Terrace Suite before the list; the clock's times are the hotel's.
+function test_hotel_assembly_pages_on_hotel_blocks()
+{
+	$tpl = _test_ht_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	pg_assert_same('2.0.0', $tpl['version'], 'version raised');
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'rooms', 'rates'), true)) $trees[$p['key']] = $p['tree'];
+	$wanted = array(
+		'home'  => array('pg-hotel-gallery', 'pg-hotel-facts', 'pg-hotel-figure', 'pg-hotel-clock', 'pg-hotel-end'),
+		'rooms' => array('pg-hotel-gallery', 'pg-hotel-facts', 'pg-hotel-figure'),
+		'rates' => array('pg-hotel-clock', 'pg-hotel-end', 'pg-hotel-figure'),
+	);
+	pg_assert_same(3, count($trees), 'home, rooms, rates');
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_ht_asm_tpl_nodes($tree, $nodes);
+		$classes = '';
+		$labels = array();
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if (isset($n['props']['_label'])) $labels[] = $n['props']['_label'];
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-hotel-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) {
+			if ($class === 'pg-hotel-shot' || $class === 'pg-hotel-main' || $class === 'pg-hotel-end') continue; // styled under their parent's rule
+			pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		}
+		foreach ($wanted[$key] as $class) pg_assert_contains($class, $classes, $key . ': places ' . $class);
+		pg_assert_true($effects >= 2, $key . ': something moves');
+		pg_assert_same(1, $h1, $key . ': one h1');
+		if ($key === 'home') pg_assert_false(in_array('Figures', $labels, true), 'home: no figures band');
+	}
+	pg_assert_contains('.pg-hotel-clock .pg-hotel-end', $css, 'the stay cards are styled');
+	pg_assert_contains('.pg-hotel-gallery .pg-hotel-main', $css, 'the main picture is styled');
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the hero comes in on load');
+	pg_assert_contains('"id":"ht-home-room"', $home, 'the showcase is a search section');
+	pg_assert_contains('"id":"ht-home-stay"', $home, 'the clock is a search section');
+	pg_assert_contains('"text":"Junior Suite"', $home, 'the home shows the Junior Suite');
+	foreach (array('Guests', 'Floor Area', 'Beds', 'Room view') as $fact) pg_assert_contains('"text":"' . $fact . '"', $home, 'the fact ' . $fact);
+	foreach (array('15:00', '11:00') as $t) pg_assert_contains('"tag":"time","cssClass":"pg-hotel-figure pht-price d-block display-5 fw-bold mb-3","_label":"Time","text":"' . $t . '","_attrs":[{"name":"datetime","value":"' . $t . '"}]', $home, 'the time ' . $t);
+	pg_assert_contains('"href":"tel:+905550000000"', $home, 'the reception\'s phone');
+	pg_assert_contains('{{page:book}}?room=Junior%20Suite', $home, 'ask for the shown room');
+	$rooms = json_encode($trees['rooms'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"text":"Terrace Suite"', $rooms, 'the rooms page shows the Terrace Suite');
+	pg_assert_false(strpos($rooms, '"href":"{{page:rooms}}"') !== false && strpos($rooms, '"text":"All Rooms"') !== false, 'the rooms page does not link to itself');
+	pg_assert_contains('"id":"ht-rooms-showcase"', $rooms, 'the rooms showcase is a search section');
+	$rates = json_encode($trees['rates'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"id":"ht-rates-stay"', $rates, 'the rates clock is a search section');
+}

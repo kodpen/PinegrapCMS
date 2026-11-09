@@ -4,8 +4,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 // A module of functions.php: The visual designer: system styles, tree validation and expansion, node and component rendering, page/style saving, CSS output.
@@ -2344,13 +2344,14 @@ function pg_designer_design_set_draft($style_id, $on, $user)
 }
 
 /**
- * The editor's UI text keys: every _sdT('…') key in
- * assets/js/style_designer.src.js, the source the served .min.js is built
- * from (the literals there are not guaranteed to keep their quotes). The keys
- * are English source text, so the JS file itself is the single list — there
- * is no second copy to keep in step. Scanning 4.7 MB on every editor load would be wasteful; the result is
- * cached in data/temp next to the file's mtime and size, and rebuilt when
- * the file changes.
+ * The editor's UI text keys: every _sdT('…') key in the designer's sources
+ * (pg_designer_js_all_sources(): assets/js/style_designer.src.js, its block
+ * family files and its parts), the sources the served .min.js is built from (the literals
+ * there are not guaranteed to keep their quotes). The keys are English source
+ * text, so the JS files themselves are the single list — there is no second
+ * copy to keep in step. Scanning 4.7 MB on every editor load would be
+ * wasteful; the result is cached in data/temp next to every file's name,
+ * mtime and size, and rebuilt when any of them changes.
  *
  * @return array  Keys, unescaped (\' → ', \\ → \), unique, in file order
  */
@@ -2360,9 +2361,17 @@ function pg_designer_i18n_keys()
     if ($keys !== null) return $keys;
     $keys = array();
 
-    $js = PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js';
-    if (!is_file($js)) return $keys;
-    $stamp = @filemtime($js) . ':' . @filesize($js);
+    $files = array();
+    foreach (pg_designer_js_all_sources() as $relative) {
+        $path = PG_FUNCTIONS_DIR . '/' . $relative;
+        if (is_file($path)) $files[$relative] = $path;
+    }
+    if (!isset($files['assets/js/style_designer.src.js'])) return $keys;
+    $stamp = array();
+    foreach ($files as $relative => $path) {
+        $stamp[] = basename($relative) . ':' . @filemtime($path) . ':' . @filesize($path);
+    }
+    $stamp = implode('|', $stamp);
 
     $cache = PG_FUNCTIONS_DIR . '/data/temp/designer_i18n_keys.json';
     if (is_file($cache)) {
@@ -2373,9 +2382,10 @@ function pg_designer_i18n_keys()
         }
     }
 
-    $source = (string)@file_get_contents($js);
-    if ($source !== '' && preg_match_all("/_sdT\\(\\s*'((?:[^'\\\\]|\\\\.)*)'/", $source, $m)) {
-        $seen = array();
+    $seen = array();
+    foreach ($files as $path) {
+        $source = (string)@file_get_contents($path);
+        if ($source === '' || !preg_match_all("/_sdT\\(\\s*'((?:[^'\\\\]|\\\\.)*)'/", $source, $m)) continue;
         foreach ($m[1] as $raw) {
             $key = str_replace(array("\\'", '\\\\'), array("'", '\\'), $raw);
             if ($key === '' || isset($seen[$key])) continue;
@@ -2388,12 +2398,16 @@ function pg_designer_i18n_keys()
 }
 
 /**
- * The ready-made blocks' stylesheet as assets/js/style_designer.src.js defines
- * it: the marker comment (_SD_BLOCK_CSS_MARK), rule name → CSS text
- * (_SD_BLOCK_CSS) and block type → the rule names it needs
- * (_SD_BLOCK_CSS_NEEDS). The JS file is the only copy of the rules, so a
- * design template that ships them writes the same text a palette drop
- * writes. Read once per request.
+ * The ready-made blocks' stylesheet as the designer's sources define it
+ * (pg_designer_js_sources(): assets/js/style_designer.src.js, then its block
+ * family files): the marker comment (_SD_BLOCK_CSS_MARK, from the core), rule
+ * name → CSS text (_SD_BLOCK_CSS) and block type → the rule names it needs
+ * (_SD_BLOCK_CSS_NEEDS). A family file declares both objects the same way,
+ * indented four spaces inside its registration factory; a name the core or
+ * an earlier file already defines keeps that entry, as the editor merges
+ * them. The JS files are the only copy of the rules, so a design template
+ * that ships them writes the same text a palette drop writes. Read once per
+ * request.
  *
  * @return array  array('mark' => string, 'rules' => array, 'needs' => array)
  */
@@ -2403,8 +2417,30 @@ function _pg_designer_block_css_source()
     if ($source !== null) return $source;
     $source = array('mark' => '/* Pinegrap block styles */', 'rules' => array(), 'needs' => array());
 
-    $js = (string)@file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
-    if ($js === '') return $source;
+    foreach (pg_designer_js_sources() as $i => $relative) {
+        $js = (string)@file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+        if ($js === '') {
+            if ($i === 0) return $source;
+            continue;
+        }
+        $part = _pg_designer_block_css_parse($js);
+        if ($i === 0 && $part['mark'] !== null) $source['mark'] = $part['mark'];
+        $source['rules'] += $part['rules'];
+        $source['needs'] += $part['needs'];
+    }
+    return $source;
+}
+
+/**
+ * The block stylesheet one designer source declares: its marker comment (or
+ * null), its _SD_BLOCK_CSS rules and its _SD_BLOCK_CSS_NEEDS rows.
+ *
+ * @param string $js  the source text
+ * @return array  array('mark' => string|null, 'rules' => array, 'needs' => array)
+ */
+function _pg_designer_block_css_parse($js)
+{
+    $out = array('mark' => null, 'rules' => array(), 'needs' => array());
 
     // The body of each object literal: from its opening line to the first
     // line that closes it at the declaration's indentation.
@@ -2418,7 +2454,7 @@ function _pg_designer_block_css_source()
     $escapes = array('\\n' => "\n", "\\'" => "'", '\\\\' => '\\');
 
     if (preg_match("/var _SD_BLOCK_CSS_MARK = '((?:[^'\\\\]|\\\\.)*)';/", $js, $m)) {
-        $source['mark'] = strtr($m[1], $escapes);
+        $out['mark'] = strtr($m[1], $escapes);
     }
 
     // Each entry is its key followed by string literals joined with +;
@@ -2431,15 +2467,15 @@ function _pg_designer_block_css_source()
         $to = isset($keys[$i + 1]) ? $keys[$i + 1][0][1] : strlen($body);
         $segment = preg_replace('~^\s*//.*$~m', '', substr($body, $from, $to - $from));
         preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string)$segment, $parts);
-        $source['rules'][$key[1][0]] = strtr(implode('', $parts[1]), $escapes);
+        $out['rules'][$key[1][0]] = strtr(implode('', $parts[1]), $escapes);
     }
 
     preg_match_all("/^\\s*'([a-z0-9-]+)'\\s*:\\s*\\[([^\\]]*)\\]/m", $bodies['needs'], $rows, PREG_SET_ORDER);
     foreach ($rows as $row) {
         preg_match_all("/'([a-z0-9-]+)'/", $row[2], $names);
-        $source['needs'][$row[1]] = $names[1];
+        $out['needs'][$row[1]] = $names[1];
     }
-    return $source;
+    return $out;
 }
 
 /**
@@ -4058,6 +4094,9 @@ function pg_designer_sync_asset_files($custom_css_json, $custom_js_json, $user_i
         foreach ($assets as $asset) {
             if (empty($asset['type']) || empty($asset['name']) || !isset($asset['content'])) continue;
             if (!in_array($asset['type'], array('css', 'js', 'json'))) continue;
+            // A plain file name only: one with a folder in it would be
+            // written outside the files directory.
+            if (!pg_migration_design_file_name_valid($asset['name'])) continue;
             $ext = strtolower(pathinfo($asset['name'], PATHINFO_EXTENSION));
             if (!in_array($ext, array('css', 'js', 'json'))) continue;
             // Written as a whole: a failed write keeps the asset file that
@@ -5047,6 +5086,14 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             } elseif ($tag_lc === 'img') {
                 if (!empty($props['src'])) { $attrs .= ' src="' . h($props['src']) . '"'; $builtin_attrs_emitted['src'] = true; }
                 if (!empty($props['alt'])) { $attrs .= ' alt="' . h($props['alt']) . '"'; $builtin_attrs_emitted['alt'] = true; }
+            } else {
+                // A player's address (a video's poster too) bound to a record
+                // field. Only a binding prints it: an unbound player keeps its
+                // Attributes panel src as before.
+                foreach (pg_media_bound_attrs($tag_lc, $props) as $_m_name => $_m_value) {
+                    $attrs .= ' ' . $_m_name . '="' . h($_m_value) . '"';
+                    $builtin_attrs_emitted[$_m_name] = true;
+                }
             }
             // The title and tooltip, then the Attributes panel's entries: not
             // the id (props.id is written above), the class, the style
@@ -5513,7 +5560,7 @@ function _render_component_html($props, $pad, $kids = '')
             // Built-in background style + any user-supplied style merge.
             $hero_style_parts = array('background:' . $bgColor);
             $u_style = _user_attr_value($props, 'style');
-            if ($u_style !== '') $hero_style_parts[] = $u_style;
+            if ($u_style !== '') $hero_style_parts[] = h($u_style);
             $extra_attrs = _render_extra_attrs($props, array(), false, true);
             $html .= $pad . '<div class="py-' . h($padding) . ' text-center text-' . h($textColor) . '" style="' . implode(';', $hero_style_parts) . '"' . $extra_attrs . '>' . "\n";
             $html .= $pad . '    <div class="container">' . "\n";
@@ -5750,7 +5797,7 @@ function _apply_bindings($props, $rich_text = false)
     // chooser JS can swap. Everything else (action, section) is a
     // backend WIRING marker — it doesn't put a value into the DOM, so
     // including it in data-pg-bind would just confuse the JS updater.
-    static $renderable_props = array('text' => 1, 'html' => 1, 'src' => 1, 'alt' => 1, 'href' => 1, 'value' => 1);
+    static $renderable_props = array('text' => 1, 'html' => 1, 'src' => 1, 'alt' => 1, 'href' => 1, 'value' => 1, 'poster' => 1);
     $formats = (isset($props['_bindFormats']) && is_array($props['_bindFormats'])) ? $props['_bindFormats'] : array();
     $bind_pairs = array();
     $page_link  = null;
@@ -5815,6 +5862,23 @@ function _apply_bindings($props, $rich_text = false)
         $props['_attrs'] = $attrs;
     }
     return $props;
+}
+
+// The address attributes a media element takes from its bindings, after
+// _apply_bindings() turned them into tokens: src on audio, video and source,
+// poster on video, each only when bound. A literal src stays an Attributes
+// panel entry, so trees without the binding render as before.
+function pg_media_bound_attrs($tag, $props)
+{
+    static $by_tag = array('audio' => array('src'), 'video' => array('src', 'poster'), 'source' => array('src'));
+    $tag = strtolower((string)$tag);
+    if (!isset($by_tag[$tag]) || empty($props['_bindings']) || !is_array($props['_bindings'])) return array();
+    $out = array();
+    foreach ($by_tag[$tag] as $name) {
+        if (empty($props['_bindings'][$name]) || !isset($props[$name]) || (string)$props[$name] === '') continue;
+        $out[$name] = (string)$props[$name];
+    }
+    return $out;
 }
 
 // Whether a system widget is being drawn: a '__page_link' still standing

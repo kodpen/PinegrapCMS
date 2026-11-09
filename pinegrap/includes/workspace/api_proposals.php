@@ -93,7 +93,7 @@ function ws_proposal_api_routes()
             'returns'     => 'WorkspaceProposal',
             'status'      => 201,
             'summary'     => 'Propose record changes in a channel',
-            'description' => 'How an AI app or an integration proposes a change to a site record (a product, its stock, an order, a customer, a page, a task...), or a flow, instead of writing it: it writes text into a channel the owner may post in, as the application, with the person the key or the connection acts for mentioned (they are told), and each change waits under it on a card for that person to apply or set aside, with their own rights. ' . $what . ' id may also be a discussion\'s the owner is in.',
+            'description' => 'How an AI app or an integration proposes a change to a site record (a product, its stock, an order, a customer, a page, a task...), or a flow, instead of writing it: it writes text into a channel the owner may post in, as the application, with the person the key or the connection acts for mentioned (they are told), and each change waits under it on a card for that person to apply or set aside, with their own rights. An application key registered as an agent of the channel whose tier there covers every change of the call (a channel manager sets it: 2 a reversible change, 3 also an irreversible one) has them applied at once instead, in that person\'s name: the answer gives them as applied, and a member may undo such a change for 7 days while the record still holds it (status undone). ' . $what . ' id may also be a discussion\'s the owner is in.',
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 3900, 'required' => true, 'description' => 'What is proposed and why, for the person who reads the cards. Tags such as <#order:1045> or <@user:12> are kept as tags.'),
@@ -286,6 +286,10 @@ function ws_api_changes_propose($params)
     }
 
     ws_api_log(lang(array('string' => '{var:1} change(s) proposed in #{var:2}', 'vars' => array(count($rows), $channel['name']))));
+
+    // An agent the channel allows a tier has the changes within it applied
+    // at once (agent_tiers.php); the answer then gives them as applied.
+    ws_agent_apply_within_tier($viewer, (int) $result['request_id'], $agent, $channel);
 
     api_ok(ws_api_proposal_present($viewer, ws_api_proposal_or_404($result['request_id'])), 201);
 }

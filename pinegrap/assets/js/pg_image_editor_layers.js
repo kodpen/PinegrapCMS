@@ -11,8 +11,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -23,6 +23,10 @@
     // The eight handles of a box and the turning handle. The corners come
     // after the edges, so on a small box their touch targets lie on top.
     var BOX_HANDLES = ['n', 'e', 's', 'w', 'nw', 'ne', 'se', 'sw', 'rot'];
+
+    // A press stays a click while the pointer keeps within this many screen
+    // pixels of where it went down, as with Select area.
+    var CLICK_PX = 3;
 
     // What a layer's type adds (Editor.layerTypes, the list in
     // pg_image_editor.js); an empty object for a type no tool file knows.
@@ -36,6 +40,14 @@
         var type = kind(l);
 
         return !type.hit || type.hit(l, p, slack);
+    }
+
+    // A layer the Select tool neither moves, resizes nor lines up: a locked
+    // one, or one of a fixed type (an erased or adjusted area, which moves
+    // with the picture). It can still be chosen in the Layers list and
+    // deleted unless it is locked.
+    function fixed(l) {
+        return !!l.locked || !!kind(l).fixed;
     }
 
     Editor.prototype.layer = function (id) {
@@ -169,7 +181,7 @@
             d.style.height = (l.h * k) + 'px';
             d.style.transform = l.rot ? 'rotate(' + l.rot + 'deg)' : '';
 
-            if ((picked.length === 1) && !l.locked) {
+            if ((picked.length === 1) && !fixed(l)) {
                 ((type.box === false) ? [] : BOX_HANDLES).forEach(function (h) {
                     d.appendChild(el('span', { class: 'pgie-sh', 'data-h': h, title: (h === 'rot') ? t('rotate') : null }));
                 });
@@ -211,6 +223,8 @@
     // A press with the Select tool: a handle of the one selected layer
     // resizes or turns it; a layer is selected (Shift adds or removes it)
     // and moved with the rest of the selection; the empty stage clears it.
+    // A press that ends as a click outside the selected area also clears
+    // that (endDrag()).
     Editor.prototype.startDrag = function (e) {
         var p = this.toDoc(e.clientX, e.clientY), h = e.target.getAttribute && e.target.getAttribute('data-h');
         var one = (this.sel.length === 1) ? this.layer(this.sel[0]) : null, hit = null;
@@ -241,7 +255,7 @@
                     this.select([]);
                 }
 
-                this.drag = { kind: 'box', at: p, to: p, base: this.sel.slice() };
+                this.drag = { kind: 'box', at: p, to: p, base: this.sel.slice(), click: this.pressClick(e) };
             } else {
                 if (e.shiftKey) {
                     this.select((this.sel.indexOf(hit.id) >= 0) ? this.sel.filter(function (id) { return id !== hit.id; }) : this.sel.concat([hit.id]));
@@ -252,7 +266,7 @@
                     this.select([hit.id]);
                 }
 
-                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !l.locked; }).map(M.clone) };
+                this.drag = { kind: 'move', at: p, start: this.selected().filter(function (l) { return !fixed(l); }).map(M.clone), click: this.pressClick(e) };
             }
         }
 
@@ -274,11 +288,32 @@
             return d.base.slice();
         }
 
-        return d.base.concat(M.layersInBox(this.doc, box).filter(function (id) { return d.base.indexOf(id) < 0; }));
+        // An erased or adjusted area is not caught: it is the picture's own.
+        var doc = this.doc;
+
+        return d.base.concat(M.layersInBox(doc, box).filter(function (id) { return (d.base.indexOf(id) < 0) && !kind(find(doc, id)).fixed; }));
+    };
+
+    // Where a press without Shift, Alt, Ctrl or Cmd went down on the screen:
+    // it may end as a click (endDrag()). Null for a press with one of them.
+    Editor.prototype.pressClick = function (e) {
+        return (e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) ? null : [e.clientX, e.clientY];
+    };
+
+    // The pointer at e: once further than CLICK_PX from the press, the press
+    // is a drag, even if it comes back.
+    Editor.prototype.dragAway = function (e) {
+        var d = this.drag;
+
+        if (d && d.click && (Math.hypot(e.clientX - d.click[0], e.clientY - d.click[1]) > CLICK_PX)) {
+            d.click = null;
+        }
     };
 
     Editor.prototype.moveDrag = function (e) {
         var d = this.drag, p = this.toDoc(e.clientX, e.clientY), k = this.view.k;
+
+        this.dragAway(e);
 
         if (d.kind === 'box') {
             d.to = p;
@@ -358,13 +393,22 @@
         return true;
     };
 
-    Editor.prototype.endDrag = function () {
-        var d = this.drag;
+    // The end of a press; e is the pointer's release. Only a pointerup can
+    // make a click: a cancelled pointer, the second finger that starts a
+    // pan and a long press (the menu ends it with the press itself) do not,
+    // nor the context menu's own press (no event).
+    Editor.prototype.endDrag = function (e) {
+        var d = this.drag, click;
 
         if (!d) {
             return;
         }
 
+        if (e && (e.type === 'pointerup')) {
+            this.dragAway(e);
+        }
+
+        click = !!(e && (e.type === 'pointerup') && d.click);
         this.drag = null;
         this.guides = null;
         this.history.key = null;
@@ -373,10 +417,15 @@
         // the view, gives back the one before it.
         if (d.kind === 'box') {
             this.select((Object.keys(this.pointers).length > 1) ? d.base : this.boxSelection(d));
-            return;
+        } else {
+            this.render();
         }
 
-        this.render();
+        // With Select a click outside the selected area (Select area's
+        // marching ants) deselects it, whatever the click selected.
+        if (click && (this.tool === 'select') && this.areaClickOut) {
+            this.areaClickOut(d.at);
+        }
     };
 
     // Every layer selected: Ctrl+A, and Select all in the layers list (from
@@ -410,6 +459,7 @@
     // Ctrl+D duplicates, Ctrl+C copies, Ctrl+A selects all. True when used.
     Editor.prototype.layerKey = function (e, mod, k) {
         var ids = this.sel, step = e.shiftKey ? 10 : 1, free = this.selected().filter(function (l) { return !l.locked; });
+        var movable = free.filter(function (l) { return !fixed(l); });
 
         if (Editor.selectTools.indexOf(this.tool) < 0) {
             return false;
@@ -441,9 +491,9 @@
 
         var dir = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
 
-        if (!mod && dir && free.length) {
+        if (!mod && dir && movable.length) {
             this.change(function (doc) {
-                free.forEach(function (o) {
+                movable.forEach(function (o) {
                     var l = find(doc, o.id);
 
                     l.x += dir[0] * step;
@@ -464,9 +514,13 @@
             list.forEach(function (o) {
                 var l = M.clone(o);
 
+                // A copy of an erased or adjusted area keeps its place on the
+                // picture.
                 l.id = M.newId(doc);
-                l.x += offset;
-                l.y += offset;
+                if (!kind(l).fixed) {
+                    l.x += offset;
+                    l.y += offset;
+                }
                 doc.layers.push(l);
                 added.push(l.id);
             });
@@ -672,10 +726,11 @@
         this.change(function (doc) { doc.layers = M.reorder(doc.layers, ids, how); });
     };
 
-    // The unlocked selected layers lined up on how ('left' … 'bottom'): on
-    // their joint box when two or more are selected, else on the canvas.
+    // The selected layers the Select tool may move lined up on how ('left'
+    // … 'bottom'): on their joint box when two or more are selected, else on
+    // the canvas.
     Editor.prototype.alignLayers = function (how) {
-        var picked = this.selected(), free = picked.filter(function (l) { return !l.locked; });
+        var picked = this.selected(), free = picked.filter(function (l) { return !fixed(l); });
         var target = (picked.length > 1) ? M.bounds(free) : this.viewRect();
 
         if (free.length) {
@@ -683,9 +738,10 @@
         }
     };
 
-    // The unlocked selected layers spaced evenly along axis 'x' or 'y'.
+    // The selected layers the Select tool may move spaced evenly along axis
+    // 'x' or 'y'.
     Editor.prototype.spreadLayers = function (axis) {
-        var free = this.selected().filter(function (l) { return !l.locked; });
+        var free = this.selected().filter(function (l) { return !fixed(l); });
 
         if (free.length >= 3) {
             this.moveLayers(free, M.distribute(free.map(function (l) { return M.bounds([l]); }), axis));

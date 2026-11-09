@@ -33,6 +33,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 ## What about the existing root include files?
 - ~85 include files at the root do not follow this rule (`get_*.php` content generators, `*_f.php` screen helpers, `seo*.php`, `shipping.php`, `chat.php`, third-party `pclzip.lib.php` / `excel_reader2.php`, etc.). They STAY there: the file-integrity check watches them and moving them was shelved for security reasons. The rule applies to NEW code only.
+- The six root `*_f.php` files (`duplicate_folder_f`, `duplicate_page_f`, `edit_offer_f`, `export_products_f`, `import_products_f`, `view_folder_and_files_f`) are included, never URL-called, and define functions only. None checks a gate constant yet: the one next touched gets one.
 
 ## How does placement interact with the file-integrity check?
 - The check covers the files directly in the software directory plus the folders `pg_integrity_scope_directories()` returns (`includes/fn/system_status.php`; today only `includes`). The dev machine's reference generator reads the same function; never write the scope list a second time.

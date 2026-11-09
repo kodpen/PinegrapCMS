@@ -300,6 +300,26 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'inventory.moves',
+			'method'  => 'GET',
+			'path'    => '/inventory/moves',
+			'scope'   => 'products:read',
+			'handler' => 'api_inventory_moves',
+			'returns' => array('list' => 'StockMove'),
+			'summary' => 'Stock history',
+			'description' => 'Every change of a product\'s units at a stock location, newest first, as the Stock history screen lists it: orders, cancellations, returns, counts, imports, marketplace and accounting changes, transfers (two rows with the same ref) and changes by hand or over this API. delta is the change, quantity_after the units left at that location. Only sites that keep stock per location record moves; GET /erp/stock/moves lists the accounting documents\' stock lines instead. Refusals: 422 location when location is not a stock location of this site.',
+			'params'  => array(
+				array('name' => 'product_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only this product\'s moves.'),
+				array('name' => 'location',   'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the moves at this location (GET /inventory/locations; 0 or left out: every location).'),
+				array('name' => 'reason',     'in' => 'query', 'type' => 'enum', 'values' => pg_stock_reasons(), 'description' => 'Only moves of this kind: panel (product screen), bulk_edit, import, checkout (an order), local_sale (a store sale), cancel, return, barcode, api, transfer, count (a stock count), marketplace, erp (accounting) or workspace.'),
+				array('name' => 'from',       'in' => 'query', 'type' => 'datetime', 'description' => 'Only moves at or after this moment; a date alone counts from its 00:00 in the site\'s time zone.'),
+				array('name' => 'to',         'in' => 'query', 'type' => 'datetime', 'description' => 'Only moves at or before this moment. A date alone (YYYY-MM-DD) counts that day whole, to 23:59:59 in the site\'s time zone; a value with a time is that moment.'),
+				array('name' => 'limit',      'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50, 'description' => 'Rows per page.'),
+				array('name' => 'cursor',     'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
 			'id'      => 'inventory.transfer',
 			'method'  => 'POST',
 			'path'    => '/inventory/transfer',
@@ -2388,7 +2408,7 @@ function api_schema() {
 			'handler' => 'api_contact_groups_list',
 			'returns' => array('list' => 'ContactGroup'),
 			'summary' => 'Contact groups',
-			'description' => 'The lists campaigns are sent to, by id, cursor paged, each with how many contacts it holds. email_subscription says whether campaigns may go to it and its members choose whether they get them; subscription_type open offers it to every contact on the e-mail preferences page, closed only to its members. An account with the contacts right but the user role sees only the groups given to it, as on the contact screens.',
+			'description' => 'The lists campaigns are sent to, by id, cursor paged, each with how many contacts it holds. email_subscription says whether campaigns may go to it and its members choose whether they get them; subscription_type open offers it to every contact on the e-mail preferences page, closed only to its members. by_rule says the group is filled by its rules alone (its members cannot be changed by hand; POST /contact-groups/{id}/refresh runs the rules now), computed_at when they last ran to the end. An account with the contacts right but the user role sees only the groups given to it, as on the contact screens.',
 			'params'  => array(
 				array('name' => 'email_subscription', 'in' => 'query', 'type' => 'bool', 'description' => 'Only the groups that take e-mail subscriptions, or only the ones that do not.'),
 				array('name' => 'q',      'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Matches the name or the description.'),
@@ -2512,6 +2532,21 @@ function api_schema() {
 				array('name' => 'add',    'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to put into the group. Each has to exist.'),
 				array('name' => 'remove', 'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 250, 'description' => 'Contact ids to take out of the group.'),
 				array('name' => 'opt_in', 'in' => 'body', 'type' => 'bool', 'description' => 'The choice for this group\'s e-mail, written for every contact in add (ignored when add is empty). Only for a group that takes subscriptions.')
+			)
+		),
+
+		array(
+			'id'      => 'contact_groups.refresh',
+			'method'  => 'POST',
+			'path'    => '/contact-groups/{id}/refresh',
+			'scope'   => 'contact_groups:write',
+			'handler' => 'api_contact_groups_refresh',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'done' => 'boolean', 'added' => 'integer', 'removed' => 'integer', 'members' => 'integer'),
+			'summary' => 'Run a contact group\'s rules now',
+			'description' => 'Refresh now on the contact group screen, for a group filled by rules (by_rule true): its rules run for a few seconds, the contacts they select are put in and the ones they no longer select taken out. A member that did not come from the rules (one kept when the group got them) is never taken out. A large group takes several calls: send it again until done is true; each call goes on from where the last one stopped. added and removed count the whole pass so far, members what the group holds now. The change is announced once, as contact_group.members_changed, when the pass is done. The rules also run on their own about once an hour (computed_at on the group). A hand group is refused with 409 contact_group_not_by_rule. An account with the user role may refresh the groups given to it, as on the group screen.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 
@@ -3366,6 +3401,21 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'customers.allow_mail',
+			'method'  => 'POST',
+			'path'    => '/customers/{id}/allow-mail',
+			'scope'   => 'customers:write',
+			'handler' => 'api_customers_allow_mail',
+			'dry_run' => true,
+			'returns' => 'Customer',
+			'summary' => 'Allow e-mail to a customer again',
+			'description' => 'Lifts the block that stops e-mail to the customer\'s stored address after a hard bounce, a complaint, a manual block or too many soft bounces: the "Allow again" button of the contact card. The customer\'s email_suppressed says whether a block stands. The address is read from the customer record, never sent. Written to the activity log. 409 email_not_suppressed when no block stands (or the customer has no address). The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'customers.subscriptions.pause',
 			'method'  => 'POST',
 			'path'    => '/customers/{id}/subscriptions/{subscription_id}/pause',
@@ -3836,7 +3886,7 @@ function api_schema() {
 			'handler' => 'api_forms_get',
 			'returns' => 'Form',
 			'summary' => 'One form, with its fields',
-			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'The field list as the page designer holds it: name, label, type, whether it is required, the choices a pick list offers, and which contact field it feeds. office_use_only marks a field the visitor never sees - the operator fills it in afterwards on the submission screen. Beside the fields: framework, the page framework of the form page\'s design (bootstrap5 or custom) - rich text cannot carry classes, see html_allowed; is_collection, whether the form is marked as a collection; record_url_pattern, where a record is read on the site ({address_name} or {reference_code} in place of the record), from a designed record view or a classic form item view page, null when no public page shows the records. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
 			)
@@ -3887,12 +3937,12 @@ function api_schema() {
 			'dry_run' => true,
 			'returns' => 'FormSubmission',
 			'summary' => 'Mark a submission complete, or fill in its text answers',
-			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read, and only text box, text area and e-mail address fields can be written; a choice or an upload is refused. A field the visitor left empty gets its answer now. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'What the submitted-form screen lets staff change, for the system that handles enquiries outside the panel: a help desk closing one, a CRM writing the outcome into the office-use fields the visitor never sees. Answers are addressed by the field name, as they are read. Text box, text area and e-mail address fields can be written, and a choice field that takes one answer (a pick list, a radio button group, such as a collection\'s Status field) with one of its option values; a check box group, a multiple pick list, a date or an upload is refused. A rich text answer is HTML, reduced to html_allowed and stored as the create stores it. A field the visitor left empty gets its answer now. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
 				array('name' => 'complete',      'in' => 'body', 'type' => 'bool'),
-				array('name' => 'values',        'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 50, 'description' => 'Objects of {name, value}: the field name and its new answer. Up to 10000 characters each; an empty value clears it.')
+				array('name' => 'values',        'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 50, 'description' => 'Objects of {name, value}: the field name and its new answer. Up to 10000 characters each, or the max_length of a rich text field; an empty value clears it.')
 			)
 		),
 
@@ -3904,7 +3954,7 @@ function api_schema() {
 			'handler' => 'api_form_fields',
 			'returns' => array('list' => 'FormField'),
 			'summary' => 'The fields of a form',
-			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. rich_text marks a text area drawn with the rich-text editor: its answer is HTML, html_allowed lists the tags, attributes, style properties, address schemes and image hosts it keeps (anything else is removed or unwrapped), and max_length is the longest answer in characters; both are null on other fields. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
 			)
@@ -3920,10 +3970,11 @@ function api_schema() {
 			'returns' => 'FormSubmission',
 			'status'  => 201,
 			'summary' => 'Add a submission',
-			'description' => 'Records a submission the way staff add one on the Add Submitted Form screen, through the same checks and the same write: the owner is stored as the submitter, office-use fields may be answered, and no visitor columns (address, referrer, tracking code) are written. Answers are addressed by the field name (GET /forms/{id}/fields). A required field is refused when it is left empty and the submission is complete; a date is YYYY-MM-DD, a time HH:MM, an e-mail address must be one, and the answer to a choice field must be one of its option values - a check box group or a multiple pick list takes its name once per choice. A file upload or a signature field cannot be answered through the API. A complete submission announces form.submitted; send_notifications also sends the e-mails a visitor\'s submission would. Contact records, memberships and the confirmation page of a visitor\'s submission are not part of it. A form on a page in a folder the owner may not edit is answered 404.',
+			'description' => 'Records a submission the way staff add one on the Add Submitted Form screen, through the same checks and the same write: the owner is stored as the submitter, office-use fields may be answered, and no visitor columns (address, referrer, tracking code) are written. Answers are addressed by the field name (GET /forms/{id}/fields). A required field is refused when it is left empty and the submission is complete; a date is YYYY-MM-DD, a time HH:MM, an e-mail address must be one, and the answer to a choice field must be one of its option values - a check box group or a multiple pick list takes its name once per choice; a collection\'s Status field is written as sent, so a record may be published in one call. The answer to a rich text field (rich_text in GET /forms/{id}/fields) is HTML: it is reduced to html_allowed as a visitor\'s answer is, and links and images on the site\'s own address are stored relative to the site. author_user_id names the author, the submitter a byline shows: a member of staff who may work with forms, the owner of the key by default. The answer carries url, the record\'s address on the site. A file upload or a signature field cannot be answered through the API. A complete submission announces form.submitted; send_notifications also sends the e-mails a visitor\'s submission would. Contact records, memberships and the confirmation page of a visitor\'s submission are not part of it. A form on a page in a folder the owner may not edit is answered 404.',
 			'params'  => array(
 				array('name' => 'id',                 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
-				array('name' => 'values',             'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 200, 'description' => 'Objects of {name, value}: the field name and its answer, up to 10000 characters each.'),
+				array('name' => 'values',             'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 200, 'description' => 'Objects of {name, value}: the field name and its answer, up to 10000 characters each, or the max_length of a rich text field.'),
+				array('name' => 'author_user_id',     'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The author of the record: an enabled member of staff who may work with forms (a role below User, or the forms right). The owner of the key by default.'),
 				array('name' => 'complete',           'in' => 'body', 'type' => 'bool', 'description' => 'false saves it for later: required fields are not enforced and nothing is announced. true by default.'),
 				array('name' => 'send_notifications', 'in' => 'body', 'type' => 'bool', 'description' => 'true sends the notification e-mails the form sends for a visitor\'s submission. Off by default; only for a complete submission.')
 			)
@@ -3958,6 +4009,57 @@ function api_schema() {
 			'params'  => array(
 				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
 				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		// The History section of a collection item (includes/fn/record_revisions.php).
+		array(
+			'id'      => 'forms.submission_revisions',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submission_revisions',
+			'returns' => array('list' => 'FormSubmissionRevision'),
+			'summary' => 'Revisions of a collection record',
+			'description' => 'The History section of the submitted-form screen: one revision for every save that changed the record\'s answers or its address name, newest first, with who saved it and how (source edit, restore, api or workspace). A save that only marked it complete or incomplete writes none. current marks the revision the record holds now. The answers are not listed; read one revision with GET /forms/{id}/submissions/{submission_id}/revisions/{no} and put it back with POST …/revisions/{no}/restore. Only the records of a collection form keep revisions: any other is answered 409 not_a_collection. The site keeps the last revisions of each record and the recent ones (the page revision settings), so old numbers disappear. Cursor paged. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200, 'description' => 'next_cursor from the previous page.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_revision_get',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions/{no}',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_submission_revision_get',
+			'returns' => 'FormSubmissionRevisionDetail',
+			'summary' => 'One revision of a collection record, compared with the record',
+			'description' => 'What Compare shows in the History section: every field in form order with the revision\'s answers (values; file_id for an upload) beside the record\'s current ones, changed when they differ, and restore, what a restore would do to it: value (the answer is written back), file (the revision\'s file is attached again), gone (that file has been deleted since, the current one stays), kept (a signature, or a revision without a file: the current value stays) or unchanged. 409 not_a_collection for a record of a form that is no collection; 404 for a revision number the record does not have.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'no',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The revision number (GET /forms/{id}/submissions/{submission_id}/revisions).')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_revision_restore',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions/{submission_id}/revisions/{no}/restore',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_revision_restore',
+			'dry_run' => true,
+			'returns' => 'FormSubmissionRestore',
+			'summary' => 'Put a revision of a collection record back',
+			'description' => 'As loading the revision from the History section and saving it: the revision\'s answers are written back and its uploaded files that still exist are attached again; a signature and a file deleted since stay as they are now (fields lists what happens to each field that differs, as restore in GET …/revisions/{no}). The address name follows the restored title on a form with pretty addresses, whether the record is complete stays, and the save is recorded as a revision of its own with the source restore (revision_no). When the record already holds that revision nothing is written and changed is false. 409 not_a_collection for a record of a form that is no collection; 404 for a revision number the record does not have.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'no',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The revision number (GET /forms/{id}/submissions/{submission_id}/revisions).')
 			)
 		),
 
@@ -4412,6 +4514,22 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'comments.answer',
+			'method'  => 'POST',
+			'path'    => '/comments/{id}/answer',
+			'scope'   => 'comments:write',
+			'handler' => 'api_comments_answer',
+			'dry_run' => true,
+			'returns' => 'CommentAnswer',
+			'summary' => 'Answer a product question',
+			'description' => 'Writes, changes or removes the store\'s answer to a product question (a comment of kind question), as the Answer box of the comment screen does. The answer is a published comment of kind answer under the question, shown with the name of the key\'s owner. An empty text removes the answer, so the question waits for one again. When an answer is first written, the asker is mailed if they signed in and left an address; the dry run says whether (detail.email). result: added, changed, removed or unchanged (nothing written); answer is the answer as GET /comments/{id} gives it, null without one. 409 not_a_question for any other comment; 503 service_unavailable before the database update that keeps product questions.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The question.'),
+				array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 5000, 'required' => true, 'description' => 'The answer, plain text, trimmed. An empty string removes the answer.')
+			)
+		),
+
 		/* ----- Experiments ------------------------------------------------- */
 
 		array(
@@ -4451,6 +4569,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/start',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_start',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'Start or resume an experiment',
 			'description' => 'A set-up (draft) experiment starts, a paused one runs again; visitors are then drawn into its variants by their weights. A start is refused with 409 experiment_state when the page is no longer on the site, a variant is no longer a draft, another experiment runs on the page, or the experiment is running or ended. The first start stamps started_at and announces experiment.started. Stored copies of pages are made old, as after a panel change.',
@@ -4465,6 +4584,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/pause',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_pause',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'Pause an experiment',
 			'description' => 'A running experiment pauses: every visitor sees the live page and nothing is counted until it runs again. 409 experiment_state unless it is running.',
@@ -4479,6 +4599,7 @@ function api_schema() {
 			'path'    => '/experiments/{id}/end',
 			'scope'   => 'experiments:write',
 			'handler' => 'api_experiments_end',
+			'dry_run' => true,
 			'returns' => 'Experiment',
 			'summary' => 'End an experiment without a winner',
 			'description' => 'A running or paused experiment ends for good, with no winner and the live page as it is; the variant draft stays in Drafts. Publishing a variant\'s design as the winner is done in the panel, where the page lock applies. Announces experiment.ended. 409 experiment_state when it is a set-up or already ended.',
@@ -4652,13 +4773,14 @@ function api_schema() {
 			'returns' => 'File',
 			'status'  => 201,
 			'summary' => 'Upload a file',
-			'description' => 'Images and PDFs only, and the bytes have to be what the name claims - the file is opened and checked rather than trusted. SVG is not accepted: it is markup, it can carry script, and the site serves it inline. The folder is the one the operator chose for applications and cannot be named in the request. Send the bytes as content_base64, or a source_url for this site to fetch - that fetch resolves the name once, pins the address it checked and refuses anything on this network.',
+			'description' => 'Images and PDFs only, and the bytes have to be what the name claims - the file is opened and checked rather than trusted. SVG is not accepted: it is markup, it can carry script, and the site serves it inline. The folder is the one the operator chose for applications and cannot be named in the request; a picture for a form\'s posts (form_id) goes where the operator files that form\'s pictures. Send the bytes as content_base64, or a source_url for this site to fetch - that fetch resolves the name once, pins the address it checked and refuses anything on this network.',
 			'params'  => array(
 				array('name' => 'name',           'in' => 'body', 'type' => 'string', 'max_length' => 190, 'description' => 'File name. The extension is optional: when it is left out it is taken from the address, or from the content when the address has none. The whole name is taken from source_url when it is left out. A name already in use gets a [1] suffix rather than replacing anything.'),
 				array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'description' => 'The file itself, base64 encoded. Send this or source_url.'),
 				array('name' => 'source_url',     'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'An address for this site to fetch the file from. Send this or content_base64.'),
 				array('name' => 'description',    'in' => 'body', 'type' => 'string', 'max_length' => 500),
-				array('name' => 'image_profile',  'in' => 'body', 'type' => 'enum', 'values' => array('product'), 'description' => 'product scales the image to the shop\'s own dimension and quality, the same as an upload from the product screen. Left out, the file is stored byte for byte, unless the site shrinks pictures above a size on upload (Image Optimization settings).')
+				array('name' => 'image_profile',  'in' => 'body', 'type' => 'enum', 'values' => array('product'), 'description' => 'product scales the image to the shop\'s own dimension and quality, the same as an upload from the product screen. Left out, the file is stored byte for byte, unless the site shrinks pictures above a size on upload (Image Optimization settings).'),
+				array('name' => 'form_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'A picture for a post on this form (needs forms:read as well). Only an image is taken (jpg, png, gif, webp), and it is filed in the public upload folder of the form\'s own file upload field (the media field first), else the applications\' folder. Put its url in the src of an <img> in a rich text answer: the site keeps it and stores it relative to the site.')
 			)
 		),
 
@@ -6040,6 +6162,7 @@ function api_error_catalogue() {
 
 		'validation_failed'        => array(422, 'A parameter is missing, the wrong type or out of range. The field is named in the answer.'),
 		'period_locked'            => array(422, 'The date falls in a period whose books are locked: nothing dated there can be issued, cancelled or paid. Date it after the lock, or have the lock moved in the panel.'),
+		'note_locked'              => array(423, 'The workspace note is behind its owner\'s notes lock, which the API never holds open: read it as title only, and change, delete or read its versions on the notes screen with the PIN.'),
 		'location'                 => array(422, 'location is not one of the site\'s stock locations, or the site keeps no stock per location. Leave it out to use the default.'),
 		'credit_limit'             => array(422, 'The sale would take the customer past the credit limit the store enforces. Take a payment first, or raise the limit on the account.'),
 

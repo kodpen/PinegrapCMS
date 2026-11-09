@@ -155,6 +155,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
 
+    // A record is saved with the TTL it was sent with. A form that sent none
+    // (no option of the list selected) would turn the record's TTL into Auto.
+    if ((($action === 'add_record') || ($action === 'edit_record')) && !isset($_POST['ttl'])) {
+        $liveform->mark_error('error', lang(array('string' => '{var:1} is required.', 'vars' => lang('TTL'))));
+        $action = '';
+    }
+
     // Run the requested action.
     if ($action === 'add_record') {
         $resp = cf_request('POST', "zones/{$CF_ZONE_ID}/dns_records", $payload, $CF_API_BASE, $CF_API_TOKEN);
@@ -1427,7 +1434,18 @@ document.addEventListener("DOMContentLoaded", function() {
     document.getElementById("edit_type").value    = button.getAttribute("data-type");
     document.getElementById("edit_name").value    = button.getAttribute("data-name");
     document.getElementById("edit_content").value = button.getAttribute("data-content") || "";
-    document.getElementById("edit_ttl").value     = button.getAttribute("data-ttl");
+    // A TTL the list does not offer (1800, 120) gets its own option, so the
+    // record is sent back with the TTL it has instead of none.
+    var editTtl = document.getElementById("edit_ttl");
+    var ttl = button.getAttribute("data-ttl") || "1";
+    editTtl.value = ttl;
+    if (editTtl.value !== ttl) {
+      var ttlOption = document.createElement("option");
+      ttlOption.value = ttl;
+      ttlOption.textContent = ttl;
+      editTtl.appendChild(ttlOption);
+      editTtl.value = ttl;
+    }
     document.getElementById("edit_proxied").checked = (button.getAttribute("data-proxied") === "1");
 
     if (button.getAttribute("data-type")==="MX") {

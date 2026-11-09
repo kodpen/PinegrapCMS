@@ -4,7 +4,7 @@ description: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/p
 ---
 
 ## What is it for?
-- A screen's look is a path no unit test reaches; Bootstrap 6 PRs show screens before and after (`plans/bootstrap-6-panel.md`).
+- A screen's look is a path no unit test reaches; a PR that changes a screen's look shows it before and after.
 - PR images are never committed (the script refuses an output folder in the repository).
 
 ## How do I run it?

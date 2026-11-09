@@ -286,22 +286,31 @@ function test_designer_fx_script_reads_the_page()
 
 // The Interactions section: offered where the page writes the attributes,
 // its rows follow the effect and the trigger, a field change keeps the
-// rest and drops what no longer applies, and the panel wires it up.
+// rest and drops what no longer applies, and the panel wires it up. The
+// rows and their fields are the part 'interactions'
+// (style_designer_interactions.js); the core draws the section around them.
 function test_designer_fx_panel()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	// The code view's attribute writes are in its part (style_designer_code.js).
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js')
+		. "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_code.js');
+	$part = (string) @file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer_interactions.js');
 	$twins = strpos($js, '    // The lists are first-is-default');
 	$twins_end = strpos($js, '    // The id, the title and tooltip, the interaction');
 	$panel = strpos($js, '    var _SD_FX_CONTENT');
-	$panel_end = strpos($js, "    // The Interactions section's fields write");
-	pg_assert_true($twins !== false && $twins_end !== false && $panel !== false && $panel_end !== false, 'the panel code is found');
+	$panel_end = strpos($js, '    function propsInteractions(');
+	pg_assert_true($twins !== false && $twins_end !== false && $panel !== false && $panel_end !== false && $part !== '', 'the panel code is found');
 
 	$script = 'function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }'
 		. 'function _sdT(s) { return s; }'
 		. 'function row(l, c) { return "<row " + l + ">" + c + "</row>"; }'
-		. 'function sect(i, t, b) { return "<sect " + t + ">" + b + "</sect>"; }'
 		. 'function swAttr(a, on) { return "<sw " + a + (on ? " on" : "") + ">"; }'
 		. substr($js, $twins, $twins_end - $twins) . substr($js, $panel, $panel_end - $panel)
+		. 'var factory = null; var StyleDesigner = { definePart: function (n, f) { if (n === "interactions") factory = f; } };'
+		. "\n" . $part . "\n"
+		. 'var api = factory({ esc: esc, _sdT: _sdT, row: row, swAttr: swAttr, _sdFxSpec: _sdFxSpec, _sdFxNormalize: _sdFxNormalize, _sdFxTakes: _sdFxTakes });'
+		. 'function propsInteractions(n) { return _sdFxTakes(n) ? api.rows(n) : ""; }'
+		. 'var _sdFxSet = api.set;'
 		. 'function rows(h) { return (h.match(/<row [^>]+>/g) || []).map(function (r) { return r.slice(5, -1); }); }'
 		. 'var c = function (t, p) { return { type: t, props: p }; };'
 		. 'var out = {'
@@ -363,6 +372,7 @@ function test_designer_fx_panel()
 
 	pg_assert_contains("optHtml += propsInteractions(selectedNode);", $js, 'the panel shows the section');
 	pg_assert_contains("_sdFxBind(selectedNode);", $js, 'and binds it');
+	pg_assert_contains("_sdPartCall('interactions', 'fill'", $js, 'the part fills the section');
 	pg_assert_contains("if (_sdCodeSetFxAttr(node, name, now)) return;", $js, 'the code view hands the attributes back');
 	pg_assert_contains('data-fx-play', $got['slideHtml'], 'a moving effect has a Play button');
 	pg_assert_contains("        _sdScrollers();\n        _sdFxCanvas();", $js, 'the canvas binds interactions after every render');

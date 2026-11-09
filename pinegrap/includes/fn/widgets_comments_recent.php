@@ -1140,7 +1140,7 @@ function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items', $
             continue;
         }
 
-        $title = trim((string) pg_tr_text((string) $row['page_title'], 'text', 'seo'));
+        $title = trim((string) pg_tr_data_text((string) $row['page_title'], 'text', 'seo'));
         $source = array(
             'page_id' => $page_id,
             'kind' => $decision['kind'],

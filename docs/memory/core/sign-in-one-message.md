@@ -6,7 +6,7 @@ module: auth
 
 ## What does a refused sign-in show?
 - `index.php`, `registration_entrance.php`, `membership_entrance.php` and `change_password.php` mark one error on the password field: `pg_login_refused_message()` ("The email address, username or password you entered is incorrect…", plus the forgot-password hint when `FORGOT_PASSWORD_LINK` is on; `change_password.php` says "current password", no hint). The name the visitor typed stays in its field, the password is cleared.
-- Before this, an unknown name got "could not be found" on the name field, so the screens told an attacker which accounts exist (owner decision 2026-10-28, `plans/security-findings-2026-10.md` item 5).
+- Before this, an unknown name got "could not be found" on the name field, so the screens told an attacker which accounts exist (owner decision 2026-10-28, `workflow/decisions-made-product-39.md`).
 
 ## Does the site log still say which half was wrong?
 - Yes: `validate_username()` still picks the log line ("password invalid" or "email or username invalid") for staff. Only the visitor's message is shared.

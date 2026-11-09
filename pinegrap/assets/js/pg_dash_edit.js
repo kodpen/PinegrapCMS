@@ -244,6 +244,13 @@
         if (node) {
             node.hidden = hidden;
         }
+
+        // The new/old switch would reload the page and drop the unsaved
+        // layout, so it rests while the dashboard is edited.
+        var toggle = document.getElementById("pg_dash_switch");
+        if (toggle) {
+            toggle.disabled = hidden;
+        }
     }
 
     // ── The edit bar ───────────────────────────────────────────────────────
@@ -251,6 +258,11 @@
     function drawBar() {
         bar = el("section", "card pg-dash-bar");
         bar.setAttribute("aria-labelledby", "pg_dash_bar_title");
+
+        var mark = el("span", "pg-dash-bar-icon");
+        mark.setAttribute("aria-hidden", "true");
+        mark.appendChild(icon("bi-pencil"));
+        bar.appendChild(mark);
 
         var text = el("div", "pg-dash-bar-text");
         var title = el("h2", "pg-dash-bar-title", S.editing);
@@ -282,11 +294,11 @@
         bar.appendChild(presets);
 
         var end = el("div", "pg-dash-bar-end");
-        var reset = button("btn btn-outline theme-secondary btn-sm", S["default"]);
+        var reset = button("pg-dash-btn", S["default"]);
         reset.addEventListener("click", backToDefault);
-        var stop = button("btn btn-outline theme-secondary btn-sm", S.cancel);
+        var stop = button("pg-dash-btn", S.cancel);
         stop.addEventListener("click", cancel);
-        var keep = button("btn btn-solid theme-primary btn-sm", S.save);
+        var keep = button("pg-dash-btn pg-dash-btn-main", S.save);
         keep.addEventListener("click", function () {
             save(false, keep);
         });
@@ -615,8 +627,8 @@
             }));
         }
 
-        var check = el("div", "form-field pg-dash-settings-badge");
-        var box = el("input", "check");
+        var check = el("div", "pg-dash-check pg-dash-settings-badge");
+        var box = el("input");
         box.type = "checkbox";
         box.id = "pg_dash_badge_" + item.entry.id;
         box.checked = !!item.entry.badge;
@@ -811,6 +823,7 @@
 
         var head = card.querySelector(".pg-dash-status-head");
         var toggle = head.querySelector(".pg-dash-status-toggle");
+        var note = head.querySelector(".pg-dash-status-off");
         var off = !state.top.status;
 
         card.toggleAttribute("data-off", off);
@@ -820,7 +833,15 @@
             if (toggle) {
                 toggle.remove();
             }
+            if (note) {
+                note.remove();
+            }
             return;
+        }
+
+        if (!note) {
+            note = el("span", "pg-dash-status-off", S.status_hidden);
+            head.prepend(note);
         }
 
         if (!toggle) {

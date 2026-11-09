@@ -1761,7 +1761,9 @@ function pg_price_reference_label($reference)
 /**
  * The catalog widget tokens of a reference price: __reference_price (the
  * amount with the visitor's currency) and __reference_label, both empty when
- * there is nothing to show, so a bound element collapses.
+ * there is nothing to show, so a bound element collapses. Both are text,
+ * escaped with the card's other values: the symbol stored as an entity
+ * (&#8378;) is its character.
  *
  * @param array|null $reference a pg_price_history_reference() result
  * @param string     $symbol    the currency symbol the card prints
@@ -1776,7 +1778,7 @@ function pg_price_reference_tokens($reference, $symbol)
     }
 
     return array(
-        '__reference_price' => pg_visitor_money($reference['price'] / 100, $symbol),
+        '__reference_price' => pg_visitor_money_text($reference['price'] / 100, $symbol),
         '__reference_label' => $label,
     );
 }

@@ -3690,10 +3690,14 @@ function pg_update_image_in_content($content, $original_image_name, $new_image_n
                 // format also.  We have left the code for the old width="100" height="100"
                 // for images that were entered with old editor or if someone manually enters
                 // that type of format.
-                $image_content = preg_replace('/width=".*?"/i', 'width="' . $image_width . '"', $image_content);
-                $image_content = preg_replace('/width:.*?px/i', 'width: ' . $image_width . 'px', $image_content);
-                $image_content = preg_replace('/height=".*?"/i', 'height="' . $image_height . '"', $image_content);
-                $image_content = preg_replace('/height:.*?px/i', 'height: ' . $image_height . 'px', $image_content);
+                // Only the width and height names themselves: not preceded by
+                // a letter or dash (max-width, border-width, line-height,
+                // data-height keep their values), and a style value only when
+                // it is a number of pixels (100% or auto stays as written).
+                $image_content = preg_replace('/(?<![\w-])width="[^"]*"/i', 'width="' . $image_width . '"', $image_content);
+                $image_content = preg_replace('/(?<![\w-])width\s*:\s*[0-9.]+\s*px/i', 'width: ' . $image_width . 'px', $image_content);
+                $image_content = preg_replace('/(?<![\w-])height="[^"]*"/i', 'height="' . $image_height . '"', $image_content);
+                $image_content = preg_replace('/(?<![\w-])height\s*:\s*[0-9.]+\s*px/i', 'height: ' . $image_height . 'px', $image_content);
                 // return the updated image tag
                 $content = str_replace($image_tags[$key], $image_content, $content);
             }

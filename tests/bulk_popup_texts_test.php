@@ -86,8 +86,8 @@ function test_bulk_popup_texts_variant_sets_bar_acts_on_the_selection()
 {
 	$source = bulk_popup_texts_source('product_builder.php');
 
-	pg_assert_contains('data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-3"></i>\' . lang(\'Enable Selected\') . \'</button>', $source, 'the enable button names the selection');
-	pg_assert_contains('data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-3"></i>\' . lang(\'Disable Selected\') . \'</button>', $source, 'the disable button names the selection');
+	pg_assert_contains('data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-1" aria-hidden="true"></i>\' . lang(\'Enable Selected\') . \'</button>', $source, 'the enable button names the selection');
+	pg_assert_contains('data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-1" aria-hidden="true"></i>\' . lang(\'Disable Selected\') . \'</button>', $source, 'the disable button names the selection');
 }
 
 // A list's bulk action that posts the page form (Delete Selected on the

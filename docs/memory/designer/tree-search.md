@@ -15,7 +15,7 @@ module: tree_search
 
 ## What does site search count?
 - `get_search_results.php`, simple mode: for each searchable page, beside its page region rows, the words of `pg_page_tree_json()` and of the components it places, nested ones once each (`pg_tree_search_plain_text()`: markup removed, entities decoded). Components are read once per request (`pg_tree_search_components()`, system widgets left out).
-- The visual editor's Search Results widget (`_pg_sw_search_collect_one()` in `includes/fn/widgets.php`), simple mode, counts the same words: the tree of `pg_page_tree_sql_expr()` (its own, else its design's) and its components. Before, it read `page.page_tree_json` only, with its own text reader, so a page whose words sat in a placed component, or one still drawn from its design's tree, was not found there.
+- The visual editor's Search Results widget (`_pg_sw_search_collect_one()` in `includes/fn/widgets.php`), simple mode, counts the same words: the tree of `pg_page_tree_sql_expr()` (its own, else its design's) and its components. Before, it read `page.page_tree_json` only, with its own text reader, so a page whose words sat in a placed component, or one still drawn from its design's tree, was not found there. Its classic pages query applies `pg_page_region_read_sql()` like the legacy page: stale region rows of a converted page are no hit and no excerpt (#7688).
 - A candidate page is pre-selected with LIKE over its tree, or by placing a component whose words match (`pg_tree_search_matching_components()`, then `pg_tree_search_shared_ref_sql()`: `"sharedId":N` as a number or a string).
 
 ## What does Find & Replace do with trees?

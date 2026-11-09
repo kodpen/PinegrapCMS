@@ -106,6 +106,12 @@ if (ws_enabled() && function_exists('ws_threads_purge')) {
     ws_threads_purge();
 }
 
+// Channel memory entries expired more than 30 days ago
+// (includes/workspace/channel_memory.php).
+if (ws_enabled() && function_exists('ws_memory_sweep')) {
+    ws_memory_sweep();
+}
+
 // Original .eml files of incoming mail past their 30 days
 // (includes/workspace/mail.php).
 if (ws_enabled() && function_exists('ws_mail_eml_sweep')) {

@@ -235,7 +235,8 @@ function test_api_openapi_status_workspace_people_may_be_null()
 {
 	$fields = array(
 		array(ws_api_decision_schema(), 'sender', 'WorkspaceMessageSender'),
-		array(ws_api_decision_schema(), 'marked_by', 'WorkspacePerson'),
+		// A person or the application an agent marks as (user_id null).
+		array(ws_api_decision_schema(), 'marked_by', 'WorkspaceMessageSender'),
 		array(ws_api_decision_schema(), 'claude_change', 'WorkspaceDecisionChange'),
 		array(ws_api_decision_schema(), 'file', 'WorkspaceDecisionFile'),
 		array(ws_api_change_schema(), 'requested_by', 'WorkspacePerson'),

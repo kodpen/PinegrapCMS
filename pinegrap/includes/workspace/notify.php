@@ -43,8 +43,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | flow_finished (a run of one's flow ended: flow_runs.php)
  *                         | flow_shared (a flow was shared with one: flow_shares.php)
  *                         | wtable_shared (a workflow table was shared with one: wtable_shares.php)
+ *                         | note_group_shared, note_group_added (note_group_shares.php)
  *                         | mail_assigned | mail_customer (an e-mail conversation given to one, its
  *                           customer writing again on one held: mail_status.php, mail.php)
+ *                         | canvas_edited (an agent edited one's canvas: canvas_edit.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
  *                         tells many people in a row and calls ws_push_batch_done();
@@ -407,6 +409,31 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-journal-arrow-down',
             );
 
+        // A note was put into a group shared with the person
+        // (note_group_shares.php): one line per note.
+        case 'note_group_added':
+            $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} added a note to a shared group', 'vars' => $actor)),
+                'body'  => $note ? ws_note_title($viewer, $note) : '',
+                'url'   => $base . 'workspace_notes.php' . ($note ? '?note=' . (int) $note['id'] : ''),
+                'icon'  => 'bi-folder-plus',
+            );
+
+        // A group of notes was shared with the person: the sentence naming
+        // the group and what they may do sits beside the line, as for a
+        // table shared.
+        case 'note_group_shared':
+            $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} shared a group of notes with you', 'vars' => $actor)),
+                'body'  => $notice ? (string) $notice['text'] : '',
+                'url'   => $base . 'workspace_notes.php',
+                'icon'  => 'bi-folder-symlink',
+            );
+
         case 'note_updated':
             $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
 
@@ -558,6 +585,12 @@ function ws_inbox_describe($viewer, $row)
                 return ws_mcp_agent_inbox_describe($viewer, $row, $channel_name, $base);
             }
             break;
+
+        // An agent edited the person's canvas (canvas_edit.php).
+        case 'canvas_edited':
+            require_once(PG_FUNCTIONS_DIR . '/includes/workspace/canvas_edit.php');
+
+            return ws_canvas_inbox_describe($row, $channel_name, $base);
 
         // A message a day old whose read receipt the person has not given
         // (acks.php).
@@ -805,7 +838,7 @@ function ws_inbox_row_visible($viewer, $row)
     }
 
     // A line about a note is there as long as the person may read the note.
-    if (in_array($row['kind'], array('note_shared', 'note_updated', 'note_answer', 'note_answer_ai'), true)) {
+    if (in_array($row['kind'], array('note_shared', 'note_updated', 'note_answer', 'note_answer_ai', 'note_group_added'), true)) {
         $note = function_exists('ws_note') ? ws_note((int) ($row['note_id'] ?? 0)) : null;
 
         if (!$note || (ws_note_access($viewer, $note) === '')) {

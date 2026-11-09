@@ -1988,6 +1988,43 @@ function _pg_login_region_panel_access()
     return pg_user_has_panel_access();
 }
 
+// The stacking level of a menu that drops out of a site's header area: the
+// account menu of the login region and the language switcher's list.
+// Bootstrap 5 draws an open dropdown at 1000 and a sticky header
+// (.sticky-top) at 1020, so a menu opened from an account bar placed above a
+// sticky header came down under that header, which hid its first rows.
+// 1025 is above the sticky layer and below .fixed-top (1030), the offcanvas
+// (1045) and the modal (1055). A menu inside a positioned header is held by
+// that header's own stacking context, where the number changes nothing.
+function pg_sw_header_menu_z_index()
+{
+    return 1025;
+}
+
+// Puts the header menu level on every node of a widget tree whose classes
+// hold "dropdown-menu", added to the node's own inline style. Done on the
+// drawn copy, never on the stored tree, so saved designs and the ones on
+// running sites get it without a migration.
+function pg_sw_lift_header_menus(&$tree)
+{
+    if (!is_array($tree)) return;
+    $props = (isset($tree['props']) && is_array($tree['props'])) ? $tree['props'] : null;
+    if ($props !== null) {
+        $class = isset($props['cssClass']) && is_string($props['cssClass']) ? $props['cssClass'] : '';
+        if (in_array('dropdown-menu', preg_split('/\s+/', trim($class)), true)) {
+            $style = isset($props['inlineStyle']) && is_string($props['inlineStyle']) ? rtrim(trim($props['inlineStyle']), ';') : '';
+            if (!preg_match('/(^|;)\s*z-index\s*:/i', $style)) {
+                $tree['props']['inlineStyle'] = ($style !== '' ? $style . ';' : '') . 'z-index:' . pg_sw_header_menu_z_index();
+            }
+        }
+    }
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $i => $child) {
+            if (is_array($child)) pg_sw_lift_header_menus($tree['children'][$i]);
+        }
+    }
+}
+
 // Render a 'login_region' system widget: what a site header shows about the
 // session. The designer draws both states in one tree - the part for a
 // visitor who is not signed in (sign-in and sign-up links, or a compact
@@ -2137,6 +2174,8 @@ function _render_system_widget_login_region($tree_json, $widget_id, $cfg = array
 
     _eo_apply_visibility_bindings($tree, $flags);
     _pg_member_drop_empty_links($tree, $links);
+    // The account menu comes down over a sticky header that follows the bar.
+    pg_sw_lift_header_menus($tree);
 
     // A compact sign-in form in the signed-out part.
     $controls = array();

@@ -449,7 +449,8 @@ function test_comments_widget_designer_screen_wiring()
 // Every place the editor builds a page object names the new settings.
 function test_comments_widget_designer_page_literals()
 {
-	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
+	// The import's tabs are built in its part (style_designer_import.js).
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js') . "\n" . comments_widget_designer_test_source('assets/js/style_designer_import.js');
 	$new = array('pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message', 'pg_comments_closed_message', 'pg_comments_watchers_managed');
 
 	foreach (array('_pgTabsAddNew', '_pgTabsDuplicateActive', '_pgTabsAddCopy', '_pgTabsAttachLoaded', '_pgImportApplyPages', '_pgTemplateApply', '_pgTabsInit') as $name) {

@@ -420,5 +420,5 @@ function test_workspace_flow_run_events_other_moves_announce_nothing()
 		}
 	}
 
-	pg_assert_same(array('flow_ai_box.php' => 1, 'flow_run_events.php' => 3, 'flow_runs.php' => 7), $callers, 'three definitions, eight calls');
+	pg_assert_same(array('flow_agent_box.php' => 1, 'flow_ai_box.php' => 1, 'flow_run_events.php' => 3, 'flow_runs.php' => 7), $callers, 'three definitions, nine calls');
 }

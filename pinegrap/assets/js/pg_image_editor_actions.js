@@ -15,8 +15,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 (function (X) {
@@ -35,6 +35,7 @@
             this.sheetOpen = true;
             this.render();
         }],
+        removePin: ['puppet', 'puppetRemove', function () { this.removeChosenPin(); }, true],
         duplicate: ['duplicate', 'duplicate', function () { this.addLayers(this.selected(), 10); }],
         remove: ['trash', 'delete', function () { this.removeLayers(); }, true],
         lockPicture: ['lock', 'lock', function () { this.lockPicture(true); }],
@@ -65,6 +66,7 @@
             free: picked.filter(function (l) { return !l.locked; }).length,
             picture: !!(this.board && this.board.pic && this.pictureOn && this.pictureOn()),
             area: (this.tool === 'area') && !!this.areaSelected && this.areaSelected(),
+            pin: !!this.chosenPin && (this.chosenPin() !== null),
             sheet: !!this.panel && !this.sheetOpen,
             can: {
                 erase: !!this.areaErase, keep: !!this.areaKeep, copy: !!this.areaCopy, cutToLayer: !!this.areaCut, adjust: !!this.areaAdjust,

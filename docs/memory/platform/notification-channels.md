@@ -5,7 +5,7 @@ module: notify_channels
 ---
 
 ## What is it?
-- Slack incoming webhooks, Microsoft Teams incoming webhooks or Workflows, and a Telegram bot as targets of operations alerts (`pg_ops_alert_codes()`) and chosen Workspace notifications (a mention of the site's app, a flow run failed, an approval requested). Plan step SF8 of `plans/small-features-2026-11.md`.
+- Slack incoming webhooks, Microsoft Teams incoming webhooks or Workflows, and a Telegram bot as targets of operations alerts (`pg_ops_alert_codes()`) and chosen Workspace notifications (a mention of the site's app, a flow run failed, an approval requested). Built in #5075 (owner 2026-11-02; shape decided in #5076).
 
 ## What is built?
 - `pg_notify_message()` (pure): title on one line, text, an http(s) address or '', level `error`/`warning`/`info`, site name. `pg_notify_alert_message()` makes one from an alert code (error type: `error`, else `warning`).

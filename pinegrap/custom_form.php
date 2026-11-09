@@ -451,7 +451,7 @@ foreach ($fields as $field_key => $field) {
             && (is_array($liveform->get_field_value($field['id'])) == false)
             && ($liveform->get_field_value($field['id']) != '')
         ) {
-            $pattern = '/^(?:' . str_replace('/', '\\/', trim((string)$field['validation_regex'])) . ')$/u';
+            $pattern = pg_cf_field_pattern_regex($field['validation_regex']);
             $matched = @preg_match($pattern, (string)$liveform->get_field_value($field['id']));
 
             if ($matched === 0) {
@@ -1512,6 +1512,14 @@ if ($liveform->check_form_errors() == false) {
     // this visitor is allowed to view the confirmation for this form on
     // custom form confirmation and form item view pages.
     $_SESSION['software']['submitted_form_reference_codes'][] = $reference_code;
+
+    // A record entered on the site by someone who may edit the form's
+    // records (staff): its texts go to the languages that translate on
+    // save. A visitor's submission never opens a translation job, so no
+    // anonymous post spends the site's engine credit.
+    if (isset($user) && is_array($user) && pg_tr_records_editor($user['role'] ?? null, $user['manage_forms'] ?? 0, check_edit_access($folder_id))) {
+        pg_tr_records_saved((int) $_POST['page_id'], (int) $user['id']);
+    }
 
     $add_watcher_user = array();
 

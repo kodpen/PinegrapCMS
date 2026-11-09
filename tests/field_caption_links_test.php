@@ -91,3 +91,19 @@ function test_field_caption_duplicate_products_options()
 	pg_assert_contains('<div class="form-text" id="lettertodelete_help">', $source, 'the help text carries the id');
 	pg_assert_same(3, substr_count($source, '<div class="form-field">'), 'the three options are form-field boxes');
 }
+
+function test_field_caption_edit_booking_form_fields()
+{
+	$source = pg_test_field_caption_source('edit_booking.php');
+
+	foreach (array('choice_staff', 'choice_service', 'choice_date') as $id) {
+		pg_assert_contains('<label class="form-label" for="' . $id . '">', $source, 'the ' . $id . ' caption points at its field');
+	}
+
+	pg_assert_contains('<div class="form-field mb-5">', $source, 'the booking fields are form-field boxes');
+	pg_assert_same(3, substr_count($source, '<div class="form-field">'), 'the three choices are form-field boxes');
+	pg_assert_same(4, substr_count($source, "'aria-describedby' => 'booking_reach_help'"), 'e-mail and phone name the reach hint on both screens');
+	pg_assert_same(2, substr_count($source, '<div class="form-text mb-5" id="booking_reach_help">'), 'the reach hint is a form-text with its id');
+	pg_assert_contains("<div class=\"form-text\" id=\"' . h(\$name) . '_help\">", $source, 'a field help text is a form-text with the id the field names');
+	pg_assert_contains("lang('Kept in the notes when the status becomes Cancelled.'))", $source, 'the cancel reason passes its help text to the field');
+}

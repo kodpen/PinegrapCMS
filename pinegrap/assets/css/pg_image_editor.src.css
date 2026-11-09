@@ -10,8 +10,8 @@
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
- * @copyright   2017–2026 Kodpen
- * @license     https://opensource.org/licenses/mit-license.html MIT License
+ * @copyright   2026 Erdal Güral. All rights reserved.
+ * @license     Proprietary, see license-editors.txt
  */
 
 .pgie-dialog {
@@ -2426,7 +2426,8 @@
   background: var(--pgie-sel);
 }
 
-/* While pinning, the selection box keeps its outline but not its handles. */
+/* While pinning, or while Warp's mesh shows, the selection box keeps its
+   outline but not its handles. */
 .pgie-selbox.pgie-pinning > .pgie-sh {
   display: none;
 }

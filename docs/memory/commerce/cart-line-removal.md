@@ -10,7 +10,7 @@ description: How a line leaves or joins the cart: remove_order_item(), pg_cart_r
 ## Which removals go through which helper?
 - Quantity 0 on the designer cart widget (`cart_action.php`) and on the classic cart (`shopping_cart.php`): `pg_cart_remove_line()` (ownership checked first on the designer cart), which records a refused offer gift and calls `remove_order_item()`.
 - The remove link (`remove_item_from_cart.php`) keeps its own delete and recipient steps (it also picks the next screen), and records the refusal with the same `pg_offer_gift_refuse()`.
-- A gift the offer placed by itself (`added_by_offer`) comes back on the next `apply_offers_to_cart()` unless it is recorded as refused: `pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)` writes `$_SESSION['ecommerce']['declined_offer_gifts']`, `pg_offer_gift_refused()` reads it and forgets it once the offer stops applying.
+- A gift the offer placed by itself (`added_by_offer`) comes back on the next `apply_offers_to_cart()` unless it is recorded as refused: `pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)` writes `$_SESSION['ecommerce']['declined_offer_gifts']`, `pg_offer_gift_refused()` reads it and forgets it once the offer stops applying. Per recipient: `offer-gift-refusal.md`.
 
 ## What else does a quantity change do?
 - The designer cart works a complete recipient's shipping out again when a line's quantity changes, as the classic cart does.

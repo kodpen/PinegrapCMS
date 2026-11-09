@@ -844,6 +844,29 @@ function main() {
     popup.offsetWidth = 300;
     ndBox.instance.open();
     out.store_date.placed = [popup.parentNode === host, popup.style.left, popup.style.top];
+    // In a window 600 high a calendar 300 high fits under a field whose
+    // bottom is at 140; under one at 540 (the last field of a dialog) it
+    // does not, and it opens above the field.
+    md.win.innerHeight = 600;
+    popup.offsetHeight = 300;
+    ndBox.getBoundingClientRect = function () { return { left: 10, top: 100, bottom: 140 }; };
+    ndBox.instance.open();
+    var below = popup.style.top;
+    ndBox.getBoundingClientRect = function () { return { left: 10, top: 500, bottom: 540 }; };
+    ndBox.instance.open();
+    out.store_date.flipped = [below, popup.style.top];
+    // On the page itself (no dialog host) the library placed it under the
+    // box in page coordinates; it moves above only when it does not fit
+    // (the store credit's last day at the bottom of Edit User).
+    md.win.pgUI.overlayHost = function () { return null; };
+    md.win.pageYOffset = 1000;
+    popup.style.top = '1140px';
+    ndBox.getBoundingClientRect = function () { return { left: 10, top: 100, bottom: 140 }; };
+    ndBox.instance.open();
+    out.store_date.flipped.push(popup.style.top);
+    ndBox.getBoundingClientRect = function () { return { left: 10, top: 500, bottom: 540 }; };
+    ndBox.instance.open();
+    out.store_date.flipped.push(popup.style.top);
 
     var ndt = mq('ndt'), ndtBox = ndt.nextSibling;
     out.store_datetime = { box: ndtBox.value };
@@ -921,7 +944,7 @@ function main() {
     var rf = load({ format: 'd/m/yy', fields: [
         ['input', { id: 'pub', type: 'datetime-local', 'data-pg-datetime': '', value: '' }],
         ['input', { id: 'fd', type: 'date', 'data-pg-date': '', value: '', placeholder: 'Value' }],
-        ['input', { id: 'ft', type: 'time', 'data-pg-time': '', value: '', 'aria-label': 'Value' }]
+        ['input', { id: 'ft', type: 'time', 'data-pg-time': '', value: '', 'aria-label': 'Value', 'aria-describedby': 'ft_help' }]
     ] });
     rf.win.pgFields.init();
     var pub = rf.doc.querySelector('#pub'), pubBox = pub.nextSibling, pubHeard = 0;
@@ -943,7 +966,7 @@ function main() {
     var fd = rf.doc.querySelector('#fd'), ft = rf.doc.querySelector('#ft');
     fd.value = '2026-02-03';
     rf.win.pgDatePicker.refresh(fd);
-    out.refresh.named = [fd.nextSibling.value, fd.nextSibling.getAttribute('placeholder'), ft.nextSibling.getAttribute('aria-label')];
+    out.refresh.named = [fd.nextSibling.value, fd.nextSibling.getAttribute('placeholder'), ft.nextSibling.getAttribute('aria-label'), ft.nextSibling.getAttribute('aria-describedby')];
 
 
     return out;
@@ -1507,9 +1530,10 @@ function test_pg_fields_each_field_keeps_its_own_store()
 			'typed' => array('2026-04-03', '2026-04-03'),
 			'set' => array('2026-05-06', '6/5/2026'),
 			'placed' => array(true, '100px', '40px'),
+			'flipped' => array('140px', '200px', '1140px', '1200px'),
 		),
 		$r['store_date'],
-		'a native date input is the hidden ISO store of a box in the site order; min and max bound the calendar; text it cannot hold leaves it empty; the popup stays inside the dialog\'s right edge'
+		'a native date input is the hidden ISO store of a box in the site order; min and max bound the calendar; text it cannot hold leaves it empty; the popup stays inside the dialog\'s right edge and opens above a field it does not fit under'
 	);
 	pg_assert_same(
 		array('box' => '26/10/2026 5:05 PM', 'time' => array('2026-10-26T08:00', '2026-10-26 08:00'), 'set' => array('2027-01-02T23:45', '2/1/2027 11:45 PM')),
@@ -1580,9 +1604,9 @@ function test_pg_fields_refresh_shows_a_store_a_script_wrote()
 			'emptied' => array('', false, 0),
 			'picked' => array('2026-12-01T18:30', true),
 			'announced' => '5/1/2027 7:00 AM',
-			'named' => array('3/2/2026', 'Value', 'Value'),
+			'named' => array('3/2/2026', 'Value', 'Value', 'ft_help'),
 		),
 		$r['refresh'],
-		'refresh() draws a value and a disabled state a script wrote into an ISO store without firing a change; a pick still writes Y-m-d\TH:i; a store a script writes and announces with a change is shown; the box takes the field\'s placeholder and aria-label'
+		'refresh() draws a value and a disabled state a script wrote into an ISO store without firing a change; a pick still writes Y-m-d\TH:i; a store a script writes and announces with a change is shown; the box takes the field\'s placeholder, aria-label and the help tied to it'
 	);
 }

@@ -18,7 +18,7 @@ description: Tracking mail-merge fields of the order_shipped and order_delivered
 
 ## Why the step 11.0.42?
 - A campaign copies its profile's action into `email_campaigns.action`. 11.0.20 widened only `email_campaign_profiles.action` with `order_delivered`, so a delivered campaign was stored with action '' (seen on a sandbox). `upgrade_2026_11_0_delivered_campaigns()` reads the enum and only widens it, keeping the default '' and the null rule (the same way `upgrade_2026_11_0_conversion_pack()` added `order_review_request`). A fresh install runs every step from the starter site, so it gets the value the same way.
-- Owner approval: 2026-10-20, recorded in `plans/shipping-management.md`.
+- Owner approval of the step: 2026-10-20.
 
 ## Where is order_delivered offered?
 - `add_` / `edit_email_campaign_profile.php` (action list, commerce-only gate, schedule "after action", `action_item_id` 0) and `view_email_campaign_profiles.php` ("Order Delivered").
