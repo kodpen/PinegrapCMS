@@ -75,13 +75,6 @@ $sample_details = lang('An open-air festival by the sea; we would like you to he
 
 // ── Page shells ─────────────────────────────────────────────────────────
 
-// A picture in a rounded frame, loaded lazily.
-$press_picture = function ($src, $alt, $ratio = '4x3') use ($el, $image, $attr) {
-    return $el('div', 'ratio ratio-' . $ratio . ' rounded-4 overflow-hidden bg-body-tertiary shadow-sm', lang('Picture Frame'), array(
-        $image($src, $alt, 'object-fit-cover', array('_attrs' => array($attr('loading', 'lazy')))),
-    ));
-};
-
 // The side column of the enquiry page: what happens next, then the
 // addresses for bookings and management.
 $enquiry_aside = function () use ($el, $heading, $link, $check_list, $artist) {
@@ -114,8 +107,8 @@ $enquiry_aside = function () use ($el, $heading, $link, $check_list, $artist) {
 
 // ── Pages ───────────────────────────────────────────────────────────────
 
-// The press kit: the band in three lengths, photos, quotes, figures, the
-// line-up and the files, with the addresses for press and bookings.
+// The press kit: the band in three lengths, the one-sheet beside the press
+// photos, quotes, figures, the line-up and the files, with the addresses for press and bookings.
 $bio_cols = array();
 foreach ($press_bios as $key => $b) {
     $bio_cols[] = $col(array(
@@ -126,10 +119,6 @@ foreach ($press_bios as $key => $b) {
             )),
         )),
     ), '', '4');
-}
-$photo_cols = array();
-foreach (array('live', 'portrait', 'studio') as $seed) {
-    $photo_cols[] = $col(array($press_picture($photo('press-' . $seed, 900, 675), lang('A photo of the band'))), '', '4', '', '12');
 }
 $member_cols = array();
 foreach (array_keys($members) as $key) $member_cols[] = $member_card($key);
@@ -163,16 +152,13 @@ $press_pages[] = array(
                 $row($bio_cols, '4'),
             )),
         ), $searchable('mu-press-bio', lang('biography, bio, about the band, story'))),
-        $el('section', 'py-5 bg-body-tertiary', lang('Photos'), array(
-            $container(array(
-                $section_header(lang('Photos'), lang('Press photos'), lang('Download all photos'), '#mu-press-files'),
-                $row($photo_cols, '4'),
-            )),
-        )),
+        // The one-sheet beside the press photos to download (Music: Press
+        // Kit).
+        $press_kit('mu-press-kit', 'py-5 bg-body-tertiary'),
         $el('section', 'py-5', lang('Press Quotes'), array(
             $container(array(
                 $section_header(lang('Press'), lang('What the press says')),
-                $row($quote_cols, '4'),
+                $rise($row($quote_cols, '4'), 120),
             )),
         )),
         $el('section', 'py-5 bg-body-tertiary', lang('Figures'), array(

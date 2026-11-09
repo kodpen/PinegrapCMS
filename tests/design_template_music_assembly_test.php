@@ -237,3 +237,77 @@ function test_music_assembly_home_lists()
 		pg_assert_true(strpos($home, '"templateWidget":"' . $w . '"') !== false, 'the home places ' . $w);
 	}
 }
+
+// Home, the discography and the press kit place the Music blocks: every
+// pg-music- class's rule ships in the User Styles, the interactions are
+// kept as written and something moves on each, one h1 on each; the home
+// opens on load with the newest single as a record and its tracks as
+// <time>s with ISO durations, the discography shows the newest album
+// before the list, the press kit's one-sheet sits beside photos that save;
+// the tour lists draw a show's day as the tour dates block does.
+function test_music_assembly_pages_on_music_blocks()
+{
+	$tpl = _test_mu_asm_tpl();
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	pg_assert_same('2.0.0', $tpl['version'], 'version raised');
+	$trees = array();
+	foreach ($tpl['pages'] as $p) if (in_array($p['key'], array('home', 'discography', 'press'), true)) $trees[$p['key']] = $p['tree'];
+	$wanted = array(
+		'home'        => array('pg-music-sleeve', 'pg-music-disc', 'pg-music-cover', 'pg-music-tracks'),
+		'discography' => array('pg-music-sleeve', 'pg-music-disc', 'pg-music-cover', 'pg-music-tracks'),
+		'press'       => array('pg-music-sheet'),
+	);
+	pg_assert_same(3, count($trees), 'home, discography, press');
+	foreach ($trees as $key => $tree) {
+		$nodes = array();
+		_test_mu_asm_tpl_nodes($tree, $nodes);
+		$classes = '';
+		$effects = 0;
+		$h1 = 0;
+		foreach ($nodes as $n) {
+			$classes .= ' ' . (isset($n['props']['cssClass']) ? $n['props']['cssClass'] : '');
+			if ((isset($n['props']['tag']) ? $n['props']['tag'] : '') === 'h1') $h1++;
+			if (!isset($n['props']['_fx'])) continue;
+			$effects++;
+			$kept = pg_fx_normalize($n['props']['_fx']);
+			foreach ($n['props']['_fx'] as $field => $value) {
+				pg_assert_true(is_array($kept) && isset($kept[$field]) && $kept[$field] === $value, $key . ': ' . $field . ' is kept as written');
+			}
+		}
+		preg_match_all('/(?<![\w-])pg-music-[a-z0-9-]+/', $classes, $m);
+		foreach (array_unique($m[0]) as $class) {
+			if ($class === 'pg-music-disc' || $class === 'pg-music-cover') continue; // styled under the sleeve's rule
+			pg_assert_contains('.' . $class, $css, $key . ': the rule of ' . $class . ' ships');
+		}
+		foreach ($wanted[$key] as $class) pg_assert_contains($class, $classes, $key . ': places ' . $class);
+		pg_assert_true($effects >= 2, $key . ': something moves');
+		pg_assert_same(1, $h1, $key . ': one h1');
+	}
+	pg_assert_contains('.pg-music-sleeve > .pg-music-disc', $css, 'the disc is styled');
+	pg_assert_contains('.pg-music-day', $css, 'the show day is styled');
+
+	$home = json_encode($trees['home'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"trigger":"load"', $home, 'the hero comes in on load');
+	pg_assert_contains('"id":"mu-home-release"', $home, 'the release is a search section');
+	pg_assert_contains('pmu-hero', $home, 'the home keeps its glow');
+	pg_assert_contains('{"name":"data-bs-theme","value":"dark"}', $home, 'on a dark band');
+	pg_assert_contains('{"name":"aria-hidden","value":"true"}', $home, 'the disc is hidden from screen readers');
+	pg_assert_contains('"text":"3:33","_attrs":[{"name":"datetime","value":"PT3M33S"}]', $home, 'a track length as a duration');
+	pg_assert_contains('"text":"Fire Escape"', $home, 'the single\'s second song');
+	pg_assert_contains('"href":"{{page:tour}}"', $home, 'the way to the tour');
+	$disc = json_encode($trees['discography'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"id":"mu-discography-album"', $disc, 'the album is a search section');
+	pg_assert_contains('"text":"Night Bus Hymns"', $disc, 'the discography shows the newest album');
+	pg_assert_contains('"text":"6:10","_attrs":[{"name":"datetime","value":"PT6M10S"}]', $disc, 'its last song');
+	pg_assert_contains('"templateWidget":"releases_list"', $disc, 'the list stays');
+	$press = json_encode($trees['press'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('"id":"mu-press-kit"', $press, 'the press kit is a search section');
+	foreach (array('Genre', 'From', 'Line-up', 'Record Label', 'Latest Release') as $fact) pg_assert_contains('"tag":"dt","cssClass":"","_label":"Label","text":"' . $fact . '"', $press, 'the fact ' . $fact);
+	pg_assert_same(3, substr_count($press, '{"name":"download","value":""}'), 'three photos to save');
+	pg_assert_contains('"href":"{{page:booking}}"', $press, 'book the band');
+	pg_assert_contains('"href":"#mu-press-files"', $press, 'the way to the press files');
+	pg_assert_contains('"id":"mu-press-files"', $press, 'the press files stay');
+	$tour = json_encode($tpl['widgets']['tour_list'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	pg_assert_contains('pg-music-day', $tour, 'the tour list draws the day as the block does');
+}
