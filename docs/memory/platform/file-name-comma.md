@@ -15,7 +15,7 @@ description: A comma in a file name: stored as _ since 2026.4.1; a file stored b
 
 ## What sends the header now?
 - `pg_http_content_disposition($name, $inline)` in `includes/http_range.php`, which functions.php and get_file.php both load: `inline` or `attachment`, the name in quotes with `"`, `\`, CR and LF removed, and `filename*=UTF-8''…` (RFC 8187) beside it when the name is not plain ASCII (old names such as `Özet.pdf`).
-- get_file.php's answer from the disk uses it for both headers. The quotes first came on 2026-10-19, written inline and untested, so only 2026.11.0 carries them. The object store's `pg_file_serve_disposition()` calls it after its active-type rule (`object-storage-active-types.md`).
+- get_file.php's answer from the disk uses it for both headers (#8379). The quotes first came on 2026-10-19, written inline and untested, so only 2026.11.0 carries them. The object store's `pg_file_serve_disposition()` calls it after its active-type rule (`object-storage-active-types.md`).
 
 ## Which other paths handle the comma?
 - `pg_img_local_file_name()` refuses a `src` with a comma, so such an image gets no `srcset` and no WebP copies, only its plain address.
